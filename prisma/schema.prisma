@@ -1,0 +1,257 @@
+// prisma/schema.prisma
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Department {
+  HR
+  RECEPTION
+  MARKETING
+  LOGISTICS
+  OPERATIONS
+  FINANCE
+  MANAGEMENT
+  CEO
+  DISPATCH
+  PRODUCTION
+}
+
+enum UserStatus {
+  PENDING_APPROVAL
+  OTP_VERIFICATION
+  ACTIVE
+  REJECTED
+}
+
+model User {
+  id                   String                 @id @default(uuid())
+  email                String                 @unique
+  passwordHash         String
+  fullName             String
+  ghanaCardId          String?                // Ghana Card ID (nullable for CEO signup or social login fallback)
+  department           Department
+  status               UserStatus             @default(PENDING_APPROVAL)
+  smsOtp               String?                // Temporary One-Time Password for CEO bypass
+  smsOtpExpiresAt      DateTime?
+  isCeo                Boolean                @default(false)
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+  
+  // Relations
+  approvedIncomingGoods IncomingGoods[]       @relation("ApprovedBy")
+  createdOrders        Order[]                @relation("CreatedBy")
+  sentMessages         ChatMessage[]          @relation("SentMessages")
+  visitorCheckins      VisitorRecord[]        @relation("CheckedInBy")
+  attendanceLogs       AttendanceLog[]
+  boardroomMeetings    BoardroomParticipant[]
+}
+
+enum GoodsStatus {
+  PENDING_MANAGEMENT_APPROVAL
+  APPROVED
+  REJECTED
+}
+
+model IncomingGoods {
+  id            String      @id @default(uuid())
+  country       String
+  company       String
+  quantity      Int
+  weight        Float
+  discrepancies String?
+  isFaulty      Boolean     @default(false)
+  status        GoodsStatus @default(PENDING_MANAGEMENT_APPROVAL)
+  unitPrice     Float?      // Set by Management during approval
+  approvedById  String?
+  approvedBy    User?       @relation("ApprovedBy", fields: [approvedById], references: [id])
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([status])
+}
+
+enum PaymentMode {
+  CREDIT
+  CASH
+  ONLINE
+}
+
+enum OrderStatus {
+  PENDING_FINANCE
+  PENDING_MANAGEMENT
+  APPROVED
+  PROCESSING
+  OUT_FOR_DELIVERY
+  DELIVERED
+  REJECTED
+}
+
+model Order {
+  id           String              @id @default(uuid())
+  clientName   String
+  paymentMode  PaymentMode
+  totalAmount  Float
+  status       OrderStatus         @default(PENDING_FINANCE)
+  createdById  String
+  createdBy    User                @relation("CreatedBy", fields: [createdById], references: [id])
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  
+  // Relations
+  deliveryLogs DeliveryLog[]
+  invoices     Invoice[]
+  tickets      FulfillmentTicket[]
+
+  @@index([status])
+  @@index([paymentMode])
+}
+
+enum DeliveryStatus {
+  ASSIGNED
+  IN_TRANSIT
+  DELIVERED
+  FAILED
+}
+
+model DeliveryLog {
+  id                String         @id @default(uuid())
+  orderId           String
+  order             Order          @relation(fields: [orderId], references: [id])
+  vehicleId         String
+  activeCoordinates Json?          // Current coordinates: { latitude: number, longitude: number, timestamp: number }
+  status            DeliveryStatus @default(ASSIGNED)
+  deliveredAt       DateTime?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  @@index([status])
+}
+
+enum ProductionStatus {
+  PENDING_MANAGEMENT
+  APPROVED
+  TICKETS_ISSUED
+  COMPLETED
+  REJECTED
+}
+
+model ProductionRequest {
+  id           String             @id @default(uuid())
+  items        Json               // List of items requested: Array<{ materialName: string, quantity: number }>
+  status       ProductionStatus   @default(PENDING_MANAGEMENT)
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  
+  tickets      FulfillmentTicket[]
+
+  @@index([status])
+}
+
+model FulfillmentTicket {
+  id                  String             @id @default(uuid())
+  orderId             String?
+  order               Order?             @relation(fields: [orderId], references: [id])
+  productionRequestId String?
+  productionRequest   ProductionRequest? @relation(fields: [productionRequestId], references: [id])
+  type                String             // "ORDER_FULFILLMENT" or "PRODUCTION_RELEASE"
+  details             Json               // Specific items and quantities to release from warehouse
+  status              String             // "PENDING", "RELEASED", "COMPLETED"
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+}
+
+model Invoice {
+  id          String   @id @default(uuid())
+  orderId     String
+  order       Order    @relation(fields: [orderId], references: [id])
+  invoiceNo   String   @unique
+  amount      Float
+  taxAmount   Float
+  grandTotal  Float
+  issuedAt    DateTime @default(now())
+  pdfUrl      String?
+}
+
+model AttendanceLog {
+  id           String    @id @default(uuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id])
+  checkInTime  DateTime  @default(now())
+  checkOutTime DateTime?
+  date         DateTime  @db.Date
+  status       String    // "PRESENT", "LATE", "ABSENT"
+  createdAt    DateTime  @default(now())
+  
+  @@unique([userId, date])
+  @@index([userId, date])
+}
+
+model VisitorRecord {
+  id            String    @id @default(uuid())
+  fullName      String
+  purpose       String
+  hostName      String
+  checkInTime   DateTime  @default(now())
+  checkOutTime  DateTime?
+  checkedInById String
+  checkedInBy   User      @relation("CheckedInBy", fields: [checkedInById], references: [id])
+
+  @@index([checkInTime])
+}
+
+// Collaborations & Messaging
+model ChatChannel {
+  id          String        @id @default(uuid())
+  name        String?       // Channel name (e.g. "General", "Logistics Updates")
+  isDirect    Boolean       @default(false) // True for 1-on-1 private chat
+  department  Department?   // Null for public/direct, set for specific department chat
+  createdAt   DateTime      @default(now())
+  
+  messages    ChatMessage[]
+
+  @@index([department])
+}
+
+model ChatMessage {
+  id          String      @id @default(uuid())
+  channelId   String
+  channel     ChatChannel @relation(fields: [channelId], references: [id])
+  senderId    String
+  sender      User        @relation("SentMessages", fields: [senderId], references: [id])
+  content     String
+  createdAt   DateTime    @default(now())
+
+  @@index([channelId, createdAt])
+}
+
+model BoardroomMeeting {
+  id          String                  @id @default(uuid())
+  title       String
+  description String?
+  startTime   DateTime
+  endTime     DateTime?
+  jitsiRoomId String                  @unique
+  minutesDoc  String?                 // Meeting minutes in markdown format
+  createdAt   DateTime                @default(now())
+  
+  participants BoardroomParticipant[]
+
+  @@index([startTime])
+}
+
+model BoardroomParticipant {
+  id        String           @id @default(uuid())
+  meetingId String
+  meeting   BoardroomMeeting @relation(fields: [meetingId], references: [id])
+  userId    String
+  user      User             @relation(fields: [userId], references: [id])
+  joinedAt  DateTime         @default(now())
+
+  @@unique([meetingId, userId])
+}

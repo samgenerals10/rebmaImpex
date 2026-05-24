@@ -1,0 +1,12 @@
+# Node dependencies
+node_modules/
+
+# Production builds
+dist/
+
+# Local environment variables containing credentials
+.env
+.env.local
+
+# Operating System files
+.DS_Store

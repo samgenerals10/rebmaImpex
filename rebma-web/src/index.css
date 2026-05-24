@@ -1,0 +1,223 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap');
+@import "tailwindcss";
+
+/* Default Theme: Google Drive Style (Breeze) */
+:root {
+  font-family: 'Inter', sans-serif;
+  --bg-app-gradient: linear-gradient(135deg, #f0f4f9 0%, #e2e8f0 100%);
+  --bg-sidebar: #0b57d0;
+  --text-sidebar: #ffffff;
+  --bg-card: #ffffff;
+  --text-primary: #1f1f1f;
+  --text-secondary: #5f6368;
+  --accent-color: #0b57d0;
+  --accent-hover: #0842a0;
+  --accent-light: #e8f0fe;
+  --border-radius-card: 24px;
+  --sidebar-active-bg: #ffffff;
+  --sidebar-active-text: #0b57d0;
+  --border-color: #dadce0;
+  --backdrop-blur: none;
+  --box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+  --glass-border: 1px solid #f1f3f4;
+  --sidebar-curve: 32px;
+}
+
+/* Theme: Seven (Windows 7 Aero Glass) */
+.theme-seven {
+  --bg-app-gradient: linear-gradient(135deg, #1d3e63 0%, #0d1f38 100%);
+  --bg-sidebar: rgba(10, 45, 80, 0.4);
+  --text-sidebar: #ffffff;
+  --bg-card: rgba(255, 255, 255, 0.25);
+  --text-primary: #ffffff;
+  --text-secondary: #cbd5e1;
+  --accent-color: #38bdf8;
+  --accent-hover: #0ea5e9;
+  --accent-light: rgba(56, 189, 248, 0.2);
+  --border-radius-card: 16px;
+  --sidebar-active-bg: rgba(255, 255, 255, 0.35);
+  --sidebar-active-text: #ffffff;
+  --border-color: rgba(255, 255, 255, 0.2);
+  --backdrop-blur: blur(20px) saturate(180%);
+  --box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+  --glass-border: 1px solid rgba(255, 255, 255, 0.25);
+  --sidebar-curve: 16px;
+}
+
+/* Theme: Royal Navy */
+.theme-royal {
+  --bg-app-gradient: linear-gradient(135deg, #020617 0%, #0f172a 100%);
+  --bg-sidebar: #1e1b4b;
+  --text-sidebar: #e0e7ff;
+  --bg-card: #0f172a;
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --accent-color: #6366f1;
+  --accent-hover: #4f46e5;
+  --accent-light: rgba(99, 102, 241, 0.15);
+  --border-radius-card: 24px;
+  --sidebar-active-bg: #4f46e5;
+  --sidebar-active-text: #ffffff;
+  --border-color: #1e293b;
+  --backdrop-blur: none;
+  --box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+  --glass-border: 1px solid #1e293b;
+  --sidebar-curve: 24px;
+}
+
+/* Theme: Emerald Mint */
+.theme-mint {
+  --bg-app-gradient: linear-gradient(135deg, #090d16 0%, #07191d 100%);
+  --bg-sidebar: #064e3b;
+  --text-sidebar: #ecfdf5;
+  --bg-card: #061a18;
+  --text-primary: #f0fdf4;
+  --text-secondary: #86efac;
+  --accent-color: #10b981;
+  --accent-hover: #059669;
+  --accent-light: rgba(16, 185, 129, 0.15);
+  --border-radius-card: 20px;
+  --sidebar-active-bg: #10b981;
+  --sidebar-active-text: #061a18;
+  --border-color: #115e59;
+  --backdrop-blur: none;
+  --box-shadow: 0 4px 20px 0 rgba(16, 185, 129, 0.1);
+  --glass-border: 1px solid #115e59;
+  --sidebar-curve: 20px;
+}
+
+/* Theme: Sunset Glow */
+.theme-sunset {
+  --bg-app-gradient: linear-gradient(135deg, #1c0f20 0%, #0e0510 100%);
+  --bg-sidebar: #701a75;
+  --text-sidebar: #fae8ff;
+  --bg-card: #18091e;
+  --text-primary: #fae8ff;
+  --text-secondary: #f472b6;
+  --accent-color: #c084fc;
+  --accent-hover: #a855f7;
+  --accent-light: rgba(192, 132, 252, 0.15);
+  --border-radius-card: 24px;
+  --sidebar-active-bg: #d946ef;
+  --sidebar-active-text: #ffffff;
+  --border-color: #4a044e;
+  --backdrop-blur: none;
+  --box-shadow: 0 4px 20px 0 rgba(217, 70, 239, 0.1);
+  --glass-border: 1px solid #4a044e;
+  --sidebar-curve: 24px;
+}
+
+/* Theme: Forest Moss */
+.theme-forest {
+  --bg-app-gradient: linear-gradient(135deg, #142015 0%, #070c08 100%);
+  --bg-sidebar: #14532d;
+  --text-sidebar: #f0fdf4;
+  --bg-card: #141f16;
+  --text-primary: #f0fdf4;
+  --text-secondary: #a7f3d0;
+  --accent-color: #22c55e;
+  --accent-hover: #16a34a;
+  --accent-light: rgba(34, 197, 94, 0.15);
+  --border-radius-card: 20px;
+  --sidebar-active-bg: #22c55e;
+  --sidebar-active-text: #141f16;
+  --border-color: #166534;
+  --backdrop-blur: none;
+  --box-shadow: 0 4px 20px 0 rgba(34, 197, 94, 0.1);
+  --glass-border: 1px solid #166534;
+  --sidebar-curve: 20px;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  background: var(--bg-app-gradient);
+  color: var(--text-primary);
+  overflow-x: hidden;
+  transition: background 0.4s ease, color 0.4s ease;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Outfit', sans-serif;
+  color: var(--text-primary);
+}
+
+/* Custom mapping classes for CSS themes */
+.app-sidebar {
+  background: var(--bg-sidebar);
+  color: var(--text-sidebar);
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  border-top-right-radius: var(--sidebar-curve);
+  border-bottom-right-radius: var(--sidebar-curve);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  border: var(--glass-border);
+  backdrop-filter: var(--backdrop-blur);
+}
+
+.app-card {
+  background: var(--bg-card);
+  border-radius: var(--border-radius-card);
+  border: var(--glass-border);
+  box-shadow: var(--box-shadow);
+  backdrop-filter: var(--backdrop-blur);
+  color: var(--text-primary);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.text-accent {
+  color: var(--accent-color);
+}
+
+.bg-accent {
+  background: var(--accent-color);
+}
+
+.bg-accent-hover:hover {
+  background: var(--accent-hover);
+}
+
+.bg-accent-light {
+  background: var(--accent-light);
+}
+
+.border-accent {
+  border-color: var(--accent-color);
+}
+
+.border-custom {
+  border-color: var(--border-color);
+}
+
+.text-muted {
+  color: var(--text-secondary);
+}
+
+/* Glassmorphism custom components */
+.glassmorphic-card {
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(16px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+  border-radius: 16px;
+}
+
+/* Scrollbar styles to match clean design */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 10px;
+}
+
+.theme-seven ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+}
