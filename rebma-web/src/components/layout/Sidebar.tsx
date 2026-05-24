@@ -1,7 +1,6 @@
 // rebma-web/src/components/layout/Sidebar.tsx
 
 import { 
-  Building2, 
   ShieldCheck, 
   Layers, 
   Users, 
@@ -11,6 +10,7 @@ import {
   Activity, 
   Clipboard, 
   Truck, 
+  Video,
   Settings, 
   Plus, 
   LogOut 
@@ -46,6 +46,7 @@ export default function Sidebar({
     { id: 'RECEPTION', label: 'Reception Terminal', icon: Clipboard },
     { id: 'DISPATCH', label: 'Dispatch Fleet', icon: Truck },
     { id: 'LOGISTICS', label: 'Logistics Fleet', icon: Layers },
+    { id: 'BOARDROOM', label: 'Executive Boardroom', icon: Video },
     { id: 'SETTINGS', label: 'ERP Settings', icon: Settings },
   ];
 
@@ -59,12 +60,20 @@ export default function Sidebar({
   return (
     <aside className="w-64 app-sidebar flex flex-col justify-between py-6 px-4 shrink-0 shadow-lg select-none">
       <div>
-        {/* Logo Header */}
+        {/* Logo Header using public/logo.png */}
         <div className="flex items-center gap-3 px-3 mb-8">
-          <Building2 className="w-8 h-8 text-white shrink-0" />
+          <img 
+            src="/logo.png" 
+            className="w-9 h-9 rounded-lg object-contain bg-white/20 p-0.5 shrink-0" 
+            alt="REMBA GHANA Logo" 
+            onError={(e) => {
+              // Fallback placeholder if image not loaded
+              e.currentTarget.style.display = 'none';
+            }}
+          />
           <div>
-            <h2 className="font-bold text-sm tracking-wide leading-none text-white">REBMA IMPEX</h2>
-            <span className="text-[10px] uppercase text-white/60 tracking-widest font-semibold">Limited ERP</span>
+            <h2 className="font-bold text-sm tracking-wide leading-none text-white">REMBA IMPEX GHANA</h2>
+            <span className="text-[10px] uppercase text-white/60 tracking-widest font-semibold font-mono">Impex ERP</span>
           </div>
         </div>
 

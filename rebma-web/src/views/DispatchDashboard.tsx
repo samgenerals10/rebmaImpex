@@ -1,5 +1,8 @@
 // rebma-web/src/views/DispatchDashboard.tsx
 
+import { FileSpreadsheet, FileText } from 'lucide-react';
+import { exportToCSV, exportToPDF } from '../utils/export';
+
 interface DispatchDashboardProps {
   activeCoordinates: { lat: number; lng: number };
   deliveryStatus: string;
@@ -11,11 +14,58 @@ export default function DispatchDashboard({
   deliveryStatus,
   handleMarkDelivered
 }: DispatchDashboardProps) {
+
+  const handleExportCSV = () => {
+    const data = [
+      {
+        Driver: 'DRV-404 (Kofi)',
+        ActiveCargo: 'Order ORD-101 (Credit Order)',
+        Latitude: activeCoordinates.lat.toFixed(5),
+        Longitude: activeCoordinates.lng.toFixed(5),
+        Status: deliveryStatus,
+        Timestamp: new Date().toLocaleString()
+      }
+    ];
+    exportToCSV(data, ['Driver', 'ActiveCargo', 'Latitude', 'Longitude', 'Status', 'Timestamp'], 'dispatch_fleet_logs');
+  };
+
+  const handleExportPDF = () => {
+    const data = [
+      {
+        Driver: 'DRV-404 (Kofi)',
+        ActiveCargo: 'Order ORD-101 (Credit Order)',
+        Latitude: activeCoordinates.lat.toFixed(5),
+        Longitude: activeCoordinates.lng.toFixed(5),
+        Status: deliveryStatus,
+        Timestamp: new Date().toLocaleString()
+      }
+    ];
+    exportToPDF('Dispatch Fleet In-Transit Logs', data, ['Driver', 'ActiveCargo', 'Latitude', 'Longitude', 'Status', 'Timestamp']);
+  };
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Dispatch Fleet Management</h1>
-        <p className="text-sm text-slate-500 text-muted">Control active delivery logs and simulate transit coordinates.</p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Dispatch Fleet Management</h1>
+          <p className="text-sm text-slate-500 text-muted">Control active delivery logs and simulate transit coordinates.</p>
+        </div>
+        <div className="flex gap-2">
+          <button 
+            onClick={handleExportCSV}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold cursor-pointer border border-slate-200"
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5" />
+            <span>Export Logs (CSV)</span>
+          </button>
+          <button 
+            onClick={handleExportPDF}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold cursor-pointer border border-slate-200"
+          >
+            <FileText className="w-3.5 h-3.5" />
+            <span>Export Logs (PDF)</span>
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

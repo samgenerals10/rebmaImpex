@@ -1,8 +1,8 @@
 // rebma-web/src/views/SettingsDashboard.tsx
 
 interface SettingsDashboardProps {
-  theme: 'breeze' | 'seven' | 'royal' | 'mint' | 'sunset' | 'forest';
-  setTheme: (theme: 'breeze' | 'seven' | 'royal' | 'mint' | 'sunset' | 'forest') => void;
+  theme: 'breeze' | 'seven' | 'royal' | 'mint' | 'sunset' | 'forest' | 'ghana';
+  setTheme: (theme: 'breeze' | 'seven' | 'royal' | 'mint' | 'sunset' | 'forest' | 'ghana') => void;
   whitelistedCeos: string;
   setWhitelistedCeos: (emails: string) => void;
   smsGateway: string;
@@ -48,7 +48,8 @@ export default function SettingsDashboard({
               { id: 'royal', label: 'Royal Midnight', desc: 'Electric indigo dark mode' },
               { id: 'mint', label: 'Emerald Mint', desc: 'Sleek dark mint tones' },
               { id: 'sunset', label: 'Sunset Glow', desc: 'Deep warm purple and neon highlights' },
-              { id: 'forest', label: 'Forest Moss', desc: 'Natural earthy sage palettes' }
+              { id: 'forest', label: 'Forest Moss', desc: 'Natural earthy sage palettes' },
+              { id: 'ghana', label: 'REMBA Ghana Official', desc: 'Teal & Gold flag logo matching theme' }
             ].map(t => (
               <button
                 key={t.id}

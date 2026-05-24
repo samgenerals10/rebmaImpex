@@ -1,6 +1,8 @@
 // rebma-web/src/views/OperationsDashboard.tsx
 
 import type { Order } from '../types/erp';
+import { FileSpreadsheet, FileText } from 'lucide-react';
+import { exportToCSV, exportToPDF } from '../utils/export';
 
 interface OperationsDashboardProps {
   ordersList: Order[];
@@ -13,11 +15,40 @@ export default function OperationsDashboard({
   onLogIntake,
   onReleaseToDispatch
 }: OperationsDashboardProps) {
+
+  const handleExportReleasesCSV = () => {
+    const processingOrders = ordersList.filter(o => o.status === 'PROCESSING');
+    exportToCSV(processingOrders, ['id', 'clientName', 'paymentMode', 'totalAmount', 'status'], 'operations_release_queue');
+  };
+
+  const handleExportReleasesPDF = () => {
+    const processingOrders = ordersList.filter(o => o.status === 'PROCESSING');
+    exportToPDF('Warehouse fulfillment Releases Queue', processingOrders, ['id', 'clientName', 'paymentMode', 'totalAmount', 'status']);
+  };
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Operations Log Sheet</h1>
-        <p className="text-sm text-slate-500 text-muted">Register port inventory intakes and process raw release tickets.</p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Operations Log Sheet</h1>
+          <p className="text-sm text-slate-500 text-muted">Register port inventory intakes and process raw release tickets.</p>
+        </div>
+        <div className="flex gap-2">
+          <button 
+            onClick={handleExportReleasesCSV}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold cursor-pointer border border-slate-200"
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5" />
+            <span>Export Releases (CSV)</span>
+          </button>
+          <button 
+            onClick={handleExportReleasesPDF}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold cursor-pointer border border-slate-200"
+          >
+            <FileText className="w-3.5 h-3.5" />
+            <span>Export Releases (PDF)</span>
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

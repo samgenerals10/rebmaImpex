@@ -1,6 +1,6 @@
 // rebma-web/src/views/CeoDashboard.tsx
 
-import { Layers, DollarSign, Truck, Users } from 'lucide-react';
+import { Layers, DollarSign, Truck, Users, FileSpreadsheet, FileText } from 'lucide-react';
 import { 
   ResponsiveContainer, 
   LineChart, 
@@ -11,6 +11,7 @@ import {
   CartesianGrid 
 } from 'recharts';
 import { motion } from 'framer-motion';
+import { exportToCSV, exportToPDF } from '../utils/export';
 
 interface CeoDashboardProps {
   activeCoordinates: { lat: number; lng: number };
@@ -32,11 +33,49 @@ export default function CeoDashboard({
     { name: 'Fri', Inflow: 1890, Orders: 4800 },
   ];
 
+  const handleExportCSV = () => {
+    const data = [
+      { Metric: 'Global Ingestion Flow', Value: '1,020 Tons', Details: 'Accra Port Operations' },
+      { Metric: 'Processing Invoices', Value: '4 Invoices', Details: '2 awaiting finance clearance' },
+      { Metric: 'Active Logistics Vehicles', Value: '1 Truck', Details: `GPS Location: ${activeCoordinates.lat.toFixed(4)}, ${activeCoordinates.lng.toFixed(4)}` },
+      { Metric: 'Total Registered Staff', Value: '25 Active', Details: 'HR approval pending queue' }
+    ];
+    exportToCSV(data, ['Metric', 'Value', 'Details'], 'ceo_executive_summary');
+  };
+
+  const handleExportPDF = () => {
+    const data = [
+      { Metric: 'Global Ingestion Flow', Value: '1,020 Tons', Details: 'Accra Port Operations' },
+      { Metric: 'Processing Invoices', Value: '4 Invoices', Details: '2 awaiting finance clearance' },
+      { Metric: 'Active Logistics Vehicles', Value: '1 Truck', Details: `GPS Location: ${activeCoordinates.lat.toFixed(4)}, ${activeCoordinates.lng.toFixed(4)}` },
+      { Metric: 'Total Registered Staff', Value: '25 Active', Details: 'HR approval pending queue' }
+    ];
+    exportToPDF('CEO Executive Summary', data, ['Metric', 'Value', 'Details']);
+  };
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">CEO Command Terminal</h1>
-        <p className="text-sm text-slate-500 text-muted">Global operations overview, metrics, and fleet map.</p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">CEO Command Terminal</h1>
+          <p className="text-sm text-slate-500 text-muted">Global operations overview, metrics, and fleet map.</p>
+        </div>
+        <div className="flex gap-2">
+          <button 
+            onClick={handleExportCSV}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold cursor-pointer border border-slate-200"
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5" />
+            <span>Export CSV</span>
+          </button>
+          <button 
+            onClick={handleExportPDF}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold cursor-pointer border border-slate-200"
+          >
+            <FileText className="w-3.5 h-3.5" />
+            <span>Export PDF</span>
+          </button>
+        </div>
       </div>
 
       {/* Operational KPI Counters */}

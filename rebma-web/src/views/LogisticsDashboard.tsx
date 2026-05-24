@@ -9,6 +9,8 @@ import {
   Tooltip, 
   CartesianGrid 
 } from 'recharts';
+import { FileSpreadsheet, FileText } from 'lucide-react';
+import { exportToCSV, exportToPDF } from '../utils/export';
 
 export default function LogisticsDashboard() {
   const chartData = [
@@ -19,14 +21,46 @@ export default function LogisticsDashboard() {
     { name: 'TRK-205', Fuel: 8.4, Maintenance: 180 }
   ];
 
+  const maintenanceSchedule = [
+    { id: 'TRK-201', type: 'Oil & Filter Change', status: 'Operational', date: 'May 10, 2026', cost: 120 },
+    { id: 'TRK-202', type: 'Brake Pad Replacement', status: 'In Service', date: 'May 22, 2026', cost: 350 },
+    { id: 'TRK-205', type: 'Tire Rotation & Balance', status: 'Operational', date: 'May 18, 2026', cost: 180 }
+  ];
+
+  const handleExportCSV = () => {
+    exportToCSV(maintenanceSchedule, ['id', 'type', 'status', 'date', 'cost'], 'logistics_maintenance_schedule');
+  };
+
+  const handleExportPDF = () => {
+    exportToPDF('Logistics Fleet Maintenance Schedule', maintenanceSchedule, ['id', 'type', 'status', 'date', 'cost']);
+  };
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Logistics Control Panel</h1>
-        <p className="text-sm text-slate-500 text-muted">Manage fleet maintenance records and monitor supply chain metrics.</p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Logistics Control Panel</h1>
+          <p className="text-sm text-slate-500 text-muted">Manage fleet maintenance records and monitor supply chain metrics.</p>
+        </div>
+        <div className="flex gap-2">
+          <button 
+            onClick={handleExportCSV}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold cursor-pointer border border-slate-200"
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5" />
+            <span>Export Maintenance (CSV)</span>
+          </button>
+          <button 
+            onClick={handleExportPDF}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold cursor-pointer border border-slate-200"
+          >
+            <FileText className="w-3.5 h-3.5" />
+            <span>Export Maintenance (PDF)</span>
+          </button>
+        </div>
       </div>
 
-      {/* Supply Chain KPI row font metrics */}
+      {/* Supply Chain KPI row */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="p-6 app-card">
           <span className="text-xs text-slate-400 uppercase font-semibold">Total Fleet Vehicles</span>
@@ -51,11 +85,7 @@ export default function LogisticsDashboard() {
         <div className="p-6 app-card space-y-4">
           <h3 className="text-lg font-bold">Fleet Maintenance Schedule</h3>
           <div className="space-y-3">
-            {[
-              { id: 'TRK-201', type: 'Oil & Filter Change', status: 'Operational', date: 'May 10, 2026', cost: 120 },
-              { id: 'TRK-202', type: 'Brake Pad Replacement', status: 'In Service', date: 'May 22, 2026', cost: 350 },
-              { id: 'TRK-205', type: 'Tire Rotation & Balance', status: 'Operational', date: 'May 18, 2026', cost: 180 }
-            ].map((log, idx) => (
+            {maintenanceSchedule.map((log, idx) => (
               <div key={idx} className="p-4 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
                 <div>
                   <p className="text-xs font-bold text-slate-800">{log.id} - {log.type}</p>

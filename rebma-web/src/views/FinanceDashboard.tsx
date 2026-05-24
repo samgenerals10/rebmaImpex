@@ -1,7 +1,8 @@
 // rebma-web/src/views/FinanceDashboard.tsx
 
-import { Download } from 'lucide-react';
+import { FileSpreadsheet, FileText } from 'lucide-react';
 import type { Order } from '../types/erp';
+import { exportToCSV, exportToPDF } from '../utils/export';
 
 interface FinanceDashboardProps {
   ordersList: Order[];
@@ -14,6 +15,15 @@ export default function FinanceDashboard({
   onEvaluateOrder,
   onFinalizeOrder
 }: FinanceDashboardProps) {
+
+  const handleExportCSV = () => {
+    exportToCSV(ordersList, ['id', 'clientName', 'paymentMode', 'totalAmount', 'status', 'createdAt'], 'finance_orders_ledger');
+  };
+
+  const handleExportPDF = () => {
+    exportToPDF('Finance Ledger Statement', ordersList, ['id', 'clientName', 'paymentMode', 'totalAmount', 'status', 'createdAt']);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -21,16 +31,22 @@ export default function FinanceDashboard({
           <h1 className="text-3xl font-bold tracking-tight">Finance Ledgers</h1>
           <p className="text-sm text-slate-500 text-muted">Clear cash invoice payments and verify credit requests.</p>
         </div>
-        
-        {/* CSV Exporter trigger from API backend */}
-        <a 
-          href="/api/reports/export-csv" 
-          download
-          className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow cursor-pointer transition-all"
-        >
-          <Download className="w-4 h-4" />
-          <span>Export Order Ledger (CSV)</span>
-        </a>
+        <div className="flex gap-2">
+          <button 
+            onClick={handleExportCSV}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold cursor-pointer border border-slate-200"
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5" />
+            <span>Export Ledgers (CSV)</span>
+          </button>
+          <button 
+            onClick={handleExportPDF}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold cursor-pointer border border-slate-200"
+          >
+            <FileText className="w-3.5 h-3.5" />
+            <span>Export Ledgers (PDF)</span>
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

@@ -1,6 +1,8 @@
 // rebma-web/src/views/ManagementDashboard.tsx
 
 import type { IncomingGoods, Order } from '../types/erp';
+import { FileSpreadsheet, FileText } from 'lucide-react';
+import { exportToCSV, exportToPDF } from '../utils/export';
 
 interface ManagementDashboardProps {
   incomingGoodsList: IncomingGoods[];
@@ -15,11 +17,48 @@ export default function ManagementDashboard({
   onApproveIntake,
   onApproveCredit
 }: ManagementDashboardProps) {
+
+  const handleExportIntakeCSV = () => {
+    exportToCSV(incomingGoodsList, ['id', 'country', 'company', 'quantity', 'weight', 'discrepancies', 'status', 'unitPrice'], 'incoming_port_cargo_audit');
+  };
+
+  const handleExportIntakePDF = () => {
+    exportToPDF('Incoming Port Cargo Ingestion Audit', incomingGoodsList, ['id', 'country', 'company', 'quantity', 'weight', 'discrepancies', 'status', 'unitPrice']);
+  };
+
+  const handleExportOrdersCSV = () => {
+    exportToCSV(ordersList, ['id', 'clientName', 'paymentMode', 'totalAmount', 'status', 'createdAt'], 'credit_approvals_ledger');
+  };
+
+  const handleExportOrdersPDF = () => {
+    exportToPDF('Credit Approvals Ledger', ordersList, ['id', 'clientName', 'paymentMode', 'totalAmount', 'status', 'createdAt']);
+  };
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Management Control approvals</h1>
-        <p className="text-sm text-slate-500 text-muted">Set wholesale pricing catalog and authorize credit limits.</p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Management Control approvals</h1>
+          <p className="text-sm text-slate-500 text-muted">Set wholesale pricing catalog and authorize credit limits.</p>
+        </div>
+        <div className="flex gap-2">
+          <button 
+            onClick={handleExportIntakeCSV}
+            title="Export Intake Cargo CSV"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold cursor-pointer border border-slate-200"
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5" />
+            <span>Cargo (CSV)</span>
+          </button>
+          <button 
+            onClick={handleExportIntakePDF}
+            title="Export Intake Cargo PDF"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold cursor-pointer border border-slate-200"
+          >
+            <FileText className="w-3.5 h-3.5" />
+            <span>Cargo (PDF)</span>
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -80,9 +119,27 @@ export default function ManagementDashboard({
 
         {/* Workflow B: Credit Order Approval Gate */}
         <div className="p-6 app-card space-y-4">
-          <div>
-            <h3 className="text-lg font-bold">Workflow B: Credit order Approvals</h3>
-            <p className="text-xs text-slate-500 text-muted">Review orders with CREDIT terms forwarded by Finance.</p>
+          <div className="flex justify-between items-center mb-2">
+            <div>
+              <h3 className="text-lg font-bold">Workflow B: Credit order Approvals</h3>
+              <p className="text-xs text-slate-500 text-muted">Review orders with CREDIT terms forwarded by Finance.</p>
+            </div>
+            <div className="flex gap-1.5">
+              <button 
+                onClick={handleExportOrdersCSV}
+                title="Export Credit Orders CSV"
+                className="p-1 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded cursor-pointer"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5" />
+              </button>
+              <button 
+                onClick={handleExportOrdersPDF}
+                title="Export Credit Orders PDF"
+                className="p-1 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded cursor-pointer"
+              >
+                <FileText className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
 
           <div className="space-y-3">

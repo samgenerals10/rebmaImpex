@@ -1,6 +1,8 @@
 // rebma-web/src/views/ReceptionDashboard.tsx
 
 import type { Visitor } from '../types/erp';
+import { FileSpreadsheet, FileText } from 'lucide-react';
+import { exportToCSV, exportToPDF } from '../utils/export';
 
 interface ReceptionDashboardProps {
   visitorsList: Visitor[];
@@ -15,11 +17,38 @@ export default function ReceptionDashboard({
   onCheckoutVisitor,
   onCheckInAttendance
 }: ReceptionDashboardProps) {
+
+  const handleExportCSV = () => {
+    exportToCSV(visitorsList, ['id', 'fullName', 'purpose', 'hostName', 'checkInTime', 'checkOutTime'], 'reception_visitors_log');
+  };
+
+  const handleExportPDF = () => {
+    exportToPDF('Reception Visitor Logs', visitorsList, ['id', 'fullName', 'purpose', 'hostName', 'checkInTime', 'checkOutTime']);
+  };
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Front-desk Terminal</h1>
-        <p className="text-sm text-slate-500 text-muted">Check-in daily staff and visitor logs.</p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Front-desk Terminal</h1>
+          <p className="text-sm text-slate-500 text-muted">Check-in daily staff and visitor logs.</p>
+        </div>
+        <div className="flex gap-2">
+          <button 
+            onClick={handleExportCSV}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold cursor-pointer border border-slate-200"
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5" />
+            <span>Export Logs (CSV)</span>
+          </button>
+          <button 
+            onClick={handleExportPDF}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold cursor-pointer border border-slate-200"
+          >
+            <FileText className="w-3.5 h-3.5" />
+            <span>Export Logs (PDF)</span>
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

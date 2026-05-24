@@ -10,6 +10,8 @@ import {
   CartesianGrid 
 } from 'recharts';
 import type { Attendance } from '../types/erp';
+import { FileSpreadsheet, FileText } from 'lucide-react';
+import { exportToCSV, exportToPDF } from '../utils/export';
 
 interface HrDashboardProps {
   attendanceList: Attendance[];
@@ -20,11 +22,38 @@ export default function HrDashboard({
   attendanceList,
   barChartData
 }: HrDashboardProps) {
+
+  const handleExportCSV = () => {
+    exportToCSV(attendanceList, ['id', 'fullName', 'checkInTime', 'status'], 'hr_attendance_sheet');
+  };
+
+  const handleExportPDF = () => {
+    exportToPDF('Daily Staff Attendance Log', attendanceList, ['id', 'fullName', 'checkInTime', 'status']);
+  };
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Human Resources Workspace</h1>
-        <p className="text-sm text-slate-500 text-muted">Review staff registrations, and inspect check-in audits.</p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Human Resources Workspace</h1>
+          <p className="text-sm text-slate-500 text-muted">Review staff registrations, and inspect check-in audits.</p>
+        </div>
+        <div className="flex gap-2">
+          <button 
+            onClick={handleExportCSV}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold cursor-pointer border border-slate-200"
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5" />
+            <span>Export Attendance (CSV)</span>
+          </button>
+          <button 
+            onClick={handleExportPDF}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold cursor-pointer border border-slate-200"
+          >
+            <FileText className="w-3.5 h-3.5" />
+            <span>Export Attendance (PDF)</span>
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -34,8 +63,8 @@ export default function HrDashboard({
           <h3 className="text-lg font-bold">New Registrations Approval Queue</h3>
           <div className="divide-y divide-slate-100">
             {[
-              { id: 'usr-902', fullName: 'Justice Kwame', email: 'j.kwame@rebmaimpex.com', department: 'PRODUCTION', card: 'GHA-9827361-9', date: '3 mins ago' },
-              { id: 'usr-903', fullName: 'Derrick Osei', email: 'd.osei@rebmaimpex.com', department: 'OPERATIONS', card: 'GHA-0928374-2', date: '1 hour ago' }
+              { id: 'usr-902', fullName: 'Justice Kwame', email: 'j.kwame@rembaimpex.com', department: 'PRODUCTION', card: 'GHA-9827361-9', date: '3 mins ago' },
+              { id: 'usr-903', fullName: 'Derrick Osei', email: 'd.osei@rembaimpex.com', department: 'OPERATIONS', card: 'GHA-0928374-2', date: '1 hour ago' }
             ].map(staff => (
               <div key={staff.id} className="py-4 flex items-center justify-between">
                 <div>
