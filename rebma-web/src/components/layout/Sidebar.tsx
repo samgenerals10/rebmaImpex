@@ -5,7 +5,6 @@ import {
   Layers, 
   Users, 
   TrendingUp, 
-  Grid, 
   DollarSign, 
   Activity, 
   Clipboard, 
@@ -13,126 +12,270 @@ import {
   Video,
   Settings, 
   Plus, 
-  LogOut 
+  LogOut,
+  MessagesSquare,
+  Tag,
+  History,
+  Warehouse,
+  PackageCheck,
+  FileText,
+  TicketCheck
 } from 'lucide-react';
 import type { CurrentUser } from '../../types/erp';
 
 interface SidebarProps {
   activeDepartment: string;
   setActiveDepartment: (dept: string) => void;
+  activeSubTab: string;
+  setActiveSubTab: (tab: string) => void;
   theme: string;
   currentUser: CurrentUser | null;
   onLogout: () => void;
   addNotification: (msg: string) => void;
+  openBoardroom?: () => void;
 }
 
 export default function Sidebar({
   activeDepartment,
   setActiveDepartment,
+  activeSubTab,
+  setActiveSubTab,
   theme,
   currentUser,
   onLogout,
-  addNotification
+  addNotification,
+  openBoardroom
 }: SidebarProps) {
   
-  const navItems = [
-    { id: 'CEO', label: 'CEO Command', icon: ShieldCheck },
-    { id: 'MANAGEMENT', label: 'Management approvals', icon: Layers },
-    { id: 'HR', label: 'Human Resources', icon: Users },
-    { id: 'MARKETING', label: 'Marketing Pipeline', icon: TrendingUp },
-    { id: 'OPERATIONS', label: 'Operations & Stock', icon: Grid },
-    { id: 'FINANCE', label: 'Finance Ledgers', icon: DollarSign },
-    { id: 'PRODUCTION', label: 'Production Line', icon: Activity },
-    { id: 'RECEPTION', label: 'Reception Terminal', icon: Clipboard },
-    { id: 'DISPATCH', label: 'Dispatch Fleet', icon: Truck },
-    { id: 'LOGISTICS', label: 'Logistics Fleet', icon: Layers },
-    { id: 'BOARDROOM', label: 'Executive Boardroom', icon: Video },
-    { id: 'SETTINGS', label: 'ERP Settings', icon: Settings },
+  // CEO and Management can view any department (CEO can view all, Management can view all except CEO)
+  const isCeo = currentUser?.isCeo || currentUser?.department === 'CEO';
+  const isManagement = currentUser?.department === 'MANAGEMENT';
+  const userDept = currentUser?.department || 'CEO';
+
+  const departmentTabs: Record<string, Array<{ id: string; label: string; icon: any }>> = {
+    CEO: [
+      { id: 'Overview', label: 'Executive Overview', icon: ShieldCheck },
+      { id: 'Tracking', label: 'Accra GPS Tracking', icon: Truck },
+      { id: 'Boardroom', label: 'Boardroom Hub', icon: Video },
+      { id: 'ERPSettings', label: 'ERP Settings', icon: Settings },
+    ],
+    MANAGEMENT: [
+      { id: 'CargoApproval', label: 'Port Cargo Approval', icon: Layers },
+      { id: 'CreditApproval', label: 'Credit Approvals', icon: ShieldCheck },
+      { id: 'Ledger', label: 'Global Audit Ledger', icon: Clipboard },
+      { id: 'SetPrices', label: 'Set Prices', icon: Tag },
+      { id: 'MgmtHistory', label: 'Decision History', icon: History },
+    ],
+    HR: [
+      { id: 'Employees', label: 'Employee Database', icon: Users },
+      { id: 'Attendance', label: 'Attendance Records', icon: Clipboard },
+      { id: 'Performance', label: 'Staff Performance', icon: TrendingUp },
+    ],
+    MARKETING: [
+      { id: 'CreateOrder', label: 'Create Sales Order', icon: Plus },
+      { id: 'RegisterCustomer', label: 'Register Customer', icon: Users },
+      { id: 'SalesHistory', label: 'Sales & Customers', icon: Clipboard },
+    ],
+    OPERATIONS: [
+      { id: 'PortIngestion', label: 'Log Port Cargo', icon: Plus },
+      { id: 'Releases', label: 'Fulfillment Releases', icon: TicketCheck },
+      { id: 'LoggedCargo', label: 'Intake Records Log', icon: Clipboard },
+      { id: 'OpsHistory', label: 'Operations History', icon: History },
+    ],
+    FINANCE: [
+      { id: 'Evaluation', label: 'Payment Terms Queue', icon: DollarSign },
+      { id: 'Invoices', label: 'Invoice Portal', icon: FileText },
+      { id: 'RecordPayment', label: 'Record Inbound Payment', icon: Plus },
+      { id: 'Tickets', label: 'Receipts & Tickets', icon: TicketCheck },
+      { id: 'WarehouseHistory', label: 'Warehouse History', icon: Warehouse },
+      { id: 'IntakeForm', label: 'Finance Intake Form', icon: Clipboard },
+    ],
+    PRODUCTION: [
+      { id: 'Requisition', label: 'Raw Materials Request', icon: Activity },
+      { id: 'RawMaterials', label: 'Materials History', icon: PackageCheck },
+      { id: 'WIPStock', label: 'WIP & Stock Inventory', icon: Layers },
+      { id: 'OrdersHistory', label: 'Production History', icon: History },
+    ],
+    RECEPTION: [
+      { id: 'VisitorLog', label: 'Visitor Badges Log', icon: Users },
+      { id: 'EmployeeCheckin', label: 'Employee Check-in', icon: ShieldCheck },
+      { id: 'Kiosk', label: 'Self-Service Kiosk', icon: Clipboard },
+    ],
+    DISPATCH: [
+      { id: 'Deliveries', label: 'Active Deliveries Map', icon: Truck },
+      { id: 'DispatchHistory', label: 'Delivery History', icon: History },
+      { id: 'DriverLogs', label: 'Driver Activities', icon: Users },
+    ],
+    LOGISTICS: [
+      { id: 'Maintenance', label: 'Fleet Maintenance', icon: Settings },
+      { id: 'Fuel', label: 'Fuel Usage & Metrics', icon: TrendingUp },
+      { id: 'Dispatch', label: 'Active Dispatch Queue', icon: Truck },
+    ],
+    BOARDROOM: [
+      { id: 'VideoConf', label: 'Live Video Minutes', icon: Video },
+      { id: 'Announcements', label: 'Announcements', icon: Users },
+      { id: 'DirectMessages', label: 'Direct Messages', icon: MessagesSquare },
+      { id: 'Meetings', label: 'Meetings Organizer', icon: Clipboard },
+    ],
+    SETTINGS: [
+      { id: 'Themes', label: 'Custom ERP Themes', icon: Settings },
+      { id: 'Profile', label: 'Profile & Account', icon: Users },
+      { id: 'ChangePassword', label: 'Change Password', icon: ShieldCheck },
+      { id: 'DeleteAccount', label: 'Delete Account', icon: LogOut },
+    ]
+  };
+
+  // Build allowed departments list for the dropdown
+  const allDepts = [
+    { value: 'CEO', label: 'CEO Command' },
+    { value: 'MANAGEMENT', label: 'Management Office' },
+    { value: 'HR', label: 'Human Resources' },
+    { value: 'MARKETING', label: 'Marketing Pipeline' },
+    { value: 'OPERATIONS', label: 'Operations & Stock' },
+    { value: 'FINANCE', label: 'Finance Ledgers' },
+    { value: 'PRODUCTION', label: 'Production Line' },
+    { value: 'RECEPTION', label: 'Reception Terminal' },
+    { value: 'DISPATCH', label: 'Dispatch Fleet' },
+    { value: 'LOGISTICS', label: 'Logistics Fleet' },
+    { value: 'BOARDROOM', label: 'Executive Boardroom' },
+    { value: 'SETTINGS', label: 'ERP Settings' },
   ];
 
-  const handleQuickAction = () => {
-    if (currentUser?.department === 'MARKETING') setActiveDepartment('MARKETING');
-    else if (currentUser?.department === 'OPERATIONS') setActiveDepartment('OPERATIONS');
-    else setActiveDepartment('CEO');
-    addNotification('Shortcut: Triggered core transactional workflow widget.');
+  // Access control filter
+  const availableDepts = allDepts.filter(d => {
+    if (isCeo) return true; // CEO sees all
+    if (isManagement) return d.value !== 'CEO'; // Mgmt sees all except CEO
+    // Other staff see own dept + boardroom + settings
+    return d.value === userDept || d.value === 'BOARDROOM' || d.value === 'SETTINGS';
+  });
+
+  const handleBoardroomClick = () => {
+    if (openBoardroom) {
+      openBoardroom();
+    } else {
+      setActiveDepartment('BOARDROOM');
+      setActiveSubTab('VideoConf');
+    }
+    addNotification('Opening Executive Boardroom hub.');
   };
 
   return (
     <aside className="w-64 app-sidebar flex flex-col justify-between py-6 px-4 shrink-0 shadow-lg select-none">
-      <div>
-        {/* Logo Header using public/logo.png */}
+      <div className="flex flex-col h-full">
+        {/* Logo Header */}
         <div className="flex items-center gap-3 px-3 mb-8">
           <img 
             src="/logo.png" 
-            className="w-9 h-9 rounded-lg object-contain bg-white/20 p-0.5 shrink-0" 
-            alt="REMBA GHANA Logo" 
-            onError={(e) => {
-              // Fallback placeholder if image not loaded
-              e.currentTarget.style.display = 'none';
-            }}
+            className="w-9 h-9 object-contain rounded-lg bg-white/20 p-0.5 shrink-0 select-none pointer-events-none" 
+            alt="REBMA GHANA Logo" 
           />
           <div>
-            <h2 className="font-bold text-sm tracking-wide leading-none text-white">REMBA IMPEX GHANA</h2>
+            <h2 className="font-bold text-sm tracking-wide leading-none text-white">REBMA IMPEX GHANA</h2>
             <span className="text-[10px] uppercase text-white/60 tracking-widest font-semibold font-mono">Impex ERP</span>
           </div>
         </div>
 
-        {/* Quick Action Button */}
-        <div className="mb-6 px-1">
+        {/* Boardroom Quick Launch Button */}
+        <div className="mb-4 px-1">
           <button 
-            onClick={handleQuickAction}
-            className="w-full flex items-center justify-center gap-2 py-3 bg-white hover:bg-slate-100 text-blue-600 rounded-full font-semibold shadow-md border border-slate-100 hover:scale-102 transition-all duration-200 cursor-pointer text-sm"
+            onClick={handleBoardroomClick}
+            className="w-full flex items-center justify-center gap-2 py-2.5 bg-white hover:bg-slate-100 text-blue-600 rounded-full font-semibold shadow-md border border-slate-100 hover:scale-102 transition-all duration-200 cursor-pointer text-xs"
           >
-            <Plus className="w-5 h-5 text-blue-600" />
-            <span>Initiate Workflow</span>
+            <MessagesSquare className="w-4 h-4 text-blue-600" />
+            <span>Executive Boardroom</span>
           </button>
         </div>
 
-        {/* Department Navigation Menu */}
-        <nav className="space-y-1.5">
-          {navItems.map(item => {
-            const Icon = item.icon;
-            const isActive = activeDepartment === item.id;
+        {/* Department Switcher Dropdown */}
+        <div className="mb-5 px-1">
+          <label className="block text-[9px] font-bold text-white/50 uppercase tracking-wider mb-1.5">Switch Department</label>
+          <select 
+            value={activeDepartment}
+            onChange={(e) => setActiveDepartment(e.target.value)}
+            className="w-full bg-white/10 hover:bg-white/15 border border-white/10 text-white rounded-xl py-2 px-3 text-xs focus:outline-none focus:ring-1 focus:ring-white/20 cursor-pointer transition-all"
+            style={{
+              color: '#ffffff',
+              backgroundColor: 'rgba(255,255,255,0.1)'
+            }}
+          >
+            {availableDepts.map(dept => (
+              <option key={dept.value} value={dept.value} className="bg-[#064e29] text-white">
+                {dept.label}
+              </option>
+            ))}
+          </select>
+          {/* View-only badge for CEO/Management viewing other depts */}
+          {(isCeo || isManagement) && activeDepartment !== userDept && activeDepartment !== 'BOARDROOM' && activeDepartment !== 'SETTINGS' && (
+            <div className="mt-1.5 px-2 py-1 bg-amber-500/20 border border-amber-500/30 rounded-lg text-[9px] text-amber-300 font-semibold text-center">
+              👁 VIEW ONLY — {isCeo ? 'CEO' : 'MANAGEMENT'} ACCESS
+            </div>
+          )}
+        </div>
+
+        {/* Department Sub-Menu */}
+        <nav className="space-y-1 flex-1 overflow-y-auto pr-0.5">
+          <div className="text-[9px] uppercase text-white/50 tracking-widest font-semibold px-4 mb-2">
+            {activeDepartment} Controls
+          </div>
+          {departmentTabs[activeDepartment]?.map(tab => {
+            const Icon = tab.icon;
+            const isActive = activeSubTab === tab.id;
             return (
               <button
-                key={item.id}
-                onClick={() => setActiveDepartment(item.id)}
+                key={tab.id}
+                onClick={() => setActiveSubTab(tab.id)}
                 className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-full text-sm font-medium transition-all duration-200 cursor-pointer ${
                   isActive 
-                    ? 'bg-white text-blue-600 shadow-sm' 
+                    ? 'bg-white text-slate-900 shadow-md font-semibold' 
                     : 'text-white/80 hover:bg-white/10 hover:text-white'
                 }`}
                 style={isActive && theme !== 'breeze' ? {
-                  backgroundColor: 'var(--sidebar-active-bg)',
-                  color: 'var(--sidebar-active-text)'
+                  backgroundColor: 'var(--sidebar-active-bg, white)',
+                  color: 'var(--sidebar-active-text, #0f172a)'
                 } : {}}
               >
-                <Icon className="w-4 h-4 shrink-0" />
-                <span className="truncate">{item.label}</span>
+                <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-blue-600' : ''}`} />
+                <span className="truncate text-xs">{tab.label}</span>
               </button>
             );
           })}
         </nav>
       </div>
 
-      {/* User Card Profile & Logout */}
-      <div className="pt-4 border-t border-white/20 px-2 flex items-center justify-between">
-        <div className="flex items-center gap-2 truncate">
-          <div className="w-8 h-8 rounded-full bg-white/25 flex items-center justify-center font-bold text-white">
-            {currentUser?.fullName[0] || 'U'}
-          </div>
-          <div className="truncate">
-            <p className="text-xs font-semibold text-white leading-none truncate">{currentUser?.fullName}</p>
-            <p className="text-[10px] text-white/70 leading-none mt-1 truncate">{currentUser?.department}</p>
-          </div>
-        </div>
-        <button 
-          onClick={onLogout}
-          className="p-1.5 hover:bg-white/10 rounded-full text-white/80 hover:text-white cursor-pointer"
-          title="Log out of Terminal"
+      {/* Bottom section: Settings + User Card + Logout */}
+      <div className="space-y-3 pt-4 border-t border-white/20">
+        {/* Settings shortcut */}
+        <button
+          onClick={() => { setActiveDepartment('SETTINGS'); setActiveSubTab('Themes'); }}
+          className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-full text-xs font-medium transition-all duration-200 cursor-pointer ${
+            activeDepartment === 'SETTINGS'
+              ? 'bg-white text-slate-900 shadow-md'
+              : 'text-white/70 hover:bg-white/10 hover:text-white'
+          }`}
         >
-          <LogOut className="w-4 h-4" />
+          <Settings className="w-4 h-4 shrink-0" />
+          <span>Settings</span>
         </button>
+
+        {/* User profile + logout */}
+        <div className="px-2 flex items-center justify-between">
+          <div className="flex items-center gap-2 truncate">
+            <div className="w-8 h-8 rounded-full bg-white/25 flex items-center justify-center font-bold text-white">
+              {currentUser?.fullName?.[0] || 'U'}
+            </div>
+            <div className="truncate">
+              <p className="text-xs font-semibold text-white leading-none truncate">{currentUser?.fullName}</p>
+              <p className="text-[10px] text-white/70 leading-none mt-1 truncate">{currentUser?.department}</p>
+            </div>
+          </div>
+          <button 
+            onClick={onLogout}
+            className="p-1.5 hover:bg-white/10 rounded-full text-white/80 hover:text-white cursor-pointer shrink-0"
+            title="Log out of Terminal"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
+        </div>
       </div>
     </aside>
   );

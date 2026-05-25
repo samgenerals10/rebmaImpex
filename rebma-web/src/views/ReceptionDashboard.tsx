@@ -1,8 +1,17 @@
 // rebma-web/src/views/ReceptionDashboard.tsx
 
 import type { Visitor } from '../types/erp';
-import { FileSpreadsheet, FileText } from 'lucide-react';
+import { FileSpreadsheet, FileText, Users, ShieldCheck, Activity, Clock } from 'lucide-react';
 import { exportToCSV, exportToPDF } from '../utils/export';
+import { 
+  ResponsiveContainer, 
+  LineChart, 
+  Line, 
+  XAxis, 
+  YAxis, 
+  Tooltip, 
+  CartesianGrid 
+} from 'recharts';
 
 interface ReceptionDashboardProps {
   visitorsList: Visitor[];
@@ -17,6 +26,25 @@ export default function ReceptionDashboard({
   onCheckoutVisitor,
   onCheckInAttendance
 }: ReceptionDashboardProps) {
+
+  const lineChartData = [
+    { name: 'Mon', CheckIns: 14, CheckOuts: 12 },
+    { name: 'Tue', CheckIns: 19, CheckOuts: 18 },
+    { name: 'Wed', CheckIns: 25, CheckOuts: 20 },
+    { name: 'Thu', CheckIns: 12, CheckOuts: 12 },
+    { name: 'Fri', CheckIns: 30, CheckOuts: 26 },
+  ];
+
+  const totalVisitorsCount = visitorsList.length;
+  const activeVisitorsCount = visitorsList.filter(v => !v.checkOutTime).length;
+  const completedVisitsCount = visitorsList.filter(v => v.checkOutTime).length;
+
+  const stats = [
+    { title: 'Total Daily Visitors', value: `${totalVisitorsCount} Logged`, sub: 'Arrival badge registry', icon: Users, color: 'text-blue-500' },
+    { title: 'Active Visitors', value: `${activeVisitorsCount} On-Site`, sub: 'Currently in workspace', icon: Clock, color: 'text-emerald-500' },
+    { title: 'Completed Visits', value: `${completedVisitsCount} Checked Out`, sub: 'Visits concluded successfully', icon: ShieldCheck, color: 'text-indigo-500' },
+    { title: 'Visitor Safety Audits', value: '100% Passed', sub: 'ID credentials confirmed', icon: Activity, color: 'text-rose-500' }
+  ];
 
   const handleExportCSV = () => {
     exportToCSV(visitorsList, ['id', 'fullName', 'purpose', 'hostName', 'checkInTime', 'checkOutTime'], 'reception_visitors_log');
@@ -48,6 +76,45 @@ export default function ReceptionDashboard({
             <FileText className="w-3.5 h-3.5" />
             <span>Export Logs (PDF)</span>
           </button>
+        </div>
+      </div>
+
+      {/* Stats KPI Row */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        {stats.map((card, idx) => {
+          const Icon = card.icon;
+          return (
+            <div key={idx} className="p-6 app-card flex items-center justify-between hover:scale-102 transition-all">
+              <div>
+                <span className="text-xs text-slate-400 uppercase font-semibold">{card.title}</span>
+                <h3 className="text-2xl font-bold mt-1">{card.value}</h3>
+                <p className="text-[10px] text-slate-400 mt-1">{card.sub}</p>
+              </div>
+              <div className={`p-4 bg-slate-100 rounded-2xl ${card.color} bg-accent-light`}>
+                <Icon className="w-6 h-6" />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Performance Chart */}
+      <div className="p-6 app-card flex flex-col justify-between">
+        <div>
+          <h3 className="text-lg font-bold">Front-desk Traffic Metrics</h3>
+          <p className="text-xs text-slate-500 text-muted">Weekly visitor check-ins vs check-out logs.</p>
+        </div>
+        <div className="h-60 mt-4">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={lineChartData}>
+              <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
+              <XAxis dataKey="name" stroke="#94a3b8" fontSize={10} />
+              <YAxis stroke="#94a3b8" fontSize={10} />
+              <Tooltip />
+              <Line type="monotone" dataKey="CheckIns" stroke="#3b82f6" strokeWidth={2} activeDot={{ r: 8 }} />
+              <Line type="monotone" dataKey="CheckOuts" stroke="#10b981" strokeWidth={2} />
+            </LineChart>
+          </ResponsiveContainer>
         </div>
       </div>
 

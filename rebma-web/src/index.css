@@ -1,9 +1,9 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap');
 @import "tailwindcss";
 
 /* Default Theme: Google Drive Style (Breeze) */
 :root {
-  font-family: 'Inter', sans-serif;
+  font-family: 'Open Sans', sans-serif;
   --bg-app-gradient: linear-gradient(135deg, #f0f4f9 0%, #e2e8f0 100%);
   --bg-sidebar: #0b57d0;
   --text-sidebar: #ffffff;
@@ -135,8 +135,8 @@
   --text-sidebar: #ffffff;
   --bg-card: #04251a; /* Very dark green-black card */
   --text-primary: #f0fdf4;
-  --text-secondary: #0298d0; /* Logo Teal/Blue */
-  --accent-color: #0298d0; /* Logo Teal/Blue */
+  --text-secondary: #38bdf8; /* Logo Teal/Blue (Brightened for high contrast) */
+  --accent-color: #38bdf8; /* Logo Teal/Blue */
   --accent-hover: #0284c7;
   --accent-light: rgba(2, 152, 208, 0.15);
   --border-radius-card: 20px;
@@ -160,7 +160,7 @@ body {
 }
 
 h1, h2, h3, h4, h5, h6 {
-  font-family: 'Outfit', sans-serif;
+  font-family: 'Open Sans', sans-serif;
   color: var(--text-primary);
 }
 
@@ -309,4 +309,24 @@ h1, h2, h3, h4, h5, h6 {
 .glow-text-gold {
   text-shadow: 0 0 8px rgba(234, 179, 8, 0.5);
 }
+
+/* Force high contrast dark text & placeholders on light input backgrounds */
+input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]), 
+select, 
+textarea {
+  color: #0f172a !important; /* slate-900 */
+  background-color: #f8fafc !important; /* slate-50 background for clean input surface */
+  border-color: #cbd5e1 !important; /* slate-300 border for clean outlines */
+}
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"])::placeholder, 
+textarea::placeholder {
+  color: #475569 !important; /* slate-600 */
+}
+
+select option {
+  color: #0f172a !important;
+  background-color: #ffffff !important;
+}
+
 

@@ -7,9 +7,11 @@ import {
   XAxis, 
   YAxis, 
   Tooltip, 
-  CartesianGrid 
+  CartesianGrid,
+  LineChart,
+  Line
 } from 'recharts';
-import { FileSpreadsheet, FileText } from 'lucide-react';
+import { FileSpreadsheet, FileText, Truck, Settings, Activity, ShieldCheck } from 'lucide-react';
 import { exportToCSV, exportToPDF } from '../utils/export';
 
 export default function LogisticsDashboard() {
@@ -21,10 +23,25 @@ export default function LogisticsDashboard() {
     { name: 'TRK-205', Fuel: 8.4, Maintenance: 180 }
   ];
 
+  const lineChartData = [
+    { name: 'Mon', Distance: 250, Fuel: 50 },
+    { name: 'Tue', Distance: 400, Fuel: 85 },
+    { name: 'Wed', Distance: 350, Fuel: 70 },
+    { name: 'Thu', Distance: 600, Fuel: 120 },
+    { name: 'Fri', Distance: 450, Fuel: 90 },
+  ];
+
   const maintenanceSchedule = [
     { id: 'TRK-201', type: 'Oil & Filter Change', status: 'Operational', date: 'May 10, 2026', cost: 120 },
     { id: 'TRK-202', type: 'Brake Pad Replacement', status: 'In Service', date: 'May 22, 2026', cost: 350 },
     { id: 'TRK-205', type: 'Tire Rotation & Balance', status: 'Operational', date: 'May 18, 2026', cost: 180 }
+  ];
+
+  const stats = [
+    { title: 'Total Fleet Vehicles', value: '12 Trucks', sub: '10 Operational | 2 In Shop', icon: Truck, color: 'text-blue-500' },
+    { title: 'Monthly Fuel Efficiency', value: '8.5 km/L', sub: 'Optimal target threshold met', icon: Activity, color: 'text-emerald-500' },
+    { title: 'Maintenance Pending', value: '2 Actions', sub: 'Awaiting scheduled service', icon: Settings, color: 'text-amber-500' },
+    { title: 'Completed Shipments', value: '142 Logs', sub: '98.6% on-time delivery rate', icon: ShieldCheck, color: 'text-indigo-500' }
   ];
 
   const handleExportCSV = () => {
@@ -60,22 +77,42 @@ export default function LogisticsDashboard() {
         </div>
       </div>
 
-      {/* Supply Chain KPI row */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="p-6 app-card">
-          <span className="text-xs text-slate-400 uppercase font-semibold">Total Fleet Vehicles</span>
-          <h3 className="text-2xl font-bold mt-1">12 Trucks</h3>
-          <p className="text-[10px] text-slate-400 mt-1">10 Operational | 2 In Maintenance</p>
+      {/* Stats KPI Row */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        {stats.map((card, idx) => {
+          const Icon = card.icon;
+          return (
+            <div key={idx} className="p-6 app-card flex items-center justify-between hover:scale-102 transition-all">
+              <div>
+                <span className="text-xs text-slate-400 uppercase font-semibold">{card.title}</span>
+                <h3 className="text-2xl font-bold mt-1">{card.value}</h3>
+                <p className="text-[10px] text-slate-400 mt-1">{card.sub}</p>
+              </div>
+              <div className={`p-4 bg-slate-100 rounded-2xl ${card.color} bg-accent-light`}>
+                <Icon className="w-6 h-6" />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Performance Chart */}
+      <div className="p-6 app-card flex flex-col justify-between">
+        <div>
+          <h3 className="text-lg font-bold">Logistics Fleet Performance</h3>
+          <p className="text-xs text-slate-500 text-muted">Weekly fleet distance logs vs fuel usage metrics.</p>
         </div>
-        <div className="p-6 app-card">
-          <span className="text-xs text-slate-400 uppercase font-semibold">Monthly Fuel Efficiency</span>
-          <h3 className="text-2xl font-bold mt-1">8.5 km/L</h3>
-          <p className="text-[10px] text-slate-400 mt-1">Optimal target threshold met</p>
-        </div>
-        <div className="p-6 app-card">
-          <span className="text-xs text-slate-400 uppercase font-semibold">Deliveries Dispatched</span>
-          <h3 className="text-2xl font-bold mt-1">142 Shipments</h3>
-          <p className="text-[10px] text-emerald-500 font-semibold mt-1">98.6% on-time delivery rate</p>
+        <div className="h-60 mt-4">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={lineChartData}>
+              <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
+              <XAxis dataKey="name" stroke="#94a3b8" fontSize={10} />
+              <YAxis stroke="#94a3b8" fontSize={10} />
+              <Tooltip />
+              <Line type="monotone" dataKey="Distance" stroke="#3b82f6" strokeWidth={2} activeDot={{ r: 8 }} />
+              <Line type="monotone" dataKey="Fuel" stroke="#10b981" strokeWidth={2} />
+            </LineChart>
+          </ResponsiveContainer>
         </div>
       </div>
 
