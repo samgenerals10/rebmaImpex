@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Eye, EyeOff, Check, X, ArrowRight, Lock, Mail, User, CreditCard } from 'lucide-react';
+import { io } from 'socket.io-client';
 
-import type { Order, IncomingGoods, ProductionRequest, Visitor, Attendance, ChatMessage, BoardroomMeeting, FinancePayment, Customer, GoodsPrice, AuditEntry } from './types/erp';
+import type { Order, IncomingGoods, ProductionRequest, Visitor, Attendance, ChatMessage, BoardroomMeeting, FinancePayment, Customer, GoodsPrice, AuditEntry, PendingRegistration, StaffMember } from './types/erp';
 
 import Sidebar from './components/layout/Sidebar';
 import Header from './components/layout/Header';
@@ -21,7 +22,12 @@ import LogisticsDashboard from './views/LogisticsDashboard';
 import BoardroomView from './views/BoardroomView';
 import SettingsDashboard from './views/SettingsDashboard';
 
-// Customer is now imported from types/erp.ts
+import { auth, hr, operations, management, marketing, finance, production, dispatch, reception, getToken, setToken, clearToken } from './services/apiClient';
+
+const socket = io(import.meta.env.VITE_API_URL || 'http://localhost:4000', {
+  withCredentials: true,
+  autoConnect: false,
+});
 
 export default function App() {
   // Theme State - Default to 'ghana' official logo theme matching colors!
@@ -61,10 +67,7 @@ export default function App() {
   const [isLoggingIn, setIsLoggingIn] = useState<boolean>(false);
 
   // Financial Payments & Tickets
-  const [paymentsList, setPaymentsList] = useState<FinancePayment[]>([
-    { id: 'PAY-001', clientName: 'Inter-Ghana Foods Ltd', amount: 15000, paymentMode: 'BANK_TRANSFER', paymentType: 'DIRECT', createdAt: new Date().toLocaleString() },
-    { id: 'PAY-002', clientName: 'Accra Retail Hub', amount: 12000, paymentMode: 'CASH', paymentType: 'CREDIT_SETTLEMENT', orderId: 'ORD-102', createdAt: new Date().toLocaleString() }
-  ]);
+  const [paymentsList, setPaymentsList] = useState<FinancePayment[]>([]);
 
   // Boardroom scheduled meetings
   const [meetingsList, setMeetingsList] = useState<BoardroomMeeting[]>([
@@ -78,40 +81,22 @@ export default function App() {
   const [ghanaCardValidation, setGhanaCardValidation] = useState<boolean>(true);
 
   // Workflow Data states
-  const [incomingGoodsList, setIncomingGoodsList] = useState<IncomingGoods[]>([
-    { id: '1', productName: 'Cocoa Beans (Grade A)', goodsCode: 'GC-001204', destination: 'Accra Central Warehouse', country: "Cote d'Ivoire", company: 'Socoopec', quantity: 200, weight: 15.4, discrepancies: 'None', status: 'PENDING_MANAGEMENT_APPROVAL', createdAt: new Date().toLocaleString() },
-    { id: '2', productName: 'Tropical Fruit Exports', goodsCode: 'GC-001205', destination: 'Tema Port Depot', country: 'Ecuador', company: 'Fruibest Ltd', quantity: 450, weight: 28.1, discrepancies: '2 damaged crates', status: 'APPROVED', unitPrice: 12.5, createdAt: new Date(Date.now() - 86400000).toLocaleString() }
-  ]);
-  const [ordersList, setOrdersList] = useState<Order[]>([
-    { id: 'ORD-101', ticketNumber: 'TKT-10100', clientName: 'Inter-Ghana Foods Ltd', productName: 'Palm Oil Barrels', destination: 'Kumasi Depot', paymentMode: 'CREDIT', totalAmount: 48000, status: 'PENDING_FINANCE', createdAt: '1 hour ago', ghanaCard: 'GHA-1122334-4' },
-    { id: 'ORD-102', ticketNumber: 'TKT-10200', clientName: 'Accra Retail Hub', productName: 'Polymer Granules', destination: 'Accra Central', paymentMode: 'CASH', totalAmount: 12000, status: 'DELIVERED', createdAt: '2 days ago' }
-  ]);
-  const [productionRequests, setProductionRequests] = useState<ProductionRequest[]>([
-    { id: 'PRD-801', items: [{ materialName: 'Raw Polymer Granules', quantity: 5000 }], status: 'APPROVED', createdAt: new Date().toLocaleString() }
-  ]);
-  const [visitorsList, setVisitorsList] = useState<Visitor[]>([
-    { id: 'V-101', fullName: 'Kwame Mensah', purpose: 'Customs clearance audit', hostName: 'Manager Frank', checkInTime: '09:15 AM' }
-  ]);
-  const [attendanceList, setAttendanceList] = useState<Attendance[]>([
-    { id: 'A-20', fullName: 'Derrick Osei', checkInTime: '07:45 AM', status: 'PRESENT' },
-    { id: 'A-21', fullName: 'Justice Kwame', checkInTime: '08:42 AM', status: 'LATE' }
-  ]);
+  const [incomingGoodsList, setIncomingGoodsList] = useState<IncomingGoods[]>([]);
+  const [ordersList, setOrdersList] = useState<Order[]>([]);
+  const [productionRequests, setProductionRequests] = useState<ProductionRequest[]>([]);
+  const [visitorsList, setVisitorsList] = useState<Visitor[]>([]);
+  const [attendanceList, setAttendanceList] = useState<Attendance[]>([]);
 
   // Customer List for Marketing Registration
-  const [customersList, setCustomersList] = useState<Customer[]>([
-    { id: 'C-001', name: 'Kofi Owusu', phone: '+233 24 123 4567', location: 'Accra', companyName: 'Owusu Retail Hub', registeredAt: '2 hours ago', ghanaCard: 'GHA-1234567-8', creditHistory: [{ orderId: 'ORD-102', amount: 12000, date: '2026-05-23', status: 'PAID' }] },
-    { id: 'C-002', name: 'Abena Mansah', phone: '+233 20 987 6543', location: 'Kumasi', companyName: 'Mansah Wholesale Food', registeredAt: '1 day ago', ghanaCard: 'GHA-7654321-2' }
-  ]);
+  const [customersList, setCustomersList] = useState<Customer[]>([]);
 
   // Audit Log & Price Management
-  const [auditLog, setAuditLog] = useState<AuditEntry[]>([
-    { id: 'AUD-001', action: 'Port Cargo Logged', department: 'OPERATIONS', performedBy: 'Kofi Mensah', details: 'Cargo from Socoopec (200 units, 15.4T) submitted for pricing.', timestamp: new Date().toLocaleString() },
-    { id: 'AUD-002', action: 'Order Created', department: 'MARKETING', performedBy: 'Kwame Boateng', details: 'ORD-101 created for Inter-Ghana Foods Ltd — GHS 48,000 CREDIT terms.', timestamp: new Date().toLocaleString() },
-  ]);
-  const [goodsPrices, setGoodsPrices] = useState<GoodsPrice[]>([
-    { id: 'GP-001', productName: 'Cocoa Beans (Grade A)', category: 'INCOMING_GOODS', unitPrice: 125.00, currency: 'USD', setBy: 'Management', setAt: new Date().toLocaleString() },
-    { id: 'GP-002', productName: 'Polymer Granules', category: 'NEW_GOODS', unitPrice: 45.50, currency: 'GHS', setBy: 'Management', setAt: new Date().toLocaleString() },
-  ]);
+  const [auditLog, setAuditLog] = useState<AuditEntry[]>([]);
+  const [goodsPrices, setGoodsPrices] = useState<GoodsPrice[]>([]);
+
+  // HR pending & active staff
+  const [pendingRegistrations, setPendingRegistrations] = useState<PendingRegistration[]>([]);
+  const [staffList, setStaffList] = useState<StaffMember[]>([]);
 
   // Helper to add to audit log
   const addAuditEntry = (action: string, department: string, details: string) => {
@@ -125,6 +110,299 @@ export default function App() {
     };
     setAuditLog(prev => [entry, ...prev]);
   };
+
+  const refreshAllData = async () => {
+    if (!getToken()) return;
+
+    // Fetch incoming goods
+    try {
+      const goods = await operations.getIncomingGoods();
+      setIncomingGoodsList(goods.map((item: any) => ({
+        id: item.id,
+        productName: item.productName || 'N/A',
+        productImage: item.productImage || undefined,
+        goodsCode: item.goodsCode || 'N/A',
+        destination: item.destination || 'N/A',
+        country: item.country,
+        company: item.company,
+        quantity: item.quantity,
+        weight: item.weight,
+        discrepancies: item.discrepancies || 'None',
+        status: item.status,
+        unitPrice: item.unitPrice || undefined,
+        createdAt: new Date(item.createdAt).toLocaleString()
+      })));
+    } catch (e) {
+      console.log('Skipping incoming goods fetch (unauthorized/error)');
+    }
+
+    // Fetch orders
+    try {
+      const orders = await marketing.getOrders();
+      setOrdersList(orders.map((o: any) => ({
+        id: o.id,
+        ticketNumber: o.ticketNumber || undefined,
+        clientName: o.clientName,
+        productName: o.productName || 'N/A',
+        destination: o.destination || 'N/A',
+        paymentMode: o.paymentMode,
+        totalAmount: o.totalAmount,
+        ghanaCard: o.ghanaCard || undefined,
+        status: o.status,
+        createdAt: new Date(o.createdAt).toLocaleString()
+      })));
+    } catch (e) {
+      console.log('Skipping orders fetch (unauthorized/error)');
+    }
+
+    // Fetch customers
+    try {
+      const customers = await marketing.getCustomers();
+      setCustomersList(customers.map((c: any) => ({
+        id: c.id,
+        name: c.name,
+        phone: c.phone,
+        location: c.location,
+        companyName: c.companyName,
+        ghanaCard: c.ghanaCard || undefined,
+        email: c.email || undefined,
+        photo: c.photo || undefined,
+        registeredAt: new Date(c.registeredAt).toLocaleString(),
+        creditHistory: c.creditHistory ? (typeof c.creditHistory === 'string' ? JSON.parse(c.creditHistory) : c.creditHistory) : undefined
+      })));
+    } catch (e) {
+      console.log('Skipping customers fetch (unauthorized/error)');
+    }
+
+    // Fetch audit entries
+    try {
+      const logs = await management.getAuditLog();
+      setAuditLog(logs.map((log: any) => ({
+        id: log.id,
+        action: log.action,
+        department: log.department,
+        performedBy: log.performedBy,
+        details: log.details,
+        timestamp: new Date(log.timestamp).toLocaleString()
+      })));
+    } catch (e) {
+      console.log('Skipping audit log fetch (unauthorized/error)');
+    }
+
+    // Fetch goods prices
+    try {
+      const prices = await management.getPrices();
+      setGoodsPrices(prices.map((p: any) => ({
+        id: p.id,
+        productName: p.productName,
+        category: p.category,
+        unitPrice: p.unitPrice,
+        currency: p.currency,
+        setBy: p.setBy,
+        setAt: new Date(p.setAt).toLocaleString()
+      })));
+    } catch (e) {
+      console.log('Skipping goods prices fetch (unauthorized/error)');
+    }
+
+    // Fetch production requests
+    try {
+      const reqs = await production.getRequests();
+      setProductionRequests(reqs.map((r: any) => ({
+        id: r.id,
+        items: typeof r.items === 'string' ? JSON.parse(r.items) : r.items,
+        status: r.status,
+        producedGoods: r.producedGoods || undefined,
+        createdAt: new Date(r.createdAt).toLocaleString()
+      })));
+    } catch (e) {
+      console.log('Skipping production requests fetch (unauthorized/error)');
+    }
+
+    // Fetch payments
+    try {
+      const payments = await finance.getPayments();
+      setPaymentsList(payments.map((p: any) => ({
+        id: p.id,
+        clientName: p.clientName,
+        amount: p.amount,
+        paymentMode: p.paymentMode,
+        paymentType: p.paymentType,
+        orderId: p.orderId || undefined,
+        createdAt: new Date(p.createdAt).toLocaleString()
+      })));
+    } catch (e) {
+      console.log('Skipping payments fetch (unauthorized/error)');
+    }
+
+    // Fetch visitors
+    try {
+      const visitors = await reception.getVisitors();
+      setVisitorsList(visitors.map((v: any) => ({
+        id: v.id,
+        fullName: v.fullName,
+        purpose: v.purpose,
+        hostName: v.hostName,
+        checkInTime: new Date(v.checkInTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        checkOutTime: v.checkOutTime ? new Date(v.checkOutTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : undefined
+      })));
+    } catch (e) {
+      console.log('Skipping visitors fetch (unauthorized/error)');
+    }
+
+    // Fetch attendance
+    try {
+      const attendance = await hr.getAttendance();
+      setAttendanceList(attendance.map((a: any) => ({
+        id: a.id,
+        fullName: a.user?.fullName || 'Unknown',
+        checkInTime: new Date(a.checkInTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        status: a.status as 'PRESENT' | 'LATE',
+        date: new Date(a.date).toLocaleDateString()
+      })));
+    } catch (e) {
+      console.log('Skipping attendance fetch (unauthorized/error)');
+    }
+
+    // Fetch pending registrations (HR)
+    try {
+      const pendings = await hr.getPendingUsers();
+      setPendingRegistrations(pendings.map((p: any) => ({
+        id: p.id,
+        fullName: p.fullName,
+        email: p.email,
+        department: p.department,
+        ghanaCard: p.ghanaCardId || 'N/A',
+        submittedAt: new Date(p.createdAt).toLocaleString(),
+        status: 'PENDING'
+      })));
+    } catch (e) {
+      console.log('Skipping pending users fetch (unauthorized/error)');
+    }
+
+    // Fetch active users (staff list in HR)
+    try {
+      const activeUsers = await hr.getAllUsers();
+      setStaffList(activeUsers.map((u: any) => ({
+        id: u.id,
+        fullName: u.fullName,
+        email: u.email,
+        department: u.department,
+        role: u.isCeo ? 'CEO' : `${u.department} Staff`,
+        ghanaCard: u.ghanaCardId || 'GHA-XXXXXXX-X',
+        phone: u.phone || 'N/A',
+        photo: u.photo || undefined,
+        joinedAt: new Date(u.createdAt).toLocaleDateString(),
+        status: 'ACTIVE'
+      })));
+    } catch (e) {
+      console.log('Skipping staff list fetch (unauthorized/error)');
+    }
+  };
+
+  // Auth initialize hook
+  useEffect(() => {
+    const initializeAuth = async () => {
+      const token = getToken();
+      if (token) {
+        try {
+          const profile = await auth.me();
+          setCurrentUser({
+            fullName: profile.fullName,
+            email: profile.email,
+            department: profile.department,
+            isCeo: profile.isCeo
+          });
+          setActiveDepartment(profile.department);
+          setIsAuthenticated(true);
+        } catch (e) {
+          clearToken();
+        }
+      }
+    };
+    initializeAuth();
+  }, []);
+
+  // Sync data & auto-poll
+  useEffect(() => {
+    if (isAuthenticated) {
+      refreshAllData();
+      const interval = setInterval(refreshAllData, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [isAuthenticated]);
+
+  // Socket connection hook
+  useEffect(() => {
+    if (currentUser) {
+      socket.connect();
+      socket.emit('join_department', currentUser.department);
+      
+      socket.on('global_alert', (data: { message: string }) => {
+        addNotification(data.message);
+        refreshAllData();
+      });
+      
+      socket.on('new_registration_pending', (data: any) => {
+        if (currentUser.department === 'HR' || currentUser.isCeo) {
+          addNotification(`New pending user: ${data.fullName}`);
+          refreshAllData();
+        }
+      });
+      
+      socket.on('user_approved', (data: any) => {
+        addNotification(`User ${data.fullName} approved.`);
+        refreshAllData();
+      });
+
+      socket.on('intake_logged', (data: any) => {
+        if (currentUser.department === 'MANAGEMENT' || currentUser.isCeo) {
+          addNotification(`New cargo intake logged for ${data.company}`);
+          refreshAllData();
+        }
+      });
+
+      socket.on('new_delivery_assigned', (data: any) => {
+        if (currentUser.department === 'DISPATCH' || currentUser.isCeo) {
+          addNotification(`New delivery assigned: Order ${data.orderId}`);
+          refreshAllData();
+        }
+      });
+
+      socket.on('price_catalog_updated', () => {
+        if (['FINANCE', 'MARKETING', 'MANAGEMENT'].includes(currentUser.department) || currentUser.isCeo) {
+          addNotification(`Price catalog updated`);
+          refreshAllData();
+        }
+      });
+
+      socket.on('intake_approved', (data: any) => {
+        if (currentUser.department === 'OPERATIONS' || currentUser.isCeo) {
+          addNotification(`Intake approved: ${data.intakeId}`);
+          refreshAllData();
+        }
+      });
+
+      socket.on('intake_rejected', (data: any) => {
+        if (currentUser.department === 'OPERATIONS' || currentUser.isCeo) {
+          addNotification(`Intake rejected: ${data.intakeId}`);
+          refreshAllData();
+        }
+      });
+      
+      return () => {
+        socket.off('global_alert');
+        socket.off('new_registration_pending');
+        socket.off('user_approved');
+        socket.off('intake_logged');
+        socket.off('new_delivery_assigned');
+        socket.off('price_catalog_updated');
+        socket.off('intake_approved');
+        socket.off('intake_rejected');
+        socket.disconnect();
+      };
+    }
+  }, [currentUser]);
 
   // Welcome page live trades feed state
   const [liveTrades, setLiveTrades] = useState([
@@ -303,7 +581,7 @@ export default function App() {
   };
 
   // Handle standard registration
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!registerEmail || !registerName || !password) {
       alert('Please fill out all fields.');
@@ -321,268 +599,272 @@ export default function App() {
       return;
     }
 
-    if (registerDept === 'CEO') {
-      // Whitelist check
-      const whitelist = whitelistedCeos.split(',').map(s => s.trim().toLowerCase());
-      if (!whitelist.includes(registerEmail.trim().toLowerCase())) {
-        alert('Unauthorized registration. This email is not on the in-built CEO whitelist.');
-        return;
-      }
+    try {
+      const res = await auth.register({
+        email: registerEmail.trim(),
+        password,
+        fullName: registerName,
+        department: registerDept,
+        ghanaCardId: registerDept !== 'CEO' ? registerCard : undefined
+      });
 
-      // CEO OTP flow
-      const randomOtp = Math.floor(100000 + Math.random() * 900000).toString();
-      setSimulatedReceivedOtp(randomOtp);
-      setRegistrationMessage(`OTP sent to CEO contact info.`);
-      setAuthScreen('otp');
-      // Simulate SMS Alert
-      setTimeout(() => {
-        alert(`[SIMULATED SMS GATEWAY - ${smsGateway.toUpperCase()}]: Your REMBA IMPEX ERP CEO verification code is: ${randomOtp}`);
-      }, 800);
-    } else {
-      // Standard staff approval queue flow
-      setRegistrationMessage('Registration submitted. Account placed in PENDING_APPROVAL. HR must activate your account.');
-      setAuthScreen('login');
-      addNotification(`New registration request from ${registerName} (${registerDept}) added to HR queue.`);
+      if (res.status === 'OTP_VERIFICATION') {
+        setRegistrationMessage(res.message);
+        setAuthScreen('otp');
+      } else {
+        setRegistrationMessage(res.message);
+        setAuthScreen('login');
+        addNotification(`New registration request from ${registerName} (${registerDept}) submitted.`);
+        // Clear registration form states
+        setRegisterName('');
+        setRegisterEmail('');
+        setPassword('');
+        setConfirmPassword('');
+        setRegisterCard('');
+      }
+    } catch (err: any) {
+      alert(err.message || 'Registration failed.');
     }
   };
 
   // Verify CEO SMS OTP Code
-  const handleVerifyOtp = (e: React.FormEvent) => {
+  const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (otpCode === simulatedReceivedOtp) {
-      alert('CEO Verification Successful! Account is now ACTIVE.');
+    try {
+      const res = await auth.verifyCeoOtp(registerEmail, otpCode);
+      alert(res.message || 'CEO Verification Successful! Account is now ACTIVE.');
       setAuthScreen('login');
-    } else {
-      alert('Invalid OTP code. Please check your simulated SMS.');
+      setOtpCode('');
+    } catch (err: any) {
+      alert(err.message || 'Invalid OTP code.');
     }
   };
 
   // Handle login
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Check validation of the password entered
-    const enteredPassword = loginPassword || 'Rebma2026!';
-    const pwErrors = getPasswordValidationErrors(enteredPassword);
+    if (!loginEmail || !loginPassword) {
+      alert('Please fill out all fields.');
+      return;
+    }
+
+    const pwErrors = getPasswordValidationErrors(loginPassword);
     if (pwErrors.length > 0) {
       alert(`Password does not meet REBMA policies:\n- ${pwErrors.join('\n- ')}`);
       return;
     }
 
     setIsLoggingIn(true);
-    setTimeout(() => {
-      const emailToCheck = loginEmail || 'admin@rebma.com';
-      let role = 'MARKETING';
-      if (emailToCheck.includes('ceo')) role = 'CEO';
-      else if (emailToCheck.includes('admin') || emailToCheck.includes('management')) role = 'MANAGEMENT';
-      else if (emailToCheck.includes('finance')) role = 'FINANCE';
-      else if (emailToCheck.includes('ops') || emailToCheck.includes('operations')) role = 'OPERATIONS';
-      else if (emailToCheck.includes('hr')) role = 'HR';
-      else if (emailToCheck.includes('prod') || emailToCheck.includes('production')) role = 'PRODUCTION';
-      else if (emailToCheck.includes('reception')) role = 'RECEPTION';
-      else if (emailToCheck.includes('dispatch')) role = 'DISPATCH';
-      else if (emailToCheck.includes('logistics')) role = 'LOGISTICS';
-      
+    try {
+      const res = await auth.login(loginEmail, loginPassword);
+      setToken(res.token);
       setCurrentUser({
-        fullName: emailToCheck.split('@')[0].toUpperCase(),
-        email: emailToCheck,
-        department: role,
-        isCeo: role === 'CEO'
+        fullName: res.user.fullName,
+        email: res.user.email,
+        department: res.user.department,
+        isCeo: res.user.isCeo
       });
-      setActiveDepartment(role);
+      setActiveDepartment(res.user.department);
       setIsAuthenticated(true);
+      addNotification(`Logged in as ${res.user.fullName} (${res.user.department})`);
+      setLoginPassword('');
+    } catch (err: any) {
+      alert(err.message || 'Login failed.');
+    } finally {
       setIsLoggingIn(false);
-      addNotification(`Logged in as ${emailToCheck.split('@')[0]} (${role})`);
-    }, 1200);
+    }
   };
 
   // Workflow A action triggers
-  const handleLogIntake = (data: Omit<IncomingGoods, 'id' | 'status'>) => {
-    const newIntake: IncomingGoods = {
-      id: `CG-${Date.now().toString().slice(-5)}`,
-      ...data,
-      status: 'PENDING_MANAGEMENT_APPROVAL'
-    };
-    setIncomingGoodsList(prev => [...prev, newIntake]);
-    addNotification(`Operations logged new port intake for ${newIntake.company} (${newIntake.productName}) at ${newIntake.createdAt}. Forwarded to Management.`);
-    addAuditEntry('Port Cargo Logged', 'OPERATIONS', `${newIntake.productName || 'Cargo'} (${newIntake.quantity} units) from ${newIntake.company}, ${newIntake.country}. Code: ${newIntake.goodsCode}`);
+  const handleLogIntake = async (data: Omit<IncomingGoods, 'id' | 'status'>) => {
+    try {
+      await operations.logIntake({
+        productName: data.productName,
+        goodsCode: data.goodsCode,
+        destination: data.destination,
+        country: data.country,
+        company: data.company,
+        quantity: data.quantity,
+        weight: data.weight,
+        discrepancies: data.discrepancies,
+        isFaulty: false,
+        productImage: data.productImage
+      });
+      addNotification(`Operations logged new port cargo intake for ${data.company}. Sent to Management.`);
+      refreshAllData();
+    } catch (err: any) {
+      alert(err.message || 'Failed to log intake.');
+    }
   };
 
-  const handleApproveIntake = (id: string, approve: boolean, price?: number) => {
-    setIncomingGoodsList(prev => prev.map(item => {
-      if (item.id === id) {
-        return {
-          ...item,
-          status: approve ? 'APPROVED' : 'REJECTED',
-          unitPrice: approve ? price || 15.0 : undefined
-        };
-      }
-      return item;
-    }));
-    const item = incomingGoodsList.find(i => i.id === id);
-    if (approve) {
-      addNotification(`Management approved cargo from ${item?.company} — Unit price set to GHS ${price}. Notifying Operations, Finance & Marketing.`);
-      addAuditEntry('Cargo Approved', 'MANAGEMENT', `${item?.productName || 'Cargo'} from ${item?.company} approved. Unit price: GHS ${price}`);
-    } else {
-      addNotification(`Management rejected cargo from ${item?.company}.`);
-      addAuditEntry('Cargo Rejected', 'MANAGEMENT', `${item?.productName || 'Cargo'} from ${item?.company} rejected.`);
+  const handleApproveIntake = async (id: string, approve: boolean, price?: number) => {
+    try {
+      await management.approveIntake(id, approve, price);
+      addNotification(`Management cargo approval updated.`);
+      refreshAllData();
+    } catch (err: any) {
+      alert(err.message || 'Failed to process cargo approval.');
     }
   };
 
   // Workflow B action triggers
-  const handleCreateOrder = (data: Partial<Order>) => {
-    const newOrder: Order = {
-      id: `ORD-${Math.floor(100 + Math.random() * 900)}`,
-      clientName: data.clientName || 'Unknown',
-      productName: data.productName,
-      destination: data.destination,
-      paymentMode: data.paymentMode || 'CASH',
-      totalAmount: data.totalAmount || 0,
-      ghanaCard: data.ghanaCard,
-      ticketNumber: data.ticketNumber || `TKT-${Date.now().toString().slice(-5)}`,
-      status: 'PENDING_FINANCE',
-      createdAt: new Date().toLocaleString()
-    };
-    setOrdersList(prev => [newOrder, ...prev]);
-    addNotification(`Marketing created order ${newOrder.id} (GHS ${newOrder.totalAmount.toLocaleString()}) for ${newOrder.clientName}. Ticket: ${newOrder.ticketNumber}. Routed to Finance.`);
-    addAuditEntry('Sales Order Created', 'MARKETING', `${newOrder.id} — ${newOrder.clientName} — GHS ${newOrder.totalAmount.toLocaleString()} (${newOrder.paymentMode})`);
+  const handleCreateOrder = async (data: Partial<Order>) => {
+    try {
+      await marketing.createOrder({
+        clientName: data.clientName || 'Unknown',
+        productName: data.productName,
+        destination: data.destination,
+        ghanaCard: data.ghanaCard,
+        paymentMode: data.paymentMode || 'CASH',
+        totalAmount: data.totalAmount || 0
+      });
+      addNotification(`Marketing created order successfully. Routed to Finance.`);
+      refreshAllData();
+    } catch (err: any) {
+      alert(err.message || 'Failed to create order.');
+    }
   };
 
   // Marketing Register Customer (now takes Partial<Customer> object from modal)
-  const handleRegisterCustomer = (data: Partial<Customer>) => {
-    const newCust: Customer = {
-      id: `C-${Math.floor(100 + Math.random() * 900)}`,
-      name: data.name || 'Unknown',
-      phone: data.phone || '',
-      location: data.location || '',
-      companyName: data.companyName || data.name || '',
-      ghanaCard: data.ghanaCard,
-      email: data.email,
-      photo: data.photo,
-      registeredAt: new Date().toLocaleString()
-    };
-    setCustomersList(prev => [newCust, ...prev]);
-    addNotification(`Marketing registered new customer: ${newCust.name} (${newCust.companyName})`);
-    addAuditEntry('Customer Registered', 'MARKETING', `${newCust.name} from ${newCust.companyName} — ${newCust.location}`);
-  };
-
-  const handleEvaluateOrder = (id: string, approve: boolean) => {
-    setOrdersList(prev => prev.map(order => {
-      if (order.id === id) {
-        if (!approve) return { ...order, status: 'REJECTED' };
-        if (order.paymentMode === 'CREDIT') {
-          return { ...order, status: 'PENDING_MANAGEMENT' };
-        }
-        return { ...order, status: 'APPROVED' };
-      }
-      return order;
-    }));
-
-    const order = ordersList.find(o => o.id === id);
-    if (approve) {
-      if (order?.paymentMode === 'CREDIT') {
-        addNotification(`Finance processed credit request for Order ${id}. Forwarded to Management.`);
-      } else {
-        addNotification(`Finance approved Prepaid Order ${id}. Ready to finalize release.`);
-      }
-    } else {
-      addNotification(`Finance rejected Order ${id}.`);
+  const handleRegisterCustomer = async (data: Partial<Customer>) => {
+    try {
+      await marketing.registerCustomer({
+        name: data.name || 'Unknown',
+        phone: data.phone || '',
+        location: data.location || '',
+        companyName: data.companyName || data.name || '',
+        ghanaCard: data.ghanaCard,
+        email: data.email,
+        photo: data.photo
+      });
+      addNotification(`Marketing registered new customer successfully.`);
+      refreshAllData();
+    } catch (err: any) {
+      alert(err.message || 'Failed to register customer.');
     }
   };
 
-  const handleManagementCreditDecision = (id: string, approve: boolean) => {
-    setOrdersList(prev => prev.map(order => {
-      if (order.id === id) {
-        return { ...order, status: approve ? 'APPROVED' : 'REJECTED' };
-      }
-      return order;
-    }));
-    const order = ordersList.find(o => o.id === id);
-    addNotification(`Management credit audit: Order ${id} is ${approve ? 'APPROVED' : 'REJECTED'}.`);
-    addAuditEntry(approve ? 'Credit Approved' : 'Credit Rejected', 'MANAGEMENT', `Order ${id} — ${order?.clientName} — GHS ${order?.totalAmount.toLocaleString()}`);
+  const handleEvaluateOrder = async (id: string, approve: boolean) => {
+    try {
+      await finance.evaluateOrder(id, approve);
+      addNotification(`Finance processed evaluation decision.`);
+      refreshAllData();
+    } catch (err: any) {
+      alert(err.message || 'Failed to evaluate order.');
+    }
   };
 
-  const handleFinalizeOrder = (id: string) => {
-    setOrdersList(prev => prev.map(order => {
-      if (order.id === id) {
-        return { ...order, status: 'PROCESSING' };
-      }
-      return order;
-    }));
-    addNotification(`Finance generated invoice INV-${id} and warehouse fulfillment ticket. Operations notified.`);
+  const handleManagementCreditDecision = async (id: string, approve: boolean) => {
+    try {
+      await management.approveCreditOrder(id, approve);
+      addNotification(`Management credit decision submitted.`);
+      refreshAllData();
+    } catch (err: any) {
+      alert(err.message || 'Failed to process credit decision.');
+    }
   };
 
-  const handleReleaseToDispatch = (id: string) => {
-    setOrdersList(prev => prev.map(order => {
-      if (order.id === id) {
-        return { ...order, status: 'OUT_FOR_DELIVERY' };
-      }
-      return order;
-    }));
-    setDeliveryStatus('IN_TRANSIT');
-    addNotification(`Operations released order ${id}. Dispatch loaded. GPS stream started.`);
+  const handleFinalizeOrder = async (id: string) => {
+    try {
+      await finance.finalizeOrder(id);
+      addNotification(`Finance generated invoice and warehouse fulfillment ticket.`);
+      refreshAllData();
+    } catch (err: any) {
+      alert(err.message || 'Failed to finalize order.');
+    }
   };
 
-  const handleMarkDelivered = (id: string) => {
-    setOrdersList(prev => prev.map(order => {
-      if (order.id === id) {
-        return { ...order, status: 'DELIVERED' };
-      }
-      return order;
-    }));
-    setDeliveryStatus('DELIVERED');
-    addNotification(`GLOBAL ALERT: Order ${id} delivered successfully. Notifying Marketing, Operations, Management, and Finance.`);
+  const handleReleaseToDispatch = async (id: string) => {
+    try {
+      const randomVehicle = `TRK-${Math.floor(100 + Math.random() * 900)}`;
+      const randomDriver = 'Kwame Kyeremeh';
+      await operations.releaseToDispatch(id, randomVehicle, randomDriver);
+      addNotification(`Operations released order ${id} to dispatch fleet.`);
+      refreshAllData();
+    } catch (err: any) {
+      alert(err.message || 'Failed to release to dispatch.');
+    }
+  };
+
+  const handleMarkDelivered = async (id: string) => {
+    try {
+      await dispatch.updateDelivery(id, 'DELIVERED', activeCoordinates);
+      addNotification(`Order ${id} marked as DELIVERED.`);
+      refreshAllData();
+    } catch (err: any) {
+      alert(err.message || 'Failed to mark delivery status.');
+    }
   };
 
   // Workflow D triggers
-  const handleCheckInAttendance = (e: React.FormEvent) => {
+  const handleCheckInAttendance = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const target = e.target as any;
-    const name = target.name.value;
-    const now = new Date();
-    const hours = now.getHours();
-    const minutes = now.getMinutes();
+    const name = target.name.value.trim();
     
-    let status: 'PRESENT' | 'LATE' = 'PRESENT';
-    if (hours > 8 || (hours === 8 && minutes > 30)) {
-      status = 'LATE';
+    // Find employee user by name
+    const employee = staffList.find(s => s.fullName.toLowerCase() === name.toLowerCase());
+    if (!employee) {
+      alert(`Employee profile for "${name}" not found. Please register employee first via HR.`);
+      return;
     }
-
-    const checkin: Attendance = {
-      id: `A-${Math.floor(10 + Math.random() * 90)}`,
-      fullName: name,
-      checkInTime: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      status
-    };
-
-    setAttendanceList(prev => [checkin, ...prev]);
-    addNotification(`Attendance check-in logged: ${name} marked ${status}.`);
-    target.reset();
+    
+    try {
+      await reception.checkInAttendance(employee.id);
+      addNotification(`Attendance check-in logged for ${employee.fullName}.`);
+      refreshAllData();
+      target.reset();
+    } catch (err: any) {
+      alert(err.message || 'Failed to check in employee.');
+    }
   };
 
-  const handleAddVisitor = (e: React.FormEvent) => {
+  const handleAddVisitor = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const target = e.target as any;
-    const newVisitor: Visitor = {
-      id: `V-${Math.floor(100 + Math.random() * 900)}`,
-      fullName: target.visitor.value,
-      purpose: target.purpose.value,
-      hostName: target.host.value,
-      checkInTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    };
-    setVisitorsList(prev => [newVisitor, ...prev]);
-    addNotification(`Front desk: Visitor ${newVisitor.fullName} checked in for ${newVisitor.hostName}.`);
-    target.reset();
+    const fullName = target.visitor.value;
+    const purpose = target.purpose.value;
+    const hostName = target.host.value;
+
+    try {
+      await reception.checkInVisitor(fullName, purpose, hostName);
+      addNotification(`Front desk: Visitor ${fullName} checked in for ${hostName}.`);
+      refreshAllData();
+      target.reset();
+    } catch (err: any) {
+      alert(err.message || 'Failed to log visitor.');
+    }
   };
 
-  const handleCheckoutVisitor = (id: string) => {
-    setVisitorsList(prev => prev.map(v => {
-      if (v.id === id) {
-        return { ...v, checkOutTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) };
-      }
-      return v;
-    }));
-    addNotification(`Front desk: Visitor checked out.`);
+  const handleCheckoutVisitor = async (id: string) => {
+    try {
+      await reception.checkOutVisitor(id);
+      addNotification(`Front desk: Visitor checked out.`);
+      refreshAllData();
+    } catch (err: any) {
+      alert(err.message || 'Failed to check out visitor.');
+    }
+  };
+
+  // HR approvals
+  const handleApproveUser = async (reg: PendingRegistration, pw: string) => {
+    try {
+      await hr.approveUser(reg.id, true, pw);
+      addNotification(`User ${reg.fullName} approved successfully.`);
+      refreshAllData();
+    } catch (err: any) {
+      alert(err.message || 'Failed to approve user.');
+    }
+  };
+
+  const handleDenyUser = async (reg: PendingRegistration) => {
+    try {
+      await hr.approveUser(reg.id, false);
+      addNotification(`User ${reg.fullName} denied.`);
+      refreshAllData();
+    } catch (err: any) {
+      alert(err.message || 'Failed to deny user.');
+    }
   };
 
   // Chat message submission
@@ -1277,14 +1559,19 @@ export default function App() {
     );
   }
 
-  const handleSetPrice = (price: Omit<GoodsPrice, 'id'>) => {
-    const newPrice: GoodsPrice = {
-      id: `GP-${Date.now().toString().slice(-4)}`,
-      ...price
-    };
-    setGoodsPrices(prev => [newPrice, ...prev]);
-    addNotification(`Management set price for ${price.productName}: ${price.currency} ${price.unitPrice} (${price.category.replace(/_/g, ' ')})`);
-    addAuditEntry('Price Set', 'MANAGEMENT', `${price.productName} — ${price.currency} ${price.unitPrice} — ${price.category.replace(/_/g, ' ')}`);
+  const handleSetPrice = async (price: Omit<GoodsPrice, 'id'>) => {
+    try {
+      await management.setPrice({
+        productName: price.productName,
+        category: price.category,
+        unitPrice: price.unitPrice,
+        currency: price.currency
+      });
+      addNotification(`Management set price for ${price.productName}: ${price.currency} ${price.unitPrice}`);
+      refreshAllData();
+    } catch (err: any) {
+      alert(err.message || 'Failed to set price.');
+    }
   };
 
   const renderDashboard = () => {
@@ -1319,6 +1606,10 @@ export default function App() {
             barChartData={barChartData}
             activeSubTab={activeSubTab}
             addNotification={addNotification}
+            pendingRegistrations={pendingRegistrations}
+            staffList={staffList}
+            onApprove={handleApproveUser}
+            onDeny={handleDenyUser}
           />
         );
       case 'MARKETING':

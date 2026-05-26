@@ -11,6 +11,10 @@ interface HrDashboardProps {
   barChartData: Array<{ name: string; Staff: number; Visitors: number }>;
   activeSubTab: string;
   addNotification: (msg: string) => void;
+  pendingRegistrations: PendingRegistration[];
+  staffList: StaffMember[];
+  onApprove: (reg: PendingRegistration, pw: string) => void;
+  onDeny: (reg: PendingRegistration) => void;
 }
 
 // Seed data for pending registrations
@@ -38,11 +42,13 @@ export default function HrDashboard({
   attendanceList,
   barChartData,
   activeSubTab = 'Employees',
-  addNotification
+  addNotification,
+  pendingRegistrations,
+  staffList,
+  onApprove,
+  onDeny
 }: HrDashboardProps) {
 
-  const [pendingRegistrations, setPendingRegistrations] = useState<PendingRegistration[]>(seedPendingRegistrations);
-  const [staffList] = useState<StaffMember[]>(seedStaff);
   const [approvalLog, setApprovalLog] = useState<Array<{ id: string; name: string; action: 'APPROVED' | 'REJECTED'; password?: string; at: string }>>([]);
 
   const lineChartData = [
@@ -66,7 +72,7 @@ export default function HrDashboard({
 
   const handleApprove = (reg: PendingRegistration) => {
     const pw = generatePassword();
-    setPendingRegistrations(prev => prev.map(r => r.id === reg.id ? { ...r, status: 'APPROVED' } : r));
+    onApprove(reg, pw);
     setApprovalLog(prev => [{ id: reg.id, name: reg.fullName, action: 'APPROVED', password: pw, at: new Date().toLocaleString() }, ...prev]);
     addNotification(`HR approved ${reg.fullName}. Login password generated & simulated email sent to ${reg.email}.`);
     // Simulate email
@@ -76,7 +82,7 @@ export default function HrDashboard({
   };
 
   const handleDeny = (reg: PendingRegistration) => {
-    setPendingRegistrations(prev => prev.map(r => r.id === reg.id ? { ...r, status: 'REJECTED' } : r));
+    onDeny(reg);
     setApprovalLog(prev => [{ id: reg.id, name: reg.fullName, action: 'REJECTED', at: new Date().toLocaleString() }, ...prev]);
     addNotification(`HR denied ${reg.fullName}'s registration. Rejection email simulated.`);
     setTimeout(() => {
