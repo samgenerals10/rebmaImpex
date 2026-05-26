@@ -1,6 +1,6 @@
 // rebma-web/src/views/FinanceDashboard.tsx
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { 
   FileSpreadsheet, FileText, DollarSign, Clipboard, ShieldCheck, Activity, X, ExternalLink
 } from 'lucide-react';

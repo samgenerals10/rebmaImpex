@@ -1,14 +1,15 @@
 // rebma-web/src/views/ProductionDashboard.tsx
 
-import React, { useState } from 'react';
+import { useState } from 'react';
+import type { Dispatch, SetStateAction } from 'react';
 import { FileSpreadsheet, FileText, Factory, Layers, ShieldCheck, Activity, History, Package, BarChart2 } from 'lucide-react';
 import { exportToCSV, exportToPDF } from '../utils/export';
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, LineChart, Line } from 'recharts';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import type { ProductionRequest } from '../types/erp';
 
 interface ProductionDashboardProps {
   productionRequests: ProductionRequest[];
-  setProductionRequests: React.Dispatch<React.SetStateAction<ProductionRequest[]>>;
+  setProductionRequests: Dispatch<SetStateAction<ProductionRequest[]>>;
   activeSubTab: string;
   addNotification: (msg: string) => void;
 }

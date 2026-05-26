@@ -175,7 +175,6 @@ export default function App() {
 
   // Notification system — real toast notifications
   const [notifications, setNotifications] = useState<Array<{ id: string; msg: string; time: string }>>([]);
-  const [showNotifPanel, setShowNotifPanel] = useState(false);
 
   const addNotification = (msg: string) => {
     const id = Date.now().toString();
@@ -186,8 +185,6 @@ export default function App() {
       setNotifications(prev => prev.filter(n => n.id !== id));
     }, 6000);
   };
-
-  const unreadCount = notifications.length;
 
   // Change theme class on document body
   useEffect(() => {
@@ -535,38 +532,6 @@ export default function App() {
     }));
     setDeliveryStatus('DELIVERED');
     addNotification(`GLOBAL ALERT: Order ${id} delivered successfully. Notifying Marketing, Operations, Management, and Finance.`);
-  };
-
-  // Workflow C triggers
-  const handleProductionRequest = (e: React.FormEvent) => {
-    e.preventDefault();
-    const target = e.target as any;
-    const newReq: ProductionRequest = {
-      id: `PRD-${Math.floor(100 + Math.random() * 900)}`,
-      items: [
-        { materialName: target.material.value, quantity: parseInt(target.qty.value) }
-      ],
-      status: 'PENDING_MANAGEMENT'
-    };
-    setProductionRequests(prev => [...prev, newReq]);
-    addNotification(`Production initiated material request ${newReq.id} on credit terms. Kept on hold by Finance.`);
-    target.reset();
-  };
-
-  const handleApproveProductionRequest = (id: string) => {
-    setProductionRequests(prev => prev.map(req => {
-      if (req.id === id) return { ...req, status: 'APPROVED' };
-      return req;
-    }));
-    addNotification(`Management approved factory production line credit release for ${id}.`);
-  };
-
-  const handleIssueReleaseTickets = (id: string) => {
-    setProductionRequests(prev => prev.map(req => {
-      if (req.id === id) return { ...req, status: 'TICKETS_ISSUED' };
-      return req;
-    }));
-    addNotification(`Finance issued raw materials release tickets for ${id}. Operations floor ready for pickup.`);
   };
 
   // Workflow D triggers

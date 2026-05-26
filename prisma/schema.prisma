@@ -34,15 +34,17 @@ model User {
   email                String                 @unique
   passwordHash         String
   fullName             String
-  ghanaCardId          String?                // Ghana Card ID (nullable for CEO signup or social login fallback)
+  ghanaCardId          String?
   department           Department
   status               UserStatus             @default(PENDING_APPROVAL)
-  smsOtp               String?                // Temporary One-Time Password for CEO bypass
+  smsOtp               String?
   smsOtpExpiresAt      DateTime?
   isCeo                Boolean                @default(false)
+  photo                String?                // base64 or URL
+  phone                String?
   createdAt            DateTime               @default(now())
   updatedAt            DateTime               @updatedAt
-  
+
   // Relations
   approvedIncomingGoods IncomingGoods[]       @relation("ApprovedBy")
   createdOrders        Order[]                @relation("CreatedBy")
@@ -50,6 +52,7 @@ model User {
   visitorCheckins      VisitorRecord[]        @relation("CheckedInBy")
   attendanceLogs       AttendanceLog[]
   boardroomMeetings    BoardroomParticipant[]
+  auditEntries         AuditEntry[]
 }
 
 enum GoodsStatus {
@@ -60,6 +63,10 @@ enum GoodsStatus {
 
 model IncomingGoods {
   id            String      @id @default(uuid())
+  productName   String?     // Name of the product
+  productImage  String?     // base64 data URL or storage path
+  goodsCode     String?     // Unique goods code e.g. GC-001204
+  destination   String?     // Intended warehouse/depot
   country       String
   company       String
   quantity      Int
@@ -67,7 +74,7 @@ model IncomingGoods {
   discrepancies String?
   isFaulty      Boolean     @default(false)
   status        GoodsStatus @default(PENDING_MANAGEMENT_APPROVAL)
-  unitPrice     Float?      // Set by Management during approval
+  unitPrice     Float?
   approvedById  String?
   approvedBy    User?       @relation("ApprovedBy", fields: [approvedById], references: [id])
   createdAt     DateTime    @default(now())
@@ -94,7 +101,11 @@ enum OrderStatus {
 
 model Order {
   id           String              @id @default(uuid())
+  ticketNumber String?             @unique // e.g. TKT-10100
   clientName   String
+  productName  String?
+  destination  String?
+  ghanaCard    String?             // Customer Ghana Card ID
   paymentMode  PaymentMode
   totalAmount  Float
   status       OrderStatus         @default(PENDING_FINANCE)
@@ -102,7 +113,7 @@ model Order {
   createdBy    User                @relation("CreatedBy", fields: [createdById], references: [id])
   createdAt    DateTime            @default(now())
   updatedAt    DateTime            @updatedAt
-  
+
   // Relations
   deliveryLogs DeliveryLog[]
   invoices     Invoice[]
@@ -124,7 +135,8 @@ model DeliveryLog {
   orderId           String
   order             Order          @relation(fields: [orderId], references: [id])
   vehicleId         String
-  activeCoordinates Json?          // Current coordinates: { latitude: number, longitude: number, timestamp: number }
+  driverName        String?
+  activeCoordinates Json?
   status            DeliveryStatus @default(ASSIGNED)
   deliveredAt       DateTime?
   createdAt         DateTime       @default(now())
@@ -142,13 +154,15 @@ enum ProductionStatus {
 }
 
 model ProductionRequest {
-  id           String             @id @default(uuid())
-  items        Json               // List of items requested: Array<{ materialName: string, quantity: number }>
-  status       ProductionStatus   @default(PENDING_MANAGEMENT)
-  createdAt    DateTime           @default(now())
-  updatedAt    DateTime           @updatedAt
-  
-  tickets      FulfillmentTicket[]
+  id            String             @id @default(uuid())
+  items         Json               // Array<{ materialName: string, quantity: number }>
+  producedGoods Int?               // Actual goods produced
+  notes         String?
+  status        ProductionStatus   @default(PENDING_MANAGEMENT)
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  tickets       FulfillmentTicket[]
 
   @@index([status])
 }
@@ -159,9 +173,9 @@ model FulfillmentTicket {
   order               Order?             @relation(fields: [orderId], references: [id])
   productionRequestId String?
   productionRequest   ProductionRequest? @relation(fields: [productionRequestId], references: [id])
-  type                String             // "ORDER_FULFILLMENT" or "PRODUCTION_RELEASE"
-  details             Json               // Specific items and quantities to release from warehouse
-  status              String             // "PENDING", "RELEASED", "COMPLETED"
+  type                String             // "ORDER_FULFILLMENT" | "PRODUCTION_RELEASE"
+  details             Json
+  status              String             // "PENDING" | "RELEASED" | "COMPLETED"
   createdAt           DateTime           @default(now())
   updatedAt           DateTime           @updatedAt
 }
@@ -185,9 +199,9 @@ model AttendanceLog {
   checkInTime  DateTime  @default(now())
   checkOutTime DateTime?
   date         DateTime  @db.Date
-  status       String    // "PRESENT", "LATE", "ABSENT"
+  status       String    // "PRESENT" | "LATE" | "ABSENT"
   createdAt    DateTime  @default(now())
-  
+
   @@unique([userId, date])
   @@index([userId, date])
 }
@@ -205,14 +219,59 @@ model VisitorRecord {
   @@index([checkInTime])
 }
 
+// Customer Registry (managed by Marketing)
+model Customer {
+  id          String   @id @default(uuid())
+  name        String
+  phone       String
+  email       String?
+  location    String
+  companyName String
+  ghanaCard   String?  @unique
+  photo       String?
+  registeredAt DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Order history (by name reference)
+  creditHistory Json?   // Array<{ orderId, amount, date, status }>
+
+  @@index([ghanaCard])
+}
+
+// Goods Price Catalog (managed by Management)
+model GoodsPrice {
+  id          String   @id @default(uuid())
+  productName String
+  category    String   // "NEW_GOODS" | "INCOMING_GOODS" | "OLD_GOODS"
+  unitPrice   Float
+  currency    String   @default("GHS") // "GHS" | "USD"
+  setBy       String   // User full name
+  setAt       DateTime @default(now())
+}
+
+// Global Audit Log (cross-department actions)
+model AuditEntry {
+  id          String   @id @default(uuid())
+  action      String
+  department  String
+  performedBy String   // User full name snapshot
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id])
+  details     String
+  timestamp   DateTime @default(now())
+
+  @@index([department])
+  @@index([timestamp])
+}
+
 // Collaborations & Messaging
 model ChatChannel {
   id          String        @id @default(uuid())
-  name        String?       // Channel name (e.g. "General", "Logistics Updates")
-  isDirect    Boolean       @default(false) // True for 1-on-1 private chat
-  department  Department?   // Null for public/direct, set for specific department chat
+  name        String?
+  isDirect    Boolean       @default(false)
+  department  Department?
   createdAt   DateTime      @default(now())
-  
+
   messages    ChatMessage[]
 
   @@index([department])
@@ -237,9 +296,9 @@ model BoardroomMeeting {
   startTime   DateTime
   endTime     DateTime?
   jitsiRoomId String                  @unique
-  minutesDoc  String?                 // Meeting minutes in markdown format
+  minutesDoc  String?
   createdAt   DateTime                @default(now())
-  
+
   participants BoardroomParticipant[]
 
   @@index([startTime])

@@ -1,6 +1,6 @@
 // rebma-web/src/views/SettingsDashboard.tsx
 
-import React, { useState, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { Settings, User, Lock, Trash2, Camera, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 import type { CurrentUser } from '../types/erp';
 

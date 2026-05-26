@@ -1,6 +1,6 @@
 // rebma-web/src/views/HrDashboard.tsx
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, LineChart, Line } from 'recharts';
 import type { Attendance, PendingRegistration, StaffMember } from '../types/erp';
 import { FileSpreadsheet, FileText, Users, Clipboard, ShieldCheck, Activity, UserCheck, UserX } from 'lucide-react';

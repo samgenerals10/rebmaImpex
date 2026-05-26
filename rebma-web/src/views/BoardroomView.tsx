@@ -1,6 +1,6 @@
 // rebma-web/src/views/BoardroomView.tsx
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Video, Users, FileSpreadsheet, FileText, Send, Calendar, Clock } from 'lucide-react';
 import { exportToCSV, exportToPDF } from '../utils/export';
 import type { ChatMessage, BoardroomMeeting, CurrentUser } from '../types/erp';

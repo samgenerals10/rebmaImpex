@@ -1,6 +1,6 @@
 // rebma-web/src/views/ManagementDashboard.tsx
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import type { IncomingGoods, Order, Customer, GoodsPrice, AuditEntry } from '../types/erp';
 import { FileSpreadsheet, FileText, Clipboard, Activity, ShieldCheck, DollarSign, History, Tag, User, ChevronDown, ChevronUp } from 'lucide-react';
 import { exportToCSV, exportToPDF } from '../utils/export';
@@ -79,8 +79,13 @@ export default function ManagementDashboard({
   const statusBadge = (status: string) => {
     const map: Record<string, string> = {
       'APPROVED': 'bg-emerald-100 text-emerald-800',
+      'DELIVERED': 'bg-emerald-100 text-emerald-800',
+      'PROCESSING': 'bg-blue-100 text-blue-800',
+      'OUT_FOR_DELIVERY': 'bg-indigo-100 text-indigo-800',
       'REJECTED': 'bg-rose-100 text-rose-800',
       'PENDING_MANAGEMENT_APPROVAL': 'bg-amber-100 text-amber-800',
+      'PENDING_FINANCE': 'bg-sky-100 text-sky-800',
+      'PENDING_MANAGEMENT': 'bg-amber-100 text-amber-800',
     };
     return map[status] || 'bg-slate-100 text-slate-600';
   };
@@ -492,7 +497,7 @@ export default function ManagementDashboard({
                       <td className="py-2.5 px-3">{item.productName || item.company} / {item.country}</td>
                       <td className="py-2.5 px-3 text-right font-bold">{item.unitPrice ? `GHS ${item.unitPrice}/u` : '—'}</td>
                       <td className="py-2.5 px-3 text-center">
-                        <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${item.status === 'APPROVED' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>{item.status}</span>
+                        <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${statusBadge(item.status)}`}>{item.status}</span>
                       </td>
                       <td className="py-2.5 px-3 text-slate-400 text-[10px]">{item.createdAt || '—'}</td>
                     </tr>
@@ -505,7 +510,7 @@ export default function ManagementDashboard({
                       <td className="py-2.5 px-3">{order.clientName}</td>
                       <td className="py-2.5 px-3 text-right font-bold">GHS {order.totalAmount.toLocaleString()}</td>
                       <td className="py-2.5 px-3 text-center">
-                        <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${['APPROVED', 'DELIVERED', 'PROCESSING'].includes(order.status) ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>{order.status.replace(/_/g, ' ')}</span>
+                        <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${statusBadge(order.status)}`}>{order.status.replace(/_/g, ' ')}</span>
                       </td>
                       <td className="py-2.5 px-3 text-slate-400 text-[10px]">{order.createdAt}</td>
                     </tr>
