@@ -22,6 +22,21 @@ const generatePassword = () => {
   return Array.from({ length: 10 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
 };
 
+const handleSort = (
+  field: string,
+  currentField: string,
+  setField: (f: string) => void,
+  currentDir: 'asc' | 'desc',
+  setDir: (d: 'asc' | 'desc') => void
+) => {
+  if (currentField === field) {
+    setDir(currentDir === 'asc' ? 'desc' : 'asc');
+  } else {
+    setField(field);
+    setDir('asc');
+  }
+};
+
 export default function HrDashboard({
   attendanceList,
   barChartData,
@@ -51,6 +66,14 @@ export default function HrDashboard({
   const [isAttendanceFilterOpen, setIsAttendanceFilterOpen] = useState(false);
   const [selectedAttendanceRows, setSelectedAttendanceRows] = useState<Set<string>>(new Set());
   const [activeAttendanceMenu, setActiveAttendanceMenu] = useState<string | null>(null);
+
+  // Sorting states for Staff
+  const [staffSortField, setStaffSortField] = useState<string>('');
+  const [staffSortDir, setStaffSortDir] = useState<'asc' | 'desc'>('asc');
+
+  // Sorting states for Attendance
+  const [attendanceSortField, setAttendanceSortField] = useState<string>('');
+  const [attendanceSortDir, setAttendanceSortDir] = useState<'asc' | 'desc'>('asc');
 
   // Sync props to local state
   useEffect(() => {
@@ -254,6 +277,28 @@ export default function HrDashboard({
     return matchesSearch && matchesStatus;
   });
 
+  const sortedStaff = [...filteredStaff].sort((a, b) => {
+    if (!staffSortField) return 0;
+    const aVal = a[staffSortField as keyof StaffMember];
+    const bVal = b[staffSortField as keyof StaffMember];
+    if (aVal === undefined || bVal === undefined) return 0;
+    const comp = typeof aVal === 'number' && typeof bVal === 'number'
+      ? aVal - bVal
+      : String(aVal).localeCompare(String(bVal));
+    return staffSortDir === 'asc' ? comp : -comp;
+  });
+
+  const sortedAttendance = [...filteredAttendance].sort((a, b) => {
+    if (!attendanceSortField) return 0;
+    const aVal = a[attendanceSortField as keyof Attendance];
+    const bVal = b[attendanceSortField as keyof Attendance];
+    if (aVal === undefined || bVal === undefined) return 0;
+    const comp = typeof aVal === 'number' && typeof bVal === 'number'
+      ? aVal - bVal
+      : String(aVal).localeCompare(String(bVal));
+    return attendanceSortDir === 'asc' ? comp : -comp;
+  });
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -431,19 +476,59 @@ export default function HrDashboard({
                           className="accent-blue-600 w-3.5 h-3.5"
                         />
                       </th>
-                      <th className="py-3 px-3 whitespace-nowrap">Staff ID</th>
-                      <th className="py-3 px-3 whitespace-nowrap">Name</th>
-                      <th className="py-3 px-3 whitespace-nowrap">Department</th>
-                      <th className="py-3 px-3 whitespace-nowrap">Role</th>
-                      <th className="py-3 px-3 whitespace-nowrap">Ghana Card</th>
-                      <th className="py-3 px-3 whitespace-nowrap">Phone</th>
-                      <th className="py-3 px-3 whitespace-nowrap">Joined</th>
-                      <th className="py-3 px-3 whitespace-nowrap text-center">Status</th>
+                      <th onClick={() => handleSort('id', staffSortField, setStaffSortField, staffSortDir, setStaffSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                        <div className="flex items-center gap-1">
+                          <span>Staff ID</span>
+                          <span className="text-[9px] opacity-70">{staffSortField === 'id' ? (staffSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                        </div>
+                      </th>
+                      <th onClick={() => handleSort('fullName', staffSortField, setStaffSortField, staffSortDir, setStaffSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                        <div className="flex items-center gap-1">
+                          <span>Name</span>
+                          <span className="text-[9px] opacity-70">{staffSortField === 'fullName' ? (staffSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                        </div>
+                      </th>
+                      <th onClick={() => handleSort('department', staffSortField, setStaffSortField, staffSortDir, setStaffSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                        <div className="flex items-center gap-1">
+                          <span>Department</span>
+                          <span className="text-[9px] opacity-70">{staffSortField === 'department' ? (staffSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                        </div>
+                      </th>
+                      <th onClick={() => handleSort('role', staffSortField, setStaffSortField, staffSortDir, setStaffSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                        <div className="flex items-center gap-1">
+                          <span>Role</span>
+                          <span className="text-[9px] opacity-70">{staffSortField === 'role' ? (staffSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                        </div>
+                      </th>
+                      <th onClick={() => handleSort('ghanaCard', staffSortField, setStaffSortField, staffSortDir, setStaffSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                        <div className="flex items-center gap-1">
+                          <span>Ghana Card</span>
+                          <span className="text-[9px] opacity-70">{staffSortField === 'ghanaCard' ? (staffSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                        </div>
+                      </th>
+                      <th onClick={() => handleSort('phone', staffSortField, setStaffSortField, staffSortDir, setStaffSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                        <div className="flex items-center gap-1">
+                          <span>Phone</span>
+                          <span className="text-[9px] opacity-70">{staffSortField === 'phone' ? (staffSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                        </div>
+                      </th>
+                      <th onClick={() => handleSort('joinedAt', staffSortField, setStaffSortField, staffSortDir, setStaffSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                        <div className="flex items-center gap-1">
+                          <span>Joined</span>
+                          <span className="text-[9px] opacity-70">{staffSortField === 'joinedAt' ? (staffSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                        </div>
+                      </th>
+                      <th onClick={() => handleSort('status', staffSortField, setStaffSortField, staffSortDir, setStaffSortDir)} className="py-3 px-3 whitespace-nowrap text-center cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                        <div className="flex items-center justify-center gap-1">
+                          <span>Status</span>
+                          <span className="text-[9px] opacity-70">{staffSortField === 'status' ? (staffSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                        </div>
+                      </th>
                       <th className="py-3 px-5 whitespace-nowrap text-center">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-custom">
-                    {filteredStaff.map(staff => (
+                    {sortedStaff.map(staff => (
                       <tr key={staff.id} className="theme-table-row group">
                         <td className="py-3.5 px-5">
                           <input
@@ -612,15 +697,35 @@ export default function HrDashboard({
                           className="accent-blue-600 w-3.5 h-3.5"
                         />
                       </th>
-                      <th className="py-3 px-3 whitespace-nowrap">Staff ID</th>
-                      <th className="py-3 px-3 whitespace-nowrap">Name</th>
-                      <th className="py-3 px-3 whitespace-nowrap">Check-in Time</th>
-                      <th className="py-3 px-3 whitespace-nowrap text-center">Status</th>
+                      <th onClick={() => handleSort('id', attendanceSortField, setAttendanceSortField, attendanceSortDir, setAttendanceSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                        <div className="flex items-center gap-1">
+                          <span>Staff ID</span>
+                          <span className="text-[9px] opacity-70">{attendanceSortField === 'id' ? (attendanceSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                        </div>
+                      </th>
+                      <th onClick={() => handleSort('fullName', attendanceSortField, setAttendanceSortField, attendanceSortDir, setAttendanceSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                        <div className="flex items-center gap-1">
+                          <span>Name</span>
+                          <span className="text-[9px] opacity-70">{attendanceSortField === 'fullName' ? (attendanceSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                        </div>
+                      </th>
+                      <th onClick={() => handleSort('checkInTime', attendanceSortField, setAttendanceSortField, attendanceSortDir, setAttendanceSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                        <div className="flex items-center gap-1">
+                          <span>Check-in Time</span>
+                          <span className="text-[9px] opacity-70">{attendanceSortField === 'checkInTime' ? (attendanceSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                        </div>
+                      </th>
+                      <th onClick={() => handleSort('status', attendanceSortField, setAttendanceSortField, attendanceSortDir, setAttendanceSortDir)} className="py-3 px-3 whitespace-nowrap text-center cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                        <div className="flex items-center justify-center gap-1">
+                          <span>Status</span>
+                          <span className="text-[9px] opacity-70">{attendanceSortField === 'status' ? (attendanceSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                        </div>
+                      </th>
                       <th className="py-3 px-5 whitespace-nowrap text-center">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-custom">
-                    {filteredAttendance.map(a => (
+                    {sortedAttendance.map(a => (
                       <tr key={a.id} className="theme-table-row group">
                         <td className="py-3.5 px-5">
                           <input

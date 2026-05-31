@@ -14,6 +14,21 @@ interface MarketingDashboardProps {
   addNotification: (msg: string) => void;
 }
 
+const handleSort = (
+  field: string,
+  currentField: string,
+  setField: (f: string) => void,
+  currentDir: 'asc' | 'desc',
+  setDir: (d: 'asc' | 'desc') => void
+) => {
+  if (currentField === field) {
+    setDir(currentDir === 'asc' ? 'desc' : 'asc');
+  } else {
+    setField(field);
+    setDir('asc');
+  }
+};
+
 export default function MarketingDashboard({
   ordersList,
   onCreateOrder,
@@ -63,6 +78,14 @@ export default function MarketingDashboard({
   const [isOrdersFilterOpen, setIsOrdersFilterOpen] = useState(false);
   const [selectedOrdersRows, setSelectedOrdersRows] = useState<Set<string>>(new Set());
   const [activeOrdersMenu, setActiveOrdersMenu] = useState<string | null>(null);
+
+  // Sorting states for Customers
+  const [customerSortField, setCustomerSortField] = useState<string>('');
+  const [customerSortDir, setCustomerSortDir] = useState<'asc' | 'desc'>('asc');
+
+  // Sorting states for Sales Orders
+  const [ordersSortField, setOrdersSortField] = useState<string>('');
+  const [ordersSortDir, setOrdersSortDir] = useState<'asc' | 'desc'>('asc');
 
   // Sync props to local states
   useEffect(() => {
@@ -296,6 +319,28 @@ export default function MarketingDashboard({
                           (o.productName && o.productName.toLowerCase().includes(ordersSearch.toLowerCase()));
     const matchesMode = ordersModeFilter === 'ALL' || o.paymentMode === ordersModeFilter;
     return matchesSearch && matchesMode;
+  });
+
+  const sortedCust = [...filteredCust].sort((a, b) => {
+    if (!customerSortField) return 0;
+    const aVal = a[customerSortField as keyof Customer];
+    const bVal = b[customerSortField as keyof Customer];
+    if (aVal === undefined || bVal === undefined) return 0;
+    const comp = typeof aVal === 'number' && typeof bVal === 'number'
+      ? aVal - bVal
+      : String(aVal).localeCompare(String(bVal));
+    return customerSortDir === 'asc' ? comp : -comp;
+  });
+
+  const sortedOrders = !ordersSortField ? [...filteredOrders].reverse() : [...filteredOrders].sort((a, b) => {
+    if (!ordersSortField) return 0;
+    const aVal = a[ordersSortField as keyof Order];
+    const bVal = b[ordersSortField as keyof Order];
+    if (aVal === undefined || bVal === undefined) return 0;
+    const comp = typeof aVal === 'number' && typeof bVal === 'number'
+      ? aVal - bVal
+      : String(aVal).localeCompare(String(bVal));
+    return ordersSortDir === 'asc' ? comp : -comp;
   });
 
   return (
@@ -672,18 +717,48 @@ export default function MarketingDashboard({
                   />
                 </th>
                 <th className="py-3 px-3 whitespace-nowrap">Photo</th>
-                <th className="py-3 px-3 whitespace-nowrap">Name</th>
-                <th className="py-3 px-3 whitespace-nowrap">Company</th>
-                <th className="py-3 px-3 whitespace-nowrap">Phone</th>
-                <th className="py-3 px-3 whitespace-nowrap">Location</th>
-                <th className="py-3 px-3 whitespace-nowrap">Ghana Card</th>
+                <th onClick={() => handleSort('name', customerSortField, setCustomerSortField, customerSortDir, setCustomerSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                  <div className="flex items-center gap-1">
+                    <span>Name</span>
+                    <span className="text-[9px] opacity-70">{customerSortField === 'name' ? (customerSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                  </div>
+                </th>
+                <th onClick={() => handleSort('companyName', customerSortField, setCustomerSortField, customerSortDir, setCustomerSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                  <div className="flex items-center gap-1">
+                    <span>Company</span>
+                    <span className="text-[9px] opacity-70">{customerSortField === 'companyName' ? (customerSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                  </div>
+                </th>
+                <th onClick={() => handleSort('phone', customerSortField, setCustomerSortField, customerSortDir, setCustomerSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                  <div className="flex items-center gap-1">
+                    <span>Phone</span>
+                    <span className="text-[9px] opacity-70">{customerSortField === 'phone' ? (customerSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                  </div>
+                </th>
+                <th onClick={() => handleSort('location', customerSortField, setCustomerSortField, customerSortDir, setCustomerSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                  <div className="flex items-center gap-1">
+                    <span>Location</span>
+                    <span className="text-[9px] opacity-70">{customerSortField === 'location' ? (customerSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                  </div>
+                </th>
+                <th onClick={() => handleSort('ghanaCard', customerSortField, setCustomerSortField, customerSortDir, setCustomerSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                  <div className="flex items-center gap-1">
+                    <span>Ghana Card</span>
+                    <span className="text-[9px] opacity-70">{customerSortField === 'ghanaCard' ? (customerSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                  </div>
+                </th>
                 <th className="py-3 px-3 text-center whitespace-nowrap">Orders</th>
-                <th className="py-3 px-3 whitespace-nowrap">Registered</th>
+                <th onClick={() => handleSort('registeredAt', customerSortField, setCustomerSortField, customerSortDir, setCustomerSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                  <div className="flex items-center gap-1">
+                    <span>Registered</span>
+                    <span className="text-[9px] opacity-70">{customerSortField === 'registeredAt' ? (customerSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                  </div>
+                </th>
                 <th className="py-3 px-5 text-center whitespace-nowrap">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-custom">
-              {filteredCust.map(cust => (
+              {sortedCust.map(cust => (
                 <tr key={cust.id} className="theme-table-row group cursor-pointer" onClick={() => setSelectedCustomer(cust)}>
                   <td className="py-3.5 px-5" onClick={e => e.stopPropagation()}>
                     <input
@@ -806,20 +881,65 @@ export default function MarketingDashboard({
                     className="accent-blue-600 w-3.5 h-3.5"
                   />
                 </th>
-                <th className="py-3 px-3 whitespace-nowrap">Ticket #</th>
-                <th className="py-3 px-3 whitespace-nowrap">Order ID</th>
-                <th className="py-3 px-3 whitespace-nowrap">Client</th>
-                <th className="py-3 px-3 whitespace-nowrap">Product</th>
-                <th className="py-3 px-3 whitespace-nowrap">Destination</th>
-                <th className="py-3 px-3 whitespace-nowrap">Mode</th>
-                <th className="py-3 px-3 text-right whitespace-nowrap">Amount</th>
-                <th className="py-3 px-3 text-center whitespace-nowrap">Status</th>
-                <th className="py-3 px-3 whitespace-nowrap">Submitted</th>
+                <th onClick={() => handleSort('ticketNumber', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                  <div className="flex items-center gap-1">
+                    <span>Ticket #</span>
+                    <span className="text-[9px] opacity-70">{ordersSortField === 'ticketNumber' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                  </div>
+                </th>
+                <th onClick={() => handleSort('id', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                  <div className="flex items-center gap-1">
+                    <span>Order ID</span>
+                    <span className="text-[9px] opacity-70">{ordersSortField === 'id' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                  </div>
+                </th>
+                <th onClick={() => handleSort('clientName', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                  <div className="flex items-center gap-1">
+                    <span>Client</span>
+                    <span className="text-[9px] opacity-70">{ordersSortField === 'clientName' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                  </div>
+                </th>
+                <th onClick={() => handleSort('productName', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                  <div className="flex items-center gap-1">
+                    <span>Product</span>
+                    <span className="text-[9px] opacity-70">{ordersSortField === 'productName' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                  </div>
+                </th>
+                <th onClick={() => handleSort('destination', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                  <div className="flex items-center gap-1">
+                    <span>Destination</span>
+                    <span className="text-[9px] opacity-70">{ordersSortField === 'destination' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                  </div>
+                </th>
+                <th onClick={() => handleSort('paymentMode', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                  <div className="flex items-center gap-1">
+                    <span>Mode</span>
+                    <span className="text-[9px] opacity-70">{ordersSortField === 'paymentMode' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                  </div>
+                </th>
+                <th onClick={() => handleSort('totalAmount', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 text-right whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                  <div className="flex items-center justify-end gap-1">
+                    <span>Amount</span>
+                    <span className="text-[9px] opacity-70">{ordersSortField === 'totalAmount' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                  </div>
+                </th>
+                <th onClick={() => handleSort('status', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 text-center whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                  <div className="flex items-center justify-center gap-1">
+                    <span>Status</span>
+                    <span className="text-[9px] opacity-70">{ordersSortField === 'status' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                  </div>
+                </th>
+                <th onClick={() => handleSort('createdAt', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                  <div className="flex items-center gap-1">
+                    <span>Submitted</span>
+                    <span className="text-[9px] opacity-70">{ordersSortField === 'createdAt' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                  </div>
+                </th>
                 <th className="py-3 px-5 text-center whitespace-nowrap">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-custom">
-              {filteredOrders.map(order => (
+              {sortedOrders.map(order => (
                 <tr key={order.id} className="theme-table-row group cursor-pointer animate-fade-in-up" onClick={() => setSelectedOrder(order)}>
                   <td className="py-3 px-5" onClick={e => e.stopPropagation()}>
                     <input

@@ -29,6 +29,21 @@ const seedDeliveries: DeliveryRecord[] = [
   { id: 'DEL-003', orderId: 'ORD-101', clientName: 'Inter-Ghana Foods Ltd', destination: 'Tema Port Depot', driverName: 'Kofi Acheampong', driverId: 'DRV-404', dispatchedAt: '2026-05-25 07:30', status: 'IN_TRANSIT' },
 ];
 
+const handleSort = (
+  field: string,
+  currentField: string,
+  setField: (f: string) => void,
+  currentDir: 'asc' | 'desc',
+  setDir: (d: 'asc' | 'desc') => void
+) => {
+  if (currentField === field) {
+    setDir(currentDir === 'asc' ? 'desc' : 'asc');
+  } else {
+    setField(field);
+    setDir('asc');
+  }
+};
+
 export default function DispatchDashboard({
   activeCoordinates,
   deliveryStatus,
@@ -38,6 +53,10 @@ export default function DispatchDashboard({
 
   // Local deliveries state to support adding/duplicating/deleting rows
   const [localDeliveries, setLocalDeliveries] = useState<DeliveryRecord[]>(seedDeliveries);
+
+  // Sorting states
+  const [delSortField, setDelSortField] = useState<string>('');
+  const [delSortDir, setDelSortDir] = useState<'asc' | 'desc'>('asc');
 
   // Table interactive states: Delivery History Log
   const [dispatchSearch, setDispatchSearch] = useState('');
@@ -137,6 +156,18 @@ export default function DispatchDashboard({
                           d.orderId.toLowerCase().includes(dispatchSearch.toLowerCase());
     const matchesStatus = dispatchStatusFilter === 'ALL' || d.status === dispatchStatusFilter;
     return matchesSearch && matchesStatus;
+  });
+
+  // Sorting computed list
+  const sortedDeliveries = [...filteredDeliveries].sort((a, b) => {
+    if (!delSortField) return 0;
+    const aVal = a[delSortField as keyof DeliveryRecord];
+    const bVal = b[delSortField as keyof DeliveryRecord];
+    if (aVal === undefined || bVal === undefined) return 0;
+    const comp = typeof aVal === 'number' && typeof bVal === 'number'
+      ? aVal - bVal
+      : String(aVal).localeCompare(String(bVal));
+    return delSortDir === 'asc' ? comp : -comp;
   });
 
   return (
@@ -357,19 +388,59 @@ export default function DispatchDashboard({
                         className="accent-blue-600 w-3.5 h-3.5"
                       />
                     </th>
-                    <th className="py-3 px-3 whitespace-nowrap">Delivery ID</th>
-                    <th className="py-3 px-3 whitespace-nowrap">Order ID</th>
-                    <th className="py-3 px-3 whitespace-nowrap">Client</th>
-                    <th className="py-3 px-3 whitespace-nowrap">Destination</th>
-                    <th className="py-3 px-3 whitespace-nowrap">Driver</th>
-                    <th className="py-3 px-3 whitespace-nowrap">Dispatched</th>
-                    <th className="py-3 px-3 whitespace-nowrap">Delivered</th>
-                    <th className="py-3 px-3 text-center whitespace-nowrap">Status</th>
+                    <th onClick={() => handleSort('id', delSortField, setDelSortField, delSortDir, setDelSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                      <div className="flex items-center gap-1">
+                        <span>Delivery ID</span>
+                        <span className="text-[9px] opacity-70">{delSortField === 'id' ? (delSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                      </div>
+                    </th>
+                    <th onClick={() => handleSort('orderId', delSortField, setDelSortField, delSortDir, setDelSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                      <div className="flex items-center gap-1">
+                        <span>Order ID</span>
+                        <span className="text-[9px] opacity-70">{delSortField === 'orderId' ? (delSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                      </div>
+                    </th>
+                    <th onClick={() => handleSort('clientName', delSortField, setDelSortField, delSortDir, setDelSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                      <div className="flex items-center gap-1">
+                        <span>Client</span>
+                        <span className="text-[9px] opacity-70">{delSortField === 'clientName' ? (delSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                      </div>
+                    </th>
+                    <th onClick={() => handleSort('destination', delSortField, setDelSortField, delSortDir, setDelSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                      <div className="flex items-center gap-1">
+                        <span>Destination</span>
+                        <span className="text-[9px] opacity-70">{delSortField === 'destination' ? (delSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                      </div>
+                    </th>
+                    <th onClick={() => handleSort('driverName', delSortField, setDelSortField, delSortDir, setDelSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                      <div className="flex items-center gap-1">
+                        <span>Driver</span>
+                        <span className="text-[9px] opacity-70">{delSortField === 'driverName' ? (delSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                      </div>
+                    </th>
+                    <th onClick={() => handleSort('dispatchedAt', delSortField, setDelSortField, delSortDir, setDelSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                      <div className="flex items-center gap-1">
+                        <span>Dispatched</span>
+                        <span className="text-[9px] opacity-70">{delSortField === 'dispatchedAt' ? (delSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                      </div>
+                    </th>
+                    <th onClick={() => handleSort('deliveredAt', delSortField, setDelSortField, delSortDir, setDelSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                      <div className="flex items-center gap-1">
+                        <span>Delivered</span>
+                        <span className="text-[9px] opacity-70">{delSortField === 'deliveredAt' ? (delSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                      </div>
+                    </th>
+                    <th onClick={() => handleSort('status', delSortField, setDelSortField, delSortDir, setDelSortDir)} className="py-3 px-3 text-center whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                      <div className="flex items-center justify-center gap-1">
+                        <span>Status</span>
+                        <span className="text-[9px] opacity-70">{delSortField === 'status' ? (delSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                      </div>
+                    </th>
                     <th className="py-3 px-5 text-center whitespace-nowrap">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-custom">
-                  {filteredDeliveries.map(del => (
+                  {sortedDeliveries.map(del => (
                     <tr key={del.id} className="theme-table-row group">
                       <td className="py-3.5 px-5">
                         <input

@@ -20,6 +20,21 @@ interface FinanceDashboardProps {
   addNotification: (msg: string) => void;
 }
 
+const handleSort = (
+  field: string,
+  currentField: string,
+  setField: (f: string) => void,
+  currentDir: 'asc' | 'desc',
+  setDir: (d: 'asc' | 'desc') => void
+) => {
+  if (currentField === field) {
+    setDir(currentDir === 'asc' ? 'desc' : 'asc');
+  } else {
+    setField(field);
+    setDir('asc');
+  }
+};
+
 export default function FinanceDashboard({
   ordersList,
   setOrdersList,
@@ -56,6 +71,14 @@ export default function FinanceDashboard({
   const [isWarehouseFilterOpen, setIsWarehouseFilterOpen] = useState(false);
   const [selectedWarehouseRows, setSelectedWarehouseRows] = useState<Set<string>>(new Set());
   const [activeWarehouseMenu, setActiveWarehouseMenu] = useState<string | null>(null);
+
+  // Sorting states for Payments
+  const [paymentsSortField, setPaymentsSortField] = useState<string>('');
+  const [paymentsSortDir, setPaymentsSortDir] = useState<'asc' | 'desc'>('asc');
+
+  // Sorting states for Warehouse (Requisitions)
+  const [warehouseSortField, setWarehouseSortField] = useState<string>('');
+  const [warehouseSortDir, setWarehouseSortDir] = useState<'asc' | 'desc'>('asc');
 
   // Sync props to local states
   useEffect(() => {
@@ -266,6 +289,44 @@ export default function FinanceDashboard({
                           r.items.some(i => i.materialName.toLowerCase().includes(warehouseSearch.toLowerCase()));
     const matchesStatus = warehouseStatusFilter === 'ALL' || r.status === warehouseStatusFilter;
     return matchesSearch && matchesStatus;
+  });
+
+  const sortedPayments = [...filteredPayments].sort((a, b) => {
+    if (!paymentsSortField) return 0;
+    const aVal = a[paymentsSortField as keyof FinancePayment];
+    const bVal = b[paymentsSortField as keyof FinancePayment];
+    if (aVal === undefined || bVal === undefined) return 0;
+    const comp = typeof aVal === 'number' && typeof bVal === 'number'
+      ? aVal - bVal
+      : String(aVal).localeCompare(String(bVal));
+    return paymentsSortDir === 'asc' ? comp : -comp;
+  });
+
+  const sortedWarehouse = !warehouseSortField ? [...filteredWarehouse].reverse() : [...filteredWarehouse].sort((a, b) => {
+    if (!warehouseSortField) return 0;
+    let aVal: any;
+    let bVal: any;
+    if (warehouseSortField === 'id') {
+      aVal = a.id;
+      bVal = b.id;
+    } else if (warehouseSortField === 'createdAt') {
+      aVal = a.createdAt || '';
+      bVal = b.createdAt || '';
+    } else if (warehouseSortField === 'status') {
+      aVal = a.status;
+      bVal = b.status;
+    } else if (warehouseSortField === 'materialName') {
+      aVal = a.items[0]?.materialName || '';
+      bVal = b.items[0]?.materialName || '';
+    } else if (warehouseSortField === 'quantity') {
+      aVal = a.items.reduce((s, i) => s + i.quantity, 0);
+      bVal = b.items.reduce((s, i) => s + i.quantity, 0);
+    }
+    if (aVal === undefined || bVal === undefined) return 0;
+    const comp = typeof aVal === 'number' && typeof bVal === 'number'
+      ? aVal - bVal
+      : String(aVal).localeCompare(String(bVal));
+    return warehouseSortDir === 'asc' ? comp : -comp;
   });
 
   return (
@@ -600,18 +661,53 @@ export default function FinanceDashboard({
                         className="accent-blue-600 w-3.5 h-3.5"
                       />
                     </th>
-                    <th className="py-3 px-3 whitespace-nowrap">Receipt #</th>
-                    <th className="py-3 px-3 whitespace-nowrap">Client</th>
-                    <th className="py-3 px-3 whitespace-nowrap">Type</th>
-                    <th className="py-3 px-3 whitespace-nowrap">Mode</th>
-                    <th className="py-3 px-3 whitespace-nowrap">Settled Order</th>
-                    <th className="py-3 px-3 text-right whitespace-nowrap">Amount</th>
-                    <th className="py-3 px-3 whitespace-nowrap">Date</th>
+                    <th onClick={() => handleSort('id', paymentsSortField, setPaymentsSortField, paymentsSortDir, setPaymentsSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                      <div className="flex items-center gap-1">
+                        <span>Receipt #</span>
+                        <span className="text-[9px] opacity-70">{paymentsSortField === 'id' ? (paymentsSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                      </div>
+                    </th>
+                    <th onClick={() => handleSort('clientName', paymentsSortField, setPaymentsSortField, paymentsSortDir, setPaymentsSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                      <div className="flex items-center gap-1">
+                        <span>Client</span>
+                        <span className="text-[9px] opacity-70">{paymentsSortField === 'clientName' ? (paymentsSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                      </div>
+                    </th>
+                    <th onClick={() => handleSort('paymentType', paymentsSortField, setPaymentsSortField, paymentsSortDir, setPaymentsSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                      <div className="flex items-center gap-1">
+                        <span>Type</span>
+                        <span className="text-[9px] opacity-70">{paymentsSortField === 'paymentType' ? (paymentsSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                      </div>
+                    </th>
+                    <th onClick={() => handleSort('paymentMode', paymentsSortField, setPaymentsSortField, paymentsSortDir, setPaymentsSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                      <div className="flex items-center gap-1">
+                        <span>Mode</span>
+                        <span className="text-[9px] opacity-70">{paymentsSortField === 'paymentMode' ? (paymentsSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                      </div>
+                    </th>
+                    <th onClick={() => handleSort('orderId', paymentsSortField, setPaymentsSortField, paymentsSortDir, setPaymentsSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                      <div className="flex items-center gap-1">
+                        <span>Settled Order</span>
+                        <span className="text-[9px] opacity-70">{paymentsSortField === 'orderId' ? (paymentsSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                      </div>
+                    </th>
+                    <th onClick={() => handleSort('amount', paymentsSortField, setPaymentsSortField, paymentsSortDir, setPaymentsSortDir)} className="py-3 px-3 text-right whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                      <div className="flex items-center justify-end gap-1">
+                        <span>Amount</span>
+                        <span className="text-[9px] opacity-70">{paymentsSortField === 'amount' ? (paymentsSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                      </div>
+                    </th>
+                    <th onClick={() => handleSort('createdAt', paymentsSortField, setPaymentsSortField, paymentsSortDir, setPaymentsSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                      <div className="flex items-center gap-1">
+                        <span>Date</span>
+                        <span className="text-[9px] opacity-70">{paymentsSortField === 'createdAt' ? (paymentsSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                      </div>
+                    </th>
                     <th className="py-3 px-5 text-center whitespace-nowrap">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-custom">
-                  {filteredPayments.map(pay => (
+                  {sortedPayments.map(pay => (
                     <tr
                       key={pay.id}
                       className="theme-table-row group cursor-pointer"
@@ -758,16 +854,41 @@ export default function FinanceDashboard({
                         className="accent-blue-600 w-3.5 h-3.5"
                       />
                     </th>
-                    <th className="py-3 px-3 whitespace-nowrap">Requisition ID</th>
-                    <th className="py-3 px-3 whitespace-nowrap">Materials</th>
-                    <th className="py-3 px-3 text-right whitespace-nowrap">Total Units</th>
-                    <th className="py-3 px-3 text-center whitespace-nowrap">Status</th>
-                    <th className="py-3 px-3 whitespace-nowrap">Date</th>
+                    <th onClick={() => handleSort('id', warehouseSortField, setWarehouseSortField, warehouseSortDir, setWarehouseSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                      <div className="flex items-center gap-1">
+                        <span>Requisition ID</span>
+                        <span className="text-[9px] opacity-70">{warehouseSortField === 'id' ? (warehouseSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                      </div>
+                    </th>
+                    <th onClick={() => handleSort('materialName', warehouseSortField, setWarehouseSortField, warehouseSortDir, setWarehouseSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                      <div className="flex items-center gap-1">
+                        <span>Materials</span>
+                        <span className="text-[9px] opacity-70">{warehouseSortField === 'materialName' ? (warehouseSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                      </div>
+                    </th>
+                    <th onClick={() => handleSort('quantity', warehouseSortField, setWarehouseSortField, warehouseSortDir, setWarehouseSortDir)} className="py-3 px-3 text-right whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                      <div className="flex items-center justify-end gap-1">
+                        <span>Total Units</span>
+                        <span className="text-[9px] opacity-70">{warehouseSortField === 'quantity' ? (warehouseSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                      </div>
+                    </th>
+                    <th onClick={() => handleSort('status', warehouseSortField, setWarehouseSortField, warehouseSortDir, setWarehouseSortDir)} className="py-3 px-3 text-center whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                      <div className="flex items-center justify-center gap-1">
+                        <span>Status</span>
+                        <span className="text-[9px] opacity-70">{warehouseSortField === 'status' ? (warehouseSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                      </div>
+                    </th>
+                    <th onClick={() => handleSort('createdAt', warehouseSortField, setWarehouseSortField, warehouseSortDir, setWarehouseSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                      <div className="flex items-center gap-1">
+                        <span>Date</span>
+                        <span className="text-[9px] opacity-70">{warehouseSortField === 'createdAt' ? (warehouseSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                      </div>
+                    </th>
                     <th className="py-3 px-5 text-center whitespace-nowrap">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-custom">
-                  {filteredWarehouse.map(req => (
+                  {sortedWarehouse.map(req => (
                     <tr key={req.id} className="theme-table-row group">
                       <td className="py-3.5 px-5">
                         <input

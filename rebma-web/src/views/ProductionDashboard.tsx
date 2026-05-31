@@ -22,6 +22,21 @@ const initialWipStock = [
   { id: 'WIP-004', productName: 'Shea Butter Cream', stage: 'Awaiting Dispatch', qty: 340, updatedAt: '2026-05-24 17:00' },
 ];
 
+const handleSort = (
+  field: string,
+  currentField: string,
+  setField: (f: string) => void,
+  currentDir: 'asc' | 'desc',
+  setDir: (d: 'asc' | 'desc') => void
+) => {
+  if (currentField === field) {
+    setDir(currentDir === 'asc' ? 'desc' : 'asc');
+  } else {
+    setField(field);
+    setDir('asc');
+  }
+};
+
 export default function ProductionDashboard({
   productionRequests,
   setProductionRequests,
@@ -48,6 +63,18 @@ export default function ProductionDashboard({
   const [isHistoryFilterOpen, setIsHistoryFilterOpen] = useState(false);
   const [selectedHistoryRows, setSelectedHistoryRows] = useState<Set<string>>(new Set());
   const [activeHistoryMenu, setActiveHistoryMenu] = useState<string | null>(null);
+
+  // Sorting states for Materials
+  const [materialsSortField, setMaterialsSortField] = useState<string>('');
+  const [materialsSortDir, setMaterialsSortDir] = useState<'asc' | 'desc'>('asc');
+
+  // Sorting states for WIP
+  const [wipSortField, setWipSortField] = useState<string>('');
+  const [wipSortDir, setWipSortDir] = useState<'asc' | 'desc'>('asc');
+
+  // Sorting states for History
+  const [historySortField, setHistorySortField] = useState<string>('');
+  const [historySortDir, setHistorySortDir] = useState<'asc' | 'desc'>('asc');
 
   const [newMaterial, setNewMaterial] = useState('');
   const [newQty, setNewQty] = useState('');
@@ -300,6 +327,59 @@ export default function ProductionDashboard({
     return matchesSearch && matchesStatus;
   });
 
+  const sortedMaterials = [...filteredMaterials].sort((a, b) => {
+    if (!materialsSortField) return 0;
+    let aVal: any = a[materialsSortField as keyof typeof a];
+    let bVal: any = b[materialsSortField as keyof typeof b];
+    if (materialsSortField === 'id') {
+      aVal = a.reqId;
+      bVal = b.reqId;
+    }
+    if (aVal === undefined || bVal === undefined) return 0;
+    const comp = typeof aVal === 'number' && typeof bVal === 'number'
+      ? aVal - bVal
+      : String(aVal).localeCompare(String(bVal));
+    return materialsSortDir === 'asc' ? comp : -comp;
+  });
+
+  const sortedWip = [...filteredWip].sort((a, b) => {
+    if (!wipSortField) return 0;
+    const aVal = a[wipSortField as keyof typeof a];
+    const bVal = b[wipSortField as keyof typeof b];
+    if (aVal === undefined || bVal === undefined) return 0;
+    const comp = typeof aVal === 'number' && typeof bVal === 'number'
+      ? aVal - bVal
+      : String(aVal).localeCompare(String(bVal));
+    return wipSortDir === 'asc' ? comp : -comp;
+  });
+
+  const sortedHistory = [...filteredHistory].sort((a, b) => {
+    if (!historySortField) return 0;
+    let aVal: any;
+    let bVal: any;
+    if (historySortField === 'id') {
+      aVal = a.id;
+      bVal = b.id;
+    } else if (historySortField === 'createdAt') {
+      aVal = a.createdAt || '';
+      bVal = b.createdAt || '';
+    } else if (historySortField === 'status') {
+      aVal = a.status;
+      bVal = b.status;
+    } else if (historySortField === 'materialName') {
+      aVal = a.items[0]?.materialName || '';
+      bVal = b.items[0]?.materialName || '';
+    } else if (historySortField === 'quantity') {
+      aVal = a.items[0]?.quantity || 0;
+      bVal = b.items[0]?.quantity || 0;
+    }
+    if (aVal === undefined || bVal === undefined) return 0;
+    const comp = typeof aVal === 'number' && typeof bVal === 'number'
+      ? aVal - bVal
+      : String(aVal).localeCompare(String(bVal));
+    return historySortDir === 'asc' ? comp : -comp;
+  });
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -467,16 +547,41 @@ export default function ProductionDashboard({
                         className="accent-blue-600 w-3.5 h-3.5"
                       />
                     </th>
-                    <th className="py-3 px-3 whitespace-nowrap">Req. ID</th>
-                    <th className="py-3 px-3 whitespace-nowrap">Material Name</th>
-                    <th className="py-3 px-3 text-right whitespace-nowrap">Quantity</th>
-                    <th className="py-3 px-3 text-center whitespace-nowrap">Status</th>
-                    <th className="py-3 px-3 whitespace-nowrap">Submitted</th>
+                    <th onClick={() => handleSort('id', materialsSortField, setMaterialsSortField, materialsSortDir, setMaterialsSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                      <div className="flex items-center gap-1">
+                        <span>Req. ID</span>
+                        <span className="text-[9px] opacity-70">{materialsSortField === 'id' ? (materialsSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                      </div>
+                    </th>
+                    <th onClick={() => handleSort('materialName', materialsSortField, setMaterialsSortField, materialsSortDir, setMaterialsSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                      <div className="flex items-center gap-1">
+                        <span>Material Name</span>
+                        <span className="text-[9px] opacity-70">{materialsSortField === 'materialName' ? (materialsSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                      </div>
+                    </th>
+                    <th onClick={() => handleSort('quantity', materialsSortField, setMaterialsSortField, materialsSortDir, setMaterialsSortDir)} className="py-3 px-3 text-right whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                      <div className="flex items-center justify-end gap-1">
+                        <span>Quantity</span>
+                        <span className="text-[9px] opacity-70">{materialsSortField === 'quantity' ? (materialsSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                      </div>
+                    </th>
+                    <th onClick={() => handleSort('status', materialsSortField, setMaterialsSortField, materialsSortDir, setMaterialsSortDir)} className="py-3 px-3 text-center whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                      <div className="flex items-center justify-center gap-1">
+                        <span>Status</span>
+                        <span className="text-[9px] opacity-70">{materialsSortField === 'status' ? (materialsSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                      </div>
+                    </th>
+                    <th onClick={() => handleSort('createdAt', materialsSortField, setMaterialsSortField, materialsSortDir, setMaterialsSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                      <div className="flex items-center gap-1">
+                        <span>Submitted</span>
+                        <span className="text-[9px] opacity-70">{materialsSortField === 'createdAt' ? (materialsSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                      </div>
+                    </th>
                     <th className="py-3 px-5 text-center whitespace-nowrap">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-custom">
-                  {filteredMaterials.map(m => (
+                  {sortedMaterials.map(m => (
                     <tr key={m.flatId} className="theme-table-row group">
                       <td className="py-3.5 px-5">
                         <input
@@ -601,16 +706,41 @@ export default function ProductionDashboard({
                         className="accent-blue-600 w-3.5 h-3.5"
                       />
                     </th>
-                    <th className="py-3 px-3 whitespace-nowrap">Item ID</th>
-                    <th className="py-3 px-3 whitespace-nowrap">Product Name</th>
-                    <th className="py-3 px-3 whitespace-nowrap">Production Stage</th>
-                    <th className="py-3 px-3 text-right whitespace-nowrap">Qty (Units)</th>
-                    <th className="py-3 px-3 whitespace-nowrap">Last Updated</th>
+                    <th onClick={() => handleSort('id', wipSortField, setWipSortField, wipSortDir, setWipSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                      <div className="flex items-center gap-1">
+                        <span>Item ID</span>
+                        <span className="text-[9px] opacity-70">{wipSortField === 'id' ? (wipSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                      </div>
+                    </th>
+                    <th onClick={() => handleSort('productName', wipSortField, setWipSortField, wipSortDir, setWipSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                      <div className="flex items-center gap-1">
+                        <span>Product Name</span>
+                        <span className="text-[9px] opacity-70">{wipSortField === 'productName' ? (wipSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                      </div>
+                    </th>
+                    <th onClick={() => handleSort('stage', wipSortField, setWipSortField, wipSortDir, setWipSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                      <div className="flex items-center gap-1">
+                        <span>Production Stage</span>
+                        <span className="text-[9px] opacity-70">{wipSortField === 'stage' ? (wipSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                      </div>
+                    </th>
+                    <th onClick={() => handleSort('qty', wipSortField, setWipSortField, wipSortDir, setWipSortDir)} className="py-3 px-3 text-right whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                      <div className="flex items-center justify-end gap-1">
+                        <span>Qty (Units)</span>
+                        <span className="text-[9px] opacity-70">{wipSortField === 'qty' ? (wipSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                      </div>
+                    </th>
+                    <th onClick={() => handleSort('updatedAt', wipSortField, setWipSortField, wipSortDir, setWipSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                      <div className="flex items-center gap-1">
+                        <span>Last Updated</span>
+                        <span className="text-[9px] opacity-70">{wipSortField === 'updatedAt' ? (wipSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                      </div>
+                    </th>
                     <th className="py-3 px-5 text-center whitespace-nowrap">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-custom">
-                  {filteredWip.map(item => (
+                  {sortedWip.map(item => (
                     <tr key={item.id} className="theme-table-row group">
                       <td className="py-3.5 px-5">
                         <input
@@ -728,16 +858,41 @@ export default function ProductionDashboard({
                         className="accent-blue-600 w-3.5 h-3.5"
                       />
                     </th>
-                    <th className="py-3 px-3 whitespace-nowrap">Req. ID</th>
-                    <th className="py-3 px-3 whitespace-nowrap">Materials</th>
-                    <th className="py-3 px-3 text-right whitespace-nowrap">Total Units</th>
-                    <th className="py-3 px-3 text-center whitespace-nowrap">Status</th>
-                    <th className="py-3 px-3 whitespace-nowrap">Date</th>
+                    <th onClick={() => handleSort('id', historySortField, setHistorySortField, historySortDir, setHistorySortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                      <div className="flex items-center gap-1">
+                        <span>Req. ID</span>
+                        <span className="text-[9px] opacity-70">{historySortField === 'id' ? (historySortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                      </div>
+                    </th>
+                    <th onClick={() => handleSort('materialName', historySortField, setHistorySortField, historySortDir, setHistorySortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                      <div className="flex items-center gap-1">
+                        <span>Materials</span>
+                        <span className="text-[9px] opacity-70">{historySortField === 'materialName' ? (historySortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                      </div>
+                    </th>
+                    <th onClick={() => handleSort('quantity', historySortField, setHistorySortField, historySortDir, setHistorySortDir)} className="py-3 px-3 text-right whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                      <div className="flex items-center justify-end gap-1">
+                        <span>Total Units</span>
+                        <span className="text-[9px] opacity-70">{historySortField === 'quantity' ? (historySortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                      </div>
+                    </th>
+                    <th onClick={() => handleSort('status', historySortField, setHistorySortField, historySortDir, setHistorySortDir)} className="py-3 px-3 text-center whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                      <div className="flex items-center justify-center gap-1">
+                        <span>Status</span>
+                        <span className="text-[9px] opacity-70">{historySortField === 'status' ? (historySortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                      </div>
+                    </th>
+                    <th onClick={() => handleSort('createdAt', historySortField, setHistorySortField, historySortDir, setHistorySortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                      <div className="flex items-center gap-1">
+                        <span>Date</span>
+                        <span className="text-[9px] opacity-70">{historySortField === 'createdAt' ? (historySortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                      </div>
+                    </th>
                     <th className="py-3 px-5 text-center whitespace-nowrap">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-custom">
-                  {[...filteredHistory].reverse().map(req => (
+                  {sortedHistory.map(req => (
                     <tr key={req.id} className="theme-table-row group">
                       <td className="py-3.5 px-5">
                         <input
