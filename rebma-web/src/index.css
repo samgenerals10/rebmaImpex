@@ -21,6 +21,10 @@
   --box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
   --glass-border: 1px solid #f1f3f4;
   --sidebar-curve: 32px;
+  --bg-table-strip: #ffffff;
+  --bg-table-header: #f8fafc;
+  --border-table: #dadce0;
+  --hover-table-row: #f1f5f9;
 }
 
 /* Theme: Seven (Windows 7 Aero Glass) */
@@ -42,6 +46,10 @@
   --box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
   --glass-border: 1px solid rgba(255, 255, 255, 0.25);
   --sidebar-curve: 16px;
+  --bg-table-strip: rgba(255, 255, 255, 0.12);
+  --bg-table-header: rgba(255, 255, 255, 0.22);
+  --border-table: rgba(255, 255, 255, 0.2);
+  --hover-table-row: rgba(255, 255, 255, 0.3);
 }
 
 /* Theme: Royal Navy */
@@ -63,6 +71,10 @@
   --box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
   --glass-border: 1px solid #1e293b;
   --sidebar-curve: 24px;
+  --bg-table-strip: #0b0f19;
+  --bg-table-header: #1e293b;
+  --border-table: #1e293b;
+  --hover-table-row: #1e293b;
 }
 
 /* Theme: Emerald Mint */
@@ -84,6 +96,10 @@
   --box-shadow: 0 4px 20px 0 rgba(16, 185, 129, 0.1);
   --glass-border: 1px solid #115e59;
   --sidebar-curve: 20px;
+  --bg-table-strip: #030d0c;
+  --bg-table-header: #0b2e2a;
+  --border-table: #115e59;
+  --hover-table-row: #0e3b36;
 }
 
 /* Theme: Sunset Glow */
@@ -105,6 +121,10 @@
   --box-shadow: 0 4px 20px 0 rgba(217, 70, 239, 0.1);
   --glass-border: 1px solid #4a044e;
   --sidebar-curve: 24px;
+  --bg-table-strip: #0e0512;
+  --bg-table-header: #2e1035;
+  --border-table: #4a044e;
+  --hover-table-row: #3d1446;
 }
 
 /* Theme: Forest Moss */
@@ -126,6 +146,10 @@
   --box-shadow: 0 4px 20px 0 rgba(34, 197, 94, 0.1);
   --glass-border: 1px solid #166534;
   --sidebar-curve: 20px;
+  --bg-table-strip: #0c130d;
+  --bg-table-header: #1e3322;
+  --border-table: #166534;
+  --hover-table-row: #27422c;
 }
 
 /* Theme: Rebma Ghana (Logo matching theme) */
@@ -147,6 +171,10 @@
   --box-shadow: 0 4px 20px 0 rgba(2, 152, 208, 0.1);
   --glass-border: 1px solid #0c6a3f;
   --sidebar-curve: 24px;
+  --bg-table-strip: #02120d;
+  --bg-table-header: #0c3e2b;
+  --border-table: #0c6a3f;
+  --hover-table-row: #0f4f37;
 }
 
 body {
@@ -328,5 +356,40 @@ select option {
   color: #0f172a !important;
   background-color: #ffffff !important;
 }
+
+/* Custom Table Styles */
+.theme-table-wrapper {
+  background-color: var(--bg-table-strip);
+  border: var(--glass-border);
+  border-radius: var(--border-radius-card, 16px);
+  overflow: hidden;
+  margin-bottom: 1.5rem;
+}
+
+.theme-table-toolbar {
+  background-color: var(--bg-table-header);
+  border-bottom: 1px solid var(--border-table);
+}
+
+.theme-table-header-row {
+  background-color: rgba(255, 255, 255, 0.02);
+  border-bottom: 1px solid var(--border-table);
+}
+
+.theme-table-row {
+  background-color: var(--bg-table-strip);
+  border-bottom: 1px solid var(--border-table);
+  transition: background-color 0.15s ease-in-out;
+}
+
+.theme-table-row:hover {
+  background-color: var(--hover-table-row);
+}
+
+.theme-table-footer {
+  background-color: var(--bg-table-header);
+  border-top: 1px solid var(--border-table);
+}
+
 
 

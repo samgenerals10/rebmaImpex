@@ -1630,6 +1630,7 @@ export default function App() {
             onLogIntake={handleLogIntake}
             onReleaseToDispatch={handleReleaseToDispatch}
             activeSubTab={activeSubTab}
+            addNotification={addNotification}
           />
         );
       case 'FINANCE':
