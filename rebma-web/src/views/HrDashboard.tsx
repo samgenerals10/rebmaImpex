@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, BarChart, Bar } from 'recharts';
 import type { Attendance, PendingRegistration, StaffMember } from '../types/erp';
-import { FileSpreadsheet, FileText, Users, Clipboard, ShieldCheck, Activity, UserCheck, UserX } from 'lucide-react';
+import { FileSpreadsheet, FileText, Users, Clipboard, ShieldCheck, Activity, UserCheck, UserX, X, Copy } from 'lucide-react';
 import { exportToCSV, exportToPDF } from '../utils/export';
 
 interface HrDashboardProps {
@@ -13,7 +13,7 @@ interface HrDashboardProps {
   addNotification: (msg: string) => void;
   pendingRegistrations: PendingRegistration[];
   staffList: StaffMember[];
-  onApprove: (reg: PendingRegistration, pw: string) => void;
+  onApprove: (reg: PendingRegistration, pw: string, token: string) => void;
   onDeny: (reg: PendingRegistration) => void;
 }
 
@@ -52,6 +52,13 @@ export default function HrDashboard({
   const [localStaff, setLocalStaff] = useState<StaffMember[]>(staffList);
   const [localAttendance, setLocalAttendance] = useState<Attendance[]>(attendanceList);
   const [approvalLog, setApprovalLog] = useState<Array<{ id: string; name: string; action: 'APPROVED' | 'REJECTED'; password?: string; at: string }>>([]);
+  const [credentialsPopup, setCredentialsPopup] = useState<{
+    show: boolean;
+    fullName: string;
+    email: string;
+    password?: string;
+    magicLink?: string;
+  } | null>(null);
 
   // Search & Filter state for Staff
   const [staffSearch, setStaffSearch] = useState('');
@@ -115,12 +122,22 @@ export default function HrDashboard({
 
   const handleApprove = (reg: PendingRegistration) => {
     const pw = generatePassword();
-    onApprove(reg, pw);
+    const token = 'tok_' + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+    onApprove(reg, pw, token);
+    
+    setCredentialsPopup({
+      show: true,
+      fullName: reg.fullName,
+      email: reg.email,
+      password: pw,
+      magicLink: `https://rebma-web.com/login?token=${token}`
+    });
+
     setApprovalLog(prev => [{ id: reg.id, name: reg.fullName, action: 'APPROVED', password: pw, at: new Date().toLocaleString() }, ...prev]);
-    addNotification(`HR approved ${reg.fullName}. Login password generated & simulated email sent to ${reg.email}.`);
+    addNotification(`HR approved ${reg.fullName}. Login password and token generated.`);
     // Simulate email
     setTimeout(() => {
-      alert(`[SIMULATED EMAIL → ${reg.email}]\nSubject: Your REBMA IMPEX ERP Account is ACTIVE\n\nDear ${reg.fullName},\n\nYour account has been approved.\nDepartment: ${reg.department}\nTemporary Password: ${pw}\n\nPlease change your password after first login.\n\nRebma Impex Ghana Ltd — IT Department`);
+      alert(`[SIMULATED EMAIL → ${reg.email}]\nSubject: Your REBMA IMPEX ERP Account is ACTIVE\n\nDear ${reg.fullName},\n\nYour account has been approved.\nDepartment: ${reg.department}\nTemporary Password: ${pw}\nMagic Link URL: https://rebma-web.com/login?token=${token}\n\nPlease reset your password after login.\n\nRebma Impex Ghana Ltd — IT Department`);
     }, 300);
   };
 
@@ -134,12 +151,12 @@ export default function HrDashboard({
   };
 
   // Staff Table Handlers
-  const handleAddStaff = () => {
-    const name = prompt('Enter staff member full name:');
+  const handleAddStaff = async () => {
+    const name = await prompt('Enter staff member full name:');
     if (!name) return;
-    const dept = prompt('Enter department (e.g. OPERATIONS, FINANCE, PRODUCTION):', 'OPERATIONS');
+    const dept = await prompt('Enter department (e.g. OPERATIONS, FINANCE, PRODUCTION):', 'OPERATIONS');
     if (!dept) return;
-    const role = prompt('Enter role:', 'Staff Associate');
+    const role = await prompt('Enter role:', 'Staff Associate');
     const email = `${name.toLowerCase().replace(/\s+/g, '')}@rembaimpex.com`;
     const newStaff: StaffMember = {
       id: `ST-${Math.floor(100 + Math.random() * 900)}`,
@@ -156,10 +173,10 @@ export default function HrDashboard({
     addNotification(`Staff profile created for ${name} (${newStaff.id})`);
   };
 
-  const handleEditStaff = (staff: StaffMember) => {
-    const newName = prompt(`Edit name for ${staff.fullName}:`, staff.fullName);
+  const handleEditStaff = async (staff: StaffMember) => {
+    const newName = await prompt(`Edit name for ${staff.fullName}:`, staff.fullName);
     if (!newName) return;
-    const newRole = prompt(`Edit role for ${staff.fullName}:`, staff.role);
+    const newRole = await prompt(`Edit role for ${staff.fullName}:`, staff.role);
     setLocalStaff(prev => prev.map(s => s.id === staff.id ? { ...s, fullName: newName, role: newRole || s.role } : s));
     addNotification(`Updated staff profile details for ${staff.id}`);
   };
@@ -184,8 +201,8 @@ export default function HrDashboard({
     });
   };
 
-  const handleDeleteStaff = (id: string) => {
-    if (!confirm('Are you sure you want to delete this staff record?')) return;
+  const handleDeleteStaff = async (id: string) => {
+    if (!await confirm('Are you sure you want to delete this staff record?')) return;
     setLocalStaff(prev => prev.filter(s => s.id !== id));
     addNotification(`Deleted staff profile for ${id}`);
   };
@@ -210,8 +227,8 @@ export default function HrDashboard({
   };
 
   // Attendance Table Handlers
-  const handleEditAttendance = (att: Attendance) => {
-    const newStatus = prompt(`Edit status for ${att.fullName} (PRESENT/LATE):`, att.status);
+  const handleEditAttendance = async (att: Attendance) => {
+    const newStatus = await prompt(`Edit status for ${att.fullName} (PRESENT/LATE):`, att.status);
     if (!newStatus || !['PRESENT', 'LATE'].includes(newStatus.toUpperCase())) return;
     setLocalAttendance(prev => prev.map(a => a.id === att.id ? { ...a, status: newStatus.toUpperCase() as any } : a));
     addNotification(`Updated attendance status for ${att.fullName} to ${newStatus.toUpperCase()}`);
@@ -236,8 +253,8 @@ export default function HrDashboard({
     });
   };
 
-  const handleDeleteAttendance = (id: string) => {
-    if (!confirm('Are you sure you want to delete this attendance record?')) return;
+  const handleDeleteAttendance = async (id: string) => {
+    if (!await confirm('Are you sure you want to delete this attendance record?')) return;
     setLocalAttendance(prev => prev.filter(a => a.id !== id));
     addNotification(`Deleted attendance record ${id}`);
   };
@@ -800,6 +817,51 @@ export default function HrDashboard({
                   <Bar dataKey="Visitors" fill="#10b981" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
+            </div>
+          </div>
+        )}
+
+        {/* INSTANT HR POPUP MODAL */}
+        {credentialsPopup && credentialsPopup.show && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-[var(--bg-card)] border border-custom rounded-2xl shadow-2xl max-w-md w-full overflow-hidden p-6 space-y-4 text-[var(--text-primary)]">
+              <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+                <h3 className="font-bold text-lg text-emerald-500">Account Credentials Generated</h3>
+                <button 
+                  onClick={() => setCredentialsPopup(null)}
+                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="space-y-3 text-xs leading-relaxed text-slate-600 dark:text-slate-300">
+                <p><strong>Employee:</strong> {credentialsPopup.fullName} ({credentialsPopup.email})</p>
+                <div className="bg-slate-100 dark:bg-slate-800/80 p-3 rounded-xl border border-slate-200 dark:border-slate-700 font-mono space-y-2 relative">
+                  <p className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Temporary Password</p>
+                  <p className="text-sm font-bold text-emerald-600 break-all select-all">{credentialsPopup.password}</p>
+                  <div className="h-px bg-slate-200 dark:bg-slate-700 my-2"></div>
+                  <p className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Magic Link URL</p>
+                  <p className="text-[11px] text-blue-500 hover:underline break-all select-all">{credentialsPopup.magicLink}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 pt-2">
+                <button
+                  onClick={() => {
+                    const text = `Dear ${credentialsPopup.fullName},\n\nYour REBMA ERP account has been approved!\n\nStandard Login:\nEmail: ${credentialsPopup.email}\nTemporary Password: ${credentialsPopup.password}\n\nOne-Click Magic Link:\n${credentialsPopup.magicLink}\n\nPlease reset your password upon login.\nRebma Impex Ghana Ltd.`;
+                    navigator.clipboard.writeText(text);
+                    alert('Credentials copied to clipboard!');
+                  }}
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl py-2.5 font-bold transition-all text-sm cursor-pointer shadow-md shadow-emerald-600/20 text-center"
+                >
+                  📋 Copy Credentials
+                </button>
+                <button
+                  onClick={() => setCredentialsPopup(null)}
+                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 rounded-xl transition-all font-semibold text-xs border border-custom cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         )}

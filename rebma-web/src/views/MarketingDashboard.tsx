@@ -200,11 +200,11 @@ export default function MarketingDashboard({
   const customerOrders = (cust: Customer) => localOrders.filter(o => o.clientName === cust.name);
 
   // Customer Directory Actions
-  const handleEditCustomer = (cust: Customer) => {
-    const newName = prompt('Edit customer name:', cust.name);
+  const handleEditCustomer = async (cust: Customer) => {
+    const newName = await prompt('Edit customer name:', cust.name);
     if (!newName) return;
-    const newCompany = prompt('Edit company name:', cust.companyName);
-    const newPhone = prompt('Edit phone number:', cust.phone);
+    const newCompany = await prompt('Edit company name:', cust.companyName);
+    const newPhone = await prompt('Edit phone number:', cust.phone);
     setLocalCustomers(prev => prev.map(c => c.id === cust.id ? { ...c, name: newName, companyName: newCompany || c.companyName, phone: newPhone || c.phone } : c));
     addNotification(`Updated customer profile for ${cust.name}`);
   };
@@ -227,17 +227,17 @@ export default function MarketingDashboard({
     }).catch(() => alert(shareText));
   };
 
-  const handleDeleteCustomer = (id: string) => {
-    if (!confirm('Are you sure you want to delete this customer directory profile?')) return;
+  const handleDeleteCustomer = async (id: string) => {
+    if (!await confirm('Are you sure you want to delete this customer directory profile?')) return;
     setLocalCustomers(prev => prev.filter(c => c.id !== id));
     addNotification(`Deleted customer account ${id}`);
   };
 
   // Active Sales Orders Actions
-  const handleEditOrder = (order: Order) => {
-    const newProduct = prompt('Edit product name:', order.productName || '');
+  const handleEditOrder = async (order: Order) => {
+    const newProduct = await prompt('Edit product name:', order.productName || '');
     if (!newProduct) return;
-    const newAmt = prompt('Edit order amount (GHS):', order.totalAmount.toString());
+    const newAmt = await prompt('Edit order amount (GHS):', order.totalAmount.toString());
     if (!newAmt || isNaN(parseFloat(newAmt))) return;
     setLocalOrders(prev => prev.map(o => o.id === order.id ? { ...o, productName: newProduct, totalAmount: parseFloat(newAmt) } : o));
     addNotification(`Updated order invoice values for ${order.id}`);
@@ -261,8 +261,8 @@ export default function MarketingDashboard({
     }).catch(() => alert(shareText));
   };
 
-  const handleDeleteOrder = (id: string) => {
-    if (!confirm(`Delete sales order record ${id}?`)) return;
+  const handleDeleteOrder = async (id: string) => {
+    if (!await confirm(`Delete sales order record ${id}?`)) return;
     setLocalOrders(prev => prev.filter(o => o.id !== id));
     addNotification(`Deleted sales order entry ${id}`);
   };

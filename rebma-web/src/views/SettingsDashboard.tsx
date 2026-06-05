@@ -1,8 +1,7 @@
-// rebma-web/src/views/SettingsDashboard.tsx
-
 import { useState, useRef } from 'react';
 import { Settings, User, Lock, Trash2, Camera, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 import type { CurrentUser } from '../types/erp';
+import { auth } from '../services/apiClient';
 
 interface SettingsDashboardProps {
   theme: 'breeze' | 'seven' | 'royal' | 'mint' | 'sunset' | 'forest' | 'ghana';
@@ -66,15 +65,25 @@ export default function SettingsDashboard({
     addNotification?.(`Profile updated: ${displayName} (${displayEmail}). Changes saved locally.`);
   };
 
-  const handleChangePassword = (e: React.FormEvent) => {
+  const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newPw !== confirmPw) { setPwMsg('Passwords do not match.'); return; }
     if (newPw.length < 8) { setPwMsg('Password must be at least 8 characters.'); return; }
     if (!/[A-Z]/.test(newPw)) { setPwMsg('Password must contain at least one uppercase letter.'); return; }
     if (!/[^A-Za-z0-9]/.test(newPw)) { setPwMsg('Password must contain at least one special character.'); return; }
-    setPwMsg('✅ Password changed successfully!');
-    setCurrentPw(''); setNewPw(''); setConfirmPw('');
-    addNotification?.('Password changed successfully. Security log updated.');
+    
+    try {
+      setPwMsg('⏳ Updating password in secure database...');
+      await auth.changePassword(newPw, currentPw || undefined);
+      setPwMsg('✅ Password changed successfully! Reloading...');
+      setCurrentPw(''); setNewPw(''); setConfirmPw('');
+      addNotification?.('Password changed successfully. Security log updated.');
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+    } catch (err: any) {
+      setPwMsg(`❌ Error: ${err.message || 'Failed to update password'}`);
+    }
   };
 
   const handleDeleteRequest = (e: React.FormEvent) => {
@@ -258,7 +267,7 @@ export default function SettingsDashboard({
             <form onSubmit={handleChangePassword} className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-500 mb-1.5">Current Password</label>
-                <input type="password" value={currentPw} onChange={e => setCurrentPw(e.target.value)} required placeholder="Your current password" className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-indigo-500" />
+                <input type="password" value={currentPw} onChange={e => setCurrentPw(e.target.value)} required={!currentUser?.requiresPasswordReset} placeholder={currentUser?.requiresPasswordReset ? "Temporary password (optional)" : "Your current password"} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-indigo-500" />
               </div>
 
               <div>

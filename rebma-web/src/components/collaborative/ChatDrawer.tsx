@@ -30,8 +30,8 @@ export default function ChatDrawer({
     setChatInput('');
   };
 
-  const handleEditBoardroom = () => {
-    const text = prompt("Edit boardroom minutes:", boardroomMinutes);
+  const handleEditBoardroom = async () => {
+    const text = await prompt("Edit boardroom minutes:", boardroomMinutes);
     if (text !== null) setBoardroomMinutes(text);
   };
 

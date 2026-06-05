@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Eye, EyeOff, Check, X, ArrowRight, Lock, Mail, User, CreditCard } from 'lucide-react';
+import { Eye, EyeOff, Check, X, ArrowRight, Lock, Mail, User, CreditCard, Phone, AlertCircle, Info, CheckCircle } from 'lucide-react';
 import { io } from 'socket.io-client';
 
 import type { Order, IncomingGoods, ProductionRequest, Visitor, Attendance, ChatMessage, BoardroomMeeting, FinancePayment, Customer, GoodsPrice, AuditEntry, PendingRegistration, StaffMember } from './types/erp';
@@ -23,6 +23,7 @@ import BoardroomView from './views/BoardroomView';
 import SettingsDashboard from './views/SettingsDashboard';
 
 import { auth, hr, operations, management, marketing, finance, production, dispatch, reception, getToken, setToken, clearToken } from './services/apiClient';
+import { supabase } from './lib/supabaseClient';
 
 const socket = io(import.meta.env.VITE_API_URL || 'http://localhost:4000', {
   withCredentials: true,
@@ -30,6 +31,22 @@ const socket = io(import.meta.env.VITE_API_URL || 'http://localhost:4000', {
 });
 
 export default function App() {
+  // Helper to map UI dropdown values to database role values
+  const getNormalizedRole = (dept: string): string => {
+    const d = dept.trim();
+    if (d === 'CEO Office (OTP verification)' || d === 'CEO Office (OTP bypass)' || d === 'CEO') return 'CEO';
+    if (d === 'Human Resources' || d === 'HR') return 'HR';
+    if (d === 'Management Office' || d === 'MANAGEMENT' || d === 'admin') return 'admin';
+    if (d === 'Marketing Department' || d === 'MARKETING' || d === 'marketing') return 'marketing';
+    if (d === 'Operations (Warehouse)' || d === 'OPERATIONS' || d === 'operations') return 'operations';
+    if (d === 'Finance (Ledgers)' || d === 'FINANCE' || d === 'finance') return 'finance';
+    if (d === 'Production Line' || d === 'PRODUCTION' || d === 'production') return 'production';
+    if (d === 'Reception Desk' || d === 'RECEPTION' || d === 'receptionist') return 'receptionist';
+    if (d === 'Dispatch Fleet' || d === 'DISPATCH' || d === 'dispatch') return 'dispatch';
+    if (d === 'Logistics & Supply Chain' || d === 'LOGISTICS' || d === 'logistics') return 'logistics';
+    return d;
+  };
+
   // Theme State - Default to 'ghana' official logo theme matching colors!
   const [theme, setTheme] = useState<'breeze' | 'seven' | 'royal' | 'mint' | 'sunset' | 'forest' | 'ghana'>('ghana');
   
@@ -40,6 +57,7 @@ export default function App() {
     email: string;
     department: string;
     isCeo: boolean;
+    requiresPasswordReset?: boolean;
   } | null>(null);
   
   const [activeDepartment, setActiveDepartment] = useState<string>('CEO');
@@ -47,15 +65,18 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   
   // Multi-Step Registration UI
-  const [authScreen, setAuthScreen] = useState<'welcome' | 'login' | 'register' | 'otp' | 'forgot'>('login');
+  const [authScreen, setAuthScreen] = useState<'welcome' | 'login' | 'register' | 'otp' | 'forgot' | 'email_verification_sent' | 'activation_expired'>('login');
   const [registerEmail, setRegisterEmail] = useState<string>('');
+  const [registerPhone, setRegisterPhone] = useState<string>('');
   const [loginEmail, setLoginEmail] = useState<string>('');
   const [loginPassword, setLoginPassword] = useState<string>('');
-  const [registerDept, setRegisterDept] = useState<string>('MARKETING');
+  const [registerDept, setRegisterDept] = useState<string>('Marketing Department');
   const [registerName, setRegisterName] = useState<string>('');
   const [registerCard, setRegisterCard] = useState<string>('');
   const [otpCode, setOtpCode] = useState<string>('');
   const [simulatedReceivedOtp, setSimulatedReceivedOtp] = useState<string>('');
+  const [otpResendCountdown, setOtpResendCountdown] = useState<number>(0);
+  const [otpExpireCountdown, setOtpExpireCountdown] = useState<number>(0);
   const [registrationMessage, setRegistrationMessage] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [confirmPassword, setConfirmPassword] = useState<string>('');
@@ -65,6 +86,221 @@ export default function App() {
   const [forgotEmail, setForgotEmail] = useState<string>('');
   const [forgotSubmitted, setForgotSubmitted] = useState<boolean>(false);
   const [isLoggingIn, setIsLoggingIn] = useState<boolean>(false);
+  const [loginError, setLoginError] = useState<string>('');
+  const [loginRole, setLoginRole] = useState<string>('Staff');
+
+  useEffect(() => {
+    setLoginError('');
+  }, [authScreen]);
+
+  // Custom Alert Modal State
+  const [alertModal, setAlertModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: 'error' | 'success' | 'info';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'info',
+  });
+
+  // Custom Prompt Modal State
+  const [promptModal, setPromptModal] = useState<{
+    isOpen: boolean;
+    message: string;
+    defaultValue: string;
+    resolve: (val: string | null) => void;
+  } | null>(null);
+
+  const [promptInputValue, setPromptInputValue] = useState<string>('');
+
+  // Custom Confirm Modal State
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    message: string;
+    resolve: (val: boolean) => void;
+  } | null>(null);
+
+  // Custom alert function
+  const alert = (message: string, type: 'error' | 'success' | 'info' = 'info') => {
+    let detectedType = type;
+    if (type === 'info') {
+      const lower = message.toLowerCase();
+      if (lower.includes('fail') || lower.includes('error') || lower.includes('invalid') || lower.includes('expired') || lower.includes('reject') || lower.includes('not whitelisted') || lower.includes('does not match') || lower.includes('required')) {
+        detectedType = 'error';
+      } else if (lower.includes('success') || lower.includes('complete') || lower.includes('sent') || lower.includes('verified') || lower.includes('resent')) {
+        detectedType = 'success';
+      }
+    }
+    setAlertModal({
+      isOpen: true,
+      title: detectedType === 'error' ? 'System & Security Message' : detectedType === 'success' ? 'System Success' : 'System Notification',
+      message,
+      type: detectedType,
+    });
+  };
+
+  const renderAlertModal = () => {
+    if (!alertModal.isOpen) return null;
+    return (
+      <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.95 }}
+          className="bg-white rounded-[24px] border border-slate-100 shadow-2xl max-w-md w-full overflow-hidden p-6 space-y-4 relative text-slate-800"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              {alertModal.type === 'error' ? (
+                <AlertCircle className="w-5 h-5 text-rose-500 shrink-0" />
+              ) : alertModal.type === 'success' ? (
+                <CheckCircle className="w-5 h-5 text-emerald-500 shrink-0" />
+              ) : (
+                <Info className="w-5 h-5 text-blue-500 shrink-0" />
+              )}
+              <h4 className="text-sm font-bold text-slate-900 leading-none">
+                {alertModal.title}
+              </h4>
+            </div>
+            <button 
+              onClick={() => setAlertModal(prev => ({ ...prev, isOpen: false }))}
+              className="text-slate-400 hover:text-slate-600 transition-colors p-1 rounded-lg hover:bg-slate-50 cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          <p className="text-xs text-slate-600 whitespace-pre-wrap leading-relaxed">
+            {alertModal.message}
+          </p>
+          <div className="flex justify-end gap-2 pt-2">
+            <button
+              onClick={() => setAlertModal(prev => ({ ...prev, isOpen: false }))}
+              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+            >
+              Close
+            </button>
+          </div>
+        </motion.div>
+      </div>
+    );
+  };
+
+  const renderPromptModal = () => {
+    if (!promptModal || !promptModal.isOpen) return null;
+    return (
+      <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.95 }}
+          className="bg-white rounded-[24px] border border-slate-100 shadow-2xl max-w-md w-full overflow-hidden p-6 space-y-4 relative text-slate-800"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <Info className="w-5 h-5 text-emerald-500 shrink-0" />
+              <h4 className="text-sm font-bold text-slate-900 leading-none">
+                Input Required
+              </h4>
+            </div>
+            <button 
+              onClick={() => {
+                promptModal.resolve(null);
+                setPromptModal(null);
+              }}
+              className="text-slate-400 hover:text-slate-600 transition-colors p-1 rounded-lg hover:bg-slate-50 cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          <p className="text-xs text-slate-600 leading-relaxed">
+            {promptModal.message}
+          </p>
+          <input
+            type="text"
+            value={promptInputValue}
+            onChange={(e) => setPromptInputValue(e.target.value)}
+            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600"
+            autoFocus
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                promptModal.resolve(promptInputValue);
+                setPromptModal(null);
+              }
+            }}
+          />
+          <div className="flex justify-end gap-2 pt-2">
+            <button
+              onClick={() => {
+                promptModal.resolve(null);
+                setPromptModal(null);
+              }}
+              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => {
+                promptModal.resolve(promptInputValue);
+                setPromptModal(null);
+              }}
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
+            >
+              Submit
+            </button>
+          </div>
+        </motion.div>
+      </div>
+    );
+  };
+
+  const renderConfirmModal = () => {
+    if (!confirmModal || !confirmModal.isOpen) return null;
+    return (
+      <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.95 }}
+          className="bg-white rounded-[24px] border border-slate-100 shadow-2xl max-w-md w-full overflow-hidden p-6 space-y-4 relative text-slate-800"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <AlertCircle className="w-5 h-5 text-amber-500 shrink-0" />
+              <h4 className="text-sm font-bold text-slate-900 leading-none">
+                Confirmation Required
+              </h4>
+            </div>
+          </div>
+          <p className="text-xs text-slate-600 leading-relaxed">
+            {confirmModal.message}
+          </p>
+          <div className="flex justify-end gap-2 pt-2">
+            <button
+              onClick={() => {
+                confirmModal.resolve(false);
+                setConfirmModal(null);
+              }}
+              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => {
+                confirmModal.resolve(true);
+                setConfirmModal(null);
+              }}
+              className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
+            >
+              Confirm
+            </button>
+          </div>
+        </motion.div>
+      </div>
+    );
+  };
 
   // Financial Payments & Tickets
   const [paymentsList, setPaymentsList] = useState<FinancePayment[]>([]);
@@ -302,25 +538,93 @@ export default function App() {
 
   // Auth initialize hook
   useEffect(() => {
-    const initializeAuth = async () => {
-      const token = getToken();
-      if (token) {
-        try {
-          const profile = await auth.me();
+    // Override alert, prompt, and confirm globally so they show our gorgeous glassmorphic custom modal dialogs
+    window.alert = (message: string) => {
+      alert(message);
+    };
+
+    window.prompt = (message?: string, defaultValue?: string): any => {
+      return new Promise<string | null>((resolve) => {
+        setPromptInputValue(defaultValue || '');
+        setPromptModal({
+          isOpen: true,
+          message: message || '',
+          defaultValue: defaultValue || '',
+          resolve,
+        });
+      });
+    };
+
+    window.confirm = (message?: string): any => {
+      return new Promise<boolean>((resolve) => {
+        setConfirmModal({
+          isOpen: true,
+          message: message || '',
+          resolve,
+        });
+      });
+    };
+
+    let isMounted = true;
+
+    const handleSession = async (session: any) => {
+      try {
+        const token = session.access_token;
+        setToken(token);
+
+        const profile = await auth.me();
+        if (isMounted) {
           setCurrentUser({
             fullName: profile.fullName,
             email: profile.email,
             department: profile.department,
-            isCeo: profile.isCeo
+            isCeo: profile.isCeo,
+            requiresPasswordReset: profile.requiresPasswordReset
           });
           setActiveDepartment(profile.department);
           setIsAuthenticated(true);
-        } catch (e) {
+        }
+      } catch (e: any) {
+        console.error('Session initialization error:', e);
+        if (isMounted) {
+          await supabase.auth.signOut().catch(() => {});
           clearToken();
+          setIsAuthenticated(false);
+          setCurrentUser(null);
         }
       }
     };
+
+    const initializeAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session && isMounted) {
+        await handleSession(session);
+      }
+    };
+
     initializeAuth();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        if (session && isMounted) {
+          await handleSession(session);
+          if (window.location.hash) {
+            window.history.replaceState({}, document.title, window.location.pathname);
+          }
+        }
+      } else if (event === 'SIGNED_OUT') {
+        if (isMounted) {
+          setIsAuthenticated(false);
+          setCurrentUser(null);
+          clearToken();
+        }
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   // Sync data & auto-poll
@@ -580,96 +884,144 @@ export default function App() {
     return errors;
   };
 
-  // Handle standard registration
+  // Handle standard and privileged registration
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!registerEmail || !registerName || !password) {
+    if (!registerEmail || !registerName) {
       alert('Please fill out all fields.');
       return;
     }
 
-    const pwErrors = getPasswordValidationErrors(password);
-    if (pwErrors.length > 0) {
-      alert(`Password validation failed:\n- ${pwErrors.join('\n- ')}`);
+    // Strict recognized email domain verification (only Gmail, Outlook, Yahoo, Hotmail)
+    const emailVal = registerEmail.trim();
+    const allowedDomains = ['gmail.com', 'outlook.com', 'yahoo.com', 'hotmail.com'];
+    const emailParts = emailVal.split('@');
+    const domain = emailParts[emailParts.length - 1].toLowerCase();
+    
+    if (emailParts.length !== 2 || !allowedDomains.includes(domain)) {
+      alert("Please register with a valid, recognized email provider (e.g., Gmail, Outlook, Yahoo).");
       return;
     }
 
-    if (password !== confirmPassword) {
-      alert('Passwords do not match.');
-      return;
-    }
+    // Map the UI dropdown value to the exact database role value
+    const mappedDept = getNormalizedRole(registerDept);
+    const isPrivileged = mappedDept === 'CEO' || mappedDept === 'HR';
+    const emailLower = registerEmail.trim().toLowerCase();
 
-    try {
-      const res = await auth.register({
-        email: registerEmail.trim(),
-        password,
-        fullName: registerName,
-        department: registerDept,
-        ghanaCardId: registerDept !== 'CEO' ? registerCard : undefined
-      });
+    if (isPrivileged) {
+      const whitelistedCeoRaw = import.meta.env.VITE_WHITELISTED_CEO_EMAIL || 'samgenerals@gmail.com';
+      const whitelistedHrRaw = import.meta.env.VITE_WHITELISTED_HR_EMAIL || 'ryggogen10@gmail.com';
+      
+      const whitelistedCeo = whitelistedCeoRaw.trim().toLowerCase();
+      const whitelistedHr = whitelistedHrRaw.trim().toLowerCase();
+      
+      if (mappedDept === 'CEO' && emailLower !== whitelistedCeo) {
+        alert("Email is not whitelisted for the CEO role.");
+        return;
+      }
+      if (mappedDept === 'HR' && emailLower !== whitelistedHr) {
+        alert("Email is not whitelisted for the HR role.");
+        return;
+      }
 
-      if (res.status === 'OTP_VERIFICATION') {
-        setRegistrationMessage(res.message);
-        setAuthScreen('otp');
-      } else {
-        setRegistrationMessage(res.message);
-        setAuthScreen('login');
-        addNotification(`New registration request from ${registerName} (${registerDept}) submitted.`);
-        // Clear registration form states
+      // Privileged roles directly call magic link flow
+      try {
+        const res = await auth.login(emailLower, '', mappedDept);
+        alert(res.message || 'Magic link sent! Check your email.');
+        setAuthScreen('email_verification_sent');
+        addNotification(`Privileged onboarding link sent to ${registerName} (${mappedDept}).`);
+        
+        // Clear registration states
         setRegisterName('');
         setRegisterEmail('');
-        setPassword('');
-        setConfirmPassword('');
+        setRegisterPhone('');
         setRegisterCard('');
+      } catch (err: any) {
+        alert(err.message || 'Onboarding registration failed.');
       }
-    } catch (err: any) {
-      alert(err.message || 'Registration failed.');
-    }
-  };
-
-  // Verify CEO SMS OTP Code
-  const handleVerifyOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const res = await auth.verifyCeoOtp(registerEmail, otpCode);
-      alert(res.message || 'CEO Verification Successful! Account is now ACTIVE.');
-      setAuthScreen('login');
-      setOtpCode('');
-    } catch (err: any) {
-      alert(err.message || 'Invalid OTP code.');
+    } else {
+      // Standard non-privileged registration
+      try {
+        const res = await auth.register({
+          email: emailLower,
+          fullName: registerName,
+          department: mappedDept,
+          phone: registerPhone.trim() || undefined,
+          ghanaCardId: registerCard || undefined
+        });
+        setRegistrationMessage(res.message);
+        setAuthScreen('login');
+        addNotification(`New registration request from ${registerName} (${mappedDept}) submitted.`);
+        
+        // Clear registration states
+        setRegisterName('');
+        setRegisterEmail('');
+        setRegisterPhone('');
+        setRegisterCard('');
+      } catch (err: any) {
+        alert(err.message || 'Registration failed.');
+      }
     }
   };
 
   // Handle login
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!loginEmail || !loginPassword) {
-      alert('Please fill out all fields.');
+    setLoginError('');
+    if (!loginEmail) {
+      setLoginError('Please fill out all fields.');
       return;
     }
 
-    const pwErrors = getPasswordValidationErrors(loginPassword);
-    if (pwErrors.length > 0) {
-      alert(`Password does not meet REBMA policies:\n- ${pwErrors.join('\n- ')}`);
+    const isPrivileged = loginRole === 'CEO' || loginRole === 'HR';
+    if (!isPrivileged && !loginPassword) {
+      setLoginError('Please fill out all fields.');
       return;
+    }
+
+    if (!isPrivileged) {
+      const pwErrors = getPasswordValidationErrors(loginPassword);
+      if (pwErrors.length > 0) {
+        setLoginError(`Password does not meet REBMA policies:\n- ${pwErrors.join('\n- ')}`);
+        return;
+      }
     }
 
     setIsLoggingIn(true);
     try {
-      const res = await auth.login(loginEmail, loginPassword);
-      setToken(res.token);
-      setCurrentUser({
-        fullName: res.user.fullName,
-        email: res.user.email,
-        department: res.user.department,
-        isCeo: res.user.isCeo
-      });
-      setActiveDepartment(res.user.department);
-      setIsAuthenticated(true);
-      addNotification(`Logged in as ${res.user.fullName} (${res.user.department})`);
-      setLoginPassword('');
+      if (isPrivileged) {
+        const res = await auth.login(loginEmail, '', loginRole);
+        alert(res.message || 'Magic link sent! Check your email.');
+        setAuthScreen('email_verification_sent');
+        addNotification(`Magic link request sent to whitelisted email ${loginEmail}`);
+      } else {
+        const res = await auth.login(loginEmail, loginPassword);
+        
+        if ('user' in res && res.user) {
+          const userStatus = (res.user.status || '').toLowerCase();
+          if (userStatus === 'pending' || userStatus === 'pending_approval') {
+            await auth.signOut();
+            setLoginError("Registration submitted. Please await HR approval");
+            setLoginPassword('');
+            return;
+          }
+
+          if (res.token) setToken(res.token);
+          setCurrentUser({
+            fullName: res.user.fullName,
+            email: res.user.email,
+            department: res.user.department,
+            isCeo: res.user.isCeo,
+            requiresPasswordReset: res.user.requiresPasswordReset
+          });
+          setActiveDepartment(res.user.department);
+          setIsAuthenticated(true);
+          addNotification(`Logged in as ${res.user.fullName} (${res.user.department})`);
+          setLoginPassword('');
+        }
+      }
     } catch (err: any) {
-      alert(err.message || 'Login failed.');
+      setLoginError(err.message || 'Login failed.');
     } finally {
       setIsLoggingIn(false);
     }
@@ -904,6 +1256,12 @@ export default function App() {
           <p className="text-[10px] text-slate-400 mt-0.5 font-medium">REMBA IMPEX ERP GATEWAY</p>
         </div>
 
+        {loginError && (
+          <div className="p-2.5 bg-rose-50 border border-rose-100 rounded-xl text-center text-xs text-rose-800 font-semibold leading-normal whitespace-pre-wrap">
+            {loginError}
+          </div>
+        )}
+
         {/* Side-by-side SSO Buttons */}
         <div className="grid grid-cols-2 gap-2">
           <button 
@@ -947,6 +1305,20 @@ export default function App() {
           <span className="relative bg-white px-2 text-[9px] font-bold text-slate-400 uppercase tracking-widest">OR LOGIN WITH DETAILS</span>
         </div>
 
+        {/* Access Role Selection */}
+        <div className="space-y-1">
+          <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider">Access Role</label>
+          <select 
+            value={loginRole}
+            onChange={(e) => setLoginRole(e.target.value)}
+            className="w-full bg-transparent border-b border-slate-200 pb-1.5 text-sm text-slate-800 focus:outline-none focus:border-emerald-600 cursor-pointer"
+          >
+            <option value="Staff">Employee / Staff (Password)</option>
+            <option value="CEO">CEO Office (Magic Link)</option>
+            <option value="HR">Human Resources (Magic Link)</option>
+          </select>
+        </div>
+
         {/* Email Input */}
         <div className="flex items-center gap-2 border-b border-slate-200 focus-within:border-emerald-600 pb-1.5 transition-colors">
           <Mail className="w-4 h-4 text-slate-400" />
@@ -960,66 +1332,70 @@ export default function App() {
           />
         </div>
 
-        {/* Password Input */}
-        <div className="flex items-center gap-2 border-b border-slate-200 focus-within:border-emerald-600 pb-1.5 transition-colors">
-          <Lock className="w-4 h-4 text-slate-400" />
-          <input 
-            type={showPassword ? "text" : "password"} 
-            required 
-            placeholder="Password"
-            value={loginPassword}
-            onChange={(e) => setLoginPassword(e.target.value)}
-            className="w-full bg-transparent border-0 p-0 text-sm text-slate-800 placeholder-slate-400 focus:ring-0 focus:outline-none"
-          />
-          <button
-            type="button"
-            onClick={() => setShowPassword(!showPassword)}
-            className="text-slate-400 hover:text-slate-600"
-          >
-            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-          </button>
-        </div>
+        {/* Password Input (only shown for standard staff/employees) */}
+        {loginRole === 'Staff' && (
+          <>
+            <div className="flex items-center gap-2 border-b border-slate-200 focus-within:border-emerald-600 pb-1.5 transition-colors">
+              <Lock className="w-4 h-4 text-slate-400" />
+              <input 
+                type={showPassword ? "text" : "password"} 
+                required 
+                placeholder="Password"
+                value={loginPassword}
+                onChange={(e) => setLoginPassword(e.target.value)}
+                className="w-full bg-transparent border-0 p-0 text-sm text-slate-800 placeholder-slate-400 focus:ring-0 focus:outline-none"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="text-slate-400 hover:text-slate-600 cursor-pointer"
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
 
-        {/* Password policy checklist */}
-        {loginPassword.length > 0 && (
-          <div className="space-y-0.5 p-2 bg-slate-50 rounded-xl border border-slate-100 text-[9px] text-slate-500">
-            <div className="flex items-center gap-1.5">
-              {loginPassword.length <= 8 ? <Check className="w-3 h-3 text-emerald-600" /> : <X className="w-3 h-3 text-red-500" />}
-              <span className={loginPassword.length <= 8 ? "text-emerald-600" : "text-red-500"}>Max 8 characters</span>
+            {/* Password policy checklist */}
+            {loginPassword.length > 0 && (
+              <div className="space-y-0.5 p-2 bg-slate-50 rounded-xl border border-slate-100 text-[9px] text-slate-500">
+                <div className="flex items-center gap-1.5">
+                  {loginPassword.length <= 8 ? <Check className="w-3 h-3 text-emerald-600" /> : <X className="w-3 h-3 text-red-500" />}
+                  <span className={loginPassword.length <= 8 ? "text-emerald-600" : "text-red-500"}>Max 8 characters</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  {/[A-Z]/.test(loginPassword) ? <Check className="w-3 h-3 text-emerald-600" /> : <X className="w-3 h-3 text-red-500" />}
+                  <span className={/[A-Z]/.test(loginPassword) ? "text-emerald-600" : "text-red-500"}>At least 1 uppercase</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  {/[a-zA-Z]/.test(loginPassword) ? <Check className="w-3 h-3 text-emerald-600" /> : <X className="w-3 h-3 text-red-500" />}
+                  <span className={/[a-zA-Z]/.test(loginPassword) ? "text-emerald-600" : "text-red-500"}>Contains letters</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  {/[^A-Za-z0-9]/.test(loginPassword) ? <Check className="w-3 h-3 text-emerald-600" /> : <X className="w-3 h-3 text-red-500" />}
+                  <span className={/[^A-Za-z0-9]/.test(loginPassword) ? "text-emerald-600" : "text-red-500"}>Contains symbols</span>
+                </div>
+              </div>
+            )}
+
+            <div className="flex items-center justify-between text-[11px] text-slate-400 select-none pt-1">
+              <label className="flex items-center gap-1.5 cursor-pointer">
+                <input 
+                  type="checkbox" 
+                  checked={staySignedIn} 
+                  onChange={(e) => setStaySignedIn(e.target.checked)}
+                  className="w-3.5 h-3.5 rounded border-slate-350 text-emerald-600 focus:ring-emerald-500 cursor-pointer" 
+                />
+                <span className="text-slate-500 font-medium">Keep me logged in</span>
+              </label>
+              <button 
+                type="button" 
+                onClick={() => setAuthScreen('forgot')} 
+                className="text-[#068d5c] hover:underline font-bold cursor-pointer"
+              >
+                Forget Password
+              </button>
             </div>
-            <div className="flex items-center gap-1.5">
-              {/[A-Z]/.test(loginPassword) ? <Check className="w-3 h-3 text-emerald-600" /> : <X className="w-3 h-3 text-red-500" />}
-              <span className={/[A-Z]/.test(loginPassword) ? "text-emerald-600" : "text-red-500"}>At least 1 uppercase</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              {/[a-zA-Z]/.test(loginPassword) ? <Check className="w-3 h-3 text-emerald-600" /> : <X className="w-3 h-3 text-red-500" />}
-              <span className={/[a-zA-Z]/.test(loginPassword) ? "text-emerald-600" : "text-red-500"}>Contains letters</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              {/[^A-Za-z0-9]/.test(loginPassword) ? <Check className="w-3 h-3 text-emerald-600" /> : <X className="w-3 h-3 text-red-500" />}
-              <span className={/[^A-Za-z0-9]/.test(loginPassword) ? "text-emerald-600" : "text-red-500"}>Contains symbols</span>
-            </div>
-          </div>
+          </>
         )}
-
-        <div className="flex items-center justify-between text-[11px] text-slate-400 select-none pt-1">
-          <label className="flex items-center gap-1.5 cursor-pointer">
-            <input 
-              type="checkbox" 
-              checked={staySignedIn} 
-              onChange={(e) => setStaySignedIn(e.target.checked)}
-              className="w-3.5 h-3.5 rounded border-slate-350 text-emerald-600 focus:ring-emerald-500 cursor-pointer" 
-            />
-            <span className="text-slate-500 font-medium">Keep me logged in</span>
-          </label>
-          <button 
-            type="button" 
-            onClick={() => setAuthScreen('forgot')} 
-            className="text-[#068d5c] hover:underline font-bold cursor-pointer"
-          >
-            Forget Password
-          </button>
-        </div>
 
         <button 
           type="submit" 
@@ -1032,10 +1408,10 @@ export default function App() {
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
               </svg>
-              <span>Signing In...</span>
+              <span>{loginRole === 'CEO' || loginRole === 'HR' ? 'Sending Link...' : 'Signing In...'}</span>
             </>
           ) : (
-            <span>Sign In</span>
+            <span>{loginRole === 'CEO' || loginRole === 'HR' ? 'Send Magic Link' : 'Sign In'}</span>
           )}
         </button>
       </motion.form>
@@ -1061,7 +1437,7 @@ export default function App() {
             onClick={() => {
               setRegisterName('Esi Appiah');
               setRegisterEmail('esi.appiah@rembaimpex.com');
-              setRegisterDept('HR');
+              setRegisterDept('Human Resources');
               addNotification('Staging: Gmail SSO pre-filled HR registration details.');
             }}
             className="flex items-center justify-center gap-1.5 py-2 px-3 bg-white hover:bg-slate-50 rounded-xl text-xs font-semibold text-slate-700 transition-all cursor-pointer shadow-sm hover:shadow hover:scale-102 border border-slate-200"
@@ -1079,7 +1455,7 @@ export default function App() {
             onClick={() => {
               setRegisterName('Yaw Boakye');
               setRegisterEmail('yaw.boakye@rembaimpex.com');
-              setRegisterDept('PRODUCTION');
+              setRegisterDept('Production Line');
               addNotification('Staging: Outlook SSO pre-filled Production registration details.');
             }}
             className="flex items-center justify-center gap-1.5 py-2 px-3 bg-white hover:bg-slate-50 rounded-xl text-xs font-semibold text-slate-700 transition-all cursor-pointer shadow-sm hover:shadow hover:scale-102 border border-slate-200"
@@ -1125,67 +1501,20 @@ export default function App() {
           />
         </div>
 
-        {/* Password Inputs */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="flex items-center gap-1.5 border-b border-slate-200 focus-within:border-emerald-600 pb-1.5 transition-colors">
-            <Lock className="w-3.5 h-3.5 text-slate-400" />
-            <input 
-              type={showPassword ? "text" : "password"} 
-              required 
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full bg-transparent border-0 p-0 text-xs text-slate-800 placeholder-slate-400 focus:ring-0 focus:outline-none"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="text-slate-400 hover:text-slate-600"
-            >
-              {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-            </button>
-          </div>
-
-          <div className="flex items-center gap-1.5 border-b border-slate-200 focus-within:border-emerald-600 pb-1.5 transition-colors">
-            <Lock className="w-3.5 h-3.5 text-slate-400" />
-            <input 
-              type={showConfirmPassword ? "text" : "password"} 
-              required 
-              placeholder="Confirm"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full bg-transparent border-0 p-0 text-xs text-slate-800 placeholder-slate-400 focus:ring-0 focus:outline-none"
-            />
-            <button
-              type="button"
-              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-              className="text-slate-400 hover:text-slate-600"
-            >
-              {showConfirmPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-            </button>
-          </div>
+        {/* Phone Input */}
+        <div className="flex items-center gap-2 border-b border-slate-200 focus-within:border-emerald-600 pb-1.5 transition-colors">
+          <Phone className="w-4 h-4 text-slate-400" />
+          <input 
+            type="tel" 
+            required 
+            placeholder="Phone number (e.g. +233555123456)"
+            value={registerPhone}
+            onChange={(e) => setRegisterPhone(e.target.value)}
+            className="w-full bg-transparent border-0 p-0 text-sm text-slate-800 placeholder-slate-400 focus:ring-0 focus:outline-none"
+          />
         </div>
 
-        {password.length > 0 && (
-          <div className="space-y-0.5 p-2 bg-slate-50 rounded-xl border border-slate-100 text-[9px] text-slate-500">
-            <div className="flex items-center gap-1.5">
-              {password.length <= 8 ? <Check className="w-3 h-3 text-emerald-600" /> : <X className="w-3 h-3 text-red-500" />}
-              <span className={password.length <= 8 ? "text-emerald-600" : "text-red-500"}>Max 8 characters</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              {/[A-Z]/.test(password) ? <Check className="w-3 h-3 text-emerald-600" /> : <X className="w-3 h-3 text-red-500" />}
-              <span className={/[A-Z]/.test(password) ? "text-emerald-600" : "text-red-500"}>At least 1 uppercase</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              {/[a-zA-Z]/.test(password) ? <Check className="w-3 h-3 text-emerald-600" /> : <X className="w-3 h-3 text-red-500" />}
-              <span className={/[a-zA-Z]/.test(password) ? "text-emerald-600" : "text-red-500"}>Contains letters</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              {/[^A-Za-z0-9]/.test(password) ? <Check className="w-3 h-3 text-emerald-600" /> : <X className="w-3 h-3 text-red-500" />}
-              <span className={/[^A-Za-z0-9]/.test(password) ? "text-emerald-600" : "text-red-500"}>Contains symbols</span>
-            </div>
-          </div>
-        )}
+        {/* Registration is passwordless. Temporary password will be generated upon HR approval. */}
 
         {/* Department Dropdown */}
         <div className="space-y-1">
@@ -1195,21 +1524,21 @@ export default function App() {
             onChange={(e) => setRegisterDept(e.target.value)}
             className="w-full bg-transparent border-b border-slate-200 pb-1.5 text-sm text-slate-800 focus:outline-none focus:border-emerald-600 cursor-pointer"
           >
-            <option value="CEO">CEO Office (OTP bypass)</option>
-            <option value="MANAGEMENT">Management Office</option>
-            <option value="HR">Human Resources</option>
-            <option value="MARKETING">Marketing Department</option>
-            <option value="OPERATIONS">Operations (Warehouse)</option>
-            <option value="FINANCE">Finance (Ledgers)</option>
-            <option value="PRODUCTION">Production Line</option>
-            <option value="RECEPTION">Reception Desk</option>
-            <option value="DISPATCH">Dispatch Fleet</option>
-            <option value="LOGISTICS">Logistics & Supply Chain</option>
+            <option value="CEO Office (OTP verification)">CEO Office (OTP verification)</option>
+            <option value="Management Office">Management Office</option>
+            <option value="Human Resources">Human Resources</option>
+            <option value="Marketing Department">Marketing Department</option>
+            <option value="Operations (Warehouse)">Operations (Warehouse)</option>
+            <option value="Finance (Ledgers)">Finance (Ledgers)</option>
+            <option value="Production Line">Production Line</option>
+            <option value="Reception Desk">Reception Desk</option>
+            <option value="Dispatch Fleet">Dispatch Fleet</option>
+            <option value="Logistics & Supply Chain">Logistics & Supply Chain</option>
           </select>
         </div>
 
         {/* Ghana Card ID Input */}
-        {registerDept !== 'CEO' && (
+        {getNormalizedRole(registerDept) !== 'CEO' && (
           <div className="flex items-center gap-2 border-b border-slate-200 focus-within:border-emerald-600 pb-1.5 transition-colors">
             <CreditCard className="w-4 h-4 text-slate-400" />
             <input 
@@ -1223,9 +1552,9 @@ export default function App() {
           </div>
         )}
 
-        {registerDept === 'CEO' && (
+        {(getNormalizedRole(registerDept) === 'CEO' || getNormalizedRole(registerDept) === 'HR') && (
           <div className="p-2.5 bg-amber-50 rounded-xl border border-amber-100 text-[9px] text-amber-600 leading-normal font-medium">
-            <strong>CEO Whitelist Bypass Active:</strong> Whitelisted email required: <code>{whitelistedCeos}</code>.
+            <strong>Privileged Role Verification Active:</strong> Phone verification required. Ensure your phone number matches the whitelisted configuration.
           </div>
         )}
 
@@ -1307,50 +1636,56 @@ export default function App() {
       </motion.form>
     );
 
-    const renderOtpForm = () => (
-      <motion.form 
-        key="otp"
+    /* SMS OTP Form removed */
+
+    const renderEmailVerificationSentCard = () => (
+      <motion.div
+        key="email_verification_sent"
         initial={{ opacity: 0, x: -10 }}
         animate={{ opacity: 1, x: 0 }}
         exit={{ opacity: 0, x: 10 }}
-        onSubmit={handleVerifyOtp} 
-        className="space-y-4 text-slate-800"
+        className="space-y-4 text-slate-800 text-center"
       >
-        <div className="text-center">
-          <h3 className="text-xl font-bold text-[#068d5c]">Verify Identity</h3>
-          <p className="text-[10px] text-slate-400 mt-1">CEO Verification OTP Sent via SMS Gateway</p>
+        <h3 className="text-xl font-bold text-emerald-800">Login Link Dispatched</h3>
+        <div className="p-3 bg-emerald-50 rounded-2xl border border-emerald-100 text-xs text-emerald-800 leading-relaxed font-medium">
+          A login link has been sent to your email. Click the link to access the REBMA IMPEX ERP.
         </div>
-
-        <div className="flex items-center gap-2 border-b border-slate-200 focus-within:border-emerald-600 pb-1.5 transition-colors">
-          <Lock className="w-4 h-4 text-slate-400" />
-          <input 
-            type="text" 
-            required 
-            placeholder="Enter 6-digit OTP code"
-            value={otpCode}
-            onChange={(e) => setOtpCode(e.target.value)}
-            className="w-full bg-transparent border-0 p-0 text-sm text-slate-800 placeholder-slate-400 focus:ring-0 focus:outline-none tracking-widest text-center font-mono font-bold"
-          />
-        </div>
-
-        <button 
-          type="submit" 
+        <p className="text-[10px] text-slate-400">
+          The link is valid for 1 hour.
+        </p>
+        <button
+          type="button"
+          onClick={() => setAuthScreen('login')}
           className="w-full py-2.5 bg-gradient-to-r from-[#5ce1ab] to-[#34d399] hover:from-[#4fd69e] hover:to-[#059669] rounded-full text-xs font-bold text-slate-900 shadow-md hover:shadow-lg transition-all cursor-pointer text-center"
         >
-          Verify OTP
+          ← Return to Login
         </button>
+      </motion.div>
+    );
 
-        <button 
+    const renderActivationExpiredCard = () => (
+      <motion.div
+        key="activation_expired"
+        initial={{ opacity: 0, x: -10 }}
+        animate={{ opacity: 1, x: 0 }}
+        exit={{ opacity: 0, x: 10 }}
+        className="space-y-4 text-slate-800 text-center"
+      >
+        <h3 className="text-xl font-bold text-rose-800">Login Link Expired</h3>
+        <div className="p-3 bg-rose-50 rounded-2xl border border-rose-100 text-xs text-rose-800 leading-relaxed font-medium">
+          Your login link has expired. Please return to the login screen and request a new link.
+        </div>
+        <button
           type="button"
-          onClick={() => {
-            alert(`[SIMULATED SMS GATEWAY]: Resent OTP verification code to CEO whitelist.`);
-          }}
-          className="w-full text-center text-xs text-slate-400 hover:text-slate-600 transition-colors font-semibold"
+          onClick={() => setAuthScreen('login')}
+          className="w-full py-2.5 bg-gradient-to-r from-[#5ce1ab] to-[#34d399] hover:from-[#4fd69e] hover:to-[#059669] rounded-full text-xs font-bold text-slate-900 shadow-md hover:shadow-lg transition-all cursor-pointer text-center"
         >
-          Resend SMS Code
+          ← Return to Login
         </button>
-      </motion.form>
-    );    // Helper view for welcome options inside the white card
+      </motion.div>
+    );
+
+    // Helper view for welcome options inside the white card
     const renderWelcomeCard = () => (
       <motion.div
         key="welcome"
@@ -1503,7 +1838,9 @@ export default function App() {
                 {authScreen === 'login' && renderLoginForm()}
                 {authScreen === 'register' && renderRegisterForm()}
                 {authScreen === 'forgot' && renderForgotForm()}
-                {authScreen === 'otp' && renderOtpForm()}
+                {/* SMS OTP Flow retracted */}
+                {authScreen === 'email_verification_sent' && renderEmailVerificationSentCard()}
+                {authScreen === 'activation_expired' && renderActivationExpiredCard()}
               </AnimatePresence>
 
             </div>
@@ -1555,6 +1892,7 @@ export default function App() {
 
         </div>
 
+        {renderAlertModal()}
       </div>
     );
   }
@@ -1575,6 +1913,26 @@ export default function App() {
   };
 
   const renderDashboard = () => {
+    if (currentUser?.requiresPasswordReset) {
+      return (
+        <SettingsDashboard
+          theme={theme}
+          setTheme={setTheme}
+          whitelistedCeos={whitelistedCeos}
+          setWhitelistedCeos={setWhitelistedCeos}
+          smsGateway={smsGateway}
+          setSmsGateway={setSmsGateway}
+          gpsInterval={gpsInterval}
+          setGpsInterval={setGpsInterval}
+          ghanaCardValidation={ghanaCardValidation}
+          setGhanaCardValidation={setGhanaCardValidation}
+          activeSubTab="ChangePassword"
+          currentUser={currentUser}
+          addNotification={addNotification}
+        />
+      );
+    }
+
     switch (activeDepartment) {
       case 'CEO':
         return (
@@ -1721,13 +2079,17 @@ export default function App() {
       
       {/* 1. LEFT SIDEBAR */}
       <Sidebar
-        activeDepartment={activeDepartment}
-        setActiveDepartment={setActiveDepartment}
-        activeSubTab={activeSubTab}
-        setActiveSubTab={setActiveSubTab}
+        activeDepartment={currentUser?.requiresPasswordReset ? 'SETTINGS' : activeDepartment}
+        setActiveDepartment={currentUser?.requiresPasswordReset ? () => {} : setActiveDepartment}
+        activeSubTab={currentUser?.requiresPasswordReset ? 'ChangePassword' : activeSubTab}
+        setActiveSubTab={currentUser?.requiresPasswordReset ? () => {} : setActiveSubTab}
         theme={theme}
         currentUser={currentUser}
-        onLogout={() => setIsAuthenticated(false)}
+        onLogout={async () => {
+          await auth.signOut();
+          setIsAuthenticated(false);
+          setCurrentUser(null);
+        }}
         addNotification={addNotification}
         openBoardroom={() => { setActiveDepartment('BOARDROOM'); setActiveSubTab('VideoConf'); }}
       />
@@ -1803,6 +2165,9 @@ export default function App() {
         </AnimatePresence>
       </div>
 
+      {renderAlertModal()}
+      {renderPromptModal()}
+      {renderConfirmModal()}
     </div>
   );
 }

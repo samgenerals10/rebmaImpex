@@ -141,11 +141,11 @@ export default function ProductionDashboard({
   };
 
   // Requisitions (Raw Materials) Actions
-  const handleEditRequisition = (req: ProductionRequest, index: number) => {
+  const handleEditRequisition = async (req: ProductionRequest, index: number) => {
     const item = req.items[index];
-    const newName = prompt(`Edit material name:`, item.materialName);
+    const newName = await prompt(`Edit material name:`, item.materialName);
     if (!newName) return;
-    const newQtyStr = prompt(`Edit quantity:`, item.quantity.toString());
+    const newQtyStr = await prompt(`Edit quantity:`, item.quantity.toString());
     if (!newQtyStr || isNaN(parseInt(newQtyStr))) return;
 
     setProductionRequests(prev => prev.map(r => {
@@ -176,17 +176,17 @@ export default function ProductionDashboard({
     }).catch(() => alert(shareText));
   };
 
-  const handleDeleteRequisition = (id: string) => {
-    if (!confirm(`Are you sure you want to delete Requisition ${id}?`)) return;
+  const handleDeleteRequisition = async (id: string) => {
+    if (!await confirm(`Are you sure you want to delete Requisition ${id}?`)) return;
     setProductionRequests(prev => prev.filter(r => r.id !== id));
     addNotification(`Deleted Requisition order ${id}`);
   };
 
   // WIP Inventory Actions
-  const handleEditWip = (item: typeof initialWipStock[0]) => {
-    const newName = prompt('Edit product name:', item.productName);
+  const handleEditWip = async (item: typeof initialWipStock[0]) => {
+    const newName = await prompt('Edit product name:', item.productName);
     if (!newName) return;
-    const newQtyStr = prompt('Edit Qty (Units):', item.qty.toString());
+    const newQtyStr = await prompt('Edit Qty (Units):', item.qty.toString());
     if (!newQtyStr || isNaN(parseInt(newQtyStr))) return;
 
     setLocalWip(prev => prev.map(w => w.id === item.id ? { ...w, productName: newName, qty: parseInt(newQtyStr), updatedAt: new Date().toLocaleString() } : w));
@@ -211,18 +211,18 @@ export default function ProductionDashboard({
     }).catch(() => alert(shareText));
   };
 
-  const handleDeleteWip = (id: string) => {
-    if (!confirm(`Delete WIP stock record ${id}?`)) return;
+  const handleDeleteWip = async (id: string) => {
+    if (!await confirm(`Delete WIP stock record ${id}?`)) return;
     setLocalWip(prev => prev.filter(w => w.id !== id));
     addNotification(`Deleted WIP stock record ${id}`);
   };
 
-  const handleAddWip = () => {
-    const name = prompt('Enter product name:');
+  const handleAddWip = async () => {
+    const name = await prompt('Enter product name:');
     if (!name) return;
-    const qty = prompt('Enter quantity:');
+    const qty = await prompt('Enter quantity:');
     if (!qty || isNaN(parseInt(qty))) return;
-    const stage = prompt('Enter stage (Processing/Quality Check/Packaging/Awaiting Dispatch):', 'Processing');
+    const stage = await prompt('Enter stage (Processing/Quality Check/Packaging/Awaiting Dispatch):', 'Processing');
 
     const newItem = {
       id: `WIP-${Math.floor(100 + Math.random() * 900)}`,

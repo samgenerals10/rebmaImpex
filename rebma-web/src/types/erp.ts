@@ -68,6 +68,8 @@ export interface CurrentUser {
   department: string;
   isCeo: boolean;
   photo?: string;
+  requiresPasswordReset?: boolean;
+  tempAuthSecret?: string | null;
 }
 
 export interface BoardroomMeeting {

@@ -196,10 +196,10 @@ export default function OperationsDashboard({
   };
 
   // Row Action Handlers
-  const handleEditOrder = (order: Order) => {
-    const newClient = prompt('Edit client name:', order.clientName);
+  const handleEditOrder = async (order: Order) => {
+    const newClient = await prompt('Edit client name:', order.clientName);
     if (!newClient) return;
-    const newDest = prompt('Edit destination:', order.destination || '');
+    const newDest = await prompt('Edit destination:', order.destination || '');
     setLocalOrders(prev => prev.map(o => o.id === order.id ? { ...o, clientName: newClient, destination: newDest || undefined } : o));
     addNotification(`Updated order ${order.id}`);
   };
@@ -222,16 +222,16 @@ export default function OperationsDashboard({
     }).catch(() => alert(shareText));
   };
 
-  const handleDeleteOrder = (id: string) => {
-    if (!confirm(`Delete order entry ${id}?`)) return;
+  const handleDeleteOrder = async (id: string) => {
+    if (!await confirm(`Delete order entry ${id}?`)) return;
     setLocalOrders(prev => prev.filter(o => o.id !== id));
     addNotification(`Deleted order entry ${id}`);
   };
 
-  const handleEditCargo = (cargo: IncomingGoods) => {
-    const newName = prompt('Edit product name:', cargo.productName);
+  const handleEditCargo = async (cargo: IncomingGoods) => {
+    const newName = await prompt('Edit product name:', cargo.productName);
     if (!newName) return;
-    const newCarrier = prompt('Edit shipping carrier:', cargo.company);
+    const newCarrier = await prompt('Edit shipping carrier:', cargo.company);
     if (!newCarrier) return;
     setLocalCargo(prev => prev.map(c => c.id === cargo.id ? { ...c, productName: newName, company: newCarrier } : c));
     addNotification(`Updated cargo intake details for CARGO-${cargo.id}`);
@@ -255,8 +255,8 @@ export default function OperationsDashboard({
     }).catch(() => alert(shareText));
   };
 
-  const handleDeleteCargo = (id: string) => {
-    if (!confirm(`Delete cargo intake record CARGO-${id}?`)) return;
+  const handleDeleteCargo = async (id: string) => {
+    if (!await confirm(`Delete cargo intake record CARGO-${id}?`)) return;
     setLocalCargo(prev => prev.filter(c => c.id !== id));
     addNotification(`Deleted cargo record ${id}`);
   };

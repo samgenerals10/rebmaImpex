@@ -10,5 +10,11 @@
     "build": "npm run build -w rebma-web",
     "dev": "npm run dev -w rebma-web",
     "start": "npm run preview -w rebma-web"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.107.0"
+  },
+  "devDependencies": {
+    "@vercel/node": "^5.8.12"
   }
 }

@@ -100,10 +100,10 @@ export default function DispatchDashboard({
   };
 
   // Row Action Handlers
-  const handleEditDelivery = (del: DeliveryRecord) => {
-    const newClient = prompt('Edit client name:', del.clientName);
+  const handleEditDelivery = async (del: DeliveryRecord) => {
+    const newClient = await prompt('Edit client name:', del.clientName);
     if (!newClient) return;
-    const newDest = prompt('Edit destination:', del.destination);
+    const newDest = await prompt('Edit destination:', del.destination);
     if (!newDest) return;
     setLocalDeliveries(prev => prev.map(d => d.id === del.id ? { ...d, clientName: newClient, destination: newDest } : d));
   };
@@ -124,8 +124,8 @@ export default function DispatchDashboard({
     }).catch(() => alert(shareText));
   };
 
-  const handleDeleteDelivery = (id: string) => {
-    if (!confirm(`Delete shipment log entry ${id}?`)) return;
+  const handleDeleteDelivery = async (id: string) => {
+    if (!await confirm(`Delete shipment log entry ${id}?`)) return;
     setLocalDeliveries(prev => prev.filter(d => d.id !== id));
   };
 

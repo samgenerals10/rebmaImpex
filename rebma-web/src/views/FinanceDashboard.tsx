@@ -175,10 +175,10 @@ export default function FinanceDashboard({
   const totalWarehouseItems = localRequisitions.reduce((acc, r) => acc + (r.producedGoods || r.items.reduce((s, i) => s + i.quantity, 0)), 0);
 
   // Receipts / Tickets Actions
-  const handleEditPayment = (pay: FinancePayment) => {
-    const newName = prompt('Edit client name:', pay.clientName);
+  const handleEditPayment = async (pay: FinancePayment) => {
+    const newName = await prompt('Edit client name:', pay.clientName);
     if (!newName) return;
-    const newAmt = prompt('Edit payment amount (GHS):', pay.amount.toString());
+    const newAmt = await prompt('Edit payment amount (GHS):', pay.amount.toString());
     if (!newAmt || isNaN(parseFloat(newAmt))) return;
 
     const updated = localPayments.map(p => p.id === pay.id ? { ...p, clientName: newName, amount: parseFloat(newAmt) } : p);
@@ -206,8 +206,8 @@ export default function FinanceDashboard({
     }).catch(() => alert(shareText));
   };
 
-  const handleDeletePayment = (id: string) => {
-    if (!confirm(`Delete payment ticket entry ${id}?`)) return;
+  const handleDeletePayment = async (id: string) => {
+    if (!await confirm(`Delete payment ticket entry ${id}?`)) return;
     const updated = localPayments.filter(p => p.id !== id);
     setLocalPayments(updated);
     setPaymentsList(updated);
@@ -232,8 +232,8 @@ export default function FinanceDashboard({
     }).catch(() => alert(shareText));
   };
 
-  const handleDeleteRequisition = (id: string) => {
-    if (!confirm(`Delete warehouse production record ${id}?`)) return;
+  const handleDeleteRequisition = async (id: string) => {
+    if (!await confirm(`Delete warehouse production record ${id}?`)) return;
     setLocalRequisitions(prev => prev.filter(r => r.id !== id));
     addNotification(`Deleted warehouse history entry ${id}`);
   };

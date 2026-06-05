@@ -170,19 +170,19 @@ export default function ManagementDashboard({
     }).catch(() => alert(shareText));
   };
 
-  const handleDeleteLedger = (id: string) => {
-    if (!confirm('Delete this audit log entry?')) return;
+  const handleDeleteLedger = async (id: string) => {
+    if (!await confirm('Delete this audit log entry?')) return;
     setLocalLedger(prev => prev.filter(l => l.id !== id));
   };
 
   // Row Action Handlers: Decision History
-  const handleEditHistory = (item: any, isCargo: boolean) => {
+  const handleEditHistory = async (item: any, isCargo: boolean) => {
     if (isCargo) {
-      const newPrice = prompt('Edit price catalog unit price:', item.unitPrice ? item.unitPrice.toString() : '');
+      const newPrice = await prompt('Edit price catalog unit price:', item.unitPrice ? item.unitPrice.toString() : '');
       if (!newPrice || isNaN(parseFloat(newPrice))) return;
       setLocalGoods(prev => prev.map(g => g.id === item.id ? { ...g, unitPrice: parseFloat(newPrice) } : g));
     } else {
-      const newAmt = prompt('Edit order amount:', item.totalAmount.toString());
+      const newAmt = await prompt('Edit order amount:', item.totalAmount.toString());
       if (!newAmt || isNaN(parseFloat(newAmt))) return;
       setLocalOrders(prev => prev.map(o => o.id === item.id ? { ...o, totalAmount: parseFloat(newAmt) } : o));
     }
@@ -215,8 +215,8 @@ export default function ManagementDashboard({
     }).catch(() => alert(shareText));
   };
 
-  const handleDeleteHistory = (id: string, isCargo: boolean) => {
-    if (!confirm('Are you sure you want to delete this decision history record?')) return;
+  const handleDeleteHistory = async (id: string, isCargo: boolean) => {
+    if (!await confirm('Are you sure you want to delete this decision history record?')) return;
     if (isCargo) {
       setLocalGoods(prev => prev.filter(g => g.id !== id));
     } else {

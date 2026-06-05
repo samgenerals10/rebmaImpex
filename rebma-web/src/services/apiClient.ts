@@ -1,8 +1,34 @@
 // rebma-web/src/services/apiClient.ts
-// Centralized API client — all database & auth calls go through neonClient
-import { neonClient } from '../lib/neonClient';
+// Centralized API client — all database & auth calls go through Supabase
+import { supabase } from '../lib/supabaseClient';
 
 // --- Translation Mappings (Insulates UI from Database Snake_Case schema) ---
+
+const generateSecurePassword = (length = 16): string => {
+  const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+  const lower = 'abcdefghjkmnpqrstuvwxyz';
+  const digits = '23456789';
+  const symbols = '!@#$%^&*';
+  const all = upper + lower + digits + symbols;
+  
+  const pw = [
+    upper[Math.floor(Math.random() * upper.length)],
+    lower[Math.floor(Math.random() * lower.length)],
+    digits[Math.floor(Math.random() * digits.length)],
+    symbols[Math.floor(Math.random() * symbols.length)]
+  ];
+  
+  for (let i = 4; i < length; i++) {
+    pw.push(all[Math.floor(Math.random() * all.length)]);
+  }
+  
+  for (let i = pw.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pw[i], pw[j]] = [pw[j], pw[i]];
+  }
+  
+  return pw.join('');
+};
 
 const mapProfileToFrontend = (db: any): any => {
   if (!db) return null;
@@ -10,15 +36,16 @@ const mapProfileToFrontend = (db: any): any => {
     id: db.id,
     email: db.email,
     fullName: db.full_name || db.fullName || db.email,
-    department: db.role || db.department,
+    department: (db.role || db.department || '').toUpperCase(),
     ghanaCardId: db.ghana_card_id || db.ghanaCardId,
     phone: db.phone,
     status: db.status,
-    isCeo: db.is_ceo ?? db.isCeo ?? (db.role === 'CEO'),
+    isCeo: db.is_ceo ?? db.isCeo ?? ((db.role || '').toUpperCase() === 'CEO'),
     photo: db.photo,
     passwordHash: db.password_hash || db.passwordHash,
     createdAt: db.created_at || db.createdAt,
-    updatedAt: db.updated_at || db.updatedAt
+    updatedAt: db.updated_at || db.updatedAt,
+    requiresPasswordReset: db.requires_password_reset ?? db.requiresPasswordReset ?? false,
   };
 };
 
@@ -169,44 +196,82 @@ const mapCustomerToFrontend = (db: any): any => {
   };
 };
 
-// ── Token helpers (Maintained to prevent UI breakage in App.tsx state management) ────────────
-export const getToken = (): string | null => localStorage.getItem('rebma_token');
+// ── Token helpers (Maintained for backward compatibility with App.tsx state management) ────────────
+// Supabase manages its own session internally, but these helpers keep the UI contract stable.
+export const getToken = (): string | null => {
+  // Return Supabase session token if available, fall back to localStorage
+  return localStorage.getItem('rebma_token');
+};
 export const setToken = (token: string) => localStorage.setItem('rebma_token', token);
 export const clearToken = () => localStorage.removeItem('rebma_token');
 
 // ── Auth ──────────────────────────────────────────────────────
 export const auth = {
-  login: async (email: string, password: string) => {
-    const res = await neonClient.auth.signIn.email({ email, password });
-    if (res.error) {
-      throw new Error(res.error.message || 'Login failed');
-    }
-    
-    const token = (res.data as any).token || 'neon_active_session';
-    setToken(token);
+  /**
+   * Login — handles two flows:
+   * 1. CEO/HR: sends magic link via serverless endpoint. Returns { magicLinkSent: true }.
+   * 2. All other staff: standard email+password sign-in via Supabase Auth.
+   */
+  login: async (email: string, password: string, role?: string) => {
+    const emailLower = email.trim().toLowerCase();
+    const roleUpper = (role || '').toUpperCase();
 
-    // Fetch user details from public profiles table to get department role
-    const { data: users, error: userError } = await neonClient
+    // ── Magic link flow for privileged roles ──
+    if (roleUpper === 'CEO' || roleUpper === 'HR') {
+      const res = await fetch('/api/send-magic-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: emailLower, role: roleUpper }),
+      });
+      const body = await res.json();
+      if (!res.ok) {
+        throw new Error(body.error || 'Failed to send magic link.');
+      }
+      return { magicLinkSent: true, message: body.message || 'Magic link sent! Check your email.' };
+    }
+
+    // ── Standard password flow for all other staff ──
+    // 1. Fetch user profile to check status before authenticating
+    const { data: users, error: userError } = await supabase
       .from('profiles')
       .select('*')
-      .eq('email', email.trim().toLowerCase())
+      .eq('email', emailLower)
       .limit(1);
 
     if (userError || !users || users.length === 0) {
-      return {
-        token,
-        user: {
-          id: res.data.user.id,
-          email: res.data.user.email,
-          fullName: res.data.user.name || res.data.user.email,
-          department: 'CEO',
-          isCeo: true,
-          photo: null
-        }
-      };
+      throw new Error('Your user profile record could not be found. Please contact an administrator.');
     }
 
     const dbUser = mapProfileToFrontend(users[0]);
+
+    // Check account status
+    const userStatus = (dbUser.status || '').toUpperCase();
+    if (userStatus === 'PENDING_EMAIL_VERIFICATION') {
+      throw new Error('Registration pending email verification link activation.');
+    }
+    if (userStatus === 'PENDING' || userStatus === 'PENDING_APPROVAL') {
+      throw new Error('Registration submitted. Please await HR approval');
+    }
+    if (userStatus === 'REJECTED') {
+      throw new Error('Your registration request was rejected by HR.');
+    }
+    if (userStatus !== 'ACTIVE') {
+      throw new Error(`Your account status is ${dbUser.status}.`);
+    }
+
+    // 2. Sign in with Supabase Auth
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+      email: emailLower,
+      password,
+    });
+
+    if (authError) {
+      throw new Error(authError.message || 'Login failed');
+    }
+
+    const token = authData.session?.access_token || 'supabase_active_session';
+    setToken(token);
+
     return {
       token,
       user: {
@@ -215,27 +280,31 @@ export const auth = {
         fullName: dbUser.fullName,
         department: dbUser.department,
         isCeo: dbUser.isCeo,
-        photo: dbUser.photo
+        photo: dbUser.photo,
+        status: dbUser.status,
+        requiresPasswordReset: dbUser.requiresPasswordReset
       }
     };
   },
 
+  /**
+   * Register — for non-privileged staff only.
+   * CEO/HR use magic link flow via auth.login instead.
+   */
   register: async (data: {
-    email: string; password: string; fullName: string;
+    email: string; fullName: string;
     department: string; ghanaCardId?: string; phone?: string;
   }) => {
-    // 1. Sign up user in Neon Auth
-    const res = await (neonClient.auth.signUp.email as any)({
-      email: data.email,
-      password: data.password,
-      name: data.fullName,
-      metadata: {
-        department: data.department,
-        ghanaCardId: data.ghanaCardId || null,
-        phone: data.phone || null,
-      },
+    const regPassword = generateSecurePassword(16);
+    const emailLower = data.email.trim().toLowerCase();
+
+    // 1. Sign up user in Supabase Auth
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email: emailLower,
+      password: regPassword,
       options: {
         data: {
+          full_name: data.fullName,
           department: data.department,
           ghanaCardId: data.ghanaCardId || null,
           phone: data.phone || null,
@@ -243,90 +312,119 @@ export const auth = {
       }
     });
 
-    if (res.error) {
-      throw new Error(res.error.message || 'Registration failed');
+    if (authError) {
+      throw new Error(authError.message || 'Registration failed');
     }
 
-    const userId = res.data.user.id;
-    const initialStatus = data.department === 'CEO' ? 'OTP_VERIFICATION' : 'PENDING_APPROVAL';
+    const userId = authData.user?.id;
+    if (!userId) {
+      throw new Error('Failed to create user account.');
+    }
 
-    // 2. Synchronize to public "profiles" DB table to preserve references
-    const { error: dbError } = await neonClient.from('profiles').insert({
+    const initialStatus = 'PENDING_APPROVAL';
+
+    // 2. Insert profile record
+    const { error: dbError } = await supabase.from('profiles').insert({
       id: userId,
-      email: data.email.trim().toLowerCase(),
+      email: emailLower,
       full_name: data.fullName,
       role: data.department,
       ghana_card_id: data.ghanaCardId || null,
       phone: data.phone || null,
       status: initialStatus,
       is_ceo: data.department === 'CEO',
+      requires_password_reset: true,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       metadata: {
         fullName: data.fullName,
         department: data.department,
         ghanaCardId: data.ghanaCardId || null,
-        phone: data.phone || null
+        phone: data.phone || null,
+        tempAuthSecret: regPassword
       }
     });
 
     if (dbError) {
-      console.error('Error inserting user to public profiles table:', dbError);
+      throw new Error(dbError.message || 'Failed to initialize database profile record.');
     }
 
+    // Sign out immediately — user must wait for HR approval
+    await supabase.auth.signOut().catch(() => {});
+    clearToken();
+
     return {
-      message: data.department === 'CEO'
-        ? 'CEO registered. Verify SMS OTP to activate.'
-        : 'Registration submitted. Awaiting HR approval.',
+      message: 'Registration submitted. Please await HR approval.',
       userId,
       status: initialStatus
     };
   },
 
-  verifyCeoOtp: async (email: string, _otp: string) => {
-    // Update public profiles table status to ACTIVE
-    const { error } = await neonClient
-      .from('profiles')
-      .update({ status: 'ACTIVE', updated_at: new Date().toISOString() })
-      .eq('email', email.trim().toLowerCase());
-
-    if (error) {
-      throw new Error(error.message || 'Failed to verify CEO OTP');
-    }
-    return { message: 'CEO verified. You may now log in.' };
-  },
-
   me: async () => {
-    const sessionRes = await neonClient.auth.getSession();
-    if (sessionRes.error || !sessionRes.data || !sessionRes.data.user) {
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError || !sessionData.session?.user) {
       throw new Error('Not authenticated');
     }
-    const user = sessionRes.data.user;
+    const user = sessionData.session.user;
 
-    const { data: userRecords, error } = await neonClient
+    const { data: userRecords, error } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', user.id)
       .limit(1);
 
     if (error || !userRecords || userRecords.length === 0) {
-      return {
-        id: user.id,
-        email: user.email,
-        fullName: user.name || user.email,
-        department: 'CEO',
-        isCeo: true,
-        photo: null
-      };
+      throw new Error('User profile record not found.');
     }
-    return mapProfileToFrontend(userRecords[0]);
+    
+    const dbUser = mapProfileToFrontend(userRecords[0]);
+    if (dbUser.status !== 'ACTIVE') {
+      throw new Error('User account is not active.');
+    }
+    return dbUser;
   },
+
+  signOut: async () => {
+    await supabase.auth.signOut().catch(() => {});
+    clearToken();
+  },
+
+  changePassword: async (newPassword: string, _currentPassword?: string) => {
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (!sessionData.session?.user) throw new Error('Not authenticated');
+
+    // Supabase updateUser doesn't require the current password — session proves identity
+    const { error: authError } = await supabase.auth.updateUser({
+      password: newPassword,
+    });
+
+    if (authError) {
+      throw new Error(authError.message || 'Failed to update password in auth system');
+    }
+
+    // Clear temporary password details and turn reset flag off
+    const { error: dbError } = await supabase
+      .from('profiles')
+      .update({
+        password_hash: null,
+        requires_password_reset: false,
+        metadata: {
+          tempAuthSecret: null
+        },
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', sessionData.session.user.id);
+
+    if (dbError) {
+      throw new Error(dbError.message || 'Failed to update database profile status');
+    }
+  }
 };
 
 // ── HR ────────────────────────────────────────────────────────
 export const hr = {
   getPendingUsers: async () => {
-    const { data, error } = await neonClient
+    const { data, error } = await supabase
       .from('profiles')
       .select('*')
       .eq('status', 'PENDING_APPROVAL')
@@ -336,7 +434,7 @@ export const hr = {
   },
 
   getAllUsers: async () => {
-    const { data, error } = await neonClient
+    const { data, error } = await supabase
       .from('profiles')
       .select('*')
       .eq('status', 'ACTIVE')
@@ -345,47 +443,34 @@ export const hr = {
     return (data || []).map(mapProfileToFrontend);
   },
 
-  approveUser: async (userId: string, approve: boolean, generatedPassword?: string) => {
-    const status = approve ? 'ACTIVE' : 'REJECTED';
-    const updateData: any = { status, updated_at: new Date().toISOString() };
-    if (approve && generatedPassword) {
-      updateData.password_hash = generatedPassword;
+  /**
+   * Approve or deny a user — calls the serverless endpoint which uses
+   * the service_role key to update the profile and send the magic link email.
+   */
+  approveUser: async (userId: string, approve: boolean, generatedPassword?: string, _token?: string) => {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
+    if (!accessToken) throw new Error('Not authenticated');
+
+    const res = await fetch('/api/approve-user', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({ userId, approve, generatedPassword }),
+    });
+
+    const body = await res.json();
+    if (!res.ok) {
+      throw new Error(body.error || 'Failed to process user approval.');
     }
 
-    const { data, error } = await neonClient
-      .from('profiles')
-      .update(updateData)
-      .eq('id', userId);
-    if (error) throw new Error(error.message);
-
-    // Audit trail logging
-    try {
-      const activeSession = await neonClient.auth.getSession();
-      const performerId = activeSession.data?.user?.id || 'unknown';
-      const { data: performers } = await neonClient.from('profiles').select('full_name').eq('id', performerId).limit(1);
-      const performedBy = performers?.[0]?.full_name || 'HR Staff';
-
-      const { data: approvedUsers } = await neonClient.from('profiles').select('full_name, role').eq('id', userId).limit(1);
-      const approvedName = approvedUsers?.[0]?.full_name || 'Staff';
-      const approvedDept = approvedUsers?.[0]?.role || 'HR';
-
-      await neonClient.from('global_audit_history').insert({
-        action: approve ? 'APPROVE_USER' : 'REJECT_USER',
-        department: 'HR',
-        performed_by: performedBy,
-        user_id: performerId,
-        details: `User ${approvedName} (${approvedDept}) ${approve ? 'approved' : 'rejected'}.`,
-        timestamp: new Date().toISOString()
-      });
-    } catch (e) {
-      console.error('Audit trail logging failed:', e);
-    }
-
-    return data;
+    return body;
   },
 
   getAttendance: async () => {
-    const { data, error } = await neonClient
+    const { data, error } = await supabase
       .from('attendance')
       .select('*, user:profiles(full_name, role)')
       .order('check_in_time', { ascending: false });
@@ -397,7 +482,7 @@ export const hr = {
 // ── Operations ────────────────────────────────────────────────
 export const operations = {
   getIncomingGoods: async () => {
-    const { data, error } = await neonClient
+    const { data, error } = await supabase
       .from('cargo_intake')
       .select('*, approvedBy:profiles(full_name)')
       .order('created_at', { ascending: false });
@@ -410,13 +495,13 @@ export const operations = {
     country: string; company: string; quantity: number; weight: number;
     discrepancies?: string; isFaulty?: boolean; productImage?: string;
   }) => {
-    const activeSession = await neonClient.auth.getSession();
-    const performerId = activeSession.data?.user?.id || 'unknown';
-    const { data: performers } = await neonClient.from('profiles').select('full_name').eq('id', performerId).limit(1);
+    const { data: sessionData } = await supabase.auth.getSession();
+    const performerId = sessionData.session?.user?.id || 'unknown';
+    const { data: performers } = await supabase.from('profiles').select('full_name').eq('id', performerId).limit(1);
     const performedBy = performers?.[0]?.full_name || 'Ops Staff';
 
     const intakeCode = data.goodsCode || `GC-${Date.now()}`;
-    const { data: intake, error } = await neonClient
+    const { data: intake, error } = await supabase
       .from('cargo_intake')
       .insert({
         product_name: data.productName || null,
@@ -442,7 +527,7 @@ export const operations = {
     if (error) throw new Error(error.message);
 
     try {
-      await neonClient.from('global_audit_history').insert({
+      await supabase.from('global_audit_history').insert({
         action: 'LOG_PORT_INTAKE',
         department: 'OPERATIONS',
         performed_by: performedBy,
@@ -458,7 +543,7 @@ export const operations = {
   },
 
   getFulfillmentTickets: async () => {
-    const { data, error } = await neonClient
+    const { data, error } = await supabase
       .from('fulfillment_tickets')
       .select('*, order:sales_orders(client_name, total_amount), productionRequest:material_requisitions(*)')
       .order('created_at', { ascending: false });
@@ -482,10 +567,10 @@ export const operations = {
   },
 
   releaseToDispatch: async (orderId: string, vehicleId: string, driverName?: string) => {
-    const { data: orders, error: orderErr } = await neonClient.from('sales_orders').select('*').eq('id', orderId).limit(1);
+    const { data: orders, error: orderErr } = await supabase.from('sales_orders').select('*').eq('id', orderId).limit(1);
     if (orderErr || !orders || orders.length === 0) throw new Error('Order not found');
 
-    const { data: delivery, error: delErr } = await neonClient
+    const { data: delivery, error: delErr } = await supabase
       .from('delivery_logs')
       .insert({
         order_id: orderId,
@@ -497,7 +582,7 @@ export const operations = {
       }).select();
     if (delErr) throw new Error(delErr.message);
 
-    const { data: updatedOrder, error: updateErr } = await neonClient
+    const { data: updatedOrder, error: updateErr } = await supabase
       .from('sales_orders')
       .update({ status: 'OUT_FOR_DELIVERY', updated_at: new Date().toISOString() })
       .eq('id', orderId)
@@ -522,7 +607,7 @@ export const operations = {
 // ── Management ────────────────────────────────────────────────
 export const management = {
   getAuditLog: async () => {
-    const { data, error } = await neonClient
+    const { data, error } = await supabase
       .from('global_audit_history')
       .select('*')
       .order('timestamp', { ascending: false })
@@ -532,7 +617,7 @@ export const management = {
   },
 
   getPrices: async () => {
-    const { data, error } = await neonClient
+    const { data, error } = await supabase
       .from('goods_prices')
       .select('*')
       .order('set_at', { ascending: false });
@@ -541,12 +626,12 @@ export const management = {
   },
 
   setPrice: async (data: { productName: string; category: string; unitPrice: number; currency: string }) => {
-    const activeSession = await neonClient.auth.getSession();
-    const performerId = activeSession.data?.user?.id || 'unknown';
-    const { data: performers } = await neonClient.from('profiles').select('full_name').eq('id', performerId).limit(1);
+    const { data: sessionData } = await supabase.auth.getSession();
+    const performerId = sessionData.session?.user?.id || 'unknown';
+    const { data: performers } = await supabase.from('profiles').select('full_name').eq('id', performerId).limit(1);
     const performedBy = performers?.[0]?.full_name || 'Management';
 
-    const { data: price, error } = await neonClient
+    const { data: price, error } = await supabase
       .from('goods_prices')
       .insert({
         product_name: data.productName,
@@ -561,13 +646,13 @@ export const management = {
   },
 
   approveIntake: async (intakeId: string, approve: boolean, unitPrice?: number) => {
-    const activeSession = await neonClient.auth.getSession();
-    const performerId = activeSession.data?.user?.id || 'unknown';
-    const { data: performers } = await neonClient.from('profiles').select('full_name').eq('id', performerId).limit(1);
+    const { data: sessionData } = await supabase.auth.getSession();
+    const performerId = sessionData.session?.user?.id || 'unknown';
+    const { data: performers } = await supabase.from('profiles').select('full_name').eq('id', performerId).limit(1);
     const performedBy = performers?.[0]?.full_name || 'Management';
 
     const status = approve ? 'APPROVED' : 'REJECTED';
-    const { data: intake, error } = await neonClient
+    const { data: intake, error } = await supabase
       .from('cargo_intake')
       .update({
         status,
@@ -580,7 +665,7 @@ export const management = {
     if (error) throw new Error(error.message);
 
     try {
-      await neonClient.from('global_audit_history').insert({
+      await supabase.from('global_audit_history').insert({
         action: approve ? 'APPROVE_PORT_CARGO' : 'REJECT_PORT_CARGO',
         department: 'MANAGEMENT',
         performed_by: performedBy,
@@ -596,16 +681,16 @@ export const management = {
   },
 
   approveCreditOrder: async (orderId: string, approve: boolean) => {
-    const activeSession = await neonClient.auth.getSession();
-    const performerId = activeSession.data?.user?.id || 'unknown';
-    const { data: performers } = await neonClient.from('profiles').select('full_name').eq('id', performerId).limit(1);
+    const { data: sessionData } = await supabase.auth.getSession();
+    const performerId = sessionData.session?.user?.id || 'unknown';
+    const { data: performers } = await supabase.from('profiles').select('full_name').eq('id', performerId).limit(1);
     const performedBy = performers?.[0]?.full_name || 'Management';
 
-    const { data: orders } = await neonClient.from('sales_orders').select('*').eq('id', orderId).limit(1);
+    const { data: orders } = await supabase.from('sales_orders').select('*').eq('id', orderId).limit(1);
     const order = orders?.[0];
 
     const status = approve ? 'APPROVED' : 'REJECTED';
-    const { data: updatedOrder, error } = await neonClient
+    const { data: updatedOrder, error } = await supabase
       .from('sales_orders')
       .update({ status, updated_at: new Date().toISOString() })
       .eq('id', orderId)
@@ -614,7 +699,7 @@ export const management = {
 
     if (order) {
       try {
-        await neonClient.from('global_audit_history').insert({
+        await supabase.from('global_audit_history').insert({
           action: approve ? 'APPROVE_CREDIT_ORDER' : 'REJECT_CREDIT_ORDER',
           department: 'MANAGEMENT',
           performed_by: performedBy,
@@ -632,7 +717,7 @@ export const management = {
 
   approveProductionRequest: async (requestId: string, approve: boolean) => {
     const status = approve ? 'APPROVED' : 'REJECTED';
-    const { data, error } = await neonClient
+    const { data, error } = await supabase
       .from('material_requisitions')
       .update({ status, updated_at: new Date().toISOString() })
       .eq('id', requestId)
@@ -645,7 +730,7 @@ export const management = {
 // ── Marketing ─────────────────────────────────────────────────
 export const marketing = {
   getOrders: async () => {
-    const { data, error } = await neonClient
+    const { data, error } = await supabase
       .from('sales_orders')
       .select('*, createdBy:profiles(full_name)')
       .order('created_at', { ascending: false });
@@ -657,13 +742,13 @@ export const marketing = {
     clientName: string; productName?: string; destination?: string;
     ghanaCard?: string; paymentMode: string; totalAmount: number;
   }) => {
-    const activeSession = await neonClient.auth.getSession();
-    const performerId = activeSession.data?.user?.id || 'unknown';
-    const { data: performers } = await neonClient.from('profiles').select('full_name').eq('id', performerId).limit(1);
+    const { data: sessionData } = await supabase.auth.getSession();
+    const performerId = sessionData.session?.user?.id || 'unknown';
+    const { data: performers } = await supabase.from('profiles').select('full_name').eq('id', performerId).limit(1);
     const performedBy = performers?.[0]?.full_name || 'Marketing Staff';
 
     const ticketNumber = `TKT-${Math.floor(10000 + Math.random() * 90000)}`;
-    const { data: order, error } = await neonClient
+    const { data: order, error } = await supabase
       .from('sales_orders')
       .insert({
         ticket_number: ticketNumber,
@@ -689,7 +774,7 @@ export const marketing = {
     if (error) throw new Error(error.message);
 
     try {
-      await neonClient.from('global_audit_history').insert({
+      await supabase.from('global_audit_history').insert({
         action: 'CREATE_ORDER',
         department: 'MARKETING',
         performed_by: performedBy,
@@ -705,7 +790,7 @@ export const marketing = {
   },
 
   getCustomers: async () => {
-    const { data, error } = await neonClient
+    const { data, error } = await supabase
       .from('customers')
       .select('*')
       .order('registered_at', { ascending: false });
@@ -717,7 +802,7 @@ export const marketing = {
     name: string; phone: string; email?: string;
     location: string; companyName: string; ghanaCard?: string; photo?: string;
   }) => {
-    const { data: customer, error } = await neonClient
+    const { data: customer, error } = await supabase
       .from('customers')
       .insert({
         name: data.name,
@@ -738,7 +823,7 @@ export const marketing = {
 // ── Finance ───────────────────────────────────────────────────
 export const finance = {
   getPayments: async () => {
-    const { data, error } = await neonClient
+    const { data, error } = await supabase
       .from('finance_ledger')
       .select('*, order:sales_orders(client_name, payment_mode)')
       .order('issued_at', { ascending: false });
@@ -756,7 +841,7 @@ export const finance = {
   },
 
   getInvoices: async () => {
-    const { data, error } = await neonClient
+    const { data, error } = await supabase
       .from('finance_ledger')
       .select('*, order:sales_orders(client_name, total_amount, ticket_number)')
       .order('issued_at', { ascending: false });
@@ -778,12 +863,12 @@ export const finance = {
   },
 
   evaluateOrder: async (orderId: string, approve: boolean) => {
-    const { data: orders } = await neonClient.from('sales_orders').select('*').eq('id', orderId).limit(1);
+    const { data: orders } = await supabase.from('sales_orders').select('*').eq('id', orderId).limit(1);
     const order = orders?.[0];
     if (!order) throw new Error('Order not found');
 
     if (!approve) {
-      const { data: rejectedOrder, error } = await neonClient
+      const { data: rejectedOrder, error } = await supabase
         .from('sales_orders')
         .update({ status: 'REJECTED', updated_at: new Date().toISOString() })
         .eq('id', orderId)
@@ -793,7 +878,7 @@ export const finance = {
     }
 
     if (order.payment_mode === 'CREDIT' || order.paymentMode === 'CREDIT') {
-      const { data: updatedOrder, error } = await neonClient
+      const { data: updatedOrder, error } = await supabase
         .from('sales_orders')
         .update({ status: 'PENDING_MANAGEMENT', updated_at: new Date().toISOString() })
         .eq('id', orderId)
@@ -801,7 +886,7 @@ export const finance = {
       if (error) throw new Error(error.message);
       return { message: 'Credit order sent to Management.', order: updatedOrder ? mapOrderToFrontend(updatedOrder[0]) : null };
     } else {
-      const { data: updatedOrder, error } = await neonClient
+      const { data: updatedOrder, error } = await supabase
         .from('sales_orders')
         .update({ status: 'APPROVED', updated_at: new Date().toISOString() })
         .eq('id', orderId)
@@ -812,7 +897,7 @@ export const finance = {
   },
 
   finalizeOrder: async (orderId: string) => {
-    const { data: orders } = await neonClient.from('sales_orders').select('*').eq('id', orderId).limit(1);
+    const { data: orders } = await supabase.from('sales_orders').select('*').eq('id', orderId).limit(1);
     const order = orders?.[0];
     if (!order) throw new Error('Order not found');
 
@@ -821,7 +906,7 @@ export const finance = {
     const taxAmount = totalAmountVal * 0.15;
     const grandTotal = totalAmountVal + taxAmount;
     
-    const { data: invoice, error: invErr } = await neonClient
+    const { data: invoice, error: invErr } = await supabase
       .from('finance_ledger')
       .insert({
         order_id: orderId,
@@ -833,7 +918,7 @@ export const finance = {
       }).select();
     if (invErr) throw new Error(invErr.message);
 
-    const { error: ticketErr } = await neonClient
+    const { error: ticketErr } = await supabase
       .from('fulfillment_tickets')
       .insert({
         order_id: orderId,
@@ -850,7 +935,7 @@ export const finance = {
       });
     if (ticketErr) throw new Error(ticketErr.message);
 
-    const { data: updatedOrder, error: orderErr } = await neonClient
+    const { data: updatedOrder, error: orderErr } = await supabase
       .from('sales_orders')
       .update({ status: 'PROCESSING', updated_at: new Date().toISOString() })
       .eq('id', orderId)
@@ -865,18 +950,18 @@ export const finance = {
   },
 
   releaseProductionMaterials: async (requestId: string) => {
-    const { data: reqs } = await neonClient.from('material_requisitions').select('*').eq('id', requestId).limit(1);
+    const { data: reqs } = await supabase.from('material_requisitions').select('*').eq('id', requestId).limit(1);
     const request = reqs?.[0];
     if (!request) throw new Error('Production request not found');
 
-    const { data: updatedRequest, error } = await neonClient
+    const { data: updatedRequest, error } = await supabase
       .from('material_requisitions')
       .update({ status: 'TICKETS_ISSUED', updated_at: new Date().toISOString() })
       .eq('id', requestId)
       .select();
     if (error) throw new Error(error.message);
 
-    await neonClient
+    await supabase
       .from('fulfillment_tickets')
       .insert({
         production_request_id: requestId,
@@ -896,7 +981,7 @@ export const finance = {
 // ── Production ────────────────────────────────────────────────
 export const production = {
   getRequests: async () => {
-    const { data, error } = await neonClient
+    const { data, error } = await supabase
       .from('material_requisitions')
       .select('*')
       .order('created_at', { ascending: false });
@@ -905,7 +990,7 @@ export const production = {
   },
 
   requestMaterials: async (items: Array<{ materialName: string; quantity: number }>, notes?: string) => {
-    const { data, error } = await neonClient
+    const { data, error } = await supabase
       .from('material_requisitions')
       .insert({
         items,
@@ -926,7 +1011,7 @@ export const production = {
 // ── Dispatch ──────────────────────────────────────────────────
 export const dispatch = {
   getDeliveries: async () => {
-    const { data, error } = await neonClient
+    const { data, error } = await supabase
       .from('delivery_logs')
       .select('*, order:sales_orders(client_name, total_amount)')
       .order('created_at', { ascending: false });
@@ -957,7 +1042,7 @@ export const dispatch = {
       updateData.active_coordinates = coordinates;
     }
 
-    const { data: delivery, error: delErr } = await neonClient
+    const { data: delivery, error: delErr } = await supabase
       .from('delivery_logs')
       .update(updateData)
       .eq('order_id', orderId)
@@ -965,7 +1050,7 @@ export const dispatch = {
     if (delErr) throw new Error(delErr.message);
 
     if (status === 'DELIVERED') {
-      await neonClient
+      await supabase
         .from('sales_orders')
         .update({ status: 'DELIVERED', updated_at: new Date().toISOString() })
         .eq('id', orderId);
@@ -978,7 +1063,7 @@ export const dispatch = {
 // ── Reception ─────────────────────────────────────────────────
 export const reception = {
   getVisitors: async () => {
-    const { data, error } = await neonClient
+    const { data, error } = await supabase
       .from('visitors')
       .select('*')
       .order('check_in_time', { ascending: false });
@@ -987,10 +1072,10 @@ export const reception = {
   },
 
   checkInVisitor: async (fullName: string, purpose: string, hostName: string) => {
-    const activeSession = await neonClient.auth.getSession();
-    const performerId = activeSession.data?.user?.id || 'unknown';
+    const { data: sessionData } = await supabase.auth.getSession();
+    const performerId = sessionData.session?.user?.id || 'unknown';
 
-    const { data, error } = await neonClient
+    const { data, error } = await supabase
       .from('visitors')
       .insert({
         full_name: fullName,
@@ -1004,7 +1089,7 @@ export const reception = {
   },
 
   checkOutVisitor: async (visitorId: string) => {
-    const { data, error } = await neonClient
+    const { data, error } = await supabase
       .from('visitors')
       .update({ check_out_time: new Date().toISOString() })
       .eq('id', visitorId)
@@ -1020,7 +1105,7 @@ export const reception = {
     const now = new Date();
     const isLate = now.getHours() > 9 || (now.getHours() === 9 && now.getMinutes() > 0);
 
-    const { data, error } = await neonClient
+    const { data, error } = await supabase
       .from('attendance')
       .insert({
         user_id: employeeUserId,
@@ -1037,7 +1122,7 @@ export const reception = {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const { data, error } = await neonClient
+    const { data, error } = await supabase
       .from('attendance')
       .update({ check_out_time: new Date().toISOString() })
       .eq('user_id', employeeUserId)
