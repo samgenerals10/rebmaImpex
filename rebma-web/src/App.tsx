@@ -585,7 +585,41 @@ export default function App() {
         const token = session.access_token;
         setToken(token);
 
-        const profile = await auth.me();
+        let profile;
+        try {
+          profile = await auth.me();
+        } catch (meError: any) {
+          const user = session.user;
+          if (user) {
+            const rawRole = user.user_metadata?.role || user.user_metadata?.department || 'Staff';
+            const userRole = getNormalizedRole(rawRole);
+            const fullName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'Employee';
+            const isCeo = user.user_metadata?.is_ceo || userRole === 'CEO';
+
+            // Insert new profile row
+            const { error: insertError } = await supabase.from('profiles').insert({
+              id: user.id,
+              email: user.email,
+              full_name: fullName,
+              role: userRole,
+              status: 'ACTIVE',
+              is_ceo: isCeo,
+              requires_password_reset: true,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            });
+
+            if (insertError) {
+              console.error('Failed to auto-create profile:', insertError);
+              throw meError;
+            }
+
+            profile = await auth.me();
+          } else {
+            throw meError;
+          }
+        }
+
         if (isMounted) {
           setCurrentUser({
             fullName: profile.fullName,

@@ -63,6 +63,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       emailRedirectTo: siteUrl,
       data: {
         role: roleUpper,
+        department: roleUpper,
+        full_name: roleUpper === 'CEO' ? 'CEO Office' : 'HR Manager',
         is_ceo: roleUpper === 'CEO',
       },
       shouldCreateUser: true,
@@ -76,17 +78,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // If profile doesn't exist yet, create it now
   if (!existingProfiles || existingProfiles.length === 0) {
-    // We need the user ID — fetch it from auth.users via admin
-    const { data: authUsers } = await supabaseAdmin.auth.admin.listUsers();
-    const authUser = authUsers?.users?.find(
-      (u: any) => u.email?.toLowerCase() === emailLower
-    );
+    // Fetch user by email directly
+    const { data: userData } = await supabaseAdmin.auth.admin.getUserByEmail(emailLower);
+    const authUser = userData?.user;
 
     if (authUser) {
       await supabaseAdmin.from('profiles').upsert({
         id: authUser.id,
         email: emailLower,
-        full_name: roleUpper === 'CEO' ? 'CEO' : 'HR Manager',
+        full_name: authUser.user_metadata?.full_name || (roleUpper === 'CEO' ? 'CEO' : 'HR Manager'),
         role: roleUpper,
         status: 'ACTIVE',
         is_ceo: roleUpper === 'CEO',
