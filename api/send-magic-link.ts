@@ -28,6 +28,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const emailLower = email.trim().toLowerCase();
   const roleUpper = role.toUpperCase();
 
+  console.log('CEO_EMAIL from env:', CEO_EMAIL);
+  console.log('HR_EMAIL from env:', HR_EMAIL);
+  console.log('Email to compare:', emailLower);
+  console.log('Role to compare:', roleUpper);
+  console.log('CEO comparison result (is match?):', emailLower === CEO_EMAIL);
+  console.log('HR comparison result (is match?):', emailLower === HR_EMAIL);
+
   // Validate email against whitelist
   if (roleUpper === 'CEO' && emailLower !== CEO_EMAIL) {
     return res.status(403).json({ error: 'Email is not whitelisted for the CEO role.' });
