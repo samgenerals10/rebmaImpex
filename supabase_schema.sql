@@ -237,3 +237,49 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 CREATE OR REPLACE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 5. REALTIME CHAT MESSAGES TABLE & POLICIES
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS public.chat_messages (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    sender TEXT NOT NULL,
+    content TEXT NOT NULL,
+    time TEXT NOT NULL,
+    receiver TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.chat_messages ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow authenticated users to read chat_messages"
+ON public.chat_messages FOR SELECT
+TO authenticated
+USING (true);
+
+CREATE POLICY "Allow authenticated users to insert chat_messages"
+ON public.chat_messages FOR INSERT
+TO authenticated
+WITH CHECK (true);
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 6. ENABLE SUPABASE REALTIME PUBLICATIONS
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- Ensure publication exists
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime') THEN
+        CREATE PUBLICATION supabase_realtime;
+    END IF;
+END
+$$;
+
+-- Add tables to the realtime publication
+ALTER PUBLICATION supabase_realtime ADD TABLE public.profiles;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.cargo_intake;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.delivery_logs;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.goods_prices;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.chat_messages;
+

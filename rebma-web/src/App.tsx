@@ -1,8 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Eye, EyeOff, Check, X, ArrowRight, Lock, Mail, User, CreditCard, Phone, AlertCircle, Info, CheckCircle } from 'lucide-react';
-import { io } from 'socket.io-client';
-
 import type { Order, IncomingGoods, ProductionRequest, Visitor, Attendance, ChatMessage, BoardroomMeeting, FinancePayment, Customer, GoodsPrice, AuditEntry, PendingRegistration, StaffMember } from './types/erp';
 
 import Sidebar from './components/layout/Sidebar';
@@ -24,11 +22,6 @@ import SettingsDashboard from './views/SettingsDashboard';
 
 import { auth, hr, operations, management, marketing, finance, production, dispatch, reception, getToken, setToken, clearToken } from './services/apiClient';
 import { supabase } from './lib/supabaseClient';
-
-const socket = io(import.meta.env.VITE_API_URL || 'http://localhost:4000', {
-  withCredentials: true,
-  autoConnect: false,
-});
 
 export default function App() {
   // Helper to map UI dropdown values to database role values
@@ -534,6 +527,26 @@ export default function App() {
     } catch (e) {
       console.log('Skipping staff list fetch (unauthorized/error)');
     }
+
+    // Fetch chat messages
+    try {
+      const { data: messages, error } = await supabase
+        .from('chat_messages')
+        .select('*')
+        .order('created_at', { ascending: true });
+      if (error) throw error;
+      if (messages && messages.length > 0) {
+        setChatMessagesState(messages.map((m: any) => ({
+          id: m.id,
+          sender: m.sender,
+          content: m.content,
+          time: m.time,
+          receiver: m.receiver || undefined
+        })));
+      }
+    } catch (e) {
+      console.log('Skipping chat messages fetch:', e);
+    }
   };
 
   // Auth initialize hook
@@ -636,74 +649,112 @@ export default function App() {
     }
   }, [isAuthenticated]);
 
-  // Socket connection hook
+  // Supabase Realtime subscriptions hook
   useEffect(() => {
     if (currentUser) {
-      socket.connect();
-      socket.emit('join_department', currentUser.department);
-      
-      socket.on('global_alert', (data: { message: string }) => {
-        addNotification(data.message);
-        refreshAllData();
-      });
-      
-      socket.on('new_registration_pending', (data: any) => {
-        if (currentUser.department === 'HR' || currentUser.isCeo) {
-          addNotification(`New pending user: ${data.fullName}`);
-          refreshAllData();
-        }
-      });
-      
-      socket.on('user_approved', (data: any) => {
-        addNotification(`User ${data.fullName} approved.`);
-        refreshAllData();
-      });
+      const channel = supabase.channel('erp-realtime')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'profiles' },
+          (payload) => {
+            const newRecord = payload.new as any;
+            const oldRecord = payload.old as any;
+            if (payload.eventType === 'INSERT') {
+              if (newRecord.status === 'PENDING_APPROVAL') {
+                if (currentUser.department === 'HR' || currentUser.isCeo) {
+                  addNotification(`New pending user: ${newRecord.full_name || 'Unknown'}`);
+                  refreshAllData();
+                }
+              }
+            } else if (payload.eventType === 'UPDATE') {
+              if (oldRecord && oldRecord.status !== 'ACTIVE' && newRecord.status === 'ACTIVE') {
+                addNotification(`User ${newRecord.full_name || 'Unknown'} approved.`);
+                refreshAllData();
+              }
+            }
+          }
+        )
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'cargo_intake' },
+          (payload) => {
+            const newRecord = payload.new as any;
+            const oldRecord = payload.old as any;
+            if (payload.eventType === 'INSERT') {
+              if (currentUser.department === 'MANAGEMENT' || currentUser.isCeo) {
+                addNotification(`New cargo intake logged for ${newRecord.company || 'N/A'}`);
+                refreshAllData();
+              }
+            } else if (payload.eventType === 'UPDATE') {
+              if (oldRecord && oldRecord.status !== 'APPROVED' && newRecord.status === 'APPROVED') {
+                if (currentUser.department === 'OPERATIONS' || currentUser.isCeo) {
+                  addNotification(`Intake approved: ${newRecord.id}`);
+                  refreshAllData();
+                }
+              } else if (oldRecord && oldRecord.status !== 'REJECTED' && newRecord.status === 'REJECTED') {
+                if (currentUser.department === 'OPERATIONS' || currentUser.isCeo) {
+                  addNotification(`Intake rejected: ${newRecord.id}`);
+                  refreshAllData();
+                }
+              }
+            }
+          }
+        )
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'delivery_logs' },
+          (payload) => {
+            const newRecord = payload.new as any;
+            if (currentUser.department === 'DISPATCH' || currentUser.isCeo) {
+              addNotification(`New delivery assigned: Order ${newRecord.order_id || 'N/A'}`);
+              refreshAllData();
+            }
+          }
+        )
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'goods_prices' },
+          () => {
+            if (['FINANCE', 'MARKETING', 'MANAGEMENT'].includes(currentUser.department) || currentUser.isCeo) {
+              addNotification(`Price catalog updated`);
+              refreshAllData();
+            }
+          }
+        )
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'chat_messages' },
+          (payload) => {
+            const newMsg = payload.new as any;
+            const formattedMsg: ChatMessage = {
+              id: newMsg.id,
+              sender: newMsg.sender,
+              content: newMsg.content,
+              time: newMsg.time,
+              receiver: newMsg.receiver || undefined
+            };
+            setChatMessagesState((prev) => {
+              const tempIndex = prev.findIndex(
+                (m) =>
+                  !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(m.id) &&
+                  m.sender === formattedMsg.sender &&
+                  m.content === formattedMsg.content &&
+                  m.receiver === formattedMsg.receiver
+              );
+              if (tempIndex !== -1) {
+                const next = [...prev];
+                next[tempIndex] = formattedMsg;
+                return next;
+              }
+              if (prev.some((msg) => msg.id === formattedMsg.id)) return prev;
+              return [...prev, formattedMsg];
+            });
+          }
+        )
+        .subscribe();
 
-      socket.on('intake_logged', (data: any) => {
-        if (currentUser.department === 'MANAGEMENT' || currentUser.isCeo) {
-          addNotification(`New cargo intake logged for ${data.company}`);
-          refreshAllData();
-        }
-      });
-
-      socket.on('new_delivery_assigned', (data: any) => {
-        if (currentUser.department === 'DISPATCH' || currentUser.isCeo) {
-          addNotification(`New delivery assigned: Order ${data.orderId}`);
-          refreshAllData();
-        }
-      });
-
-      socket.on('price_catalog_updated', () => {
-        if (['FINANCE', 'MARKETING', 'MANAGEMENT'].includes(currentUser.department) || currentUser.isCeo) {
-          addNotification(`Price catalog updated`);
-          refreshAllData();
-        }
-      });
-
-      socket.on('intake_approved', (data: any) => {
-        if (currentUser.department === 'OPERATIONS' || currentUser.isCeo) {
-          addNotification(`Intake approved: ${data.intakeId}`);
-          refreshAllData();
-        }
-      });
-
-      socket.on('intake_rejected', (data: any) => {
-        if (currentUser.department === 'OPERATIONS' || currentUser.isCeo) {
-          addNotification(`Intake rejected: ${data.intakeId}`);
-          refreshAllData();
-        }
-      });
-      
       return () => {
-        socket.off('global_alert');
-        socket.off('new_registration_pending');
-        socket.off('user_approved');
-        socket.off('intake_logged');
-        socket.off('new_delivery_assigned');
-        socket.off('price_catalog_updated');
-        socket.off('intake_approved');
-        socket.off('intake_rejected');
-        socket.disconnect();
+        supabase.removeChannel(channel);
       };
     }
   }, [currentUser]);
@@ -748,9 +799,36 @@ export default function App() {
 
   // Real-Time Chat & Boardroom States
   const [isChatOpen, setIsChatOpen] = useState<boolean>(false);
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
-    { id: '1', sender: 'System Terminal', content: 'WebSockets initialized. Boardroom chat active.', time: '09:00 AM' }
+  const [chatMessages, setChatMessagesState] = useState<ChatMessage[]>([
+    { id: '1', sender: 'System Terminal', content: 'Supabase Realtime initialized. Boardroom chat active.', time: '09:00 AM' }
   ]);
+
+  const setChatMessages = (
+    val: ChatMessage[] | ((prev: ChatMessage[]) => ChatMessage[])
+  ) => {
+    setChatMessagesState((prev) => {
+      const next = typeof val === 'function' ? val(prev) : val;
+      const added = next.filter((m) => !prev.some((p) => p.id === m.id));
+      for (const msg of added) {
+        if (msg.sender === 'System Terminal') continue;
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(msg.id);
+        if (!isUuid) {
+          supabase
+            .from('chat_messages')
+            .insert({
+              sender: msg.sender,
+              content: msg.content,
+              time: msg.time,
+              receiver: msg.receiver || null
+            })
+            .then(({ error }) => {
+              if (error) console.error('Failed to sync message to Supabase:', error);
+            });
+        }
+      }
+      return next;
+    });
+  };
   const [boardroomMinutes, setBoardroomMinutes] = useState<string>(
     "REMBA IMPEX GHANA LIMITED Boardroom Log - May 24, 2026\n1. Target fleet tracking refresh set to 10s.\n2. Ghana card formats must validate correctly."
   );
@@ -1220,14 +1298,19 @@ export default function App() {
   };
 
   // Chat message submission
-  const sendChatMessage = (content: string) => {
-    const msg: ChatMessage = {
-      id: chatMessages.length.toString(),
-      sender: currentUser?.fullName || 'Self',
-      content: content,
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    };
-    setChatMessages(prev => [...prev, msg]);
+  const sendChatMessage = async (content: string) => {
+    try {
+      const { error } = await supabase
+        .from('chat_messages')
+        .insert({
+          sender: currentUser?.fullName || 'Self',
+          content: content,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        });
+      if (error) throw error;
+    } catch (err: any) {
+      console.error('Failed to send chat message:', err);
+    }
   };
 
   // Dynamic Charting Data for HR view
