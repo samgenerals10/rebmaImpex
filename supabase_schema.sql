@@ -56,8 +56,8 @@ CREATE TABLE IF NOT EXISTS public.visitors (
     check_out_time TIMESTAMPTZ
 );
 
--- INCOMING GOODS (CARGO INTAKE) TABLE
-CREATE TABLE IF NOT EXISTS public.incoming_goods (
+-- CARGO INTAKE TABLE
+CREATE TABLE IF NOT EXISTS public.cargo_intake (
     id TEXT PRIMARY KEY DEFAULT 'CARGO-' || substring(md5(random()::text) from 1 for 8),
     product_name TEXT NOT NULL,
     goods_code TEXT UNIQUE NOT NULL,
@@ -140,13 +140,27 @@ CREATE TABLE IF NOT EXISTS public.boardroom_meetings (
     participants TEXT[]
 );
 
+-- DELIVERY LOGS TABLE
+CREATE TABLE IF NOT EXISTS public.delivery_logs (
+    id TEXT PRIMARY KEY DEFAULT 'DEL-' || substring(md5(random()::text) from 1 for 8),
+    order_id TEXT REFERENCES public.orders(id) ON DELETE SET NULL,
+    vehicle_id TEXT,
+    driver_name TEXT,
+    status TEXT NOT NULL DEFAULT 'ASSIGNED',
+    active_coordinates JSONB,
+    delivered_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 2. ENABLE ROW LEVEL SECURITY (RLS)
 -- ─────────────────────────────────────────────────────────────────────────────
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.attendance ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.visitors ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.incoming_goods ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.cargo_intake ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.delivery_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.global_audit_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.finance_payments ENABLE ROW LEVEL SECURITY;

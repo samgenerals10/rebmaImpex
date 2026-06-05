@@ -1,8 +1,6 @@
 {
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" },
-    { "source": "/(.*)", "destination": "/rebma-web/dist/index.html" }
-  ],
-  "buildCommand": "cd rebma-web && npm install && npm run build",
-  "outputDirectory": "rebma-web/dist"
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
 }
