@@ -230,36 +230,8 @@ export const auth = {
       return { magicLinkSent: true, message: body.message || 'Magic link sent! Check your email.' };
     }
 
-    // ── Standard password flow for all other staff ──
-    // 1. Fetch user profile to check status before authenticating
-    const { data: users, error: userError } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('email', emailLower)
-      .limit(1);
-
-    if (userError || !users || users.length === 0) {
-      throw new Error('Your user profile record could not be found. Please contact an administrator.');
-    }
-
-    const dbUser = mapProfileToFrontend(users[0]);
-
-    // Check account status
-    const userStatus = (dbUser.status || '').toUpperCase();
-    if (userStatus === 'PENDING_EMAIL_VERIFICATION') {
-      throw new Error('Registration pending email verification link activation.');
-    }
-    if (userStatus === 'PENDING' || userStatus === 'PENDING_APPROVAL') {
-      throw new Error('Registration submitted. Please await HR approval');
-    }
-    if (userStatus === 'REJECTED') {
-      throw new Error('Your registration request was rejected by HR.');
-    }
-    if (userStatus !== 'ACTIVE') {
-      throw new Error(`Your account status is ${dbUser.status}.`);
-    }
-
-    // 2. Sign in with Supabase Auth
+    // ── Standard password flow for all users (including CEO/HR when password is provided) ──
+    // 1. Sign in with Supabase Auth first (so we have session/authentication context for RLS)
     const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
       email: emailLower,
       password,
@@ -267,6 +239,43 @@ export const auth = {
 
     if (authError) {
       throw new Error(authError.message || 'Login failed');
+    }
+
+    const userId = authData.user?.id;
+    if (!userId) {
+      throw new Error('Login failed: user ID not found.');
+    }
+
+    // 2. Fetch user profile using the authenticated user's ID
+    const { data: users, error: userError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .limit(1);
+
+    if (userError || !users || users.length === 0) {
+      // Sign out to clean up session
+      await supabase.auth.signOut().catch(() => {});
+      throw new Error('Your user profile record could not be found.');
+    }
+
+    const dbUser = mapProfileToFrontend(users[0]);
+
+    // Check account status
+    const userStatus = (dbUser.status || '').toUpperCase();
+    if (userStatus !== 'ACTIVE') {
+      await supabase.auth.signOut().catch(() => {});
+      
+      if (userStatus === 'PENDING_EMAIL_VERIFICATION') {
+        throw new Error('Registration pending email verification link activation.');
+      }
+      if (userStatus === 'PENDING' || userStatus === 'PENDING_APPROVAL') {
+        throw new Error('Registration submitted. Please await HR approval');
+      }
+      if (userStatus === 'REJECTED') {
+        throw new Error('Your registration request was rejected by HR.');
+      }
+      throw new Error(`Your account status is ${dbUser.status}.`);
     }
 
     const token = authData.session?.access_token || 'supabase_active_session';
