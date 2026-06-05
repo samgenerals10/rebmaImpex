@@ -216,8 +216,8 @@ export const auth = {
     const emailLower = email.trim().toLowerCase();
     const roleUpper = (role || '').toUpperCase();
 
-    // ── Magic link flow for privileged roles ──
-    if (roleUpper === 'CEO' || roleUpper === 'HR') {
+    // ── Magic link flow for privileged roles (only if no password is provided) ──
+    if ((roleUpper === 'CEO' || roleUpper === 'HR') && !password) {
       const res = await fetch('/api/send-magic-link', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

@@ -81,6 +81,7 @@ export default function App() {
   const [isLoggingIn, setIsLoggingIn] = useState<boolean>(false);
   const [loginError, setLoginError] = useState<string>('');
   const [loginRole, setLoginRole] = useState<string>('Staff');
+  const [loginMethod, setLoginMethod] = useState<'password' | 'magic_link'>('password');
 
   useEffect(() => {
     setLoginError('');
@@ -1086,12 +1087,14 @@ export default function App() {
     }
 
     const isPrivileged = loginRole === 'CEO' || loginRole === 'HR';
-    if (!isPrivileged && !loginPassword) {
+    const isMagicLinkFlow = isPrivileged && loginMethod === 'magic_link';
+
+    if (!isMagicLinkFlow && !loginPassword) {
       setLoginError('Please fill out all fields.');
       return;
     }
 
-    if (!isPrivileged) {
+    if (!isMagicLinkFlow) {
       const pwErrors = getPasswordValidationErrors(loginPassword);
       if (pwErrors.length > 0) {
         setLoginError(`Password does not meet REBMA policies:\n- ${pwErrors.join('\n- ')}`);
@@ -1101,13 +1104,13 @@ export default function App() {
 
     setIsLoggingIn(true);
     try {
-      if (isPrivileged) {
+      if (isMagicLinkFlow) {
         const res = await auth.login(loginEmail, '', loginRole);
         alert(res.message || 'Magic link sent! Check your email.');
         setAuthScreen('email_verification_sent');
         addNotification(`Magic link request sent to whitelisted email ${loginEmail}`);
       } else {
-        const res = await auth.login(loginEmail, loginPassword);
+        const res = await auth.login(loginEmail, loginPassword, isPrivileged ? loginRole : undefined);
         
         if ('user' in res && res.user) {
           const userStatus = (res.user.status || '').toLowerCase();
@@ -1449,14 +1452,14 @@ export default function App() {
           />
         </div>
 
-        {/* Password Input (only shown for standard staff/employees) */}
-        {loginRole === 'Staff' && (
+        {/* Password Input */}
+        {(loginRole === 'Staff' || loginRole === 'CEO' || loginRole === 'HR') && (
           <>
             <div className="flex items-center gap-2 border-b border-slate-200 focus-within:border-emerald-600 pb-1.5 transition-colors">
               <Lock className="w-4 h-4 text-slate-400" />
               <input 
                 type={showPassword ? "text" : "password"} 
-                required 
+                required={loginRole === 'Staff'} 
                 placeholder="Password"
                 value={loginPassword}
                 onChange={(e) => setLoginPassword(e.target.value)}
@@ -1514,23 +1517,65 @@ export default function App() {
           </>
         )}
 
-        <button 
-          type="submit" 
-          disabled={isLoggingIn}
-          className="w-full py-3 bg-[#55dfa5] hover:bg-[#40cf93] disabled:bg-[#a7f3d0] disabled:cursor-not-allowed rounded-full text-sm font-bold text-white shadow-md hover:shadow-lg transition-all cursor-pointer text-center flex items-center justify-center gap-2"
-        >
-          {isLoggingIn ? (
-            <>
-              <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-              </svg>
-              <span>{loginRole === 'CEO' || loginRole === 'HR' ? 'Sending Link...' : 'Signing In...'}</span>
-            </>
-          ) : (
-            <span>{loginRole === 'CEO' || loginRole === 'HR' ? 'Send Magic Link' : 'Sign In'}</span>
-          )}
-        </button>
+        {loginRole === 'Staff' ? (
+          <button 
+            type="submit" 
+            disabled={isLoggingIn}
+            onClick={() => setLoginMethod('password')}
+            className="w-full py-3 bg-[#55dfa5] hover:bg-[#40cf93] disabled:bg-[#a7f3d0] disabled:cursor-not-allowed rounded-full text-sm font-bold text-white shadow-md hover:shadow-lg transition-all cursor-pointer text-center flex items-center justify-center gap-2"
+          >
+            {isLoggingIn ? (
+              <>
+                <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+                <span>Signing In...</span>
+              </>
+            ) : (
+              <span>Sign In</span>
+            )}
+          </button>
+        ) : (
+          <div className="space-y-2">
+            <button 
+              type="submit" 
+              disabled={isLoggingIn}
+              onClick={() => setLoginMethod('password')}
+              className="w-full py-3 bg-[#55dfa5] hover:bg-[#40cf93] disabled:bg-[#a7f3d0] disabled:cursor-not-allowed rounded-full text-sm font-bold text-white shadow-md hover:shadow-lg transition-all cursor-pointer text-center flex items-center justify-center gap-2"
+            >
+              {isLoggingIn && loginMethod === 'password' ? (
+                <>
+                  <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  <span>Signing In...</span>
+                </>
+              ) : (
+                <span>Sign In with Password</span>
+              )}
+            </button>
+            <button 
+              type="submit" 
+              disabled={isLoggingIn}
+              onClick={() => setLoginMethod('magic_link')}
+              className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-full transition-all cursor-pointer text-center flex items-center justify-center gap-2"
+            >
+              {isLoggingIn && loginMethod === 'magic_link' ? (
+                <>
+                  <svg className="animate-spin h-4 w-4 text-slate-500" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  <span>Sending Link...</span>
+                </>
+              ) : (
+                <span>Send Magic Link instead</span>
+              )}
+            </button>
+          </div>
+        )}
       </motion.form>
     );
 
