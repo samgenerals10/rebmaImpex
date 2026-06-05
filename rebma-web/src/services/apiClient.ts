@@ -207,37 +207,19 @@ export const clearToken = () => localStorage.removeItem('rebma_token');
 
 // ── Auth ──────────────────────────────────────────────────────
 export const auth = {
-  /**
-   * Login — handles two flows:
-   * 1. CEO/HR: sends magic link via serverless endpoint. Returns { magicLinkSent: true }.
-   * 2. All other staff: standard email+password sign-in via Supabase Auth.
-   */
-  login: async (email: string, password: string, role?: string) => {
+  login: async (email: string, password: string) => {
     const emailLower = email.trim().toLowerCase();
-    const roleUpper = (role || '').toUpperCase();
 
-    // ── Magic link flow for privileged roles (only if no password is provided) ──
-    if ((roleUpper === 'CEO' || roleUpper === 'HR') && !password) {
-      const res = await fetch('/api/send-magic-link', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: emailLower, role: roleUpper }),
-      });
-      const body = await res.json();
-      if (!res.ok) {
-        throw new Error(body.error || 'Failed to send magic link.');
-      }
-      return { magicLinkSent: true, message: body.message || 'Magic link sent! Check your email.' };
-    }
-
-    // ── Standard password flow for all users (including CEO/HR when password is provided) ──
-    // 1. Sign in with Supabase Auth first (so we have session/authentication context for RLS)
+    // 1. Sign in with Supabase Auth first
     const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
       email: emailLower,
       password,
     });
 
     if (authError) {
+      if (authError.message === 'Invalid login credentials' || authError.message.includes('credentials')) {
+        throw new Error('Incorrect email or password.');
+      }
       throw new Error(authError.message || 'Login failed');
     }
 
@@ -256,7 +238,7 @@ export const auth = {
     if (userError || !users || users.length === 0) {
       // Sign out to clean up session
       await supabase.auth.signOut().catch(() => {});
-      throw new Error('Your user profile record could not be found.');
+      throw new Error('Account not found. Please contact HR.');
     }
 
     const dbUser = mapProfileToFrontend(users[0]);
@@ -266,14 +248,11 @@ export const auth = {
     if (userStatus !== 'ACTIVE') {
       await supabase.auth.signOut().catch(() => {});
       
-      if (userStatus === 'PENDING_EMAIL_VERIFICATION') {
-        throw new Error('Registration pending email verification link activation.');
-      }
       if (userStatus === 'PENDING' || userStatus === 'PENDING_APPROVAL') {
-        throw new Error('Registration submitted. Please await HR approval');
+        throw new Error('Your account is pending HR approval.');
       }
       if (userStatus === 'REJECTED') {
-        throw new Error('Your registration request was rejected by HR.');
+        throw new Error('Your account access has been denied.');
       }
       throw new Error(`Your account status is ${dbUser.status}.`);
     }
@@ -296,10 +275,21 @@ export const auth = {
     };
   },
 
-  /**
-   * Register — for non-privileged staff only.
-   * CEO/HR use magic link flow via auth.login instead.
-   */
+  sendMagicLink: async (email: string, role: string) => {
+    const emailLower = email.trim().toLowerCase();
+    const roleUpper = role.trim().toUpperCase();
+    const res = await fetch('/api/send-magic-link', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: emailLower, role: roleUpper }),
+    });
+    const body = await res.json();
+    if (!res.ok) {
+      throw new Error(body.error || 'Failed to send magic link.');
+    }
+    return { magicLinkSent: true, message: body.message || 'Magic link sent! Check your email.' };
+  },
+
   register: async (data: {
     email: string; fullName: string;
     department: string; ghanaCardId?: string; phone?: string;

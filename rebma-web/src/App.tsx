@@ -82,9 +82,16 @@ export default function App() {
   const [loginError, setLoginError] = useState<string>('');
   const [loginRole, setLoginRole] = useState<string>('Staff');
   const [loginMethod, setLoginMethod] = useState<'password' | 'magic_link'>('password');
+  const [showMagicLinkRequest, setShowMagicLinkRequest] = useState<boolean>(false);
+  const [magicLinkEmail, setMagicLinkEmail] = useState<string>('');
+  const [magicLinkRole, setMagicLinkRole] = useState<string>('CEO');
+  const [isSendingMagicLink, setIsSendingMagicLink] = useState<boolean>(false);
 
   useEffect(() => {
     setLoginError('');
+    setShowMagicLinkRequest(false);
+    setMagicLinkEmail('');
+    setMagicLinkRole('CEO');
   }, [authScreen]);
 
   // Custom Alert Modal State
@@ -1039,7 +1046,7 @@ export default function App() {
 
       // Privileged roles directly call magic link flow
       try {
-        const res = await auth.login(emailLower, '', mappedDept);
+        const res = await auth.sendMagicLink(emailLower, mappedDept);
         alert(res.message || 'Magic link sent! Check your email.');
         setAuthScreen('email_verification_sent');
         addNotification(`Privileged onboarding link sent to ${registerName} (${mappedDept}).`);
@@ -1081,64 +1088,55 @@ export default function App() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError('');
-    if (!loginEmail) {
+    if (!loginEmail || !loginPassword) {
       setLoginError('Please fill out all fields.');
       return;
-    }
-
-    const isPrivileged = loginRole === 'CEO' || loginRole === 'HR';
-    const isMagicLinkFlow = isPrivileged && loginMethod === 'magic_link';
-
-    if (!isMagicLinkFlow && !loginPassword) {
-      setLoginError('Please fill out all fields.');
-      return;
-    }
-
-    if (!isMagicLinkFlow) {
-      const pwErrors = getPasswordValidationErrors(loginPassword);
-      if (pwErrors.length > 0) {
-        setLoginError(`Password does not meet REBMA policies:\n- ${pwErrors.join('\n- ')}`);
-        return;
-      }
     }
 
     setIsLoggingIn(true);
     try {
-      if (isMagicLinkFlow) {
-        const res = await auth.login(loginEmail, '', loginRole);
-        alert(res.message || 'Magic link sent! Check your email.');
-        setAuthScreen('email_verification_sent');
-        addNotification(`Magic link request sent to whitelisted email ${loginEmail}`);
-      } else {
-        const res = await auth.login(loginEmail, loginPassword, isPrivileged ? loginRole : undefined);
-        
-        if ('user' in res && res.user) {
-          const userStatus = (res.user.status || '').toLowerCase();
-          if (userStatus === 'pending' || userStatus === 'pending_approval') {
-            await auth.signOut();
-            setLoginError("Registration submitted. Please await HR approval");
-            setLoginPassword('');
-            return;
-          }
-
-          if (res.token) setToken(res.token);
-          setCurrentUser({
-            fullName: res.user.fullName,
-            email: res.user.email,
-            department: res.user.department,
-            isCeo: res.user.isCeo,
-            requiresPasswordReset: res.user.requiresPasswordReset
-          });
-          setActiveDepartment(res.user.department);
-          setIsAuthenticated(true);
-          addNotification(`Logged in as ${res.user.fullName} (${res.user.department})`);
-          setLoginPassword('');
-        }
+      const res = await auth.login(loginEmail, loginPassword);
+      
+      if ('user' in res && res.user) {
+        if (res.token) setToken(res.token);
+        setCurrentUser({
+          fullName: res.user.fullName,
+          email: res.user.email,
+          department: res.user.department,
+          isCeo: res.user.isCeo,
+          requiresPasswordReset: res.user.requiresPasswordReset
+        });
+        setActiveDepartment(res.user.department);
+        setIsAuthenticated(true);
+        addNotification(`Logged in as ${res.user.fullName} (${res.user.department})`);
+        setLoginPassword('');
       }
     } catch (err: any) {
       setLoginError(err.message || 'Login failed.');
     } finally {
       setIsLoggingIn(false);
+    }
+  };
+
+  // Handle send magic link
+  const handleSendMagicLink = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginError('');
+    if (!magicLinkEmail) {
+      setLoginError('Please enter your email.');
+      return;
+    }
+
+    setIsSendingMagicLink(true);
+    try {
+      const res = await auth.sendMagicLink(magicLinkEmail, magicLinkRole);
+      alert(res.message || 'Magic link sent! Check your email.');
+      setAuthScreen('email_verification_sent');
+      addNotification(`Magic link request sent to whitelisted email ${magicLinkEmail}`);
+    } catch (err: any) {
+      setLoginError(err.message || 'Failed to send magic link.');
+    } finally {
+      setIsSendingMagicLink(false);
     }
   };
 
@@ -1362,166 +1360,169 @@ export default function App() {
   // Render Authentication screens
   if (!isAuthenticated) {
     // Inner helper views for split screen card
-    const renderLoginForm = () => (
-      <motion.form 
-        key="login"
-        initial={{ opacity: 0, x: -10 }}
-        animate={{ opacity: 1, x: 0 }}
-        exit={{ opacity: 0, x: 10 }}
-        onSubmit={handleLogin} 
-        className="space-y-4 text-slate-800"
-      >
-        <div className="text-center">
-          <h3 className="text-xl font-bold text-emerald-800">Sign In</h3>
-          <p className="text-[10px] text-slate-400 mt-0.5 font-medium">REMBA IMPEX ERP GATEWAY</p>
-        </div>
-
-        {loginError && (
-          <div className="p-2.5 bg-rose-50 border border-rose-100 rounded-xl text-center text-xs text-rose-800 font-semibold leading-normal whitespace-pre-wrap">
-            {loginError}
-          </div>
-        )}
-
-        {/* Side-by-side SSO Buttons */}
-        <div className="grid grid-cols-2 gap-2">
-          <button 
-            type="button"
-            onClick={() => {
-              setLoginEmail('management@rembaimpex.com');
-              setLoginPassword('Rebma2026!');
-              addNotification('Staging: Gmail SSO pre-filled Management credentials.');
-            }}
-            className="flex items-center justify-center gap-1.5 py-2 px-3 bg-white hover:bg-slate-50 rounded-xl text-xs font-semibold text-slate-700 transition-all cursor-pointer shadow-sm hover:shadow hover:scale-102 border border-slate-200"
+    const renderLoginForm = () => {
+      if (showMagicLinkRequest) {
+        return (
+          <motion.form 
+            key="magic-link"
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 10 }}
+            onSubmit={handleSendMagicLink} 
+            className="space-y-4 text-slate-800"
           >
-            <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
-              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05" />
-              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
-            </svg>
-            <span>Gmail</span>
-          </button>
-          <button 
-            type="button"
-            onClick={() => {
-              setLoginEmail('operations@rembaimpex.com');
-              setLoginPassword('Rebma2026!');
-              addNotification('Staging: Outlook SSO pre-filled Operations credentials.');
-            }}
-            className="flex items-center justify-center gap-1.5 py-2 px-3 bg-white hover:bg-slate-50 rounded-xl text-xs font-semibold text-slate-700 transition-all cursor-pointer shadow-sm hover:shadow hover:scale-102 border border-slate-200"
-          >
-            <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 23 23" fill="currentColor">
-              <path d="M0 0h11v11H0z" fill="#F25022"/>
-              <path d="M12 0h11v11H12z" fill="#7FBA00"/>
-              <path d="M0 12h11v11H0z" fill="#00A4EF"/>
-              <path d="M12 12h11v11H12z" fill="#FFB900"/>
-            </svg>
-            <span>Outlook</span>
-          </button>
-        </div>
-
-        <div className="relative my-2 flex items-center justify-center">
-          <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-200"></div></div>
-          <span className="relative bg-white px-2 text-[9px] font-bold text-slate-400 uppercase tracking-widest">OR LOGIN WITH DETAILS</span>
-        </div>
-
-        {/* Access Role Selection */}
-        <div className="space-y-1">
-          <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider">Access Role</label>
-          <select 
-            value={loginRole}
-            onChange={(e) => setLoginRole(e.target.value)}
-            className="w-full bg-transparent border-b border-slate-200 pb-1.5 text-sm text-slate-800 focus:outline-none focus:border-emerald-600 cursor-pointer"
-          >
-            <option value="Staff">Employee / Staff (Password)</option>
-            <option value="CEO">CEO Office (Magic Link)</option>
-            <option value="HR">Human Resources (Magic Link)</option>
-          </select>
-        </div>
-
-        {/* Email Input */}
-        <div className="flex items-center gap-2 border-b border-slate-200 focus-within:border-emerald-600 pb-1.5 transition-colors">
-          <Mail className="w-4 h-4 text-slate-400" />
-          <input 
-            type="email" 
-            required 
-            placeholder="name@rembaimpex.com"
-            value={loginEmail}
-            onChange={(e) => setLoginEmail(e.target.value)}
-            className="w-full bg-transparent border-0 p-0 text-sm text-slate-800 placeholder-slate-400 focus:ring-0 focus:outline-none"
-          />
-        </div>
-
-        {/* Password Input */}
-        {(loginRole === 'Staff' || loginRole === 'CEO' || loginRole === 'HR') && (
-          <>
-            <div className="flex items-center gap-2 border-b border-slate-200 focus-within:border-emerald-600 pb-1.5 transition-colors">
-              <Lock className="w-4 h-4 text-slate-400" />
-              <input 
-                type={showPassword ? "text" : "password"} 
-                required={loginRole === 'Staff'} 
-                placeholder="Password"
-                value={loginPassword}
-                onChange={(e) => setLoginPassword(e.target.value)}
-                className="w-full bg-transparent border-0 p-0 text-sm text-slate-800 placeholder-slate-400 focus:ring-0 focus:outline-none"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="text-slate-400 hover:text-slate-600 cursor-pointer"
-              >
-                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
+            <div className="text-center">
+              <h3 className="text-xl font-bold text-emerald-800">Request Login Link</h3>
+              <p className="text-[10px] text-slate-400 mt-0.5 font-medium">FOR FIRST TIME PRIVILEGED USERS</p>
             </div>
 
-            {/* Password policy checklist */}
-            {loginPassword.length > 0 && (
-              <div className="space-y-0.5 p-2 bg-slate-50 rounded-xl border border-slate-100 text-[9px] text-slate-500">
-                <div className="flex items-center gap-1.5">
-                  {loginPassword.length <= 8 ? <Check className="w-3 h-3 text-emerald-600" /> : <X className="w-3 h-3 text-red-500" />}
-                  <span className={loginPassword.length <= 8 ? "text-emerald-600" : "text-red-500"}>Max 8 characters</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  {/[A-Z]/.test(loginPassword) ? <Check className="w-3 h-3 text-emerald-600" /> : <X className="w-3 h-3 text-red-500" />}
-                  <span className={/[A-Z]/.test(loginPassword) ? "text-emerald-600" : "text-red-500"}>At least 1 uppercase</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  {/[a-zA-Z]/.test(loginPassword) ? <Check className="w-3 h-3 text-emerald-600" /> : <X className="w-3 h-3 text-red-500" />}
-                  <span className={/[a-zA-Z]/.test(loginPassword) ? "text-emerald-600" : "text-red-500"}>Contains letters</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  {/[^A-Za-z0-9]/.test(loginPassword) ? <Check className="w-3 h-3 text-emerald-600" /> : <X className="w-3 h-3 text-red-500" />}
-                  <span className={/[^A-Za-z0-9]/.test(loginPassword) ? "text-emerald-600" : "text-red-500"}>Contains symbols</span>
-                </div>
+            {loginError && (
+              <div className="p-2.5 bg-rose-50 border border-rose-100 rounded-xl text-center text-xs text-rose-800 font-semibold leading-normal whitespace-pre-wrap">
+                {loginError}
               </div>
             )}
 
-            <div className="flex items-center justify-between text-[11px] text-slate-400 select-none pt-1">
-              <label className="flex items-center gap-1.5 cursor-pointer">
+            {/* Email Input */}
+            <div className="space-y-1">
+              <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider">Email Address</label>
+              <div className="flex items-center gap-2 border-b border-slate-200 focus-within:border-emerald-600 pb-1.5 transition-colors">
+                <Mail className="w-4 h-4 text-slate-400" />
                 <input 
-                  type="checkbox" 
-                  checked={staySignedIn} 
-                  onChange={(e) => setStaySignedIn(e.target.checked)}
-                  className="w-3.5 h-3.5 rounded border-slate-350 text-emerald-600 focus:ring-emerald-500 cursor-pointer" 
+                  type="email" 
+                  required 
+                  placeholder="name@rembaimpex.com"
+                  value={magicLinkEmail}
+                  onChange={(e) => setMagicLinkEmail(e.target.value)}
+                  className="w-full bg-transparent border-0 p-0 text-sm text-slate-800 placeholder-slate-400 focus:ring-0 focus:outline-none"
                 />
-                <span className="text-slate-500 font-medium">Keep me logged in</span>
-              </label>
-              <button 
-                type="button" 
-                onClick={() => setAuthScreen('forgot')} 
-                className="text-[#068d5c] hover:underline font-bold cursor-pointer"
+              </div>
+            </div>
+
+            {/* Access Role Dropdown */}
+            <div className="space-y-1">
+              <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider">Access Role</label>
+              <select 
+                value={magicLinkRole}
+                onChange={(e) => setMagicLinkRole(e.target.value)}
+                className="w-full bg-transparent border-b border-slate-200 pb-1.5 text-sm text-slate-800 focus:outline-none focus:border-emerald-600 cursor-pointer"
               >
-                Forget Password
+                <option value="CEO">CEO Office</option>
+                <option value="HR">Human Resources</option>
+              </select>
+            </div>
+
+            <button 
+              type="submit" 
+              disabled={isSendingMagicLink}
+              className="w-full py-3 bg-[#55dfa5] hover:bg-[#40cf93] disabled:bg-[#a7f3d0] disabled:cursor-not-allowed rounded-full text-sm font-bold text-white shadow-md hover:shadow-lg transition-all cursor-pointer text-center flex items-center justify-center gap-2"
+            >
+              {isSendingMagicLink ? (
+                <>
+                  <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  <span>Sending Link...</span>
+                </>
+              ) : (
+                <span>Send Magic Link</span>
+              )}
+            </button>
+
+            <div className="text-center pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setLoginError('');
+                  setShowMagicLinkRequest(false);
+                }}
+                className="text-xs text-slate-400 hover:text-emerald-600 hover:underline font-semibold transition-colors cursor-pointer"
+              >
+                Back to Sign In
               </button>
             </div>
-          </>
-        )}
+          </motion.form>
+        );
+      }
 
-        {loginRole === 'Staff' ? (
+      return (
+        <motion.form 
+          key="login"
+          initial={{ opacity: 0, x: -10 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: 10 }}
+          onSubmit={handleLogin} 
+          className="space-y-4 text-slate-800"
+        >
+          <div className="text-center">
+            <h3 className="text-xl font-bold text-emerald-800">Sign In</h3>
+            <p className="text-[10px] text-slate-400 mt-0.5 font-medium">REMBA IMPEX ERP GATEWAY</p>
+          </div>
+
+          {loginError && (
+            <div className="p-2.5 bg-rose-50 border border-rose-100 rounded-xl text-center text-xs text-rose-800 font-semibold leading-normal whitespace-pre-wrap">
+              {loginError}
+            </div>
+          )}
+
+          {/* Email Input */}
+          <div className="flex items-center gap-2 border-b border-slate-200 focus-within:border-emerald-600 pb-1.5 transition-colors">
+            <Mail className="w-4 h-4 text-slate-400" />
+            <input 
+              type="email" 
+              required 
+              placeholder="name@rembaimpex.com"
+              value={loginEmail}
+              onChange={(e) => setLoginEmail(e.target.value)}
+              className="w-full bg-transparent border-0 p-0 text-sm text-slate-800 placeholder-slate-400 focus:ring-0 focus:outline-none"
+            />
+          </div>
+
+          {/* Password Input */}
+          <div className="flex items-center gap-2 border-b border-slate-200 focus-within:border-emerald-600 pb-1.5 transition-colors">
+            <Lock className="w-4 h-4 text-slate-400" />
+            <input 
+              type={showPassword ? "text" : "password"} 
+              required
+              placeholder="Password"
+              value={loginPassword}
+              onChange={(e) => setLoginPassword(e.target.value)}
+              className="w-full bg-transparent border-0 p-0 text-sm text-slate-800 placeholder-slate-400 focus:ring-0 focus:outline-none"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="text-slate-400 hover:text-slate-600 cursor-pointer"
+            >
+              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+          </div>
+
+          <div className="flex items-center justify-between text-[11px] text-slate-400 select-none pt-1">
+            <label className="flex items-center gap-1.5 cursor-pointer">
+              <input 
+                type="checkbox" 
+                checked={staySignedIn} 
+                onChange={(e) => setStaySignedIn(e.target.checked)}
+                className="w-3.5 h-3.5 rounded border-slate-350 text-emerald-600 focus:ring-emerald-500 cursor-pointer" 
+              />
+              <span className="text-slate-500 font-medium">Keep me logged in</span>
+            </label>
+            <button 
+              type="button" 
+              onClick={(e) => {
+                e.preventDefault();
+                setAuthScreen('forgot');
+              }} 
+              className="text-[#068d5c] hover:underline font-bold cursor-pointer"
+            >
+              Forgot Password?
+            </button>
+          </div>
+
           <button 
             type="submit" 
             disabled={isLoggingIn}
-            onClick={() => setLoginMethod('password')}
             className="w-full py-3 bg-[#55dfa5] hover:bg-[#40cf93] disabled:bg-[#a7f3d0] disabled:cursor-not-allowed rounded-full text-sm font-bold text-white shadow-md hover:shadow-lg transition-all cursor-pointer text-center flex items-center justify-center gap-2"
           >
             {isLoggingIn ? (
@@ -1536,48 +1537,22 @@ export default function App() {
               <span>Sign In</span>
             )}
           </button>
-        ) : (
-          <div className="space-y-2">
-            <button 
-              type="submit" 
-              disabled={isLoggingIn}
-              onClick={() => setLoginMethod('password')}
-              className="w-full py-3 bg-[#55dfa5] hover:bg-[#40cf93] disabled:bg-[#a7f3d0] disabled:cursor-not-allowed rounded-full text-sm font-bold text-white shadow-md hover:shadow-lg transition-all cursor-pointer text-center flex items-center justify-center gap-2"
+
+          <div className="text-center pt-1">
+            <button
+              type="button"
+              onClick={() => {
+                setLoginError('');
+                setShowMagicLinkRequest(true);
+              }}
+              className="text-xs text-slate-400 hover:text-emerald-600 hover:underline font-semibold transition-colors cursor-pointer"
             >
-              {isLoggingIn && loginMethod === 'password' ? (
-                <>
-                  <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                  </svg>
-                  <span>Signing In...</span>
-                </>
-              ) : (
-                <span>Sign In with Password</span>
-              )}
-            </button>
-            <button 
-              type="submit" 
-              disabled={isLoggingIn}
-              onClick={() => setLoginMethod('magic_link')}
-              className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-full transition-all cursor-pointer text-center flex items-center justify-center gap-2"
-            >
-              {isLoggingIn && loginMethod === 'magic_link' ? (
-                <>
-                  <svg className="animate-spin h-4 w-4 text-slate-500" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                  </svg>
-                  <span>Sending Link...</span>
-                </>
-              ) : (
-                <span>Send Magic Link instead</span>
-              )}
+              First time? Request login link
             </button>
           </div>
-        )}
-      </motion.form>
-    );
+        </motion.form>
+      );
+    };
 
     const renderRegisterForm = () => (
       <motion.form 
