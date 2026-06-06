@@ -46,6 +46,7 @@ export default function App() {
   // Authentication & Onboarding States
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
+  const [isAuthLoading, setIsAuthLoading] = useState<boolean>(true);
   
   const [activeDepartment, setActiveDepartment] = useState<string>('CEO');
   const [activeSubTab, setActiveSubTab] = useState<string>('Overview');
@@ -667,9 +668,17 @@ export default function App() {
     };
 
     const initializeAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session && isMounted) {
-        await handleSession(session);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session && isMounted) {
+          await handleSession(session);
+        }
+      } catch (err) {
+        console.error('Initial session check error:', err);
+      } finally {
+        if (isMounted) {
+          setIsAuthLoading(false);
+        }
       }
     };
 
@@ -1393,6 +1402,15 @@ export default function App() {
   ];
 
   // Render Authentication screens
+  if (isAuthLoading) {
+    return (
+      <div className="fixed inset-0 flex flex-col items-center justify-center bg-slate-950 text-white z-[10000]">
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-t-[#55dfa5] border-r-yellow-500 border-b-rose-500 border-l-slate-800"></div>
+        <p className="text-sm font-bold text-slate-400 mt-4 tracking-wider animate-pulse uppercase">REBMA IMPEX ERP...</p>
+      </div>
+    );
+  }
+
   if (!isAuthenticated) {
     // Inner helper views for split screen card
     // Inner helper views for split screen card
