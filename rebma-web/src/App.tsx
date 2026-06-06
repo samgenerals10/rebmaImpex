@@ -1740,9 +1740,7 @@ export default function App() {
             onChange={(e) => setRegisterDept(e.target.value)}
             className="w-full bg-transparent border-b border-slate-200 pb-1.5 text-sm text-slate-800 focus:outline-none focus:border-emerald-600 cursor-pointer"
           >
-            <option value="CEO Office (OTP verification)">CEO Office (OTP verification)</option>
             <option value="Management Office">Management Office</option>
-            <option value="Human Resources">Human Resources</option>
             <option value="Marketing Department">Marketing Department</option>
             <option value="Operations (Warehouse)">Operations (Warehouse)</option>
             <option value="Finance (Ledgers)">Finance (Ledgers)</option>

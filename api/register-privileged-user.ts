@@ -41,94 +41,40 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'Invalid privileged role selected.' });
     }
 
-    // Check if the user already exists in auth.users by email
-    const { data: listData, error: listError } = await supabaseAdmin.auth.admin.listUsers();
-    if (listError) {
-      console.error('Failed to list auth users:', listError);
-      return res.status(500).json({ error: listError.message || 'Failed to check existing users.' });
-    }
-
-    const existingUser = (listData?.users || []).find(
-      (u: any) => u.email && u.email.toLowerCase() === emailLower
+    const { data: existingUser } = await supabaseAdmin.auth.admin
+      .listUsers({ page: 1, perPage: 1000 });
+      
+    const foundUser = existingUser?.users?.find(
+      u => u.email?.toLowerCase() === emailLower
     );
 
-    let user;
-    let isNew = true;
-    const now = new Date().toISOString();
+    const userId = foundUser 
+      ? foundUser.id 
+      : (await supabaseAdmin.auth.admin.createUser({
+          email: emailLower,
+          password,
+          email_confirm: true,
+          user_metadata: { full_name: fullName, department: roleNormalized }
+        })).data.user?.id;
 
-    if (existingUser) {
-      isNew = false;
-      const { data: updateData, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
-        existingUser.id,
-        {
-          password: password,
-          user_metadata: {
-            full_name: fullName,
-            department: roleNormalized === 'Human Resources' ? 'HR' : 'CEO'
-          }
-        }
-      );
-      if (updateError || !updateData.user) {
-        console.error('Failed to update existing auth user:', updateError);
-        return res.status(500).json({ error: updateError?.message || 'Failed to update user auth account.' });
-      }
-      user = updateData.user;
-    } else {
-      const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-        email: emailLower,
-        password: password,
-        email_confirm: true,
-        user_metadata: {
-          full_name: fullName,
-          department: roleNormalized === 'Human Resources' ? 'HR' : 'CEO'
-        }
+    if (foundUser) {
+      await supabaseAdmin.auth.admin.updateUserById(foundUser.id, {
+        password,
+        user_metadata: { full_name: fullName, department: roleNormalized }
       });
-
-      if (authError || !authData.user) {
-        console.error('Auth user creation error:', authError);
-        return res.status(500).json({ error: authError?.message || 'Failed to create user auth account.' });
-      }
-      user = authData.user;
     }
 
-    if (isNew) {
-      // Insert user into profiles table
-      const { error: profileError } = await supabaseAdmin.from('profiles').insert({
-        id: user.id,
-        email: emailLower,
-        full_name: fullName,
-        role: roleNormalized === 'Human Resources' ? 'HR' : 'CEO',
-        status: 'ACTIVE',
-        is_ceo: roleNormalized === 'CEO',
-        requires_password_reset: false,
-        created_at: now,
-        updated_at: now
-      });
-
-      if (profileError) {
-        console.error('Profile DB insert error:', profileError);
-        // Clean up the created auth user to avoid dangling accounts
-        await supabaseAdmin.auth.admin.deleteUser(user.id).catch(() => {});
-        return res.status(500).json({ error: profileError.message || 'Failed to create user profile.' });
-      }
-    } else {
-      // Upsert the profiles table using ON CONFLICT (id) DO UPDATE (default behavior for upsert)
-      const { error: profileError } = await supabaseAdmin.from('profiles').upsert({
-        id: user.id,
-        email: emailLower,
-        full_name: fullName,
-        role: roleNormalized === 'Human Resources' ? 'HR' : 'CEO',
-        status: 'ACTIVE',
-        is_ceo: roleNormalized === 'CEO',
-        requires_password_reset: false,
-        updated_at: now
-      });
-
-      if (profileError) {
-        console.error('Profile DB upsert error:', profileError);
-        return res.status(500).json({ error: profileError.message || 'Failed to update user profile.' });
-      }
-    }
+    await supabaseAdmin.from('profiles').upsert({
+      id: userId,
+      email: emailLower,
+      full_name: fullName,
+      role: roleNormalized,
+      status: 'ACTIVE',
+      is_ceo: roleNormalized === 'CEO',
+      requires_password_reset: false,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'id' });
 
     return res.status(200).json({ success: true, message: 'Account created successfully.' });
 
