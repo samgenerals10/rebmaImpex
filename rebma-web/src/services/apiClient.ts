@@ -307,8 +307,8 @@ export const auth = {
 
     const initialStatus = 'PENDING_APPROVAL';
 
-    // 2. Insert profile record
-    const { error: dbError } = await supabase.from('profiles').insert({
+    // 2. Upsert profile record to avoid duplicate key errors if trigger already ran
+    const { error: dbError } = await supabase.from('profiles').upsert({
       id: userId,
       email: emailLower,
       full_name: data.fullName,

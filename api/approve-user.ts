@@ -69,6 +69,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     updateData.requires_password_reset = true;
     if (generatedPassword) {
       updateData.password_hash = generatedPassword;
+      // Update password and confirm email in Supabase Auth using the admin API
+      const { error: authUpdateError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
+        password: generatedPassword,
+        email_confirm: true
+      });
+      if (authUpdateError) {
+        return res.status(500).json({ error: `Failed to update user credentials in Supabase Auth: ${authUpdateError.message}` });
+      }
+    } else {
+      // Just confirm email if no password is provided
+      const { error: authUpdateError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
+        email_confirm: true
+      });
+      if (authUpdateError) {
+        return res.status(500).json({ error: `Failed to confirm user email in Supabase Auth: ${authUpdateError.message}` });
+      }
     }
   }
 

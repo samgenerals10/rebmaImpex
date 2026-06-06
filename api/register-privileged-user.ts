@@ -54,13 +54,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           email: emailLower,
           password,
           email_confirm: true,
-          user_metadata: { full_name: fullName, department: roleNormalized }
+          user_metadata: { full_name: fullName, department: roleNormalized === 'Human Resources' ? 'HR' : roleNormalized }
         })).data.user?.id;
 
     if (foundUser) {
       await supabaseAdmin.auth.admin.updateUserById(foundUser.id, {
         password,
-        user_metadata: { full_name: fullName, department: roleNormalized }
+        user_metadata: { full_name: fullName, department: roleNormalized === 'Human Resources' ? 'HR' : roleNormalized }
       });
     }
 
@@ -68,13 +68,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       id: userId,
       email: emailLower,
       full_name: fullName,
-      role: roleNormalized,
+      role: roleNormalized === 'Human Resources' ? 'HR' : roleNormalized,
       status: 'ACTIVE',
       is_ceo: roleNormalized === 'CEO',
       requires_password_reset: false,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     }, { onConflict: 'id' });
+
+    await supabaseAdmin.from('profiles')
+      .update({ 
+        role: roleNormalized === 'Human Resources' ? 'HR' : roleNormalized,
+        full_name: fullName,
+        status: 'ACTIVE',
+        is_ceo: roleNormalized === 'CEO',
+        requires_password_reset: false,
+        updated_at: new Date().toISOString()
+      })
+      .eq('email', emailLower);
 
     return res.status(200).json({ success: true, message: 'Account created successfully.' });
 
