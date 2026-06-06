@@ -87,6 +87,9 @@ export default function MarketingDashboard({
   const [ordersSortField, setOrdersSortField] = useState<string>('');
   const [ordersSortDir, setOrdersSortDir] = useState<'asc' | 'desc'>('asc');
 
+  // Mobile detail view
+  const [activeMobileDetail, setActiveMobileDetail] = useState<{ type: 'customer' | 'order'; data: Customer | Order } | null>(null);
+
   // Sync props to local states
   useEffect(() => {
     setLocalCustomers(customersList);
@@ -342,6 +345,89 @@ export default function MarketingDashboard({
       : String(aVal).localeCompare(String(bVal));
     return ordersSortDir === 'asc' ? comp : -comp;
   });
+
+  if (activeMobileDetail) {
+    return (
+      <div className="lg:hidden bg-slate-50 dark:bg-slate-900 min-h-screen p-4 pb-24 space-y-6 animate-fade-in-up text-slate-800 dark:text-slate-200">
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={() => setActiveMobileDetail(null)}
+            className="px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full text-xs font-bold text-slate-600 cursor-pointer shadow-sm"
+          >
+            ← Back
+          </button>
+          <h2 className="text-sm font-bold">Record Details</h2>
+        </div>
+
+        {activeMobileDetail.type === 'customer' ? (() => {
+          const cust = activeMobileDetail.data as Customer;
+          return (
+            <div className="space-y-4">
+              <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-slate-100 dark:border-slate-700 text-center flex flex-col items-center gap-3">
+                {cust.photo ? (
+                  <img src={cust.photo} alt={cust.name} className="w-16 h-16 rounded-full object-cover border-2 border-slate-200" />
+                ) : (
+                  <div className="w-16 h-16 rounded-full bg-blue-500/10 flex items-center justify-center">
+                    <span className="text-xl font-bold text-blue-500">{cust.name[0]}</span>
+                  </div>
+                )}
+                <div>
+                  <h3 className="text-base font-bold">{cust.name}</h3>
+                  <p className="text-xs text-slate-400 font-mono mt-0.5">{cust.id}</p>
+                  <span className="inline-block mt-2 px-2.5 py-0.5 bg-blue-500/10 text-blue-500 rounded-full text-[9px] font-bold uppercase">{cust.companyName}</span>
+                </div>
+              </div>
+              <div className="bg-white dark:bg-slate-800 rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-700">
+                {[['Phone', cust.phone], ['Location', cust.location || '—'], ['Email', cust.email || '—'], ['Ghana Card', cust.ghanaCard || '—'], ['Registered', cust.registeredAt]].map(([label, value]) => (
+                  <div key={label} className="py-3 flex justify-between items-center text-xs">
+                    <span className="text-slate-400 font-medium">{label}</span>
+                    <span className="font-semibold font-mono">{value}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <button onClick={() => { handleEditCustomer(cust); setActiveMobileDetail(null); }} className="py-3 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs font-bold cursor-pointer border border-slate-200 dark:border-slate-700">Edit Account</button>
+                <button onClick={() => { handleDeleteCustomer(cust.id); setActiveMobileDetail(null); }} className="py-3 bg-rose-50 dark:bg-rose-950/20 rounded-xl text-xs font-bold text-rose-600 cursor-pointer">Delete Customer</button>
+              </div>
+            </div>
+          );
+        })() : (() => {
+          const order = activeMobileDetail.data as Order;
+          return (
+            <div className="space-y-4">
+              <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-slate-100 dark:border-slate-700 text-center flex flex-col items-center gap-3">
+                <div className="w-16 h-16 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 flex items-center justify-center font-bold text-xl">{order.clientName[0]}</div>
+                <div>
+                  <h3 className="text-base font-bold">{order.clientName}</h3>
+                  <p className="text-xs text-slate-400 font-mono mt-0.5">{order.id}</p>
+                </div>
+              </div>
+              <div className="bg-white dark:bg-slate-800 rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-700">
+                {[
+                  ['Ticket', order.ticketNumber || '—'],
+                  ['Product', order.productName || '—'],
+                  ['Destination', order.destination || '—'],
+                  ['Payment', order.paymentMode],
+                  ['Amount', `GHS ${order.totalAmount.toLocaleString()}`],
+                  ['Status', order.status.replace(/_/g, ' ')],
+                  ['Submitted', order.createdAt],
+                ].map(([label, value]) => (
+                  <div key={label} className="py-3 flex justify-between items-center text-xs">
+                    <span className="text-slate-400 font-medium">{label}</span>
+                    <span className="font-semibold">{value}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <button onClick={() => { handleEditOrder(order); setActiveMobileDetail(null); }} className="py-3 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs font-bold cursor-pointer border border-slate-200 dark:border-slate-700">Edit Order</button>
+                <button onClick={() => { handleDeleteOrder(order.id); setActiveMobileDetail(null); }} className="py-3 bg-rose-50 dark:bg-rose-950/20 rounded-xl text-xs font-bold text-rose-600 cursor-pointer">Delete Order</button>
+              </div>
+            </div>
+          );
+        })()}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -704,8 +790,36 @@ export default function MarketingDashboard({
           </div>
         </div>
 
-        {/* Scrollable Table */}
-        <div className="overflow-x-auto w-full">
+        {/* Mobile Card List */}
+        <div className="lg:hidden space-y-3 p-4">
+          {filteredCust.map(cust => (
+            <div
+              key={cust.id}
+              onClick={() => setActiveMobileDetail({ type: 'customer', data: cust })}
+              className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm p-4 border border-slate-100 dark:border-slate-700 flex items-center justify-between cursor-pointer"
+            >
+              <div className="flex items-center gap-3">
+                {cust.photo ? (
+                  <img src={cust.photo} alt={cust.name} className="w-10 h-10 rounded-full object-cover border border-slate-200" />
+                ) : (
+                  <div className="w-10 h-10 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center font-bold text-sm shrink-0">{cust.name[0]}</div>
+                )}
+                <div>
+                  <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">{cust.name}</h4>
+                  <p className="text-xs text-slate-400">{cust.companyName}</p>
+                  <p className="text-[10px] text-slate-400 font-mono mt-0.5">{cust.phone}</p>
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
+            </div>
+          ))}
+          {filteredCust.length === 0 && (
+            <div className="p-8 text-center text-slate-400 text-xs bg-white dark:bg-slate-800 rounded-2xl">No customers matched search.</div>
+          )}
+        </div>
+
+        {/* Scrollable Table (Desktop only) */}
+        <div className="hidden lg:block overflow-x-auto w-full">
           <table className="w-full text-xs text-left">
             <thead>
               <tr className="theme-table-header-row text-slate-400 uppercase font-semibold text-[10px]">
@@ -869,8 +983,35 @@ export default function MarketingDashboard({
           </div>
         </div>
 
-        {/* Scrollable table */}
-        <div className="overflow-x-auto w-full">
+        {/* Mobile Card List */}
+        <div className="lg:hidden space-y-3 p-4">
+          {filteredOrders.map(order => (
+            <div
+              key={order.id}
+              onClick={() => setActiveMobileDetail({ type: 'order', data: order })}
+              className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm p-4 border border-slate-100 dark:border-slate-700 flex items-center justify-between cursor-pointer"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-indigo-500/10 text-indigo-500 flex items-center justify-center font-bold text-sm shrink-0">{order.clientName[0]}</div>
+                <div>
+                  <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">{order.clientName}</h4>
+                  <p className="text-xs text-slate-400">{order.productName || '—'}</p>
+                  <p className="text-[10px] text-slate-400 font-mono mt-0.5">GHS {order.totalAmount.toLocaleString()}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${statusColor(order.status)}`}>{order.status.replace(/_/g, ' ')}</span>
+                <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
+              </div>
+            </div>
+          ))}
+          {filteredOrders.length === 0 && (
+            <div className="p-8 text-center text-slate-400 text-xs bg-white dark:bg-slate-800 rounded-2xl">No orders matched search.</div>
+          )}
+        </div>
+
+        {/* Scrollable table (Desktop only) */}
+        <div className="hidden lg:block overflow-x-auto w-full">
           <table className="w-full text-xs text-left">
             <thead>
               <tr className="theme-table-header-row text-slate-400 uppercase font-semibold text-[10px]">

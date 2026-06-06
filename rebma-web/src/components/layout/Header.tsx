@@ -1,7 +1,7 @@
 // rebma-web/src/components/layout/Header.tsx
 
 import { useState } from 'react';
-import { Search, MessageSquare, Bell, Wifi, X, CheckCheck, Menu } from 'lucide-react';
+import { Search, MessageSquare, Bell, Wifi, X, CheckCheck, Menu, Sun, Moon, MoreVertical } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { CurrentUser } from '../../types/erp';
 
@@ -15,6 +15,12 @@ interface HeaderProps {
   onToggleSidebar?: () => void;
   currentUser?: CurrentUser | null;
   onOpenNotifications?: () => void;
+  darkMode: boolean;
+  setDarkMode: (val: boolean) => void;
+  onProfileClick?: () => void;
+  onDisplaySettingsClick?: () => void;
+  onSwitchDepartmentClick?: () => void;
+  onLogout?: () => void;
 }
 
 const getGreeting = () => {
@@ -33,15 +39,23 @@ export default function Header({
   onClearNotifications,
   onToggleSidebar,
   currentUser,
-  onOpenNotifications
+  onOpenNotifications,
+  darkMode,
+  setDarkMode,
+  onProfileClick,
+  onDisplaySettingsClick,
+  onSwitchDepartmentClick,
+  onLogout
 }: HeaderProps) {
   const [showPanel, setShowPanel] = useState(false);
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
 
   return (
     <header className="relative mb-0 lg:mb-6">
       {/* 1. MOBILE HERO HEADER */}
-      <div className="lg:hidden bg-gradient-to-r from-[#068d5c] to-[#045c3d] text-white px-5 py-6 pb-8 relative flex flex-col gap-4">
-        <div className="flex justify-between items-center">
+      <div className="lg:hidden bg-gradient-to-r from-[#068d5c] to-[#045c3d] text-white px-5 py-4 pb-6 relative flex flex-col gap-4">
+        {/* Top Bar */}
+        <div className="flex justify-between items-center h-12">
           {onToggleSidebar && (
             <button 
               onClick={onToggleSidebar}
@@ -51,26 +65,113 @@ export default function Header({
               <Menu className="w-5.5 h-5.5" />
             </button>
           )}
-          
-          <div className="relative">
+
+          <span className="font-extrabold tracking-wider text-sm select-none">REBMA IMPEX</span>
+
+          <div className="flex items-center gap-1.5 relative">
+            {/* Chat Bubble */}
+            <button
+              onClick={onOpenChat}
+              className="p-2 text-white hover:bg-white/10 rounded-lg cursor-pointer transition-colors"
+              title="Open Chat"
+            >
+              <MessageSquare className="w-5 h-5" />
+            </button>
+
+            {/* Notification Bell */}
             <button
               onClick={onOpenNotifications}
-              className="p-2 -mr-2 text-white hover:bg-white/10 rounded-lg cursor-pointer relative transition-colors"
+              className="p-2 text-white hover:bg-white/10 rounded-lg cursor-pointer relative transition-colors"
               title="Notifications"
             >
-              <Bell className="w-5.5 h-5.5" />
+              <Bell className="w-5 h-5" />
               {notifications.length > 0 && (
                 <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full" />
               )}
             </button>
+
+            {/* Day/Night Toggle */}
+            <button
+              onClick={() => setDarkMode(!darkMode)}
+              className="p-2 text-white hover:bg-white/10 rounded-lg cursor-pointer transition-colors"
+              title="Toggle Theme"
+            >
+              {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+            </button>
+
+            {/* More Menu vertical dots */}
+            <div className="relative">
+              <button
+                onClick={() => setShowMoreMenu(prev => !prev)}
+                className="p-2 -mr-2 text-white hover:bg-white/10 rounded-lg cursor-pointer transition-colors"
+                title="More options"
+              >
+                <MoreVertical className="w-5 h-5" />
+              </button>
+
+              {showMoreMenu && (
+                <>
+                  <div className="fixed inset-0 z-[290]" onClick={() => setShowMoreMenu(false)} />
+                  <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-2xl z-[300] py-2 animate-fade-in-up text-slate-800 dark:text-slate-200">
+                    <button
+                      type="button"
+                      onClick={() => { setShowMoreMenu(false); onProfileClick?.(); }}
+                      className="w-full text-left px-4 py-2.5 text-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors font-bold"
+                    >
+                      Profile & Account
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setShowMoreMenu(false); onDisplaySettingsClick?.(); }}
+                      className="w-full text-left px-4 py-2.5 text-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors font-bold"
+                    >
+                      Display & Appearance
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setShowMoreMenu(false); onSwitchDepartmentClick?.(); }}
+                      className="w-full text-left px-4 py-2.5 text-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors font-bold"
+                    >
+                      Switch Department
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setShowMoreMenu(false); onOpenNotifications?.(); }}
+                      className="w-full text-left px-4 py-2.5 text-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors font-bold"
+                    >
+                      Notifications
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setShowMoreMenu(false); window.alert("REBMA IMPEX Help Desk is active 24/7. Call +233 (0) 302 000 000."); }}
+                      className="w-full text-left px-4 py-2.5 text-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors font-bold"
+                    >
+                      Help & Support
+                    </button>
+                    <div className="h-px bg-slate-100 dark:bg-slate-800 my-1" />
+                    <button
+                      type="button"
+                      onClick={() => { setShowMoreMenu(false); onLogout?.(); }}
+                      className="w-full text-left px-4 py-2.5 text-xs text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-colors font-bold"
+                    >
+                      Sign Out
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
 
+        {/* Hero Section */}
         <div>
-          <h2 className="text-xl font-bold tracking-tight">
-            {getGreeting()}, {currentUser?.fullName || 'User'}
-          </h2>
-          <p className="text-xs text-white/75 font-semibold mt-0.5">
+          <div className="flex items-center gap-2">
+            <h2 className="text-xl font-bold tracking-tight">
+              {getGreeting()}, {currentUser?.fullName?.split(' ')[0] || 'User'}
+            </h2>
+            <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse mt-1 shrink-0" />
+          </div>
+          <p className="text-xs text-white/75 font-semibold mt-0.5 uppercase tracking-wide">
             {currentUser?.department || 'ERP Command Center'}
           </p>
         </div>

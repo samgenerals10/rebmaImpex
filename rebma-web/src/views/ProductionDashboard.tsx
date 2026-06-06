@@ -46,6 +46,7 @@ export default function ProductionDashboard({
 
   // Local state for WIP stock and syncing for requests
   const [localWip, setLocalWip] = useState(initialWipStock);
+  const [activeMobileDetail, setActiveMobileDetail] = useState<{ type: 'requisition' | 'wip' | 'history'; data: any } | null>(null);
   const [materialsSearch, setMaterialsSearch] = useState('');
   const [materialsStatusFilter, setMaterialsStatusFilter] = useState<string>('ALL');
   const [isMaterialsFilterOpen, setIsMaterialsFilterOpen] = useState(false);
@@ -380,6 +381,232 @@ export default function ProductionDashboard({
     return historySortDir === 'asc' ? comp : -comp;
   });
 
+  if (activeMobileDetail) {
+    return (
+      <div className="lg:hidden bg-slate-50 dark:bg-slate-900 min-h-screen p-4 pb-24 space-y-6 animate-fade-in-up text-slate-800 dark:text-slate-200">
+        {/* Header with Back button */}
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={() => setActiveMobileDetail(null)}
+            className="px-3 py-1.5 bg-white dark:bg-slate-850 border border-slate-200 dark:border-slate-800 rounded-full text-xs font-bold text-slate-600 dark:text-slate-350 cursor-pointer shadow-sm"
+          >
+            ← Back
+          </button>
+          <h2 className="text-sm font-bold">Record Details</h2>
+        </div>
+
+        {activeMobileDetail.type === 'requisition' ? (() => {
+          const m = activeMobileDetail.data; // flattened requisition item
+          return (
+            <div className="space-y-6">
+              <div className="bg-white dark:bg-slate-855 rounded-2xl p-6 shadow-sm border border-slate-100 dark:border-slate-800 space-y-4 text-center flex flex-col items-center">
+                <div className="w-16 h-16 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-xl shrink-0">
+                  REQ
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-800 dark:text-slate-200">{m.materialName}</h3>
+                  <p className="text-xs text-slate-400 font-mono mt-0.5">{m.flatId}</p>
+                </div>
+              </div>
+
+              <div className="bg-white dark:bg-slate-855 rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
+                <div className="py-3 flex justify-between items-center text-xs">
+                  <span className="text-slate-400 font-medium">Requisition ID</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200 font-mono">{m.reqId}</span>
+                </div>
+                <div className="py-3 flex justify-between items-center text-xs">
+                  <span className="text-slate-400 font-medium">Material Name</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">{m.materialName}</span>
+                </div>
+                <div className="py-3 flex justify-between items-center text-xs">
+                  <span className="text-slate-400 font-medium">Quantity</span>
+                  <span className="font-bold text-slate-800 dark:text-slate-200 font-mono">{m.quantity.toLocaleString()}</span>
+                </div>
+                <div className="py-3 flex justify-between items-center text-xs">
+                  <span className="text-slate-400 font-medium">Status</span>
+                  <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${statusColor(m.status)}`}>
+                    {m.status.replace(/_/g, ' ')}
+                  </span>
+                </div>
+                <div className="py-3 flex justify-between items-center text-xs">
+                  <span className="text-slate-400 font-medium">Created At</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200 font-mono">{m.createdAt || 'N/A'}</span>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                {m.status === 'APPROVED' && (
+                  <button 
+                    onClick={() => { handleIssueTicket(m.reqId); setActiveMobileDetail(null); }}
+                    className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold text-center cursor-pointer shadow"
+                  >
+                    Issue Goods Ticket
+                  </button>
+                )}
+                <div className="grid grid-cols-2 gap-3">
+                  <button 
+                    onClick={() => { handleEditRequisition(m.originalReq, m.itemIdx); setActiveMobileDetail(null); }}
+                    className="py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-xs font-bold text-center border border-slate-200 dark:border-slate-800 text-slate-750 dark:text-slate-200 cursor-pointer"
+                  >
+                    Edit Request
+                  </button>
+                  <button 
+                    onClick={() => { handleDuplicateRequisition(m.originalReq); setActiveMobileDetail(null); }}
+                    className="py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-xs font-bold text-center border border-slate-200 dark:border-slate-800 text-slate-750 dark:text-slate-200 cursor-pointer"
+                  >
+                    Duplicate
+                  </button>
+                </div>
+                <button 
+                  onClick={() => { handleDeleteRequisition(m.reqId); setActiveMobileDetail(null); }}
+                  className="w-full py-3 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/20 rounded-xl text-xs font-bold text-rose-600 text-center cursor-pointer"
+                >
+                  Delete Request
+                </button>
+              </div>
+            </div>
+          );
+        })() : activeMobileDetail.type === 'wip' ? (() => {
+          const item = activeMobileDetail.data;
+          return (
+            <div className="space-y-6">
+              {/* Profile Card */}
+              <div className="bg-white dark:bg-slate-855 rounded-2xl p-6 shadow-sm border border-slate-100 dark:border-slate-800 space-y-4 text-center flex flex-col items-center">
+                <div className="w-16 h-16 rounded-full bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold text-xl shrink-0">
+                  WIP
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-800 dark:text-slate-200">{item.productName}</h3>
+                  <p className="text-xs text-slate-400 font-mono mt-0.5">{item.id}</p>
+                </div>
+              </div>
+
+              {/* Fields */}
+              <div className="bg-white dark:bg-slate-855 rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
+                <div className="py-3 flex justify-between items-center text-xs">
+                  <span className="text-slate-400 font-medium">Item ID</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200 font-mono">{item.id}</span>
+                </div>
+                <div className="py-3 flex justify-between items-center text-xs">
+                  <span className="text-slate-400 font-medium">Product Name</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">{item.productName}</span>
+                </div>
+                <div className="py-3 flex justify-between items-center text-xs">
+                  <span className="text-slate-400 font-medium">Stage</span>
+                  <span className={`px-2.5 py-0.5 rounded text-[9px] font-bold ${
+                    item.stage === 'Awaiting Dispatch' ? 'bg-emerald-500/10 text-emerald-400' :
+                    item.stage === 'Quality Check' ? 'bg-amber-500/10 text-amber-400' :
+                    'bg-blue-500/10 text-blue-400'
+                  }`}>{item.stage}</span>
+                </div>
+                <div className="py-3 flex justify-between items-center text-xs">
+                  <span className="text-slate-400 font-medium">Quantity</span>
+                  <span className="font-bold text-slate-800 dark:text-slate-200 font-mono">{item.qty.toLocaleString()}</span>
+                </div>
+                <div className="py-3 flex justify-between items-center text-xs">
+                  <span className="text-slate-400 font-medium">Last Updated</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200 font-mono">{item.updatedAt}</span>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <button 
+                    onClick={() => { handleEditWip(item); setActiveMobileDetail(null); }}
+                    className="py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-xs font-bold text-center border border-slate-200 dark:border-slate-800 text-slate-750 dark:text-slate-200 cursor-pointer"
+                  >
+                    Edit Item
+                  </button>
+                  <button 
+                    onClick={() => { handleDuplicateWip(item); setActiveMobileDetail(null); }}
+                    className="py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-xs font-bold text-center border border-slate-200 dark:border-slate-800 text-slate-750 dark:text-slate-200 cursor-pointer"
+                  >
+                    Duplicate
+                  </button>
+                </div>
+                <button 
+                  onClick={() => { handleDeleteWip(item.id); setActiveMobileDetail(null); }}
+                  className="w-full py-3 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/20 rounded-xl text-xs font-bold text-rose-600 text-center cursor-pointer"
+                >
+                  Delete WIP Item
+                </button>
+              </div>
+            </div>
+          );
+        })() : (() => {
+          const req = activeMobileDetail.data as ProductionRequest;
+          return (
+            <div className="space-y-6">
+              {/* Profile Card */}
+              <div className="bg-white dark:bg-slate-855 rounded-2xl p-6 shadow-sm border border-slate-100 dark:border-slate-800 space-y-4 text-center flex flex-col items-center">
+                <div className="w-16 h-16 rounded-full bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-xl shrink-0">
+                  HIS
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-800 dark:text-slate-200">History Log</h3>
+                  <p className="text-xs text-slate-400 font-mono mt-0.5">{req.id}</p>
+                </div>
+              </div>
+
+              {/* Fields */}
+              <div className="bg-white dark:bg-slate-855 rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
+                <div className="py-3 flex justify-between items-center text-xs">
+                  <span className="text-slate-400 font-medium">Requisition ID</span>
+                  <span className="font-semibold text-slate-850 dark:text-slate-200 font-mono">{req.id}</span>
+                </div>
+                <div className="py-3 flex justify-between items-start text-xs">
+                  <span className="text-slate-400 font-medium pt-0.5">Materials</span>
+                  <div className="flex flex-col items-end gap-1 font-semibold text-slate-800 dark:text-slate-200">
+                    {req.items.map((it, idx) => (
+                      <span key={idx}>{it.materialName} ({it.quantity})</span>
+                    ))}
+                  </div>
+                </div>
+                <div className="py-3 flex justify-between items-center text-xs">
+                  <span className="text-slate-400 font-medium">Total Units</span>
+                  <span className="font-bold text-slate-800 dark:text-slate-200 font-mono">{req.items.reduce((s, i) => s + i.quantity, 0).toLocaleString()}</span>
+                </div>
+                <div className="py-3 flex justify-between items-center text-xs">
+                  <span className="text-slate-400 font-medium">Status</span>
+                  <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${statusColor(req.status)}`}>
+                    {req.status.replace(/_/g, ' ')}
+                  </span>
+                </div>
+                <div className="py-3 flex justify-between items-center text-xs">
+                  <span className="text-slate-400 font-medium">Date</span>
+                  <span className="font-semibold text-slate-850 dark:text-slate-200 font-mono">{req.createdAt || 'N/A'}</span>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <button 
+                    onClick={() => { handleDuplicateRequisition(req); setActiveMobileDetail(null); }}
+                    className="py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-xs font-bold text-center border border-slate-200 dark:border-slate-800 text-slate-750 dark:text-slate-200 cursor-pointer"
+                  >
+                    Duplicate Order
+                  </button>
+                  <button 
+                    onClick={() => { handleShareRequisition(req); }}
+                    className="py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-xs font-bold text-center border border-slate-200 dark:border-slate-800 text-slate-750 dark:text-slate-200 cursor-pointer"
+                  >
+                    Share Details
+                  </button>
+                </div>
+                <button 
+                  onClick={() => { handleDeleteRequisition(req.id); setActiveMobileDetail(null); }}
+                  className="w-full py-3 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/20 rounded-xl text-xs font-bold text-rose-600 text-center cursor-pointer"
+                >
+                  Delete Entry
+                </button>
+              </div>
+            </div>
+          );
+        })()}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -558,9 +785,39 @@ export default function ProductionDashboard({
                 </div>
               </div>
             </div>
+            {/* Mobile Card List */}
+            <div className="lg:hidden space-y-3 p-4">
+              {filteredMaterials.map(m => (
+                <div 
+                  key={m.flatId} 
+                  onClick={() => setActiveMobileDetail({ type: 'requisition', data: m })}
+                  className="bg-white dark:bg-slate-855 rounded-2xl shadow-sm p-4 border border-slate-100 dark:border-slate-805 flex items-center justify-between cursor-pointer"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-blue-50 dark:bg-blue-950/20 text-blue-600 dark:text-blue-405 flex items-center justify-center font-bold text-sm shrink-0">
+                      Req
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-800 dark:text-slate-205">{m.materialName}</h4>
+                      <p className="text-xs text-slate-400 font-semibold">{m.reqId}</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5 font-mono">{m.quantity.toLocaleString()} units</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${statusColor(m.status)}`}>
+                      {m.status.replace(/_/g, ' ')}
+                    </span>
+                    <ChevronRight className="w-4 h-4 text-slate-400" />
+                  </div>
+                </div>
+              ))}
+              {filteredMaterials.length === 0 && (
+                <div className="p-8 text-center text-slate-400 text-xs bg-white dark:bg-slate-855 rounded-2xl">No raw materials matched search filters.</div>
+              )}
+            </div>
 
-            {/* Scrollable table */}
-            <div className="overflow-x-auto w-full">
+            {/* Scrollable table (Desktop only) */}
+            <div className="hidden lg:block overflow-x-auto w-full">
               <table className="w-full text-xs text-left">
                 <thead>
                   <tr className="theme-table-header-row text-slate-400 uppercase font-semibold text-[10px]">
@@ -586,7 +843,7 @@ export default function ProductionDashboard({
                     </th>
                     <th onClick={() => handleSort('quantity', materialsSortField, setMaterialsSortField, materialsSortDir, setMaterialsSortDir)} className="py-3 px-3 text-right whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
                       <div className="flex items-center justify-end gap-1">
-                        <span>Quantity</span>
+                        <span>Units</span>
                         <span className="text-[9px] opacity-70">{materialsSortField === 'quantity' ? (materialsSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
@@ -598,7 +855,7 @@ export default function ProductionDashboard({
                     </th>
                     <th onClick={() => handleSort('createdAt', materialsSortField, setMaterialsSortField, materialsSortDir, setMaterialsSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none hidden sm:table-cell">
                       <div className="flex items-center gap-1">
-                        <span>Submitted</span>
+                        <span>Date</span>
                         <span className="text-[9px] opacity-70">{materialsSortField === 'createdAt' ? (materialsSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
@@ -606,7 +863,7 @@ export default function ProductionDashboard({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-custom">
-                  {sortedMaterials.map(m => (
+                  {filteredMaterials.map(m => (
                     <tr key={m.flatId} className="theme-table-row group">
                       <td className="py-3.5 px-5">
                         <input
@@ -616,15 +873,15 @@ export default function ProductionDashboard({
                           className="accent-blue-600 w-3.5 h-3.5"
                         />
                       </td>
-                      <td className="py-3.5 px-3 font-mono font-bold">{m.reqId}</td>
-                      <td className="py-3.5 px-3 font-medium">{m.materialName}</td>
-                      <td className="py-3.5 px-3 text-right font-bold font-mono">{m.quantity.toLocaleString()}</td>
+                      <td className="py-3.5 px-3 font-mono font-bold text-blue-405">{m.reqId}</td>
+                      <td className="py-3.5 px-3 font-semibold text-[13px] text-slate-350">{m.materialName}</td>
+                      <td className="py-3.5 px-3 text-right font-bold font-mono text-[13px]">{m.quantity.toLocaleString()}</td>
                       <td className="py-3.5 px-3 text-center">
                         <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${statusColor(m.status)}`}>
                           {m.status.replace(/_/g, ' ')}
                         </span>
                       </td>
-                      <td className="py-3.5 px-3 text-slate-400 font-mono text-[10px] hidden sm:table-cell">{m.createdAt || 'N/A'}</td>
+                      <td className="py-3.5 px-3 text-slate-400 font-mono text-[10px] hidden sm:table-cell">{m.createdAt}</td>
                       <td className="py-3.5 px-5 text-center relative" onClick={(e) => e.stopPropagation()}>
                         <button
                           onClick={() => setActiveMaterialsMenu(activeMaterialsMenu === m.flatId ? null : m.flatId)}
@@ -870,8 +1127,41 @@ export default function ProductionDashboard({
               </div>
             </div>
 
-            {/* Scrollable table */}
-            <div className="overflow-x-auto w-full">
+            {/* Mobile Card List */}
+            <div className="lg:hidden space-y-3 p-4">
+              {sortedHistory.map(req => (
+                <div 
+                  key={req.id} 
+                  onClick={() => setActiveMobileDetail({ type: 'history', data: req })}
+                  className="bg-white dark:bg-slate-855 rounded-2xl shadow-sm p-4 border border-slate-100 dark:border-slate-805 flex items-center justify-between cursor-pointer"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-indigo-50 dark:bg-indigo-950/20 text-indigo-600 dark:text-indigo-455 flex items-center justify-center font-bold text-sm shrink-0">
+                      His
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-800 dark:text-slate-205">{req.id}</h4>
+                      <p className="text-xs text-slate-400 font-semibold truncate max-w-[150px]">
+                        {req.items.map(i => i.materialName).join(', ')}
+                      </p>
+                      <p className="text-[10px] text-slate-400 mt-0.5 font-mono">{req.items.reduce((s, i) => s + i.quantity, 0).toLocaleString()} units</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${statusColor(req.status)}`}>
+                      {req.status.replace(/_/g, ' ')}
+                    </span>
+                    <ChevronRight className="w-4 h-4 text-slate-400" />
+                  </div>
+                </div>
+              ))}
+              {filteredHistory.length === 0 && (
+                <div className="p-8 text-center text-slate-400 text-xs bg-white dark:bg-slate-855 rounded-2xl">No history records found.</div>
+              )}
+            </div>
+
+            {/* Scrollable table (Desktop only) */}
+            <div className="hidden lg:block overflow-x-auto w-full">
               <table className="w-full text-xs text-left">
                 <thead>
                   <tr className="theme-table-header-row text-slate-400 uppercase font-semibold text-[10px]">
@@ -927,7 +1217,7 @@ export default function ProductionDashboard({
                           className="accent-blue-600 w-3.5 h-3.5"
                         />
                       </td>
-                      <td className="py-3.5 px-3 font-mono font-bold">{req.id}</td>
+                      <td className="py-3.5 px-3 font-mono font-bold text-blue-400">{req.id}</td>
                       <td className="py-3.5 px-3 text-slate-300">
                         {req.items.map((i, idx) => <span key={idx} className="mr-2 font-medium bg-slate-100/5 dark:bg-slate-800/50 border border-custom px-1.5 py-0.5 rounded text-[11px]">{i.materialName} ({i.quantity})</span>)}
                       </td>

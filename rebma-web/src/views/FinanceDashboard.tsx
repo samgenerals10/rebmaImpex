@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { 
-  FileSpreadsheet, FileText, DollarSign, Clipboard, ShieldCheck, Activity, X, ExternalLink
+  FileSpreadsheet, FileText, DollarSign, Clipboard, ShieldCheck, Activity, X, ExternalLink, ChevronRight
 } from 'lucide-react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import type { Order, FinancePayment, ProductionRequest } from '../types/erp';
@@ -57,6 +57,7 @@ export default function FinanceDashboard({
   const [payMode, setPayMode] = useState<'CASH' | 'CHEQUE' | 'MOBILE_MONEY' | 'BANK_TRANSFER'>('CASH');
   const [selectedOrderId, setSelectedOrderId] = useState('');
   const [selectedTicket, setSelectedTicket] = useState<FinancePayment | null>(null);
+  const [activeMobileDetail, setActiveMobileDetail] = useState<{ type: 'payment' | 'requisition'; data: any } | null>(null);
 
   // Table interactive states: Receipts & Tickets Database
   const [paymentsSearch, setPaymentsSearch] = useState('');
@@ -328,6 +329,175 @@ export default function FinanceDashboard({
       : String(aVal).localeCompare(String(bVal));
     return warehouseSortDir === 'asc' ? comp : -comp;
   });
+
+  if (activeMobileDetail) {
+    return (
+      <div className="lg:hidden bg-slate-50 dark:bg-slate-900 min-h-screen p-4 pb-24 space-y-6 animate-fade-in-up text-slate-800 dark:text-slate-200">
+        {/* Header with Back button */}
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={() => setActiveMobileDetail(null)}
+            className="px-3 py-1.5 bg-white dark:bg-slate-850 border border-slate-200 dark:border-slate-800 rounded-full text-xs font-bold text-slate-600 dark:text-slate-350 cursor-pointer shadow-sm"
+          >
+            ← Back
+          </button>
+          <h2 className="text-sm font-bold">Record Details</h2>
+        </div>
+
+        {activeMobileDetail.type === 'payment' ? (() => {
+          const pay = activeMobileDetail.data as FinancePayment;
+          return (
+            <div className="space-y-6">
+              {/* Info Header */}
+              <div className="bg-white dark:bg-slate-855 rounded-2xl p-6 shadow-sm border border-slate-100 dark:border-slate-800 space-y-4 text-center flex flex-col items-center">
+                <div className="w-16 h-16 rounded-full bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-xl shrink-0">
+                  GHS
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-800 dark:text-slate-200">{pay.clientName}</h3>
+                  <p className="text-xs text-slate-400 font-mono mt-0.5">{pay.id}</p>
+                </div>
+              </div>
+
+              {/* Fields */}
+              <div className="bg-white dark:bg-slate-855 rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
+                <div className="py-3 flex justify-between items-center text-xs">
+                  <span className="text-slate-400 font-medium">Receipt #</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200 font-mono">{pay.id}</span>
+                </div>
+                <div className="py-3 flex justify-between items-center text-xs">
+                  <span className="text-slate-400 font-medium">Type</span>
+                  <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${pay.paymentType === 'DIRECT' ? 'bg-blue-500/10 text-blue-400' : 'bg-purple-500/10 text-purple-400'}`}>
+                    {pay.paymentType === 'DIRECT' ? 'Direct' : 'Credit Settle'}
+                  </span>
+                </div>
+                <div className="py-3 flex justify-between items-center text-xs">
+                  <span className="text-slate-400 font-medium">Payment Mode</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">{pay.paymentMode.replace('_', ' ')}</span>
+                </div>
+                {pay.orderId && (
+                  <div className="py-3 flex justify-between items-center text-xs">
+                    <span className="text-slate-400 font-medium">Settled Order</span>
+                    <span className="font-mono font-semibold text-blue-400">{pay.orderId}</span>
+                  </div>
+                )}
+                <div className="py-3 flex justify-between items-center text-xs">
+                  <span className="text-slate-400 font-medium">Amount</span>
+                  <span className="font-bold text-emerald-500 font-mono">GHS {pay.amount.toLocaleString()}</span>
+                </div>
+                <div className="py-3 flex justify-between items-center text-xs">
+                  <span className="text-slate-400 font-medium">Date</span>
+                  <span className="font-semibold text-slate-850 dark:text-slate-200">{pay.createdAt}</span>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="space-y-3">
+                <button 
+                  onClick={() => { setSelectedTicket(pay); }}
+                  className="w-full py-3 bg-blue-600 hover:bg-blue-750 rounded-xl text-xs font-bold text-white text-center cursor-pointer shadow"
+                >
+                  View / Export Ticket PDF
+                </button>
+                <div className="grid grid-cols-2 gap-3">
+                  <button 
+                    onClick={() => { handleEditPayment(pay); setActiveMobileDetail(null); }}
+                    className="py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-xs font-bold text-center border border-slate-200 dark:border-slate-800 text-slate-750 dark:text-slate-200 cursor-pointer"
+                  >
+                    Edit Receipt
+                  </button>
+                  <button 
+                    onClick={() => { handleDuplicatePayment(pay); setActiveMobileDetail(null); }}
+                    className="py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-xs font-bold text-center border border-slate-200 dark:border-slate-800 text-slate-750 dark:text-slate-200 cursor-pointer"
+                  >
+                    Duplicate
+                  </button>
+                </div>
+                <button 
+                  onClick={() => { handleDeletePayment(pay.id); setActiveMobileDetail(null); }}
+                  className="w-full py-3 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/20 rounded-xl text-xs font-bold text-rose-600 text-center cursor-pointer"
+                >
+                  Delete Ticket
+                </button>
+              </div>
+            </div>
+          );
+        })() : (() => {
+          const req = activeMobileDetail.data as ProductionRequest;
+          return (
+            <div className="space-y-6">
+              {/* Info Header */}
+              <div className="bg-white dark:bg-slate-855 rounded-2xl p-6 shadow-sm border border-slate-100 dark:border-slate-800 space-y-4 text-center flex flex-col items-center">
+                <div className="w-16 h-16 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-xl shrink-0">
+                  REQ
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-800 dark:text-slate-200">Requisition Log</h3>
+                  <p className="text-xs text-slate-400 font-mono mt-0.5">{req.id}</p>
+                </div>
+              </div>
+
+              {/* Fields */}
+              <div className="bg-white dark:bg-slate-855 rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
+                <div className="py-3 flex justify-between items-center text-xs">
+                  <span className="text-slate-400 font-medium">Requisition ID</span>
+                  <span className="font-semibold text-slate-850 dark:text-slate-200 font-mono">{req.id}</span>
+                </div>
+                <div className="py-3 flex justify-between items-start text-xs">
+                  <span className="text-slate-400 font-medium pt-0.5">Materials</span>
+                  <div className="flex flex-col items-end gap-1 font-semibold text-slate-800 dark:text-slate-200">
+                    {req.items.map((it, idx) => (
+                      <span key={idx}>{it.materialName} ({it.quantity})</span>
+                    ))}
+                  </div>
+                </div>
+                <div className="py-3 flex justify-between items-center text-xs">
+                  <span className="text-slate-400 font-medium">Total Units</span>
+                  <span className="font-bold text-slate-800 dark:text-slate-200 font-mono">{req.items.reduce((s, i) => s + i.quantity, 0).toLocaleString()}</span>
+                </div>
+                <div className="py-3 flex justify-between items-center text-xs">
+                  <span className="text-slate-400 font-medium">Status</span>
+                  <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
+                    req.status === 'TICKETS_ISSUED' || req.status === 'COMPLETED' ? 'bg-emerald-500/10 text-emerald-450' :
+                    req.status === 'APPROVED' ? 'bg-blue-500/10 text-blue-450' :
+                    'bg-amber-500/10 text-amber-450'
+                  }`}>{req.status.replace(/_/g, ' ')}</span>
+                </div>
+                <div className="py-3 flex justify-between items-center text-xs">
+                  <span className="text-slate-400 font-medium">Date</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200 font-mono">{req.createdAt || 'N/A'}</span>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <button 
+                    onClick={() => { handleDuplicateRequisition(req); setActiveMobileDetail(null); }}
+                    className="py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-xs font-bold text-center border border-slate-200 dark:border-slate-800 text-slate-750 dark:text-slate-200 cursor-pointer"
+                  >
+                    Duplicate Log
+                  </button>
+                  <button 
+                    onClick={() => { handleShareRequisition(req); }}
+                    className="py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-xs font-bold text-center border border-slate-200 dark:border-slate-800 text-slate-750 dark:text-slate-200 cursor-pointer"
+                  >
+                    Share Link
+                  </button>
+                </div>
+                <button 
+                  onClick={() => { handleDeleteRequisition(req.id); setActiveMobileDetail(null); }}
+                  className="w-full py-3 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/20 rounded-xl text-xs font-bold text-rose-600 text-center cursor-pointer"
+                >
+                  Delete Requisition
+                </button>
+              </div>
+            </div>
+          );
+        })()}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -649,8 +819,37 @@ export default function FinanceDashboard({
               </div>
             </div>
 
-            {/* Scrollable table */}
-            <div className="overflow-x-auto w-full">
+            {/* Mobile Card List */}
+            <div className="lg:hidden space-y-3 p-4">
+              {sortedPayments.map(pay => (
+                <div 
+                  key={pay.id} 
+                  onClick={() => setActiveMobileDetail({ type: 'payment', data: pay })}
+                  className="bg-white dark:bg-slate-850 rounded-2xl shadow-sm p-4 border border-slate-100 dark:border-slate-800 flex items-center justify-between cursor-pointer"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-sm shrink-0">
+                      ₵
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">{pay.clientName}</h4>
+                      <p className="text-xs text-slate-400 font-semibold">{pay.paymentType === 'DIRECT' ? 'Direct' : 'Credit Settlement'}</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5 font-mono">{pay.id}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-emerald-500 font-mono">GHS {pay.amount.toLocaleString()}</span>
+                    <ChevronRight className="w-4 h-4 text-slate-400" />
+                  </div>
+                </div>
+              ))}
+              {filteredPayments.length === 0 && (
+                <div className="p-8 text-center text-slate-400 text-xs bg-white dark:bg-slate-850 rounded-2xl">No receipts found.</div>
+              )}
+            </div>
+
+            {/* Scrollable table (Desktop only) */}
+            <div className="hidden lg:block overflow-x-auto w-full">
               <table className="w-full text-xs text-left">
                 <thead>
                   <tr className="theme-table-header-row text-slate-400 uppercase font-semibold text-[10px]">
@@ -842,8 +1041,43 @@ export default function FinanceDashboard({
               </div>
             </div>
 
-            {/* Scrollable table */}
-            <div className="overflow-x-auto w-full">
+            {/* Mobile Card List */}
+            <div className="lg:hidden space-y-3 p-4">
+              {sortedWarehouse.map(req => (
+                <div 
+                  key={req.id} 
+                  onClick={() => setActiveMobileDetail({ type: 'requisition', data: req })}
+                  className="bg-white dark:bg-slate-850 rounded-2xl shadow-sm p-4 border border-slate-100 dark:border-slate-800 flex items-center justify-between cursor-pointer"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-blue-50 dark:bg-blue-950/20 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-sm shrink-0">
+                      Req
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">{req.id}</h4>
+                      <p className="text-xs text-slate-400 font-semibold truncate max-w-[150px]">
+                        {req.items.map(it => it.materialName).join(', ')}
+                      </p>
+                      <p className="text-[10px] text-slate-400 mt-0.5 font-mono">{req.items.reduce((s, i) => s + i.quantity, 0).toLocaleString()} units</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
+                      req.status === 'TICKETS_ISSUED' || req.status === 'COMPLETED' ? 'bg-emerald-500/10 text-emerald-450' :
+                      req.status === 'APPROVED' ? 'bg-blue-500/10 text-blue-450' :
+                      'bg-amber-500/10 text-amber-450'
+                    }`}>{req.status.replace(/_/g, ' ')}</span>
+                    <ChevronRight className="w-4 h-4 text-slate-400" />
+                  </div>
+                </div>
+              ))}
+              {filteredWarehouse.length === 0 && (
+                <div className="p-8 text-center text-slate-400 text-xs bg-white dark:bg-slate-850 rounded-2xl">No warehouse requisitions found.</div>
+              )}
+            </div>
+
+            {/* Scrollable table (Desktop only) */}
+            <div className="hidden lg:block overflow-x-auto w-full">
               <table className="w-full text-xs text-left">
                 <thead>
                   <tr className="theme-table-header-row text-slate-400 uppercase font-semibold text-[10px]">

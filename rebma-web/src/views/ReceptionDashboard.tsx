@@ -1,7 +1,6 @@
-// rebma-web/src/views/ReceptionDashboard.tsx
-
+import { useState } from 'react';
 import type { Visitor } from '../types/erp';
-import { FileSpreadsheet, FileText, Users, ShieldCheck, Activity, Clock } from 'lucide-react';
+import { FileSpreadsheet, FileText, Users, ShieldCheck, Activity, Clock, ChevronRight } from 'lucide-react';
 import { exportToCSV, exportToPDF } from '../utils/export';
 import { 
   ResponsiveContainer, 
@@ -26,6 +25,8 @@ export default function ReceptionDashboard({
   onCheckoutVisitor,
   onCheckInAttendance
 }: ReceptionDashboardProps) {
+
+  const [activeMobileDetail, setActiveMobileDetail] = useState<Visitor | null>(null);
 
   const lineChartData = [
     { name: 'Mon', CheckIns: 14, CheckOuts: 12 },
@@ -53,6 +54,67 @@ export default function ReceptionDashboard({
   const handleExportPDF = () => {
     exportToPDF('Reception Visitor Logs', visitorsList, ['id', 'fullName', 'purpose', 'hostName', 'checkInTime', 'checkOutTime']);
   };
+
+  if (activeMobileDetail) {
+    return (
+      <div className="lg:hidden bg-slate-50 dark:bg-slate-900 min-h-screen p-4 pb-24 space-y-6 animate-fade-in-up text-slate-800 dark:text-slate-200">
+        {/* Header with Back button */}
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={() => setActiveMobileDetail(null)}
+            className="px-3 py-1.5 bg-white dark:bg-slate-855 border border-slate-200 dark:border-slate-800 rounded-full text-xs font-bold text-slate-600 dark:text-slate-350 cursor-pointer shadow-sm"
+          >
+            ← Back
+          </button>
+          <h2 className="text-sm font-bold">Visitor Details</h2>
+        </div>
+
+        <div className="space-y-6">
+          <div className="bg-white dark:bg-slate-855 rounded-2xl p-6 shadow-sm border border-slate-100 dark:border-slate-800 space-y-4 text-center flex flex-col items-center">
+            <div className="w-16 h-16 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-450 flex items-center justify-center font-bold text-xl shrink-0">
+              {activeMobileDetail.fullName[0]}
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-slate-800 dark:text-slate-205">{activeMobileDetail.fullName}</h3>
+              <p className="text-xs text-slate-400 font-mono mt-0.5">{activeMobileDetail.id}</p>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-slate-855 rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
+            <div className="py-3 flex justify-between items-center text-xs">
+              <span className="text-slate-400 font-medium">Visitor Name</span>
+              <span className="font-semibold text-slate-800 dark:text-slate-205">{activeMobileDetail.fullName}</span>
+            </div>
+            <div className="py-3 flex justify-between items-center text-xs">
+              <span className="text-slate-400 font-medium">Purpose of Visit</span>
+              <span className="font-semibold text-slate-800 dark:text-slate-205">{activeMobileDetail.purpose}</span>
+            </div>
+            <div className="py-3 flex justify-between items-center text-xs">
+              <span className="text-slate-400 font-medium">Host Contact</span>
+              <span className="font-semibold text-slate-800 dark:text-slate-205">{activeMobileDetail.hostName}</span>
+            </div>
+            <div className="py-3 flex justify-between items-center text-xs">
+              <span className="text-slate-400 font-medium">Check-In Time</span>
+              <span className="font-semibold text-slate-800 dark:text-slate-205 font-mono">{activeMobileDetail.checkInTime}</span>
+            </div>
+            <div className="py-3 flex justify-between items-center text-xs">
+              <span className="text-slate-400 font-medium">Check-Out Time</span>
+              <span className="font-semibold text-slate-800 dark:text-slate-250 font-mono">{activeMobileDetail.checkOutTime || 'Still On-Site'}</span>
+            </div>
+          </div>
+
+          {!activeMobileDetail.checkOutTime && (
+            <button 
+              onClick={() => { onCheckoutVisitor(activeMobileDetail.id); setActiveMobileDetail(null); }}
+              className="w-full py-3 bg-red-650 hover:bg-red-700 text-white rounded-xl text-xs font-bold text-center cursor-pointer shadow"
+            >
+              Checkout Visitor
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -171,20 +233,34 @@ export default function ReceptionDashboard({
               <p className="text-xs text-slate-400">No visitors logged today.</p>
             ) : (
               visitorsList.map(v => (
-                <div key={v.id} className="p-3 bg-slate-50 border border-slate-100 rounded-xl flex items-center justify-between">
+                <div 
+                  key={v.id} 
+                  onClick={() => {
+                    if (window.innerWidth < 1024) {
+                      setActiveMobileDetail(v);
+                    }
+                  }}
+                  className="p-3 bg-slate-50 border border-slate-100 dark:bg-slate-850 dark:border-slate-800 rounded-xl flex items-center justify-between cursor-pointer"
+                >
                   <div>
-                    <p className="text-xs font-bold text-slate-800">{v.fullName}</p>
+                    <p className="text-xs font-bold text-slate-800 dark:text-slate-205">{v.fullName}</p>
                     <p className="text-[10px] text-slate-500">Host: <strong>{v.hostName}</strong> | Purpose: {v.purpose}</p>
                     <p className="text-[9px] text-slate-400 mt-1">In: {v.checkInTime} {v.checkOutTime && `| Out: ${v.checkOutTime}`}</p>
                   </div>
-                  {!v.checkOutTime && (
-                    <button 
-                      onClick={() => onCheckoutVisitor(v.id)}
-                      className="px-2 py-1 bg-red-100 text-red-700 font-bold rounded text-[10px] cursor-pointer hover:bg-red-200"
-                    >
-                      Checkout
-                    </button>
-                  )}
+                  <div className="flex items-center gap-2">
+                    <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${v.checkOutTime ? 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400' : 'bg-emerald-500/10 text-emerald-500'}`}>
+                      {v.checkOutTime ? 'Completed' : 'On-Site'}
+                    </span>
+                    <ChevronRight className="w-4 h-4 text-slate-400 lg:hidden" />
+                    {!v.checkOutTime && (
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); onCheckoutVisitor(v.id); }}
+                        className="hidden lg:block px-2 py-1 bg-red-100 text-red-700 font-bold rounded text-[10px] cursor-pointer hover:bg-red-200"
+                      >
+                        Checkout
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))
             )}

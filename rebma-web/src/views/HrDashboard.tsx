@@ -52,6 +52,10 @@ export default function HrDashboard({
   const [localStaff, setLocalStaff] = useState<StaffMember[]>(staffList);
   const [localAttendance, setLocalAttendance] = useState<Attendance[]>(attendanceList);
   const [approvalLog, setApprovalLog] = useState<Array<{ id: string; name: string; action: 'APPROVED' | 'REJECTED'; password?: string; at: string }>>([]);
+  const [activeMobileDetail, setActiveMobileDetail] = useState<{
+    type: 'staff' | 'attendance';
+    data: StaffMember | Attendance;
+  } | null>(null);
   const [credentialsPopup, setCredentialsPopup] = useState<{
     show: boolean;
     fullName: string;
@@ -316,6 +320,130 @@ export default function HrDashboard({
     return attendanceSortDir === 'asc' ? comp : -comp;
   });
 
+  if (activeMobileDetail) {
+    return (
+      <div className="lg:hidden bg-slate-50 dark:bg-slate-900 min-h-screen p-4 pb-24 space-y-6 animate-fade-in-up text-slate-800 dark:text-slate-200">
+        {/* Header with Back button */}
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={() => setActiveMobileDetail(null)}
+            className="px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full text-xs font-bold text-slate-600 dark:text-slate-350 cursor-pointer shadow-sm"
+          >
+            ← Back
+          </button>
+          <h2 className="text-sm font-bold">Record Details</h2>
+        </div>
+
+        {activeMobileDetail.type === 'staff' ? (() => {
+          const staff = activeMobileDetail.data as StaffMember;
+          return (
+            <div className="space-y-6">
+              {/* Profile Card */}
+              <div className="bg-white dark:bg-slate-850 rounded-2xl p-6 shadow-sm border border-slate-100 dark:border-slate-800 space-y-4 text-center flex flex-col items-center">
+                <div className="w-16 h-16 rounded-full bg-blue-100 text-blue-600 dark:bg-blue-900/50 dark:text-blue-400 flex items-center justify-center font-bold text-xl">
+                  {staff.fullName[0]}
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-800 dark:text-slate-200">{staff.fullName}</h3>
+                  <p className="text-xs text-slate-400 font-mono mt-0.5">{staff.id}</p>
+                  <span className="inline-block mt-2 px-2.5 py-0.5 bg-blue-500/10 text-blue-500 rounded-full text-[9px] font-bold uppercase tracking-wider">{staff.department}</span>
+                </div>
+              </div>
+
+              {/* Fields */}
+              <div className="bg-white dark:bg-slate-850 rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
+                <div className="py-3 flex justify-between items-center text-xs">
+                  <span className="text-slate-400 font-medium">Email</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">{staff.email}</span>
+                </div>
+                <div className="py-3 flex justify-between items-center text-xs">
+                  <span className="text-slate-400 font-medium">Role</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">{staff.role}</span>
+                </div>
+                <div className="py-3 flex justify-between items-center text-xs">
+                  <span className="text-slate-400 font-medium">Ghana Card</span>
+                  <span className="font-mono font-semibold text-slate-800 dark:text-slate-200">{staff.ghanaCard}</span>
+                </div>
+                <div className="py-3 flex justify-between items-center text-xs">
+                  <span className="text-slate-400 font-medium">Phone</span>
+                  <span className="font-mono font-semibold text-slate-800 dark:text-slate-200">{staff.phone}</span>
+                </div>
+                <div className="py-3 flex justify-between items-center text-xs">
+                  <span className="text-slate-400 font-medium">Joined</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">{staff.joinedAt}</span>
+                </div>
+                <div className="py-3 flex justify-between items-center text-xs">
+                  <span className="text-slate-400 font-medium">Status</span>
+                  <span className={`px-2.5 py-0.5 rounded text-[9px] font-bold ${staff.status === 'ACTIVE' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-slate-500/10 text-slate-400'}`}>{staff.status}</span>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="grid grid-cols-2 gap-3">
+                <button 
+                  onClick={() => { handleEditStaff(staff); setActiveMobileDetail(null); }}
+                  className="py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-xs font-bold text-center border border-slate-200 dark:border-slate-700 cursor-pointer text-slate-700 dark:text-slate-200"
+                >
+                  Edit Profile
+                </button>
+                <button 
+                  onClick={() => { handleDeleteStaff(staff.id); setActiveMobileDetail(null); }}
+                  className="py-3 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/20 rounded-xl text-xs font-bold text-rose-600 text-center cursor-pointer"
+                >
+                  Delete Staff
+                </button>
+              </div>
+            </div>
+          );
+        })() : (() => {
+          const att = activeMobileDetail.data as Attendance;
+          return (
+            <div className="space-y-6">
+              {/* Profile Card */}
+              <div className="bg-white dark:bg-slate-855 rounded-2xl p-6 shadow-sm border border-slate-100 dark:border-slate-800 space-y-4 text-center flex flex-col items-center">
+                <div className={`w-16 h-16 rounded-full flex items-center justify-center font-bold text-xl ${att.status === 'PRESENT' ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/50 dark:text-emerald-400' : 'bg-amber-100 text-amber-600 dark:bg-amber-900/50 dark:text-amber-400'}`}>
+                  {att.fullName[0]}
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-800 dark:text-slate-200">{att.fullName}</h3>
+                  <p className="text-xs text-slate-400 font-mono mt-0.5">{att.id}</p>
+                </div>
+              </div>
+
+              {/* Fields */}
+              <div className="bg-white dark:bg-slate-855 rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
+                <div className="py-3 flex justify-between items-center text-xs">
+                  <span className="text-slate-400 font-medium">Clock-In Time</span>
+                  <span className="font-semibold font-mono text-slate-800 dark:text-slate-200">{att.checkInTime}</span>
+                </div>
+                <div className="py-3 flex justify-between items-center text-xs">
+                  <span className="text-slate-400 font-medium">Status</span>
+                  <span className={`px-2.5 py-0.5 rounded text-[10px] font-bold ${att.status === 'PRESENT' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'}`}>{att.status}</span>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="grid grid-cols-2 gap-3">
+                <button 
+                  onClick={() => { handleEditAttendance(att); setActiveMobileDetail(null); }}
+                  className="py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-xs font-bold text-center border border-slate-200 dark:border-slate-700 cursor-pointer text-slate-700 dark:text-slate-200"
+                >
+                  Edit Status
+                </button>
+                <button 
+                  onClick={() => { handleDeleteAttendance(att.id); setActiveMobileDetail(null); }}
+                  className="py-3 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/20 rounded-xl text-xs font-bold text-rose-600 text-center cursor-pointer"
+                >
+                  Delete Log
+                </button>
+              </div>
+            </div>
+          );
+        })()}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -505,9 +633,42 @@ export default function HrDashboard({
                 </div>
               </div>
 
-              {/* Scrollable table */}
-              <div className="overflow-x-auto w-full">
-                <table className="w-full text-xs text-left">
+              {/* Scrollable table / Card lists */}
+              <div>
+                {/* Mobile Card List */}
+                <div className="lg:hidden space-y-3">
+                  {sortedStaff.map(staff => (
+                    <div 
+                      key={staff.id} 
+                      onClick={() => setActiveMobileDetail({ type: 'staff', data: staff })}
+                      className="bg-white dark:bg-slate-850 rounded-2xl shadow-sm p-4 border border-slate-100 dark:border-slate-800 flex items-center justify-between cursor-pointer"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-base shrink-0">
+                          {staff.fullName[0]}
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">{staff.fullName}</h4>
+                          <p className="text-xs text-slate-400 font-semibold">{staff.role}</p>
+                          <p className="text-[10px] text-slate-400 mt-0.5 font-mono">...{staff.id.slice(-8)}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${staff.status === 'ACTIVE' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-slate-500/10 text-slate-400'}`}>
+                          {staff.status}
+                        </span>
+                        <ChevronRight className="w-4 h-4 text-slate-400" />
+                      </div>
+                    </div>
+                  ))}
+                  {filteredStaff.length === 0 && (
+                    <div className="p-8 text-center text-slate-400 text-xs bg-white dark:bg-slate-850 rounded-2xl">No staff members found.</div>
+                  )}
+                </div>
+
+                {/* Desktop Table View */}
+                <div className="hidden lg:block overflow-x-auto w-full animate-fade-in">
+                  <table className="w-full text-xs text-left">
                   <thead>
                     <tr className="theme-table-header-row text-slate-400 uppercase font-semibold text-[10px]">
                       <th className="py-3 px-5 whitespace-nowrap">
@@ -628,6 +789,7 @@ export default function HrDashboard({
                   </tbody>
                 </table>
               </div>
+            </div>
 
               {/* Table Footer / Pagination */}
               <div className="theme-table-footer flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-4">
@@ -768,9 +930,42 @@ export default function HrDashboard({
                 </div>
               </div>
 
-              {/* Scrollable Table */}
-              <div className="overflow-x-auto w-full">
-                <table className="w-full text-xs text-left">
+              {/* Scrollable Table / Card List */}
+              <div>
+                {/* Mobile Card List */}
+                <div className="lg:hidden space-y-3">
+                  {sortedAttendance.map(a => (
+                    <div 
+                      key={a.id} 
+                      onClick={() => setActiveMobileDetail({ type: 'attendance', data: a })}
+                      className="bg-white dark:bg-slate-850 rounded-2xl shadow-sm p-4 border border-slate-100 dark:border-slate-800 flex items-center justify-between cursor-pointer"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white shrink-0 ${a.status === 'PRESENT' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-amber-500/10 text-amber-500'}`}>
+                          {a.fullName[0]}
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">{a.fullName}</h4>
+                          <p className="text-xs text-slate-400 font-semibold">{a.checkInTime}</p>
+                          <p className="text-[10px] text-slate-400 mt-0.5 font-mono">{a.id}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${a.status === 'PRESENT' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'}`}>
+                          {a.status}
+                        </span>
+                        <ChevronRight className="w-4 h-4 text-slate-400" />
+                      </div>
+                    </div>
+                  ))}
+                  {filteredAttendance.length === 0 && (
+                    <div className="p-8 text-center text-slate-400 text-xs bg-white dark:bg-slate-850 rounded-2xl">No attendance entries matched filters.</div>
+                  )}
+                </div>
+
+                {/* Desktop Table */}
+                <div className="hidden lg:block overflow-x-auto w-full">
+                  <table className="w-full text-xs text-left">
                   <thead>
                     <tr className="theme-table-header-row text-slate-400 uppercase font-semibold text-[10px]">
                       <th className="py-3 px-5 whitespace-nowrap">
@@ -854,6 +1049,7 @@ export default function HrDashboard({
                   </tbody>
                 </table>
               </div>
+            </div>
 
               {/* Footer */}
               <div className="theme-table-footer flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-4">

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence, MotionConfig } from 'framer-motion';
-import { Eye, EyeOff, Check, X, ArrowRight, Lock, Mail, User, CreditCard, Phone, AlertCircle, Info, CheckCircle, Home, Search, Plus, Bell } from 'lucide-react';
+import { Eye, EyeOff, Check, X, ArrowRight, Lock, Mail, User, CreditCard, Phone, AlertCircle, Info, CheckCircle, Home, Search, Plus, Bell, Camera, Send, Globe, ChevronRight, Settings, LogOut, Users, MessagesSquare } from 'lucide-react';
 import type { Order, IncomingGoods, ProductionRequest, Visitor, Attendance, ChatMessage, BoardroomMeeting, FinancePayment, Customer, GoodsPrice, AuditEntry, PendingRegistration, StaffMember, CurrentUser } from './types/erp';
 
 import Sidebar from './components/layout/Sidebar';
@@ -61,6 +61,7 @@ export default function App() {
   const [isMobileSearchActive, setIsMobileSearchActive] = useState<boolean>(false);
   const [isMobileNotificationsActive, setIsMobileNotificationsActive] = useState<boolean>(false);
   const [isQuickActionOpen, setIsQuickActionOpen] = useState<boolean>(false);
+  const [activeMobileView, setActiveMobileView] = useState<'dashboard' | 'profile' | 'chat'>('dashboard');
 
   // Synchronize display and appearance preferences
   useEffect(() => {
@@ -118,6 +119,17 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState<boolean>(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
+  
+  const [profileTempName, setProfileTempName] = useState<string>('');
+  const [isEditingProfileName, setIsEditingProfileName] = useState<boolean>(false);
+  const [chatTab, setChatTab] = useState<'global' | 'department'>('global');
+  const [chatMobileInput, setChatMobileInput] = useState<string>('');
+
+  useEffect(() => {
+    if (currentUser) {
+      setProfileTempName(currentUser.fullName);
+    }
+  }, [currentUser]);
   
   const [activeDepartment, setActiveDepartment] = useState<string>('CEO');
   const [activeSubTab, setActiveSubTab] = useState<string>('Overview');
@@ -1452,13 +1464,14 @@ export default function App() {
   };
 
   // Chat message submission
-  const sendChatMessage = async (content: string) => {
+  const sendChatMessage = async (content: string, receiver: string | null = null) => {
     try {
       const { error } = await supabase
         .from('chat_messages')
         .insert({
           sender: currentUser?.fullName || 'Self',
           content: content,
+          receiver: receiver,
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         });
       if (error) throw error;
@@ -2397,6 +2410,439 @@ export default function App() {
     }
   };
 
+  const handleProfilePhotoClick = async () => {
+    const url = window.prompt("Enter profile image URL:", currentUser?.photo || "");
+    if (url === null) return;
+    if (!currentUser) return;
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ photo: url, updated_at: new Date().toISOString() })
+        .eq('id', currentUser.id);
+      if (error) throw error;
+      setCurrentUser(prev => prev ? { ...prev, photo: url } : null);
+      alert("Profile photo updated successfully.", "success");
+    } catch (err: any) {
+      alert("Failed to update profile photo: " + err.message);
+    }
+  };
+
+  const handleProfileNameSave = async () => {
+    if (!currentUser || !profileTempName.trim()) return;
+    try {
+      const { error: authErr } = await supabase.auth.updateUser({ data: { full_name: profileTempName } });
+      if (authErr) throw authErr;
+      const { error: dbErr } = await supabase
+        .from('profiles')
+        .update({ full_name: profileTempName, updated_at: new Date().toISOString() })
+        .eq('id', currentUser.id);
+      if (dbErr) throw dbErr;
+      setCurrentUser(prev => prev ? { ...prev, fullName: profileTempName } : null);
+      setIsEditingProfileName(false);
+      alert("Profile name updated successfully.", "success");
+    } catch (err: any) {
+      alert("Failed to update profile name: " + err.message);
+    }
+  };
+
+  const handleQuickAction = (actionName: string, dept: string) => {
+    setIsQuickActionOpen(false);
+    
+    if (dept === 'HR') {
+      if (actionName === 'Add New Staff' || actionName === 'Approve Pending Staff') {
+        setActiveDepartment('HR');
+        setActiveSubTab('Employees');
+        setActiveMobileView('dashboard');
+      } else if (actionName === 'Log Attendance') {
+        setActiveDepartment('HR');
+        setActiveSubTab('Attendance');
+        setActiveMobileView('dashboard');
+      } else if (actionName === 'Schedule Meeting') {
+        setActiveDepartment('BOARDROOM');
+        setActiveSubTab('Meetings');
+        setActiveMobileView('dashboard');
+      } else if (actionName === 'Send Announcement') {
+        setActiveDepartment('BOARDROOM');
+        setActiveSubTab('Announcements');
+        setActiveMobileView('dashboard');
+      }
+    } else if (dept === 'CEO') {
+      if (actionName === 'View Reports') {
+        setActiveDepartment('CEO');
+        setActiveSubTab('Overview');
+        setActiveMobileView('dashboard');
+      } else if (actionName === 'Schedule Boardroom') {
+        setActiveDepartment('BOARDROOM');
+        setActiveSubTab('Meetings');
+        setActiveMobileView('dashboard');
+      } else if (actionName === 'Send Alert') {
+        addNotification("CEO Broadcast Alert sent to all departments.");
+        alert("Broadcast Alert sent to all departments.");
+      } else if (actionName === 'View All Departments') {
+        setIsSidebarOpen(true);
+      }
+    } else if (dept === 'OPERATIONS') {
+      if (actionName === 'Log Cargo Intake') {
+        setActiveDepartment('OPERATIONS');
+        setActiveSubTab('PortIngestion');
+        setActiveMobileView('dashboard');
+      } else if (actionName === 'Create Fulfillment Ticket' || actionName === 'Release to Dispatch') {
+        setActiveDepartment('OPERATIONS');
+        setActiveSubTab('Releases');
+        setActiveMobileView('dashboard');
+      } else if (actionName === 'Flag Discrepancy') {
+        addNotification("Discrepancy flagged on latest cargo record.");
+        alert("Discrepancy flagged successfully.");
+      }
+    } else if (dept === 'FINANCE') {
+      if (actionName === 'Record Payment') {
+        setActiveDepartment('FINANCE');
+        setActiveSubTab('RecordPayment');
+        setActiveMobileView('dashboard');
+      } else if (actionName === 'Create Invoice') {
+        setActiveDepartment('FINANCE');
+        setActiveSubTab('Invoices');
+        setActiveMobileView('dashboard');
+      } else if (actionName === 'Approve Credit Order') {
+        setActiveDepartment('FINANCE');
+        setActiveSubTab('Evaluation');
+        setActiveMobileView('dashboard');
+      } else if (actionName === 'View Ledger') {
+        setActiveDepartment('FINANCE');
+        setActiveSubTab('Tickets');
+        setActiveMobileView('dashboard');
+      }
+    } else if (dept === 'MARKETING') {
+      if (actionName === 'Create Order') {
+        setActiveDepartment('MARKETING');
+        setActiveSubTab('CreateOrder');
+        setActiveMobileView('dashboard');
+      } else if (actionName === 'Register Customer') {
+        setActiveDepartment('MARKETING');
+        setActiveSubTab('RegisterCustomer');
+        setActiveMobileView('dashboard');
+      } else if (actionName === 'View Pipeline') {
+        setActiveDepartment('MARKETING');
+        setActiveSubTab('SalesHistory');
+        setActiveMobileView('dashboard');
+      } else if (actionName === 'Export Report') {
+        addNotification("Exported marketing pipeline report.");
+        alert("Marketing pipeline report exported successfully.");
+      }
+    } else if (dept === 'PRODUCTION') {
+      if (actionName === 'Request Materials') {
+        setActiveDepartment('PRODUCTION');
+        setActiveSubTab('Requisition');
+        setActiveMobileView('dashboard');
+      } else if (actionName === 'Update WIP Status') {
+        setActiveDepartment('PRODUCTION');
+        setActiveSubTab('WIPStock');
+        setActiveMobileView('dashboard');
+      } else if (actionName === 'Log Output') {
+        addNotification("Logged output production units.");
+        alert("Output production units logged successfully.");
+      } else if (actionName === 'View Requisitions') {
+        setActiveDepartment('PRODUCTION');
+        setActiveSubTab('RawMaterials');
+        setActiveMobileView('dashboard');
+      }
+    } else if (dept === 'DISPATCH') {
+      if (actionName === 'Assign Delivery') {
+        setActiveDepartment('DISPATCH');
+        setActiveSubTab('Deliveries');
+        setActiveMobileView('dashboard');
+      } else if (actionName === 'Update GPS') {
+        addNotification("Updated GPS coordinates for active delivery.");
+        alert("GPS coordinates updated.");
+      } else if (actionName === 'Mark Delivered') {
+        setActiveDepartment('DISPATCH');
+        setActiveSubTab('DispatchHistory');
+        setActiveMobileView('dashboard');
+      } else if (actionName === 'View Fleet') {
+        setActiveDepartment('DISPATCH');
+        setActiveSubTab('DriverLogs');
+        setActiveMobileView('dashboard');
+      }
+    } else if (dept === 'RECEPTION') {
+      if (actionName === 'Check In Visitor' || actionName === 'Check Out Visitor' || actionName === 'View Today\'s Log') {
+        setActiveDepartment('RECEPTION');
+        setActiveSubTab('VisitorLog');
+        setActiveMobileView('dashboard');
+      } else if (actionName === 'Log Staff Attendance') {
+        setActiveDepartment('RECEPTION');
+        setActiveSubTab('EmployeeCheckin');
+        setActiveMobileView('dashboard');
+      }
+    } else if (dept === 'LOGISTICS') {
+      if (actionName === 'Add Shipment' || actionName === 'Update Route') {
+        setActiveDepartment('LOGISTICS');
+        setActiveSubTab('Dispatch');
+        setActiveMobileView('dashboard');
+      } else if (actionName === 'View Supply Chain') {
+        addNotification("Supply chain network is operating optimally.");
+        alert("Supply chain status: Operational");
+      } else if (actionName === 'Export Manifest') {
+        addNotification("Logistics manifest exported successfully.");
+        alert("Manifest exported.");
+      }
+    } else if (dept === 'MANAGEMENT') {
+      if (actionName === 'Approve Intake') {
+        setActiveDepartment('MANAGEMENT');
+        setActiveSubTab('CargoApproval');
+        setActiveMobileView('dashboard');
+      } else if (actionName === 'Set Price') {
+        setActiveDepartment('MANAGEMENT');
+        setActiveSubTab('SetPrices');
+        setActiveMobileView('dashboard');
+      } else if (actionName === 'Approve Credit') {
+        setActiveDepartment('MANAGEMENT');
+        setActiveSubTab('CreditApproval');
+        setActiveMobileView('dashboard');
+      } else if (actionName === 'View Audit Log') {
+        setActiveDepartment('MANAGEMENT');
+        setActiveSubTab('Ledger');
+        setActiveMobileView('dashboard');
+      }
+    }
+  };
+
+  const renderMobileProfilePage = () => {
+    if (!currentUser) return null;
+    return (
+      <div className="max-w-md mx-auto space-y-6 pb-20 animate-fade-in-up">
+        {/* Profile Header Card */}
+        <div className="p-6 app-card flex flex-col items-center text-center space-y-4">
+          <div className="relative">
+            <div className="w-24 h-24 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden flex items-center justify-center border-4 border-white dark:border-slate-900 shadow-lg">
+              {currentUser.photo ? (
+                <img src={currentUser.photo} alt="Avatar" className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-3xl font-bold text-slate-500">{currentUser.fullName?.[0] || 'U'}</span>
+              )}
+            </div>
+            <button 
+              type="button"
+              onClick={handleProfilePhotoClick}
+              className="absolute bottom-0 right-0 p-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full shadow-md cursor-pointer border-2 border-white dark:border-slate-900"
+              title="Change Photo"
+            >
+              <Camera className="w-4 h-4" />
+            </button>
+          </div>
+
+          <div className="w-full">
+            {isEditingProfileName ? (
+              <div className="flex items-center justify-center gap-2">
+                <input 
+                  type="text" 
+                  value={profileTempName}
+                  onChange={e => setProfileTempName(e.target.value)}
+                  className="px-3 py-1.5 text-sm bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:border-emerald-600 text-center w-48 text-slate-800 dark:text-slate-100"
+                  autoFocus
+                />
+                <button type="button" onClick={handleProfileNameSave} className="px-2 py-1.5 bg-emerald-600 text-white text-xs font-bold rounded-lg cursor-pointer">Save</button>
+                <button type="button" onClick={() => { setIsEditingProfileName(false); setProfileTempName(currentUser.fullName); }} className="px-2 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-xs rounded-lg cursor-pointer">Cancel</button>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center gap-1.5">
+                <h2 className="text-lg font-bold text-slate-800 dark:text-slate-200">{currentUser.fullName}</h2>
+                <button type="button" onClick={() => setIsEditingProfileName(true)} className="text-slate-400 hover:text-slate-600 text-xs font-semibold cursor-pointer">✏️</button>
+              </div>
+            )}
+            <span className="inline-block mt-2 px-3 py-0.5 bg-emerald-500/10 text-emerald-500 rounded-full text-[10px] font-extrabold uppercase tracking-wide">
+              {currentUser.department}
+            </span>
+          </div>
+        </div>
+
+        {/* Details Card */}
+        <div className="p-4 sm:p-6 app-card space-y-4">
+          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Account Details</h3>
+          <div className="space-y-3.5">
+            <div>
+              <p className="text-[10px] text-slate-450 uppercase font-semibold">Email Address</p>
+              <p className="text-xs font-medium text-slate-700 dark:text-slate-200 mt-0.5">{currentUser.email}</p>
+            </div>
+            <div>
+              <p className="text-[10px] text-slate-455 uppercase font-semibold">Member Since</p>
+              <p className="text-xs font-medium text-slate-700 dark:text-slate-200 mt-0.5 font-mono">May 24, 2026</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Quick Actions Links */}
+        <div className="p-2 app-card divide-y divide-slate-100 dark:divide-slate-800">
+          <button 
+            type="button"
+            onClick={() => { setActiveDepartment('SETTINGS'); setActiveSubTab('ChangePassword'); setActiveMobileView('dashboard'); }}
+            className="w-full flex items-center justify-between p-4 text-xs font-bold text-slate-700 dark:text-slate-350 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-855 transition-colors animate-none"
+          >
+            <span>Change Password</span>
+            <ChevronRight className="w-4 h-4 text-slate-400 animate-none" />
+          </button>
+          <button 
+            type="button"
+            onClick={() => { setActiveDepartment('SETTINGS'); setActiveSubTab('Appearance'); setActiveMobileView('dashboard'); }}
+            className="w-full flex items-center justify-between p-4 text-xs font-bold text-slate-700 dark:text-slate-350 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-855 transition-colors animate-none"
+          >
+            <span>Display & Appearance Settings</span>
+            <ChevronRight className="w-4 h-4 text-slate-400 animate-none" />
+          </button>
+          <button 
+            type="button"
+            onClick={() => window.alert("Notifications preferences saved.")}
+            className="w-full flex items-center justify-between p-4 text-xs font-bold text-slate-700 dark:text-slate-350 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-855 transition-colors animate-none"
+          >
+            <span>Notification Preferences</span>
+            <ChevronRight className="w-4 h-4 text-slate-400 animate-none" />
+          </button>
+          <button 
+            type="button"
+            onClick={async () => {
+              await auth.signOut();
+              setIsAuthenticated(false);
+              setCurrentUser(null);
+            }}
+            className="w-full flex items-center justify-between p-4 text-xs font-bold text-rose-500 cursor-pointer hover:bg-rose-50 dark:hover:bg-rose-950/10 transition-colors animate-none"
+          >
+            <span>Sign Out</span>
+            <LogOut className="w-4 h-4 text-rose-500 animate-none" />
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  const handleSendMobileChat = () => {
+    if (!chatMobileInput.trim()) return;
+    const receiver = chatTab === 'global' ? null : currentUser?.department || null;
+    sendChatMessage(chatMobileInput, receiver);
+    setChatMobileInput('');
+  };
+
+  const renderMobileChatPage = () => {
+    if (!currentUser) return null;
+    
+    // Filter messages
+    const filtered = chatMessages.filter(m => {
+      if (chatTab === 'global') {
+        return !m.receiver; // receiver is null/undefined
+      } else {
+        return m.receiver === currentUser.department;
+      }
+    });
+
+    // Group messages by date
+    const groups: Record<string, ChatMessage[]> = {};
+    filtered.forEach(m => {
+      const dateKey = m.time.includes('/') ? m.time.split(' ')[0] : 'Today';
+      if (!groups[dateKey]) groups[dateKey] = [];
+      groups[dateKey].push(m);
+    });
+
+    return (
+      <div className="flex flex-col h-[calc(100vh-12rem)] max-w-md mx-auto bg-slate-50 dark:bg-slate-950 pb-2 flex-1 relative animate-fade-in-up">
+        {/* Tabs switcher */}
+        <div className="flex bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-1 rounded-full shrink-0 mb-4 shadow-sm">
+          <button 
+            type="button"
+            onClick={() => setChatTab('global')}
+            className={`flex-1 py-2 rounded-full text-xs font-extrabold flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
+              chatTab === 'global' ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-400 dark:text-slate-500'
+            }`}
+          >
+            <Globe className="w-3.5 h-3.5 animate-none" />
+            <span>Global Terminal</span>
+          </button>
+          <button 
+            type="button"
+            onClick={() => setChatTab('department')}
+            className={`flex-1 py-2 rounded-full text-xs font-extrabold flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
+              chatTab === 'department' ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-400 dark:text-slate-500'
+            }`}
+          >
+            <Users className="w-3.5 h-3.5 animate-none" />
+            <span>Department Channel</span>
+          </button>
+        </div>
+
+        {/* Message Thread Area */}
+        <div className="flex-1 overflow-y-auto space-y-4 px-1.5 pr-2 mb-16 pb-2">
+          {Object.keys(groups).length === 0 ? (
+            <div className="text-center py-20 text-slate-400">
+              <MessagesSquare className="w-12 h-12 mx-auto text-slate-300 mb-3" />
+              <p className="text-xs">No chat logs recorded in this channel yet.</p>
+            </div>
+          ) : (
+            Object.entries(groups).map(([date, msgs]) => (
+              <div key={date} className="space-y-3.5">
+                {/* Date marker */}
+                <div className="flex justify-center my-2">
+                  <span className="bg-slate-200 dark:bg-slate-850 px-2.5 py-0.5 rounded-full text-[9px] font-mono text-slate-500 dark:text-slate-400">{date}</span>
+                </div>
+                {msgs.map(m => {
+                  const isSelf = m.sender === currentUser.fullName || m.sender === 'Self';
+                  return (
+                    <div key={m.id} className={`flex items-start gap-2.5 ${isSelf ? 'justify-end' : 'justify-start'}`}>
+                      {/* Avatar */}
+                      {!isSelf && (
+                        <div className="w-7 h-7 rounded-full bg-slate-300 text-slate-705 dark:bg-slate-800 dark:text-slate-300 flex items-center justify-center font-bold text-[10px] shrink-0">
+                          {m.sender?.[0] || 'U'}
+                        </div>
+                      )}
+
+                      <div className={`max-w-[75%] rounded-2xl px-3.5 py-2.5 shadow-sm text-xs relative ${
+                        isSelf 
+                          ? 'bg-emerald-600 text-white rounded-tr-none' 
+                          : 'bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 text-slate-800 dark:text-slate-200 rounded-tl-none'
+                      }`}>
+                        {!isSelf && (
+                          <p className="text-[9px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wide leading-none mb-1">{m.sender}</p>
+                        )}
+                        <p className="leading-relaxed leading-normal">{m.content}</p>
+                        <p className={`text-[8px] mt-1 text-right ${isSelf ? 'text-white/60' : 'text-slate-400 font-mono'}`}>{m.time}</p>
+                      </div>
+
+                      {/* Self Avatar */}
+                      {isSelf && (
+                        <div className="w-7 h-7 rounded-full bg-emerald-700 text-white flex items-center justify-center font-bold text-[10px] shrink-0">
+                          {currentUser.fullName?.[0] || 'U'}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Input area fixed at bottom of chat view */}
+        <div className="absolute bottom-0 inset-x-0 bg-slate-50 dark:bg-slate-950 py-1.5 shrink-0 z-10">
+          <div className="flex gap-2 items-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-full px-3 py-1">
+            <input 
+              type="text" 
+              placeholder={`Send message to ${chatTab === 'global' ? 'Global' : currentUser.department}...`}
+              value={chatMobileInput}
+              onChange={e => setChatMobileInput(e.target.value)}
+              className="flex-1 bg-transparent py-2 border-0 focus:outline-none focus:ring-0 text-xs text-slate-800 dark:text-slate-100"
+              onKeyDown={e => {
+                if (e.key === 'Enter') handleSendMobileChat();
+              }}
+            />
+            <button 
+              type="button"
+              onClick={handleSendMobileChat}
+              className="w-8 h-8 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center shrink-0 cursor-pointer"
+            >
+              <Send className="w-4 h-4 animate-none" />
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <MotionConfig reducedMotion={reducedMotion ? 'always' : 'user'}>
       <div className="min-h-screen w-full flex p-0 lg:p-6 transition-all duration-300 bg-slate-100 dark:bg-slate-950">
@@ -2436,12 +2882,22 @@ export default function App() {
             <Header
               searchQuery={searchQuery}
               setSearchQuery={setSearchQuery}
-              onOpenChat={() => setIsChatOpen(true)}
+              onOpenChat={() => setActiveMobileView('chat')}
               notifications={notifications}
               onClearNotifications={() => setNotifications([])}
               onToggleSidebar={() => setIsSidebarOpen(prev => !prev)}
               currentUser={currentUser}
               onOpenNotifications={() => setIsMobileNotificationsActive(true)}
+              darkMode={darkMode}
+              setDarkMode={setDarkMode}
+              onProfileClick={() => setActiveMobileView('profile')}
+              onDisplaySettingsClick={() => { setActiveDepartment('SETTINGS'); setActiveSubTab('Themes'); setActiveMobileView('dashboard'); }}
+              onSwitchDepartmentClick={() => setIsSidebarOpen(true)}
+              onLogout={async () => {
+                await auth.signOut();
+                setIsAuthenticated(false);
+                setCurrentUser(null);
+              }}
             />
           </div>
 
@@ -2449,13 +2905,26 @@ export default function App() {
           <div className="flex-1 overflow-y-auto px-4 lg:px-6 pb-20 lg:pb-6 pt-4">
             <AnimatePresence mode="wait">
               <motion.div
-                key={`${activeDepartment}-${activeSubTab}`}
+                key={activeMobileView === 'dashboard' ? `${activeDepartment}-${activeSubTab}` : activeMobileView}
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -15 }}
                 transition={{ duration: 0.25 }}
               >
-                {renderDashboard()}
+                {/* On mobile, check activeMobileView */}
+                <div className="lg:hidden h-full">
+                  {activeMobileView === 'profile' ? (
+                    renderMobileProfilePage()
+                  ) : activeMobileView === 'chat' ? (
+                    renderMobileChatPage()
+                  ) : (
+                    renderDashboard()
+                  )}
+                </div>
+                {/* On desktop, always render the dashboard */}
+                <div className="hidden lg:block h-full">
+                  {renderDashboard()}
+                </div>
               </motion.div>
             </AnimatePresence>
           </div>
@@ -2472,15 +2941,16 @@ export default function App() {
               setActiveDepartment(userDept);
               setIsMobileSearchActive(false);
               setIsMobileNotificationsActive(false);
+              setActiveMobileView('dashboard');
             }}
             className={`flex flex-col items-center justify-center flex-1 h-full cursor-pointer transition-colors ${
-              activeDepartment === (currentUser?.department || 'CEO').toUpperCase() && !isMobileSearchActive && !isMobileNotificationsActive
-                ? 'text-[var(--accent-color,#068d5c)]' 
+              activeMobileView === 'dashboard' && !isMobileSearchActive && !isMobileNotificationsActive
+                ? 'text-[var(--accent-color,#068d5c)] font-bold' 
                 : 'text-slate-400 dark:text-slate-500'
             }`}
           >
             <Home className="w-5 h-5" />
-            <span className="text-[9px] mt-1 font-bold">Home</span>
+            <span className="text-[9px] mt-1">Home</span>
           </button>
 
           {/* Search */}
@@ -2491,11 +2961,11 @@ export default function App() {
               setIsMobileNotificationsActive(false);
             }}
             className={`flex flex-col items-center justify-center flex-1 h-full cursor-pointer transition-colors ${
-              isMobileSearchActive ? 'text-[var(--accent-color,#068d5c)]' : 'text-slate-400 dark:text-slate-500'
+              isMobileSearchActive ? 'text-[var(--accent-color,#068d5c)] font-bold' : 'text-slate-400 dark:text-slate-500'
             }`}
           >
             <Search className="w-5 h-5" />
-            <span className="text-[9px] mt-1 font-bold">Search</span>
+            <span className="text-[9px] mt-1">Search</span>
           </button>
 
           {/* Quick Action (Floating Center) */}
@@ -2503,48 +2973,29 @@ export default function App() {
             <button 
               type="button"
               onClick={() => setIsQuickActionOpen(true)}
-              className="w-12 h-12 rounded-full bg-gradient-to-r from-[#068d5c] to-[#045c3d] text-white flex items-center justify-center shadow-lg hover:scale-105 active:scale-95 transition-all cursor-pointer border-2 border-white dark:border-slate-900"
+              className="w-12 h-12 rounded-full bg-[#068d5c] text-white flex items-center justify-center shadow-lg hover:scale-105 active:scale-95 transition-all cursor-pointer border-2 border-white dark:border-slate-900"
               title="Quick Action"
             >
-              <Plus className="w-6 h-6 font-bold" />
+              <Plus className="w-6 h-6" />
             </button>
           </div>
-
-          {/* Notifications */}
-          <button 
-            type="button"
-            onClick={() => {
-              setIsMobileNotificationsActive(true);
-              setIsMobileSearchActive(false);
-            }}
-            className={`flex flex-col items-center justify-center flex-1 h-full cursor-pointer relative transition-colors ${
-              isMobileNotificationsActive ? 'text-[var(--accent-color,#068d5c)]' : 'text-slate-400 dark:text-slate-500'
-            }`}
-          >
-            <Bell className="w-5 h-5" />
-            {notifications.length > 0 && (
-              <span className="absolute top-2 right-6 w-2 h-2 bg-rose-500 rounded-full" />
-            )}
-            <span className="text-[9px] mt-1 font-bold">Alerts</span>
-          </button>
 
           {/* Profile */}
           <button 
             type="button"
             onClick={() => {
-              setActiveDepartment('SETTINGS');
-              setActiveSubTab('Profile');
+              setActiveMobileView('profile');
               setIsMobileSearchActive(false);
               setIsMobileNotificationsActive(false);
             }}
             className={`flex flex-col items-center justify-center flex-1 h-full cursor-pointer transition-colors ${
-              activeDepartment === 'SETTINGS' && activeSubTab === 'Profile' && !isMobileSearchActive && !isMobileNotificationsActive
-                ? 'text-[var(--accent-color,#068d5c)]' 
+              activeMobileView === 'profile' && !isMobileSearchActive && !isMobileNotificationsActive
+                ? 'text-[var(--accent-color,#068d5c)] font-bold' 
                 : 'text-slate-400 dark:text-slate-500'
             }`}
           >
             <User className="w-5 h-5" />
-            <span className="text-[9px] mt-1 font-bold">Profile</span>
+            <span className="text-[9px] mt-1">Profile</span>
           </button>
         </div>
 
@@ -2562,127 +3013,211 @@ export default function App() {
               
               <div className="flex justify-between items-center">
                 <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">Quick Actions ({activeDepartment})</h3>
-                <button onClick={() => setIsQuickActionOpen(false)} className="text-slate-400 hover:text-slate-600 text-xs">Close</button>
+                <button onClick={() => setIsQuickActionOpen(false)} className="text-slate-400 hover:text-slate-600 text-xs font-bold">Close</button>
               </div>
 
               <div className="grid grid-cols-2 gap-3 py-2">
-                {activeDepartment === 'CEO' && (
-                  <>
-                    <button onClick={() => { setActiveSubTab('Tracking'); setIsQuickActionOpen(false); }} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-custom">
-                      <span className="text-xl">📍</span>
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">GPS Tracker</span>
-                    </button>
-                    <button onClick={() => { setActiveSubTab('Boardroom'); setIsQuickActionOpen(false); }} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-custom">
-                      <span className="text-xl">🎥</span>
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Boardroom</span>
-                    </button>
-                  </>
-                )}
                 {activeDepartment === 'HR' && (
                   <>
-                    <button onClick={() => { setActiveSubTab('Employees'); setIsQuickActionOpen(false); }} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-custom">
-                      <span className="text-xl">👤</span>
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Add Staff</span>
+                    <button onClick={() => handleQuickAction('Add New Staff', 'HR')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                      <span className="text-xl">➕</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Add New Staff</span>
                     </button>
-                    <button onClick={() => { setActiveSubTab('Attendance'); setIsQuickActionOpen(false); }} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-custom">
+                    <button onClick={() => handleQuickAction('Log Attendance', 'HR')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
                       <span className="text-xl">📋</span>
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Take Attendance</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Log Attendance</span>
+                    </button>
+                    <button onClick={() => handleQuickAction('Schedule Meeting', 'HR')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                      <span className="text-xl">📅</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Schedule Meeting</span>
+                    </button>
+                    <button onClick={() => handleQuickAction('Send Announcement', 'HR')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                      <span className="text-xl">📢</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Send Announcement</span>
+                    </button>
+                    <button onClick={() => handleQuickAction('Approve Pending Staff', 'HR')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                      <span className="text-xl">✅</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Approve Pending Staff</span>
                     </button>
                   </>
                 )}
-                {activeDepartment === 'MANAGEMENT' && (
+                {activeDepartment === 'CEO' && (
                   <>
-                    <button onClick={() => { setActiveSubTab('CargoApproval'); setIsQuickActionOpen(false); }} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-custom">
-                      <span className="text-xl">🚢</span>
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Cargo Approval</span>
+                    <button onClick={() => handleQuickAction('View Reports', 'CEO')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                      <span className="text-xl">📊</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">View Reports</span>
                     </button>
-                    <button onClick={() => { setActiveSubTab('CreditApproval'); setIsQuickActionOpen(false); }} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-custom">
-                      <span className="text-xl">💳</span>
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Credit Approval</span>
+                    <button onClick={() => handleQuickAction('Schedule Boardroom', 'CEO')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                      <span className="text-xl">🎥</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Schedule Boardroom</span>
                     </button>
-                  </>
-                )}
-                {activeDepartment === 'MARKETING' && (
-                  <>
-                    <button onClick={() => { setActiveSubTab('CreateOrder'); setIsQuickActionOpen(false); }} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-custom">
-                      <span className="text-xl">🛒</span>
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Create Order</span>
+                    <button onClick={() => handleQuickAction('Send Alert', 'CEO')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                      <span className="text-xl">🚨</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Send Alert</span>
                     </button>
-                    <button onClick={() => { setActiveSubTab('RegisterCustomer'); setIsQuickActionOpen(false); }} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-custom">
-                      <span className="text-xl">👤</span>
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Add Customer</span>
+                    <button onClick={() => handleQuickAction('View All Departments', 'CEO')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                      <span className="text-xl">🏢</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">View All Depts</span>
                     </button>
                   </>
                 )}
                 {activeDepartment === 'OPERATIONS' && (
                   <>
-                    <button onClick={() => { setActiveSubTab('PortIngestion'); setIsQuickActionOpen(false); }} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-custom">
+                    <button onClick={() => handleQuickAction('Log Cargo Intake', 'OPERATIONS')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
                       <span className="text-xl">⚓</span>
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Log Cargo</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Log Cargo Intake</span>
                     </button>
-                    <button onClick={() => { setActiveSubTab('Releases'); setIsQuickActionOpen(false); }} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-custom">
-                      <span className="text-xl">📦</span>
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Releases</span>
+                    <button onClick={() => handleQuickAction('Create Fulfillment Ticket', 'OPERATIONS')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                      <span className="text-xl">🎫</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Fulfillment Ticket</span>
+                    </button>
+                    <button onClick={() => handleQuickAction('Flag Discrepancy', 'OPERATIONS')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                      <span className="text-xl">🚩</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Flag Discrepancy</span>
+                    </button>
+                    <button onClick={() => handleQuickAction('Release to Dispatch', 'OPERATIONS')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                      <span className="text-xl">🚚</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Release to Dispatch</span>
                     </button>
                   </>
                 )}
                 {activeDepartment === 'FINANCE' && (
                   <>
-                    <button onClick={() => { setActiveSubTab('RecordPayment'); setIsQuickActionOpen(false); }} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-custom">
+                    <button onClick={() => handleQuickAction('Record Payment', 'FINANCE')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
                       <span className="text-xl">💸</span>
                       <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Record Payment</span>
                     </button>
-                    <button onClick={() => { setActiveSubTab('IntakeForm'); setIsQuickActionOpen(false); }} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-custom">
+                    <button onClick={() => handleQuickAction('Create Invoice', 'FINANCE')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
                       <span className="text-xl">📄</span>
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Intake Form</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Create Invoice</span>
+                    </button>
+                    <button onClick={() => handleQuickAction('Approve Credit Order', 'FINANCE')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                      <span className="text-xl">💳</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Approve Credit Order</span>
+                    </button>
+                    <button onClick={() => handleQuickAction('View Ledger', 'FINANCE')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                      <span className="text-xl">📖</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">View Ledger</span>
+                    </button>
+                  </>
+                )}
+                {activeDepartment === 'MARKETING' && (
+                  <>
+                    <button onClick={() => handleQuickAction('Create Order', 'MARKETING')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                      <span className="text-xl">🛒</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Create Order</span>
+                    </button>
+                    <button onClick={() => handleQuickAction('Register Customer', 'MARKETING')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                      <span className="text-xl">👤</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Register Customer</span>
+                    </button>
+                    <button onClick={() => handleQuickAction('View Pipeline', 'MARKETING')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                      <span className="text-xl">📈</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">View Pipeline</span>
+                    </button>
+                    <button onClick={() => handleQuickAction('Export Report', 'MARKETING')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                      <span className="text-xl">📤</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Export Report</span>
                     </button>
                   </>
                 )}
                 {activeDepartment === 'PRODUCTION' && (
                   <>
-                    <button onClick={() => { setActiveSubTab('Requisition'); setIsQuickActionOpen(false); }} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-custom">
-                      <span className="text-xl">⚙</span>
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Request Raw</span>
+                    <button onClick={() => handleQuickAction('Request Materials', 'PRODUCTION')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                      <span className="text-xl">🧱</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Request Materials</span>
                     </button>
-                    <button onClick={() => { setActiveSubTab('WIPStock'); setIsQuickActionOpen(false); }} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-custom">
-                      <span className="text-xl">🔧</span>
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">WIP Stock</span>
+                    <button onClick={() => handleQuickAction('Update WIP Status', 'PRODUCTION')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                      <span className="text-xl">🛠️</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Update WIP Status</span>
                     </button>
-                  </>
-                )}
-                {activeDepartment === 'RECEPTION' && (
-                  <>
-                    <button onClick={() => { setActiveSubTab('VisitorLog'); setIsQuickActionOpen(false); }} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-custom">
-                      <span className="text-xl">🎫</span>
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Visitor Log</span>
+                    <button onClick={() => handleQuickAction('Log Output', 'PRODUCTION')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                      <span className="text-xl">📊</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Log Output</span>
                     </button>
-                    <button onClick={() => { setActiveSubTab('EmployeeCheckin'); setIsQuickActionOpen(false); }} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-custom">
-                      <span className="text-xl">🔑</span>
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Check-in</span>
+                    <button onClick={() => handleQuickAction('View Requisitions', 'PRODUCTION')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                      <span className="text-xl">📝</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">View Requisitions</span>
                     </button>
                   </>
                 )}
                 {activeDepartment === 'DISPATCH' && (
                   <>
-                    <button onClick={() => { setActiveSubTab('Deliveries'); setIsQuickActionOpen(false); }} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-custom">
-                      <span className="text-xl">🚚</span>
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Deliveries Map</span>
+                    <button onClick={() => handleQuickAction('Assign Delivery', 'DISPATCH')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                      <span className="text-xl">📦</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Assign Delivery</span>
                     </button>
-                    <button onClick={() => { setActiveSubTab('DriverLogs'); setIsQuickActionOpen(false); }} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-custom">
+                    <button onClick={() => handleQuickAction('Update GPS', 'DISPATCH')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                      <span className="text-xl">📍</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Update GPS</span>
+                    </button>
+                    <button onClick={() => handleQuickAction('Mark Delivered', 'DISPATCH')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                      <span className="text-xl">🏁</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Mark Delivered</span>
+                    </button>
+                    <button onClick={() => handleQuickAction('View Fleet', 'DISPATCH')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                      <span className="text-xl">🚚</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">View Fleet</span>
+                    </button>
+                  </>
+                )}
+                {activeDepartment === 'RECEPTION' && (
+                  <>
+                    <button onClick={() => handleQuickAction('Check In Visitor', 'RECEPTION')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                      <span className="text-xl">🔑</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Check In Visitor</span>
+                    </button>
+                    <button onClick={() => handleQuickAction('Check Out Visitor', 'RECEPTION')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                      <span className="text-xl">🚪</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Check Out Visitor</span>
+                    </button>
+                    <button onClick={() => handleQuickAction('Log Staff Attendance', 'RECEPTION')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
                       <span className="text-xl">📋</span>
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Driver Logs</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Log Staff Attendance</span>
+                    </button>
+                    <button onClick={() => handleQuickAction('View Today\'s Log', 'RECEPTION')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                      <span className="text-xl">📖</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">View Today's Log</span>
                     </button>
                   </>
                 )}
                 {activeDepartment === 'LOGISTICS' && (
                   <>
-                    <button onClick={() => { setActiveSubTab('Maintenance'); setIsQuickActionOpen(false); }} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-custom">
-                      <span className="text-xl">🔧</span>
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Maintenance</span>
+                    <button onClick={() => handleQuickAction('Add Shipment', 'LOGISTICS')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                      <span className="text-xl">🚢</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Add Shipment</span>
                     </button>
-                    <button onClick={() => { setActiveSubTab('Fuel'); setIsQuickActionOpen(false); }} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-custom">
-                      <span className="text-xl">⛽</span>
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Fuel Usage</span>
+                    <button onClick={() => handleQuickAction('Update Route', 'LOGISTICS')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                      <span className="text-xl">🗺️</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Update Route</span>
+                    </button>
+                    <button onClick={() => handleQuickAction('View Supply Chain', 'LOGISTICS')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                      <span className="text-xl">⛓️</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">View Supply Chain</span>
+                    </button>
+                    <button onClick={() => handleQuickAction('Export Manifest', 'LOGISTICS')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                      <span className="text-xl">📄</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Export Manifest</span>
+                    </button>
+                  </>
+                )}
+                {activeDepartment === 'MANAGEMENT' && (
+                  <>
+                    <button onClick={() => handleQuickAction('Approve Intake', 'MANAGEMENT')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                      <span className="text-xl">🚢</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Approve Intake</span>
+                    </button>
+                    <button onClick={() => handleQuickAction('Set Price', 'MANAGEMENT')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                      <span className="text-xl">🏷️</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Set Price</span>
+                    </button>
+                    <button onClick={() => handleQuickAction('Approve Credit', 'MANAGEMENT')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                      <span className="text-xl">💳</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Approve Credit</span>
+                    </button>
+                    <button onClick={() => handleQuickAction('View Audit Log', 'MANAGEMENT')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                      <span className="text-xl">📖</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">View Audit Log</span>
                     </button>
                   </>
                 )}

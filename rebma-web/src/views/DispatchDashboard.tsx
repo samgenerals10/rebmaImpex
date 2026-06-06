@@ -1,7 +1,7 @@
 // rebma-web/src/views/DispatchDashboard.tsx
 
 import { useState, useEffect } from 'react';
-import { FileSpreadsheet, FileText, Truck, ShieldCheck, Activity, Users, MapPin, History, UserCheck } from 'lucide-react';
+import { FileSpreadsheet, FileText, Truck, ShieldCheck, Activity, Users, MapPin, History, UserCheck, ChevronRight } from 'lucide-react';
 import { exportToCSV, exportToPDF } from '../utils/export';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { motion } from 'framer-motion';
@@ -53,6 +53,7 @@ export default function DispatchDashboard({
 
   // Local deliveries state to support adding/duplicating/deleting rows
   const [localDeliveries, setLocalDeliveries] = useState<DeliveryRecord[]>(seedDeliveries);
+  const [activeMobileDetail, setActiveMobileDetail] = useState<DeliveryRecord | null>(null);
 
   // Sorting states
   const [delSortField, setDelSortField] = useState<string>('');
@@ -169,6 +170,105 @@ export default function DispatchDashboard({
       : String(aVal).localeCompare(String(bVal));
     return delSortDir === 'asc' ? comp : -comp;
   });
+
+  if (activeMobileDetail) {
+    return (
+      <div className="lg:hidden bg-slate-50 dark:bg-slate-900 min-h-screen p-4 pb-24 space-y-6 animate-fade-in-up text-slate-800 dark:text-slate-200">
+        {/* Header with Back button */}
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={() => setActiveMobileDetail(null)}
+            className="px-3 py-1.5 bg-white dark:bg-slate-855 border border-slate-200 dark:border-slate-800 rounded-full text-xs font-bold text-slate-600 dark:text-slate-350 cursor-pointer shadow-sm"
+          >
+            ← Back
+          </button>
+          <h2 className="text-sm font-bold">Delivery Details</h2>
+        </div>
+
+        <div className="space-y-6">
+          <div className="bg-white dark:bg-slate-855 rounded-2xl p-6 shadow-sm border border-slate-100 dark:border-slate-800 space-y-4 text-center flex flex-col items-center">
+            <div className="w-16 h-16 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-405 flex items-center justify-center font-bold text-xl shrink-0">
+              <Truck className="w-8 h-8" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-slate-800 dark:text-slate-205">{activeMobileDetail.clientName}</h3>
+              <p className="text-xs text-slate-400 font-mono mt-0.5">{activeMobileDetail.id}</p>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-slate-855 rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
+            <div className="py-3 flex justify-between items-center text-xs">
+              <span className="text-slate-400 font-medium">Delivery ID</span>
+              <span className="font-semibold text-slate-800 dark:text-slate-205 font-mono">{activeMobileDetail.id}</span>
+            </div>
+            <div className="py-3 flex justify-between items-center text-xs">
+              <span className="text-slate-400 font-medium">Order ID</span>
+              <span className="font-semibold text-slate-800 dark:text-slate-205 font-mono">{activeMobileDetail.orderId}</span>
+            </div>
+            <div className="py-3 flex justify-between items-center text-xs">
+              <span className="text-slate-400 font-medium">Client Name</span>
+              <span className="font-semibold text-slate-800 dark:text-slate-205">{activeMobileDetail.clientName}</span>
+            </div>
+            <div className="py-3 flex justify-between items-center text-xs">
+              <span className="text-slate-400 font-medium">Destination</span>
+              <span className="font-semibold text-slate-800 dark:text-slate-205">{activeMobileDetail.destination}</span>
+            </div>
+            <div className="py-3 flex justify-between items-center text-xs">
+              <span className="text-slate-400 font-medium">Driver Name</span>
+              <span className="font-semibold text-slate-800 dark:text-slate-205">{activeMobileDetail.driverName}</span>
+            </div>
+            <div className="py-3 flex justify-between items-center text-xs">
+              <span className="text-slate-400 font-medium">Dispatched At</span>
+              <span className="font-semibold text-slate-800 dark:text-slate-205 font-mono">{activeMobileDetail.dispatchedAt}</span>
+            </div>
+            <div className="py-3 flex justify-between items-center text-xs">
+              <span className="text-slate-400 font-medium">Delivered At</span>
+              <span className="font-semibold text-slate-800 dark:text-slate-205 font-mono">{activeMobileDetail.deliveredAt || '—'}</span>
+            </div>
+            <div className="py-3 flex justify-between items-center text-xs">
+              <span className="text-slate-400 font-medium">Status</span>
+              <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
+                activeMobileDetail.status === 'DELIVERED' ? 'bg-emerald-500/10 text-emerald-450' :
+                activeMobileDetail.status === 'IN_TRANSIT' ? 'bg-blue-500/10 text-blue-450 animate-pulse' :
+                'bg-rose-500/10 text-rose-455'
+              }`}>{activeMobileDetail.status.replace(/_/g, ' ')}</span>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            {activeMobileDetail.status === 'IN_TRANSIT' && (
+              <button 
+                onClick={() => { handleMarkDelivered(activeMobileDetail.id); setActiveMobileDetail(null); }}
+                className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold text-center cursor-pointer shadow"
+              >
+                Mark as Delivered
+              </button>
+            )}
+            <div className="grid grid-cols-2 gap-3">
+              <button 
+                onClick={() => { handleEditDelivery(activeMobileDetail); setActiveMobileDetail(null); }}
+                className="py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-xs font-bold text-center border border-slate-200 dark:border-slate-800 text-slate-750 dark:text-slate-205 cursor-pointer"
+              >
+                Edit Log
+              </button>
+              <button 
+                onClick={() => { handleDuplicateDelivery(activeMobileDetail); setActiveMobileDetail(null); }}
+                className="py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-xs font-bold text-center border border-slate-200 dark:border-slate-800 text-slate-750 dark:text-slate-205 cursor-pointer"
+              >
+                Duplicate
+              </button>
+            </div>
+            <button 
+              onClick={() => { handleDeleteDelivery(activeMobileDetail.id); setActiveMobileDetail(null); }}
+              className="w-full py-3 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/20 rounded-xl text-xs font-bold text-rose-600 text-center cursor-pointer"
+            >
+              Delete Delivery
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
