@@ -279,69 +279,18 @@ export const auth = {
     email: string; fullName: string;
     department: string; ghanaCardId?: string; phone?: string;
   }) => {
-    const regPassword = generateSecurePassword(16);
-    const emailLower = data.email.trim().toLowerCase();
-
-    // 1. Sign up user in Supabase Auth
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email: emailLower,
-      password: regPassword,
-      options: {
-        data: {
-          full_name: data.fullName,
-          department: data.department,
-          ghanaCardId: data.ghanaCardId || null,
-          phone: data.phone || null,
-        }
-      }
+    const res = await fetch('/api/register-standard-user', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
     });
 
-    if (authError) {
-      throw new Error(authError.message || 'Registration failed');
+    const body = await res.json();
+    if (!res.ok) {
+      throw new Error(body.error || 'Registration failed');
     }
 
-    const userId = authData.user?.id;
-    if (!userId) {
-      throw new Error('Failed to create user account.');
-    }
-
-    const initialStatus = 'PENDING_APPROVAL';
-
-    // 2. Upsert profile record to avoid duplicate key errors if trigger already ran
-    const { error: dbError } = await supabase.from('profiles').upsert({
-      id: userId,
-      email: emailLower,
-      full_name: data.fullName,
-      role: data.department,
-      ghana_card_id: data.ghanaCardId || null,
-      phone: data.phone || null,
-      status: initialStatus,
-      is_ceo: data.department === 'CEO',
-      requires_password_reset: true,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      metadata: {
-        fullName: data.fullName,
-        department: data.department,
-        ghanaCardId: data.ghanaCardId || null,
-        phone: data.phone || null,
-        tempAuthSecret: regPassword
-      }
-    });
-
-    if (dbError) {
-      throw new Error(dbError.message || 'Failed to initialize database profile record.');
-    }
-
-    // Sign out immediately — user must wait for HR approval
-    await supabase.auth.signOut().catch(() => {});
-    clearToken();
-
-    return {
-      message: 'Registration submitted. Please await HR approval.',
-      userId,
-      status: initialStatus
-    };
+    return body;
   },
 
   me: async () => {

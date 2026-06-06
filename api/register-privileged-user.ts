@@ -48,20 +48,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       u => u.email?.toLowerCase() === emailLower
     );
 
-    const userId = foundUser 
-      ? foundUser.id 
-      : (await supabaseAdmin.auth.admin.createUser({
-          email: emailLower,
-          password,
-          email_confirm: true,
-          user_metadata: { full_name: fullName, department: roleNormalized === 'Human Resources' ? 'HR' : roleNormalized }
-        })).data.user?.id;
+    let userId = foundUser?.id;
 
-    if (foundUser) {
-      await supabaseAdmin.auth.admin.updateUserById(foundUser.id, {
+    if (!foundUser) {
+      const { data: createData, error: createError } = await supabaseAdmin.auth.admin.createUser({
+        email: emailLower,
+        password,
+        email_confirm: true,
+        user_metadata: { full_name: fullName, department: roleNormalized === 'Human Resources' ? 'HR' : roleNormalized }
+      });
+      if (createError) {
+        return res.status(400).json({ error: `Registration failed: ${createError.message}` });
+      }
+      userId = createData.user?.id;
+    } else {
+      const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(foundUser.id, {
         password,
         user_metadata: { full_name: fullName, department: roleNormalized === 'Human Resources' ? 'HR' : roleNormalized }
       });
+      if (updateError) {
+        return res.status(400).json({ error: `Registration update failed: ${updateError.message}` });
+      }
     }
 
     await supabaseAdmin.from('profiles').upsert({
