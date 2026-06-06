@@ -148,10 +148,20 @@ export default function Sidebar({
 
   // Access control filter
   const availableDepts = allDepts.filter(d => {
-    if (isCeo) return true; // CEO sees all
-    if (isManagement) return d.value !== 'CEO'; // Mgmt sees all except CEO
-    // Other staff see own dept + boardroom + settings
-    return d.value === userDept || d.value === 'BOARDROOM' || d.value === 'SETTINGS';
+    const isUserCeo = currentUser?.isCeo || currentUser?.department?.toUpperCase() === 'CEO';
+    if (isUserCeo) return true; // CEO sees all departments
+    
+    // Normalize user department to match dropdown values
+    const rawDept = currentUser?.department || '';
+    const normalizedUserDept = rawDept.toUpperCase() === 'HUMAN RESOURCES' ? 'HR' : rawDept.toUpperCase();
+    
+    if (d.value === 'BOARDROOM' || d.value === 'SETTINGS') return true;
+    
+    if (normalizedUserDept === 'HR') {
+      return d.value === 'HR';
+    }
+    
+    return d.value === normalizedUserDept;
   });
 
   const handleBoardroomClick = () => {

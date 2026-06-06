@@ -138,7 +138,7 @@ export default function SettingsDashboard({
 
       {/* THEME SETTINGS */}
       {activeSubTab === 'Themes' && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className={`grid grid-cols-1 ${currentUser?.isCeo ? 'lg:grid-cols-2' : 'max-w-xl'} gap-6`}>
           {/* Theme selector */}
           <div className="p-4 md:p-6 app-card space-y-4">
             <div>
@@ -173,51 +173,53 @@ export default function SettingsDashboard({
           </div>
 
           {/* ERP system config */}
-          <div className="p-4 md:p-6 app-card space-y-5">
-            <div>
-              <h3 className="text-base md:text-lg font-bold">ERP System Configuration</h3>
-              <p className="text-xs text-slate-500 text-muted">Manage gateway, GPS, and validation settings.</p>
-            </div>
-
-            <div className="space-y-4">
+          {currentUser?.isCeo && (
+            <div className="p-4 md:p-6 app-card space-y-5">
               <div>
-                <label className="block text-xs font-semibold text-slate-500 mb-1.5">CEO Whitelisted Emails</label>
-                <textarea
-                  rows={2}
-                  value={whitelistedCeos}
-                  onChange={e => setWhitelistedCeos(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-blue-500 font-mono resize-none"
-                />
+                <h3 className="text-base md:text-lg font-bold">ERP System Configuration</h3>
+                <p className="text-xs text-slate-500 text-muted">Manage gateway, GPS, and validation settings.</p>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 mb-1.5">SMS Gateway</label>
-                <select value={smsGateway} onChange={e => setSmsGateway(e.target.value)} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none">
-                  <option value="arkesel">Arkesel (Ghana)</option>
-                  <option value="twilio">Twilio (International)</option>
-                  <option value="hubtel">Hubtel Ghana</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 mb-1.5">GPS Ping Interval (seconds)</label>
-                <input type="number" value={gpsInterval} onChange={e => setGpsInterval(parseInt(e.target.value))} min={5} max={60} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-blue-500" />
-              </div>
-
-              <div className="flex justify-between items-center p-3 bg-slate-50 rounded-xl">
+              <div className="space-y-4">
                 <div>
-                  <p className="text-xs font-semibold text-slate-700">Ghana Card Validation</p>
-                  <p className="text-[10px] text-slate-400">Require Ghana Card for all registrations</p>
+                  <label className="block text-xs font-semibold text-slate-500 mb-1.5">CEO Whitelisted Emails</label>
+                  <textarea
+                    rows={2}
+                    value={whitelistedCeos}
+                    onChange={e => setWhitelistedCeos(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-blue-500 font-mono resize-none"
+                  />
                 </div>
-                <button
-                  onClick={() => setGhanaCardValidation(!ghanaCardValidation)}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${ghanaCardValidation ? 'bg-blue-600' : 'bg-slate-300'}`}
-                >
-                  <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${ghanaCardValidation ? 'translate-x-6' : 'translate-x-1'}`} />
-                </button>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 mb-1.5">SMS Gateway</label>
+                  <select value={smsGateway} onChange={e => setSmsGateway(e.target.value)} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none">
+                    <option value="arkesel">Arkesel (Ghana)</option>
+                    <option value="twilio">Twilio (International)</option>
+                    <option value="hubtel">Hubtel Ghana</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 mb-1.5">GPS Ping Interval (seconds)</label>
+                  <input type="number" value={gpsInterval} onChange={e => setGpsInterval(parseInt(e.target.value))} min={5} max={60} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-blue-500" />
+                </div>
+
+                <div className="flex justify-between items-center p-3 bg-slate-50 rounded-xl">
+                  <div>
+                    <p className="text-xs font-semibold text-slate-700">Ghana Card Validation</p>
+                    <p className="text-[10px] text-slate-400">Require Ghana Card for all registrations</p>
+                  </div>
+                  <button
+                    onClick={() => setGhanaCardValidation(!ghanaCardValidation)}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${ghanaCardValidation ? 'bg-blue-600' : 'bg-slate-300'}`}
+                  >
+                    <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${ghanaCardValidation ? 'translate-x-6' : 'translate-x-1'}`} />
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
       )}
 

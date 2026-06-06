@@ -636,7 +636,7 @@ export default function ManagementDashboard({
             </div>
 
             {/* Scrollable table */}
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto w-full">
               <table className="w-full text-xs text-left">
                 <thead>
                   <tr className="theme-table-header-row text-slate-400 uppercase font-semibold text-[10px]">
@@ -885,7 +885,7 @@ export default function ManagementDashboard({
             </div>
 
             {/* Scrollable table */}
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto w-full">
               <table className="w-full text-xs text-left font-sans">
                 <thead>
                   <tr className="theme-table-header-row text-slate-400 uppercase font-semibold text-[10px]">

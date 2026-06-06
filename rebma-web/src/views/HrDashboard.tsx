@@ -481,7 +481,7 @@ export default function HrDashboard({
               </div>
 
               {/* Scrollable table */}
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto w-full">
                 <table className="w-full text-xs text-left">
                   <thead>
                     <tr className="theme-table-header-row text-slate-400 uppercase font-semibold text-[10px]">
@@ -493,7 +493,7 @@ export default function HrDashboard({
                           className="accent-blue-600 w-3.5 h-3.5"
                         />
                       </th>
-                      <th onClick={() => handleSort('id', staffSortField, setStaffSortField, staffSortDir, setStaffSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                      <th onClick={() => handleSort('id', staffSortField, setStaffSortField, staffSortDir, setStaffSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none hidden sm:table-cell">
                         <div className="flex items-center gap-1">
                           <span>Staff ID</span>
                           <span className="text-[9px] opacity-70">{staffSortField === 'id' ? (staffSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
@@ -555,7 +555,9 @@ export default function HrDashboard({
                             className="accent-blue-600 w-3.5 h-3.5"
                           />
                         </td>
-                        <td className="py-3.5 px-3 font-mono font-bold">{staff.id}</td>
+                        <td className="py-3.5 px-3 font-mono font-bold hidden sm:table-cell" title={staff.id}>
+                          ...{staff.id.slice(-8)}
+                        </td>
                         <td className="py-3.5 px-3 font-medium">
                           <div className="flex flex-col">
                             <span className="font-semibold text-sm">{staff.fullName}</span>
@@ -702,7 +704,7 @@ export default function HrDashboard({
               </div>
 
               {/* Scrollable Table */}
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto w-full">
                 <table className="w-full text-xs text-left">
                   <thead>
                     <tr className="theme-table-header-row text-slate-400 uppercase font-semibold text-[10px]">
