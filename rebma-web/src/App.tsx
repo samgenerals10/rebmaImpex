@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Eye, EyeOff, Check, X, ArrowRight, Lock, Mail, User, CreditCard, Phone, AlertCircle, Info, CheckCircle } from 'lucide-react';
-import type { Order, IncomingGoods, ProductionRequest, Visitor, Attendance, ChatMessage, BoardroomMeeting, FinancePayment, Customer, GoodsPrice, AuditEntry, PendingRegistration, StaffMember } from './types/erp';
+import type { Order, IncomingGoods, ProductionRequest, Visitor, Attendance, ChatMessage, BoardroomMeeting, FinancePayment, Customer, GoodsPrice, AuditEntry, PendingRegistration, StaffMember, CurrentUser } from './types/erp';
 
 import Sidebar from './components/layout/Sidebar';
 import Header from './components/layout/Header';
@@ -45,13 +45,7 @@ export default function App() {
   
   // Authentication & Onboarding States
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [currentUser, setCurrentUser] = useState<{
-    fullName: string;
-    email: string;
-    department: string;
-    isCeo: boolean;
-    requiresPasswordReset?: boolean;
-  } | null>(null);
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   
   const [activeDepartment, setActiveDepartment] = useState<string>('CEO');
   const [activeSubTab, setActiveSubTab] = useState<string>('Overview');
@@ -643,11 +637,13 @@ export default function App() {
 
         if (isMounted) {
           setCurrentUser({
+            id: profile.id,
             fullName: profile.fullName,
             email: profile.email,
             department: profile.department,
             isCeo: profile.isCeo,
-            requiresPasswordReset: profile.requiresPasswordReset
+            requiresPasswordReset: profile.requiresPasswordReset,
+            photo: profile.photo
           });
           setActiveDepartment(profile.department);
           setIsAuthenticated(true);
@@ -1113,11 +1109,13 @@ export default function App() {
       if ('user' in res && res.user) {
         if (res.token) setToken(res.token);
         setCurrentUser({
+          id: res.user.id,
           fullName: res.user.fullName,
           email: res.user.email,
           department: res.user.department,
           isCeo: res.user.isCeo,
-          requiresPasswordReset: res.user.requiresPasswordReset
+          requiresPasswordReset: res.user.requiresPasswordReset,
+          photo: res.user.photo
         });
         setActiveDepartment(res.user.department);
         setIsAuthenticated(true);

@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { Settings, User, Lock, Trash2, Camera, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 import type { CurrentUser } from '../types/erp';
 import { auth } from '../services/apiClient';
+import { supabase } from '../lib/supabaseClient';
 
 interface SettingsDashboardProps {
   theme: 'breeze' | 'seven' | 'royal' | 'mint' | 'sunset' | 'forest' | 'ghana';
@@ -60,9 +61,26 @@ export default function SettingsDashboard({
     reader.readAsDataURL(file);
   };
 
-  const handleSaveProfile = (e: React.FormEvent) => {
+  const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    addNotification?.(`Profile updated: ${displayName} (${displayEmail}). Changes saved locally.`);
+    if (!currentUser) return;
+    try {
+      const { error: authError } = await supabase.auth.updateUser({
+        data: { full_name: displayName }
+      });
+      if (authError) throw authError;
+
+      const { error: profileError } = await supabase.from('profiles').update({ 
+        full_name: displayName, 
+        photo: profilePhoto,
+        updated_at: new Date().toISOString() 
+      }).eq('id', currentUser.id);
+      if (profileError) throw profileError;
+
+      addNotification?.("Profile updated successfully.");
+    } catch (err: any) {
+      addNotification?.(err.message || "Failed to update profile.");
+    }
   };
 
   const handleChangePassword = async (e: React.FormEvent) => {

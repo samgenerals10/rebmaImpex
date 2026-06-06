@@ -63,6 +63,7 @@ export interface ChatMessage {
 }
 
 export interface CurrentUser {
+  id: string;
   fullName: string;
   email: string;
   department: string;
