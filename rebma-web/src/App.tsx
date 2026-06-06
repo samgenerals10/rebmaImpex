@@ -89,10 +89,23 @@ export default function App() {
 
   useEffect(() => {
     setLoginError('');
-    setShowMagicLinkRequest(false);
+    setShowMagicLinkRequest(window.location.hash === '#admin-access');
     setMagicLinkEmail('');
     setMagicLinkRole('CEO');
   }, [authScreen]);
+
+  useEffect(() => {
+    const handleHashChange = () => {
+      const isAdminAccess = window.location.hash === '#admin-access';
+      setShowMagicLinkRequest(isAdminAccess);
+      if (isAdminAccess) {
+        setAuthScreen('login');
+      }
+    };
+    handleHashChange();
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
 
   // Custom Alert Modal State
   const [alertModal, setAlertModal] = useState<{
@@ -1149,6 +1162,9 @@ export default function App() {
       alert(res.message || 'Magic link sent! Check your email.');
       setAuthScreen('email_verification_sent');
       addNotification(`Magic link request sent to whitelisted email ${magicLinkEmail}`);
+      // Redirect to the normal login page by clearing hash
+      window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
+      setShowMagicLinkRequest(false);
     } catch (err: any) {
       setLoginError(err.message || 'Failed to send magic link.');
     } finally {
@@ -1376,100 +1392,188 @@ export default function App() {
   // Render Authentication screens
   if (!isAuthenticated) {
     // Inner helper views for split screen card
-    const renderLoginForm = () => (
-      <motion.form 
-        key="login"
-        initial={{ opacity: 0, x: -10 }}
-        animate={{ opacity: 1, x: 0 }}
-        exit={{ opacity: 0, x: 10 }}
-        onSubmit={handleLogin} 
-        className="space-y-4 text-slate-800"
-      >
-        <div className="text-center">
-          <h3 className="text-xl font-bold text-emerald-800">Sign In</h3>
-          <p className="text-[10px] text-slate-400 mt-0.5 font-medium">REMBA IMPEX ERP GATEWAY</p>
-        </div>
-
-        {loginError && (
-          <div className="p-2.5 bg-rose-50 border border-rose-100 rounded-xl text-center text-xs text-rose-800 font-semibold leading-normal whitespace-pre-wrap">
-            {loginError}
-          </div>
-        )}
-
-        {/* Email Input */}
-        <div className="flex items-center gap-2 border-b border-slate-200 focus-within:border-emerald-600 pb-1.5 transition-colors">
-          <Mail className="w-4 h-4 text-slate-400" />
-          <input 
-            type="email" 
-            required 
-            placeholder="name@rembaimpex.com"
-            value={loginEmail}
-            onChange={(e) => setLoginEmail(e.target.value)}
-            className="w-full bg-transparent border-0 p-0 text-sm text-slate-800 placeholder-slate-400 focus:ring-0 focus:outline-none"
-          />
-        </div>
-
-        {/* Password Input */}
-        <div className="flex items-center gap-2 border-b border-slate-200 focus-within:border-emerald-600 pb-1.5 transition-colors">
-          <Lock className="w-4 h-4 text-slate-400" />
-          <input 
-            type={showPassword ? "text" : "password"} 
-            required
-            placeholder="Password"
-            value={loginPassword}
-            onChange={(e) => setLoginPassword(e.target.value)}
-            className="w-full bg-transparent border-0 p-0 text-sm text-slate-800 placeholder-slate-400 focus:ring-0 focus:outline-none"
-          />
-          <button
-            type="button"
-            onClick={() => setShowPassword(!showPassword)}
-            className="text-slate-400 hover:text-slate-600 cursor-pointer"
+    // Inner helper views for split screen card
+    const renderLoginForm = () => {
+      if (showMagicLinkRequest) {
+        return (
+          <motion.form 
+            key="magic-link"
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 10 }}
+            onSubmit={handleSendMagicLink} 
+            className="space-y-4 text-slate-800"
           >
-            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-          </button>
-        </div>
+            <div className="text-center">
+              <h3 className="text-xl font-bold text-emerald-800">Request Login Link</h3>
+              <p className="text-[10px] text-slate-400 mt-0.5 font-medium">FOR PRIVILEGED ACCESS</p>
+            </div>
 
-        <div className="flex items-center justify-between text-[11px] text-slate-400 select-none pt-1">
-          <label className="flex items-center gap-1.5 cursor-pointer">
-            <input 
-              type="checkbox" 
-              checked={staySignedIn} 
-              onChange={(e) => setStaySignedIn(e.target.checked)}
-              className="w-3.5 h-3.5 rounded border-slate-350 text-emerald-600 focus:ring-emerald-500 cursor-pointer" 
-            />
-            <span className="text-slate-500 font-medium">Keep me logged in</span>
-          </label>
-          <button 
-            type="button" 
-            onClick={(e) => {
-              e.preventDefault();
-              setAuthScreen('forgot');
-            }} 
-            className="text-[#068d5c] hover:underline font-bold cursor-pointer"
-          >
-            Forgot Password?
-          </button>
-        </div>
+            {loginError && (
+              <div className="p-2.5 bg-rose-50 border border-rose-100 rounded-xl text-center text-xs text-rose-800 font-semibold leading-normal whitespace-pre-wrap">
+                {loginError}
+              </div>
+            )}
 
-        <button 
-          type="submit" 
-          disabled={isLoggingIn}
-          className="w-full py-3 bg-[#55dfa5] hover:bg-[#40cf93] disabled:bg-[#a7f3d0] disabled:cursor-not-allowed rounded-full text-sm font-bold text-white shadow-md hover:shadow-lg transition-all cursor-pointer text-center flex items-center justify-center gap-2"
+            {/* Email Input */}
+            <div className="space-y-1">
+              <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider">Email Address</label>
+              <div className="flex items-center gap-2 border-b border-slate-200 focus-within:border-emerald-600 pb-1.5 transition-colors">
+                <Mail className="w-4 h-4 text-slate-400" />
+                <input 
+                  type="email" 
+                  required 
+                  placeholder="name@rembaimpex.com"
+                  value={magicLinkEmail}
+                  onChange={(e) => setMagicLinkEmail(e.target.value)}
+                  className="w-full bg-transparent border-0 p-0 text-sm text-slate-800 placeholder-slate-400 focus:ring-0 focus:outline-none"
+                />
+              </div>
+            </div>
+
+            {/* Access Role Dropdown */}
+            <div className="space-y-1">
+              <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider">Access Role</label>
+              <select 
+                value={magicLinkRole}
+                onChange={(e) => setMagicLinkRole(e.target.value)}
+                className="w-full bg-transparent border-b border-slate-200 pb-1.5 text-sm text-slate-800 focus:outline-none focus:border-emerald-600 cursor-pointer"
+              >
+                <option value="CEO">CEO Office</option>
+                <option value="HR">Human Resources</option>
+              </select>
+            </div>
+
+            <button 
+              type="submit" 
+              disabled={isSendingMagicLink}
+              className="w-full py-3 bg-[#55dfa5] hover:bg-[#40cf93] disabled:bg-[#a7f3d0] disabled:cursor-not-allowed rounded-full text-sm font-bold text-white shadow-md hover:shadow-lg transition-all cursor-pointer text-center flex items-center justify-center gap-2"
+            >
+              {isSendingMagicLink ? (
+                <>
+                  <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  <span>Sending Link...</span>
+                </>
+              ) : (
+                <span>Send Magic Link</span>
+              )}
+            </button>
+
+            <div className="text-center pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setLoginError('');
+                  window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
+                  setShowMagicLinkRequest(false);
+                }}
+                className="text-xs text-slate-400 hover:text-emerald-600 hover:underline font-semibold transition-colors cursor-pointer"
+              >
+                Back to Sign In
+              </button>
+            </div>
+          </motion.form>
+        );
+      }
+
+      return (
+        <motion.form 
+          key="login"
+          initial={{ opacity: 0, x: -10 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: 10 }}
+          onSubmit={handleLogin} 
+          className="space-y-4 text-slate-800"
         >
-          {isLoggingIn ? (
-            <>
-              <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-              </svg>
-              <span>Signing In...</span>
-            </>
-          ) : (
-            <span>Sign In</span>
+          <div className="text-center">
+            <h3 className="text-xl font-bold text-emerald-800">Sign In</h3>
+            <p className="text-[10px] text-slate-400 mt-0.5 font-medium">REMBA IMPEX ERP GATEWAY</p>
+          </div>
+
+          {loginError && (
+            <div className="p-2.5 bg-rose-50 border border-rose-100 rounded-xl text-center text-xs text-rose-800 font-semibold leading-normal whitespace-pre-wrap">
+              {loginError}
+            </div>
           )}
-        </button>
-      </motion.form>
-    );
+
+          {/* Email Input */}
+          <div className="flex items-center gap-2 border-b border-slate-200 focus-within:border-emerald-600 pb-1.5 transition-colors">
+            <Mail className="w-4 h-4 text-slate-400" />
+            <input 
+              type="email" 
+              required 
+              placeholder="name@rembaimpex.com"
+              value={loginEmail}
+              onChange={(e) => setLoginEmail(e.target.value)}
+              className="w-full bg-transparent border-0 p-0 text-sm text-slate-800 placeholder-slate-400 focus:ring-0 focus:outline-none"
+            />
+          </div>
+
+          {/* Password Input */}
+          <div className="flex items-center gap-2 border-b border-slate-200 focus-within:border-emerald-600 pb-1.5 transition-colors">
+            <Lock className="w-4 h-4 text-slate-400" />
+            <input 
+              type={showPassword ? "text" : "password"} 
+              required
+              placeholder="Password"
+              value={loginPassword}
+              onChange={(e) => setLoginPassword(e.target.value)}
+              className="w-full bg-transparent border-0 p-0 text-sm text-slate-800 placeholder-slate-400 focus:ring-0 focus:outline-none"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="text-slate-400 hover:text-slate-600 cursor-pointer"
+            >
+              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+          </div>
+
+          <div className="flex items-center justify-between text-[11px] text-slate-400 select-none pt-1">
+            <label className="flex items-center gap-1.5 cursor-pointer">
+              <input 
+                type="checkbox" 
+                checked={staySignedIn} 
+                onChange={(e) => setStaySignedIn(e.target.checked)}
+                className="w-3.5 h-3.5 rounded border-slate-350 text-emerald-600 focus:ring-emerald-500 cursor-pointer" 
+              />
+              <span className="text-slate-500 font-medium">Keep me logged in</span>
+            </label>
+            <button 
+              type="button" 
+              onClick={(e) => {
+                e.preventDefault();
+                setAuthScreen('forgot');
+              }} 
+              className="text-[#068d5c] hover:underline font-bold cursor-pointer"
+            >
+              Forgot Password?
+            </button>
+          </div>
+
+          <button 
+            type="submit" 
+            disabled={isLoggingIn}
+            className="w-full py-3 bg-[#55dfa5] hover:bg-[#40cf93] disabled:bg-[#a7f3d0] disabled:cursor-not-allowed rounded-full text-sm font-bold text-white shadow-md hover:shadow-lg transition-all cursor-pointer text-center flex items-center justify-center gap-2"
+          >
+            {isLoggingIn ? (
+              <>
+                <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+                <span>Signing In...</span>
+              </>
+            ) : (
+              <span>Sign In</span>
+            )}
+          </button>
+        </motion.form>
+      );
+    };
 
     const renderRegisterForm = () => (
       <motion.form 
