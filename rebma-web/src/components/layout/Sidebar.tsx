@@ -1,5 +1,6 @@
 // rebma-web/src/components/layout/Sidebar.tsx
 
+import { useState } from 'react';
 import { 
   ShieldCheck, 
   Layers, 
@@ -51,6 +52,7 @@ export default function Sidebar({
   isOpen = false,
   onClose
 }: SidebarProps) {
+  const [isSwitcherOpen, setIsSwitcherOpen] = useState(false);
   
   // CEO and Management can view any department (CEO can view all, Management can view all except CEO)
   const isCeo = currentUser?.isCeo || currentUser?.department === 'CEO';
@@ -213,23 +215,62 @@ export default function Sidebar({
         </div>
 
         {/* Department Switcher Dropdown */}
-        <div className="mb-5 px-1">
+        <div className="mb-5 px-1 relative">
           <label className="block text-[9px] font-bold text-white/50 uppercase tracking-wider mb-1.5">Switch Department</label>
-          <select 
-            value={activeDepartment}
-            onChange={(e) => setActiveDepartment(e.target.value)}
-            className="w-full bg-white/10 hover:bg-white/15 border border-white/10 text-white rounded-xl py-2 px-3 text-xs focus:outline-none focus:ring-1 focus:ring-white/20 cursor-pointer transition-all"
-            style={{
-              color: '#ffffff',
-              backgroundColor: 'rgba(255,255,255,0.1)'
-            }}
+          <button
+            type="button"
+            onClick={() => setIsSwitcherOpen(prev => !prev)}
+            className="w-full flex items-center justify-between bg-white/10 hover:bg-white/15 border border-white/10 text-white rounded-xl py-2.5 px-3 text-xs focus:outline-none transition-all cursor-pointer font-semibold"
           >
-            {availableDepts.map(dept => (
-              <option key={dept.value} value={dept.value} className="bg-[#064e29] text-white">
-                {dept.label}
-              </option>
-            ))}
-          </select>
+            <span>{allDepts.find(d => d.value === activeDepartment)?.label || activeDepartment}</span>
+            <span className="text-[9px] opacity-75">▼</span>
+          </button>
+          
+          {/* Switcher Popover / Sheet */}
+          {isSwitcherOpen && (
+            <>
+              {/* Backdrop */}
+              <div 
+                className="fixed inset-0 bg-black/60 z-[250] lg:hidden"
+                onClick={() => setIsSwitcherOpen(false)}
+              />
+              
+              <div className="fixed inset-x-0 bottom-0 lg:absolute lg:top-full lg:bottom-auto lg:inset-x-0 max-h-[80vh] lg:max-h-80 bg-slate-900 border-t lg:border border-white/15 rounded-t-3xl lg:rounded-xl p-5 lg:p-2 z-[260] overflow-y-auto shadow-2xl flex flex-col gap-2.5 animate-fade-in-up">
+                {/* Mobile Grab Handle */}
+                <div className="lg:hidden w-12 h-1 bg-white/20 rounded-full mx-auto mb-1 shrink-0" />
+                
+                <div className="flex justify-between items-center lg:hidden mb-1">
+                  <h3 className="text-xs font-bold text-white/50 uppercase tracking-wider">Switch Department</h3>
+                  <button onClick={() => setIsSwitcherOpen(false)} className="text-white/60 hover:text-white text-xs">Close</button>
+                </div>
+
+                <div className="space-y-1">
+                  {availableDepts.map(dept => {
+                    const isSelected = dept.value === activeDepartment;
+                    return (
+                      <button
+                        key={dept.value}
+                        type="button"
+                        onClick={() => {
+                          setActiveDepartment(dept.value);
+                          setIsSwitcherOpen(false);
+                        }}
+                        className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                          isSelected 
+                            ? 'bg-white text-slate-900 shadow-md font-bold' 
+                            : 'text-white/80 hover:bg-white/10 hover:text-white'
+                        }`}
+                      >
+                        <span>{dept.label}</span>
+                        {isSelected && <span className="text-emerald-500 font-extrabold text-sm">✓</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </>
+          )}
+
           {/* View-only badge for CEO/Management viewing other depts */}
           {(isCeo || isManagement) && activeDepartment !== userDept && activeDepartment !== 'BOARDROOM' && activeDepartment !== 'SETTINGS' && (
             <div className="mt-1.5 px-2 py-1 bg-amber-500/20 border border-amber-500/30 rounded-lg text-[9px] text-amber-300 font-semibold text-center">

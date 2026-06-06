@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
-import { FileSpreadsheet, FileText, Factory, Layers, ShieldCheck, Activity, History, Package, BarChart2 } from 'lucide-react';
+import { FileSpreadsheet, FileText, Factory, Layers, ShieldCheck, Activity, History, Package, BarChart2, ChevronRight, Settings } from 'lucide-react';
 import { exportToCSV, exportToPDF } from '../utils/export';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import type { ProductionRequest } from '../types/erp';
@@ -399,14 +399,15 @@ export default function ProductionDashboard({
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
         {stats.map((card, idx) => {
           const Icon = card.icon;
+          const isProminent = idx < 2;
           return (
             <div key={idx} className="p-4 md:p-6 app-card flex items-center justify-between hover:scale-102 transition-all duration-300">
               <div>
                 <span className="text-xs text-slate-400 uppercase font-semibold">{card.title}</span>
-                <h3 className="text-xl md:text-2xl font-bold mt-1">{card.value}</h3>
+                <h3 className={`font-bold mt-1 ${isProminent ? 'text-2xl sm:text-3xl' : 'text-lg sm:text-xl'}`}>{card.value}</h3>
                 <p className="text-[10px] text-slate-400 mt-1">{card.sub}</p>
               </div>
               <div className={`p-3 md:p-4 bg-slate-100 rounded-2xl ${card.color} bg-accent-light`}><Icon className="w-5 h-5 md:w-6 md:h-6" /></div>
@@ -463,18 +464,42 @@ export default function ProductionDashboard({
               <h3 className="text-base md:text-lg font-bold">Approved — Issue Goods Tickets</h3>
               <div className="space-y-3">
                 {productionRequests.filter(r => r.status === 'APPROVED').map(req => (
-                  <div key={req.id} className="p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-xl space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs font-bold">{req.id}</span>
-                      <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 rounded text-[9px] font-bold">APPROVED</span>
+                  <div key={req.id}>
+                    {/* Mobile list card layout */}
+                    <div className="lg:hidden mobile-list-card">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
+                          <Settings className="w-5 h-5 text-[var(--accent-color,#068d5c)]" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-slate-800 dark:text-slate-200">{req.id}</p>
+                          <div className="text-[10px] text-slate-400 space-y-0.5 mt-0.5">
+                            {req.items.map((item, idx) => (
+                              <span key={idx} className="mr-1">{item.materialName}: <strong>{item.quantity.toLocaleString()}</strong></span>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => handleIssueTicket(req.id)} className="px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-bold" title="Issue Goods Ticket">Issue</button>
+                        <ChevronRight className="w-4 h-4 text-slate-400" />
+                      </div>
                     </div>
-                    <div className="text-[10px] text-slate-400 space-y-0.5">
-                      {req.items.map((item, idx) => (
-                        <p key={idx}>{item.materialName}: <strong>{item.quantity.toLocaleString()} units</strong></p>
-                      ))}
-                      <p>Date: {req.createdAt || 'N/A'}</p>
+
+                    {/* Desktop layout */}
+                    <div className="hidden lg:block p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-xl space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs font-bold">{req.id}</span>
+                        <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 rounded text-[9px] font-bold">APPROVED</span>
+                      </div>
+                      <div className="text-[10px] text-slate-400 space-y-0.5">
+                        {req.items.map((item, idx) => (
+                          <p key={idx}>{item.materialName}: <strong>{item.quantity.toLocaleString()} units</strong></p>
+                        ))}
+                        <p>Date: {req.createdAt || 'N/A'}</p>
+                      </div>
+                      <button onClick={() => handleIssueTicket(req.id)} className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold cursor-pointer transition-colors">Issue Goods Ticket</button>
                     </div>
-                    <button onClick={() => handleIssueTicket(req.id)} className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold cursor-pointer transition-colors">Issue Goods Ticket</button>
                   </div>
                 ))}
                 {productionRequests.filter(r => r.status === 'APPROVED').length === 0 && (

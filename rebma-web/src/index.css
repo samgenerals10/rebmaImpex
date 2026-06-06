@@ -391,5 +391,119 @@ select option {
   border-top: 1px solid var(--border-table);
 }
 
+/* Accessibility contrast overrides */
+.text-slate-400, .text-muted, .text-slate-500 {
+  color: #475569 !important; /* slate-600 has 5.1:1 contrast ratio on white */
+}
+.dark .text-slate-400, .dark .text-muted, .dark .text-slate-500 {
+  color: #cbd5e1 !important; /* slate-300 has high contrast on dark backgrounds */
+}
+
+/* Accent Color CSS overrides */
+.bg-blue-600, .bg-indigo-600, .bg-blue-500 {
+  background-color: var(--accent-color, #0b57d0) !important;
+}
+.hover\:bg-blue-700:hover, .hover\:bg-indigo-700:hover, .hover\:bg-blue-600:hover {
+  background-color: var(--accent-hover, #0842a0) !important;
+}
+.text-blue-600, .text-blue-500, .text-indigo-600, .text-blue-400, .text-indigo-400 {
+  color: var(--accent-color, #0b57d0) !important;
+}
+.border-blue-600, .border-indigo-600, .border-blue-500 {
+  border-color: var(--accent-color, #0b57d0) !important;
+}
+.bg-blue-500\/10, .bg-indigo-500\/10, .bg-blue-50\/10 {
+  background-color: var(--accent-light, rgba(11, 87, 208, 0.15)) !important;
+}
+.accent-blue-600, .accent-indigo-600 {
+  accent-color: var(--accent-color, #0b57d0) !important;
+}
+
+/* Dark Mode general rules */
+.dark {
+  color-scheme: dark;
+  --bg-app-gradient: linear-gradient(135deg, #0f172a 0%, #020617 100%) !important;
+  --bg-card: #1e293b !important;
+  --text-primary: #f8fafc !important;
+  --text-secondary: #cbd5e1 !important;
+  --border-color: #334155 !important;
+  --bg-table-strip: #0f172a !important;
+  --bg-table-header: #1e293b !important;
+  --border-table: #334155 !important;
+  --hover-table-row: #334155 !important;
+  --glass-border: 1px solid #334155 !important;
+}
+
+/* Disable all CSS transitions and animations for reduced motion */
+.reduce-motion *,
+.reduce-motion ::before,
+.reduce-motion ::after {
+  animation-delay: -1ms !important;
+  animation-duration: 1ms !important;
+  animation-iteration-count: 1 !important;
+  background-attachment: initial !important;
+  scroll-behavior: auto !important;
+  transition-duration: 0s !important;
+  transition-delay: 0s !important;
+}
+
+/* Glass Themes styling */
+body.glass-theme-crystal {
+  --bg-card: rgba(255, 255, 255, 0.45) !important;
+  --bg-sidebar: rgba(255, 255, 255, 0.25) !important;
+  --backdrop-blur: blur(24px) saturate(180%) !important;
+  --glass-border: 1px solid rgba(255, 255, 255, 0.35) !important;
+}
+body.glass-theme-midnight {
+  --bg-card: rgba(15, 23, 42, 0.6) !important;
+  --bg-sidebar: rgba(15, 23, 42, 0.8) !important;
+  --backdrop-blur: blur(24px) saturate(180%) !important;
+  --glass-border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  --text-primary: #f8fafc !important;
+  --text-secondary: #cbd5e1 !important;
+}
+body.glass-theme-emerald {
+  --bg-card: rgba(6, 78, 59, 0.35) !important;
+  --bg-sidebar: rgba(6, 78, 59, 0.55) !important;
+  --backdrop-blur: blur(24px) saturate(180%) !important;
+  --glass-border: 1px solid rgba(16, 185, 129, 0.25) !important;
+  --text-primary: #f0fdf4 !important;
+  --text-secondary: #86efac !important;
+}
+body.glass-theme-sapphire {
+  --bg-card: rgba(30, 58, 138, 0.35) !important;
+  --bg-sidebar: rgba(30, 58, 138, 0.55) !important;
+  --backdrop-blur: blur(24px) saturate(180%) !important;
+  --glass-border: 1px solid rgba(59, 130, 246, 0.25) !important;
+  --text-primary: #eff6ff !important;
+  --text-secondary: #93c5fd !important;
+}
+body.glass-theme-rose {
+  --bg-card: rgba(136, 19, 55, 0.25) !important;
+  --bg-sidebar: rgba(136, 19, 55, 0.45) !important;
+  --backdrop-blur: blur(24px) saturate(180%) !important;
+  --glass-border: 1px solid rgba(244, 63, 94, 0.25) !important;
+  --text-primary: #fff1f2 !important;
+  --text-secondary: #fca5a5 !important;
+}
+
+/* Mobile list items styled as modern cards */
+.mobile-list-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem;
+  border-radius: 1rem; /* rounded-2xl */
+  margin-bottom: 0.75rem; /* mb-3 */
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06); /* shadow-sm */
+  background-color: var(--bg-card, #ffffff);
+  border: var(--glass-border, 1px solid rgba(241, 245, 249, 0.8));
+  transition: transform 0.2s ease;
+}
+.mobile-list-card:hover {
+  transform: scale(1.01);
+}
+
+
 
 

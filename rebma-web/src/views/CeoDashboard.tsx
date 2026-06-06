@@ -79,7 +79,7 @@ export default function CeoDashboard({
       </div>
 
       {/* Operational KPI Counters */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
         {[
           { title: 'Global Ingestion Flow', value: '1,020 Tons', sub: '+12% from last month', icon: Layers, color: 'text-blue-500' },
           { title: 'Processing Invoices', value: '4 Invoices', sub: '2 awaiting clearance', icon: DollarSign, color: 'text-emerald-500' },
@@ -87,11 +87,12 @@ export default function CeoDashboard({
           { title: 'Total Registered Staff', value: '25 Active', sub: '3 Pending approvals', icon: Users, color: 'text-amber-500' }
         ].map((card, idx) => {
           const Icon = card.icon;
+          const isProminent = idx < 2;
           return (
             <div key={idx} className="p-4 sm:p-6 app-card flex items-center justify-between hover:scale-102 transition-all">
               <div>
                 <span className="text-[10px] sm:text-xs text-slate-400 uppercase font-semibold">{card.title}</span>
-                <h3 className="text-xl sm:text-2xl font-bold mt-1">{card.value}</h3>
+                <h3 className={`font-bold mt-1 ${isProminent ? 'text-2xl sm:text-3xl' : 'text-lg sm:text-xl'}`}>{card.value}</h3>
                 <p className="text-[9px] sm:text-[10px] text-slate-400 mt-1">{card.sub}</p>
               </div>
               <div className="p-3 sm:p-4 bg-slate-100 rounded-2xl text-blue-500 bg-accent-light shrink-0">

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Eye, EyeOff, Check, X, ArrowRight, Lock, Mail, User, CreditCard, Phone, AlertCircle, Info, CheckCircle } from 'lucide-react';
+import { motion, AnimatePresence, MotionConfig } from 'framer-motion';
+import { Eye, EyeOff, Check, X, ArrowRight, Lock, Mail, User, CreditCard, Phone, AlertCircle, Info, CheckCircle, Home, Search, Plus, Bell } from 'lucide-react';
 import type { Order, IncomingGoods, ProductionRequest, Visitor, Attendance, ChatMessage, BoardroomMeeting, FinancePayment, Customer, GoodsPrice, AuditEntry, PendingRegistration, StaffMember, CurrentUser } from './types/erp';
 
 import Sidebar from './components/layout/Sidebar';
@@ -42,6 +42,76 @@ export default function App() {
 
   // Theme State - Default to 'ghana' official logo theme matching colors!
   const [theme, setTheme] = useState<'breeze' | 'seven' | 'royal' | 'mint' | 'sunset' | 'forest' | 'ghana'>('ghana');
+
+  // Display & Appearance preferences
+  const [darkMode, setDarkMode] = useState<boolean>(() => {
+    return localStorage.getItem('dark-mode') === 'true';
+  });
+  const [accentColor, setAccentColor] = useState<string>(() => {
+    return localStorage.getItem('accent-color') || '#068d5c';
+  });
+  const [reducedMotion, setReducedMotion] = useState<boolean>(() => {
+    return localStorage.getItem('reduced-motion') === 'true';
+  });
+  const [glassTheme, setGlassTheme] = useState<string>(() => {
+    return localStorage.getItem('glass-theme') || 'none';
+  });
+
+  // Mobile navigation & search overlays
+  const [isMobileSearchActive, setIsMobileSearchActive] = useState<boolean>(false);
+  const [isMobileNotificationsActive, setIsMobileNotificationsActive] = useState<boolean>(false);
+  const [isQuickActionOpen, setIsQuickActionOpen] = useState<boolean>(false);
+
+  // Synchronize display and appearance preferences
+  useEffect(() => {
+    localStorage.setItem('dark-mode', String(darkMode));
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [darkMode]);
+
+  useEffect(() => {
+    localStorage.setItem('accent-color', accentColor);
+    const root = document.documentElement;
+    const accentColorMap: Record<string, { hover: string; light: string }> = {
+      '#068d5c': { hover: '#046c46', light: 'rgba(6, 141, 92, 0.15)' },
+      '#3b82f6': { hover: '#2563eb', light: 'rgba(59, 130, 246, 0.15)' },
+      '#8b5cf6': { hover: '#7c3aed', light: 'rgba(139, 92, 246, 0.15)' },
+      '#f97316': { hover: '#ea580c', light: 'rgba(249, 115, 22, 0.15)' },
+      '#f43f5e': { hover: '#e11d48', light: 'rgba(244, 63, 94, 0.15)' },
+      '#14b8a6': { hover: '#0d9488', light: 'rgba(20, 184, 166, 0.15)' },
+    };
+    const config = accentColorMap[accentColor];
+    if (config) {
+      root.style.setProperty('--accent-color', accentColor);
+      root.style.setProperty('--accent-hover', config.hover);
+      root.style.setProperty('--accent-light', config.light);
+    } else {
+      root.style.removeProperty('--accent-color');
+      root.style.removeProperty('--accent-hover');
+      root.style.removeProperty('--accent-light');
+    }
+  }, [accentColor]);
+
+  useEffect(() => {
+    localStorage.setItem('reduced-motion', String(reducedMotion));
+    if (reducedMotion) {
+      document.body.classList.add('reduce-motion');
+    } else {
+      document.body.classList.remove('reduce-motion');
+    }
+  }, [reducedMotion]);
+
+  useEffect(() => {
+    localStorage.setItem('glass-theme', glassTheme);
+    const body = document.body;
+    body.className = body.className.split(' ').filter(c => !c.startsWith('glass-theme-')).join(' ');
+    if (glassTheme !== 'none') {
+      body.classList.add(`glass-theme-${glassTheme}`);
+    }
+  }, [glassTheme]);
   
   // Authentication & Onboarding States
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
@@ -921,7 +991,7 @@ export default function App() {
   // Change theme class on document body
   useEffect(() => {
     const body = document.body;
-    body.className = ''; // reset classes
+    body.className = body.className.split(' ').filter(c => !c.startsWith('theme-')).join(' ');
     if (theme !== 'breeze') {
       body.classList.add(`theme-${theme}`);
     }
@@ -2166,6 +2236,14 @@ export default function App() {
           activeSubTab="ChangePassword"
           currentUser={currentUser}
           addNotification={addNotification}
+          darkMode={darkMode}
+          setDarkMode={setDarkMode}
+          accentColor={accentColor}
+          setAccentColor={setAccentColor}
+          reducedMotion={reducedMotion}
+          setReducedMotion={setReducedMotion}
+          glassTheme={glassTheme}
+          setGlassTheme={setGlassTheme}
         />
       );
     }
@@ -2300,6 +2378,14 @@ export default function App() {
             activeSubTab={activeSubTab}
             currentUser={currentUser}
             addNotification={addNotification}
+            darkMode={darkMode}
+            setDarkMode={setDarkMode}
+            accentColor={accentColor}
+            setAccentColor={setAccentColor}
+            reducedMotion={reducedMotion}
+            setReducedMotion={setReducedMotion}
+            glassTheme={glassTheme}
+            setGlassTheme={setGlassTheme}
           />
         );
       default:
@@ -2312,110 +2398,426 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen w-full flex p-3 md:p-6 transition-all duration-300">
-      
-      {/* 1. LEFT SIDEBAR */}
-      <Sidebar
-        activeDepartment={currentUser?.requiresPasswordReset ? 'SETTINGS' : activeDepartment}
-        setActiveDepartment={currentUser?.requiresPasswordReset ? () => {} : setActiveDepartment}
-        activeSubTab={currentUser?.requiresPasswordReset ? 'ChangePassword' : activeSubTab}
-        setActiveSubTab={currentUser?.requiresPasswordReset ? () => {} : setActiveSubTab}
-        theme={theme}
-        currentUser={currentUser}
-        onLogout={async () => {
-          await auth.signOut();
-          setIsAuthenticated(false);
-          setCurrentUser(null);
-        }}
-        addNotification={addNotification}
-        openBoardroom={() => { setActiveDepartment('BOARDROOM'); setActiveSubTab('VideoConf'); }}
-        isOpen={isSidebarOpen}
-        onClose={() => setIsSidebarOpen(false)}
-      />
-
-      {/* Backdrop overlay for mobile/tablet */}
-      {isSidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden transition-opacity duration-300"
-          onClick={() => setIsSidebarOpen(false)}
-        />
-      )}
-
-      {/* 2. MAIN SHEET WRAPPER */}
-      <main className="flex-1 ml-0 lg:ml-6 bg-white rounded-3xl shadow-xl flex flex-col border border-slate-100 app-sheet overflow-hidden" style={{ maxHeight: 'calc(100vh - 3rem)' }}>
+    <MotionConfig reducedMotion={reducedMotion ? 'always' : 'user'}>
+      <div className="min-h-screen w-full flex p-0 lg:p-6 transition-all duration-300 bg-slate-100 dark:bg-slate-950">
         
-        {/* TOP STATUS BAR & SEARCH */}
-        <div className="px-4 md:px-6 pt-4 md:pt-6 pb-0 shrink-0">
-          <Header
-            searchQuery={searchQuery}
-            setSearchQuery={setSearchQuery}
-            onOpenChat={() => setIsChatOpen(true)}
-            notifications={notifications}
-            onClearNotifications={() => setNotifications([])}
-            onToggleSidebar={() => setIsSidebarOpen(prev => !prev)}
+        {/* 1. LEFT SIDEBAR */}
+        <Sidebar
+          activeDepartment={currentUser?.requiresPasswordReset ? 'SETTINGS' : activeDepartment}
+          setActiveDepartment={currentUser?.requiresPasswordReset ? () => {} : setActiveDepartment}
+          activeSubTab={currentUser?.requiresPasswordReset ? 'ChangePassword' : activeSubTab}
+          setActiveSubTab={currentUser?.requiresPasswordReset ? () => {} : setActiveSubTab}
+          theme={theme}
+          currentUser={currentUser}
+          onLogout={async () => {
+            await auth.signOut();
+            setIsAuthenticated(false);
+            setCurrentUser(null);
+          }}
+          addNotification={addNotification}
+          openBoardroom={() => { setActiveDepartment('BOARDROOM'); setActiveSubTab('VideoConf'); }}
+          isOpen={isSidebarOpen}
+          onClose={() => setIsSidebarOpen(false)}
+        />
+
+        {/* Backdrop overlay for mobile/tablet */}
+        {isSidebarOpen && (
+          <div 
+            className="fixed inset-0 bg-black/50 z-40 lg:hidden transition-opacity duration-300"
+            onClick={() => setIsSidebarOpen(false)}
           />
+        )}
+
+        {/* 2. MAIN SHEET WRAPPER */}
+        <main className="flex-1 ml-0 lg:ml-6 bg-slate-50 dark:bg-slate-900 lg:bg-white rounded-none lg:rounded-3xl shadow-none lg:shadow-xl flex flex-col border-none lg:border lg:border-slate-100 app-sheet overflow-hidden h-screen lg:h-[calc(100vh-3rem)]">
+          
+          {/* TOP STATUS BAR & HERO HEADER */}
+          <div className="lg:px-6 lg:pt-6 pb-0 shrink-0">
+            <Header
+              searchQuery={searchQuery}
+              setSearchQuery={setSearchQuery}
+              onOpenChat={() => setIsChatOpen(true)}
+              notifications={notifications}
+              onClearNotifications={() => setNotifications([])}
+              onToggleSidebar={() => setIsSidebarOpen(prev => !prev)}
+              currentUser={currentUser}
+              onOpenNotifications={() => setIsMobileNotificationsActive(true)}
+            />
+          </div>
+
+          {/* 3. DYNAMIC PAGES VIEW SELECTOR CONTAINER — fills remaining height, scrollable */}
+          <div className="flex-1 overflow-y-auto px-4 lg:px-6 pb-20 lg:pb-6 pt-4">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={`${activeDepartment}-${activeSubTab}`}
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -15 }}
+                transition={{ duration: 0.25 }}
+              >
+                {renderDashboard()}
+              </motion.div>
+            </AnimatePresence>
+          </div>
+
+        </main>
+
+        {/* 4. BOTTOM NAVIGATION BAR (mobile only) */}
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex items-center justify-around z-50 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] pb-safe">
+          {/* Home */}
+          <button 
+            type="button"
+            onClick={() => {
+              const userDept = (currentUser?.department || 'CEO').toUpperCase() === 'HUMAN RESOURCES' ? 'HR' : (currentUser?.department || 'CEO').toUpperCase();
+              setActiveDepartment(userDept);
+              setIsMobileSearchActive(false);
+              setIsMobileNotificationsActive(false);
+            }}
+            className={`flex flex-col items-center justify-center flex-1 h-full cursor-pointer transition-colors ${
+              activeDepartment === (currentUser?.department || 'CEO').toUpperCase() && !isMobileSearchActive && !isMobileNotificationsActive
+                ? 'text-[var(--accent-color,#068d5c)]' 
+                : 'text-slate-400 dark:text-slate-500'
+            }`}
+          >
+            <Home className="w-5 h-5" />
+            <span className="text-[9px] mt-1 font-bold">Home</span>
+          </button>
+
+          {/* Search */}
+          <button 
+            type="button"
+            onClick={() => {
+              setIsMobileSearchActive(true);
+              setIsMobileNotificationsActive(false);
+            }}
+            className={`flex flex-col items-center justify-center flex-1 h-full cursor-pointer transition-colors ${
+              isMobileSearchActive ? 'text-[var(--accent-color,#068d5c)]' : 'text-slate-400 dark:text-slate-500'
+            }`}
+          >
+            <Search className="w-5 h-5" />
+            <span className="text-[9px] mt-1 font-bold">Search</span>
+          </button>
+
+          {/* Quick Action (Floating Center) */}
+          <div className="relative flex-1 flex justify-center -mt-6">
+            <button 
+              type="button"
+              onClick={() => setIsQuickActionOpen(true)}
+              className="w-12 h-12 rounded-full bg-gradient-to-r from-[#068d5c] to-[#045c3d] text-white flex items-center justify-center shadow-lg hover:scale-105 active:scale-95 transition-all cursor-pointer border-2 border-white dark:border-slate-900"
+              title="Quick Action"
+            >
+              <Plus className="w-6 h-6 font-bold" />
+            </button>
+          </div>
+
+          {/* Notifications */}
+          <button 
+            type="button"
+            onClick={() => {
+              setIsMobileNotificationsActive(true);
+              setIsMobileSearchActive(false);
+            }}
+            className={`flex flex-col items-center justify-center flex-1 h-full cursor-pointer relative transition-colors ${
+              isMobileNotificationsActive ? 'text-[var(--accent-color,#068d5c)]' : 'text-slate-400 dark:text-slate-500'
+            }`}
+          >
+            <Bell className="w-5 h-5" />
+            {notifications.length > 0 && (
+              <span className="absolute top-2 right-6 w-2 h-2 bg-rose-500 rounded-full" />
+            )}
+            <span className="text-[9px] mt-1 font-bold">Alerts</span>
+          </button>
+
+          {/* Profile */}
+          <button 
+            type="button"
+            onClick={() => {
+              setActiveDepartment('SETTINGS');
+              setActiveSubTab('Profile');
+              setIsMobileSearchActive(false);
+              setIsMobileNotificationsActive(false);
+            }}
+            className={`flex flex-col items-center justify-center flex-1 h-full cursor-pointer transition-colors ${
+              activeDepartment === 'SETTINGS' && activeSubTab === 'Profile' && !isMobileSearchActive && !isMobileNotificationsActive
+                ? 'text-[var(--accent-color,#068d5c)]' 
+                : 'text-slate-400 dark:text-slate-500'
+            }`}
+          >
+            <User className="w-5 h-5" />
+            <span className="text-[9px] mt-1 font-bold">Profile</span>
+          </button>
         </div>
 
-        {/* 3. DYNAMIC PAGES VIEW SELECTOR CONTAINER — fills remaining height, scrollable */}
-        <div className="flex-1 overflow-y-auto px-4 md:px-6 pb-4 md:pb-6 pt-4">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={`${activeDepartment}-${activeSubTab}`}
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -15 }}
-              transition={{ duration: 0.25 }}
-            >
-              {renderDashboard()}
-            </motion.div>
+        {/* 5. QUICK ACTION SHEET (mobile only) */}
+        {isQuickActionOpen && (
+          <>
+            {/* Backdrop */}
+            <div 
+              className="fixed inset-0 bg-black/60 z-[250] transition-opacity duration-300"
+              onClick={() => setIsQuickActionOpen(false)}
+            />
+            {/* Sheet */}
+            <div className="fixed inset-x-0 bottom-0 max-h-[80vh] bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 rounded-t-3xl p-6 z-[260] overflow-y-auto flex flex-col gap-4 animate-fade-in-up">
+              <div className="w-12 h-1 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto mb-1 shrink-0" />
+              
+              <div className="flex justify-between items-center">
+                <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">Quick Actions ({activeDepartment})</h3>
+                <button onClick={() => setIsQuickActionOpen(false)} className="text-slate-400 hover:text-slate-600 text-xs">Close</button>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 py-2">
+                {activeDepartment === 'CEO' && (
+                  <>
+                    <button onClick={() => { setActiveSubTab('Tracking'); setIsQuickActionOpen(false); }} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-custom">
+                      <span className="text-xl">📍</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">GPS Tracker</span>
+                    </button>
+                    <button onClick={() => { setActiveSubTab('Boardroom'); setIsQuickActionOpen(false); }} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-custom">
+                      <span className="text-xl">🎥</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Boardroom</span>
+                    </button>
+                  </>
+                )}
+                {activeDepartment === 'HR' && (
+                  <>
+                    <button onClick={() => { setActiveSubTab('Employees'); setIsQuickActionOpen(false); }} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-custom">
+                      <span className="text-xl">👤</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Add Staff</span>
+                    </button>
+                    <button onClick={() => { setActiveSubTab('Attendance'); setIsQuickActionOpen(false); }} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-custom">
+                      <span className="text-xl">📋</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Take Attendance</span>
+                    </button>
+                  </>
+                )}
+                {activeDepartment === 'MANAGEMENT' && (
+                  <>
+                    <button onClick={() => { setActiveSubTab('CargoApproval'); setIsQuickActionOpen(false); }} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-custom">
+                      <span className="text-xl">🚢</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Cargo Approval</span>
+                    </button>
+                    <button onClick={() => { setActiveSubTab('CreditApproval'); setIsQuickActionOpen(false); }} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-custom">
+                      <span className="text-xl">💳</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Credit Approval</span>
+                    </button>
+                  </>
+                )}
+                {activeDepartment === 'MARKETING' && (
+                  <>
+                    <button onClick={() => { setActiveSubTab('CreateOrder'); setIsQuickActionOpen(false); }} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-custom">
+                      <span className="text-xl">🛒</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Create Order</span>
+                    </button>
+                    <button onClick={() => { setActiveSubTab('RegisterCustomer'); setIsQuickActionOpen(false); }} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-custom">
+                      <span className="text-xl">👤</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Add Customer</span>
+                    </button>
+                  </>
+                )}
+                {activeDepartment === 'OPERATIONS' && (
+                  <>
+                    <button onClick={() => { setActiveSubTab('PortIngestion'); setIsQuickActionOpen(false); }} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-custom">
+                      <span className="text-xl">⚓</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Log Cargo</span>
+                    </button>
+                    <button onClick={() => { setActiveSubTab('Releases'); setIsQuickActionOpen(false); }} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-custom">
+                      <span className="text-xl">📦</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Releases</span>
+                    </button>
+                  </>
+                )}
+                {activeDepartment === 'FINANCE' && (
+                  <>
+                    <button onClick={() => { setActiveSubTab('RecordPayment'); setIsQuickActionOpen(false); }} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-custom">
+                      <span className="text-xl">💸</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Record Payment</span>
+                    </button>
+                    <button onClick={() => { setActiveSubTab('IntakeForm'); setIsQuickActionOpen(false); }} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-custom">
+                      <span className="text-xl">📄</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Intake Form</span>
+                    </button>
+                  </>
+                )}
+                {activeDepartment === 'PRODUCTION' && (
+                  <>
+                    <button onClick={() => { setActiveSubTab('Requisition'); setIsQuickActionOpen(false); }} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-custom">
+                      <span className="text-xl">⚙</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Request Raw</span>
+                    </button>
+                    <button onClick={() => { setActiveSubTab('WIPStock'); setIsQuickActionOpen(false); }} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-custom">
+                      <span className="text-xl">🔧</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">WIP Stock</span>
+                    </button>
+                  </>
+                )}
+                {activeDepartment === 'RECEPTION' && (
+                  <>
+                    <button onClick={() => { setActiveSubTab('VisitorLog'); setIsQuickActionOpen(false); }} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-custom">
+                      <span className="text-xl">🎫</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Visitor Log</span>
+                    </button>
+                    <button onClick={() => { setActiveSubTab('EmployeeCheckin'); setIsQuickActionOpen(false); }} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-custom">
+                      <span className="text-xl">🔑</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Check-in</span>
+                    </button>
+                  </>
+                )}
+                {activeDepartment === 'DISPATCH' && (
+                  <>
+                    <button onClick={() => { setActiveSubTab('Deliveries'); setIsQuickActionOpen(false); }} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-custom">
+                      <span className="text-xl">🚚</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Deliveries Map</span>
+                    </button>
+                    <button onClick={() => { setActiveSubTab('DriverLogs'); setIsQuickActionOpen(false); }} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-custom">
+                      <span className="text-xl">📋</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Driver Logs</span>
+                    </button>
+                  </>
+                )}
+                {activeDepartment === 'LOGISTICS' && (
+                  <>
+                    <button onClick={() => { setActiveSubTab('Maintenance'); setIsQuickActionOpen(false); }} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-custom">
+                      <span className="text-xl">🔧</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Maintenance</span>
+                    </button>
+                    <button onClick={() => { setActiveSubTab('Fuel'); setIsQuickActionOpen(false); }} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-custom">
+                      <span className="text-xl">⛽</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Fuel Usage</span>
+                    </button>
+                  </>
+                )}
+                {/* Fallback if no specific department match */}
+                {['CEO', 'HR', 'MANAGEMENT', 'MARKETING', 'OPERATIONS', 'FINANCE', 'PRODUCTION', 'RECEPTION', 'DISPATCH', 'LOGISTICS'].indexOf(activeDepartment) === -1 && (
+                  <div className="col-span-2 text-center text-xs text-slate-400 py-6">
+                    No quick actions available.
+                  </div>
+                )}
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* 6. MOBILE SEARCH OVERLAY */}
+        {isMobileSearchActive && (
+          <div className="lg:hidden fixed inset-0 bg-slate-50 dark:bg-slate-900 z-40 p-6 pt-12 overflow-y-auto pb-24 animate-fade-in-up">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="relative flex-1">
+                <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Search className="h-4 w-4 text-slate-400" />
+                </span>
+                <input
+                  type="text"
+                  placeholder="Search ERP modules, orders, files..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  autoFocus
+                  className="w-full pl-9 pr-3 py-2.5 bg-white border border-slate-200 rounded-full text-sm text-slate-800 placeholder-slate-400 focus:outline-none"
+                />
+              </div>
+              <button 
+                type="button"
+                onClick={() => setIsMobileSearchActive(false)} 
+                className="text-slate-500 font-bold text-xs"
+              >
+                Cancel
+              </button>
+            </div>
+            {/* Results section */}
+            <div className="space-y-4">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Search Results</p>
+              {searchQuery ? (
+                <div className="p-4 bg-white dark:bg-slate-800 rounded-2xl border border-custom text-center py-8">
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Searching details containing "{searchQuery}"</p>
+                  <p className="text-[10px] text-slate-400 mt-1">Filtered dashboard view displays matching records.</p>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-slate-400">
+                  <p className="text-xs">Type a query to search the terminal databases.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* 7. MOBILE NOTIFICATIONS OVERLAY */}
+        {isMobileNotificationsActive && (
+          <div className="lg:hidden fixed inset-0 bg-slate-50 dark:bg-slate-900 z-40 p-6 pt-12 overflow-y-auto pb-24 animate-fade-in-up">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-base font-bold text-slate-800 dark:text-slate-200">Terminal Alerts</h3>
+              <button 
+                type="button"
+                onClick={() => setIsMobileNotificationsActive(false)} 
+                className="text-slate-500 font-bold text-xs"
+              >
+                Close
+              </button>
+            </div>
+            {notifications.length === 0 ? (
+              <div className="text-center py-12 text-slate-400">
+                <Bell className="w-12 h-12 text-slate-200 mx-auto mb-3" />
+                <p className="text-xs">No active alerts or system notifications.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {notifications.map(n => (
+                  <div key={n.id} className="p-4 bg-white dark:bg-slate-800 rounded-2xl border border-custom shadow-sm flex items-start gap-3">
+                    <div className="w-2 h-2 rounded-full bg-blue-500 mt-1.5 shrink-0" />
+                    <div className="flex-1">
+                      <p className="text-xs text-slate-800 dark:text-slate-200 font-medium leading-relaxed">{n.msg}</p>
+                      <p className="text-[10px] text-slate-400 mt-1">{n.time}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 8. COLLABORATIVE MESSAGE DRAWER */}
+        <ChatDrawer
+          isOpen={isChatOpen}
+          onClose={() => setIsChatOpen(false)}
+          chatMessages={chatMessages}
+          onSendMessage={sendChatMessage}
+          boardroomMinutes={boardroomMinutes}
+          setBoardroomMinutes={setBoardroomMinutes}
+        />
+
+        {/* 9. GLOBAL TOAST NOTIFICATION OVERLAY */}
+        <div className="fixed bottom-6 right-6 z-[300] flex flex-col gap-2 max-w-sm pointer-events-none">
+          <AnimatePresence mode="sync">
+            {notifications.slice(0, 3).map(n => (
+              <motion.div
+                key={n.id}
+                initial={{ opacity: 0, x: 40, scale: 0.9 }}
+                animate={{ opacity: 1, x: 0, scale: 1 }}
+                exit={{ opacity: 0, x: 40, scale: 0.9 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+                className="bg-slate-900/95 backdrop-blur-sm border border-slate-700 rounded-2xl px-4 py-3 shadow-2xl pointer-events-auto"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="w-2 h-2 rounded-full bg-blue-400 mt-1 shrink-0 animate-pulse" />
+                  <div>
+                    <p className="text-xs text-white leading-relaxed">{n.msg}</p>
+                    <p className="text-[10px] text-slate-400 mt-1">{n.time}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setNotifications(prev => prev.filter(x => x.id !== n.id))}
+                    className="ml-auto shrink-0 text-slate-500 hover:text-slate-300 cursor-pointer"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                  </button>
+                </div>
+              </motion.div>
+            ))}
           </AnimatePresence>
         </div>
 
-      </main>
-
-      {/* 4. COLLABORATIVE MESSAGE DRAWER */}
-      <ChatDrawer
-        isOpen={isChatOpen}
-        onClose={() => setIsChatOpen(false)}
-        chatMessages={chatMessages}
-        onSendMessage={sendChatMessage}
-        boardroomMinutes={boardroomMinutes}
-        setBoardroomMinutes={setBoardroomMinutes}
-      />
-
-      {/* 5. GLOBAL TOAST NOTIFICATION OVERLAY */}
-      <div className="fixed bottom-6 right-6 z-[300] flex flex-col gap-2 max-w-sm pointer-events-none">
-        <AnimatePresence mode="sync">
-          {notifications.slice(0, 3).map(n => (
-            <motion.div
-              key={n.id}
-              initial={{ opacity: 0, x: 40, scale: 0.9 }}
-              animate={{ opacity: 1, x: 0, scale: 1 }}
-              exit={{ opacity: 0, x: 40, scale: 0.9 }}
-              transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-              className="bg-slate-900/95 backdrop-blur-sm border border-slate-700 rounded-2xl px-4 py-3 shadow-2xl pointer-events-auto"
-            >
-              <div className="flex items-start gap-3">
-                <div className="w-2 h-2 rounded-full bg-blue-400 mt-1 shrink-0 animate-pulse" />
-                <div>
-                  <p className="text-xs text-white leading-relaxed">{n.msg}</p>
-                  <p className="text-[10px] text-slate-400 mt-1">{n.time}</p>
-                </div>
-                <button
-                  onClick={() => setNotifications(prev => prev.filter(x => x.id !== n.id))}
-                  className="ml-auto shrink-0 text-slate-500 hover:text-slate-300 cursor-pointer"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
-                </button>
-              </div>
-            </motion.div>
-          ))}
-        </AnimatePresence>
+        {renderAlertModal()}
+        {renderPromptModal()}
+        {renderConfirmModal()}
       </div>
-
-      {renderAlertModal()}
-      {renderPromptModal()}
-      {renderConfirmModal()}
-    </div>
+    </MotionConfig>
   );
 }

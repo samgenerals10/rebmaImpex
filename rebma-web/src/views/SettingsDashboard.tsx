@@ -18,6 +18,14 @@ interface SettingsDashboardProps {
   activeSubTab?: string;
   currentUser?: CurrentUser | null;
   addNotification?: (msg: string) => void;
+  darkMode: boolean;
+  setDarkMode: (val: boolean) => void;
+  accentColor: string;
+  setAccentColor: (val: string) => void;
+  reducedMotion: boolean;
+  setReducedMotion: (val: boolean) => void;
+  glassTheme: string;
+  setGlassTheme: (val: string) => void;
 }
 
 export default function SettingsDashboard({
@@ -33,7 +41,15 @@ export default function SettingsDashboard({
   setGhanaCardValidation,
   activeSubTab = 'Themes',
   currentUser,
-  addNotification
+  addNotification,
+  darkMode,
+  setDarkMode,
+  accentColor,
+  setAccentColor,
+  reducedMotion,
+  setReducedMotion,
+  glassTheme,
+  setGlassTheme
 }: SettingsDashboardProps) {
 
   // Profile editable fields
@@ -395,6 +411,115 @@ export default function SettingsDashboard({
                 </button>
               </form>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* DISPLAY & APPEARANCE */}
+      {activeSubTab === 'Appearance' && (
+        <div className="max-w-xl space-y-6">
+          <div className="p-4 md:p-6 app-card space-y-6 animate-fade-in-up">
+            <div>
+              <h3 className="text-base md:text-lg font-bold">Display & Appearance</h3>
+              <p className="text-xs text-slate-400 mb-2">Customize the visual presentation and system themes of your ERP terminal.</p>
+            </div>
+
+            {/* Dark Mode */}
+            <div className="flex justify-between items-center p-3 bg-slate-50 dark:bg-slate-800/40 border border-custom rounded-xl">
+              <div>
+                <p className="text-xs font-semibold text-slate-700 dark:text-slate-200">Dark Mode</p>
+                <p className="text-[10px] text-slate-400">Apply dark colors across the interface</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDarkMode(!darkMode)}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${darkMode ? 'bg-blue-600' : 'bg-slate-300'}`}
+              >
+                <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${darkMode ? 'translate-x-6' : 'translate-x-1'}`} />
+              </button>
+            </div>
+
+            {/* Accent Color Picker */}
+            <div className="space-y-2.5">
+              <label className="block text-xs font-semibold text-slate-500 mb-1.5">Accent Color</label>
+              <div className="flex items-center gap-3.5 flex-wrap">
+                {[
+                  { hex: '#068d5c', name: 'Green' },
+                  { hex: '#3b82f6', name: 'Blue' },
+                  { hex: '#8b5cf6', name: 'Purple' },
+                  { hex: '#f97316', name: 'Orange' },
+                  { hex: '#f43f5e', name: 'Rose' },
+                  { hex: '#14b8a6', name: 'Teal' },
+                ].map(c => {
+                  const isSelected = accentColor === c.hex;
+                  return (
+                    <button
+                      key={c.hex}
+                      type="button"
+                      onClick={() => setAccentColor(c.hex)}
+                      className={`w-9 h-9 rounded-full relative hover:scale-110 transition-transform cursor-pointer border-2 ${
+                        isSelected ? 'border-slate-800 dark:border-white ring-2 ring-slate-400/50' : 'border-transparent'
+                      }`}
+                      style={{ backgroundColor: c.hex }}
+                      title={c.name}
+                    >
+                      {isSelected && (
+                        <span className="absolute inset-0 flex items-center justify-center text-white text-[10px] font-bold">✓</span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Motion Toggle */}
+            <div className="flex justify-between items-center p-3 bg-slate-50 dark:bg-slate-800/40 border border-custom rounded-xl">
+              <div>
+                <p className="text-xs font-semibold text-slate-700 dark:text-slate-200">Reduce Motion</p>
+                <p className="text-[10px] text-slate-400">Disable transitions and animations across components</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setReducedMotion(!reducedMotion)}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${reducedMotion ? 'bg-blue-600' : 'bg-slate-300'}`}
+              >
+                <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${reducedMotion ? 'translate-x-6' : 'translate-x-1'}`} />
+              </button>
+            </div>
+
+            {/* Glass Themes */}
+            <div className="space-y-3">
+              <div>
+                <p className="text-xs font-semibold text-slate-700 dark:text-slate-200">Glass Theme</p>
+                <p className="text-[10px] text-slate-400">Enable frosted glass effects with custom shades</p>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {[
+                  { id: 'none', label: 'Default Theme UI', desc: 'Solid theme panels', bg: 'bg-slate-100 dark:bg-slate-800' },
+                  { id: 'crystal', label: 'Crystal Clear', desc: 'White frost glass', bg: 'bg-white/30 backdrop-blur-md border border-white/20' },
+                  { id: 'midnight', label: 'Midnight Glass', desc: 'Dark navy glass', bg: 'bg-slate-950/40 backdrop-blur-md border border-white/10 text-white' },
+                  { id: 'emerald', label: 'Emerald Frost', desc: 'Green tint glass', bg: 'bg-emerald-950/30 backdrop-blur-md border border-emerald-500/20 text-emerald-200' },
+                  { id: 'sapphire', label: 'Sapphire Mist', desc: 'Blue tint glass', bg: 'bg-blue-950/30 backdrop-blur-md border border-blue-500/20 text-blue-200' },
+                  { id: 'rose', label: 'Rose Quartz', desc: 'Pink tint glass', bg: 'bg-rose-950/30 backdrop-blur-md border border-rose-500/20 text-rose-200' },
+                ].map(g => {
+                  const isSelected = glassTheme === g.id;
+                  return (
+                    <button
+                      key={g.id}
+                      type="button"
+                      onClick={() => setGlassTheme(g.id)}
+                      className={`p-3 text-left rounded-xl transition-all cursor-pointer hover:scale-102 flex flex-col justify-between h-20 ${g.bg} border ${
+                        isSelected ? 'border-slate-800 dark:border-white ring-2 ring-slate-400/50' : 'border-transparent'
+                      }`}
+                    >
+                      <p className="text-[10px] font-bold leading-tight">{g.label}</p>
+                      <p className="text-[8px] opacity-75 mt-0.5 leading-none">{g.desc}</p>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
           </div>
         </div>
       )}

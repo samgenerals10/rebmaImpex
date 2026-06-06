@@ -617,14 +617,15 @@ export default function MarketingDashboard({
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
         {stats.map((card, idx) => {
           const Icon = card.icon;
+          const isProminent = idx < 2;
           return (
             <div key={idx} className="p-4 sm:p-6 app-card flex items-center justify-between hover:scale-102 transition-all duration-300">
               <div>
                 <span className="text-[10px] sm:text-xs text-slate-400 uppercase font-semibold">{card.title}</span>
-                <h3 className="text-xl sm:text-2xl font-bold mt-1">{card.value}</h3>
+                <h3 className={`font-bold mt-1 ${isProminent ? 'text-2xl sm:text-3xl' : 'text-lg sm:text-xl'}`}>{card.value}</h3>
                 <p className="text-[9px] sm:text-[10px] text-slate-400 mt-1">{card.sub}</p>
               </div>
               <div className={`p-3 sm:p-4 bg-slate-100 rounded-2xl ${card.color} bg-accent-light shrink-0`}><Icon className="w-5 h-5 sm:w-6 sm:h-6" /></div>
