@@ -275,21 +275,6 @@ export const auth = {
     };
   },
 
-  sendMagicLink: async (email: string, role: string) => {
-    const emailLower = email.trim().toLowerCase();
-    const roleUpper = role.trim().toUpperCase();
-    const res = await fetch('/api/send-magic-link', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: emailLower, role: roleUpper }),
-    });
-    const body = await res.json();
-    if (!res.ok) {
-      throw new Error(body.error || 'Failed to send magic link.');
-    }
-    return { magicLinkSent: true, message: body.message || 'Magic link sent! Check your email.' };
-  },
-
   register: async (data: {
     email: string; fullName: string;
     department: string; ghanaCardId?: string; phone?: string;

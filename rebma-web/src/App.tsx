@@ -77,15 +77,22 @@ export default function App() {
   const [loginRole, setLoginRole] = useState<string>('Staff');
   const [loginMethod, setLoginMethod] = useState<'password' | 'magic_link'>('password');
   const [showMagicLinkRequest, setShowMagicLinkRequest] = useState<boolean>(false);
-  const [magicLinkEmail, setMagicLinkEmail] = useState<string>('');
-  const [magicLinkRole, setMagicLinkRole] = useState<string>('CEO');
-  const [isSendingMagicLink, setIsSendingMagicLink] = useState<boolean>(false);
+  const [privName, setPrivName] = useState<string>('');
+  const [privEmail, setPrivEmail] = useState<string>('');
+  const [privPassword, setPrivPassword] = useState<string>('');
+  const [privConfirmPassword, setPrivConfirmPassword] = useState<string>('');
+  const [privRole, setPrivRole] = useState<string>('CEO');
+  const [showPrivPassword, setShowPrivPassword] = useState<boolean>(false);
+  const [isRegisteringPriv, setIsRegisteringPriv] = useState<boolean>(false);
 
   useEffect(() => {
     setLoginError('');
     setShowMagicLinkRequest(window.location.hash === '#admin-access');
-    setMagicLinkEmail('');
-    setMagicLinkRole('CEO');
+    setPrivName('');
+    setPrivEmail('');
+    setPrivPassword('');
+    setPrivConfirmPassword('');
+    setPrivRole('CEO');
   }, [authScreen]);
 
   useEffect(() => {
@@ -1038,36 +1045,8 @@ export default function App() {
     const emailLower = registerEmail.trim().toLowerCase();
 
     if (isPrivileged) {
-      const whitelistedCeoRaw = import.meta.env.VITE_WHITELISTED_CEO_EMAIL || 'samgenerals@gmail.com';
-      const whitelistedHrRaw = import.meta.env.VITE_WHITELISTED_HR_EMAIL || 'ryggogen10@gmail.com';
-      
-      const whitelistedCeo = whitelistedCeoRaw.trim().toLowerCase();
-      const whitelistedHr = whitelistedHrRaw.trim().toLowerCase();
-      
-      if (mappedDept === 'CEO' && emailLower !== whitelistedCeo) {
-        alert("Email is not whitelisted for the CEO role.");
-        return;
-      }
-      if (mappedDept === 'HR' && emailLower !== whitelistedHr) {
-        alert("Email is not whitelisted for the HR role.");
-        return;
-      }
-
-      // Privileged roles directly call magic link flow
-      try {
-        const res = await auth.sendMagicLink(emailLower, mappedDept);
-        alert(res.message || 'Magic link sent! Check your email.');
-        setAuthScreen('email_verification_sent');
-        addNotification(`Privileged onboarding link sent to ${registerName} (${mappedDept}).`);
-        
-        // Clear registration states
-        setRegisterName('');
-        setRegisterEmail('');
-        setRegisterPhone('');
-        setRegisterCard('');
-      } catch (err: any) {
-        alert(err.message || 'Onboarding registration failed.');
-      }
+      alert("Registration for CEO and HR roles is restricted on this form.");
+      return;
     } else {
       // Standard non-privileged registration
       try {
@@ -1145,28 +1124,54 @@ export default function App() {
     }
   };
 
-  // Handle send magic link
-  const handleSendMagicLink = async (e: React.FormEvent) => {
+  // Handle privileged user registration via secret URL
+  const handlePrivilegedRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError('');
-    if (!magicLinkEmail) {
-      setLoginError('Please enter your email.');
+    if (!privName || !privEmail || !privPassword || !privConfirmPassword) {
+      setLoginError('Please fill out all fields.');
+      return;
+    }
+    if (privPassword !== privConfirmPassword) {
+      setLoginError('Passwords do not match.');
       return;
     }
 
-    setIsSendingMagicLink(true);
+    setIsRegisteringPriv(true);
     try {
-      const res = await auth.sendMagicLink(magicLinkEmail, magicLinkRole);
-      alert(res.message || 'Magic link sent! Check your email.');
-      setAuthScreen('email_verification_sent');
-      addNotification(`Magic link request sent to whitelisted email ${magicLinkEmail}`);
-      // Redirect to the normal login page by clearing hash
-      window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
-      setShowMagicLinkRequest(false);
+      const res = await fetch('/api/register-privileged-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: privEmail,
+          password: privPassword,
+          fullName: privName,
+          role: privRole
+        })
+      });
+
+      const data = await res.json();
+      if (res.status === 403) {
+        setLoginError('Access denied. Your email is not authorized.');
+      } else if (!res.ok) {
+        setLoginError(data.error || 'Registration failed.');
+      } else {
+        alert(data.message || 'Account created successfully.', 'success');
+        addNotification?.('Privileged account created successfully.');
+        setTimeout(() => {
+          window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
+          setShowMagicLinkRequest(false);
+          setPrivName('');
+          setPrivEmail('');
+          setPrivPassword('');
+          setPrivConfirmPassword('');
+          setPrivRole('CEO');
+        }, 2000);
+      }
     } catch (err: any) {
-      setLoginError(err.message || 'Failed to send magic link.');
+      setLoginError(err.message || 'An error occurred during registration.');
     } finally {
-      setIsSendingMagicLink(false);
+      setIsRegisteringPriv(false);
     }
   };
 
@@ -1395,16 +1400,16 @@ export default function App() {
       if (showMagicLinkRequest) {
         return (
           <motion.form 
-            key="magic-link"
+            key="privileged-register"
             initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 10 }}
-            onSubmit={handleSendMagicLink} 
+            onSubmit={handlePrivilegedRegister} 
             className="space-y-4 text-slate-800"
           >
             <div className="text-center">
-              <h3 className="text-xl font-bold text-emerald-800">Request Login Link</h3>
-              <p className="text-[10px] text-slate-400 mt-0.5 font-medium">FOR PRIVILEGED ACCESS</p>
+              <h3 className="text-xl font-bold text-emerald-800">Privileged Registration</h3>
+              <p className="text-[10px] text-slate-400 mt-0.5 font-medium">CREATE CEO / HR ACCOUNT</p>
             </div>
 
             {loginError && (
@@ -1412,6 +1417,22 @@ export default function App() {
                 {loginError}
               </div>
             )}
+
+            {/* Full Name Input */}
+            <div className="space-y-1">
+              <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider">Full Name</label>
+              <div className="flex items-center gap-2 border-b border-slate-200 focus-within:border-emerald-600 pb-1.5 transition-colors">
+                <User className="w-4 h-4 text-slate-400" />
+                <input 
+                  type="text" 
+                  required 
+                  placeholder="Ama Boateng"
+                  value={privName}
+                  onChange={(e) => setPrivName(e.target.value)}
+                  className="w-full bg-transparent border-0 p-0 text-sm text-slate-800 placeholder-slate-400 focus:ring-0 focus:outline-none"
+                />
+              </div>
+            </div>
 
             {/* Email Input */}
             <div className="space-y-1">
@@ -1422,8 +1443,47 @@ export default function App() {
                   type="email" 
                   required 
                   placeholder="name@rembaimpex.com"
-                  value={magicLinkEmail}
-                  onChange={(e) => setMagicLinkEmail(e.target.value)}
+                  value={privEmail}
+                  onChange={(e) => setPrivEmail(e.target.value)}
+                  className="w-full bg-transparent border-0 p-0 text-sm text-slate-800 placeholder-slate-400 focus:ring-0 focus:outline-none"
+                />
+              </div>
+            </div>
+
+            {/* Password Input */}
+            <div className="space-y-1">
+              <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider">Password</label>
+              <div className="flex items-center gap-2 border-b border-slate-200 focus-within:border-emerald-600 pb-1.5 transition-colors">
+                <Lock className="w-4 h-4 text-slate-400" />
+                <input 
+                  type={showPrivPassword ? "text" : "password"} 
+                  required
+                  placeholder="Password"
+                  value={privPassword}
+                  onChange={(e) => setPrivPassword(e.target.value)}
+                  className="w-full bg-transparent border-0 p-0 text-sm text-slate-800 placeholder-slate-400 focus:ring-0 focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPrivPassword(!showPrivPassword)}
+                  className="text-slate-400 hover:text-slate-600 cursor-pointer"
+                >
+                  {showPrivPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            {/* Confirm Password Input */}
+            <div className="space-y-1">
+              <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider">Confirm Password</label>
+              <div className="flex items-center gap-2 border-b border-slate-200 focus-within:border-emerald-600 pb-1.5 transition-colors">
+                <Lock className="w-4 h-4 text-slate-400" />
+                <input 
+                  type={showPrivPassword ? "text" : "password"} 
+                  required
+                  placeholder="Confirm Password"
+                  value={privConfirmPassword}
+                  onChange={(e) => setPrivConfirmPassword(e.target.value)}
                   className="w-full bg-transparent border-0 p-0 text-sm text-slate-800 placeholder-slate-400 focus:ring-0 focus:outline-none"
                 />
               </div>
@@ -1433,30 +1493,30 @@ export default function App() {
             <div className="space-y-1">
               <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider">Access Role</label>
               <select 
-                value={magicLinkRole}
-                onChange={(e) => setMagicLinkRole(e.target.value)}
+                value={privRole}
+                onChange={(e) => setPrivRole(e.target.value)}
                 className="w-full bg-transparent border-b border-slate-200 pb-1.5 text-sm text-slate-800 focus:outline-none focus:border-emerald-600 cursor-pointer"
               >
-                <option value="CEO">CEO Office</option>
-                <option value="HR">Human Resources</option>
+                <option value="CEO">CEO</option>
+                <option value="Human Resources">Human Resources</option>
               </select>
             </div>
 
             <button 
               type="submit" 
-              disabled={isSendingMagicLink}
+              disabled={isRegisteringPriv}
               className="w-full py-3 bg-[#55dfa5] hover:bg-[#40cf93] disabled:bg-[#a7f3d0] disabled:cursor-not-allowed rounded-full text-sm font-bold text-white shadow-md hover:shadow-lg transition-all cursor-pointer text-center flex items-center justify-center gap-2"
             >
-              {isSendingMagicLink ? (
+              {isRegisteringPriv ? (
                 <>
                   <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                   </svg>
-                  <span>Sending Link...</span>
+                  <span>Creating Account...</span>
                 </>
               ) : (
-                <span>Send Magic Link</span>
+                <span>Create Account</span>
               )}
             </button>
 

@@ -82,26 +82,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ error: updateError.message });
   }
 
-  // If approved, send a magic link email to the user so they can set their password
-  if (approve && targetProfile.email) {
-    const siteUrl = process.env.SITE_URL || process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
-      : 'http://localhost:5173';
-
-    const { error: magicLinkError } = await supabaseAdmin.auth.signInWithOtp({
-      email: targetProfile.email,
-      options: {
-        emailRedirectTo: siteUrl,
-        shouldCreateUser: false,
-      },
-    });
-
-    if (magicLinkError) {
-      console.error('Failed to send magic link to approved user:', magicLinkError);
-      // Don't fail the request — profile is already approved
-    }
-  }
-
   // Audit trail
   try {
     const performedBy = callerProfile.full_name || 'HR Staff';
@@ -122,7 +102,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   return res.status(200).json({
     message: approve
-      ? `User ${targetProfile.full_name} approved. Login link sent to their email.`
+      ? `User ${targetProfile.full_name} approved.`
       : `User ${targetProfile.full_name} rejected.`,
     status,
   });
