@@ -376,12 +376,12 @@ export default function OperationsDashboard({
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Operations Control Terminal</h1>
-          <p className="text-sm text-muted">Register port inventory intakes, monitor logged cargo, and process warehouse releases.</p>
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight">Operations Control Terminal</h1>
+          <p className="text-xs sm:text-sm text-muted">Register port inventory intakes, monitor logged cargo, and process warehouse releases.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 w-full sm:w-auto justify-end">
           {activeSubTab === 'LoggedCargo' ? (
             <>
               <button onClick={handleExportCargoCSV} className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold cursor-pointer border border-slate-200 transition-colors">
@@ -405,18 +405,18 @@ export default function OperationsDashboard({
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
         {stats.map((card, idx) => {
           const Icon = card.icon;
           return (
-            <div key={idx} className="p-6 app-card flex items-center justify-between hover:scale-102 transition-all duration-300">
+            <div key={idx} className="p-4 md:p-6 app-card flex items-center justify-between hover:scale-102 transition-all duration-300">
               <div>
                 <span className="text-xs text-slate-400 uppercase font-semibold">{card.title}</span>
-                <h3 className="text-2xl font-bold mt-1">{card.value}</h3>
+                <h3 className="text-xl md:text-2xl font-bold mt-1">{card.value}</h3>
                 <p className="text-[10px] text-slate-400 mt-1">{card.sub}</p>
               </div>
-              <div className={`p-4 bg-slate-100 rounded-2xl ${card.color} bg-accent-light`}>
-                <Icon className="w-6 h-6" />
+              <div className={`p-3 md:p-4 bg-slate-100 rounded-2xl ${card.color} bg-accent-light`}>
+                <Icon className="w-5 h-5 md:w-6 md:h-6" />
               </div>
             </div>
           );
@@ -424,12 +424,12 @@ export default function OperationsDashboard({
       </div>
 
       {/* Chart */}
-      <div className="p-6 app-card">
+      <div className="p-4 md:p-6 app-card">
         <div>
-          <h3 className="text-lg font-bold">Cargo Inflow vs Release Velocity</h3>
+          <h3 className="text-base md:text-lg font-bold">Cargo Inflow vs Release Velocity</h3>
           <p className="text-xs text-muted">Ingestion tonnage vs cargo shipments cleared weekly.</p>
         </div>
-        <div className="h-60 mt-4">
+        <div className="h-48 md:h-60 mt-4">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={lineChartData}>
               <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
@@ -453,29 +453,29 @@ export default function OperationsDashboard({
               <h3 className="text-sm font-bold">Approved Orders (with Ticket Numbers)</h3>
               <span className="text-xs font-mono text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">{filteredOrders.length} orders</span>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
               {/* Search */}
-              <div className="relative flex items-center">
+              <div className="relative flex items-center w-full sm:w-auto">
                 <span className="absolute left-3 text-slate-500 text-xs pointer-events-none">🔍</span>
                 <input
                   type="text"
                   placeholder="Search orders…"
                   value={ordersSearch}
                   onChange={e => setOrdersSearch(e.target.value)}
-                  className="pl-8 pr-3 py-1.5 text-xs rounded-lg outline-none transition w-40"
+                  className="pl-8 pr-3 py-1.5 text-xs rounded-lg outline-none transition w-full sm:w-40"
                 />
               </div>
               {/* Status dropdown */}
-              <div className="relative">
+              <div className="relative w-full sm:w-auto">
                 <button
                   onClick={(e) => { e.stopPropagation(); setIsOrdersFilterOpen(!isOrdersFilterOpen); }}
-                  className="flex items-center gap-1.5 text-xs text-[var(--text-primary)] bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 px-3 py-1.5 rounded-lg transition-colors border border-custom"
+                  className="flex items-center justify-between sm:justify-start gap-1.5 text-xs text-[var(--text-primary)] bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 px-3 py-1.5 rounded-lg transition-colors border border-custom w-full sm:w-auto"
                 >
                   <span>Status: {ordersStatusFilter === 'ALL' ? 'All' : ordersStatusFilter.replace(/_/g, ' ')}</span>
                   <span className="text-[10px]">▼</span>
                 </button>
                 {isOrdersFilterOpen && (
-                  <div className="absolute right-0 top-full mt-1.5 w-48 bg-[var(--bg-card)] border border-custom rounded-xl shadow-xl z-20 p-1 flex flex-col">
+                  <div className="absolute right-0 top-full mt-1.5 w-full sm:w-48 bg-[var(--bg-card)] border border-custom rounded-xl shadow-xl z-20 p-1 flex flex-col">
                     {(['ALL', 'PROCESSING', 'APPROVED', 'OUT_FOR_DELIVERY', 'DELIVERED'] as const).map(st => (
                       <button
                         key={st}
@@ -493,7 +493,7 @@ export default function OperationsDashboard({
           </div>
 
           {/* Scrollable table */}
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto w-full">
             <table className="w-full text-xs text-left">
               <thead>
                 <tr className="theme-table-header-row text-slate-400 uppercase font-semibold text-[10px]">
@@ -511,7 +511,7 @@ export default function OperationsDashboard({
                       <span className="text-[9px] opacity-70">{ordersSortField === 'ticketNumber' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                     </div>
                   </th>
-                  <th onClick={() => handleSort('id', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                  <th onClick={() => handleSort('id', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none hidden sm:table-cell">
                     <div className="flex items-center gap-1">
                       <span>Order ID</span>
                       <span className="text-[9px] opacity-70">{ordersSortField === 'id' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
@@ -523,13 +523,13 @@ export default function OperationsDashboard({
                       <span className="text-[9px] opacity-70">{ordersSortField === 'clientName' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                     </div>
                   </th>
-                  <th onClick={() => handleSort('productName', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                  <th onClick={() => handleSort('productName', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none hidden md:table-cell">
                     <div className="flex items-center gap-1">
                       <span>Product</span>
                       <span className="text-[9px] opacity-70">{ordersSortField === 'productName' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                     </div>
                   </th>
-                  <th onClick={() => handleSort('destination', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                  <th onClick={() => handleSort('destination', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none hidden lg:table-cell">
                     <div className="flex items-center gap-1">
                       <span>Destination</span>
                       <span className="text-[9px] opacity-70">{ordersSortField === 'destination' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
@@ -562,10 +562,10 @@ export default function OperationsDashboard({
                       />
                     </td>
                     <td className="py-3.5 px-3 font-mono font-bold text-emerald-400">{order.ticketNumber || '—'}</td>
-                    <td className="py-3.5 px-3 font-mono font-semibold">{order.id}</td>
+                    <td className="py-3.5 px-3 font-mono font-semibold hidden sm:table-cell">{order.id}</td>
                     <td className="py-3.5 px-3 font-semibold text-[13px]">{order.clientName}</td>
-                    <td className="py-3.5 px-3 text-slate-400">{order.productName || '—'}</td>
-                    <td className="py-3.5 px-3 text-slate-400">{order.destination || '—'}</td>
+                    <td className="py-3.5 px-3 text-slate-400 hidden md:table-cell">{order.productName || '—'}</td>
+                    <td className="py-3.5 px-3 text-slate-400 hidden lg:table-cell">{order.destination || '—'}</td>
                     <td className="py-3.5 px-3 text-right font-bold font-mono text-[13px]">GHS {order.totalAmount.toLocaleString()}</td>
                     <td className="py-3.5 px-3 text-center">
                       <span className={`px-2.5 py-0.5 rounded text-[9px] font-bold ${statusBadge(order.status)}`}>
@@ -797,29 +797,29 @@ export default function OperationsDashboard({
                 <h3 className="font-bold text-sm">Operations Intake Logging Records</h3>
                 <span className="text-xs font-mono text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">{filteredCargo.length} records</span>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
                 {/* Search */}
-                <div className="relative flex items-center">
+                <div className="relative flex items-center w-full sm:w-auto">
                   <span className="absolute left-3 text-slate-500 text-xs pointer-events-none">🔍</span>
                   <input
                     type="text"
                     placeholder="Search cargo…"
                     value={cargoSearch}
                     onChange={e => setCargoSearch(e.target.value)}
-                    className="pl-8 pr-3 py-1.5 text-xs rounded-lg outline-none transition w-40"
+                    className="pl-8 pr-3 py-1.5 text-xs rounded-lg outline-none transition w-full sm:w-40"
                   />
                 </div>
                 {/* Status dropdown */}
-                <div className="relative">
+                <div className="relative w-full sm:w-auto">
                   <button
                     onClick={(e) => { e.stopPropagation(); setIsCargoFilterOpen(!isCargoFilterOpen); }}
-                    className="flex items-center gap-1.5 text-xs text-[var(--text-primary)] bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 px-3 py-1.5 rounded-lg transition-colors border border-custom"
+                    className="flex items-center justify-between sm:justify-start gap-1.5 text-xs text-[var(--text-primary)] bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 px-3 py-1.5 rounded-lg transition-colors border border-custom w-full sm:w-auto"
                   >
                     <span>Status: {cargoStatusFilter === 'ALL' ? 'All' : cargoStatusFilter.replace(/_/g, ' ')}</span>
                     <span className="text-[10px]">▼</span>
                   </button>
                   {isCargoFilterOpen && (
-                    <div className="absolute right-0 top-full mt-1.5 w-48 bg-[var(--bg-card)] border border-custom rounded-xl shadow-xl z-20 p-1 flex flex-col">
+                    <div className="absolute right-0 top-full mt-1.5 w-full sm:w-48 bg-[var(--bg-card)] border border-custom rounded-xl shadow-xl z-20 p-1 flex flex-col">
                       {(['ALL', 'PENDING_MANAGEMENT_APPROVAL', 'APPROVED', 'REJECTED'] as const).map(st => (
                         <button
                           key={st}
@@ -837,7 +837,7 @@ export default function OperationsDashboard({
             </div>
 
             {/* Scrollable table */}
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto w-full">
               <table className="w-full text-left text-xs">
                 <thead>
                   <tr className="theme-table-header-row text-slate-400 uppercase font-semibold text-[10px]">
@@ -849,10 +849,10 @@ export default function OperationsDashboard({
                         className="accent-blue-600 w-3.5 h-3.5"
                       />
                     </th>
-                    <th className="py-3 px-2 whitespace-nowrap">Image</th>
+                    <th className="py-3 px-2 whitespace-nowrap hidden sm:table-cell">Image</th>
                     <th onClick={() => handleSort('id', cargoSortField, setCargoSortField, cargoSortDir, setCargoSortDir)} className="py-3 px-2 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
                       <div className="flex items-center gap-1">
-                        <span>Cargo ID / Code</span>
+                        <span>Cargo ID</span>
                         <span className="text-[9px] opacity-70">{cargoSortField === 'id' ? (cargoSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
@@ -862,25 +862,25 @@ export default function OperationsDashboard({
                         <span className="text-[9px] opacity-70">{cargoSortField === 'productName' ? (cargoSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
-                    <th onClick={() => handleSort('createdAt', cargoSortField, setCargoSortField, cargoSortDir, setCargoSortDir)} className="py-3 px-2 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                    <th onClick={() => handleSort('createdAt', cargoSortField, setCargoSortField, cargoSortDir, setCargoSortDir)} className="py-3 px-2 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none hidden lg:table-cell">
                       <div className="flex items-center gap-1">
                         <span>Timestamp</span>
                         <span className="text-[9px] opacity-70">{cargoSortField === 'createdAt' ? (cargoSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
-                    <th onClick={() => handleSort('country', cargoSortField, setCargoSortField, cargoSortDir, setCargoSortDir)} className="py-3 px-2 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                    <th onClick={() => handleSort('country', cargoSortField, setCargoSortField, cargoSortDir, setCargoSortDir)} className="py-3 px-2 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none hidden md:table-cell">
                       <div className="flex items-center gap-1">
                         <span>Origin</span>
                         <span className="text-[9px] opacity-70">{cargoSortField === 'country' ? (cargoSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
-                    <th onClick={() => handleSort('company', cargoSortField, setCargoSortField, cargoSortDir, setCargoSortDir)} className="py-3 px-2 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                    <th onClick={() => handleSort('company', cargoSortField, setCargoSortField, cargoSortDir, setCargoSortDir)} className="py-3 px-2 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none hidden md:table-cell">
                       <div className="flex items-center gap-1">
                         <span>Carrier</span>
                         <span className="text-[9px] opacity-70">{cargoSortField === 'company' ? (cargoSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
-                    <th onClick={() => handleSort('destination', cargoSortField, setCargoSortField, cargoSortDir, setCargoSortDir)} className="py-3 px-2 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                    <th onClick={() => handleSort('destination', cargoSortField, setCargoSortField, cargoSortDir, setCargoSortDir)} className="py-3 px-2 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none hidden lg:table-cell">
                       <div className="flex items-center gap-1">
                         <span>Destination</span>
                         <span className="text-[9px] opacity-70">{cargoSortField === 'destination' ? (cargoSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
@@ -898,7 +898,7 @@ export default function OperationsDashboard({
                         <span className="text-[9px] opacity-70">{cargoSortField === 'weight' ? (cargoSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
-                    <th onClick={() => handleSort('discrepancies', cargoSortField, setCargoSortField, cargoSortDir, setCargoSortDir)} className="py-3 px-2 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                    <th onClick={() => handleSort('discrepancies', cargoSortField, setCargoSortField, cargoSortDir, setCargoSortDir)} className="py-3 px-2 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none hidden sm:table-cell">
                       <div className="flex items-center gap-1">
                         <span>Discrepancies</span>
                         <span className="text-[9px] opacity-70">{cargoSortField === 'discrepancies' ? (cargoSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
@@ -924,12 +924,12 @@ export default function OperationsDashboard({
                           className="accent-blue-600 w-3.5 h-3.5"
                         />
                       </td>
-                      <td className="py-3 px-2">
+                      <td className="py-3 px-2 hidden sm:table-cell">
                         {item.productImage ? (
                           <img src={item.productImage} alt={item.productName} className="w-10 h-10 object-cover rounded-lg border border-custom" />
                         ) : (
                           <div className="w-10 h-10 bg-slate-100/10 rounded-lg flex items-center justify-center border border-custom">
-                            <ImageIcon className="w-4 h-4 text-slate-400" />
+                             <ImageIcon className="w-4 h-4 text-slate-400" />
                           </div>
                         )}
                       </td>
@@ -938,13 +938,13 @@ export default function OperationsDashboard({
                         {item.goodsCode && <p className="text-[9px] text-slate-400">{item.goodsCode}</p>}
                       </td>
                       <td className="py-3 px-2 font-medium text-[13px]">{item.productName || '—'}</td>
-                      <td className="py-3 px-2 text-slate-400 font-mono text-[10px] whitespace-nowrap">{item.createdAt || 'N/A'}</td>
-                      <td className="py-3 px-2 font-semibold text-[13px]">{item.country}</td>
-                      <td className="py-3 px-2 text-slate-400">{item.company}</td>
-                      <td className="py-3 px-2 text-slate-400">{item.destination || '—'}</td>
+                      <td className="py-3 px-2 text-slate-400 font-mono text-[10px] whitespace-nowrap hidden lg:table-cell">{item.createdAt || 'N/A'}</td>
+                      <td className="py-3 px-2 font-semibold text-[13px] hidden md:table-cell">{item.country}</td>
+                      <td className="py-3 px-2 text-slate-400 hidden md:table-cell">{item.company}</td>
+                      <td className="py-3 px-2 text-slate-400 hidden lg:table-cell">{item.destination || '—'}</td>
                       <td className="py-3 px-2 text-right font-mono font-bold text-[13px]">{item.quantity} u.</td>
                       <td className="py-3 px-2 text-right font-mono font-bold text-[13px]">{item.weight}T</td>
-                      <td className="py-3 px-2 text-rose-500 font-semibold">{item.discrepancies}</td>
+                      <td className="py-3 px-2 text-rose-500 font-semibold hidden sm:table-cell">{item.discrepancies}</td>
                       <td className="py-3 px-2 text-center">
                         <span className={`px-2.5 py-0.5 rounded font-bold text-[9px] ${statusBadge(item.status)}`}>
                           {item.status.replace(/_/g, ' ')}
@@ -1000,29 +1000,29 @@ export default function OperationsDashboard({
                 <h3 className="text-sm font-bold">Operations Activity History</h3>
                 <span className="text-xs font-mono text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">{filteredHistory.length} logs</span>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
                 {/* Search */}
-                <div className="relative flex items-center">
+                <div className="relative flex items-center w-full sm:w-auto">
                   <span className="absolute left-3 text-slate-500 text-xs pointer-events-none">🔍</span>
                   <input
                     type="text"
                     placeholder="Search history…"
                     value={historySearch}
                     onChange={e => setHistorySearch(e.target.value)}
-                    className="pl-8 pr-3 py-1.5 text-xs rounded-lg outline-none transition w-40"
+                    className="pl-8 pr-3 py-1.5 text-xs rounded-lg outline-none transition w-full sm:w-40"
                   />
                 </div>
                 {/* Status dropdown */}
-                <div className="relative">
+                <div className="relative w-full sm:w-auto">
                   <button
                     onClick={(e) => { e.stopPropagation(); setIsHistoryFilterOpen(!isHistoryFilterOpen); }}
-                    className="flex items-center gap-1.5 text-xs text-[var(--text-primary)] bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 px-3 py-1.5 rounded-lg transition-colors border border-custom"
+                    className="flex items-center justify-between sm:justify-start gap-1.5 text-xs text-[var(--text-primary)] bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 px-3 py-1.5 rounded-lg transition-colors border border-custom w-full sm:w-auto"
                   >
                     <span>Status: {historyStatusFilter === 'ALL' ? 'All' : historyStatusFilter.replace(/_/g, ' ')}</span>
                     <span className="text-[10px]">▼</span>
                   </button>
                   {isHistoryFilterOpen && (
-                    <div className="absolute right-0 top-full mt-1.5 w-48 bg-[var(--bg-card)] border border-custom rounded-xl shadow-xl z-20 p-1 flex flex-col">
+                    <div className="absolute right-0 top-full mt-1.5 w-full sm:w-48 bg-[var(--bg-card)] border border-custom rounded-xl shadow-xl z-20 p-1 flex flex-col">
                       {(['ALL', 'PENDING_MANAGEMENT_APPROVAL', 'APPROVED', 'REJECTED'] as const).map(st => (
                         <button
                           key={st}
@@ -1040,7 +1040,7 @@ export default function OperationsDashboard({
             </div>
 
             {/* Scrollable table */}
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto w-full">
               <table className="w-full text-xs text-left">
                 <thead>
                   <tr className="theme-table-header-row text-slate-400 uppercase font-semibold text-[10px]">
@@ -1064,19 +1064,19 @@ export default function OperationsDashboard({
                         <span className="text-[9px] opacity-70">{historySortField === 'productName' ? (historySortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
-                    <th onClick={() => handleSort('country', historySortField, setHistorySortField, historySortDir, setHistorySortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                    <th onClick={() => handleSort('country', historySortField, setHistorySortField, historySortDir, setHistorySortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none hidden md:table-cell">
                       <div className="flex items-center gap-1">
                         <span>Origin</span>
                         <span className="text-[9px] opacity-70">{historySortField === 'country' ? (historySortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
-                    <th onClick={() => handleSort('destination', historySortField, setHistorySortField, historySortDir, setHistorySortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                    <th onClick={() => handleSort('destination', historySortField, setHistorySortField, historySortDir, setHistorySortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none hidden lg:table-cell">
                       <div className="flex items-center gap-1">
                         <span>Destination</span>
                         <span className="text-[9px] opacity-70">{historySortField === 'destination' ? (historySortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
-                    <th onClick={() => handleSort('createdAt', historySortField, setHistorySortField, historySortDir, setHistorySortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                    <th onClick={() => handleSort('createdAt', historySortField, setHistorySortField, historySortDir, setHistorySortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none hidden sm:table-cell">
                       <div className="flex items-center gap-1">
                         <span>Logged At</span>
                         <span className="text-[9px] opacity-70">{historySortField === 'createdAt' ? (historySortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
@@ -1110,9 +1110,9 @@ export default function OperationsDashboard({
                       </td>
                       <td className="py-3.5 px-3 font-mono font-bold">{item.goodsCode || `CARGO-${item.id}`}</td>
                       <td className="py-3.5 px-3 font-medium text-[13px]">{item.productName || '—'}</td>
-                      <td className="py-3.5 px-3 text-slate-400">{item.country} / {item.company}</td>
-                      <td className="py-3.5 px-3 text-slate-400">{item.destination || '—'}</td>
-                      <td className="py-3.5 px-3 text-slate-400 font-mono text-[10px]">{item.createdAt || 'N/A'}</td>
+                      <td className="py-3.5 px-3 text-slate-400 hidden md:table-cell">{item.country} / {item.company}</td>
+                      <td className="py-3.5 px-3 text-slate-400 hidden lg:table-cell">{item.destination || '—'}</td>
+                      <td className="py-3.5 px-3 text-slate-400 font-mono text-[10px] hidden sm:table-cell">{item.createdAt || 'N/A'}</td>
                       <td className="py-3.5 px-3 text-center">
                         <span className={`px-2 py-0.5 rounded font-bold text-[9px] ${statusBadge(item.status)}`}>{item.status.replace(/_/g, ' ')}</span>
                       </td>

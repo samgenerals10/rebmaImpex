@@ -47,6 +47,7 @@ export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState<boolean>(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
   
   const [activeDepartment, setActiveDepartment] = useState<string>('CEO');
   const [activeSubTab, setActiveSubTab] = useState<string>('Overview');
@@ -108,6 +109,10 @@ export default function App() {
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
+
+  useEffect(() => {
+    setIsSidebarOpen(false);
+  }, [activeDepartment, activeSubTab]);
 
   // Custom Alert Modal State
   const [alertModal, setAlertModal] = useState<{
@@ -1999,13 +2004,13 @@ export default function App() {
     );
 
     return (
-      <div className="min-h-screen w-full flex items-center justify-center bg-[#068d5c] p-4 md:p-8 relative select-none font-sans">
+      <div className="min-h-screen w-full flex items-center justify-center bg-[#068d5c] p-3 md:p-8 relative select-none font-sans">
 
         {/* Symmetrical Split Card */}
         <div className="w-full max-w-5xl bg-white rounded-[32px] shadow-[0_25px_60px_-15px_rgba(0,0,0,0.25)] flex flex-col md:flex-row overflow-hidden min-h-[580px] relative">
           
           {/* Left half: Brand, logo, floating coworker illustration */}
-          <div className="w-full md:w-1/2 bg-white p-8 md:p-12 flex flex-col justify-between items-start">
+          <div className="hidden md:flex w-full md:w-1/2 bg-white p-8 md:p-12 flex-col justify-between items-start">
             {/* Sourced from /logo.png with proper Open Sans typography */}
             <div className="flex items-center gap-2 select-none ml-2 mt-2 shrink-0">
               <img 
@@ -2053,11 +2058,11 @@ export default function App() {
           </div>
 
           {/* Right half: solid green bg with white container card */}
-          <div className="w-full md:w-1/2 bg-[#068d5c] p-8 md:p-12 flex flex-col justify-center items-center relative">
+          <div className="w-full md:w-1/2 bg-[#068d5c] p-4 md:p-12 flex flex-col justify-center items-center relative">
             <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-600 rounded-full filter blur-3xl opacity-20 -mr-8 -mt-8"></div>
             
             {/* White card container for form */}
-            <div className="w-full max-w-[380px] bg-white rounded-3xl p-6 md:p-8 shadow-[0_15px_30px_rgba(0,0,0,0.08)] relative z-10 flex flex-col justify-center min-h-[420px]">
+            <div className="w-full max-w-[380px] bg-white rounded-3xl p-5 md:p-8 shadow-[0_15px_30px_rgba(0,0,0,0.08)] relative z-10 flex flex-col justify-center min-h-[420px]">
               
               {registrationMessage && (
                 <div className="mb-4 p-2.5 bg-emerald-50 border border-emerald-100 rounded-xl text-[10px] text-emerald-800 text-center font-medium">
@@ -2307,7 +2312,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen w-full flex p-6 transition-all duration-300">
+    <div className="min-h-screen w-full flex p-3 md:p-6 transition-all duration-300">
       
       {/* 1. LEFT SIDEBAR */}
       <Sidebar
@@ -2324,24 +2329,35 @@ export default function App() {
         }}
         addNotification={addNotification}
         openBoardroom={() => { setActiveDepartment('BOARDROOM'); setActiveSubTab('VideoConf'); }}
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
       />
 
+      {/* Backdrop overlay for mobile/tablet */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden transition-opacity duration-300"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
       {/* 2. MAIN SHEET WRAPPER */}
-      <main className="flex-1 ml-6 bg-white rounded-3xl shadow-xl flex flex-col border border-slate-100 app-sheet overflow-hidden" style={{ maxHeight: 'calc(100vh - 3rem)' }}>
+      <main className="flex-1 ml-0 lg:ml-6 bg-white rounded-3xl shadow-xl flex flex-col border border-slate-100 app-sheet overflow-hidden" style={{ maxHeight: 'calc(100vh - 3rem)' }}>
         
         {/* TOP STATUS BAR & SEARCH */}
-        <div className="px-6 pt-6 pb-0 shrink-0">
+        <div className="px-4 md:px-6 pt-4 md:pt-6 pb-0 shrink-0">
           <Header
             searchQuery={searchQuery}
             setSearchQuery={setSearchQuery}
             onOpenChat={() => setIsChatOpen(true)}
             notifications={notifications}
             onClearNotifications={() => setNotifications([])}
+            onToggleSidebar={() => setIsSidebarOpen(prev => !prev)}
           />
         </div>
 
         {/* 3. DYNAMIC PAGES VIEW SELECTOR CONTAINER — fills remaining height, scrollable */}
-        <div className="flex-1 overflow-y-auto px-6 pb-6 pt-4">
+        <div className="flex-1 overflow-y-auto px-4 md:px-6 pb-4 md:pb-6 pt-4">
           <AnimatePresence mode="wait">
             <motion.div
               key={`${activeDepartment}-${activeSubTab}`}

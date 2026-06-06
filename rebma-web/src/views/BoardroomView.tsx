@@ -130,13 +130,13 @@ export default function BoardroomView({
   return (
     <div className="space-y-6">
       {/* Title Row */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Executive Boardroom</h1>
-          <p className="text-sm text-slate-500 text-muted">Slack-like announcements, private direct messaging, scheduling, and live video minutes.</p>
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight">Executive Boardroom</h1>
+          <p className="text-xs sm:text-sm text-slate-500 text-muted">Slack-like announcements, private direct messaging, scheduling, and live video minutes.</p>
         </div>
         {activeSubTab === 'VideoConf' && (
-          <div className="flex gap-2">
+          <div className="flex gap-2 w-full sm:w-auto justify-end">
             <button 
               onClick={handleExportCSV}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold cursor-pointer border border-slate-200"
@@ -160,12 +160,12 @@ export default function BoardroomView({
         {activeSubTab === 'VideoConf' && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Live Jitsi Video Frame */}
-            <div className="lg:col-span-2 p-6 app-card space-y-4">
+            <div className="lg:col-span-2 p-4 md:p-6 app-card space-y-4">
               <div className="flex items-center gap-2 mb-2">
                 <Video className="w-5 h-5 text-blue-500" />
-                <h3 className="text-lg font-bold">Secure Jitsi Video Stream</h3>
+                <h3 className="text-base md:text-lg font-bold">Secure Jitsi Video Stream</h3>
               </div>
-              <div className="aspect-video bg-slate-950 rounded-2xl overflow-hidden border border-slate-800 relative">
+              <div className="h-60 sm:h-80 md:h-[400px] lg:h-[480px] bg-slate-950 rounded-2xl overflow-hidden border border-slate-800 relative">
                 <iframe
                   src="https://meet.jit.si/RembaImpexGhanaExecutiveBoardroom_101"
                   style={{ border: 0, width: '100%', height: '100%' }}
@@ -175,11 +175,11 @@ export default function BoardroomView({
             </div>
 
             {/* Live notepad and active presence */}
-            <div className="p-6 app-card flex flex-col justify-between space-y-6">
+            <div className="p-4 md:p-6 app-card flex flex-col justify-between space-y-6">
               <div>
                 <div className="flex items-center gap-2 mb-4">
                   <Users className="w-5 h-5 text-emerald-500" />
-                  <h3 className="text-lg font-bold">Active Presence</h3>
+                  <h3 className="text-base md:text-lg font-bold">Active Presence</h3>
                 </div>
                 
                 {/* Participant presence */}
@@ -222,13 +222,13 @@ export default function BoardroomView({
         )}
 
         {activeSubTab === 'Announcements' && (
-          <div className="p-6 app-card space-y-4 max-w-4xl mx-auto flex flex-col h-[550px]">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+          <div className="p-4 md:p-6 app-card space-y-4 max-w-4xl mx-auto flex flex-col h-[550px]">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-100 gap-2">
               <div>
-                <h3 className="text-lg font-bold"># community-chat</h3>
+                <h3 className="text-base md:text-lg font-bold"># community-chat</h3>
                 <p className="text-xs text-slate-500">Public Slack-style pool chat channel for staff updates.</p>
               </div>
-              <span className="text-[10px] px-2 py-1 bg-blue-50 text-blue-600 font-bold uppercase rounded">Public Board</span>
+              <span className="text-[10px] px-2 py-1 bg-blue-50 text-blue-600 font-bold uppercase rounded self-start sm:self-auto">Public Board</span>
             </div>
 
             {/* Chat Messages */}
@@ -272,15 +272,15 @@ export default function BoardroomView({
         )}
 
         {activeSubTab === 'DirectMessages' && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 h-[550px] max-w-5xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 h-auto md:h-[550px] max-w-5xl mx-auto">
             {/* Sidebar departments list */}
-            <div className="p-4 app-card overflow-y-auto space-y-1 md:col-span-1">
-              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 px-2">Departments</h4>
+            <div className="p-4 app-card overflow-x-auto md:overflow-x-visible md:overflow-y-auto md:col-span-1 flex flex-row md:flex-col gap-2 md:gap-1 shrink-0 pb-3 md:pb-4 select-none">
+              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-0 md:mb-3 px-2 self-center md:self-start hidden md:block">Departments</h4>
               {departmentsList.map(dept => (
                 <button
                   key={dept}
                   onClick={() => setSelectedDept(dept)}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold text-left transition-all ${
+                  className={`flex-none md:w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold text-left transition-all ${
                     selectedDept === dept 
                       ? 'bg-blue-600 text-white shadow' 
                       : 'text-slate-700 hover:bg-slate-100'
@@ -288,14 +288,14 @@ export default function BoardroomView({
                 >
                   <span>{dept}</span>
                   {dept === userRole && (
-                    <span className="text-[8px] bg-slate-200/50 text-slate-600 px-1 py-0.5 rounded uppercase">You</span>
+                    <span className="text-[8px] bg-slate-200/50 text-slate-600 px-1 py-0.5 rounded uppercase ml-1.5 md:ml-0">You</span>
                   )}
                 </button>
               ))}
             </div>
 
             {/* Chat thread console */}
-            <div className="md:col-span-3 p-6 app-card flex flex-col justify-between h-full border border-slate-100">
+            <div className="md:col-span-3 p-4 md:p-6 app-card flex flex-col justify-between h-[450px] md:h-full border border-slate-100">
               <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
                 <div>
                   <h3 className="text-sm font-bold text-slate-800">Secure DM: {selectedDept}</h3>
@@ -360,10 +360,10 @@ export default function BoardroomView({
         {activeSubTab === 'Meetings' && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Scheduler Form */}
-            <div className="p-6 app-card space-y-4">
+            <div className="p-4 md:p-6 app-card space-y-4">
               <div className="flex items-center gap-1.5">
                 <Calendar className="w-5 h-5 text-blue-500" />
-                <h3 className="text-lg font-bold">Organize Meeting</h3>
+                <h3 className="text-base md:text-lg font-bold">Organize Meeting</h3>
               </div>
               <form onSubmit={handleScheduleMeeting} className="space-y-4">
                 <div>
@@ -427,8 +427,8 @@ export default function BoardroomView({
             </div>
 
             {/* Scheduled Timeline */}
-            <div className="p-6 app-card lg:col-span-2 space-y-4">
-              <h3 className="text-lg font-bold">Scheduled Board Meetings Timeline</h3>
+            <div className="p-4 md:p-6 app-card lg:col-span-2 space-y-4">
+              <h3 className="text-base md:text-lg font-bold">Scheduled Board Meetings Timeline</h3>
               <div className="space-y-4 max-h-[420px] overflow-y-auto pr-1">
                 {meetingsList.map(mtg => (
                   <div key={mtg.id} className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 hover:scale-101 transition-all">

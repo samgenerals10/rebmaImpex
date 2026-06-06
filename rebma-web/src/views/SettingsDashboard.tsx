@@ -132,20 +132,20 @@ export default function SettingsDashboard({
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">System Settings</h1>
-        <p className="text-sm text-slate-500 text-muted">Configure themes, manage your profile, and control access settings.</p>
+        <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight">System Settings</h1>
+        <p className="text-xs sm:text-sm text-slate-500 text-muted">Configure themes, manage your profile, and control access settings.</p>
       </div>
 
       {/* THEME SETTINGS */}
       {activeSubTab === 'Themes' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Theme selector */}
-          <div className="p-6 app-card space-y-4">
+          <div className="p-4 md:p-6 app-card space-y-4">
             <div>
-              <h3 className="text-lg font-bold">ERP Theme Customization</h3>
+              <h3 className="text-base md:text-lg font-bold">ERP Theme Customization</h3>
               <p className="text-xs text-slate-500 text-muted">Toggle between multiple dashboard theme blueprints.</p>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {[
                 { id: 'breeze', label: 'Drive Breeze', desc: 'Clean blue & white UI' },
                 { id: 'seven', label: 'Windows 7 Aero', desc: 'Glassmorphism effects' },
@@ -173,9 +173,9 @@ export default function SettingsDashboard({
           </div>
 
           {/* ERP system config */}
-          <div className="p-6 app-card space-y-5">
+          <div className="p-4 md:p-6 app-card space-y-5">
             <div>
-              <h3 className="text-lg font-bold">ERP System Configuration</h3>
+              <h3 className="text-base md:text-lg font-bold">ERP System Configuration</h3>
               <p className="text-xs text-slate-500 text-muted">Manage gateway, GPS, and validation settings.</p>
             </div>
 
@@ -224,10 +224,10 @@ export default function SettingsDashboard({
       {/* PROFILE SETTINGS */}
       {activeSubTab === 'Profile' && (
         <div className="max-w-xl">
-          <div className="p-6 app-card space-y-6">
+          <div className="p-4 md:p-6 app-card space-y-6">
             <div className="flex items-center gap-2">
               <User className="w-5 h-5 text-blue-500" />
-              <h3 className="text-lg font-bold">Profile Settings</h3>
+              <h3 className="text-base md:text-lg font-bold">Profile Settings</h3>
             </div>
             <form onSubmit={handleSaveProfile} className="space-y-5">
               {/* Photo upload */}
@@ -277,10 +277,10 @@ export default function SettingsDashboard({
       {/* CHANGE PASSWORD */}
       {activeSubTab === 'ChangePassword' && (
         <div className="max-w-md">
-          <div className="p-6 app-card space-y-5">
+          <div className="p-4 md:p-6 app-card space-y-5">
             <div className="flex items-center gap-2">
               <Lock className="w-5 h-5 text-indigo-500" />
-              <h3 className="text-lg font-bold">Change Password</h3>
+              <h3 className="text-base md:text-lg font-bold">Change Password</h3>
             </div>
             <form onSubmit={handleChangePassword} className="space-y-4">
               <div>
@@ -340,10 +340,10 @@ export default function SettingsDashboard({
       {/* DELETE ACCOUNT */}
       {activeSubTab === 'DeleteAccount' && (
         <div className="max-w-md">
-          <div className="p-6 app-card space-y-5 border-2 border-rose-200">
+          <div className="p-4 md:p-6 app-card space-y-5 border-2 border-rose-200">
             <div className="flex items-center gap-2">
               <Trash2 className="w-5 h-5 text-rose-600" />
-              <h3 className="text-lg font-bold text-rose-700">Delete Account</h3>
+              <h3 className="text-base md:text-lg font-bold text-rose-700">Delete Account</h3>
             </div>
 
             {deleteSubmitted ? (

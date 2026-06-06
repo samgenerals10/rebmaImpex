@@ -319,34 +319,34 @@ export default function HrDashboard({
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Human Resources Workspace</h1>
-          <p className="text-sm text-muted">Manage staff registrations, approvals, and attendance tracking.</p>
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight">Human Resources Workspace</h1>
+          <p className="text-xs sm:text-sm text-muted">Manage staff registrations, approvals, and attendance tracking.</p>
         </div>
-        <div className="flex gap-2">
-          <button onClick={() => exportToCSV(localAttendance, ['id', 'fullName', 'checkInTime', 'status'], 'hr_attendance')} className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold cursor-pointer border border-slate-200 transition-colors">
+        <div className="flex gap-2 w-full sm:w-auto">
+          <button onClick={() => exportToCSV(localAttendance, ['id', 'fullName', 'checkInTime', 'status'], 'hr_attendance')} className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold cursor-pointer border border-slate-200 transition-colors">
             <FileSpreadsheet className="w-3.5 h-3.5" /><span>Attendance (CSV)</span>
           </button>
-          <button onClick={() => exportToPDF('Daily Staff Attendance Log', localAttendance, ['id', 'fullName', 'checkInTime', 'status'])} className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold cursor-pointer border border-slate-200 transition-colors">
+          <button onClick={() => exportToPDF('Daily Staff Attendance Log', localAttendance, ['id', 'fullName', 'checkInTime', 'status'])} className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold cursor-pointer border border-slate-200 transition-colors">
             <FileText className="w-3.5 h-3.5" /><span>Attendance (PDF)</span>
           </button>
         </div>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
         {stats.map((card, idx) => {
           const Icon = card.icon;
           return (
-            <div key={idx} className="p-6 app-card flex items-center justify-between hover:scale-102 transition-all duration-300">
+            <div key={idx} className="p-4 sm:p-6 app-card flex items-center justify-between hover:scale-102 transition-all duration-300">
               <div>
-                <span className="text-xs text-slate-400 uppercase font-semibold">{card.title}</span>
-                <h3 className="text-2xl font-bold mt-1">{card.value}</h3>
-                <p className="text-[10px] text-slate-400 mt-1">{card.sub}</p>
+                <span className="text-[10px] sm:text-xs text-slate-400 uppercase font-semibold">{card.title}</span>
+                <h3 className="text-xl sm:text-2xl font-bold mt-1">{card.value}</h3>
+                <p className="text-[9px] sm:text-[10px] text-slate-400 mt-1">{card.sub}</p>
               </div>
-              <div className={`p-4 bg-slate-100 rounded-2xl ${card.color} bg-accent-light`}>
-                <Icon className="w-6 h-6" />
+              <div className={`p-3 sm:p-4 bg-slate-100 rounded-2xl ${card.color} bg-accent-light shrink-0`}>
+                <Icon className="w-5 h-5 sm:w-6 sm:h-6" />
               </div>
             </div>
           );
@@ -354,10 +354,10 @@ export default function HrDashboard({
       </div>
 
       {/* Chart */}
-      <div className="p-6 app-card">
+      <div className="p-4 sm:p-6 app-card">
         <h3 className="text-lg font-bold">Attendance & On-Time Performance Index</h3>
         <p className="text-xs text-muted">Weekly present vs late clock-in trends.</p>
-        <div className="h-60 mt-4">
+        <div className="h-[200px] sm:h-60 lg:h-[300px] mt-4">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={lineChartData}>
               <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
@@ -383,18 +383,18 @@ export default function HrDashboard({
               <p className="text-xs text-muted">Approve to generate login password & email; Deny to send rejection notice.</p>
               <div className="divide-y divide-custom">
                 {pendingRegistrations.filter(r => r.status === 'PENDING').map(reg => (
-                  <div key={reg.id} className="py-4 flex items-center justify-between">
+                  <div key={reg.id} className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div>
                       <p className="text-sm font-bold">{reg.fullName}</p>
                       <p className="text-xs text-slate-500">{reg.email} | Dept: <strong>{reg.department}</strong></p>
                       {reg.phone && <p className="text-[10px] text-slate-400">Phone: {reg.phone}</p>}
                       <p className="text-[10px] text-slate-400">Ghana Card: <code className="bg-slate-100 dark:bg-slate-800 text-[var(--text-primary)] px-1 rounded">{reg.ghanaCard}</code> | Submitted: {reg.submittedAt}</p>
                     </div>
-                    <div className="flex gap-2 shrink-0">
-                      <button onClick={() => handleApprove(reg)} className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold cursor-pointer transition-colors">
+                    <div className="flex gap-2 shrink-0 w-full sm:w-auto">
+                      <button onClick={() => handleApprove(reg)} className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold cursor-pointer transition-colors">
                         <UserCheck className="w-3.5 h-3.5" /> Approve
                       </button>
-                      <button onClick={() => handleDeny(reg)} className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 dark:text-slate-300 dark:bg-slate-800 rounded-lg text-xs font-bold cursor-pointer transition-colors">
+                      <button onClick={() => handleDeny(reg)} className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 dark:text-slate-300 dark:bg-slate-800 rounded-lg text-xs font-bold cursor-pointer transition-colors">
                         <UserX className="w-3.5 h-3.5" /> Deny
                       </button>
                     </div>
@@ -511,25 +511,25 @@ export default function HrDashboard({
                           <span className="text-[9px] opacity-70">{staffSortField === 'department' ? (staffSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                         </div>
                       </th>
-                      <th onClick={() => handleSort('role', staffSortField, setStaffSortField, staffSortDir, setStaffSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                      <th onClick={() => handleSort('role', staffSortField, setStaffSortField, staffSortDir, setStaffSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none hidden sm:table-cell">
                         <div className="flex items-center gap-1">
                           <span>Role</span>
                           <span className="text-[9px] opacity-70">{staffSortField === 'role' ? (staffSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                         </div>
                       </th>
-                      <th onClick={() => handleSort('ghanaCard', staffSortField, setStaffSortField, staffSortDir, setStaffSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                      <th onClick={() => handleSort('ghanaCard', staffSortField, setStaffSortField, staffSortDir, setStaffSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none hidden md:table-cell">
                         <div className="flex items-center gap-1">
                           <span>Ghana Card</span>
                           <span className="text-[9px] opacity-70">{staffSortField === 'ghanaCard' ? (staffSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                         </div>
                       </th>
-                      <th onClick={() => handleSort('phone', staffSortField, setStaffSortField, staffSortDir, setStaffSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                      <th onClick={() => handleSort('phone', staffSortField, setStaffSortField, staffSortDir, setStaffSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none hidden md:table-cell">
                         <div className="flex items-center gap-1">
                           <span>Phone</span>
                           <span className="text-[9px] opacity-70">{staffSortField === 'phone' ? (staffSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                         </div>
                       </th>
-                      <th onClick={() => handleSort('joinedAt', staffSortField, setStaffSortField, staffSortDir, setStaffSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                      <th onClick={() => handleSort('joinedAt', staffSortField, setStaffSortField, staffSortDir, setStaffSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none hidden lg:table-cell">
                         <div className="flex items-center gap-1">
                           <span>Joined</span>
                           <span className="text-[9px] opacity-70">{staffSortField === 'joinedAt' ? (staffSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
@@ -565,10 +565,10 @@ export default function HrDashboard({
                         <td className="py-3.5 px-3">
                           <span className="px-2.5 py-0.5 bg-blue-500/10 text-blue-400 rounded-full text-[9px] font-bold">{staff.department}</span>
                         </td>
-                        <td className="py-3.5 px-3 text-slate-400">{staff.role}</td>
-                        <td className="py-3.5 px-3 font-mono text-[10px] text-slate-400">{staff.ghanaCard}</td>
-                        <td className="py-3.5 px-3 text-slate-400 font-mono">{staff.phone}</td>
-                        <td className="py-3.5 px-3 text-slate-400 text-[10px] font-mono">{staff.joinedAt}</td>
+                        <td className="py-3.5 px-3 text-slate-400 hidden sm:table-cell">{staff.role}</td>
+                        <td className="py-3.5 px-3 font-mono text-[10px] text-slate-400 hidden md:table-cell">{staff.ghanaCard}</td>
+                        <td className="py-3.5 px-3 text-slate-400 font-mono hidden md:table-cell">{staff.phone}</td>
+                        <td className="py-3.5 px-3 text-slate-400 text-[10px] font-mono hidden lg:table-cell">{staff.joinedAt}</td>
                         <td className="py-3.5 px-3 text-center">
                           <span className={`px-2.5 py-0.5 rounded text-[9px] font-bold ${staff.status === 'ACTIVE' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-slate-500/10 text-slate-400'}`}>
                             {staff.status}
@@ -823,8 +823,8 @@ export default function HrDashboard({
 
         {/* INSTANT HR POPUP MODAL */}
         {credentialsPopup && credentialsPopup.show && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-[var(--bg-card)] border border-custom rounded-2xl shadow-2xl max-w-md w-full overflow-hidden p-6 space-y-4 text-[var(--text-primary)]">
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-0 md:p-4">
+            <div className="bg-[var(--bg-card)] border-0 md:border border-custom rounded-none md:rounded-2xl shadow-2xl w-full h-full md:h-auto md:max-w-md overflow-y-auto p-6 space-y-4 text-[var(--text-primary)] flex flex-col justify-center md:block">
               <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
                 <h3 className="font-bold text-lg text-emerald-500">Account Credentials Generated</h3>
                 <button 

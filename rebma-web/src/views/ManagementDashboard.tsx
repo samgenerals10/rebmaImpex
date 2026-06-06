@@ -347,34 +347,34 @@ export default function ManagementDashboard({
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Management Control Approvals</h1>
-          <p className="text-sm text-muted">Set pricing, authorize credits, and manage cargo approvals.</p>
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight">Management Control Approvals</h1>
+          <p className="text-xs sm:text-sm text-muted">Set pricing, authorize credits, and manage cargo approvals.</p>
         </div>
-        <div className="flex gap-2">
-          <button onClick={() => exportToCSV(localGoods, ['id', 'goodsCode', 'productName', 'country', 'company', 'quantity', 'weight', 'destination', 'discrepancies', 'status', 'unitPrice'], 'incoming_port_cargo_audit')} className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold cursor-pointer border border-slate-200 transition-colors">
+        <div className="flex gap-2 w-full sm:w-auto">
+          <button onClick={() => exportToCSV(localGoods, ['id', 'goodsCode', 'productName', 'country', 'company', 'quantity', 'weight', 'destination', 'discrepancies', 'status', 'unitPrice'], 'incoming_port_cargo_audit')} className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold cursor-pointer border border-slate-200 transition-colors">
             <FileSpreadsheet className="w-3.5 h-3.5" /><span>Cargo (CSV)</span>
           </button>
-          <button onClick={() => exportToPDF('Incoming Port Cargo Audit', localGoods, ['id', 'goodsCode', 'productName', 'country', 'company', 'quantity', 'weight', 'destination', 'discrepancies', 'status', 'unitPrice'])} className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold cursor-pointer border border-slate-200 transition-colors">
+          <button onClick={() => exportToPDF('Incoming Port Cargo Audit', localGoods, ['id', 'goodsCode', 'productName', 'country', 'company', 'quantity', 'weight', 'destination', 'discrepancies', 'status', 'unitPrice'])} className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold cursor-pointer border border-slate-200 transition-colors">
             <FileText className="w-3.5 h-3.5" /><span>Cargo (PDF)</span>
           </button>
         </div>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
         {stats.map((card, idx) => {
           const Icon = card.icon;
           return (
-            <div key={idx} className="p-6 app-card flex items-center justify-between hover:scale-102 transition-all duration-300">
+            <div key={idx} className="p-4 sm:p-6 app-card flex items-center justify-between hover:scale-102 transition-all duration-300">
               <div>
-                <span className="text-xs text-slate-400 uppercase font-semibold">{card.title}</span>
-                <h3 className="text-2xl font-bold mt-1">{card.value}</h3>
-                <p className="text-[10px] text-slate-400 mt-1">{card.sub}</p>
+                <span className="text-[10px] sm:text-xs text-slate-400 uppercase font-semibold">{card.title}</span>
+                <h3 className="text-xl sm:text-2xl font-bold mt-1">{card.value}</h3>
+                <p className="text-[9px] sm:text-[10px] text-slate-400 mt-1">{card.sub}</p>
               </div>
-              <div className={`p-4 bg-slate-100 rounded-2xl ${card.color} bg-accent-light`}>
-                <Icon className="w-6 h-6" />
+              <div className={`p-3 sm:p-4 bg-slate-100 rounded-2xl ${card.color} bg-accent-light shrink-0`}>
+                <Icon className="w-5 h-5 sm:w-6 sm:h-6" />
               </div>
             </div>
           );
@@ -382,10 +382,10 @@ export default function ManagementDashboard({
       </div>
 
       {/* Chart */}
-      <div className="p-6 app-card">
+      <div className="p-4 sm:p-6 app-card">
         <h3 className="text-lg font-bold">Management Decision & Approval Velocity</h3>
         <p className="text-xs text-muted">Weekly authorized credentials vs rejected logs.</p>
-        <div className="h-60 mt-4">
+        <div className="h-[200px] sm:h-60 lg:h-[300px] mt-4">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={lineChartData}>
               <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
@@ -410,23 +410,23 @@ export default function ManagementDashboard({
             <div className="space-y-4">
               {localGoods.filter(i => i.status === 'PENDING_MANAGEMENT_APPROVAL').map(item => (
                 <div key={item.id} className="p-4 bg-slate-100/50 dark:bg-slate-800/20 border border-custom rounded-xl space-y-3">
-                  <div className="flex items-start gap-4">
+                  <div className="flex flex-col sm:flex-row items-start gap-4">
                     {item.productImage ? (
-                      <img src={item.productImage} alt={item.productName} className="w-20 h-20 object-cover rounded-lg border border-custom shrink-0" />
+                      <img src={item.productImage} alt={item.productName} className="w-20 h-20 object-cover rounded-lg border border-custom shrink-0 w-full sm:w-20" />
                     ) : (
-                      <div className="w-20 h-20 bg-slate-100/10 rounded-lg border border-custom flex items-center justify-center shrink-0">
+                      <div className="w-full sm:w-20 h-20 bg-slate-100/10 rounded-lg border border-custom flex items-center justify-center shrink-0">
                         <span className="text-[10px] text-slate-500">No Image</span>
                       </div>
                     )}
-                    <div className="flex-1 space-y-1">
-                      <div className="flex items-center justify-between">
+                    <div className="flex-1 space-y-1 w-full">
+                      <div className="flex items-center justify-between gap-2">
                         <span className="text-xs font-bold">{item.productName || 'Unnamed Product'}</span>
-                        <span className="px-2 py-0.5 bg-amber-500/10 text-amber-400 rounded font-bold text-[9px]">Awaiting Pricing</span>
+                        <span className="px-2 py-0.5 bg-amber-500/10 text-amber-400 rounded font-bold text-[9px] shrink-0">Awaiting Pricing</span>
                       </div>
                       <p className="text-[10px] text-slate-400 font-mono">Code: <code className="bg-slate-100/50 px-1 rounded">{item.goodsCode || `CARGO-${item.id}`}</code></p>
                       <p className="text-[10px] text-slate-400">Origin: <strong>{item.country}</strong> via <strong>{item.company}</strong></p>
                       <p className="text-[10px] text-slate-400">Destination: <strong>{item.destination || 'Accra Warehouse'}</strong></p>
-                      <div className="flex gap-4 text-[10px] text-slate-400 font-mono">
+                      <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-slate-400 font-mono">
                         <span>Qty: <strong>{item.quantity} units</strong></span>
                         <span>Weight: <strong>{item.weight}T</strong></span>
                         <span>Logged: <strong>{item.createdAt || 'N/A'}</strong></span>
@@ -436,7 +436,7 @@ export default function ManagementDashboard({
                       )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-3 pt-2">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-2 w-full">
                     <div className="relative flex-1">
                       <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-500 text-xs font-bold">GHS</span>
                       <input
@@ -446,18 +446,20 @@ export default function ManagementDashboard({
                         className="w-full pl-12 pr-3 py-1.5 bg-white rounded-lg text-xs focus:outline-none focus:border-blue-500"
                       />
                     </div>
-                    <button
-                      onClick={() => {
-                        const val = parseFloat((document.getElementById(`price-input-${item.id}`) as HTMLInputElement).value);
-                        if (isNaN(val)) return alert('Enter a unit price');
-                        onApproveIntake(item.id, true, val);
-                      }}
-                      className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-bold cursor-pointer hover:bg-blue-700 transition-colors shadow"
-                    >Approve & Price</button>
-                    <button
-                      onClick={() => onApproveIntake(item.id, false)}
-                      className="px-3 py-1.5 bg-red-500/10 text-red-400 rounded-lg text-xs font-bold cursor-pointer hover:bg-red-500/20 transition-colors"
-                    >Reject</button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          const val = parseFloat((document.getElementById(`price-input-${item.id}`) as HTMLInputElement).value);
+                          if (isNaN(val)) return alert('Enter a unit price');
+                          onApproveIntake(item.id, true, val);
+                        }}
+                        className="flex-1 sm:flex-none px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-bold cursor-pointer hover:bg-blue-700 transition-colors shadow text-center"
+                      >Approve & Price</button>
+                      <button
+                        onClick={() => onApproveIntake(item.id, false)}
+                        className="px-3 py-1.5 bg-red-500/10 text-red-400 rounded-lg text-xs font-bold cursor-pointer hover:bg-red-500/20 transition-colors"
+                      >Reject</button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -488,7 +490,7 @@ export default function ManagementDashboard({
                 const isExpanded = expandedCreditId === order.id;
                 return (
                   <div key={order.id} className="p-4 bg-slate-100/50 dark:bg-slate-800/20 border border-custom rounded-xl space-y-3">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                       <div>
                         <p className="text-xs font-bold">{order.clientName}</p>
                         <p className="text-[10px] text-slate-400 font-mono">Order: <code>{order.id}</code>{order.ticketNumber && <span className="ml-2 text-emerald-400 font-bold">🎫 {order.ticketNumber}</span>}</p>
@@ -496,10 +498,10 @@ export default function ManagementDashboard({
                         <p className="text-[10px] text-slate-400">Amount: <strong className="text-[var(--text-primary)]">GHS {order.totalAmount.toLocaleString()}</strong> | Mode: <strong>{order.paymentMode}</strong> | Submitted: {order.createdAt}</p>
                         {order.ghanaCard && <p className="text-[10px] text-slate-400 font-mono">Ghana Card: <code className="bg-slate-100/30 px-1 rounded">{order.ghanaCard}</code></p>}
                       </div>
-                      <div className="flex flex-col gap-2 items-end">
-                        <div className="flex gap-2">
-                          <button onClick={() => onApproveCredit(order.id, true)} className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-bold cursor-pointer hover:bg-blue-700 transition-colors shadow">Authorize Credit</button>
-                          <button onClick={() => onApproveCredit(order.id, false)} className="px-3 py-1.5 bg-red-500/10 text-red-400 rounded-lg text-xs font-bold cursor-pointer hover:bg-red-500/20 transition-colors">Block</button>
+                      <div className="flex flex-col gap-2 items-start sm:items-end w-full sm:w-auto shrink-0">
+                        <div className="flex gap-2 w-full sm:w-auto">
+                          <button onClick={() => onApproveCredit(order.id, true)} className="flex-1 sm:flex-none px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-bold cursor-pointer hover:bg-blue-700 transition-colors shadow text-center">Authorize Credit</button>
+                          <button onClick={() => onApproveCredit(order.id, false)} className="flex-1 sm:flex-none px-3 py-1.5 bg-red-500/10 text-red-400 rounded-lg text-xs font-bold cursor-pointer hover:bg-red-500/20 transition-colors text-center">Block</button>
                         </div>
                         <button
                           onClick={() => setExpandedCreditId(isExpanded ? null : order.id)}
@@ -646,7 +648,7 @@ export default function ManagementDashboard({
                         className="accent-blue-600 w-3.5 h-3.5"
                       />
                     </th>
-                    <th onClick={() => handleSort('timestamp', ledgerSortField, setLedgerSortField, ledgerSortDir, setLedgerSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                    <th onClick={() => handleSort('timestamp', ledgerSortField, setLedgerSortField, ledgerSortDir, setLedgerSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none hidden md:table-cell">
                       <div className="flex items-center gap-1">
                         <span>Timestamp</span>
                         <span className="text-[9px] opacity-70">{ledgerSortField === 'timestamp' ? (ledgerSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
@@ -658,7 +660,7 @@ export default function ManagementDashboard({
                         <span className="text-[9px] opacity-70">{ledgerSortField === 'department' ? (ledgerSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
-                    <th onClick={() => handleSort('performedBy', ledgerSortField, setLedgerSortField, ledgerSortDir, setLedgerSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                    <th onClick={() => handleSort('performedBy', ledgerSortField, setLedgerSortField, ledgerSortDir, setLedgerSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none hidden sm:table-cell">
                       <div className="flex items-center gap-1">
                         <span>Performed By</span>
                         <span className="text-[9px] opacity-70">{ledgerSortField === 'performedBy' ? (ledgerSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
@@ -690,11 +692,11 @@ export default function ManagementDashboard({
                           className="accent-blue-600 w-3.5 h-3.5"
                         />
                       </td>
-                      <td className="py-3.5 px-3 text-slate-400 whitespace-nowrap font-mono text-[10px]">{entry.timestamp}</td>
+                      <td className="py-3.5 px-3 text-slate-400 whitespace-nowrap font-mono text-[10px] hidden md:table-cell">{entry.timestamp}</td>
                       <td className="py-3.5 px-3">
                         <span className="px-2 py-0.5 bg-indigo-500/10 text-indigo-400 rounded-full text-[9px] font-bold">{entry.department}</span>
                       </td>
-                      <td className="py-3.5 px-3 font-semibold text-[13px]">{entry.performedBy}</td>
+                      <td className="py-3.5 px-3 font-semibold text-[13px] hidden sm:table-cell">{entry.performedBy}</td>
                       <td className="py-3.5 px-3 font-bold text-slate-300">{entry.action}</td>
                       <td className="py-3.5 px-3 text-slate-400">{entry.details}</td>
                       <td className="py-3.5 px-5 text-center relative" onClick={(e) => e.stopPropagation()}>

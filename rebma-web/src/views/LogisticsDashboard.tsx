@@ -54,12 +54,12 @@ export default function LogisticsDashboard() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Logistics Control Panel</h1>
-          <p className="text-sm text-slate-500 text-muted">Manage fleet maintenance records and monitor supply chain metrics.</p>
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight">Logistics Control Panel</h1>
+          <p className="text-xs sm:text-sm text-slate-500 text-muted">Manage fleet maintenance records and monitor supply chain metrics.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 w-full sm:w-auto justify-end">
           <button 
             onClick={handleExportCSV}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold cursor-pointer border border-slate-200"
@@ -78,18 +78,18 @@ export default function LogisticsDashboard() {
       </div>
 
       {/* Stats KPI Row */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
         {stats.map((card, idx) => {
           const Icon = card.icon;
           return (
-            <div key={idx} className="p-6 app-card flex items-center justify-between hover:scale-102 transition-all">
+            <div key={idx} className="p-4 md:p-6 app-card flex items-center justify-between hover:scale-102 transition-all">
               <div>
                 <span className="text-xs text-slate-400 uppercase font-semibold">{card.title}</span>
-                <h3 className="text-2xl font-bold mt-1">{card.value}</h3>
+                <h3 className="text-xl md:text-2xl font-bold mt-1">{card.value}</h3>
                 <p className="text-[10px] text-slate-400 mt-1">{card.sub}</p>
               </div>
-              <div className={`p-4 bg-slate-100 rounded-2xl ${card.color} bg-accent-light`}>
-                <Icon className="w-6 h-6" />
+              <div className={`p-3 md:p-4 bg-slate-100 rounded-2xl ${card.color} bg-accent-light`}>
+                <Icon className="w-5 h-5 md:w-6 md:h-6" />
               </div>
             </div>
           );
@@ -97,12 +97,12 @@ export default function LogisticsDashboard() {
       </div>
 
       {/* Performance Chart */}
-      <div className="p-6 app-card flex flex-col justify-between">
+      <div className="p-4 md:p-6 app-card flex flex-col justify-between">
         <div>
-          <h3 className="text-lg font-bold">Logistics Fleet Performance</h3>
+          <h3 className="text-base md:text-lg font-bold">Logistics Fleet Performance</h3>
           <p className="text-xs text-slate-500 text-muted">Weekly fleet distance logs vs fuel usage metrics.</p>
         </div>
-        <div className="h-60 mt-4">
+        <div className="h-48 md:h-60 mt-4">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={lineChartData}>
               <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
@@ -119,8 +119,8 @@ export default function LogisticsDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
         {/* Fleet Maintenance Logs */}
-        <div className="p-6 app-card space-y-4">
-          <h3 className="text-lg font-bold">Fleet Maintenance Schedule</h3>
+        <div className="p-4 md:p-6 app-card space-y-4">
+          <h3 className="text-base md:text-lg font-bold">Fleet Maintenance Schedule</h3>
           <div className="space-y-3">
             {maintenanceSchedule.map((log, idx) => (
               <div key={idx} className="p-4 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
@@ -137,9 +137,9 @@ export default function LogisticsDashboard() {
         </div>
 
         {/* Supply Chain Performance charts */}
-        <div className="p-6 app-card space-y-4">
-          <h3 className="text-lg font-bold">Fuel Efficiency & Maintenance Metrics</h3>
-          <div className="h-64 mt-4">
+        <div className="p-4 md:p-6 app-card space-y-4">
+          <h3 className="text-base md:text-lg font-bold">Fuel Efficiency & Maintenance Metrics</h3>
+          <div className="h-48 md:h-64 mt-4">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" opacity={0.1} />

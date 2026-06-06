@@ -383,12 +383,12 @@ export default function ProductionDashboard({
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Production Floor Control</h1>
-          <p className="text-sm text-muted">Manage raw material requisitions, production batches, and WIP stock.</p>
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight">Production Floor Control</h1>
+          <p className="text-xs sm:text-sm text-muted">Manage raw material requisitions, production batches, and WIP stock.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 w-full sm:w-auto justify-end">
           <button onClick={() => exportToCSV(productionRequests, ['id', 'status', 'createdAt'], 'production_requisitions')} className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold cursor-pointer border border-slate-200 transition-colors">
             <FileSpreadsheet className="w-3.5 h-3.5" /><span>Export CSV</span>
           </button>
@@ -399,27 +399,27 @@ export default function ProductionDashboard({
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
         {stats.map((card, idx) => {
           const Icon = card.icon;
           return (
-            <div key={idx} className="p-6 app-card flex items-center justify-between hover:scale-102 transition-all duration-300">
+            <div key={idx} className="p-4 md:p-6 app-card flex items-center justify-between hover:scale-102 transition-all duration-300">
               <div>
                 <span className="text-xs text-slate-400 uppercase font-semibold">{card.title}</span>
-                <h3 className="text-2xl font-bold mt-1">{card.value}</h3>
+                <h3 className="text-xl md:text-2xl font-bold mt-1">{card.value}</h3>
                 <p className="text-[10px] text-slate-400 mt-1">{card.sub}</p>
               </div>
-              <div className={`p-4 bg-slate-100 rounded-2xl ${card.color} bg-accent-light`}><Icon className="w-6 h-6" /></div>
+              <div className={`p-3 md:p-4 bg-slate-100 rounded-2xl ${card.color} bg-accent-light`}><Icon className="w-5 h-5 md:w-6 md:h-6" /></div>
             </div>
           );
         })}
       </div>
 
       {/* Chart */}
-      <div className="p-6 app-card">
-        <h3 className="text-lg font-bold">Raw Materials Requested vs Goods Produced</h3>
+      <div className="p-4 md:p-6 app-card">
+        <h3 className="text-base md:text-lg font-bold">Raw Materials Requested vs Goods Produced</h3>
         <p className="text-xs text-muted font-semibold text-slate-500">Weekly production batches requested vs completed output.</p>
-        <div className="h-60 mt-4">
+        <div className="h-48 md:h-60 mt-4">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={barChartData}>
               <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
@@ -440,8 +440,8 @@ export default function ProductionDashboard({
         {activeSubTab === 'Requisition' && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Form */}
-            <div className="p-6 app-card space-y-4">
-              <h3 className="text-lg font-bold">Submit Raw Materials Requisition</h3>
+            <div className="p-4 md:p-6 app-card space-y-4">
+              <h3 className="text-base md:text-lg font-bold">Submit Raw Materials Requisition</h3>
               <form onSubmit={handleCreateRequisition} className="space-y-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-500 mb-1.5">Material Name <span className="text-rose-500">*</span></label>
@@ -451,7 +451,7 @@ export default function ProductionDashboard({
                   <label className="block text-xs font-semibold text-slate-500 mb-1.5">Quantity Required <span className="text-rose-500">*</span></label>
                   <input type="number" value={newQty} onChange={e => setNewQty(e.target.value)} required placeholder="E.g., 5000" className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-blue-500" />
                 </div>
-                <div className="p-3 bg-blue-550/10 border border-blue-200 dark:border-blue-900/50 rounded-xl text-xs text-blue-400">
+                <div className="p-3 bg-blue-500/10 border border-blue-200 dark:border-blue-900/50 rounded-xl text-xs text-blue-400">
                   Submission timestamp will be auto-generated: <strong>{new Date().toLocaleString()}</strong>
                 </div>
                 <button type="submit" className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold cursor-pointer transition-colors shadow">Submit to Management</button>
@@ -459,8 +459,8 @@ export default function ProductionDashboard({
             </div>
 
             {/* Approved requisitions — ready to issue */}
-            <div className="p-6 app-card space-y-4">
-              <h3 className="text-lg font-bold">Approved — Issue Goods Tickets</h3>
+            <div className="p-4 md:p-6 app-card space-y-4">
+              <h3 className="text-base md:text-lg font-bold">Approved — Issue Goods Tickets</h3>
               <div className="space-y-3">
                 {productionRequests.filter(r => r.status === 'APPROVED').map(req => (
                   <div key={req.id} className="p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-xl space-y-2">
@@ -495,29 +495,29 @@ export default function ProductionDashboard({
                 <h3 className="text-sm font-bold">Raw Materials Requested</h3>
                 <span className="text-xs font-mono text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">{filteredMaterials.length} requests</span>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
                 {/* Search */}
-                <div className="relative flex items-center">
+                <div className="relative flex items-center w-full sm:w-auto">
                   <span className="absolute left-3 text-slate-500 text-xs pointer-events-none">🔍</span>
                   <input
                     type="text"
                     placeholder="Search material…"
                     value={materialsSearch}
                     onChange={e => setMaterialsSearch(e.target.value)}
-                    className="pl-8 pr-3 py-1.5 text-xs rounded-lg outline-none transition w-40"
+                    className="pl-8 pr-3 py-1.5 text-xs rounded-lg outline-none transition w-full sm:w-40"
                   />
                 </div>
                 {/* Status dropdown */}
-                <div className="relative">
+                <div className="relative w-full sm:w-auto">
                   <button
                     onClick={(e) => { e.stopPropagation(); setIsMaterialsFilterOpen(!isMaterialsFilterOpen); }}
-                    className="flex items-center gap-1.5 text-xs text-[var(--text-primary)] bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 px-3 py-1.5 rounded-lg transition-colors border border-custom"
+                    className="flex items-center justify-between sm:justify-start gap-1.5 text-xs text-[var(--text-primary)] bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 px-3 py-1.5 rounded-lg transition-colors border border-custom w-full sm:w-auto"
                   >
                     <span>Status: {materialsStatusFilter === 'ALL' ? 'All' : materialsStatusFilter.replace(/_/g, ' ')}</span>
                     <span className="text-[10px]">▼</span>
                   </button>
                   {isMaterialsFilterOpen && (
-                    <div className="absolute right-0 top-full mt-1.5 w-48 bg-[var(--bg-card)] border border-custom rounded-xl shadow-xl z-20 p-1 flex flex-col">
+                    <div className="absolute right-0 top-full mt-1.5 w-full sm:w-48 bg-[var(--bg-card)] border border-custom rounded-xl shadow-xl z-20 p-1 flex flex-col">
                       {(['ALL', 'PENDING_MANAGEMENT', 'APPROVED', 'TICKETS_ISSUED'] as const).map(st => (
                         <button
                           key={st}
@@ -535,7 +535,7 @@ export default function ProductionDashboard({
             </div>
 
             {/* Scrollable table */}
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto w-full">
               <table className="w-full text-xs text-left">
                 <thead>
                   <tr className="theme-table-header-row text-slate-400 uppercase font-semibold text-[10px]">
@@ -571,7 +571,7 @@ export default function ProductionDashboard({
                         <span className="text-[9px] opacity-70">{materialsSortField === 'status' ? (materialsSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
-                    <th onClick={() => handleSort('createdAt', materialsSortField, setMaterialsSortField, materialsSortDir, setMaterialsSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                    <th onClick={() => handleSort('createdAt', materialsSortField, setMaterialsSortField, materialsSortDir, setMaterialsSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none hidden sm:table-cell">
                       <div className="flex items-center gap-1">
                         <span>Submitted</span>
                         <span className="text-[9px] opacity-70">{materialsSortField === 'createdAt' ? (materialsSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
@@ -599,7 +599,7 @@ export default function ProductionDashboard({
                           {m.status.replace(/_/g, ' ')}
                         </span>
                       </td>
-                      <td className="py-3.5 px-3 text-slate-400 font-mono text-[10px]">{m.createdAt || 'N/A'}</td>
+                      <td className="py-3.5 px-3 text-slate-400 font-mono text-[10px] hidden sm:table-cell">{m.createdAt || 'N/A'}</td>
                       <td className="py-3.5 px-5 text-center relative" onClick={(e) => e.stopPropagation()}>
                         <button
                           onClick={() => setActiveMaterialsMenu(activeMaterialsMenu === m.flatId ? null : m.flatId)}
@@ -650,29 +650,29 @@ export default function ProductionDashboard({
                 <h3 className="text-sm font-bold">Work in Progress & Stock Inventory</h3>
                 <span className="text-xs font-mono text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">{filteredWip.length} stock items</span>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
                 {/* Search */}
-                <div className="relative flex items-center">
+                <div className="relative flex items-center w-full sm:w-auto">
                   <span className="absolute left-3 text-slate-500 text-xs pointer-events-none">🔍</span>
                   <input
                     type="text"
                     placeholder="Search product…"
                     value={wipSearch}
                     onChange={e => setWipSearch(e.target.value)}
-                    className="pl-8 pr-3 py-1.5 text-xs rounded-lg outline-none transition w-40"
+                    className="pl-8 pr-3 py-1.5 text-xs rounded-lg outline-none transition w-full sm:w-40"
                   />
                 </div>
                 {/* Stage dropdown */}
-                <div className="relative">
+                <div className="relative w-full sm:w-auto">
                   <button
                     onClick={(e) => { e.stopPropagation(); setIsWipFilterOpen(!isWipFilterOpen); }}
-                    className="flex items-center gap-1.5 text-xs text-[var(--text-primary)] bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 px-3 py-1.5 rounded-lg transition-colors border border-custom"
+                    className="flex items-center justify-between sm:justify-start gap-1.5 text-xs text-[var(--text-primary)] bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 px-3 py-1.5 rounded-lg transition-colors border border-custom w-full sm:w-auto"
                   >
                     <span>Stage: {wipStageFilter === 'ALL' ? 'All' : wipStageFilter}</span>
                     <span className="text-[10px]">▼</span>
                   </button>
                   {isWipFilterOpen && (
-                    <div className="absolute right-0 top-full mt-1.5 w-48 bg-[var(--bg-card)] border border-custom rounded-xl shadow-xl z-20 p-1 flex flex-col">
+                    <div className="absolute right-0 top-full mt-1.5 w-full sm:w-48 bg-[var(--bg-card)] border border-custom rounded-xl shadow-xl z-20 p-1 flex flex-col">
                       {(['ALL', 'Processing', 'Quality Check', 'Packaging', 'Awaiting Dispatch'] as const).map(st => (
                         <button
                           key={st}
@@ -687,14 +687,14 @@ export default function ProductionDashboard({
                   )}
                 </div>
                 {/* Add Wip */}
-                <button onClick={handleAddWip} className="flex items-center gap-1 text-xs text-white bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-lg transition-colors font-bold shadow">
+                <button onClick={handleAddWip} className="flex items-center justify-center gap-1 text-xs text-white bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-lg transition-colors font-bold shadow w-full sm:w-auto">
                   <span>＋</span> Add Item
                 </button>
               </div>
             </div>
 
             {/* Scrollable table */}
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto w-full">
               <table className="w-full text-xs text-left">
                 <thead>
                   <tr className="theme-table-header-row text-slate-400 uppercase font-semibold text-[10px]">
@@ -730,7 +730,7 @@ export default function ProductionDashboard({
                         <span className="text-[9px] opacity-70">{wipSortField === 'qty' ? (wipSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
-                    <th onClick={() => handleSort('updatedAt', wipSortField, setWipSortField, wipSortDir, setWipSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                    <th onClick={() => handleSort('updatedAt', wipSortField, setWipSortField, wipSortDir, setWipSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none hidden sm:table-cell">
                       <div className="flex items-center gap-1">
                         <span>Last Updated</span>
                         <span className="text-[9px] opacity-70">{wipSortField === 'updatedAt' ? (wipSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
@@ -760,7 +760,7 @@ export default function ProductionDashboard({
                         }`}>{item.stage}</span>
                       </td>
                       <td className="py-3.5 px-3 text-right font-bold font-mono text-[13px]">{item.qty.toLocaleString()}</td>
-                      <td className="py-3.5 px-3 text-slate-400 font-mono text-[10px]">{item.updatedAt}</td>
+                      <td className="py-3.5 px-3 text-slate-400 font-mono text-[10px] hidden sm:table-cell">{item.updatedAt}</td>
                       <td className="py-3.5 px-5 text-center relative" onClick={(e) => e.stopPropagation()}>
                         <button
                           onClick={() => setActiveWipMenu(activeWipMenu === item.id ? null : item.id)}
@@ -806,29 +806,29 @@ export default function ProductionDashboard({
                 <h3 className="text-sm font-bold">Production Requisitions History</h3>
                 <span className="text-xs font-mono text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">{filteredHistory.length} ledger history entries</span>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
                 {/* Search */}
-                <div className="relative flex items-center">
+                <div className="relative flex items-center w-full sm:w-auto">
                   <span className="absolute left-3 text-slate-500 text-xs pointer-events-none">🔍</span>
                   <input
                     type="text"
                     placeholder="Search ledger…"
                     value={historySearch}
                     onChange={e => setHistorySearch(e.target.value)}
-                    className="pl-8 pr-3 py-1.5 text-xs rounded-lg outline-none transition w-40"
+                    className="pl-8 pr-3 py-1.5 text-xs rounded-lg outline-none transition w-full sm:w-40"
                   />
                 </div>
                 {/* Status filter dropdown */}
-                <div className="relative">
+                <div className="relative w-full sm:w-auto">
                   <button
                     onClick={(e) => { e.stopPropagation(); setIsHistoryFilterOpen(!isHistoryFilterOpen); }}
-                    className="flex items-center gap-1.5 text-xs text-[var(--text-primary)] bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 px-3 py-1.5 rounded-lg transition-colors border border-custom"
+                    className="flex items-center justify-between sm:justify-start gap-1.5 text-xs text-[var(--text-primary)] bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 px-3 py-1.5 rounded-lg transition-colors border border-custom w-full sm:w-auto"
                   >
                     <span>Status: {historyStatusFilter === 'ALL' ? 'All' : historyStatusFilter.replace(/_/g, ' ')}</span>
                     <span className="text-[10px]">▼</span>
                   </button>
                   {isHistoryFilterOpen && (
-                    <div className="absolute right-0 top-full mt-1.5 w-48 bg-[var(--bg-card)] border border-custom rounded-xl shadow-xl z-20 p-1 flex flex-col">
+                    <div className="absolute right-0 top-full mt-1.5 w-full sm:w-48 bg-[var(--bg-card)] border border-custom rounded-xl shadow-xl z-20 p-1 flex flex-col">
                       {(['ALL', 'PENDING_MANAGEMENT', 'APPROVED', 'TICKETS_ISSUED'] as const).map(st => (
                         <button
                           key={st}
@@ -846,7 +846,7 @@ export default function ProductionDashboard({
             </div>
 
             {/* Scrollable table */}
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto w-full">
               <table className="w-full text-xs text-left">
                 <thead>
                   <tr className="theme-table-header-row text-slate-400 uppercase font-semibold text-[10px]">
@@ -882,7 +882,7 @@ export default function ProductionDashboard({
                         <span className="text-[9px] opacity-70">{historySortField === 'status' ? (historySortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
-                    <th onClick={() => handleSort('createdAt', historySortField, setHistorySortField, historySortDir, setHistorySortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                    <th onClick={() => handleSort('createdAt', historySortField, setHistorySortField, historySortDir, setHistorySortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none hidden sm:table-cell">
                       <div className="flex items-center gap-1">
                         <span>Date</span>
                         <span className="text-[9px] opacity-70">{historySortField === 'createdAt' ? (historySortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
@@ -912,7 +912,7 @@ export default function ProductionDashboard({
                           {req.status.replace(/_/g, ' ')}
                         </span>
                       </td>
-                      <td className="py-3.5 px-3 text-slate-400 font-mono text-[10px]">{req.createdAt || 'N/A'}</td>
+                      <td className="py-3.5 px-3 text-slate-400 font-mono text-[10px] hidden sm:table-cell">{req.createdAt || 'N/A'}</td>
                       <td className="py-3.5 px-5 text-center relative" onClick={(e) => e.stopPropagation()}>
                         <button
                           onClick={() => setActiveHistoryMenu(activeHistoryMenu === req.id ? null : req.id)}

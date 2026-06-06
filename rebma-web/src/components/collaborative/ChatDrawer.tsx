@@ -43,7 +43,7 @@ export default function ChatDrawer({
           animate={{ x: 0 }}
           exit={{ x: '100%' }}
           transition={{ type: 'tween', duration: 0.3 }}
-          className="fixed right-0 top-0 h-full w-80 bg-white border-l border-slate-200 shadow-2xl flex flex-col justify-between p-4 z-50 app-card"
+          className="fixed right-0 top-0 h-full w-full sm:w-80 bg-white border-l border-slate-200 shadow-2xl flex flex-col justify-between p-4 z-50 app-card"
         >
           {/* Header info */}
           <div>

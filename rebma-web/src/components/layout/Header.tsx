@@ -1,7 +1,7 @@
 // rebma-web/src/components/layout/Header.tsx
 
 import { useState } from 'react';
-import { Search, MessageSquare, Bell, Wifi, X, CheckCheck } from 'lucide-react';
+import { Search, MessageSquare, Bell, Wifi, X, CheckCheck, Menu } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface HeaderProps {
@@ -11,6 +11,7 @@ interface HeaderProps {
   networkOnline?: boolean;
   notifications?: Array<{ id: string; msg: string; time: string }>;
   onClearNotifications?: () => void;
+  onToggleSidebar?: () => void;
 }
 
 export default function Header({
@@ -19,24 +20,36 @@ export default function Header({
   onOpenChat,
   networkOnline = true,
   notifications = [],
-  onClearNotifications
+  onClearNotifications,
+  onToggleSidebar
 }: HeaderProps) {
   const [showPanel, setShowPanel] = useState(false);
 
   return (
-    <header className="flex items-center justify-between py-3 mb-6 relative">
+    <header className="flex items-center justify-between py-3 mb-6 relative gap-2">
       {/* Search bar */}
-      <div className="relative w-full max-w-xl">
-        <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-          <Search className="h-4 w-4 text-slate-400" />
-        </span>
-        <input
-          type="text"
-          placeholder="Search documents, records, or departments..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-full text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-        />
+      <div className="flex items-center gap-2 flex-1 max-w-[200px] sm:max-w-xl">
+        {onToggleSidebar && (
+          <button 
+            onClick={onToggleSidebar}
+            className="lg:hidden p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg cursor-pointer shrink-0"
+            title="Open menu"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+        )}
+        <div className="relative w-full">
+          <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <Search className="h-4 w-4 text-slate-400" />
+          </span>
+          <input
+            type="text"
+            placeholder="Search..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-9 pr-3 py-1.5 sm:py-2.5 bg-white border border-slate-200 rounded-full text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+          />
+        </div>
       </div>
 
       {/* Status badges & Widgets */}

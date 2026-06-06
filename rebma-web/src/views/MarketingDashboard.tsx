@@ -348,8 +348,8 @@ export default function MarketingDashboard({
 
       {/* ── ORDER MODAL ── */}
       {showOrderModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={() => setShowOrderModal(false)}>
-          <div className="bg-[var(--bg-card)] border border-custom rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-0 md:p-4" onClick={() => setShowOrderModal(false)}>
+          <div className="bg-[var(--bg-card)] border-0 md:border border-custom rounded-none md:rounded-2xl shadow-2xl w-full h-full md:h-auto md:max-w-lg overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-5 flex justify-between items-center text-white">
               <div>
                 <h2 className="font-bold text-lg">Create Client Sales Order</h2>
@@ -410,8 +410,8 @@ export default function MarketingDashboard({
 
       {/* ── REGISTER CUSTOMER MODAL ── */}
       {showCustomerModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={() => setShowCustomerModal(false)}>
-          <div className="bg-[var(--bg-card)] border border-custom rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-0 md:p-4" onClick={() => setShowCustomerModal(false)}>
+          <div className="bg-[var(--bg-card)] border-0 md:border border-custom rounded-none md:rounded-2xl shadow-2xl w-full h-full md:h-auto md:max-w-lg overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="bg-gradient-to-r from-emerald-600 to-teal-600 p-5 flex justify-between items-center text-white">
               <div>
                 <h2 className="font-bold text-white text-lg">Register New Customer</h2>
@@ -483,8 +483,8 @@ export default function MarketingDashboard({
 
       {/* ── CUSTOMER PROFILE MODAL ── */}
       {selectedCustomer && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={() => setSelectedCustomer(null)}>
-          <div className="bg-[var(--bg-card)] border border-custom rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-0 md:p-4" onClick={() => setSelectedCustomer(null)}>
+          <div className="bg-[var(--bg-card)] border-0 md:border border-custom rounded-none md:rounded-2xl shadow-2xl w-full h-full md:h-auto md:max-w-lg overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="bg-gradient-to-r from-slate-800 to-slate-700 p-5 text-white">
               <div className="flex justify-between items-center">
                 <h2 className="font-bold text-lg">Customer Profile</h2>
@@ -559,8 +559,8 @@ export default function MarketingDashboard({
 
       {/* ── ORDER DETAIL MODAL ── */}
       {selectedOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={() => setSelectedOrder(null)}>
-          <div className="bg-[var(--bg-card)] border border-custom rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-0 md:p-4" onClick={() => setSelectedOrder(null)}>
+          <div className="bg-[var(--bg-card)] border-0 md:border border-custom rounded-none md:rounded-2xl shadow-2xl w-full h-full md:h-auto md:max-w-md overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-5 flex justify-between items-center text-white">
               <div>
                 <h2 className="font-bold">Order Details</h2>
@@ -595,49 +595,49 @@ export default function MarketingDashboard({
       )}
 
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Marketing Pipeline</h1>
-          <p className="text-sm text-muted">Create client sales orders, register customers, and inspect history logs.</p>
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight">Marketing Pipeline</h1>
+          <p className="text-xs sm:text-sm text-muted">Create client sales orders, register customers, and inspect history logs.</p>
         </div>
-        <div className="flex gap-2">
-          <button onClick={() => setShowOrderModal(true)} className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold cursor-pointer shadow transition-colors">
+        <div className="flex flex-wrap gap-2 w-full xl:w-auto">
+          <button onClick={() => setShowOrderModal(true)} className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold cursor-pointer shadow transition-colors">
             <Clipboard className="w-3.5 h-3.5" /> Create Order
           </button>
-          <button onClick={() => setShowCustomerModal(true)} className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold cursor-pointer shadow transition-colors">
+          <button onClick={() => setShowCustomerModal(true)} className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold cursor-pointer shadow transition-colors">
             <UserPlus className="w-3.5 h-3.5" /> Register Customer
           </button>
-          <button onClick={() => exportToCSV(localOrders, ['id', 'ticketNumber', 'clientName', 'productName', 'destination', 'paymentMode', 'totalAmount', 'status', 'createdAt'], 'marketing_orders')} className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold cursor-pointer border border-slate-200 transition-colors">
+          <button onClick={() => exportToCSV(localOrders, ['id', 'ticketNumber', 'clientName', 'productName', 'destination', 'paymentMode', 'totalAmount', 'status', 'createdAt'], 'marketing_orders')} className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold cursor-pointer border border-slate-200 transition-colors">
             <FileSpreadsheet className="w-3.5 h-3.5" /> CSV
           </button>
-          <button onClick={() => exportToPDF('Sales Orders Ledger', localOrders, ['id', 'ticketNumber', 'clientName', 'productName', 'destination', 'paymentMode', 'totalAmount', 'status', 'createdAt'])} className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold cursor-pointer border border-slate-200 transition-colors">
+          <button onClick={() => exportToPDF('Sales Orders Ledger', localOrders, ['id', 'ticketNumber', 'clientName', 'productName', 'destination', 'paymentMode', 'totalAmount', 'status', 'createdAt'])} className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold cursor-pointer border border-slate-200 transition-colors">
             <FileText className="w-3.5 h-3.5" /> PDF
           </button>
         </div>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
         {stats.map((card, idx) => {
           const Icon = card.icon;
           return (
-            <div key={idx} className="p-6 app-card flex items-center justify-between hover:scale-102 transition-all duration-300">
+            <div key={idx} className="p-4 sm:p-6 app-card flex items-center justify-between hover:scale-102 transition-all duration-300">
               <div>
-                <span className="text-xs text-slate-400 uppercase font-semibold">{card.title}</span>
-                <h3 className="text-2xl font-bold mt-1">{card.value}</h3>
-                <p className="text-[10px] text-slate-400 mt-1">{card.sub}</p>
+                <span className="text-[10px] sm:text-xs text-slate-400 uppercase font-semibold">{card.title}</span>
+                <h3 className="text-xl sm:text-2xl font-bold mt-1">{card.value}</h3>
+                <p className="text-[9px] sm:text-[10px] text-slate-400 mt-1">{card.sub}</p>
               </div>
-              <div className={`p-4 bg-slate-100 rounded-2xl ${card.color} bg-accent-light`}><Icon className="w-6 h-6" /></div>
+              <div className={`p-3 sm:p-4 bg-slate-100 rounded-2xl ${card.color} bg-accent-light shrink-0`}><Icon className="w-5 h-5 sm:w-6 sm:h-6" /></div>
             </div>
           );
         })}
       </div>
 
       {/* Chart */}
-      <div className="p-6 app-card">
+      <div className="p-4 sm:p-6 app-card">
         <h3 className="text-lg font-bold">Marketing Lead Inflow & Sales Closures</h3>
         <p className="text-xs text-muted">Weekly lead pipeline velocity vs sales order bookings.</p>
-        <div className="h-60 mt-4">
+        <div className="h-[200px] sm:h-60 lg:h-[300px] mt-4">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={lineChartData}>
               <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
@@ -723,7 +723,7 @@ export default function MarketingDashboard({
                     <span className="text-[9px] opacity-70">{customerSortField === 'name' ? (customerSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                   </div>
                 </th>
-                <th onClick={() => handleSort('companyName', customerSortField, setCustomerSortField, customerSortDir, setCustomerSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                <th onClick={() => handleSort('companyName', customerSortField, setCustomerSortField, customerSortDir, setCustomerSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none hidden sm:table-cell">
                   <div className="flex items-center gap-1">
                     <span>Company</span>
                     <span className="text-[9px] opacity-70">{customerSortField === 'companyName' ? (customerSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
@@ -735,20 +735,20 @@ export default function MarketingDashboard({
                     <span className="text-[9px] opacity-70">{customerSortField === 'phone' ? (customerSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                   </div>
                 </th>
-                <th onClick={() => handleSort('location', customerSortField, setCustomerSortField, customerSortDir, setCustomerSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                <th onClick={() => handleSort('location', customerSortField, setCustomerSortField, customerSortDir, setCustomerSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none hidden sm:table-cell">
                   <div className="flex items-center gap-1">
                     <span>Location</span>
                     <span className="text-[9px] opacity-70">{customerSortField === 'location' ? (customerSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                   </div>
                 </th>
-                <th onClick={() => handleSort('ghanaCard', customerSortField, setCustomerSortField, customerSortDir, setCustomerSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                <th onClick={() => handleSort('ghanaCard', customerSortField, setCustomerSortField, customerSortDir, setCustomerSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none hidden md:table-cell">
                   <div className="flex items-center gap-1">
                     <span>Ghana Card</span>
                     <span className="text-[9px] opacity-70">{customerSortField === 'ghanaCard' ? (customerSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                   </div>
                 </th>
                 <th className="py-3 px-3 text-center whitespace-nowrap">Orders</th>
-                <th onClick={() => handleSort('registeredAt', customerSortField, setCustomerSortField, customerSortDir, setCustomerSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                <th onClick={() => handleSort('registeredAt', customerSortField, setCustomerSortField, customerSortDir, setCustomerSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none hidden lg:table-cell">
                   <div className="flex items-center gap-1">
                     <span>Registered</span>
                     <span className="text-[9px] opacity-70">{customerSortField === 'registeredAt' ? (customerSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
@@ -778,14 +778,14 @@ export default function MarketingDashboard({
                     )}
                   </td>
                   <td className="py-3.5 px-3 font-semibold text-sm">{cust.name}</td>
-                  <td className="py-3.5 px-3 text-slate-400">{cust.companyName}</td>
+                  <td className="py-3.5 px-3 text-slate-400 hidden sm:table-cell">{cust.companyName}</td>
                   <td className="py-3.5 px-3 text-slate-400 font-mono">{cust.phone}</td>
-                  <td className="py-3.5 px-3 text-slate-450">{cust.location}</td>
-                  <td className="py-3.5 px-3 font-mono text-[10px] text-slate-400">{cust.ghanaCard || '—'}</td>
+                  <td className="py-3.5 px-3 text-slate-450 hidden sm:table-cell">{cust.location}</td>
+                  <td className="py-3.5 px-3 font-mono text-[10px] text-slate-400 hidden md:table-cell">{cust.ghanaCard || '—'}</td>
                   <td className="py-3.5 px-3 text-center">
                     <span className="px-2.5 py-0.5 bg-blue-500/15 text-blue-400 rounded-full text-[9px] font-bold">{customerOrders(cust).length}</span>
                   </td>
-                  <td className="py-3.5 px-3 text-slate-400 font-mono text-[10px]">{cust.registeredAt}</td>
+                  <td className="py-3.5 px-3 text-slate-400 font-mono text-[10px] hidden lg:table-cell">{cust.registeredAt}</td>
                   <td className="py-3.5 px-5 text-center relative" onClick={(e) => e.stopPropagation()}>
                     <button
                       onClick={() => setActiveCustMenu(activeCustMenu === cust.id ? null : cust.id)}
@@ -881,13 +881,13 @@ export default function MarketingDashboard({
                     className="accent-blue-600 w-3.5 h-3.5"
                   />
                 </th>
-                <th onClick={() => handleSort('ticketNumber', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                <th onClick={() => handleSort('ticketNumber', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none hidden sm:table-cell">
                   <div className="flex items-center gap-1">
                     <span>Ticket #</span>
                     <span className="text-[9px] opacity-70">{ordersSortField === 'ticketNumber' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                   </div>
                 </th>
-                <th onClick={() => handleSort('id', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                <th onClick={() => handleSort('id', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none hidden md:table-cell">
                   <div className="flex items-center gap-1">
                     <span>Order ID</span>
                     <span className="text-[9px] opacity-70">{ordersSortField === 'id' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
@@ -905,7 +905,7 @@ export default function MarketingDashboard({
                     <span className="text-[9px] opacity-70">{ordersSortField === 'productName' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                   </div>
                 </th>
-                <th onClick={() => handleSort('destination', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                <th onClick={() => handleSort('destination', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none hidden md:table-cell">
                   <div className="flex items-center gap-1">
                     <span>Destination</span>
                     <span className="text-[9px] opacity-70">{ordersSortField === 'destination' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
@@ -929,7 +929,7 @@ export default function MarketingDashboard({
                     <span className="text-[9px] opacity-70">{ordersSortField === 'status' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                   </div>
                 </th>
-                <th onClick={() => handleSort('createdAt', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                <th onClick={() => handleSort('createdAt', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none hidden lg:table-cell">
                   <div className="flex items-center gap-1">
                     <span>Submitted</span>
                     <span className="text-[9px] opacity-70">{ordersSortField === 'createdAt' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
@@ -949,11 +949,11 @@ export default function MarketingDashboard({
                       className="accent-blue-600 w-3.5 h-3.5"
                     />
                   </td>
-                  <td className="py-3.5 px-3 font-mono text-emerald-450 font-bold">{order.ticketNumber || '—'}</td>
-                  <td className="py-3.5 px-3 font-mono text-slate-400">{order.id}</td>
+                  <td className="py-3.5 px-3 font-mono text-emerald-450 font-bold hidden sm:table-cell">{order.ticketNumber || '—'}</td>
+                  <td className="py-3.5 px-3 font-mono text-slate-400 hidden md:table-cell">{order.id}</td>
                   <td className="py-3.5 px-3 font-semibold text-sm">{order.clientName}</td>
                   <td className="py-3.5 px-3 text-slate-350">{order.productName || '—'}</td>
-                  <td className="py-3.5 px-3 text-slate-400">{order.destination || '—'}</td>
+                  <td className="py-3.5 px-3 text-slate-400 hidden md:table-cell">{order.destination || '—'}</td>
                   <td className="py-3.5 px-3">
                     <span className={`px-2.5 py-0.5 rounded text-[9px] font-bold ${order.paymentMode === 'CREDIT' ? 'bg-amber-500/10 text-amber-400' : order.paymentMode === 'CASH' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-blue-500/10 text-blue-450'}`}>{order.paymentMode}</span>
                   </td>
@@ -961,7 +961,7 @@ export default function MarketingDashboard({
                   <td className="py-3.5 px-3 text-center">
                     <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${statusColor(order.status)}`}>{order.status.replace(/_/g, ' ')}</span>
                   </td>
-                  <td className="py-3.5 px-3 text-slate-400 font-mono text-[10px]">{order.createdAt}</td>
+                  <td className="py-3.5 px-3 text-slate-400 font-mono text-[10px] hidden lg:table-cell">{order.createdAt}</td>
                   <td className="py-3.5 px-5 text-center relative" onClick={(e) => e.stopPropagation()}>
                     <button
                       onClick={() => setActiveOrdersMenu(activeOrdersMenu === order.id ? null : order.id)}

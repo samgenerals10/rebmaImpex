@@ -333,8 +333,8 @@ export default function FinanceDashboard({
     <div className="space-y-6">
       {/* Ticket Modal */}
       {selectedTicket && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={() => setSelectedTicket(null)}>
-          <div className="bg-[var(--bg-card)] border border-custom rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-0 sm:p-4" onClick={() => setSelectedTicket(null)}>
+          <div className="bg-[var(--bg-card)] border-0 sm:border border-custom rounded-none sm:rounded-2xl shadow-2xl w-full h-full sm:h-auto sm:max-w-md overflow-y-auto" onClick={e => e.stopPropagation()}>
             {/* Receipt header */}
             <div className="bg-gradient-to-r from-[#064e29] to-[#0298d0] p-6 text-white">
               <div className="flex justify-between items-start">
@@ -390,34 +390,34 @@ export default function FinanceDashboard({
       )}
 
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Finance Ledgers</h1>
-          <p className="text-sm text-muted">Clear cash invoice payments, verify credit requests, and issue receipt tickets.</p>
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight">Finance Ledgers</h1>
+          <p className="text-xs sm:text-sm text-muted">Clear cash invoice payments, verify credit requests, and issue receipt tickets.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 w-full sm:w-auto justify-end">
           <button onClick={() => exportToCSV(ordersList, ['id', 'ticketNumber', 'clientName', 'productName', 'destination', 'paymentMode', 'totalAmount', 'status', 'createdAt'], 'finance_orders_ledger')} className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold cursor-pointer border border-slate-200 transition-colors">
-            <FileSpreadsheet className="w-3.5 h-3.5" /><span>Export Ledgers (CSV)</span>
+            <FileSpreadsheet className="w-3.5 h-3.5" /><span>Ledgers (CSV)</span>
           </button>
           <button onClick={() => exportToPDF('Finance Ledger Statement', ordersList, ['id', 'ticketNumber', 'clientName', 'productName', 'paymentMode', 'totalAmount', 'status', 'createdAt'])} className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold cursor-pointer border border-slate-200 transition-colors">
-            <FileText className="w-3.5 h-3.5" /><span>Export Ledgers (PDF)</span>
+            <FileText className="w-3.5 h-3.5" /><span>Ledgers (PDF)</span>
           </button>
         </div>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
         {stats.map((card, idx) => {
           const Icon = card.icon;
           return (
-            <div key={idx} className="p-6 app-card flex items-center justify-between hover:scale-102 transition-all duration-300">
+            <div key={idx} className="p-4 md:p-6 app-card flex items-center justify-between hover:scale-102 transition-all duration-300">
               <div>
                 <span className="text-xs text-slate-400 uppercase font-semibold">{card.title}</span>
-                <h3 className="text-2xl font-bold mt-1">{card.value}</h3>
+                <h3 className="text-xl md:text-2xl font-bold mt-1">{card.value}</h3>
                 <p className="text-[10px] text-slate-400 mt-1">{card.sub}</p>
               </div>
-              <div className={`p-4 bg-slate-100 rounded-2xl ${card.color} bg-accent-light`}>
-                <Icon className="w-6 h-6" />
+              <div className={`p-3 md:p-4 bg-slate-100 rounded-2xl ${card.color} bg-accent-light`}>
+                <Icon className="w-5 h-5 md:w-6 md:h-6" />
               </div>
             </div>
           );
@@ -425,10 +425,10 @@ export default function FinanceDashboard({
       </div>
 
       {/* Chart */}
-      <div className="p-6 app-card">
-        <h3 className="text-lg font-bold">Finance Revenue & Cash Collection Performance</h3>
+      <div className="p-4 md:p-6 app-card">
+        <h3 className="text-base md:text-lg font-bold">Finance Revenue & Cash Collection Performance</h3>
         <p className="text-xs text-muted">Weekly revenue flow vs daily liquid payments collection.</p>
-        <div className="h-60 mt-4">
+        <div className="h-48 md:h-60 mt-4">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={lineChartData}>
               <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
@@ -443,15 +443,15 @@ export default function FinanceDashboard({
       </div>
 
       {/* Production & Warehouse Summary — always visible */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="p-6 app-card space-y-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
+        <div className="p-4 md:p-6 app-card space-y-3">
           <h3 className="text-sm font-bold">Overall Goods Produced by Production</h3>
-          <p className="text-3xl font-bold text-blue-600 font-mono">{totalGoodsProduced} <span className="text-base text-slate-400 font-normal font-sans">Batches</span></p>
+          <p className="text-2xl md:text-3xl font-bold text-blue-600 font-mono">{totalGoodsProduced} <span className="text-xs md:text-base text-slate-400 font-normal font-sans">Batches</span></p>
           <p className="text-[10px] text-slate-400">Requisitions with TICKETS_ISSUED or COMPLETED status from Production floor.</p>
         </div>
-        <div className="p-6 app-card space-y-3">
+        <div className="p-4 md:p-6 app-card space-y-3">
           <h3 className="text-sm font-bold">Overall Goods in Warehouse</h3>
-          <p className="text-3xl font-bold text-emerald-600 font-mono">{totalWarehouseItems.toLocaleString()} <span className="text-base text-slate-400 font-normal font-sans">Units</span></p>
+          <p className="text-2xl md:text-3xl font-bold text-emerald-600 font-mono">{totalWarehouseItems.toLocaleString()} <span className="text-xs md:text-base text-slate-400 font-normal font-sans">Units</span></p>
           <p className="text-[10px] text-slate-400">Total approved and released production units currently in warehouse stock.</p>
         </div>
       </div>
@@ -461,14 +461,14 @@ export default function FinanceDashboard({
 
         {/* PAYMENT TERMS */}
         {activeSubTab === 'Evaluation' && (
-          <div className="p-6 app-card space-y-4">
-            <h3 className="text-lg font-bold">Workflow B: Order Payment Terms Evaluation Queue</h3>
+          <div className="p-4 md:p-6 app-card space-y-4">
+            <h3 className="text-base md:text-lg font-bold">Workflow B: Order Payment Terms Evaluation Queue</h3>
             <div className="space-y-3">
               {ordersList.filter(o => o.status === 'PENDING_FINANCE').map(order => (
                 <div key={order.id} className="p-4 bg-slate-100/50 dark:bg-slate-800/20 border border-custom rounded-xl">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <p className="text-xs font-bold">{order.clientName}</p>
                         <span className="text-[10px] font-mono text-slate-400">({order.id})</span>
                         {order.ticketNumber && <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 rounded text-[9px] font-bold">🎫 {order.ticketNumber}</span>}
@@ -479,9 +479,9 @@ export default function FinanceDashboard({
                       {order.ghanaCard && <p className="text-[10px] text-slate-400 font-mono">Ghana Card: <code>{order.ghanaCard}</code></p>}
                       <p className="text-[10px] text-slate-400 font-mono">Submitted: {order.createdAt}</p>
                     </div>
-                    <div className="flex gap-2 shrink-0">
-                      <button onClick={() => onEvaluateOrder(order.id, true)} className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-bold cursor-pointer hover:bg-blue-700 transition-colors shadow">Clear Terms</button>
-                      <button onClick={() => onEvaluateOrder(order.id, false)} className="px-3 py-1.5 bg-red-500/10 text-red-400 rounded-lg text-xs font-bold cursor-pointer hover:bg-red-500/20 transition-colors">Deny</button>
+                    <div className="flex gap-2 w-full sm:w-auto justify-end shrink-0">
+                      <button onClick={() => onEvaluateOrder(order.id, true)} className="flex-1 sm:flex-none px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-bold cursor-pointer hover:bg-blue-700 transition-colors shadow">Clear Terms</button>
+                      <button onClick={() => onEvaluateOrder(order.id, false)} className="flex-1 sm:flex-none px-3 py-1.5 bg-red-500/10 text-red-400 rounded-lg text-xs font-bold cursor-pointer hover:bg-red-500/20 transition-colors">Deny</button>
                     </div>
                   </div>
                 </div>
@@ -495,14 +495,14 @@ export default function FinanceDashboard({
 
         {/* INVOICE PORTAL */}
         {activeSubTab === 'Invoices' && (
-          <div className="p-6 app-card space-y-4">
-            <h3 className="text-lg font-bold">Invoice Inception Portal</h3>
+          <div className="p-4 md:p-6 app-card space-y-4">
+            <h3 className="text-base md:text-lg font-bold">Invoice Inception Portal</h3>
             <div className="space-y-3">
               {ordersList.filter(o => o.status === 'APPROVED').map(order => (
                 <div key={order.id} className="p-4 bg-slate-100/50 dark:bg-slate-800/20 border border-custom rounded-xl">
-                  <div className="flex justify-between items-start">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <div className="space-y-1">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <p className="text-xs font-bold">{order.clientName}</p>
                         {order.ticketNumber && (
                           <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 rounded text-[9px] font-bold">🎫 {order.ticketNumber}</span>
@@ -516,7 +516,7 @@ export default function FinanceDashboard({
                     </div>
                     <button
                       onClick={() => onFinalizeOrder(order.id)}
-                      className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold cursor-pointer transition-colors shrink-0 shadow"
+                      className="w-full sm:w-auto px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold cursor-pointer transition-colors shrink-0 shadow text-center"
                     >
                       Generate PDF Invoice
                     </button>
@@ -605,29 +605,29 @@ export default function FinanceDashboard({
                 <h3 className="text-sm font-bold">Historical Receipts & Tickets Database</h3>
                 <span className="text-xs font-mono text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">{filteredPayments.length} logs</span>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
                 {/* Search */}
-                <div className="relative flex items-center">
+                <div className="relative flex items-center w-full sm:w-auto">
                   <span className="absolute left-3 text-slate-500 text-xs pointer-events-none">🔍</span>
                   <input
                     type="text"
                     placeholder="Search receipt/order…"
                     value={paymentsSearch}
                     onChange={e => setPaymentsSearch(e.target.value)}
-                    className="pl-8 pr-3 py-1.5 text-xs rounded-lg outline-none transition w-40"
+                    className="pl-8 pr-3 py-1.5 text-xs rounded-lg outline-none transition w-full sm:w-40"
                   />
                 </div>
                 {/* Type dropdown */}
-                <div className="relative">
+                <div className="relative w-full sm:w-auto">
                   <button
                     onClick={(e) => { e.stopPropagation(); setIsPaymentsFilterOpen(!isPaymentsFilterOpen); }}
-                    className="flex items-center gap-1.5 text-xs text-[var(--text-primary)] bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 px-3 py-1.5 rounded-lg transition-colors border border-custom"
+                    className="flex items-center justify-between sm:justify-start gap-1.5 text-xs text-[var(--text-primary)] bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 px-3 py-1.5 rounded-lg transition-colors border border-custom w-full sm:w-auto"
                   >
                     <span>Type: {paymentsTypeFilter === 'ALL' ? 'All' : paymentsTypeFilter.replace(/_/g, ' ')}</span>
                     <span className="text-[10px]">▼</span>
                   </button>
                   {isPaymentsFilterOpen && (
-                    <div className="absolute right-0 top-full mt-1.5 w-48 bg-[var(--bg-card)] border border-custom rounded-xl shadow-xl z-20 p-1 flex flex-col">
+                    <div className="absolute right-0 top-full mt-1.5 w-full sm:w-48 bg-[var(--bg-card)] border border-custom rounded-xl shadow-xl z-20 p-1 flex flex-col">
                       {(['ALL', 'DIRECT', 'CREDIT_SETTLEMENT'] as const).map(st => (
                         <button
                           key={st}
@@ -642,14 +642,14 @@ export default function FinanceDashboard({
                   )}
                 </div>
                 {/* Export */}
-                <button onClick={() => exportToCSV(filteredPayments, ['id', 'clientName', 'amount', 'paymentMode', 'paymentType', 'orderId', 'createdAt'], 'receipts_database')} className="flex items-center gap-1 text-xs text-[var(--text-primary)] bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 px-3 py-1.5 rounded-lg transition-colors border border-custom">
+                <button onClick={() => exportToCSV(filteredPayments, ['id', 'clientName', 'amount', 'paymentMode', 'paymentType', 'orderId', 'createdAt'], 'receipts_database')} className="flex items-center justify-center gap-1 text-xs text-[var(--text-primary)] bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 px-3 py-1.5 rounded-lg transition-colors border border-custom w-full sm:w-auto">
                   <span>⬇</span> Export
                 </button>
               </div>
             </div>
 
             {/* Scrollable table */}
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto w-full">
               <table className="w-full text-xs text-left">
                 <thead>
                   <tr className="theme-table-header-row text-slate-400 uppercase font-semibold text-[10px]">
@@ -673,19 +673,19 @@ export default function FinanceDashboard({
                         <span className="text-[9px] opacity-70">{paymentsSortField === 'clientName' ? (paymentsSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
-                    <th onClick={() => handleSort('paymentType', paymentsSortField, setPaymentsSortField, paymentsSortDir, setPaymentsSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                    <th onClick={() => handleSort('paymentType', paymentsSortField, setPaymentsSortField, paymentsSortDir, setPaymentsSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none hidden sm:table-cell">
                       <div className="flex items-center gap-1">
                         <span>Type</span>
                         <span className="text-[9px] opacity-70">{paymentsSortField === 'paymentType' ? (paymentsSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
-                    <th onClick={() => handleSort('paymentMode', paymentsSortField, setPaymentsSortField, paymentsSortDir, setPaymentsSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                    <th onClick={() => handleSort('paymentMode', paymentsSortField, setPaymentsSortField, paymentsSortDir, setPaymentsSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none hidden md:table-cell">
                       <div className="flex items-center gap-1">
                         <span>Mode</span>
                         <span className="text-[9px] opacity-70">{paymentsSortField === 'paymentMode' ? (paymentsSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
-                    <th onClick={() => handleSort('orderId', paymentsSortField, setPaymentsSortField, paymentsSortDir, setPaymentsSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                    <th onClick={() => handleSort('orderId', paymentsSortField, setPaymentsSortField, paymentsSortDir, setPaymentsSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none hidden lg:table-cell">
                       <div className="flex items-center gap-1">
                         <span>Settled Order</span>
                         <span className="text-[9px] opacity-70">{paymentsSortField === 'orderId' ? (paymentsSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
@@ -697,7 +697,7 @@ export default function FinanceDashboard({
                         <span className="text-[9px] opacity-70">{paymentsSortField === 'amount' ? (paymentsSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
-                    <th onClick={() => handleSort('createdAt', paymentsSortField, setPaymentsSortField, paymentsSortDir, setPaymentsSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                    <th onClick={() => handleSort('createdAt', paymentsSortField, setPaymentsSortField, paymentsSortDir, setPaymentsSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none hidden sm:table-cell">
                       <div className="flex items-center gap-1">
                         <span>Date</span>
                         <span className="text-[9px] opacity-70">{paymentsSortField === 'createdAt' ? (paymentsSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
@@ -723,15 +723,15 @@ export default function FinanceDashboard({
                       </td>
                       <td className="py-3.5 px-3 font-mono font-bold text-blue-400">{pay.id}</td>
                       <td className="py-3.5 px-3 font-semibold text-[13px]">{pay.clientName}</td>
-                      <td className="py-3.5 px-3">
+                      <td className="py-3.5 px-3 hidden sm:table-cell">
                         <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${pay.paymentType === 'DIRECT' ? 'bg-blue-500/10 text-blue-400' : 'bg-purple-500/10 text-purple-400'}`}>
                           {pay.paymentType === 'DIRECT' ? 'Direct' : 'Credit Settle'}
                         </span>
                       </td>
-                      <td className="py-3.5 px-3 text-slate-400">{pay.paymentMode.replace('_', ' ')}</td>
-                      <td className="py-3.5 px-3 font-mono text-slate-400">{pay.orderId || '—'}</td>
-                      <td className="py-3.5 px-3 text-right font-bold font-mono text-[13px] text-emerald-450">GHS {pay.amount.toLocaleString()}</td>
-                      <td className="py-3.5 px-3 text-slate-400 font-mono text-[10px]">{pay.createdAt}</td>
+                      <td className="py-3.5 px-3 text-slate-400 hidden md:table-cell">{pay.paymentMode.replace('_', ' ')}</td>
+                      <td className="py-3.5 px-3 font-mono text-slate-400 hidden lg:table-cell">{pay.orderId || '—'}</td>
+                      <td className="py-3.5 px-3 text-right font-bold font-mono text-[13px] text-emerald-400">GHS {pay.amount.toLocaleString()}</td>
+                      <td className="py-3.5 px-3 text-slate-400 font-mono text-[10px] hidden sm:table-cell">{pay.createdAt}</td>
                       <td className="py-3.5 px-5 text-center relative" onClick={(e) => e.stopPropagation()}>
                         <button
                           onClick={() => setActivePaymentsMenu(activePaymentsMenu === pay.id ? null : pay.id)}
@@ -802,29 +802,29 @@ export default function FinanceDashboard({
                 <h3 className="font-bold text-sm">Warehouse History — Production Output</h3>
                 <span className="text-xs font-mono text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">{filteredWarehouse.length} entries</span>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
                 {/* Search */}
-                <div className="relative flex items-center">
+                <div className="relative flex items-center w-full sm:w-auto">
                   <span className="absolute left-3 text-slate-500 text-xs pointer-events-none">🔍</span>
                   <input
                     type="text"
                     placeholder="Search warehouse logs…"
                     value={warehouseSearch}
                     onChange={e => setWarehouseSearch(e.target.value)}
-                    className="pl-8 pr-3 py-1.5 text-xs rounded-lg outline-none transition w-40"
+                    className="pl-8 pr-3 py-1.5 text-xs rounded-lg outline-none transition w-full sm:w-40"
                   />
                 </div>
                 {/* Status Dropdown */}
-                <div className="relative">
+                <div className="relative w-full sm:w-auto">
                   <button
                     onClick={(e) => { e.stopPropagation(); setIsWarehouseFilterOpen(!isWarehouseFilterOpen); }}
-                    className="flex items-center gap-1.5 text-xs text-[var(--text-primary)] bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 px-3 py-1.5 rounded-lg transition-colors border border-custom"
+                    className="flex items-center justify-between sm:justify-start gap-1.5 text-xs text-[var(--text-primary)] bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 px-3 py-1.5 rounded-lg transition-colors border border-custom w-full sm:w-auto"
                   >
                     <span>Status: {warehouseStatusFilter === 'ALL' ? 'All' : warehouseStatusFilter}</span>
                     <span className="text-[10px]">▼</span>
                   </button>
                   {isWarehouseFilterOpen && (
-                    <div className="absolute right-0 top-full mt-1.5 w-48 bg-[var(--bg-card)] border border-custom rounded-xl shadow-xl z-20 p-1 flex flex-col">
+                    <div className="absolute right-0 top-full mt-1.5 w-full sm:w-48 bg-[var(--bg-card)] border border-custom rounded-xl shadow-xl z-20 p-1 flex flex-col">
                       {(['ALL', 'COMPLETED', 'TICKETS_ISSUED', 'APPROVED'] as const).map(st => (
                         <button
                           key={st}
@@ -842,7 +842,7 @@ export default function FinanceDashboard({
             </div>
 
             {/* Scrollable table */}
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto w-full">
               <table className="w-full text-xs text-left">
                 <thead>
                   <tr className="theme-table-header-row text-slate-400 uppercase font-semibold text-[10px]">
@@ -878,7 +878,7 @@ export default function FinanceDashboard({
                         <span className="text-[9px] opacity-70">{warehouseSortField === 'status' ? (warehouseSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
-                    <th onClick={() => handleSort('createdAt', warehouseSortField, setWarehouseSortField, warehouseSortDir, setWarehouseSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                    <th onClick={() => handleSort('createdAt', warehouseSortField, setWarehouseSortField, warehouseSortDir, setWarehouseSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none hidden sm:table-cell">
                       <div className="flex items-center gap-1">
                         <span>Date</span>
                         <span className="text-[9px] opacity-70">{warehouseSortField === 'createdAt' ? (warehouseSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
@@ -912,7 +912,7 @@ export default function FinanceDashboard({
                           'bg-amber-500/10 text-amber-450'
                         }`}>{req.status.replace(/_/g, ' ')}</span>
                       </td>
-                      <td className="py-3.5 px-3 text-slate-400 font-mono text-[10px]">{req.createdAt || 'N/A'}</td>
+                      <td className="py-3.5 px-3 text-slate-400 font-mono text-[10px] hidden sm:table-cell">{req.createdAt || 'N/A'}</td>
                       <td className="py-3.5 px-5 text-center relative" onClick={(e) => e.stopPropagation()}>
                         <button
                           onClick={() => setActiveWarehouseMenu(activeWarehouseMenu === req.id ? null : req.id)}

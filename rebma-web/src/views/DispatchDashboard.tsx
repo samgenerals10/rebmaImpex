@@ -173,12 +173,12 @@ export default function DispatchDashboard({
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Dispatch Fleet Management</h1>
-          <p className="text-sm text-muted">Monitor active deliveries, driver activities, and fleet history.</p>
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight">Dispatch Fleet Management</h1>
+          <p className="text-xs sm:text-sm text-muted">Monitor active deliveries, driver activities, and fleet history.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 w-full sm:w-auto justify-end">
           <button onClick={() => exportToCSV(localDeliveries, ['id', 'orderId', 'clientName', 'destination', 'driverName', 'driverId', 'dispatchedAt', 'deliveredAt', 'status'], 'dispatch_logs')} className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold cursor-pointer border border-slate-200 transition-colors">
             <FileSpreadsheet className="w-3.5 h-3.5" /><span>Export Logs (CSV)</span>
           </button>
@@ -189,27 +189,27 @@ export default function DispatchDashboard({
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
         {stats.map((card, idx) => {
           const Icon = card.icon;
           return (
-            <div key={idx} className="p-6 app-card flex items-center justify-between hover:scale-102 transition-all duration-300">
+            <div key={idx} className="p-4 md:p-6 app-card flex items-center justify-between hover:scale-102 transition-all duration-300">
               <div>
                 <span className="text-xs text-slate-400 uppercase font-semibold">{card.title}</span>
-                <h3 className="text-2xl font-bold mt-1">{card.value}</h3>
+                <h3 className="text-xl md:text-2xl font-bold mt-1">{card.value}</h3>
                 <p className="text-[10px] text-slate-400 mt-1">{card.sub}</p>
               </div>
-              <div className={`p-4 bg-slate-100 rounded-2xl ${card.color} bg-accent-light`}><Icon className="w-6 h-6" /></div>
+              <div className={`p-3 md:p-4 bg-slate-100 rounded-2xl ${card.color} bg-accent-light`}><Icon className="w-5 h-5 md:w-6 md:h-6" /></div>
             </div>
           );
         })}
       </div>
 
       {/* Chart */}
-      <div className="p-6 app-card">
-        <h3 className="text-lg font-bold">Dispatch Delivery & Shipments Velocity</h3>
-        <p className="text-xs text-muted">Weekly active deliveries cleared vs transit delay logs.</p>
-        <div className="h-60 mt-4">
+      <div className="p-4 md:p-6 app-card">
+        <h3 className="text-base md:text-lg font-bold">Dispatch Delivery & Shipments Velocity</h3>
+        <p className="text-xs text-muted font-semibold text-slate-500">Weekly active deliveries cleared vs transit delay logs.</p>
+        <div className="h-48 md:h-60 mt-4">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={lineChartData}>
               <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
@@ -230,12 +230,12 @@ export default function DispatchDashboard({
         {activeSubTab === 'Deliveries' && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Live Map */}
-            <div className="p-6 app-card space-y-4">
+            <div className="p-4 md:p-6 app-card space-y-4">
               <div className="flex items-center gap-2">
                 <MapPin className="w-5 h-5 text-blue-500" />
-                <h3 className="text-lg font-bold">Live Delivery Map — Accra</h3>
+                <h3 className="text-base md:text-lg font-bold">Live Delivery Map — Accra</h3>
               </div>
-              <div className="h-72 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 rounded-2xl relative overflow-hidden border border-custom">
+              <div className="h-[240px] sm:h-72 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 rounded-2xl relative overflow-hidden border border-custom">
                 {/* Grid overlay */}
                 <div className="absolute inset-0 opacity-20 bg-[radial-gradient(#3b82f6_1px,transparent_1px)] [background-size:20px_20px]"></div>
                 
@@ -282,7 +282,7 @@ export default function DispatchDashboard({
               <div className="p-4 bg-slate-100/50 dark:bg-slate-800/20 border border-custom rounded-xl space-y-3">
                 <div className="flex justify-between items-center text-xs">
                   <span>Driver: <strong>DRV-404 (Kofi Acheampong)</strong></span>
-                  <span className={`px-2 py-0.5 rounded font-bold text-[9px] ${deliveryStatus === 'DELIVERED' ? 'bg-emerald-500/10 text-emerald-450' : 'bg-blue-500/10 text-blue-450 animate-pulse'}`}>{deliveryStatus}</span>
+                  <span className={`px-2 py-0.5 rounded font-bold text-[9px] ${deliveryStatus === 'DELIVERED' ? 'bg-emerald-500/10 text-emerald-450' : 'bg-blue-500/10 text-blue-455 animate-pulse'}`}>{deliveryStatus}</span>
                 </div>
                 <div className="text-xs text-slate-400 space-y-1">
                   <p>Active Cargo: <strong>Order ORD-101 (Inter-Ghana Foods)</strong></p>
@@ -303,8 +303,8 @@ export default function DispatchDashboard({
             </div>
 
             {/* In-transit deliveries list */}
-            <div className="p-6 app-card space-y-4">
-              <h3 className="text-lg font-bold">In-Transit Orders</h3>
+            <div className="p-4 md:p-6 app-card space-y-4">
+              <h3 className="text-base md:text-lg font-bold">In-Transit Orders</h3>
               <div className="space-y-3">
                 {localDeliveries.filter(d => d.status === 'IN_TRANSIT').map(del => (
                   <div key={del.id} className="p-4 bg-blue-500/5 border border-blue-500/25 rounded-xl space-y-1">
@@ -336,23 +336,23 @@ export default function DispatchDashboard({
                 <h3 className="text-sm font-bold">Delivery History Log</h3>
                 <span className="text-xs font-mono text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">{filteredDeliveries.length} logs</span>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
                 {/* Search */}
-                <div className="relative flex items-center">
+                <div className="relative flex items-center w-full sm:w-auto">
                   <span className="absolute left-3 text-slate-500 text-xs pointer-events-none">🔍</span>
                   <input
                     type="text"
                     placeholder="Search logs…"
                     value={dispatchSearch}
                     onChange={e => setDispatchSearch(e.target.value)}
-                    className="pl-8 pr-3 py-1.5 text-xs rounded-lg outline-none transition w-40"
+                    className="pl-8 pr-3 py-1.5 text-xs rounded-lg outline-none transition w-full sm:w-40"
                   />
                 </div>
                 {/* Status dropdown */}
-                <div className="relative">
+                <div className="relative w-full sm:w-auto">
                   <button
                     onClick={(e) => { e.stopPropagation(); setIsDispatchFilterOpen(!isDispatchFilterOpen); }}
-                    className="flex items-center gap-1.5 text-xs text-[var(--text-primary)] bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 px-3 py-1.5 rounded-lg transition-colors border border-custom"
+                    className="flex items-center justify-between sm:justify-start gap-1.5 text-xs text-[var(--text-primary)] bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 px-3 py-1.5 rounded-lg transition-colors border border-custom w-full sm:w-auto"
                   >
                     <span>Status: {dispatchStatusFilter === 'ALL' ? 'All' : dispatchStatusFilter}</span>
                     <span className="text-[10px]">▼</span>
@@ -376,7 +376,7 @@ export default function DispatchDashboard({
             </div>
 
             {/* Scrollable table */}
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto w-full">
               <table className="w-full text-xs text-left">
                 <thead>
                   <tr className="theme-table-header-row text-slate-400 uppercase font-semibold text-[10px]">
@@ -418,13 +418,13 @@ export default function DispatchDashboard({
                         <span className="text-[9px] opacity-70">{delSortField === 'driverName' ? (delSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
-                    <th onClick={() => handleSort('dispatchedAt', delSortField, setDelSortField, delSortDir, setDelSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                    <th onClick={() => handleSort('dispatchedAt', delSortField, setDelSortField, delSortDir, setDelSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none hidden sm:table-cell">
                       <div className="flex items-center gap-1">
                         <span>Dispatched</span>
                         <span className="text-[9px] opacity-70">{delSortField === 'dispatchedAt' ? (delSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
-                    <th onClick={() => handleSort('deliveredAt', delSortField, setDelSortField, delSortDir, setDelSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                    <th onClick={() => handleSort('deliveredAt', delSortField, setDelSortField, delSortDir, setDelSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none hidden sm:table-cell">
                       <div className="flex items-center gap-1">
                         <span>Delivered</span>
                         <span className="text-[9px] opacity-70">{delSortField === 'deliveredAt' ? (delSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
@@ -455,8 +455,8 @@ export default function DispatchDashboard({
                       <td className="py-3.5 px-3 font-semibold text-sm">{del.clientName}</td>
                       <td className="py-3.5 px-3 text-slate-400">{del.destination}</td>
                       <td className="py-3.5 px-3 text-slate-300 font-medium">{del.driverName}</td>
-                      <td className="py-3.5 px-3 text-slate-450 font-mono text-[10px]">{del.dispatchedAt}</td>
-                      <td className="py-3.5 px-3 text-slate-450 font-mono text-[10px]">{del.deliveredAt || '—'}</td>
+                      <td className="py-3.5 px-3 text-slate-450 font-mono text-[10px] hidden sm:table-cell">{del.dispatchedAt}</td>
+                      <td className="py-3.5 px-3 text-slate-450 font-mono text-[10px] hidden sm:table-cell">{del.deliveredAt || '—'}</td>
                       <td className="py-3.5 px-3 text-center">
                         <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
                           del.status === 'DELIVERED' ? 'bg-emerald-500/10 text-emerald-400' :

@@ -19,7 +19,8 @@ import {
   Warehouse,
   PackageCheck,
   FileText,
-  TicketCheck
+  TicketCheck,
+  X
 } from 'lucide-react';
 import type { CurrentUser } from '../../types/erp';
 
@@ -33,6 +34,8 @@ interface SidebarProps {
   onLogout: () => void;
   addNotification: (msg: string) => void;
   openBoardroom?: () => void;
+  isOpen?: boolean;
+  onClose?: () => void;
 }
 
 export default function Sidebar({
@@ -44,7 +47,9 @@ export default function Sidebar({
   currentUser,
   onLogout,
   addNotification,
-  openBoardroom
+  openBoardroom,
+  isOpen = false,
+  onClose
 }: SidebarProps) {
   
   // CEO and Management can view any department (CEO can view all, Management can view all except CEO)
@@ -160,19 +165,30 @@ export default function Sidebar({
   };
 
   return (
-    <aside className="w-64 app-sidebar flex flex-col justify-between py-6 px-4 shrink-0 shadow-lg select-none">
+    <aside className={`fixed inset-y-0 left-0 z-50 w-64 app-sidebar flex flex-col justify-between py-6 px-4 shrink-0 shadow-lg select-none transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 lg:static`}>
       <div className="flex flex-col h-full">
         {/* Logo Header */}
-        <div className="flex items-center gap-3 px-3 mb-8">
-          <img 
-            src="/logo.png" 
-            className="w-9 h-9 object-contain rounded-lg bg-white/20 p-0.5 shrink-0 select-none pointer-events-none" 
-            alt="REBMA GHANA Logo" 
-          />
-          <div>
-            <h2 className="font-bold text-sm tracking-wide leading-none text-white">REBMA IMPEX GHANA</h2>
-            <span className="text-[10px] uppercase text-white/60 tracking-widest font-semibold font-mono">Impex ERP</span>
+        <div className="flex items-center justify-between px-3 mb-8">
+          <div className="flex items-center gap-3">
+            <img 
+              src="/logo.png" 
+              className="w-9 h-9 object-contain rounded-lg bg-white/20 p-0.5 shrink-0 select-none pointer-events-none" 
+              alt="REBMA GHANA Logo" 
+            />
+            <div>
+              <h2 className="font-bold text-sm tracking-wide leading-none text-white">REBMA IMPEX GHANA</h2>
+              <span className="text-[10px] uppercase text-white/60 tracking-widest font-semibold font-mono">Impex ERP</span>
+            </div>
           </div>
+          {onClose && (
+            <button 
+              onClick={onClose}
+              className="lg:hidden p-1.5 rounded-lg hover:bg-white/10 text-white/80 hover:text-white transition-colors cursor-pointer shrink-0"
+              title="Close Sidebar"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          )}
         </div>
 
         {/* Boardroom Quick Launch Button */}
