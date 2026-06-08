@@ -345,7 +345,78 @@ export default function ManagementDashboard({
   });
 
   return (
-    <div className="space-y-6">
+    <>
+      {/* ══ MOBILE LAYOUT (< lg) ══ */}
+      <div className="lg:hidden mobile-only space-y-4 pb-4 mobile-animate-up">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-lg font-bold text-slate-800 tracking-tight">Management</h1>
+            <p className="text-[11px] text-slate-400 mt-0.5">Cargo approvals & credit control</p>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={() => exportToCSV(localGoods, ['id', 'goodsName', 'quantity', 'portName', 'status'], 'cargo_list')} className="p-2 bg-white rounded-xl border border-slate-200 shadow-sm"><FileSpreadsheet className="w-4 h-4 text-slate-500" /></button>
+            <button onClick={() => exportToPDF('Management Report', localGoods, ['id', 'goodsName', 'quantity', 'status'])} className="p-2 bg-white rounded-xl border border-slate-200 shadow-sm"><FileText className="w-4 h-4 text-slate-500" /></button>
+          </div>
+        </div>
+
+        <div className="mobile-physical-card" style={{ background: 'linear-gradient(135deg, #312e81 0%, #0f172a 100%)' }}>
+          <div className="flex justify-between items-start relative z-10">
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-white/60 font-bold">Cargo Awaiting Approval</p>
+              <h2 className="text-3xl font-extrabold text-white mt-1 tracking-tight">{pendingCargoCount} Batches</h2>
+              <p className="text-[10px] text-white/70 mt-1">{pendingCreditCount} Credit Audits Pending</p>
+            </div>
+            <div className="mobile-card-chip mt-1" />
+          </div>
+          <div className="flex justify-between items-end mt-8 relative z-10">
+            <div>
+              <p className="text-[10px] font-mono tracking-widest text-white/60">{approvedOrdersCount} Orders Authorized</p>
+              <p className="text-[10px] font-bold text-white/80 mt-1 uppercase tracking-wider">GHS {totalApprovedValue.toLocaleString()} Approved</p>
+            </div>
+            <div className="mobile-card-circles"><div className="mobile-card-circle-1" /><div className="mobile-card-circle-2" /></div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          {[
+            { label: 'Authorized', value: `${approvedOrdersCount}`, sub: 'Orders cleared', bg: '#f0fdf4', color: '#16a34a', icon: ShieldCheck },
+            { label: 'Net Value', value: `GHS ${(totalApprovedValue/1000).toFixed(0)}k`, sub: 'Approved funds', bg: '#eef2ff', color: '#6366f1', icon: DollarSign },
+          ].map((s, i) => { const Icon = s.icon; return (
+            <div key={i} className="mobile-stat-card">
+              <div className="mobile-stat-icon" style={{ background: s.bg }}><Icon className="w-5 h-5" style={{ color: s.color }} /></div>
+              <div className="min-w-0">
+                <p className="text-[9px] text-slate-400 uppercase font-bold tracking-wider">{s.label}</p>
+                <p className="text-sm font-bold text-slate-800 mt-0.5">{s.value}</p>
+                <p className="text-[9px] text-slate-400">{s.sub}</p>
+              </div>
+            </div>
+          ); })}
+        </div>
+
+        <div>
+          <p className="mobile-section-label">Incoming Cargo Queue</p>
+          <div className="space-y-2">
+            {localGoods.slice(0, 6).map(g => (
+              <div key={g.id} className="mobile-data-row">
+                <div className="mobile-data-row-icon" style={{ background: g.status === 'APPROVED' ? '#f0fdf4' : g.status === 'PENDING_MANAGEMENT_APPROVAL' ? '#fefce8' : '#fff7ed', color: g.status === 'APPROVED' ? '#16a34a' : '#d97706' }}>
+                  <Clipboard className="w-5 h-5" style={{ color: g.status === 'APPROVED' ? '#16a34a' : '#d97706' }} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold text-slate-800 truncate">{g.productName || 'Unnamed Cargo'}</p>
+                  <p className="text-[10px] text-slate-400 truncate">{g.quantity} units • {g.country}</p>
+                </div>
+                <span className={`mobile-status-pill ${g.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-700' : g.status === 'PENDING_MANAGEMENT_APPROVAL' ? 'bg-amber-50 text-amber-700' : 'bg-slate-100 text-slate-500'}`}>
+                  {g.status.replace(/_/g, ' ')}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ══ DESKTOP LAYOUT (lg+) — UNCHANGED ══ */}
+      <div className="hidden lg:block">
+      <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
@@ -995,6 +1066,8 @@ export default function ManagementDashboard({
           </div>
         )}
       </div>
-    </div>
+      </div>
+      </div>
+    </>
   );
 }

@@ -332,7 +332,7 @@ export default function FinanceDashboard({
 
   if (activeMobileDetail) {
     return (
-      <div className="lg:hidden bg-slate-50 dark:bg-slate-900 min-h-screen p-4 pb-24 space-y-6 animate-fade-in-up text-slate-800 dark:text-slate-200">
+      <div className="lg:hidden bg-white min-h-screen p-4 pb-24 space-y-6 animate-fade-in-up text-slate-800">
         {/* Header with Back button */}
         <div className="flex items-center gap-3">
           <button 
@@ -500,7 +500,76 @@ export default function FinanceDashboard({
   }
 
   return (
-    <div className="space-y-6">
+    <>
+      {/* ══ MOBILE LAYOUT (< lg) ══ */}
+      <div className="lg:hidden mobile-only space-y-4 pb-4 mobile-animate-up">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-lg font-bold text-slate-800 tracking-tight">Finance</h1>
+            <p className="text-[11px] text-slate-400 mt-0.5">Revenue tracking & payments</p>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={() => exportToCSV(localPayments, ['id', 'clientName', 'amount', 'paymentMethod', 'createdAt'], 'payments')} className="p-2 bg-white rounded-xl border border-slate-200 shadow-sm"><FileSpreadsheet className="w-4 h-4 text-slate-500" /></button>
+            <button onClick={() => exportToPDF('Finance Report', localPayments, ['id', 'clientName', 'amount'])} className="p-2 bg-white rounded-xl border border-slate-200 shadow-sm"><FileText className="w-4 h-4 text-slate-500" /></button>
+          </div>
+        </div>
+
+        <div className="mobile-physical-card" style={{ background: 'linear-gradient(135deg, #064e29 0%, #0f172a 100%)' }}>
+          <div className="flex justify-between items-start relative z-10">
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-white/60 font-bold">Total Revenue</p>
+              <h2 className="text-3xl font-extrabold text-white mt-1 tracking-tight">GHS {totalRevenueVal.toLocaleString()}</h2>
+              <p className="text-[10px] text-white/70 mt-1">{pendingFinanceCount} Orders Pending Review</p>
+            </div>
+            <div className="mobile-card-chip mt-1" />
+          </div>
+          <div className="flex justify-between items-end mt-8 relative z-10">
+            <div>
+              <p className="text-[10px] font-mono tracking-widest text-white/60">{recordedPaymentsCount} Payment Receipts</p>
+              <p className="text-[10px] font-bold text-white/80 mt-1 uppercase tracking-wider">GHS {liquidCashVal.toLocaleString()} Liquid Cash</p>
+            </div>
+            <div className="mobile-card-circles"><div className="mobile-card-circle-1" /><div className="mobile-card-circle-2" /></div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          {[
+            { label: 'Payments', value: `${recordedPaymentsCount}`, sub: 'Receipts logged', bg: '#eff6ff', color: '#3b82f6', icon: ShieldCheck },
+            { label: 'Cash Inflow', value: `GHS ${(liquidCashVal/1000).toFixed(0)}k`, sub: 'Direct collections', bg: '#f0fdf4', color: '#16a34a', icon: Activity },
+          ].map((s, i) => { const Icon = s.icon; return (
+            <div key={i} className="mobile-stat-card">
+              <div className="mobile-stat-icon" style={{ background: s.bg }}><Icon className="w-5 h-5" style={{ color: s.color }} /></div>
+              <div className="min-w-0">
+                <p className="text-[9px] text-slate-400 uppercase font-bold tracking-wider">{s.label}</p>
+                <p className="text-sm font-bold text-slate-800 mt-0.5">{s.value}</p>
+                <p className="text-[9px] text-slate-400">{s.sub}</p>
+              </div>
+            </div>
+          ); })}
+        </div>
+
+        <div>
+          <p className="mobile-section-label">Recent Payments</p>
+          <div className="space-y-2">
+            {localPayments.slice(0, 5).map(pay => (
+              <div key={pay.id} onClick={() => setActiveMobileDetail({ type: 'payment', data: pay })} className="mobile-data-row cursor-pointer">
+                <div className="mobile-data-row-icon" style={{ background: '#f0fdf4', color: '#16a34a' }}>
+                  <DollarSign className="w-5 h-5" style={{ color: '#16a34a' }} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold text-slate-800 truncate">{pay.clientName}</p>
+                  <p className="text-[10px] text-slate-400 truncate">GHS {pay.amount.toLocaleString()} • {pay.paymentMode}</p>
+                </div>
+                <span className="mobile-status-pill bg-emerald-50 text-emerald-700">Paid</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ══ DESKTOP LAYOUT (lg+) — UNCHANGED ══ */}
+      <div className="hidden lg:block">
+      <div className="space-y-6">
       {/* Ticket Modal */}
       {selectedTicket && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-0 sm:p-4" onClick={() => setSelectedTicket(null)}>
@@ -1182,6 +1251,8 @@ export default function FinanceDashboard({
           </div>
         )}
       </div>
-    </div>
+      </div>
+      </div>
+    </>
   );
 }

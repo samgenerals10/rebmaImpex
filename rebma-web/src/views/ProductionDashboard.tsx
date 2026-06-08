@@ -383,7 +383,7 @@ export default function ProductionDashboard({
 
   if (activeMobileDetail) {
     return (
-      <div className="lg:hidden bg-slate-50 dark:bg-slate-900 min-h-screen p-4 pb-24 space-y-6 animate-fade-in-up text-slate-800 dark:text-slate-200">
+      <div className="lg:hidden bg-white min-h-screen p-4 pb-24 space-y-6 animate-fade-in-up text-slate-800">
         {/* Header with Back button */}
         <div className="flex items-center gap-3">
           <button 
@@ -608,7 +608,98 @@ export default function ProductionDashboard({
   }
 
   return (
-    <div className="space-y-6">
+    <>
+      {/* ══ MOBILE LAYOUT (< lg) ══ */}
+      <div className="lg:hidden mobile-only space-y-4 pb-4 mobile-animate-up">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-lg font-bold text-slate-800 tracking-tight">Production</h1>
+            <p className="text-[11px] text-slate-400 mt-0.5">Floor control & requisitions</p>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={() => exportToCSV(productionRequests, ['id', 'status', 'createdAt'], 'production_requests')} className="p-2 bg-white rounded-xl border border-slate-200 shadow-sm"><FileSpreadsheet className="w-4 h-4 text-slate-500" /></button>
+            <button onClick={() => exportToPDF('Production Report', productionRequests, ['id', 'status'])} className="p-2 bg-white rounded-xl border border-slate-200 shadow-sm"><FileText className="w-4 h-4 text-slate-500" /></button>
+          </div>
+        </div>
+
+        <div className="mobile-physical-card" style={{ background: 'linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%)' }}>
+          <div className="flex justify-between items-start relative z-10">
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-white/60 font-bold">Requisition Orders</p>
+              <h2 className="text-3xl font-extrabold text-white mt-1 tracking-tight">{totalRequests} Requests</h2>
+              <p className="text-[10px] text-white/70 mt-1">{approvedCount} Approved • {completedCount} Completed</p>
+            </div>
+            <div className="mobile-card-chip mt-1" />
+          </div>
+          <div className="flex justify-between items-end mt-8 relative z-10">
+            <div>
+              <p className="text-[10px] font-mono tracking-widest text-white/60">{totalUnits.toLocaleString()} Total Units</p>
+              <p className="text-[10px] font-bold text-white/80 mt-1 uppercase tracking-wider">Production Floor System</p>
+            </div>
+            <div className="mobile-card-circles"><div className="mobile-card-circle-1" /><div className="mobile-card-circle-2" /></div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          {[
+            { label: 'Approved', value: `${approvedCount}`, sub: 'Management cleared', bg: '#f0fdf4', color: '#16a34a', icon: ShieldCheck },
+            { label: 'Completed', value: `${completedCount}`, sub: 'Warehouse issued', bg: '#eef2ff', color: '#6366f1', icon: Factory },
+          ].map((s, i) => { const Icon = s.icon; return (
+            <div key={i} className="mobile-stat-card">
+              <div className="mobile-stat-icon" style={{ background: s.bg }}><Icon className="w-5 h-5" style={{ color: s.color }} /></div>
+              <div className="min-w-0">
+                <p className="text-[9px] text-slate-400 uppercase font-bold tracking-wider">{s.label}</p>
+                <p className="text-sm font-bold text-slate-800 mt-0.5">{s.value}</p>
+                <p className="text-[9px] text-slate-400">{s.sub}</p>
+              </div>
+            </div>
+          ); })}
+        </div>
+
+        <div>
+          <p className="mobile-section-label">Production Requests</p>
+          <div className="space-y-2">
+            {productionRequests.slice(0, 6).map(req => (
+              <div key={req.id} onClick={() => setActiveMobileDetail({ type: 'requisition', data: req })} className="mobile-data-row cursor-pointer">
+                <div className="mobile-data-row-icon" style={{ background: req.status === 'APPROVED' ? '#f0fdf4' : req.status === 'COMPLETED' || req.status === 'TICKETS_ISSUED' ? '#eef2ff' : '#fefce8', color: req.status === 'APPROVED' ? '#16a34a' : req.status === 'COMPLETED' || req.status === 'TICKETS_ISSUED' ? '#6366f1' : '#d97706' }}>
+                  <Layers className="w-5 h-5" style={{ color: req.status === 'APPROVED' ? '#16a34a' : req.status === 'COMPLETED' || req.status === 'TICKETS_ISSUED' ? '#6366f1' : '#d97706' }} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold text-slate-800 truncate">{req.id}</p>
+                  <p className="text-[10px] text-slate-400 truncate">{req.items.map(i => i.materialName).join(', ')}</p>
+                </div>
+                <span className={`mobile-status-pill ${
+                  req.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-700' :
+                  req.status === 'COMPLETED' || req.status === 'TICKETS_ISSUED' ? 'bg-indigo-50 text-indigo-700' :
+                  'bg-amber-50 text-amber-700'
+                }`}>{req.status.replace(/_/g, ' ')}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* WIP Stock mini list */}
+        <div>
+          <p className="mobile-section-label">WIP Stock</p>
+          <div className="space-y-2">
+            {localWip.map(w => (
+              <div key={w.id} className="mobile-data-row">
+                <div className="mobile-data-row-icon" style={{ background: '#f5f3ff', color: '#7c3aed' }}>
+                  <Package className="w-5 h-5" style={{ color: '#7c3aed' }} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold text-slate-800 truncate">{w.productName}</p>
+                  <p className="text-[10px] text-slate-400 truncate">{w.stage} • {w.qty} units</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ══ DESKTOP LAYOUT (lg+) — UNCHANGED ══ */}
+      <div className="hidden lg:block">
+      <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
@@ -1267,6 +1358,8 @@ export default function ProductionDashboard({
           </div>
         )}
       </div>
-    </div>
+      </div>
+      </div>
+    </>
   );
 }

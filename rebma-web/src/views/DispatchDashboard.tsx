@@ -173,7 +173,7 @@ export default function DispatchDashboard({
 
   if (activeMobileDetail) {
     return (
-      <div className="lg:hidden bg-slate-50 dark:bg-slate-900 min-h-screen p-4 pb-24 space-y-6 animate-fade-in-up text-slate-800 dark:text-slate-200">
+      <div className="lg:hidden bg-white min-h-screen p-4 pb-24 space-y-6 animate-fade-in-up text-slate-800">
         {/* Header with Back button */}
         <div className="flex items-center gap-3">
           <button 
@@ -271,7 +271,124 @@ export default function DispatchDashboard({
   }
 
   return (
-    <div className="space-y-6">
+    <>
+      {/* ══════════════ MOBILE LAYOUT (< lg) ══════════════ */}
+      <div className="lg:hidden mobile-only space-y-4 pb-4 mobile-animate-up">
+
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-lg font-bold text-slate-800 tracking-tight">Dispatch Fleet</h1>
+            <p className="text-[11px] text-slate-400 mt-0.5">Active routes & delivery history</p>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={() => exportToCSV(localDeliveries, ['id', 'orderId', 'clientName', 'destination', 'driverName', 'status'], 'dispatch_logs')} className="p-2 bg-white rounded-xl border border-slate-200 shadow-sm">
+              <FileSpreadsheet className="w-4 h-4 text-slate-500" />
+            </button>
+            <button onClick={() => exportToPDF('Dispatch Logs', localDeliveries, ['id', 'orderId', 'clientName', 'status'])} className="p-2 bg-white rounded-xl border border-slate-200 shadow-sm">
+              <FileText className="w-4 h-4 text-slate-500" />
+            </button>
+          </div>
+        </div>
+
+        {/* Physical hero card */}
+        <div className="mobile-physical-card" style={{ background: 'linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%)' }}>
+          <div className="flex justify-between items-start relative z-10">
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-white/60 font-bold">Active Routes</p>
+              <h2 className="text-3xl font-extrabold text-white mt-1 tracking-tight">{inTransit} Live Route{inTransit !== 1 ? 's' : ''}</h2>
+              <p className="text-[10px] text-white/70 mt-1">{completedDeliveries} Deliveries Completed</p>
+            </div>
+            <div className="mobile-card-chip mt-1" />
+          </div>
+          <div className="flex justify-between items-end mt-8 relative z-10">
+            <div>
+              <p className="text-[10px] font-mono tracking-widest text-white/60">96.8% On-Time Rate</p>
+              <p className="text-[10px] font-bold text-white/80 mt-1 uppercase tracking-wider">{activeDrivers} Drivers Active</p>
+            </div>
+            <div className="mobile-card-circles">
+              <div className="mobile-card-circle-1" />
+              <div className="mobile-card-circle-2" />
+            </div>
+          </div>
+        </div>
+
+        {/* Stat row */}
+        <div className="grid grid-cols-2 gap-3">
+          {[
+            { label: 'Completed', value: `${completedDeliveries}`, sub: 'Dispatched', bg: '#f0fdf4', color: '#16a34a', icon: ShieldCheck },
+            { label: 'Drivers Online', value: `${activeDrivers}`, sub: 'Active sessions', bg: '#fef3c7', color: '#d97706', icon: Users },
+          ].map((s, i) => {
+            const Icon = s.icon;
+            return (
+              <div key={i} className="mobile-stat-card">
+                <div className="mobile-stat-icon" style={{ background: s.bg }}>
+                  <Icon className="w-5 h-5" style={{ color: s.color }} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[9px] text-slate-400 uppercase font-bold tracking-wider">{s.label}</p>
+                  <p className="text-sm font-bold text-slate-800 mt-0.5">{s.value}</p>
+                  <p className="text-[9px] text-slate-400">{s.sub}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Drivers list */}
+        <div>
+          <p className="mobile-section-label">Drivers</p>
+          <div className="space-y-2">
+            {seedDrivers.map(d => (
+              <div key={d.id} className="mobile-data-row">
+                <div className="mobile-data-row-icon" style={{ background: d.status === 'ON_DELIVERY' ? '#eff6ff' : d.status === 'ACTIVE' ? '#f0fdf4' : '#f8fafc', color: d.status === 'ON_DELIVERY' ? '#3b82f6' : d.status === 'ACTIVE' ? '#16a34a' : '#94a3b8' }}>
+                  {d.fullName[0]}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold text-slate-800 truncate">{d.fullName}</p>
+                  <p className="text-[10px] text-slate-400 truncate">{d.truckId} • {d.totalDeliveries} deliveries</p>
+                </div>
+                <span className={`mobile-status-pill ${
+                  d.status === 'ON_DELIVERY' ? 'bg-blue-50 text-blue-700' : 
+                  d.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-700' : 
+                  'bg-slate-100 text-slate-500'
+                }`}>
+                  {d.status.replace('_', ' ')}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Deliveries list */}
+        <div>
+          <p className="mobile-section-label">Delivery Logs</p>
+          <div className="space-y-2">
+            {sortedDeliveries.map(del => (
+              <div key={del.id} onClick={() => setActiveMobileDetail(del)} className="mobile-data-row cursor-pointer">
+                <div className="mobile-data-row-icon" style={{ background: del.status === 'DELIVERED' ? '#f0fdf4' : del.status === 'IN_TRANSIT' ? '#eff6ff' : '#fff7ed' }}>
+                  <Truck className="w-5 h-5" style={{ color: del.status === 'DELIVERED' ? '#16a34a' : del.status === 'IN_TRANSIT' ? '#3b82f6' : '#d97706' }} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold text-slate-800 truncate">{del.clientName}</p>
+                  <p className="text-[10px] text-slate-400 truncate">{del.destination}</p>
+                </div>
+                <span className={`mobile-status-pill ${
+                  del.status === 'DELIVERED' ? 'bg-emerald-50 text-emerald-700' : 
+                  del.status === 'IN_TRANSIT' ? 'bg-blue-50 text-blue-700' : 
+                  'bg-amber-50 text-amber-700'
+                }`}>
+                  {del.status === 'IN_TRANSIT' ? 'Transit' : del.status === 'DELIVERED' ? 'Done' : del.status}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ══════════════ DESKTOP LAYOUT (lg+) — UNCHANGED ══════════════ */}
+      <div className="hidden lg:block">
+      <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
@@ -633,6 +750,8 @@ export default function DispatchDashboard({
           </div>
         )}
       </div>
-    </div>
+      </div>
+      </div>
+    </>
   );
 }

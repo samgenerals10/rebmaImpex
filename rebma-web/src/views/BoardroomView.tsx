@@ -128,7 +128,110 @@ export default function BoardroomView({
   });
 
   return (
-    <div className="space-y-6">
+    <>
+      {/* ══ MOBILE LAYOUT (< lg) ══ */}
+      <div className="lg:hidden mobile-only space-y-4 pb-4 mobile-animate-up">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-lg font-bold text-slate-800 tracking-tight">Boardroom</h1>
+            <p className="text-[11px] text-slate-400 mt-0.5">Announcements & schedules</p>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={handleExportCSV} className="p-2 bg-white rounded-xl border border-slate-200 shadow-sm" title="Export CSV">
+              <FileSpreadsheet className="w-4 h-4 text-slate-500" />
+            </button>
+            <button onClick={handleExportPDF} className="p-2 bg-white rounded-xl border border-slate-200 shadow-sm" title="Export PDF">
+              <FileText className="w-4 h-4 text-slate-500" />
+            </button>
+          </div>
+        </div>
+
+        {/* Physical Gradient Card */}
+        <div className="mobile-physical-card" style={{ background: 'linear-gradient(135deg, #4f46e5 0%, #3730a3 100%)' }}>
+          <div className="flex justify-between items-start relative z-10">
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-white/60 font-bold">Scheduled Meetings</p>
+              <h2 className="text-3xl font-extrabold text-white mt-1 tracking-tight">{meetingsList.length} Meetings</h2>
+              <p className="text-[10px] text-white/70 mt-1">Live Jitsi channel enabled</p>
+            </div>
+            <div className="mobile-card-chip mt-1" />
+          </div>
+          <div className="flex justify-between items-end mt-8 relative z-10">
+            <div>
+              <p className="text-[10px] font-mono tracking-widest text-white/60">•••• •••• •••• 1010</p>
+              <p className="text-[10px] font-bold text-white/80 mt-1 uppercase tracking-wider">Executive Boardroom Office</p>
+            </div>
+            <div className="mobile-card-circles">
+              <div className="mobile-card-circle-1" />
+              <div className="mobile-card-circle-2" />
+            </div>
+          </div>
+        </div>
+
+        {/* Meeting Calendar List */}
+        <div>
+          <p className="mobile-section-label">Upcoming Calendar Meetings</p>
+          <div className="space-y-2">
+            {meetingsList.slice(0, 3).map(mtg => (
+              <div key={mtg.id} className="mobile-data-row flex-col items-start gap-2">
+                <div className="flex items-center justify-between w-full">
+                  <div className="flex items-center gap-2">
+                    <div className="mobile-data-row-icon bg-indigo-50 text-indigo-600">
+                      <Calendar className="w-5 h-5 text-indigo-600" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-slate-800">{mtg.title}</p>
+                      <p className="text-[9px] text-slate-400 font-mono">{mtg.date} at {mtg.time}</p>
+                    </div>
+                  </div>
+                  <a href="https://meet.jit.si/RembaImpexGhanaExecutiveBoardroom_101" target="_blank" rel="noreferrer" className="px-2 py-1 bg-emerald-50 text-emerald-700 rounded text-[10px] font-bold">
+                    Join Stream
+                  </a>
+                </div>
+              </div>
+            ))}
+            {meetingsList.length === 0 && (
+              <p className="text-xs text-slate-400 text-center py-4 bg-slate-50 rounded-xl">No boardroom meetings scheduled</p>
+            )}
+          </div>
+        </div>
+
+        {/* Public Announcements board */}
+        <div>
+          <p className="mobile-section-label">Public Announcements ({publicMessages.length})</p>
+          <div className="bg-white rounded-2xl border border-slate-100 p-3 shadow-sm space-y-3">
+            <div className="max-h-48 overflow-y-auto space-y-2 pr-1">
+              {publicMessages.slice(-5).map(msg => (
+                <div key={msg.id} className="text-xs">
+                  <div className="flex items-center gap-1.5 font-bold text-[10px] text-slate-500">
+                    <span>{msg.sender}</span>
+                    <span className="font-normal text-[9px] text-slate-400">• {msg.time}</span>
+                  </div>
+                  <p className="text-slate-800 mt-0.5 bg-slate-50 rounded-lg p-2">{msg.content}</p>
+                </div>
+              ))}
+              {publicMessages.length === 0 && (
+                <p className="text-xs text-slate-400 text-center py-4">No announcements posted.</p>
+              )}
+            </div>
+            <form onSubmit={handleSendAnnouncement} className="flex gap-1">
+              <input 
+                type="text" 
+                value={announcementText} 
+                onChange={e => setAnnouncementText(e.target.value)} 
+                placeholder="Broadcast to boardroom..." 
+                className="flex-1 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none"
+              />
+              <button type="submit" className="p-1.5 bg-blue-600 text-white rounded-xl"><Send className="w-4 h-4" /></button>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      {/* ══ DESKTOP LAYOUT (lg+) ══ */}
+      <div className="hidden lg:block">
+      <div className="space-y-6">
       {/* Title Row */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
@@ -478,6 +581,8 @@ export default function BoardroomView({
           </div>
         )}
       </div>
-    </div>
+      </div>
+      </div>
+    </>
   );
 }

@@ -5,8 +5,8 @@ import { auth } from '../services/apiClient';
 import { supabase } from '../lib/supabaseClient';
 
 interface SettingsDashboardProps {
-  theme: 'breeze' | 'seven' | 'royal' | 'mint' | 'sunset' | 'forest' | 'ghana';
-  setTheme: (theme: 'breeze' | 'seven' | 'royal' | 'mint' | 'sunset' | 'forest' | 'ghana') => void;
+  theme: string;
+  setTheme: (theme: string) => void;
   whitelistedCeos: string;
   setWhitelistedCeos: (emails: string) => void;
   smsGateway: string;
@@ -26,6 +26,20 @@ interface SettingsDashboardProps {
   setReducedMotion: (val: boolean) => void;
   glassTheme: string;
   setGlassTheme: (val: string) => void;
+  fontFamily: string;
+  setFontFamily: (val: string) => void;
+  fontSize: string;
+  setFontSize: (val: string) => void;
+  navStyle: string;
+  setNavStyle: (val: string) => void;
+  buttonStyle: string;
+  setButtonStyle: (val: string) => void;
+  cardStyle: string;
+  setCardStyle: (val: string) => void;
+  density: string;
+  setDensity: (val: string) => void;
+  motion: string;
+  setMotion: (val: string) => void;
 }
 
 export default function SettingsDashboard({
@@ -49,7 +63,21 @@ export default function SettingsDashboard({
   reducedMotion,
   setReducedMotion,
   glassTheme,
-  setGlassTheme
+  setGlassTheme,
+  fontFamily,
+  setFontFamily,
+  fontSize,
+  setFontSize,
+  navStyle,
+  setNavStyle,
+  buttonStyle,
+  setButtonStyle,
+  cardStyle,
+  setCardStyle,
+  density,
+  setDensity,
+  motion,
+  setMotion
 }: SettingsDashboardProps) {
 
   // Profile editable fields
@@ -417,32 +445,57 @@ export default function SettingsDashboard({
 
       {/* DISPLAY & APPEARANCE */}
       {activeSubTab === 'Appearance' && (
-        <div className="max-w-xl space-y-6">
-          <div className="p-4 md:p-6 app-card space-y-6 animate-fade-in-up">
-            <div>
-              <h3 className="text-base md:text-lg font-bold">Display & Appearance</h3>
-              <p className="text-xs text-slate-400 mb-2">Customize the visual presentation and system themes of your ERP terminal.</p>
-            </div>
-
-            {/* Dark Mode */}
-            <div className="flex justify-between items-center p-3 bg-slate-50 dark:bg-slate-800/40 border border-custom rounded-xl">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in-up">
+          
+          {/* Controls - Column 1 & 2 */}
+          <div className="lg:col-span-2 space-y-6">
+            
+            {/* Theme Preset selector */}
+            <div className="p-4 md:p-6 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl space-y-6 shadow-sm">
               <div>
-                <p className="text-xs font-semibold text-slate-700 dark:text-slate-200">Dark Mode</p>
-                <p className="text-[10px] text-slate-400">Apply dark colors across the interface</p>
+                <h3 className="text-sm font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">System Theme Preset</h3>
+                <p className="text-[11px] text-slate-400">Select one of our 10 dynamic color configurations.</p>
               </div>
-              <button
-                type="button"
-                onClick={() => setDarkMode(!darkMode)}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${darkMode ? 'bg-blue-600' : 'bg-slate-300'}`}
-              >
-                <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${darkMode ? 'translate-x-6' : 'translate-x-1'}`} />
-              </button>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { id: 'arctic-white', label: 'Arctic White', desc: 'Light contrast style' },
+                  { id: 'rose-quartz', label: 'Rose Quartz', desc: 'Earthy pastel quartz' },
+                  { id: 'midnight-navy', label: 'Midnight Navy', desc: 'Premium royal blue' },
+                  { id: 'emerald-pro', label: 'Emerald Pro', desc: 'Teal corporate design' },
+                  { id: 'royal-purple', label: 'Royal Purple', desc: 'Rich indigo amethyst' },
+                  { id: 'sunset-orange', label: 'Sunset Orange', desc: 'Warm active amber' },
+                  { id: 'ocean-blue', label: 'Ocean Blue', desc: 'Calming azure water' },
+                  { id: 'charcoal-dark', label: 'Charcoal Dark', desc: 'Elegant carbon dark' },
+                  { id: 'lavender-mist', label: 'Lavender Mist', desc: 'Soft violet focus' },
+                  { id: 'golden-sand', label: 'Golden Sand', desc: 'Luxury champagne sand' },
+                ].map(t => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => setTheme(t.id)}
+                    className={`p-3 text-left border rounded-2xl hover:scale-[1.01] transition-all cursor-pointer ${
+                      theme === t.id
+                        ? 'border-[var(--accent,#068d5c)] bg-[var(--accent-light,rgba(6,141,92,0.1))]'
+                        : 'border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 hover:bg-slate-50 dark:hover:bg-slate-800'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-bold text-slate-800 dark:text-slate-200">{t.label}</p>
+                      {theme === t.id && <span className="w-2 h-2 rounded-full" style={{ backgroundColor: accentColor }} />}
+                    </div>
+                    <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">{t.desc}</p>
+                  </button>
+                ))}
+              </div>
             </div>
 
-            {/* Accent Color Picker */}
-            <div className="space-y-2.5">
-              <label className="block text-xs font-semibold text-slate-500 mb-1.5">Accent Color</label>
-              <div className="flex items-center gap-3.5 flex-wrap">
+            {/* Accent Color picker */}
+            <div className="p-4 md:p-6 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl space-y-4 shadow-sm">
+              <div>
+                <h3 className="text-sm font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">System Accent Swatch</h3>
+                <p className="text-[11px] text-slate-400">Apply a custom action highlight color across interactive components.</p>
+              </div>
+              <div className="flex items-center gap-2.5 flex-wrap">
                 {[
                   { hex: '#068d5c', name: 'Green' },
                   { hex: '#3b82f6', name: 'Blue' },
@@ -450,21 +503,23 @@ export default function SettingsDashboard({
                   { hex: '#f97316', name: 'Orange' },
                   { hex: '#f43f5e', name: 'Rose' },
                   { hex: '#14b8a6', name: 'Teal' },
+                  { hex: '#0ea5e9', name: 'Sky' },
+                  { hex: '#eab308', name: 'Yellow' }
                 ].map(c => {
-                  const isSelected = accentColor === c.hex;
+                  const isSelected = accentColor.toLowerCase() === c.hex.toLowerCase();
                   return (
                     <button
                       key={c.hex}
                       type="button"
                       onClick={() => setAccentColor(c.hex)}
-                      className={`w-9 h-9 rounded-full relative hover:scale-110 transition-transform cursor-pointer border-2 ${
-                        isSelected ? 'border-slate-800 dark:border-white ring-2 ring-slate-400/50' : 'border-transparent'
+                      className={`w-10 h-10 rounded-full relative hover:scale-105 active:scale-95 transition-all cursor-pointer border-2 ${
+                        isSelected ? 'border-slate-800 dark:border-white ring-2 ring-offset-2 ring-slate-400 dark:ring-offset-slate-900' : 'border-transparent'
                       }`}
                       style={{ backgroundColor: c.hex }}
                       title={c.name}
                     >
                       {isSelected && (
-                        <span className="absolute inset-0 flex items-center justify-center text-white text-[10px] font-bold">✓</span>
+                        <span className="absolute inset-0 flex items-center justify-center text-white text-xs font-bold shadow-sm">✓</span>
                       )}
                     </button>
                   );
@@ -472,55 +527,264 @@ export default function SettingsDashboard({
               </div>
             </div>
 
-            {/* Motion Toggle */}
-            <div className="flex justify-between items-center p-3 bg-slate-50 dark:bg-slate-800/40 border border-custom rounded-xl">
+            {/* Layout Options */}
+            <div className="p-4 md:p-6 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl space-y-6 shadow-sm">
               <div>
-                <p className="text-xs font-semibold text-slate-700 dark:text-slate-200">Reduce Motion</p>
-                <p className="text-[10px] text-slate-400">Disable transitions and animations across components</p>
+                <h3 className="text-sm font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">Typography & Interface Styles</h3>
+                <p className="text-[11px] text-slate-400">Fine-tune font scaling, shape profiles, and layout patterns.</p>
               </div>
-              <button
-                type="button"
-                onClick={() => setReducedMotion(!reducedMotion)}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${reducedMotion ? 'bg-blue-600' : 'bg-slate-300'}`}
-              >
-                <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${reducedMotion ? 'translate-x-6' : 'translate-x-1'}`} />
-              </button>
-            </div>
 
-            {/* Glass Themes */}
-            <div className="space-y-3">
-              <div>
-                <p className="text-xs font-semibold text-slate-700 dark:text-slate-200">Glass Theme</p>
-                <p className="text-[10px] text-slate-400">Enable frosted glass effects with custom shades</p>
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {[
-                  { id: 'none', label: 'Default Theme UI', desc: 'Solid theme panels', bg: 'bg-slate-100 dark:bg-slate-800' },
-                  { id: 'crystal', label: 'Crystal Clear', desc: 'White frost glass', bg: 'bg-white/30 backdrop-blur-md border border-white/20' },
-                  { id: 'midnight', label: 'Midnight Glass', desc: 'Dark navy glass', bg: 'bg-slate-950/40 backdrop-blur-md border border-white/10 text-white' },
-                  { id: 'emerald', label: 'Emerald Frost', desc: 'Green tint glass', bg: 'bg-emerald-950/30 backdrop-blur-md border border-emerald-500/20 text-emerald-200' },
-                  { id: 'sapphire', label: 'Sapphire Mist', desc: 'Blue tint glass', bg: 'bg-blue-950/30 backdrop-blur-md border border-blue-500/20 text-blue-200' },
-                  { id: 'rose', label: 'Rose Quartz', desc: 'Pink tint glass', bg: 'bg-rose-950/30 backdrop-blur-md border border-rose-500/20 text-rose-200' },
-                ].map(g => {
-                  const isSelected = glassTheme === g.id;
-                  return (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                
+                {/* Font Family */}
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-semibold text-slate-500">Font Family</label>
+                  <select
+                    value={fontFamily}
+                    onChange={e => setFontFamily(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-slate-200 focus:outline-none"
+                  >
+                    {['Inter', 'Poppins', 'DM Sans', 'Nunito', 'Outfit'].map(f => (
+                      <option key={f} value={f}>{f}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Font Size */}
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-semibold text-slate-500">Font Size Scale</label>
+                  <div className="flex bg-slate-50 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
+                    {['Small', 'Medium', 'Large'].map(sz => (
+                      <button
+                        key={sz}
+                        type="button"
+                        onClick={() => setFontSize(sz)}
+                        className={`flex-1 py-1 text-[11px] font-bold rounded-lg transition-all cursor-pointer ${
+                          fontSize === sz
+                            ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-sm'
+                            : 'text-slate-400 dark:text-slate-500'
+                        }`}
+                      >
+                        {sz}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Navigation Style */}
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-semibold text-slate-500">Mobile Navigation Style</label>
+                  <div className="flex bg-slate-50 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
+                    {[
+                      { id: 'Pill', label: 'Floating Pill' },
+                      { id: 'Bar', label: 'Fixed Bar' }
+                    ].map(n => (
+                      <button
+                        key={n.id}
+                        type="button"
+                        onClick={() => setNavStyle(n.id)}
+                        className={`flex-1 py-1 text-[11px] font-bold rounded-lg transition-all cursor-pointer ${
+                          navStyle === n.id
+                            ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-sm'
+                            : 'text-slate-400 dark:text-slate-500'
+                        }`}
+                      >
+                        {n.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Button Style */}
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-semibold text-slate-500">Button Corner Radius</label>
+                  <div className="flex bg-slate-50 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
+                    {['Rounded', 'Soft', 'Sharp'].map(b => (
+                      <button
+                        key={b}
+                        type="button"
+                        onClick={() => setButtonStyle(b)}
+                        className={`flex-1 py-1 text-[11px] font-bold rounded-lg transition-all cursor-pointer ${
+                          buttonStyle === b
+                            ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-sm'
+                            : 'text-slate-400 dark:text-slate-500'
+                        }`}
+                      >
+                        {b}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Card Style */}
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-semibold text-slate-500">Card Frame Profile</label>
+                  <div className="flex bg-slate-50 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
+                    {['Float', 'Flat', 'Glass'].map(c => (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => setCardStyle(c)}
+                        className={`flex-1 py-1 text-[11px] font-bold rounded-lg transition-all cursor-pointer ${
+                          cardStyle === c
+                            ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-sm'
+                            : 'text-slate-400 dark:text-slate-500'
+                        }`}
+                      >
+                        {c}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Spacing Density */}
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-semibold text-slate-500">Padding & Spacing Density</label>
+                  <div className="flex bg-slate-50 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
+                    {['Compact', 'Normal', 'Comfortable'].map(d => (
+                      <button
+                        key={d}
+                        type="button"
+                        onClick={() => setDensity(d)}
+                        className={`flex-1 py-1 text-[11px] font-bold rounded-lg transition-all cursor-pointer ${
+                          density === d
+                            ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-sm'
+                            : 'text-slate-400 dark:text-slate-500'
+                        }`}
+                      >
+                        {d}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Motion Rules */}
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-semibold text-slate-500">Transitions & Motion Physics</label>
+                  <div className="flex bg-slate-50 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
+                    {['Full', 'Reduced', 'None'].map(m => (
+                      <button
+                        key={m}
+                        type="button"
+                        onClick={() => setMotion(m)}
+                        className={`flex-1 py-1 text-[11px] font-bold rounded-lg transition-all cursor-pointer ${
+                          motion === m
+                            ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-sm'
+                            : 'text-slate-400 dark:text-slate-500'
+                        }`}
+                      >
+                        {m}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Dark Mode Switch */}
+                <div className="space-y-1.5 flex flex-col justify-end">
+                  <div className="flex justify-between items-center p-2.5 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 h-10">
+                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">Dark Mode</span>
                     <button
-                      key={g.id}
                       type="button"
-                      onClick={() => setGlassTheme(g.id)}
-                      className={`p-3 text-left rounded-xl transition-all cursor-pointer hover:scale-102 flex flex-col justify-between h-20 ${g.bg} border ${
-                        isSelected ? 'border-slate-800 dark:border-white ring-2 ring-slate-400/50' : 'border-transparent'
-                      }`}
+                      onClick={() => setDarkMode(!darkMode)}
+                      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors cursor-pointer ${darkMode ? 'bg-blue-600' : 'bg-slate-300'}`}
                     >
-                      <p className="text-[10px] font-bold leading-tight">{g.label}</p>
-                      <p className="text-[8px] opacity-75 mt-0.5 leading-none">{g.desc}</p>
+                      <span className={`inline-block h-3 w-3 rounded-full bg-white shadow transition-transform ${darkMode ? 'translate-x-5' : 'translate-x-1'}`} />
                     </button>
-                  );
-                })}
+                  </div>
+                </div>
+
               </div>
             </div>
 
           </div>
+
+          {/* Live Preview - Column 3 */}
+          <div className="space-y-4">
+            <div className="sticky top-6">
+              <div className="p-4 md:p-6 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800/80 rounded-3xl space-y-4 shadow-inner">
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">Live Preview</h4>
+                  <p className="text-[10px] text-slate-400">Simulating active visual overrides instantly.</p>
+                </div>
+
+                {/* Simulated Screen Body Frame */}
+                <div 
+                  className={`p-4 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-805 rounded-2xl space-y-3 relative overflow-hidden transition-all duration-300`}
+                  style={{ fontFamily: fontFamily }}
+                >
+                  <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
+                    <span className="text-[10px] font-bold text-slate-800 dark:text-slate-200">ERP Terminal</span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  </div>
+
+                  {/* Simulated Card based on configurations */}
+                  <div 
+                    className={`bg-white dark:bg-slate-800 border transition-all duration-300 ${
+                      cardStyle === 'Float' ? 'shadow-md border-transparent' :
+                      cardStyle === 'Flat' ? 'border-slate-200 dark:border-slate-700' :
+                      'bg-white/40 dark:bg-slate-800/40 backdrop-blur-md border-white/20'
+                    } ${
+                      fontSize === 'Small' ? 'text-xs p-2' :
+                      fontSize === 'Medium' ? 'text-sm p-4' :
+                      'text-base p-6'
+                    } ${
+                      density === 'Compact' ? 'p-2 space-y-1' :
+                      density === 'Normal' ? 'p-4 space-y-3' :
+                      'p-6 space-y-5'
+                    }`}
+                    style={{ borderRadius: '24px' }}
+                  >
+                    <div className="flex justify-between items-center">
+                      <h5 className="font-bold text-slate-900 dark:text-white" style={{ fontSize: fontSize === 'Small' ? '12px' : fontSize === 'Medium' ? '14px' : '16px' }}>
+                        Active Balance
+                      </h5>
+                      <span className="text-[9px] px-2 py-0.5 rounded-full text-white font-bold" style={{ backgroundColor: accentColor }}>
+                        GHS
+                      </span>
+                    </div>
+
+                    <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: fontSize === 'Small' ? '10px' : fontSize === 'Medium' ? '11px' : '12px' }}>
+                      Samuel Remba • Port Operations Ledger
+                    </p>
+
+                    <p className="font-black text-slate-900 dark:text-white" style={{ fontSize: fontSize === 'Small' ? '16px' : fontSize === 'Medium' ? '20px' : '24px' }}>
+                      ₵ 142,500.00
+                    </p>
+
+                    {/* Button based on configurations */}
+                    <button
+                      type="button"
+                      className={`w-full py-2 text-xs font-bold text-white transition-all text-center flex items-center justify-center gap-1.5 shadow-sm`}
+                      style={{ 
+                        backgroundColor: accentColor, 
+                        borderRadius: buttonStyle === 'Rounded' ? '9999px' : buttonStyle === 'Soft' ? '12px' : '0px',
+                        transitionDuration: motion === 'None' ? '0ms' : motion === 'Reduced' ? '300ms' : '150ms'
+                      }}
+                    >
+                      Authorize Disbursal
+                    </button>
+                  </div>
+
+                  {/* Simulated Nav style representation */}
+                  <div className="pt-2 flex justify-center">
+                    <div 
+                      className={`h-4 border border-slate-200 dark:border-slate-800/80 text-[8px] flex items-center justify-center font-bold px-3 text-slate-400 ${
+                        navStyle === 'Pill' ? 'rounded-full w-24' : 'w-full'
+                      }`}
+                    >
+                      {navStyle === 'Pill' ? '💊 Pill Navigation' : '▬ Bar Navigation'}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Quick Helper info */}
+                <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-2xl text-[10px] text-amber-700 dark:text-amber-300">
+                  ⚡ Settings are synchronized and updated in real-time on mobile screen layout configurations.
+                </div>
+              </div>
+            </div>
+          </div>
+
         </div>
       )}
     </div>

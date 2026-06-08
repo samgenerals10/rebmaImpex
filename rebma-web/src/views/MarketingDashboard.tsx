@@ -348,7 +348,7 @@ export default function MarketingDashboard({
 
   if (activeMobileDetail) {
     return (
-      <div className="lg:hidden bg-slate-50 dark:bg-slate-900 min-h-screen p-4 pb-24 space-y-6 animate-fade-in-up text-slate-800 dark:text-slate-200">
+      <div className="lg:hidden bg-white min-h-screen p-4 pb-24 space-y-6 animate-fade-in-up text-slate-800">
         <div className="flex items-center gap-3">
           <button 
             onClick={() => setActiveMobileDetail(null)}
@@ -430,7 +430,129 @@ export default function MarketingDashboard({
   }
 
   return (
-    <div className="space-y-6">
+    <>
+      {/* ══ MOBILE LAYOUT (< lg) ══ */}
+      <div className="lg:hidden mobile-only space-y-4 pb-4 mobile-animate-up">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-lg font-bold text-slate-800 tracking-tight">Marketing</h1>
+            <p className="text-[11px] text-slate-400 mt-0.5">Sales pipeline & customer records</p>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={() => exportToCSV(localOrders, ['id', 'clientName', 'productName', 'totalAmount', 'status'], 'sales_orders')} className="p-2 bg-white rounded-xl border border-slate-200 shadow-sm" title="Export CSV">
+              <FileSpreadsheet className="w-4 h-4 text-slate-500" />
+            </button>
+            <button onClick={() => exportToPDF('Sales Orders Report', localOrders, ['id', 'clientName', 'totalAmount', 'status'])} className="p-2 bg-white rounded-xl border border-slate-200 shadow-sm" title="Export PDF">
+              <FileText className="w-4 h-4 text-slate-500" />
+            </button>
+          </div>
+        </div>
+
+        {/* Physical Gradient Card */}
+        <div className="mobile-physical-card" style={{ background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)' }}>
+          <div className="flex justify-between items-start relative z-10">
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-white/60 font-bold">Pipeline Value</p>
+              <h2 className="text-3xl font-extrabold text-white mt-1 tracking-tight">GHS {pipelineValue.toLocaleString()}</h2>
+              <p className="text-[10px] text-white/70 mt-1">{totalOrdersCount} Total Bookings</p>
+            </div>
+            <div className="mobile-card-chip mt-1" />
+          </div>
+          <div className="flex justify-between items-end mt-8 relative z-10">
+            <div>
+              <p className="text-[10px] font-mono tracking-widest text-white/60">•••• •••• •••• 5621</p>
+              <p className="text-[10px] font-bold text-white/80 mt-1 uppercase tracking-wider">Marketing & Sales Bureau</p>
+            </div>
+            <div className="mobile-card-circles">
+              <div className="mobile-card-circle-1" />
+              <div className="mobile-card-circle-2" />
+            </div>
+          </div>
+        </div>
+
+        {/* Stats Grid */}
+        <div className="grid grid-cols-2 gap-3">
+          {[
+            { label: 'Customers', value: `${totalCustomersCount}`, sub: 'Accounts active', bg: '#eff6ff', color: '#3b82f6', icon: Users },
+            { label: 'Completed', value: `${completedDealsCount}`, sub: 'Deals closed', bg: '#f0fdf4', color: '#16a34a', icon: ShieldCheck },
+          ].map((s, i) => {
+            const Icon = s.icon;
+            return (
+              <div key={i} className="mobile-stat-card">
+                <div className="mobile-stat-icon" style={{ background: s.bg }}>
+                  <Icon className="w-5 h-5" style={{ color: s.color }} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[9px] text-slate-400 uppercase font-bold tracking-wider truncate">{s.label}</p>
+                  <p className="text-sm font-bold text-slate-800 mt-0.5">{s.value}</p>
+                  <p className="text-[9px] text-slate-400 truncate">{s.sub}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Quick actions panel */}
+        <div className="grid grid-cols-2 gap-2">
+          <button onClick={() => setShowOrderModal(true)} className="flex items-center justify-center gap-1.5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm">
+            <UserPlus className="w-4 h-4" /> Book Order
+          </button>
+          <button onClick={() => setShowCustomerModal(true)} className="flex items-center justify-center gap-1.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition-all border border-slate-200">
+            <Users className="w-4 h-4" /> Add Customer
+          </button>
+        </div>
+
+        {/* Sales Orders List */}
+        <div>
+          <p className="mobile-section-label">Active Sales Orders</p>
+          <div className="space-y-2">
+            {localOrders.slice(0, 5).map(o => (
+              <div key={o.id} onClick={() => setActiveMobileDetail({ type: 'order', data: o })} className="mobile-data-row cursor-pointer">
+                <div className="mobile-data-row-icon bg-blue-50 text-blue-600">
+                  <Clipboard className="w-5 h-5 text-blue-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold text-slate-800 truncate">{o.clientName}</p>
+                  <p className="text-[10px] text-slate-400 truncate">{o.productName} • GHS {o.totalAmount.toLocaleString()}</p>
+                </div>
+                <span className={`mobile-status-pill ${
+                  o.status === 'DELIVERED' ? 'bg-emerald-50 text-emerald-700' :
+                  o.status.startsWith('PENDING') ? 'bg-amber-50 text-amber-700' :
+                  'bg-slate-100 text-slate-700'
+                }`}>{o.status.replace(/_/g, ' ')}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Customer Profiles */}
+        <div>
+          <p className="mobile-section-label">Customer Profiles</p>
+          <div className="space-y-2">
+            {localCustomers.slice(0, 5).map(c => (
+              <div key={c.id} onClick={() => setActiveMobileDetail({ type: 'customer', data: c })} className="mobile-data-row cursor-pointer">
+                {c.photo ? (
+                  <img src={c.photo} alt={c.name} className="w-8 h-8 rounded-full object-cover border border-slate-100" />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-xs">
+                    {c.name[0]}
+                  </div>
+                )}
+                <div className="flex-1 min-w-0 ml-2">
+                  <p className="text-xs font-bold text-slate-800 truncate">{c.name}</p>
+                  <p className="text-[10px] text-slate-400 truncate">{c.companyName} • {c.location || 'No Location'}</p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-400" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ══ DESKTOP LAYOUT (lg+) ══ */}
+      <div className="hidden lg:block">
+      <div className="space-y-6">
 
       {/* ── ORDER MODAL ── */}
       {showOrderModal && (
@@ -1138,6 +1260,8 @@ export default function MarketingDashboard({
           </div>
         </div>
       </div>
-    </div>
+      </div>
+      </div>
+    </>
   );
 }

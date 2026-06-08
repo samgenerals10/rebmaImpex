@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
+import type { FormEvent } from 'react';
 import { motion, AnimatePresence, MotionConfig } from 'framer-motion';
-import { Eye, EyeOff, Check, X, ArrowRight, Lock, Mail, User, CreditCard, Phone, AlertCircle, Info, CheckCircle, Home, Search, Plus, Bell, Camera, Send, Globe, ChevronRight, Settings, LogOut, Users, MessagesSquare } from 'lucide-react';
+import { Eye, EyeOff, Check, X, ArrowRight, Lock, Mail, User, CreditCard, Phone, AlertCircle, Info, CheckCircle, Home, Search, Plus, Bell, Camera, Send, Globe, ChevronRight, Settings, LogOut, Users, MessagesSquare, UserPlus, ClipboardList, Calendar, Megaphone, UserCheck, BarChart3, Video, Building2, Ship, Ticket, Flag, Truck, DollarSign, BookOpen, ShoppingCart, TrendingUp, Download, Boxes, Hammer, PackagePlus, MapPin, LogIn, Map, GitMerge, Tag, ShieldAlert, FileText, CheckSquare } from 'lucide-react';
 import type { Order, IncomingGoods, ProductionRequest, Visitor, Attendance, ChatMessage, BoardroomMeeting, FinancePayment, Customer, GoodsPrice, AuditEntry, PendingRegistration, StaffMember, CurrentUser } from './types/erp';
 
 import Sidebar from './components/layout/Sidebar';
@@ -40,22 +41,41 @@ export default function App() {
     return d;
   };
 
-  // Theme State - Default to 'ghana' official logo theme matching colors!
-  const [theme, setTheme] = useState<'breeze' | 'seven' | 'royal' | 'mint' | 'sunset' | 'forest' | 'ghana'>('ghana');
-
-  // Display & Appearance preferences
-  const [darkMode, setDarkMode] = useState<boolean>(() => {
-    return localStorage.getItem('dark-mode') === 'true';
+  // Redesigned 10 Display & Appearance preferences
+  const [theme, setTheme] = useState<any>(() => {
+    return localStorage.getItem('erp-theme') || 'arctic-white';
   });
   const [accentColor, setAccentColor] = useState<string>(() => {
-    return localStorage.getItem('accent-color') || '#068d5c';
+    return localStorage.getItem('erp-accent') || '#068d5c';
   });
-  const [reducedMotion, setReducedMotion] = useState<boolean>(() => {
-    return localStorage.getItem('reduced-motion') === 'true';
+  const [fontFamily, setFontFamily] = useState<string>(() => {
+    return localStorage.getItem('erp-font') || 'Inter';
   });
-  const [glassTheme, setGlassTheme] = useState<string>(() => {
-    return localStorage.getItem('glass-theme') || 'none';
+  const [fontSize, setFontSize] = useState<string>(() => {
+    return localStorage.getItem('erp-font-size') || 'Medium';
   });
+  const [navStyle, setNavStyle] = useState<string>(() => {
+    return localStorage.getItem('erp-nav-style') || 'Pill';
+  });
+  const [buttonStyle, setButtonStyle] = useState<string>(() => {
+    return localStorage.getItem('erp-button-style') || 'Rounded';
+  });
+  const [cardStyle, setCardStyle] = useState<string>(() => {
+    return localStorage.getItem('erp-card-style') || 'Float';
+  });
+  const [density, setDensity] = useState<string>(() => {
+    return localStorage.getItem('erp-density') || 'Normal';
+  });
+  const [motionSetting, setMotionSetting] = useState<string>(() => {
+    return localStorage.getItem('erp-motion') || 'Full';
+  });
+  const [darkMode, setDarkMode] = useState<boolean>(() => {
+    return localStorage.getItem('erp-dark-mode') === 'true';
+  });
+  
+  // Keep support for old preferences/types if needed
+  const [reducedMotion, setReducedMotion] = useState<boolean>(false);
+  const [glassTheme, setGlassTheme] = useState<string>('none');
 
   // Mobile navigation & search overlays
   const [isMobileSearchActive, setIsMobileSearchActive] = useState<boolean>(false);
@@ -63,56 +83,70 @@ export default function App() {
   const [isQuickActionOpen, setIsQuickActionOpen] = useState<boolean>(false);
   const [activeMobileView, setActiveMobileView] = useState<'dashboard' | 'profile' | 'chat'>('dashboard');
 
-  // Synchronize display and appearance preferences
+  // Synchronize all 10 display settings to localStorage & DOM instantly
   useEffect(() => {
-    localStorage.setItem('dark-mode', String(darkMode));
+    localStorage.setItem('erp-theme', theme);
+    localStorage.setItem('erp-accent', accentColor);
+    localStorage.setItem('erp-font', fontFamily);
+    localStorage.setItem('erp-font-size', fontSize);
+    localStorage.setItem('erp-nav-style', navStyle);
+    localStorage.setItem('erp-button-style', buttonStyle);
+    localStorage.setItem('erp-card-style', cardStyle);
+    localStorage.setItem('erp-density', density);
+    localStorage.setItem('erp-motion', motionSetting);
+    localStorage.setItem('erp-dark-mode', String(darkMode));
+
+    // 1. Dark Mode
     if (darkMode) {
       document.documentElement.classList.add('dark');
     } else {
       document.documentElement.classList.remove('dark');
     }
-  }, [darkMode]);
 
-  useEffect(() => {
-    localStorage.setItem('accent-color', accentColor);
-    const root = document.documentElement;
-    const accentColorMap: Record<string, { hover: string; light: string }> = {
-      '#068d5c': { hover: '#046c46', light: 'rgba(6, 141, 92, 0.15)' },
-      '#3b82f6': { hover: '#2563eb', light: 'rgba(59, 130, 246, 0.15)' },
-      '#8b5cf6': { hover: '#7c3aed', light: 'rgba(139, 92, 246, 0.15)' },
-      '#f97316': { hover: '#ea580c', light: 'rgba(249, 115, 22, 0.15)' },
-      '#f43f5e': { hover: '#e11d48', light: 'rgba(244, 63, 94, 0.15)' },
-      '#14b8a6': { hover: '#0d9488', light: 'rgba(20, 184, 166, 0.15)' },
-    };
-    const config = accentColorMap[accentColor];
-    if (config) {
-      root.style.setProperty('--accent-color', accentColor);
-      root.style.setProperty('--accent-hover', config.hover);
-      root.style.setProperty('--accent-light', config.light);
-    } else {
-      root.style.removeProperty('--accent-color');
-      root.style.removeProperty('--accent-hover');
-      root.style.removeProperty('--accent-light');
-    }
-  }, [accentColor]);
-
-  useEffect(() => {
-    localStorage.setItem('reduced-motion', String(reducedMotion));
-    if (reducedMotion) {
-      document.body.classList.add('reduce-motion');
-    } else {
-      document.body.classList.remove('reduce-motion');
-    }
-  }, [reducedMotion]);
-
-  useEffect(() => {
-    localStorage.setItem('glass-theme', glassTheme);
+    // 2. Body class list sync
     const body = document.body;
-    body.className = body.className.split(' ').filter(c => !c.startsWith('glass-theme-')).join(' ');
-    if (glassTheme !== 'none') {
-      body.classList.add(`glass-theme-${glassTheme}`);
+    
+    // Clear previously applied configuration classes
+    const classesToRemove = [
+      /theme-\S+/, /font-family-\S+/, /font-size-\S+/, 
+      /btn-style-\S+/, /card-style-\S+/, /density-\S+/, /motion-\S+/
+    ];
+    body.className = body.className.split(' ').filter(cls => {
+      return !classesToRemove.some(regex => regex.test(cls));
+    }).join(' ');
+
+    // Add current configuration classes
+    body.classList.add(`theme-${theme}`);
+    body.classList.add(`font-family-${fontFamily.toLowerCase().replace(/ /g, '')}`);
+    body.classList.add(`font-size-${fontSize.toLowerCase()}`);
+    body.classList.add(`btn-style-${buttonStyle.toLowerCase()}`);
+    body.classList.add(`card-style-${cardStyle.toLowerCase()}`);
+    body.classList.add(`density-${density.toLowerCase()}`);
+    body.classList.add(`motion-${motionSetting.toLowerCase()}`);
+
+    // 3. Dynamic Accent colors variable injection
+    const root = document.documentElement;
+    root.style.setProperty('--accent', accentColor);
+    root.style.setProperty('--accent-color', accentColor); // Support desktop legacy name
+    
+    // Calculate accent variants
+    const hexToRgb = (hex: string) => {
+      const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+      return result ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16)
+      } : null;
+    };
+    const rgb = hexToRgb(accentColor);
+    if (rgb) {
+      root.style.setProperty('--accent-light', `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.15)`);
+      root.style.setProperty('--accent-hover', `rgba(${Math.max(0, rgb.r - 20)}, ${Math.max(0, rgb.g - 20)}, ${Math.max(0, rgb.b - 20)}, 1)`);
     }
-  }, [glassTheme]);
+
+    // Set reducedMotion helper
+    setReducedMotion(motionSetting === 'Reduced');
+  }, [theme, accentColor, fontFamily, fontSize, navStyle, buttonStyle, cardStyle, density, motionSetting, darkMode]);
   
   // Authentication & Onboarding States
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
@@ -1893,7 +1927,7 @@ export default function App() {
         initial={{ opacity: 0, x: -10 }}
         animate={{ opacity: 1, x: 0 }}
         exit={{ opacity: 0, x: 10 }}
-        onSubmit={(e) => {
+        onSubmit={(e: FormEvent) => {
           e.preventDefault();
           if (!forgotEmail) {
             alert('Please enter your email.');
@@ -2257,6 +2291,20 @@ export default function App() {
           setReducedMotion={setReducedMotion}
           glassTheme={glassTheme}
           setGlassTheme={setGlassTheme}
+          fontFamily={fontFamily}
+          setFontFamily={setFontFamily}
+          fontSize={fontSize}
+          setFontSize={setFontSize}
+          navStyle={navStyle}
+          setNavStyle={setNavStyle}
+          buttonStyle={buttonStyle}
+          setButtonStyle={setButtonStyle}
+          cardStyle={cardStyle}
+          setCardStyle={setCardStyle}
+          density={density}
+          setDensity={setDensity}
+          motion={motionSetting}
+          setMotion={setMotionSetting}
         />
       );
     }
@@ -2399,6 +2447,20 @@ export default function App() {
             setReducedMotion={setReducedMotion}
             glassTheme={glassTheme}
             setGlassTheme={setGlassTheme}
+            fontFamily={fontFamily}
+            setFontFamily={setFontFamily}
+            fontSize={fontSize}
+            setFontSize={setFontSize}
+            navStyle={navStyle}
+            setNavStyle={setNavStyle}
+            buttonStyle={buttonStyle}
+            setButtonStyle={setButtonStyle}
+            cardStyle={cardStyle}
+            setCardStyle={setCardStyle}
+            density={density}
+            setDensity={setDensity}
+            motion={motionSetting}
+            setMotion={setMotionSetting}
           />
         );
       default:
@@ -2891,12 +2953,19 @@ export default function App() {
               darkMode={darkMode}
               setDarkMode={setDarkMode}
               onProfileClick={() => setActiveMobileView('profile')}
-              onDisplaySettingsClick={() => { setActiveDepartment('SETTINGS'); setActiveSubTab('Themes'); setActiveMobileView('dashboard'); }}
+              onDisplaySettingsClick={() => { setActiveDepartment('SETTINGS'); setActiveSubTab(window.innerWidth < 1024 ? 'Appearance' : 'Themes'); setActiveMobileView('dashboard'); }}
               onSwitchDepartmentClick={() => setIsSidebarOpen(true)}
               onLogout={async () => {
                 await auth.signOut();
                 setIsAuthenticated(false);
                 setCurrentUser(null);
+              }}
+              activeDepartment={currentUser?.requiresPasswordReset ? 'SETTINGS' : activeDepartment}
+              setActiveDepartment={currentUser?.requiresPasswordReset ? () => {} : setActiveDepartment}
+              setActiveSubTab={currentUser?.requiresPasswordReset ? () => {} : setActiveSubTab}
+              onSearchClick={() => {
+                setIsMobileSearchActive(true);
+                setIsMobileNotificationsActive(false);
               }}
             />
           </div>
@@ -2931,73 +3000,98 @@ export default function App() {
 
         </main>
 
+
+        {/* 5. QUICK ACTION SHEET (mobile only) */}
         {/* 4. BOTTOM NAVIGATION BAR (mobile only) */}
-        <div className="lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex items-center justify-around z-50 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] pb-safe">
-          {/* Home */}
-          <button 
-            type="button"
-            onClick={() => {
-              const userDept = (currentUser?.department || 'CEO').toUpperCase() === 'HUMAN RESOURCES' ? 'HR' : (currentUser?.department || 'CEO').toUpperCase();
-              setActiveDepartment(userDept);
-              setIsMobileSearchActive(false);
-              setIsMobileNotificationsActive(false);
-              setActiveMobileView('dashboard');
-            }}
-            className={`flex flex-col items-center justify-center flex-1 h-full cursor-pointer transition-colors ${
-              activeMobileView === 'dashboard' && !isMobileSearchActive && !isMobileNotificationsActive
-                ? 'text-[var(--accent-color,#068d5c)] font-bold' 
-                : 'text-slate-400 dark:text-slate-500'
-            }`}
-          >
-            <Home className="w-5 h-5" />
-            <span className="text-[9px] mt-1">Home</span>
-          </button>
-
-          {/* Search */}
-          <button 
-            type="button"
-            onClick={() => {
-              setIsMobileSearchActive(true);
-              setIsMobileNotificationsActive(false);
-            }}
-            className={`flex flex-col items-center justify-center flex-1 h-full cursor-pointer transition-colors ${
-              isMobileSearchActive ? 'text-[var(--accent-color,#068d5c)] font-bold' : 'text-slate-400 dark:text-slate-500'
-            }`}
-          >
-            <Search className="w-5 h-5" />
-            <span className="text-[9px] mt-1">Search</span>
-          </button>
-
-          {/* Quick Action (Floating Center) */}
-          <div className="relative flex-1 flex justify-center -mt-6">
+        {!isSidebarOpen && (
+          <div className={
+            navStyle === 'Pill'
+              ? "lg:hidden fixed bottom-5 left-4 right-4 h-16 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-100 dark:border-slate-800/80 rounded-full flex items-center justify-around z-50 shadow-xl px-2"
+              : "lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex items-center justify-around z-50 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] pb-safe"
+          }>
+            {/* Home */}
             <button 
               type="button"
-              onClick={() => setIsQuickActionOpen(true)}
-              className="w-12 h-12 rounded-full bg-[#068d5c] text-white flex items-center justify-center shadow-lg hover:scale-105 active:scale-95 transition-all cursor-pointer border-2 border-white dark:border-slate-900"
-              title="Quick Action"
+              onClick={() => {
+                const userDept = (currentUser?.department || 'CEO').toUpperCase() === 'HUMAN RESOURCES' ? 'HR' : (currentUser?.department || 'CEO').toUpperCase();
+                setActiveDepartment(userDept);
+                setIsMobileSearchActive(false);
+                setIsMobileNotificationsActive(false);
+                setActiveMobileView('dashboard');
+              }}
+              className="flex flex-col items-center justify-center flex-1 h-full cursor-pointer transition-colors"
+              style={{
+                color: (activeMobileView === 'dashboard' && !isMobileSearchActive && !isMobileNotificationsActive)
+                  ? accentColor 
+                  : undefined
+              }}
             >
-              <Plus className="w-6 h-6" />
+              <Home className="w-5 h-5" />
+              <span className={`text-[9px] mt-1 ${(activeMobileView === 'dashboard' && !isMobileSearchActive && !isMobileNotificationsActive) ? 'font-bold' : ''}`}>Home</span>
+            </button>
+
+            {/* Search */}
+            <button 
+              type="button"
+              onClick={() => {
+                setIsMobileSearchActive(true);
+                setIsMobileNotificationsActive(false);
+              }}
+              className="flex flex-col items-center justify-center flex-1 h-full cursor-pointer transition-colors"
+              style={{ color: isMobileSearchActive ? accentColor : undefined }}
+            >
+              <Search className="w-5 h-5" />
+              <span className={`text-[9px] mt-1 ${isMobileSearchActive ? 'font-bold' : ''}`}>Search</span>
+            </button>
+
+            {/* Quick Action (Center Action) */}
+            <div className={`relative flex-1 flex justify-center ${navStyle === 'Pill' ? '-mt-4' : '-mt-6'}`}>
+              <button 
+                type="button"
+                onClick={() => setIsQuickActionOpen(true)}
+                className="w-12 h-12 rounded-full text-white flex items-center justify-center shadow-lg hover:scale-105 active:scale-95 transition-all cursor-pointer border-2 border-white dark:border-slate-900"
+                style={{ backgroundColor: accentColor }}
+                title="Quick Action"
+              >
+                <Plus className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* Alerts */}
+            <button 
+              type="button"
+              onClick={() => {
+                setIsMobileNotificationsActive(true);
+                setIsMobileSearchActive(false);
+                setActiveMobileView('dashboard');
+              }}
+              className="flex flex-col items-center justify-center flex-1 h-full cursor-pointer transition-colors"
+              style={{ color: isMobileNotificationsActive ? accentColor : undefined }}
+            >
+              <Bell className="w-5 h-5" />
+              <span className={`text-[9px] mt-1 ${isMobileNotificationsActive ? 'font-bold' : ''}`}>Alerts</span>
+            </button>
+
+            {/* Profile */}
+            <button 
+              type="button"
+              onClick={() => {
+                setActiveMobileView('profile');
+                setIsMobileSearchActive(false);
+                setIsMobileNotificationsActive(false);
+              }}
+              className="flex flex-col items-center justify-center flex-1 h-full cursor-pointer transition-colors"
+              style={{
+                color: (activeMobileView === 'profile' && !isMobileSearchActive && !isMobileNotificationsActive)
+                  ? accentColor 
+                  : undefined
+              }}
+            >
+              <User className="w-5 h-5" />
+              <span className={`text-[9px] mt-1 ${(activeMobileView === 'profile' && !isMobileSearchActive && !isMobileNotificationsActive) ? 'font-bold' : ''}`}>Profile</span>
             </button>
           </div>
-
-          {/* Profile */}
-          <button 
-            type="button"
-            onClick={() => {
-              setActiveMobileView('profile');
-              setIsMobileSearchActive(false);
-              setIsMobileNotificationsActive(false);
-            }}
-            className={`flex flex-col items-center justify-center flex-1 h-full cursor-pointer transition-colors ${
-              activeMobileView === 'profile' && !isMobileSearchActive && !isMobileNotificationsActive
-                ? 'text-[var(--accent-color,#068d5c)] font-bold' 
-                : 'text-slate-400 dark:text-slate-500'
-            }`}
-          >
-            <User className="w-5 h-5" />
-            <span className="text-[9px] mt-1">Profile</span>
-          </button>
-        </div>
+        )}
 
         {/* 5. QUICK ACTION SHEET (mobile only) */}
         {isQuickActionOpen && (
@@ -3012,212 +3106,294 @@ export default function App() {
               <div className="w-12 h-1 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto mb-1 shrink-0" />
               
               <div className="flex justify-between items-center">
-                <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">Quick Actions ({activeDepartment})</h3>
+                <h3 className="text-sm font-bold text-slate-850 dark:text-slate-200 uppercase tracking-wider">Quick Actions ({activeDepartment})</h3>
                 <button onClick={() => setIsQuickActionOpen(false)} className="text-slate-400 hover:text-slate-600 text-xs font-bold">Close</button>
               </div>
 
               <div className="grid grid-cols-2 gap-3 py-2">
                 {activeDepartment === 'HR' && (
                   <>
-                    <button onClick={() => handleQuickAction('Add New Staff', 'HR')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-                      <span className="text-xl">➕</span>
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Add New Staff</span>
+                    <button onClick={() => handleQuickAction('Add New Staff', 'HR')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-emerald-500 shadow-sm shrink-0">
+                        <UserPlus className="w-5 h-5" />
+                      </div>
+                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Add New Staff</span>
                     </button>
-                    <button onClick={() => handleQuickAction('Log Attendance', 'HR')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-                      <span className="text-xl">📋</span>
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Log Attendance</span>
+                    <button onClick={() => handleQuickAction('Log Attendance', 'HR')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-blue-500 shadow-sm shrink-0">
+                        <ClipboardList className="w-5 h-5" />
+                      </div>
+                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Log Attendance</span>
                     </button>
-                    <button onClick={() => handleQuickAction('Schedule Meeting', 'HR')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-                      <span className="text-xl">📅</span>
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Schedule Meeting</span>
+                    <button onClick={() => handleQuickAction('Schedule Meeting', 'HR')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-indigo-500 shadow-sm shrink-0">
+                        <Calendar className="w-5 h-5" />
+                      </div>
+                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Schedule Meeting</span>
                     </button>
-                    <button onClick={() => handleQuickAction('Send Announcement', 'HR')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-                      <span className="text-xl">📢</span>
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Send Announcement</span>
+                    <button onClick={() => handleQuickAction('Send Announcement', 'HR')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-amber-500 shadow-sm shrink-0">
+                        <Megaphone className="w-5 h-5" />
+                      </div>
+                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Send Announcement</span>
                     </button>
-                    <button onClick={() => handleQuickAction('Approve Pending Staff', 'HR')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-                      <span className="text-xl">✅</span>
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Approve Pending Staff</span>
+                    <button onClick={() => handleQuickAction('Approve Pending Staff', 'HR')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-teal-500 shadow-sm shrink-0">
+                        <UserCheck className="w-5 h-5" />
+                      </div>
+                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Approve Pending</span>
                     </button>
                   </>
                 )}
                 {activeDepartment === 'CEO' && (
                   <>
-                    <button onClick={() => handleQuickAction('View Reports', 'CEO')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-                      <span className="text-xl">📊</span>
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">View Reports</span>
+                    <button onClick={() => handleQuickAction('View Reports', 'CEO')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-indigo-500 shadow-sm shrink-0">
+                        <BarChart3 className="w-5 h-5" />
+                      </div>
+                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">View Reports</span>
                     </button>
-                    <button onClick={() => handleQuickAction('Schedule Boardroom', 'CEO')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-                      <span className="text-xl">🎥</span>
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Schedule Boardroom</span>
+                    <button onClick={() => handleQuickAction('Schedule Boardroom', 'CEO')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-violet-500 shadow-sm shrink-0">
+                        <Video className="w-5 h-5" />
+                      </div>
+                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Schedule Boardroom</span>
                     </button>
-                    <button onClick={() => handleQuickAction('Send Alert', 'CEO')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-                      <span className="text-xl">🚨</span>
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Send Alert</span>
+                    <button onClick={() => handleQuickAction('Send Alert', 'CEO')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-rose-500 shadow-sm shrink-0">
+                        <AlertCircle className="w-5 h-5" />
+                      </div>
+                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Send Alert</span>
                     </button>
-                    <button onClick={() => handleQuickAction('View All Departments', 'CEO')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-                      <span className="text-xl">🏢</span>
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">View All Depts</span>
+                    <button onClick={() => handleQuickAction('View All Departments', 'CEO')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-sky-500 shadow-sm shrink-0">
+                        <Building2 className="w-5 h-5" />
+                      </div>
+                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">View All Depts</span>
                     </button>
                   </>
                 )}
                 {activeDepartment === 'OPERATIONS' && (
                   <>
-                    <button onClick={() => handleQuickAction('Log Cargo Intake', 'OPERATIONS')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-                      <span className="text-xl">⚓</span>
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Log Cargo Intake</span>
+                    <button onClick={() => handleQuickAction('Log Cargo Intake', 'OPERATIONS')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-sky-500 shadow-sm shrink-0">
+                        <Ship className="w-5 h-5" />
+                      </div>
+                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Log Cargo Intake</span>
                     </button>
-                    <button onClick={() => handleQuickAction('Create Fulfillment Ticket', 'OPERATIONS')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-                      <span className="text-xl">🎫</span>
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Fulfillment Ticket</span>
+                    <button onClick={() => handleQuickAction('Create Fulfillment Ticket', 'OPERATIONS')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-teal-500 shadow-sm shrink-0">
+                        <Ticket className="w-5 h-5" />
+                      </div>
+                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Fulfillment Ticket</span>
                     </button>
-                    <button onClick={() => handleQuickAction('Flag Discrepancy', 'OPERATIONS')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-                      <span className="text-xl">🚩</span>
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Flag Discrepancy</span>
+                    <button onClick={() => handleQuickAction('Flag Discrepancy', 'OPERATIONS')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-rose-500 shadow-sm shrink-0">
+                        <Flag className="w-5 h-5" />
+                      </div>
+                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Flag Discrepancy</span>
                     </button>
-                    <button onClick={() => handleQuickAction('Release to Dispatch', 'OPERATIONS')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-                      <span className="text-xl">🚚</span>
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Release to Dispatch</span>
+                    <button onClick={() => handleQuickAction('Release to Dispatch', 'OPERATIONS')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-amber-500 shadow-sm shrink-0">
+                        <Truck className="w-5 h-5" />
+                      </div>
+                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Release Dispatch</span>
                     </button>
                   </>
                 )}
                 {activeDepartment === 'FINANCE' && (
                   <>
-                    <button onClick={() => handleQuickAction('Record Payment', 'FINANCE')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-                      <span className="text-xl">💸</span>
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Record Payment</span>
+                    <button onClick={() => handleQuickAction('Record Payment', 'FINANCE')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-emerald-500 shadow-sm shrink-0">
+                        <DollarSign className="w-5 h-5" />
+                      </div>
+                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Record Payment</span>
                     </button>
-                    <button onClick={() => handleQuickAction('Create Invoice', 'FINANCE')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-                      <span className="text-xl">📄</span>
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Create Invoice</span>
+                    <button onClick={() => handleQuickAction('Create Invoice', 'FINANCE')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-blue-500 shadow-sm shrink-0">
+                        <FileText className="w-5 h-5" />
+                      </div>
+                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Create Invoice</span>
                     </button>
-                    <button onClick={() => handleQuickAction('Approve Credit Order', 'FINANCE')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-                      <span className="text-xl">💳</span>
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Approve Credit Order</span>
+                    <button onClick={() => handleQuickAction('Approve Credit Order', 'FINANCE')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-teal-500 shadow-sm shrink-0">
+                        <CheckSquare className="w-5 h-5" />
+                      </div>
+                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Approve Credit</span>
                     </button>
-                    <button onClick={() => handleQuickAction('View Ledger', 'FINANCE')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-                      <span className="text-xl">📖</span>
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">View Ledger</span>
+                    <button onClick={() => handleQuickAction('View Ledger', 'FINANCE')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-indigo-500 shadow-sm shrink-0">
+                        <BookOpen className="w-5 h-5" />
+                      </div>
+                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">View Ledger</span>
                     </button>
                   </>
                 )}
                 {activeDepartment === 'MARKETING' && (
                   <>
-                    <button onClick={() => handleQuickAction('Create Order', 'MARKETING')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-                      <span className="text-xl">🛒</span>
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Create Order</span>
+                    <button onClick={() => handleQuickAction('Create Order', 'MARKETING')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-emerald-500 shadow-sm shrink-0">
+                        <ShoppingCart className="w-5 h-5" />
+                      </div>
+                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Create Order</span>
                     </button>
-                    <button onClick={() => handleQuickAction('Register Customer', 'MARKETING')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-                      <span className="text-xl">👤</span>
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Register Customer</span>
+                    <button onClick={() => handleQuickAction('Register Customer', 'MARKETING')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-blue-500 shadow-sm shrink-0">
+                        <UserPlus className="w-5 h-5" />
+                      </div>
+                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Register Customer</span>
                     </button>
-                    <button onClick={() => handleQuickAction('View Pipeline', 'MARKETING')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-                      <span className="text-xl">📈</span>
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">View Pipeline</span>
+                    <button onClick={() => handleQuickAction('View Pipeline', 'MARKETING')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-indigo-500 shadow-sm shrink-0">
+                        <TrendingUp className="w-5 h-5" />
+                      </div>
+                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">View Pipeline</span>
                     </button>
-                    <button onClick={() => handleQuickAction('Export Report', 'MARKETING')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-                      <span className="text-xl">📤</span>
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Export Report</span>
+                    <button onClick={() => handleQuickAction('Export Report', 'MARKETING')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-amber-500 shadow-sm shrink-0">
+                        <Download className="w-5 h-5" />
+                      </div>
+                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Export Report</span>
                     </button>
                   </>
                 )}
                 {activeDepartment === 'PRODUCTION' && (
                   <>
-                    <button onClick={() => handleQuickAction('Request Materials', 'PRODUCTION')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-                      <span className="text-xl">🧱</span>
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Request Materials</span>
+                    <button onClick={() => handleQuickAction('Request Materials', 'PRODUCTION')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-indigo-500 shadow-sm shrink-0">
+                        <Boxes className="w-5 h-5" />
+                      </div>
+                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Request Materials</span>
                     </button>
-                    <button onClick={() => handleQuickAction('Update WIP Status', 'PRODUCTION')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-                      <span className="text-xl">🛠️</span>
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Update WIP Status</span>
+                    <button onClick={() => handleQuickAction('Update WIP Status', 'PRODUCTION')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-amber-500 shadow-sm shrink-0">
+                        <Hammer className="w-5 h-5" />
+                      </div>
+                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Update WIP Status</span>
                     </button>
-                    <button onClick={() => handleQuickAction('Log Output', 'PRODUCTION')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-                      <span className="text-xl">📊</span>
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Log Output</span>
+                    <button onClick={() => handleQuickAction('Log Output', 'PRODUCTION')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-teal-500 shadow-sm shrink-0">
+                        <BarChart3 className="w-5 h-5" />
+                      </div>
+                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Log Output</span>
                     </button>
-                    <button onClick={() => handleQuickAction('View Requisitions', 'PRODUCTION')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-                      <span className="text-xl">📝</span>
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">View Requisitions</span>
+                    <button onClick={() => handleQuickAction('View Requisitions', 'PRODUCTION')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-blue-500 shadow-sm shrink-0">
+                        <ClipboardList className="w-5 h-5" />
+                      </div>
+                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">View Requisitions</span>
                     </button>
                   </>
                 )}
                 {activeDepartment === 'DISPATCH' && (
                   <>
-                    <button onClick={() => handleQuickAction('Assign Delivery', 'DISPATCH')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-                      <span className="text-xl">📦</span>
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Assign Delivery</span>
+                    <button onClick={() => handleQuickAction('Assign Delivery', 'DISPATCH')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-blue-500 shadow-sm shrink-0">
+                        <PackagePlus className="w-5 h-5" />
+                      </div>
+                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Assign Delivery</span>
                     </button>
-                    <button onClick={() => handleQuickAction('Update GPS', 'DISPATCH')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-                      <span className="text-xl">📍</span>
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Update GPS</span>
+                    <button onClick={() => handleQuickAction('Update GPS', 'DISPATCH')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-rose-500 shadow-sm shrink-0">
+                        <MapPin className="w-5 h-5" />
+                      </div>
+                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Update GPS</span>
                     </button>
-                    <button onClick={() => handleQuickAction('Mark Delivered', 'DISPATCH')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-                      <span className="text-xl">🏁</span>
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Mark Delivered</span>
+                    <button onClick={() => handleQuickAction('Mark Delivered', 'DISPATCH')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-emerald-500 shadow-sm shrink-0">
+                        <CheckCircle className="w-5 h-5" />
+                      </div>
+                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Mark Delivered</span>
                     </button>
-                    <button onClick={() => handleQuickAction('View Fleet', 'DISPATCH')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-                      <span className="text-xl">🚚</span>
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">View Fleet</span>
+                    <button onClick={() => handleQuickAction('View Fleet', 'DISPATCH')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-sky-500 shadow-sm shrink-0">
+                        <Truck className="w-5 h-5" />
+                      </div>
+                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">View Fleet</span>
                     </button>
                   </>
                 )}
                 {activeDepartment === 'RECEPTION' && (
                   <>
-                    <button onClick={() => handleQuickAction('Check In Visitor', 'RECEPTION')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-                      <span className="text-xl">🔑</span>
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Check In Visitor</span>
+                    <button onClick={() => handleQuickAction('Check In Visitor', 'RECEPTION')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-emerald-500 shadow-sm shrink-0">
+                        <LogIn className="w-5 h-5" />
+                      </div>
+                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Check In Visitor</span>
                     </button>
-                    <button onClick={() => handleQuickAction('Check Out Visitor', 'RECEPTION')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-                      <span className="text-xl">🚪</span>
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Check Out Visitor</span>
+                    <button onClick={() => handleQuickAction('Check Out Visitor', 'RECEPTION')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-rose-500 shadow-sm shrink-0">
+                        <LogOut className="w-5 h-5" />
+                      </div>
+                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Check Out Visitor</span>
                     </button>
-                    <button onClick={() => handleQuickAction('Log Staff Attendance', 'RECEPTION')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-                      <span className="text-xl">📋</span>
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Log Staff Attendance</span>
+                    <button onClick={() => handleQuickAction('Log Staff Attendance', 'RECEPTION')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-blue-500 shadow-sm shrink-0">
+                        <ClipboardList className="w-5 h-5" />
+                      </div>
+                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Staff Attendance</span>
                     </button>
-                    <button onClick={() => handleQuickAction('View Today\'s Log', 'RECEPTION')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-                      <span className="text-xl">📖</span>
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">View Today's Log</span>
+                    <button onClick={() => handleQuickAction('View Today\'s Log', 'RECEPTION')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-indigo-500 shadow-sm shrink-0">
+                        <BookOpen className="w-5 h-5" />
+                      </div>
+                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">View Today's Log</span>
                     </button>
                   </>
                 )}
                 {activeDepartment === 'LOGISTICS' && (
                   <>
-                    <button onClick={() => handleQuickAction('Add Shipment', 'LOGISTICS')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-                      <span className="text-xl">🚢</span>
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Add Shipment</span>
+                    <button onClick={() => handleQuickAction('Add Shipment', 'LOGISTICS')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-blue-500 shadow-sm shrink-0">
+                        <Ship className="w-5 h-5" />
+                      </div>
+                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Add Shipment</span>
                     </button>
-                    <button onClick={() => handleQuickAction('Update Route', 'LOGISTICS')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-                      <span className="text-xl">🗺️</span>
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Update Route</span>
+                    <button onClick={() => handleQuickAction('Update Route', 'LOGISTICS')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-teal-500 shadow-sm shrink-0">
+                        <Map className="w-5 h-5" />
+                      </div>
+                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Update Route</span>
                     </button>
-                    <button onClick={() => handleQuickAction('View Supply Chain', 'LOGISTICS')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-                      <span className="text-xl">⛓️</span>
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">View Supply Chain</span>
+                    <button onClick={() => handleQuickAction('View Supply Chain', 'LOGISTICS')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-indigo-500 shadow-sm shrink-0">
+                        <GitMerge className="w-5 h-5" />
+                      </div>
+                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">View Supply Chain</span>
                     </button>
-                    <button onClick={() => handleQuickAction('Export Manifest', 'LOGISTICS')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-                      <span className="text-xl">📄</span>
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Export Manifest</span>
+                    <button onClick={() => handleQuickAction('Export Manifest', 'LOGISTICS')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-amber-500 shadow-sm shrink-0">
+                        <FileText className="w-5 h-5" />
+                      </div>
+                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Export Manifest</span>
                     </button>
                   </>
                 )}
                 {activeDepartment === 'MANAGEMENT' && (
                   <>
-                    <button onClick={() => handleQuickAction('Approve Intake', 'MANAGEMENT')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-                      <span className="text-xl">🚢</span>
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Approve Intake</span>
+                    <button onClick={() => handleQuickAction('Approve Intake', 'MANAGEMENT')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-emerald-500 shadow-sm shrink-0">
+                        <CheckCircle className="w-5 h-5" />
+                      </div>
+                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Approve Intake</span>
                     </button>
-                    <button onClick={() => handleQuickAction('Set Price', 'MANAGEMENT')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-                      <span className="text-xl">🏷️</span>
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Set Price</span>
+                    <button onClick={() => handleQuickAction('Set Price', 'MANAGEMENT')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-amber-500 shadow-sm shrink-0">
+                        <Tag className="w-5 h-5" />
+                      </div>
+                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Set Price</span>
                     </button>
-                    <button onClick={() => handleQuickAction('Approve Credit', 'MANAGEMENT')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-                      <span className="text-xl">💳</span>
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Approve Credit</span>
+                    <button onClick={() => handleQuickAction('Approve Credit', 'MANAGEMENT')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-indigo-500 shadow-sm shrink-0">
+                        <CreditCard className="w-5 h-5" />
+                      </div>
+                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Approve Credit</span>
                     </button>
-                    <button onClick={() => handleQuickAction('View Audit Log', 'MANAGEMENT')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-                      <span className="text-xl">📖</span>
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">View Audit Log</span>
+                    <button onClick={() => handleQuickAction('View Audit Log', 'MANAGEMENT')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-rose-500 shadow-sm shrink-0">
+                        <ShieldAlert className="w-5 h-5" />
+                      </div>
+                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">View Audit Log</span>
                     </button>
                   </>
                 )}

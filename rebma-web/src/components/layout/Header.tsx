@@ -1,7 +1,10 @@
 // rebma-web/src/components/layout/Header.tsx
 
 import { useState } from 'react';
-import { Search, MessageSquare, Bell, Wifi, X, CheckCheck, Menu, Sun, Moon, MoreVertical } from 'lucide-react';
+import { 
+  Search, MessageSquare, Bell, Wifi, X, CheckCheck, Menu, Sun, Moon, MoreVertical,
+  User, ShieldCheck, Layers, Users, TrendingUp, Activity, DollarSign, Clipboard, Truck, Video, Settings, LogOut
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { CurrentUser } from '../../types/erp';
 
@@ -21,6 +24,10 @@ interface HeaderProps {
   onDisplaySettingsClick?: () => void;
   onSwitchDepartmentClick?: () => void;
   onLogout?: () => void;
+  activeDepartment?: string;
+  setActiveDepartment?: (dept: string) => void;
+  setActiveSubTab?: (tab: string) => void;
+  onSearchClick?: () => void;
 }
 
 const getGreeting = () => {
@@ -45,34 +52,147 @@ export default function Header({
   onProfileClick,
   onDisplaySettingsClick,
   onSwitchDepartmentClick,
-  onLogout
+  onLogout,
+  activeDepartment,
+  setActiveDepartment,
+  setActiveSubTab,
+  onSearchClick
 }: HeaderProps) {
-  const [showPanel, setShowPanel] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const [showAvatarDropdown, setShowAvatarDropdown] = useState(false);
+  const [showPanel, setShowPanel] = useState(false);
+
+  const isCeo = currentUser?.isCeo || currentUser?.department?.toUpperCase() === 'CEO';
+  
+  const allDepts = [
+    { value: 'CEO', label: 'CEO Command', icon: ShieldCheck },
+    { value: 'MANAGEMENT', label: 'Management Office', icon: Layers },
+    { value: 'HR', label: 'Human Resources', icon: Users },
+    { value: 'MARKETING', label: 'Marketing Pipeline', icon: TrendingUp },
+    { value: 'OPERATIONS', label: 'Operations & Stock', icon: Activity },
+    { value: 'FINANCE', label: 'Finance Ledgers', icon: DollarSign },
+    { value: 'PRODUCTION', label: 'Production Line', icon: Clipboard },
+    { value: 'RECEPTION', label: 'Reception Terminal', icon: Users },
+    { value: 'DISPATCH', label: 'Dispatch Fleet', icon: Truck },
+    { value: 'LOGISTICS', label: 'Logistics Fleet', icon: Truck },
+    { value: 'BOARDROOM', label: 'Executive Boardroom', icon: Video },
+    { value: 'SETTINGS', label: 'ERP Settings', icon: Settings },
+  ];
+
+  const availableDepts = allDepts.filter(d => {
+    if (isCeo) return true;
+    const rawDept = currentUser?.department || '';
+    const normalizedUserDept = rawDept.toUpperCase() === 'HUMAN RESOURCES' ? 'HR' : rawDept.toUpperCase();
+    if (d.value === 'BOARDROOM' || d.value === 'SETTINGS') return true;
+    if (normalizedUserDept === 'HR') return d.value === 'HR';
+    return d.value === normalizedUserDept;
+  });
 
   return (
     <header className="relative mb-0 lg:mb-6">
       {/* 1. MOBILE HERO HEADER */}
-      <div className="lg:hidden bg-gradient-to-r from-[#068d5c] to-[#045c3d] text-white px-5 py-4 pb-6 relative flex flex-col gap-4">
+      <div className="lg:hidden bg-transparent px-5 py-4 pb-2 relative flex flex-col gap-3">
         {/* Top Bar */}
-        <div className="flex justify-between items-center h-12">
-          {onToggleSidebar && (
+        <div className="flex justify-between items-center h-12 relative">
+          
+          {/* Left: colored avatar initials with switcher */}
+          <div className="relative">
             <button 
-              onClick={onToggleSidebar}
-              className="p-2 -ml-2 text-white hover:bg-white/10 rounded-lg cursor-pointer transition-colors"
-              title="Open Menu"
+              onClick={() => setShowAvatarDropdown(prev => !prev)}
+              className="w-10 h-10 rounded-full bg-[var(--accent,#068d5c)] text-white flex items-center justify-center font-extrabold text-sm shadow-sm cursor-pointer hover:scale-105 active:scale-95 transition-all"
             >
-              <Menu className="w-5.5 h-5.5" />
+              {currentUser?.fullName?.[0] || 'U'}
             </button>
-          )}
+            
+            {/* Custom Avatar Dropdown */}
+            {showAvatarDropdown && (
+              <>
+                <div className="fixed inset-0 z-[490]" onClick={() => setShowAvatarDropdown(false)} />
+                <div className="absolute left-0 mt-2 w-64 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl z-[500] py-3 animate-fade-in-up text-slate-800 dark:text-slate-200">
+                  <div className="px-4 pb-3 border-b border-slate-100 dark:border-slate-800">
+                    <p className="text-xs font-extrabold text-slate-900 dark:text-slate-100">{currentUser?.fullName}</p>
+                    <p className="text-[10px] text-slate-500 mt-0.5">{currentUser?.department}</p>
+                  </div>
+                  
+                  <div className="max-h-52 overflow-y-auto py-2">
+                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-4 py-1">Departments</p>
+                    {availableDepts.map(d => {
+                      const isActive = d.value === activeDepartment;
+                      const IconComponent = d.icon;
+                      return (
+                        <button
+                          key={d.value}
+                          onClick={() => {
+                            if (setActiveDepartment) {
+                              setActiveDepartment(d.value);
+                              const defaultSubTabs: Record<string, string> = {
+                                CEO: 'Overview', MANAGEMENT: 'CargoApproval', HR: 'Employees',
+                                MARKETING: 'CreateOrder', OPERATIONS: 'PortIngestion', FINANCE: 'Evaluation',
+                                PRODUCTION: 'Requisition', RECEPTION: 'VisitorLog', DISPATCH: 'Deliveries',
+                                LOGISTICS: 'Maintenance', BOARDROOM: 'VideoConf', SETTINGS: 'Appearance'
+                              };
+                              if (setActiveSubTab) {
+                                setActiveSubTab(defaultSubTabs[d.value] || 'Overview');
+                              }
+                            }
+                            setShowAvatarDropdown(false);
+                          }}
+                          className={`w-full flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-left transition-colors ${
+                            isActive 
+                              ? 'border-l-4 border-[var(--accent,#068d5c)] text-[var(--accent,#068d5c)] bg-slate-50 dark:bg-slate-850 pl-3.5'
+                              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
+                          }`}
+                        >
+                          <IconComponent className="w-4 h-4 shrink-0" />
+                          <span className="truncate">{d.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  
+                  <div className="h-px bg-slate-100 dark:bg-slate-800 my-1" />
+                  
+                  <div className="px-2 pt-1 space-y-0.5">
+                    <button
+                      onClick={() => {
+                        if (setActiveDepartment) {
+                          setActiveDepartment('SETTINGS');
+                          if (setActiveSubTab) setActiveSubTab('Appearance');
+                        }
+                        setShowAvatarDropdown(false);
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-800 text-left transition-colors"
+                    >
+                      <Settings className="w-4 h-4 text-slate-500" />
+                      Settings
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowAvatarDropdown(false);
+                        onLogout?.();
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 text-left transition-colors"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      Sign Out
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
 
-          <span className="font-extrabold tracking-wider text-sm select-none">REBMA IMPEX</span>
+          {/* Center: REBMA IMPEX Title */}
+          <span className="font-extrabold tracking-wider text-sm text-[var(--text-primary,#1a202c)] select-none">
+            REBMA IMPEX
+          </span>
 
-          <div className="flex items-center gap-1.5 relative">
-            {/* Chat Bubble */}
+          {/* Right Action Icons */}
+          <div className="flex items-center gap-1">
+            {/* Chat Icon */}
             <button
               onClick={onOpenChat}
-              className="p-2 text-white hover:bg-white/10 rounded-lg cursor-pointer transition-colors"
+              className="p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl cursor-pointer transition-all"
               title="Open Chat"
             >
               <MessageSquare className="w-5 h-5" />
@@ -81,30 +201,30 @@ export default function Header({
             {/* Notification Bell */}
             <button
               onClick={onOpenNotifications}
-              className="p-2 text-white hover:bg-white/10 rounded-lg cursor-pointer relative transition-colors"
+              className="p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl cursor-pointer relative transition-all"
               title="Notifications"
             >
               <Bell className="w-5 h-5" />
               {notifications.length > 0 && (
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full" />
+                <span className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full" />
               )}
             </button>
 
-            {/* Day/Night Toggle */}
+            {/* Dark Mode Toggle */}
             <button
               onClick={() => setDarkMode(!darkMode)}
-              className="p-2 text-white hover:bg-white/10 rounded-lg cursor-pointer transition-colors"
+              className="p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl cursor-pointer transition-all"
               title="Toggle Theme"
             >
               {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
             </button>
 
-            {/* More Menu vertical dots */}
+            {/* More Menu */}
             <div className="relative">
               <button
                 onClick={() => setShowMoreMenu(prev => !prev)}
-                className="p-2 -mr-2 text-white hover:bg-white/10 rounded-lg cursor-pointer transition-colors"
-                title="More options"
+                className="p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl cursor-pointer transition-all"
+                title="More Options"
               >
                 <MoreVertical className="w-5 h-5" />
               </button>
@@ -112,7 +232,7 @@ export default function Header({
               {showMoreMenu && (
                 <>
                   <div className="fixed inset-0 z-[290]" onClick={() => setShowMoreMenu(false)} />
-                  <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-2xl z-[300] py-2 animate-fade-in-up text-slate-800 dark:text-slate-200">
+                  <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl z-[300] py-2 animate-fade-in-up text-slate-800 dark:text-slate-200">
                     <button
                       type="button"
                       onClick={() => { setShowMoreMenu(false); onProfileClick?.(); }}
@@ -122,14 +242,14 @@ export default function Header({
                     </button>
                     <button
                       type="button"
-                      onClick={() => { setShowMoreMenu(false); onDisplaySettingsClick?.(); }}
+                      onClick={() => { setShowMoreMenu(false); if (setActiveDepartment) { setActiveDepartment('SETTINGS'); if (setActiveSubTab) setActiveSubTab(window.innerWidth < 1024 ? 'Appearance' : 'Themes'); } }}
                       className="w-full text-left px-4 py-2.5 text-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors font-bold"
                     >
                       Display & Appearance
                     </button>
                     <button
                       type="button"
-                      onClick={() => { setShowMoreMenu(false); onSwitchDepartmentClick?.(); }}
+                      onClick={() => { setShowMoreMenu(false); onToggleSidebar?.(); }}
                       className="w-full text-left px-4 py-2.5 text-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors font-bold"
                     >
                       Switch Department
@@ -163,17 +283,28 @@ export default function Header({
           </div>
         </div>
 
-        {/* Hero Section */}
-        <div>
+        {/* Greeting Banner */}
+        <div className="mt-1 flex flex-col">
           <div className="flex items-center gap-2">
-            <h2 className="text-xl font-bold tracking-tight">
+            <h2 className="text-2xl font-bold text-[var(--text-primary,#1a202c)] tracking-tight">
               {getGreeting()}, {currentUser?.fullName?.split(' ')[0] || 'User'}
             </h2>
-            <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse mt-1 shrink-0" />
+            <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse mt-1.5 shrink-0" />
           </div>
-          <p className="text-xs text-white/75 font-semibold mt-0.5 uppercase tracking-wide">
+          <p className="text-xs text-[var(--text-secondary,#64748b)] font-semibold mt-0.5 uppercase tracking-wide">
             {currentUser?.department || 'ERP Command Center'}
           </p>
+        </div>
+
+        {/* Search Bar Input */}
+        <div className="w-full mt-1.5">
+          <div
+            onClick={onSearchClick}
+            className="flex items-center gap-2.5 px-4 py-2.5 bg-slate-100 dark:bg-slate-850 hover:bg-slate-200/60 dark:hover:bg-slate-800 rounded-full text-xs text-slate-400 dark:text-slate-500 cursor-pointer transition-all border border-transparent hover:border-slate-200 dark:hover:border-slate-700"
+          >
+            <Search className="w-4 h-4 text-slate-400" />
+            <span>Search...</span>
+          </div>
         </div>
       </div>
 

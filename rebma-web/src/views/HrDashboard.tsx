@@ -322,7 +322,7 @@ export default function HrDashboard({
 
   if (activeMobileDetail) {
     return (
-      <div className="lg:hidden bg-slate-50 dark:bg-slate-900 min-h-screen p-4 pb-24 space-y-6 animate-fade-in-up text-slate-800 dark:text-slate-200">
+      <div className="lg:hidden bg-white min-h-screen p-4 pb-24 space-y-6 animate-fade-in-up text-slate-800">
         {/* Header with Back button */}
         <div className="flex items-center gap-3">
           <button 
@@ -445,7 +445,99 @@ export default function HrDashboard({
   }
 
   return (
-    <div className="space-y-6">
+    <>
+      {/* ══ MOBILE LAYOUT (< lg) ══ */}
+      <div className="lg:hidden mobile-only space-y-4 pb-4 mobile-animate-up">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-lg font-bold text-slate-800 tracking-tight">Human Resources</h1>
+            <p className="text-[11px] text-slate-400 mt-0.5">Staff management & attendance</p>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={() => exportToCSV(localAttendance, ['id', 'fullName', 'checkInTime', 'status'], 'hr_attendance')} className="p-2 bg-white rounded-xl border border-slate-200 shadow-sm"><FileSpreadsheet className="w-4 h-4 text-slate-500" /></button>
+            <button onClick={() => exportToPDF('Daily Staff Attendance Log', localAttendance, ['id', 'fullName', 'checkInTime', 'status'])} className="p-2 bg-white rounded-xl border border-slate-200 shadow-sm"><FileText className="w-4 h-4 text-slate-500" /></button>
+          </div>
+        </div>
+
+        {/* Physical card */}
+        <div className="mobile-physical-card">
+          <div className="flex justify-between items-start relative z-10">
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-white/60 font-bold">Total Staff Force</p>
+              <h2 className="text-3xl font-extrabold text-white mt-1 tracking-tight">{localStaff.length} Active</h2>
+              <p className="text-[10px] text-white/70 mt-1">{presentToday} Present Today • {lateToday} Late</p>
+            </div>
+            <div className="mobile-card-chip mt-1" />
+          </div>
+          <div className="flex justify-between items-end mt-8 relative z-10">
+            <div>
+              <p className="text-[10px] font-mono tracking-widest text-white/60">{pendingApprovals} Pending Approvals</p>
+              <p className="text-[10px] font-bold text-white/80 mt-1 uppercase tracking-wider">HR Management System</p>
+            </div>
+            <div className="mobile-card-circles"><div className="mobile-card-circle-1" /><div className="mobile-card-circle-2" /></div>
+          </div>
+        </div>
+
+        {/* Stat grid */}
+        <div className="grid grid-cols-2 gap-3">
+          {[
+            { label: 'Present Today', value: `${presentToday}`, sub: 'Checked in', bg: '#f0fdf4', color: '#16a34a', icon: ShieldCheck },
+            { label: 'Pending', value: `${pendingApprovals}`, sub: 'Approval queue', bg: '#fef3c7', color: '#d97706', icon: Clipboard },
+          ].map((s, i) => { const Icon = s.icon; return (
+            <div key={i} className="mobile-stat-card">
+              <div className="mobile-stat-icon" style={{ background: s.bg }}><Icon className="w-5 h-5" style={{ color: s.color }} /></div>
+              <div className="min-w-0">
+                <p className="text-[9px] text-slate-400 uppercase font-bold tracking-wider truncate">{s.label}</p>
+                <p className="text-sm font-bold text-slate-800 mt-0.5">{s.value}</p>
+                <p className="text-[9px] text-slate-400">{s.sub}</p>
+              </div>
+            </div>
+          ); })}
+        </div>
+
+        {/* Staff list */}
+        <div>
+          <p className="mobile-section-label">Staff Directory</p>
+          <div className="space-y-2">
+            {localStaff.slice(0, 8).map(s => (
+              <div key={s.id} onClick={() => setActiveMobileDetail({ type: 'staff', data: s })} className="mobile-data-row cursor-pointer">
+                <div className="mobile-data-row-icon" style={{ background: '#eff6ff', color: '#3b82f6' }}>{s.fullName[0]}</div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold text-slate-800 truncate">{s.fullName}</p>
+                  <p className="text-[10px] text-slate-400 truncate">{s.department} • {s.role}</p>
+                </div>
+                <span className={`mobile-status-pill ${s.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>{s.status}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Pending approvals */}
+        {pendingRegistrations.length > 0 && (
+          <div>
+            <p className="mobile-section-label">Pending Approvals</p>
+            <div className="space-y-2">
+              {pendingRegistrations.map(r => (
+                <div key={r.id} className="mobile-data-row">
+                  <div className="mobile-data-row-icon" style={{ background: '#fef3c7', color: '#d97706' }}>{r.fullName[0]}</div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold text-slate-800 truncate">{r.fullName}</p>
+                    <p className="text-[10px] text-slate-400 truncate">{r.department}</p>
+                  </div>
+                  <div className="flex gap-1">
+                    <button onClick={() => handleApprove(r)} className="mobile-status-pill bg-emerald-50 text-emerald-700 cursor-pointer">✓ Approve</button>
+                    <button onClick={() => handleDeny(r)} className="mobile-status-pill bg-rose-50 text-rose-700 cursor-pointer">✗ Deny</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ══ DESKTOP LAYOUT (lg+) — UNCHANGED ══ */}
+      <div className="hidden lg:block">
+      <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
@@ -1129,6 +1221,8 @@ export default function HrDashboard({
           </div>
         )}
       </div>
-    </div>
+      </div>
+      </div>
+    </>
   );
 }
