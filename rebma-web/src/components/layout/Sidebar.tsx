@@ -193,7 +193,7 @@ export default function Sidebar({
   };
 
   return (
-    <aside className={`fixed inset-y-0 left-0 z-50 w-[80vw] max-w-[320px] bg-[var(--bg-card)] text-[var(--text-primary)] rounded-r-3xl flex flex-col justify-between shadow-2xl select-none transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full'} lg:w-64 lg:rounded-none lg:bg-slate-900 lg:text-slate-300 lg:static lg:translate-x-0`}>
+    <aside className={`fixed inset-y-0 left-0 z-50 w-[80vw] max-w-[320px] bg-[var(--bg-card)] text-[var(--text-primary)] rounded-r-3xl flex flex-col justify-between shadow-2xl select-none transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full'} lg:w-[260px] lg:rounded-none lg:bg-[var(--bg-card)] lg:text-[var(--text-primary)] lg:border-r lg:border-[var(--border)] lg:static lg:translate-x-0 lg:shadow-none`}>
       {/* 1. MOBILE STYLE VIEW */}
       <div className="lg:hidden flex flex-col h-full justify-between py-6 px-4 bg-[var(--bg-card)] text-[var(--text-primary)]">
         <div className="flex flex-col h-full overflow-hidden">
@@ -298,17 +298,29 @@ export default function Sidebar({
       <div className="hidden lg:flex flex-col h-full justify-between py-6 px-4">
         <div className="flex flex-col h-full">
           {/* Logo Header */}
-          <div className="flex items-center justify-between px-3 mb-8">
+          <div className="flex items-center justify-between px-3 mb-6">
             <div className="flex items-center gap-3">
               <img 
                 src="/logo.png" 
-                className="w-9 h-9 object-contain rounded-lg bg-white/20 p-0.5 shrink-0 select-none pointer-events-none" 
+                className="w-9 h-9 object-contain rounded-lg bg-white p-0.5 shrink-0 select-none pointer-events-none shadow-sm" 
                 alt="REBMA GHANA Logo" 
               />
               <div>
-                <h2 className="font-bold text-sm tracking-wide leading-none text-white">REBMA IMPEX GHANA</h2>
-                <span className="text-[10px] uppercase text-white/60 tracking-widest font-semibold font-mono">Impex ERP</span>
+                <h2 className="font-bold text-sm tracking-wide leading-none text-[var(--text-primary)]">REBMA IMPEX</h2>
+                <span className="text-[10px] uppercase text-[var(--accent)] tracking-widest font-bold font-mono">GHANA</span>
               </div>
+            </div>
+          </div>
+
+          {/* User Profile Section */}
+          <div className="mb-5 px-3 py-3 bg-[var(--accent-light)] rounded-2xl flex items-center gap-3 border border-[var(--border)] relative">
+            <div className="w-10 h-10 rounded-full bg-[var(--accent)] text-white flex items-center justify-center font-bold text-sm shrink-0 relative shadow-sm">
+              {currentUser?.fullName?.[0] || 'U'}
+              <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-white" />
+            </div>
+            <div className="truncate flex-1">
+              <p className="text-xs font-semibold leading-none truncate text-[var(--text-primary)]">{currentUser?.fullName}</p>
+              <p className="text-[10px] text-[var(--text-secondary)] leading-none mt-1 truncate">{currentUser?.department}</p>
             </div>
           </div>
 
@@ -316,23 +328,43 @@ export default function Sidebar({
           <div className="mb-4 px-1">
             <button 
               onClick={handleBoardroomClick}
-              className="w-full flex items-center justify-center gap-2 py-2.5 bg-white hover:bg-slate-100 text-blue-600 rounded-full font-semibold shadow-md border border-slate-100 hover:scale-102 transition-all duration-200 cursor-pointer text-xs"
+              className="w-full flex items-center justify-center gap-2 py-2.5 bg-[var(--bg-card)] hover:bg-[var(--accent-light)] text-[var(--accent)] rounded-full font-semibold shadow-sm border border-[var(--border)] hover:scale-[1.02] transition-all duration-200 cursor-pointer text-xs"
             >
-              <MessagesSquare className="w-4 h-4 text-blue-600" />
+              <MessagesSquare className="w-4 h-4 text-[var(--accent)]" />
               <span>Executive Boardroom</span>
             </button>
           </div>
 
           {/* Department Switcher Dropdown */}
           <div className="mb-5 px-1 relative">
-            <label className="block text-[9px] font-bold text-white/50 uppercase tracking-wider mb-1.5">Switch Department</label>
+            <label className="block text-[9px] font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-1.5">Switch Department</label>
             <button
               type="button"
               onClick={() => setIsSwitcherOpen(prev => !prev)}
-              className="w-full flex items-center justify-between bg-white/10 hover:bg-white/15 border border-white/10 text-white rounded-xl py-2.5 px-3 text-xs focus:outline-none transition-all cursor-pointer font-semibold"
+              className="w-full flex items-center justify-between bg-[var(--bg)] hover:bg-[var(--accent-light)] border border-[var(--border)] text-[var(--text-primary)] rounded-xl py-2.5 px-3 text-xs focus:outline-none transition-all cursor-pointer font-semibold shadow-sm"
             >
-              <span>{allDepts.find(d => d.value === activeDepartment)?.label || activeDepartment}</span>
-              <span className="text-[9px] opacity-75">▼</span>
+              <div className="flex items-center gap-2">
+                {(() => {
+                  const getIconComponent = (val: string) => {
+                    if (val === 'CEO') return ShieldCheck;
+                    if (val === 'MANAGEMENT') return Layers;
+                    if (val === 'HR') return Users;
+                    if (val === 'MARKETING') return TrendingUp;
+                    if (val === 'OPERATIONS') return Warehouse;
+                    if (val === 'FINANCE') return DollarSign;
+                    if (val === 'PRODUCTION') return Activity;
+                    if (val === 'RECEPTION') return Users;
+                    if (val === 'DISPATCH') return Truck;
+                    if (val === 'LOGISTICS') return Truck;
+                    if (val === 'BOARDROOM') return Video;
+                    return Settings;
+                  };
+                  const SelectedIcon = getIconComponent(activeDepartment);
+                  return <SelectedIcon className="w-4 h-4 text-[var(--accent)] shrink-0" />;
+                })()}
+                <span>{allDepts.find(d => d.value === activeDepartment)?.label || activeDepartment}</span>
+              </div>
+              <span className="text-[9px] text-[var(--text-secondary)] opacity-75">▼</span>
             </button>
             
             {/* Switcher Popover / Sheet */}
@@ -343,35 +375,65 @@ export default function Sidebar({
                   className="fixed inset-0 bg-black/60 z-[250] lg:hidden"
                   onClick={() => setIsSwitcherOpen(false)}
                 />
+                <div 
+                  className="fixed inset-0 z-[250] hidden lg:block"
+                  onClick={() => setIsSwitcherOpen(false)}
+                />
                 
-                <div className="fixed inset-x-0 bottom-0 lg:absolute lg:top-full lg:bottom-auto lg:inset-x-0 max-h-[80vh] lg:max-h-80 bg-slate-900 border-t lg:border border-white/15 rounded-t-3xl lg:rounded-xl p-5 lg:p-2 z-[260] overflow-y-auto shadow-2xl flex flex-col gap-2.5 animate-fade-in-up">
+                <div className="fixed inset-x-0 bottom-0 lg:absolute lg:top-full lg:bottom-auto lg:inset-x-0 max-h-[80vh] lg:max-h-80 bg-[var(--bg-card)] border-t lg:border border-[var(--border)] rounded-t-3xl lg:rounded-xl p-5 lg:p-1.5 z-[260] overflow-y-auto shadow-xl flex flex-col gap-1 animate-fade-in-up">
                   {/* Mobile Grab Handle */}
                   <div className="lg:hidden w-12 h-1 bg-white/20 rounded-full mx-auto mb-1 shrink-0" />
                   
                   <div className="flex justify-between items-center lg:hidden mb-1">
-                    <h3 className="text-xs font-bold text-white/50 uppercase tracking-wider">Switch Department</h3>
-                    <button onClick={() => setIsSwitcherOpen(false)} className="text-white/60 hover:text-white text-xs">Close</button>
+                    <h3 className="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider">Switch Department</h3>
+                    <button onClick={() => setIsSwitcherOpen(false)} className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] text-xs">Close</button>
                   </div>
 
-                  <div className="space-y-1">
+                  <div className="space-y-0.5">
                     {availableDepts.map(dept => {
                       const isSelected = dept.value === activeDepartment;
+                      const getIconComponent = (val: string) => {
+                        if (val === 'CEO') return ShieldCheck;
+                        if (val === 'MANAGEMENT') return Layers;
+                        if (val === 'HR') return Users;
+                        if (val === 'MARKETING') return TrendingUp;
+                        if (val === 'OPERATIONS') return Warehouse;
+                        if (val === 'FINANCE') return DollarSign;
+                        if (val === 'PRODUCTION') return Activity;
+                        if (val === 'RECEPTION') return Users;
+                        if (val === 'DISPATCH') return Truck;
+                        if (val === 'LOGISTICS') return Truck;
+                        if (val === 'BOARDROOM') return Video;
+                        return Settings;
+                      };
+                      const DeptIcon = getIconComponent(dept.value);
                       return (
                         <button
                           key={dept.value}
                           type="button"
                           onClick={() => {
                             setActiveDepartment(dept.value);
+                            // Reset sub-tab based on department defaults
+                            const defaultSubTabs: Record<string, string> = {
+                              CEO: 'Overview', MANAGEMENT: 'CargoApproval', HR: 'Employees',
+                              MARKETING: 'CreateOrder', OPERATIONS: 'PortIngestion', FINANCE: 'Evaluation',
+                              PRODUCTION: 'Requisition', RECEPTION: 'VisitorLog', DISPATCH: 'Deliveries',
+                              LOGISTICS: 'Maintenance', BOARDROOM: 'VideoConf', SETTINGS: 'Themes'
+                            };
+                            setActiveSubTab(defaultSubTabs[dept.value] || 'Overview');
                             setIsSwitcherOpen(false);
                           }}
-                          className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                          className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                             isSelected 
-                              ? 'bg-white text-slate-900 shadow-md font-bold' 
-                              : 'text-white/80 hover:bg-white/10 hover:text-white'
+                              ? 'bg-[var(--accent)] text-white shadow-sm font-bold' 
+                              : 'text-[var(--text-primary)] hover:bg-[var(--accent-light)]'
                           }`}
                         >
-                          <span>{dept.label}</span>
-                          {isSelected && <span className="text-emerald-500 font-extrabold text-sm">✓</span>}
+                          <div className="flex items-center gap-2">
+                            <DeptIcon className={`w-3.5 h-3.5 ${isSelected ? 'text-white' : 'text-[var(--accent)]'} shrink-0`} />
+                            <span>{dept.label}</span>
+                          </div>
+                          {isSelected && <span className="text-white font-extrabold text-xs">✓</span>}
                         </button>
                       );
                     })}
@@ -382,7 +444,7 @@ export default function Sidebar({
 
             {/* View-only badge for CEO/Management viewing other depts */}
             {(isCeo || isManagement) && activeDepartment !== userDept && activeDepartment !== 'BOARDROOM' && activeDepartment !== 'SETTINGS' && (
-              <div className="mt-1.5 px-2 py-1 bg-amber-500/20 border border-amber-500/30 rounded-lg text-[9px] text-amber-300 font-semibold text-center">
+              <div className="mt-1.5 px-2 py-1 bg-amber-500/15 border border-amber-500/35 rounded-lg text-[9px] text-amber-700 dark:text-amber-300 font-semibold text-center">
                 👁 VIEW ONLY — {isCeo ? 'CEO' : 'MANAGEMENT'} ACCESS
               </div>
             )}
@@ -390,7 +452,7 @@ export default function Sidebar({
 
           {/* Department Sub-Menu */}
           <nav className="space-y-1 flex-1 overflow-y-auto pr-0.5">
-            <div className="text-[9px] uppercase text-white/50 tracking-widest font-semibold px-4 mb-2">
+            <div className="text-[9px] uppercase text-[var(--text-secondary)] tracking-widest font-bold px-4 mb-2">
               {activeDepartment} Controls
             </div>
             {departmentTabs[activeDepartment]?.map(tab => {
@@ -400,18 +462,14 @@ export default function Sidebar({
                 <button
                   key={tab.id}
                   onClick={() => setActiveSubTab(tab.id)}
-                  className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-full text-sm font-medium transition-all duration-200 cursor-pointer ${
+                  className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer ${
                     isActive 
-                      ? 'bg-white text-slate-900 shadow-md font-semibold' 
-                      : 'text-white/80 hover:bg-white/10 hover:text-white'
+                      ? 'bg-[var(--accent-light)] text-[var(--accent)] font-bold shadow-sm' 
+                      : 'text-[var(--text-secondary)] hover:bg-[var(--accent-light)] hover:text-[var(--text-primary)]'
                   }`}
-                  style={isActive && theme !== 'breeze' ? {
-                    backgroundColor: 'var(--sidebar-active-bg, white)',
-                    color: 'var(--sidebar-active-text, #0f172a)'
-                  } : {}}
                 >
-                  <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-blue-600' : ''}`} />
-                  <span className="truncate text-xs">{tab.label}</span>
+                  <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-[var(--accent)]' : 'text-[var(--text-secondary)]'}`} />
+                  <span className="truncate">{tab.label}</span>
                 </button>
               );
             })}
@@ -419,34 +477,34 @@ export default function Sidebar({
         </div>
 
         {/* Bottom section: Settings + User Card + Logout */}
-        <div className="space-y-3 pt-4 border-t border-white/20">
+        <div className="space-y-3 pt-4 border-t border-[var(--border)] pb-6">
           {/* Settings shortcut */}
           <button
             onClick={() => { setActiveDepartment('SETTINGS'); setActiveSubTab('Themes'); }}
-            className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-full text-xs font-medium transition-all duration-200 cursor-pointer ${
+            className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer ${
               activeDepartment === 'SETTINGS'
-                ? 'bg-white text-slate-900 shadow-md'
-                : 'text-white/70 hover:bg-white/10 hover:text-white'
+                ? 'bg-[var(--accent-light)] text-[var(--accent)] font-bold shadow-sm'
+                : 'text-[var(--text-secondary)] hover:bg-[var(--accent-light)] hover:text-[var(--text-primary)]'
             }`}
           >
-            <Settings className="w-4 h-4 shrink-0" />
+            <Settings className="w-4 h-4 shrink-0 text-[var(--text-secondary)]" />
             <span>Settings</span>
           </button>
 
           {/* User profile + logout */}
           <div className="px-2 flex items-center justify-between">
             <div className="flex items-center gap-2 truncate">
-              <div className="w-8 h-8 rounded-full bg-white/25 flex items-center justify-center font-bold text-white">
+              <div className="w-8 h-8 rounded-full bg-[var(--accent)] text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-sm">
                 {currentUser?.fullName?.[0] || 'U'}
               </div>
               <div className="truncate">
-                <p className="text-xs font-semibold text-white leading-none truncate">{currentUser?.fullName}</p>
-                <p className="text-[10px] text-white/70 leading-none mt-1 truncate">{currentUser?.department}</p>
+                <p className="text-xs font-semibold text-[var(--text-primary)] leading-none truncate">{currentUser?.fullName}</p>
+                <p className="text-[10px] text-[var(--text-secondary)] leading-none mt-1 truncate">{currentUser?.department}</p>
               </div>
             </div>
             <button 
               onClick={onLogout}
-              className="p-1.5 hover:bg-white/10 rounded-full text-white/80 hover:text-white cursor-pointer shrink-0"
+              className="p-1.5 hover:bg-[var(--accent-light)] rounded-lg text-rose-500 hover:text-rose-750 cursor-pointer shrink-0 transition-colors"
               title="Log out of Terminal"
             >
               <LogOut className="w-4 h-4" />

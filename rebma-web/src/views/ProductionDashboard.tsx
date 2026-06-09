@@ -696,21 +696,20 @@ export default function ProductionDashboard({
           </div>
         </div>
       </div>
-
       {/* ══ DESKTOP LAYOUT (lg+) — UNCHANGED ══ */}
       <div className="hidden lg:block">
       <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-[var(--text-primary)]">
         <div>
-          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight">Production Floor Control</h1>
-          <p className="text-xs sm:text-sm text-muted">Manage raw material requisitions, production batches, and WIP stock.</p>
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight text-[var(--text-primary)]">Production Floor Control</h1>
+          <p className="text-xs sm:text-sm text-[var(--text-secondary)] opacity-85">Manage raw material requisitions, production batches, and WIP stock.</p>
         </div>
         <div className="flex gap-2 w-full sm:w-auto justify-end">
-          <button onClick={() => exportToCSV(productionRequests, ['id', 'status', 'createdAt'], 'production_requisitions')} className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold cursor-pointer border border-slate-200 transition-colors">
+          <button onClick={() => exportToCSV(productionRequests, ['id', 'status', 'createdAt'], 'production_requisitions')} className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--bg)] hover:bg-[var(--accent-light)] text-[var(--text-primary)] rounded-lg text-xs font-semibold cursor-pointer border border-[var(--border)] transition-colors">
             <FileSpreadsheet className="w-3.5 h-3.5" /><span>Export CSV</span>
           </button>
-          <button onClick={() => exportToPDF('Production Requisitions', productionRequests, ['id', 'status', 'createdAt'])} className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold cursor-pointer border border-slate-200 transition-colors">
+          <button onClick={() => exportToPDF('Production Requisitions', productionRequests, ['id', 'status', 'createdAt'])} className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--bg)] hover:bg-[var(--accent-light)] text-[var(--text-primary)] rounded-lg text-xs font-semibold cursor-pointer border border-[var(--border)] transition-colors">
             <FileText className="w-3.5 h-3.5" /><span>Export PDF</span>
           </button>
         </div>
@@ -722,30 +721,30 @@ export default function ProductionDashboard({
           const Icon = card.icon;
           const isProminent = idx < 2;
           return (
-            <div key={idx} className="p-4 md:p-6 app-card flex items-center justify-between hover:scale-102 transition-all duration-300">
+            <div key={idx} className="p-4 md:p-6 bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] border-b-[3px] border-[var(--accent)] flex items-center justify-between hover:scale-[1.02] transition-all duration-300 text-[var(--text-primary)]">
               <div>
-                <span className="text-xs text-slate-400 uppercase font-semibold">{card.title}</span>
-                <h3 className={`font-bold mt-1 ${isProminent ? 'text-2xl sm:text-3xl' : 'text-lg sm:text-xl'}`}>{card.value}</h3>
-                <p className="text-[10px] text-slate-400 mt-1">{card.sub}</p>
+                <span className="text-xs text-[var(--text-secondary)] uppercase font-semibold">{card.title}</span>
+                <h3 className={`font-bold mt-1 text-[var(--text-primary)] ${isProminent ? 'text-2xl sm:text-3xl' : 'text-lg sm:text-xl'}`}>{card.value}</h3>
+                <p className="text-[10px] text-[var(--text-secondary)] opacity-80 mt-1">{card.sub}</p>
               </div>
-              <div className={`p-3 md:p-4 bg-slate-100 rounded-2xl ${card.color} bg-accent-light`}><Icon className="w-5 h-5 md:w-6 md:h-6" /></div>
+              <div className="w-12 h-12 rounded-full bg-[var(--accent-light)] flex items-center justify-center text-[var(--accent)] shrink-0"><Icon className="w-5 h-5 md:w-6 md:h-6" /></div>
             </div>
           );
         })}
       </div>
 
       {/* Chart */}
-      <div className="p-4 md:p-6 app-card">
-        <h3 className="text-base md:text-lg font-bold">Raw Materials Requested vs Goods Produced</h3>
-        <p className="text-xs text-muted font-semibold text-slate-500">Weekly production batches requested vs completed output.</p>
+      <div className="p-4 md:p-6 bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-[var(--box-shadow)] text-[var(--text-primary)]">
+        <h3 className="text-base md:text-lg font-bold text-[var(--text-primary)]">Raw Materials Requested vs Goods Produced</h3>
+        <p className="text-xs text-[var(--text-secondary)] opacity-80 font-semibold">Weekly production batches requested vs completed output.</p>
         <div className="h-48 md:h-60 mt-4">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={barChartData}>
-              <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
-              <XAxis dataKey="name" stroke="#94a3b8" fontSize={10} />
-              <YAxis stroke="#94a3b8" fontSize={10} />
-              <Tooltip />
-              <Bar dataKey="Requested" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+              <CartesianGrid strokeDasharray="3 3" opacity={0.1} stroke="var(--border)" />
+              <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={10} />
+              <YAxis stroke="var(--text-muted)" fontSize={10} />
+              <Tooltip contentStyle={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)', color: 'var(--text-primary)' }} />
+              <Bar dataKey="Requested" fill="var(--accent)" radius={[4, 4, 0, 0]} />
               <Bar dataKey="Produced" fill="#10b981" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
@@ -753,33 +752,33 @@ export default function ProductionDashboard({
       </div>
 
       {/* Tab Views */}
-      <div className="border-t border-custom pt-6">
+      <div className="border-t border-[var(--border)] pt-6">
 
         {/* REQUISITION FORM */}
         {activeSubTab === 'Requisition' && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Form */}
-            <div className="p-4 md:p-6 app-card space-y-4">
-              <h3 className="text-base md:text-lg font-bold">Submit Raw Materials Requisition</h3>
+            <div className="p-4 md:p-6 bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-[var(--box-shadow)] space-y-4 text-[var(--text-primary)]">
+              <h3 className="text-base md:text-lg font-bold text-[var(--text-primary)]">Submit Raw Materials Requisition</h3>
               <form onSubmit={handleCreateRequisition} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-500 mb-1.5">Material Name <span className="text-rose-500">*</span></label>
-                  <input type="text" value={newMaterial} onChange={e => setNewMaterial(e.target.value)} required placeholder="E.g., Raw Polymer Granules" className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-blue-500" />
+                  <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Material Name <span className="text-rose-500">*</span></label>
+                  <input type="text" value={newMaterial} onChange={e => setNewMaterial(e.target.value)} required placeholder="E.g., Raw Polymer Granules" className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-500 mb-1.5">Quantity Required <span className="text-rose-500">*</span></label>
-                  <input type="number" value={newQty} onChange={e => setNewQty(e.target.value)} required placeholder="E.g., 5000" className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-blue-500" />
+                  <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Quantity Required <span className="text-rose-500">*</span></label>
+                  <input type="number" value={newQty} onChange={e => setNewQty(e.target.value)} required placeholder="E.g., 5000" className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />
                 </div>
-                <div className="p-3 bg-blue-500/10 border border-blue-200 dark:border-blue-900/50 rounded-xl text-xs text-blue-400">
+                <div className="p-3 bg-[var(--accent-light)] border border-[var(--border)] rounded-xl text-xs text-[var(--accent)] font-semibold">
                   Submission timestamp will be auto-generated: <strong>{new Date().toLocaleString()}</strong>
                 </div>
-                <button type="submit" className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold cursor-pointer transition-colors shadow">Submit to Management</button>
+                <button type="submit" className="w-full py-2.5 bg-[var(--accent)] hover:opacity-90 text-white rounded-xl text-xs font-bold cursor-pointer transition-opacity shadow">Submit to Management</button>
               </form>
             </div>
 
             {/* Approved requisitions — ready to issue */}
-            <div className="p-4 md:p-6 app-card space-y-4">
-              <h3 className="text-base md:text-lg font-bold">Approved — Issue Goods Tickets</h3>
+            <div className="p-4 md:p-6 bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-[var(--box-shadow)] space-y-4 text-[var(--text-primary)]">
+              <h3 className="text-base md:text-lg font-bold text-[var(--text-primary)]">Approved — Issue Goods Tickets</h3>
               <div className="space-y-3">
                 {productionRequests.filter(r => r.status === 'APPROVED').map(req => (
                   <div key={req.id}>
@@ -790,7 +789,7 @@ export default function ProductionDashboard({
                           <Settings className="w-5 h-5 text-[var(--accent-color,#068d5c)]" />
                         </div>
                         <div>
-                          <p className="text-sm font-bold text-slate-800 dark:text-slate-200">{req.id}</p>
+                          <p className="text-sm font-bold text-slate-800 dark:text-slate-205">{req.id}</p>
                           <div className="text-[10px] text-slate-400 space-y-0.5 mt-0.5">
                             {req.items.map((item, idx) => (
                               <span key={idx} className="mr-1">{item.materialName}: <strong>{item.quantity.toLocaleString()}</strong></span>
@@ -807,10 +806,10 @@ export default function ProductionDashboard({
                     {/* Desktop layout */}
                     <div className="hidden lg:block p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-xl space-y-2">
                       <div className="flex justify-between items-center">
-                        <span className="text-xs font-bold">{req.id}</span>
+                        <span className="text-xs font-bold text-[var(--text-primary)]">{req.id}</span>
                         <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 rounded text-[9px] font-bold">APPROVED</span>
                       </div>
-                      <div className="text-[10px] text-slate-400 space-y-0.5">
+                      <div className="text-[10px] text-[var(--text-secondary)] space-y-0.5">
                         {req.items.map((item, idx) => (
                           <p key={idx}>{item.materialName}: <strong>{item.quantity.toLocaleString()} units</strong></p>
                         ))}
@@ -821,7 +820,7 @@ export default function ProductionDashboard({
                   </div>
                 ))}
                 {productionRequests.filter(r => r.status === 'APPROVED').length === 0 && (
-                  <p className="text-xs text-slate-400 text-center py-6">No approved requisitions pending ticket issuance.</p>
+                  <p className="text-xs text-[var(--text-secondary)] text-center py-6">No approved requisitions pending ticket issuance.</p>
                 )}
               </div>
             </div>
@@ -830,42 +829,42 @@ export default function ProductionDashboard({
 
         {/* RAW MATERIALS TABLE */}
         {activeSubTab === 'RawMaterials' && (
-          <div className="theme-table-wrapper">
+          <div className="theme-table-wrapper border border-[var(--border)] bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)]">
             {/* Toolbar */}
-            <div className="theme-table-toolbar flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-5 py-4">
+            <div className="theme-table-toolbar flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-5 py-4 border-b border-[var(--border)] bg-[var(--bg)] text-[var(--text-primary)]">
               <div className="flex items-center gap-2">
-                <Package className="w-5 h-5 text-blue-500" />
+                <Package className="w-5 h-5 text-[var(--accent)]" />
                 <h3 className="text-sm font-bold">Raw Materials Requested</h3>
-                <span className="text-xs font-mono text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">{filteredMaterials.length} requests</span>
+                <span className="text-xs font-mono text-[var(--text-secondary)] bg-[var(--bg-card)] px-2 py-0.5 rounded-full border border-[var(--border)]">{filteredMaterials.length} requests</span>
               </div>
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
                 {/* Search */}
                 <div className="relative flex items-center w-full sm:w-auto">
-                  <span className="absolute left-3 text-slate-500 text-xs pointer-events-none">🔍</span>
+                  <span className="absolute left-3 text-[var(--text-secondary)] text-xs pointer-events-none">🔍</span>
                   <input
                     type="text"
                     placeholder="Search material…"
                     value={materialsSearch}
                     onChange={e => setMaterialsSearch(e.target.value)}
-                    className="pl-8 pr-3 py-1.5 text-xs rounded-lg outline-none transition w-full sm:w-40"
+                    className="pl-8 pr-3 py-1.5 text-xs bg-[var(--bg-card)] border border-[var(--border)] rounded-lg outline-none text-[var(--text-primary)] focus:border-[var(--accent)] transition w-full sm:w-40"
                   />
                 </div>
                 {/* Status dropdown */}
                 <div className="relative w-full sm:w-auto">
                   <button
                     onClick={(e) => { e.stopPropagation(); setIsMaterialsFilterOpen(!isMaterialsFilterOpen); }}
-                    className="flex items-center justify-between sm:justify-start gap-1.5 text-xs text-[var(--text-primary)] bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 px-3 py-1.5 rounded-lg transition-colors border border-custom w-full sm:w-auto"
+                    className="flex items-center justify-between sm:justify-start gap-1.5 text-xs text-[var(--text-primary)] bg-[var(--bg-card)] hover:bg-[var(--accent-light)] px-3 py-1.5 rounded-lg transition-colors border border-[var(--border)] w-full sm:w-auto"
                   >
                     <span>Status: {materialsStatusFilter === 'ALL' ? 'All' : materialsStatusFilter.replace(/_/g, ' ')}</span>
                     <span className="text-[10px]">▼</span>
                   </button>
                   {isMaterialsFilterOpen && (
-                    <div className="absolute right-0 top-full mt-1.5 w-full sm:w-48 bg-[var(--bg-card)] border border-custom rounded-xl shadow-xl z-20 p-1 flex flex-col">
+                    <div className="absolute right-0 top-full mt-1.5 w-full sm:w-48 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl z-20 p-1 flex flex-col">
                       {(['ALL', 'PENDING_MANAGEMENT', 'APPROVED', 'TICKETS_ISSUED'] as const).map(st => (
                         <button
                           key={st}
                           onClick={() => { setMaterialsStatusFilter(st); setIsMaterialsFilterOpen(false); }}
-                          className="flex items-center gap-2 px-3 py-2 text-xs rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-left transition-colors text-[var(--text-primary)]"
+                          className="flex items-center gap-2 px-3 py-2 text-xs rounded-lg hover:bg-[var(--accent-light)] text-left transition-colors text-[var(--text-primary)]"
                         >
                           <span className={`w-2 h-2 rounded-full ${st === 'APPROVED' ? 'bg-blue-400' : st === 'TICKETS_ISSUED' ? 'bg-emerald-400' : st === 'ALL' ? 'bg-slate-400' : 'bg-amber-400'}`} />
                           {st === 'ALL' ? 'All Status' : st.replace(/_/g, ' ')}
@@ -911,40 +910,40 @@ export default function ProductionDashboard({
             <div className="hidden lg:block overflow-x-auto w-full">
               <table className="w-full text-xs text-left">
                 <thead>
-                  <tr className="theme-table-header-row text-slate-400 uppercase font-semibold text-[10px]">
+                  <tr className="theme-table-header-row text-[var(--text-secondary)] opacity-85 uppercase font-semibold text-[10px] border-b border-[var(--border)] bg-[var(--bg)]">
                     <th className="py-3 px-5 whitespace-nowrap">
                       <input
                         type="checkbox"
                         checked={filteredMaterials.length > 0 && selectedMaterialsRows.size === filteredMaterials.length}
                         onChange={handleSelectAllMaterials}
-                        className="accent-blue-600 w-3.5 h-3.5"
+                        className="accent-[var(--accent)] w-3.5 h-3.5"
                       />
                     </th>
-                    <th onClick={() => handleSort('id', materialsSortField, setMaterialsSortField, materialsSortDir, setMaterialsSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                    <th onClick={() => handleSort('id', materialsSortField, setMaterialsSortField, materialsSortDir, setMaterialsSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none">
                       <div className="flex items-center gap-1">
                         <span>Req. ID</span>
                         <span className="text-[9px] opacity-70">{materialsSortField === 'id' ? (materialsSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
-                    <th onClick={() => handleSort('materialName', materialsSortField, setMaterialsSortField, materialsSortDir, setMaterialsSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                    <th onClick={() => handleSort('materialName', materialsSortField, setMaterialsSortField, materialsSortDir, setMaterialsSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none">
                       <div className="flex items-center gap-1">
                         <span>Material Name</span>
                         <span className="text-[9px] opacity-70">{materialsSortField === 'materialName' ? (materialsSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
-                    <th onClick={() => handleSort('quantity', materialsSortField, setMaterialsSortField, materialsSortDir, setMaterialsSortDir)} className="py-3 px-3 text-right whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                    <th onClick={() => handleSort('quantity', materialsSortField, setMaterialsSortField, materialsSortDir, setMaterialsSortDir)} className="py-3 px-3 text-right whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none">
                       <div className="flex items-center justify-end gap-1">
                         <span>Units</span>
                         <span className="text-[9px] opacity-70">{materialsSortField === 'quantity' ? (materialsSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
-                    <th onClick={() => handleSort('status', materialsSortField, setMaterialsSortField, materialsSortDir, setMaterialsSortDir)} className="py-3 px-3 text-center whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                    <th onClick={() => handleSort('status', materialsSortField, setMaterialsSortField, materialsSortDir, setMaterialsSortDir)} className="py-3 px-3 text-center whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none">
                       <div className="flex items-center justify-center gap-1">
                         <span>Status</span>
                         <span className="text-[9px] opacity-70">{materialsSortField === 'status' ? (materialsSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
-                    <th onClick={() => handleSort('createdAt', materialsSortField, setMaterialsSortField, materialsSortDir, setMaterialsSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none hidden sm:table-cell">
+                    <th onClick={() => handleSort('createdAt', materialsSortField, setMaterialsSortField, materialsSortDir, setMaterialsSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none hidden sm:table-cell">
                       <div className="flex items-center gap-1">
                         <span>Date</span>
                         <span className="text-[9px] opacity-70">{materialsSortField === 'createdAt' ? (materialsSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
@@ -953,40 +952,40 @@ export default function ProductionDashboard({
                     <th className="py-3 px-5 text-center whitespace-nowrap">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-custom">
+                <tbody className="divide-y divide-[var(--border)] text-[var(--text-primary)]">
                   {filteredMaterials.map(m => (
-                    <tr key={m.flatId} className="theme-table-row group">
+                    <tr key={m.flatId} className="theme-table-row border-b border-[var(--border)] hover:bg-[var(--accent-light)] transition-colors text-[var(--text-primary)]">
                       <td className="py-3.5 px-5">
                         <input
                           type="checkbox"
                           checked={selectedMaterialsRows.has(m.flatId)}
                           onChange={() => handleSelectMaterialsRow(m.flatId)}
-                          className="accent-blue-600 w-3.5 h-3.5"
+                          className="accent-[var(--accent)] w-3.5 h-3.5"
                         />
                       </td>
-                      <td className="py-3.5 px-3 font-mono font-bold text-blue-405">{m.reqId}</td>
-                      <td className="py-3.5 px-3 font-semibold text-[13px] text-slate-350">{m.materialName}</td>
-                      <td className="py-3.5 px-3 text-right font-bold font-mono text-[13px]">{m.quantity.toLocaleString()}</td>
+                      <td className="py-3.5 px-3 font-mono font-bold text-[var(--accent)]">{m.reqId}</td>
+                      <td className="py-3.5 px-3 font-semibold text-[13px] text-[var(--text-primary)]">{m.materialName}</td>
+                      <td className="py-3.5 px-3 text-right font-bold font-mono text-[13px] text-[var(--text-primary)]">{m.quantity.toLocaleString()}</td>
                       <td className="py-3.5 px-3 text-center">
                         <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${statusColor(m.status)}`}>
                           {m.status.replace(/_/g, ' ')}
                         </span>
                       </td>
-                      <td className="py-3.5 px-3 text-slate-400 font-mono text-[10px] hidden sm:table-cell">{m.createdAt}</td>
+                      <td className="py-3.5 px-3 text-[var(--text-secondary)] opacity-85 font-mono text-[10px] hidden sm:table-cell">{m.createdAt}</td>
                       <td className="py-3.5 px-5 text-center relative" onClick={(e) => e.stopPropagation()}>
                         <button
                           onClick={() => setActiveMaterialsMenu(activeMaterialsMenu === m.flatId ? null : m.flatId)}
-                          className="w-8 h-8 inline-flex items-center justify-center bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg text-slate-500 dark:text-slate-400 transition-colors select-none"
+                          className="w-8 h-8 inline-flex items-center justify-center bg-[var(--bg)] hover:bg-[var(--accent-light)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-lg transition-colors border border-[var(--border)] select-none cursor-pointer"
                         >
                           ···
                         </button>
                         {activeMaterialsMenu === m.flatId && (
-                          <div className="absolute right-5 mt-1 w-44 bg-[var(--bg-card)] border border-custom rounded-xl shadow-xl z-30 p-1 flex flex-col">
-                            <button onClick={() => handleEditRequisition(m.originalReq, m.itemIdx)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-left">✏ Edit Request</button>
-                            <button onClick={() => handleDuplicateRequisition(m.originalReq)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-left">📋 Duplicate</button>
-                            <button onClick={() => handleShareRequisition(m.originalReq)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-left">🔗 Share Link</button>
-                            <div className="h-px bg-slate-200 dark:bg-slate-700 my-1"></div>
-                            <button onClick={() => handleDeleteRequisition(m.reqId)} className="flex items-center gap-2 px-3 py-2 text-xs text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors text-left">🗑 Delete</button>
+                          <div className="absolute right-5 mt-1 w-44 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl z-30 p-1 flex flex-col">
+                            <button onClick={() => handleEditRequisition(m.originalReq, m.itemIdx)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left cursor-pointer">✏ Edit Request</button>
+                            <button onClick={() => handleDuplicateRequisition(m.originalReq)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left cursor-pointer">📋 Duplicate</button>
+                            <button onClick={() => handleShareRequisition(m.originalReq)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left cursor-pointer">🔗 Share Link</button>
+                            <div className="h-px bg-[var(--border)] my-1"></div>
+                            <button onClick={() => handleDeleteRequisition(m.reqId)} className="flex items-center gap-2 px-3 py-2 text-xs text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors text-left cursor-pointer">🗑 Delete</button>
                           </div>
                         )}
                       </td>
@@ -994,7 +993,7 @@ export default function ProductionDashboard({
                   ))}
                   {filteredMaterials.length === 0 && (
                     <tr>
-                      <td colSpan={7} className="py-6 text-center text-slate-400">No raw materials matched search filters.</td>
+                      <td colSpan={7} className="py-6 text-center text-[var(--text-secondary)] opacity-85">No raw materials matched search filters.</td>
                     </tr>
                   )}
                 </tbody>
@@ -1002,12 +1001,12 @@ export default function ProductionDashboard({
             </div>
 
             {/* Pagination Footer */}
-            <div className="theme-table-footer flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-4">
-              <p className="text-xs text-slate-400 font-mono">Showing {filteredMaterials.length} of {flatRequests.length} batches</p>
+            <div className="theme-table-footer flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-4 border-t border-[var(--border)] bg-[var(--bg)] text-[var(--text-secondary)]">
+              <p className="text-xs text-[var(--text-secondary)] font-mono">Showing {filteredMaterials.length} of {flatRequests.length} batches</p>
               <div className="flex items-center gap-1">
-                <button className="w-8 h-8 flex items-center justify-center text-xs text-slate-400 hover:text-white bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg transition-colors border border-custom disabled:opacity-30" disabled>‹</button>
-                <button className="w-8 h-8 flex items-center justify-center text-xs text-white bg-blue-600 rounded-lg font-bold">1</button>
-                <button className="w-8 h-8 flex items-center justify-center text-xs text-slate-400 hover:text-white bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg transition-colors border border-custom disabled:opacity-30" disabled>›</button>
+                <button className="w-8 h-8 flex items-center justify-center text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] bg-[var(--bg-card)] hover:bg-[var(--accent-light)] rounded-lg transition-colors border border-[var(--border)] disabled:opacity-30 cursor-pointer" disabled>‹</button>
+                <button className="w-8 h-8 flex items-center justify-center text-xs text-white bg-[var(--accent)] rounded-lg font-bold">1</button>
+                <button className="w-8 h-8 flex items-center justify-center text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] bg-[var(--bg-card)] hover:bg-[var(--accent-light)] rounded-lg transition-colors border border-[var(--border)] disabled:opacity-30 cursor-pointer" disabled>›</button>
               </div>
             </div>
           </div>
@@ -1015,42 +1014,42 @@ export default function ProductionDashboard({
 
         {/* WIP STOCK INVENTORY TABLE */}
         {activeSubTab === 'WIPStock' && (
-          <div className="theme-table-wrapper">
+          <div className="theme-table-wrapper border border-[var(--border)] bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)]">
             {/* Toolbar */}
-            <div className="theme-table-toolbar flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-5 py-4">
+            <div className="theme-table-toolbar flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-5 py-4 border-b border-[var(--border)] bg-[var(--bg)] text-[var(--text-primary)]">
               <div className="flex items-center gap-2">
-                <BarChart2 className="w-5 h-5 text-indigo-500" />
+                <BarChart2 className="w-5 h-5 text-[var(--accent)]" />
                 <h3 className="text-sm font-bold">Work in Progress & Stock Inventory</h3>
-                <span className="text-xs font-mono text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">{filteredWip.length} stock items</span>
+                <span className="text-xs font-mono text-[var(--text-secondary)] bg-[var(--bg-card)] px-2 py-0.5 rounded-full border border-[var(--border)]">{filteredWip.length} stock items</span>
               </div>
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
                 {/* Search */}
                 <div className="relative flex items-center w-full sm:w-auto">
-                  <span className="absolute left-3 text-slate-500 text-xs pointer-events-none">🔍</span>
+                  <span className="absolute left-3 text-[var(--text-secondary)] text-xs pointer-events-none">🔍</span>
                   <input
                     type="text"
                     placeholder="Search product…"
                     value={wipSearch}
                     onChange={e => setWipSearch(e.target.value)}
-                    className="pl-8 pr-3 py-1.5 text-xs rounded-lg outline-none transition w-full sm:w-40"
+                    className="pl-8 pr-3 py-1.5 text-xs bg-[var(--bg-card)] border border-[var(--border)] rounded-lg outline-none text-[var(--text-primary)] focus:border-[var(--accent)] transition w-full sm:w-40"
                   />
                 </div>
                 {/* Stage dropdown */}
                 <div className="relative w-full sm:w-auto">
                   <button
                     onClick={(e) => { e.stopPropagation(); setIsWipFilterOpen(!isWipFilterOpen); }}
-                    className="flex items-center justify-between sm:justify-start gap-1.5 text-xs text-[var(--text-primary)] bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 px-3 py-1.5 rounded-lg transition-colors border border-custom w-full sm:w-auto"
+                    className="flex items-center justify-between sm:justify-start gap-1.5 text-xs text-[var(--text-primary)] bg-[var(--bg-card)] hover:bg-[var(--accent-light)] px-3 py-1.5 rounded-lg transition-colors border border-[var(--border)] w-full sm:w-auto"
                   >
                     <span>Stage: {wipStageFilter === 'ALL' ? 'All' : wipStageFilter}</span>
                     <span className="text-[10px]">▼</span>
                   </button>
                   {isWipFilterOpen && (
-                    <div className="absolute right-0 top-full mt-1.5 w-full sm:w-48 bg-[var(--bg-card)] border border-custom rounded-xl shadow-xl z-20 p-1 flex flex-col">
+                    <div className="absolute right-0 top-full mt-1.5 w-full sm:w-48 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl z-20 p-1 flex flex-col">
                       {(['ALL', 'Processing', 'Quality Check', 'Packaging', 'Awaiting Dispatch'] as const).map(st => (
                         <button
                           key={st}
                           onClick={() => { setWipStageFilter(st); setIsWipFilterOpen(false); }}
-                          className="flex items-center gap-2 px-3 py-2 text-xs rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-left transition-colors text-[var(--text-primary)]"
+                          className="flex items-center gap-2 px-3 py-2 text-xs rounded-lg hover:bg-[var(--accent-light)] text-left transition-colors text-[var(--text-primary)]"
                         >
                           <span className={`w-2 h-2 rounded-full ${st === 'Processing' ? 'bg-blue-400' : st === 'Awaiting Dispatch' ? 'bg-emerald-400' : st === 'ALL' ? 'bg-slate-400' : 'bg-amber-400'}`} />
                           {st === 'ALL' ? 'All Stages' : st}
@@ -1060,7 +1059,7 @@ export default function ProductionDashboard({
                   )}
                 </div>
                 {/* Add Wip */}
-                <button onClick={handleAddWip} className="flex items-center justify-center gap-1 text-xs text-white bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-lg transition-colors font-bold shadow w-full sm:w-auto">
+                <button onClick={handleAddWip} className="flex items-center justify-center gap-1 text-xs text-white bg-[var(--accent)] hover:opacity-90 px-3 py-1.5 rounded-lg transition-colors font-bold shadow w-full sm:w-auto cursor-pointer">
                   <span>＋</span> Add Item
                 </button>
               </div>
@@ -1070,40 +1069,40 @@ export default function ProductionDashboard({
             <div className="overflow-x-auto w-full">
               <table className="w-full text-xs text-left">
                 <thead>
-                  <tr className="theme-table-header-row text-slate-400 uppercase font-semibold text-[10px]">
+                  <tr className="theme-table-header-row text-[var(--text-secondary)] opacity-85 uppercase font-semibold text-[10px] border-b border-[var(--border)] bg-[var(--bg)]">
                     <th className="py-3 px-5 whitespace-nowrap">
                       <input
                         type="checkbox"
                         checked={filteredWip.length > 0 && selectedWipRows.size === filteredWip.length}
                         onChange={handleSelectAllWip}
-                        className="accent-blue-600 w-3.5 h-3.5"
+                        className="accent-[var(--accent)] w-3.5 h-3.5"
                       />
                     </th>
-                    <th onClick={() => handleSort('id', wipSortField, setWipSortField, wipSortDir, setWipSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                    <th onClick={() => handleSort('id', wipSortField, setWipSortField, wipSortDir, setWipSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none">
                       <div className="flex items-center gap-1">
                         <span>Item ID</span>
                         <span className="text-[9px] opacity-70">{wipSortField === 'id' ? (wipSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
-                    <th onClick={() => handleSort('productName', wipSortField, setWipSortField, wipSortDir, setWipSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                    <th onClick={() => handleSort('productName', wipSortField, setWipSortField, wipSortDir, setWipSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none">
                       <div className="flex items-center gap-1">
                         <span>Product Name</span>
                         <span className="text-[9px] opacity-70">{wipSortField === 'productName' ? (wipSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
-                    <th onClick={() => handleSort('stage', wipSortField, setWipSortField, wipSortDir, setWipSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                    <th onClick={() => handleSort('stage', wipSortField, setWipSortField, wipSortDir, setWipSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none">
                       <div className="flex items-center gap-1">
                         <span>Production Stage</span>
                         <span className="text-[9px] opacity-70">{wipSortField === 'stage' ? (wipSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
-                    <th onClick={() => handleSort('qty', wipSortField, setWipSortField, wipSortDir, setWipSortDir)} className="py-3 px-3 text-right whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                    <th onClick={() => handleSort('qty', wipSortField, setWipSortField, wipSortDir, setWipSortDir)} className="py-3 px-3 text-right whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none">
                       <div className="flex items-center justify-end gap-1">
                         <span>Qty (Units)</span>
                         <span className="text-[9px] opacity-70">{wipSortField === 'qty' ? (wipSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
-                    <th onClick={() => handleSort('updatedAt', wipSortField, setWipSortField, wipSortDir, setWipSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none hidden sm:table-cell">
+                    <th onClick={() => handleSort('updatedAt', wipSortField, setWipSortField, wipSortDir, setWipSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none hidden sm:table-cell">
                       <div className="flex items-center gap-1">
                         <span>Last Updated</span>
                         <span className="text-[9px] opacity-70">{wipSortField === 'updatedAt' ? (wipSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
@@ -1112,19 +1111,19 @@ export default function ProductionDashboard({
                     <th className="py-3 px-5 text-center whitespace-nowrap">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-custom">
+                <tbody className="divide-y divide-[var(--border)] text-[var(--text-primary)]">
                   {sortedWip.map(item => (
-                    <tr key={item.id} className="theme-table-row group">
+                    <tr key={item.id} className="theme-table-row border-b border-[var(--border)] hover:bg-[var(--accent-light)] transition-colors text-[var(--text-primary)]">
                       <td className="py-3.5 px-5">
                         <input
                           type="checkbox"
                           checked={selectedWipRows.has(item.id)}
                           onChange={() => handleSelectWipRow(item.id)}
-                          className="accent-blue-600 w-3.5 h-3.5"
+                          className="accent-[var(--accent)] w-3.5 h-3.5"
                         />
                       </td>
-                      <td className="py-3.5 px-3 font-mono font-bold">{item.id}</td>
-                      <td className="py-3.5 px-3 font-medium text-[13px]">{item.productName}</td>
+                      <td className="py-3.5 px-3 font-mono font-bold text-[var(--accent)]">{item.id}</td>
+                      <td className="py-3.5 px-3 font-medium text-[13px] text-[var(--text-primary)]">{item.productName}</td>
                       <td className="py-3.5 px-3">
                         <span className={`px-2.5 py-0.5 rounded text-[9px] font-bold ${
                           item.stage === 'Awaiting Dispatch' ? 'bg-emerald-500/10 text-emerald-400' :
@@ -1132,22 +1131,22 @@ export default function ProductionDashboard({
                           'bg-blue-500/10 text-blue-400'
                         }`}>{item.stage}</span>
                       </td>
-                      <td className="py-3.5 px-3 text-right font-bold font-mono text-[13px]">{item.qty.toLocaleString()}</td>
-                      <td className="py-3.5 px-3 text-slate-400 font-mono text-[10px] hidden sm:table-cell">{item.updatedAt}</td>
+                      <td className="py-3.5 px-3 text-right font-bold font-mono text-[13px] text-[var(--text-primary)]">{item.qty.toLocaleString()}</td>
+                      <td className="py-3.5 px-3 text-[var(--text-secondary)] opacity-85 font-mono text-[10px] hidden sm:table-cell">{item.updatedAt}</td>
                       <td className="py-3.5 px-5 text-center relative" onClick={(e) => e.stopPropagation()}>
                         <button
                           onClick={() => setActiveWipMenu(activeWipMenu === item.id ? null : item.id)}
-                          className="w-8 h-8 inline-flex items-center justify-center bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg text-slate-500 dark:text-slate-400 transition-colors select-none"
+                          className="w-8 h-8 inline-flex items-center justify-center bg-[var(--bg)] hover:bg-[var(--accent-light)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-lg transition-colors border border-[var(--border)] select-none cursor-pointer"
                         >
                           ···
                         </button>
                         {activeWipMenu === item.id && (
-                          <div className="absolute right-5 mt-1 w-44 bg-[var(--bg-card)] border border-custom rounded-xl shadow-xl z-30 p-1 flex flex-col">
-                            <button onClick={() => handleEditWip(item)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-left">✏ Edit Item</button>
-                            <button onClick={() => handleDuplicateWip(item)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-left">📋 Duplicate</button>
-                            <button onClick={() => handleShareWip(item)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-left">🔗 Share Link</button>
-                            <div className="h-px bg-slate-200 dark:bg-slate-700 my-1"></div>
-                            <button onClick={() => handleDeleteWip(item.id)} className="flex items-center gap-2 px-3 py-2 text-xs text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors text-left">🗑 Delete</button>
+                          <div className="absolute right-5 mt-1 w-44 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl z-30 p-1 flex flex-col">
+                            <button onClick={() => handleEditWip(item)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left cursor-pointer">✏ Edit Item</button>
+                            <button onClick={() => handleDuplicateWip(item)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left cursor-pointer">📋 Duplicate</button>
+                            <button onClick={() => handleShareWip(item)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left cursor-pointer">🔗 Share Link</button>
+                            <div className="h-px bg-[var(--border)] my-1"></div>
+                            <button onClick={() => handleDeleteWip(item.id)} className="flex items-center gap-2 px-3 py-2 text-xs text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors text-left cursor-pointer">🗑 Delete</button>
                           </div>
                         )}
                       </td>
@@ -1158,12 +1157,12 @@ export default function ProductionDashboard({
             </div>
 
             {/* Pagination Footer */}
-            <div className="theme-table-footer flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-4">
-              <p className="text-xs text-slate-400 font-mono">Showing {filteredWip.length} of {localWip.length} items</p>
+            <div className="theme-table-footer flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-4 border-t border-[var(--border)] bg-[var(--bg)] text-[var(--text-secondary)]">
+              <p className="text-xs text-[var(--text-secondary)] font-mono">Showing {filteredWip.length} of {localWip.length} items</p>
               <div className="flex items-center gap-1">
-                <button className="w-8 h-8 flex items-center justify-center text-xs text-slate-400 hover:text-white bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg transition-colors border border-custom disabled:opacity-30" disabled>‹</button>
-                <button className="w-8 h-8 flex items-center justify-center text-xs text-white bg-blue-600 rounded-lg font-bold">1</button>
-                <button className="w-8 h-8 flex items-center justify-center text-xs text-slate-400 hover:text-white bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg transition-colors border border-custom disabled:opacity-30" disabled>›</button>
+                <button className="w-8 h-8 flex items-center justify-center text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] bg-[var(--bg-card)] hover:bg-[var(--accent-light)] rounded-lg transition-colors border border-[var(--border)] disabled:opacity-30 cursor-pointer" disabled>‹</button>
+                <button className="w-8 h-8 flex items-center justify-center text-xs text-white bg-[var(--accent)] rounded-lg font-bold">1</button>
+                <button className="w-8 h-8 flex items-center justify-center text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] bg-[var(--bg-card)] hover:bg-[var(--accent-light)] rounded-lg transition-colors border border-[var(--border)] disabled:opacity-30 cursor-pointer" disabled>›</button>
               </div>
             </div>
           </div>
@@ -1171,42 +1170,42 @@ export default function ProductionDashboard({
 
         {/* ORDERS REQUISITION HISTORY TABLE */}
         {activeSubTab === 'OrdersHistory' && (
-          <div className="theme-table-wrapper">
+          <div className="theme-table-wrapper border border-[var(--border)] bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)]">
             {/* Toolbar */}
-            <div className="theme-table-toolbar flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-5 py-4">
+            <div className="theme-table-toolbar flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-5 py-4 border-b border-[var(--border)] bg-[var(--bg)] text-[var(--text-primary)]">
               <div className="flex items-center gap-2">
-                <History className="w-5 h-5 text-indigo-500" />
+                <History className="w-5 h-5 text-[var(--accent)]" />
                 <h3 className="text-sm font-bold">Production Requisitions History</h3>
-                <span className="text-xs font-mono text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">{filteredHistory.length} ledger history entries</span>
+                <span className="text-xs font-mono text-[var(--text-secondary)] bg-[var(--bg-card)] px-2 py-0.5 rounded-full border border-[var(--border)]">{filteredHistory.length} ledger history entries</span>
               </div>
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
                 {/* Search */}
                 <div className="relative flex items-center w-full sm:w-auto">
-                  <span className="absolute left-3 text-slate-500 text-xs pointer-events-none">🔍</span>
+                  <span className="absolute left-3 text-[var(--text-secondary)] text-xs pointer-events-none">🔍</span>
                   <input
                     type="text"
                     placeholder="Search ledger…"
                     value={historySearch}
                     onChange={e => setHistorySearch(e.target.value)}
-                    className="pl-8 pr-3 py-1.5 text-xs rounded-lg outline-none transition w-full sm:w-40"
+                    className="pl-8 pr-3 py-1.5 text-xs bg-[var(--bg-card)] border border-[var(--border)] rounded-lg outline-none text-[var(--text-primary)] focus:border-[var(--accent)] transition w-full sm:w-40"
                   />
                 </div>
                 {/* Status filter dropdown */}
                 <div className="relative w-full sm:w-auto">
                   <button
                     onClick={(e) => { e.stopPropagation(); setIsHistoryFilterOpen(!isHistoryFilterOpen); }}
-                    className="flex items-center justify-between sm:justify-start gap-1.5 text-xs text-[var(--text-primary)] bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 px-3 py-1.5 rounded-lg transition-colors border border-custom w-full sm:w-auto"
+                    className="flex items-center justify-between sm:justify-start gap-1.5 text-xs text-[var(--text-primary)] bg-[var(--bg-card)] hover:bg-[var(--accent-light)] px-3 py-1.5 rounded-lg transition-colors border border-[var(--border)] w-full sm:w-auto"
                   >
                     <span>Status: {historyStatusFilter === 'ALL' ? 'All' : historyStatusFilter.replace(/_/g, ' ')}</span>
                     <span className="text-[10px]">▼</span>
                   </button>
                   {isHistoryFilterOpen && (
-                    <div className="absolute right-0 top-full mt-1.5 w-full sm:w-48 bg-[var(--bg-card)] border border-custom rounded-xl shadow-xl z-20 p-1 flex flex-col">
+                    <div className="absolute right-0 top-full mt-1.5 w-full sm:w-48 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl z-20 p-1 flex flex-col">
                       {(['ALL', 'PENDING_MANAGEMENT', 'APPROVED', 'TICKETS_ISSUED'] as const).map(st => (
                         <button
                           key={st}
                           onClick={() => { setHistoryStatusFilter(st); setIsHistoryFilterOpen(false); }}
-                          className="flex items-center gap-2 px-3 py-2 text-xs rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-left transition-colors text-[var(--text-primary)]"
+                          className="flex items-center gap-2 px-3 py-2 text-xs rounded-lg hover:bg-[var(--accent-light)] text-left transition-colors text-[var(--text-primary)]"
                         >
                           <span className={`w-2 h-2 rounded-full ${st === 'APPROVED' ? 'bg-blue-400' : st === 'TICKETS_ISSUED' ? 'bg-emerald-400' : st === 'ALL' ? 'bg-slate-400' : 'bg-amber-400'}`} />
                           {st === 'ALL' ? 'All History' : st.replace(/_/g, ' ')}
@@ -1255,40 +1254,40 @@ export default function ProductionDashboard({
             <div className="hidden lg:block overflow-x-auto w-full">
               <table className="w-full text-xs text-left">
                 <thead>
-                  <tr className="theme-table-header-row text-slate-400 uppercase font-semibold text-[10px]">
+                  <tr className="theme-table-header-row text-[var(--text-secondary)] opacity-85 uppercase font-semibold text-[10px] border-b border-[var(--border)] bg-[var(--bg)]">
                     <th className="py-3 px-5 whitespace-nowrap">
                       <input
                         type="checkbox"
                         checked={filteredHistory.length > 0 && selectedHistoryRows.size === filteredHistory.length}
                         onChange={handleSelectAllHistory}
-                        className="accent-blue-600 w-3.5 h-3.5"
+                        className="accent-[var(--accent)] w-3.5 h-3.5"
                       />
                     </th>
-                    <th onClick={() => handleSort('id', historySortField, setHistorySortField, historySortDir, setHistorySortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                    <th onClick={() => handleSort('id', historySortField, setHistorySortField, historySortDir, setHistorySortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none">
                       <div className="flex items-center gap-1">
                         <span>Req. ID</span>
                         <span className="text-[9px] opacity-70">{historySortField === 'id' ? (historySortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
-                    <th onClick={() => handleSort('materialName', historySortField, setHistorySortField, historySortDir, setHistorySortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                    <th onClick={() => handleSort('materialName', historySortField, setHistorySortField, historySortDir, setHistorySortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none">
                       <div className="flex items-center gap-1">
                         <span>Materials</span>
                         <span className="text-[9px] opacity-70">{historySortField === 'materialName' ? (historySortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
-                    <th onClick={() => handleSort('quantity', historySortField, setHistorySortField, historySortDir, setHistorySortDir)} className="py-3 px-3 text-right whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                    <th onClick={() => handleSort('quantity', historySortField, setHistorySortField, historySortDir, setHistorySortDir)} className="py-3 px-3 text-right whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none">
                       <div className="flex items-center justify-end gap-1">
                         <span>Total Units</span>
                         <span className="text-[9px] opacity-70">{historySortField === 'quantity' ? (historySortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
-                    <th onClick={() => handleSort('status', historySortField, setHistorySortField, historySortDir, setHistorySortDir)} className="py-3 px-3 text-center whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                    <th onClick={() => handleSort('status', historySortField, setHistorySortField, historySortDir, setHistorySortDir)} className="py-3 px-3 text-center whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none">
                       <div className="flex items-center justify-center gap-1">
                         <span>Status</span>
                         <span className="text-[9px] opacity-70">{historySortField === 'status' ? (historySortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
-                    <th onClick={() => handleSort('createdAt', historySortField, setHistorySortField, historySortDir, setHistorySortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none hidden sm:table-cell">
+                    <th onClick={() => handleSort('createdAt', historySortField, setHistorySortField, historySortDir, setHistorySortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none hidden sm:table-cell">
                       <div className="flex items-center gap-1">
                         <span>Date</span>
                         <span className="text-[9px] opacity-70">{historySortField === 'createdAt' ? (historySortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
@@ -1297,41 +1296,41 @@ export default function ProductionDashboard({
                     <th className="py-3 px-5 text-center whitespace-nowrap">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-custom">
+                <tbody className="divide-y divide-[var(--border)] text-[var(--text-primary)]">
                   {sortedHistory.map(req => (
-                    <tr key={req.id} className="theme-table-row group">
+                    <tr key={req.id} className="theme-table-row border-b border-[var(--border)] hover:bg-[var(--accent-light)] transition-colors text-[var(--text-primary)]">
                       <td className="py-3.5 px-5">
                         <input
                           type="checkbox"
                           checked={selectedHistoryRows.has(req.id)}
                           onChange={() => handleSelectHistoryRow(req.id)}
-                          className="accent-blue-600 w-3.5 h-3.5"
+                          className="accent-[var(--accent)] w-3.5 h-3.5"
                         />
                       </td>
-                      <td className="py-3.5 px-3 font-mono font-bold text-blue-400">{req.id}</td>
-                      <td className="py-3.5 px-3 text-slate-300">
-                        {req.items.map((i, idx) => <span key={idx} className="mr-2 font-medium bg-slate-100/5 dark:bg-slate-800/50 border border-custom px-1.5 py-0.5 rounded text-[11px]">{i.materialName} ({i.quantity})</span>)}
+                      <td className="py-3.5 px-3 font-mono font-bold text-[var(--accent)]">{req.id}</td>
+                      <td className="py-3.5 px-3 text-[var(--text-secondary)]">
+                        {req.items.map((i, idx) => <span key={idx} className="mr-2 font-medium bg-[var(--bg)] border border-[var(--border)] text-[var(--text-primary)] px-1.5 py-0.5 rounded text-[11px]">{i.materialName} ({i.quantity})</span>)}
                       </td>
-                      <td className="py-3.5 px-3 text-right font-bold font-mono text-[13px]">{req.items.reduce((s, i) => s + i.quantity, 0).toLocaleString()}</td>
+                      <td className="py-3.5 px-3 text-right font-bold font-mono text-[13px] text-[var(--text-primary)]">{req.items.reduce((s, i) => s + i.quantity, 0).toLocaleString()}</td>
                       <td className="py-3.5 px-3 text-center">
                         <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${statusColor(req.status)}`}>
                           {req.status.replace(/_/g, ' ')}
                         </span>
                       </td>
-                      <td className="py-3.5 px-3 text-slate-400 font-mono text-[10px] hidden sm:table-cell">{req.createdAt || 'N/A'}</td>
+                      <td className="py-3.5 px-3 text-[var(--text-secondary)] opacity-85 font-mono text-[10px] hidden sm:table-cell">{req.createdAt || 'N/A'}</td>
                       <td className="py-3.5 px-5 text-center relative" onClick={(e) => e.stopPropagation()}>
                         <button
                           onClick={() => setActiveHistoryMenu(activeHistoryMenu === req.id ? null : req.id)}
-                          className="w-8 h-8 inline-flex items-center justify-center bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg text-slate-500 dark:text-slate-400 transition-colors select-none"
+                          className="w-8 h-8 inline-flex items-center justify-center bg-[var(--bg)] hover:bg-[var(--accent-light)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-lg transition-colors border border-[var(--border)] select-none cursor-pointer"
                         >
                           ···
                         </button>
                         {activeHistoryMenu === req.id && (
-                          <div className="absolute right-5 mt-1 w-44 bg-[var(--bg-card)] border border-custom rounded-xl shadow-xl z-30 p-1 flex flex-col">
-                            <button onClick={() => handleDuplicateRequisition(req)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-left">📋 Duplicate Order</button>
-                            <button onClick={() => handleShareRequisition(req)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-left">🔗 Share Details</button>
-                            <div className="h-px bg-slate-200 dark:bg-slate-700 my-1"></div>
-                            <button onClick={() => handleDeleteRequisition(req.id)} className="flex items-center gap-2 px-3 py-2 text-xs text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors text-left">🗑 Delete Entry</button>
+                          <div className="absolute right-5 mt-1 w-44 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl z-30 p-1 flex flex-col">
+                            <button onClick={() => handleDuplicateRequisition(req)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left cursor-pointer">📋 Duplicate Order</button>
+                            <button onClick={() => handleShareRequisition(req)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left cursor-pointer">🔗 Share Details</button>
+                            <div className="h-px bg-[var(--border)] my-1"></div>
+                            <button onClick={() => handleDeleteRequisition(req.id)} className="flex items-center gap-2 px-3 py-2 text-xs text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors text-left cursor-pointer">🗑 Delete Entry</button>
                           </div>
                         )}
                       </td>
@@ -1339,7 +1338,7 @@ export default function ProductionDashboard({
                   ))}
                   {filteredHistory.length === 0 && (
                     <tr>
-                      <td colSpan={7} className="py-6 text-center text-slate-400">No requisitions history matching criteria.</td>
+                      <td colSpan={7} className="py-6 text-center text-[var(--text-secondary)] opacity-85">No requisitions history matching criteria.</td>
                     </tr>
                   )}
                 </tbody>
@@ -1347,12 +1346,12 @@ export default function ProductionDashboard({
             </div>
 
             {/* Pagination Footer */}
-            <div className="theme-table-footer flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-4">
-              <p className="text-xs text-slate-400 font-mono">Showing {filteredHistory.length} of {productionRequests.length} logs</p>
+            <div className="theme-table-footer flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-4 border-t border-[var(--border)] bg-[var(--bg)] text-[var(--text-secondary)]">
+              <p className="text-xs text-[var(--text-secondary)] font-mono">Showing {filteredHistory.length} of {productionRequests.length} logs</p>
               <div className="flex items-center gap-1">
-                <button className="w-8 h-8 flex items-center justify-center text-xs text-slate-400 hover:text-white bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg transition-colors border border-custom disabled:opacity-30" disabled>‹</button>
-                <button className="w-8 h-8 flex items-center justify-center text-xs text-white bg-blue-600 rounded-lg font-bold">1</button>
-                <button className="w-8 h-8 flex items-center justify-center text-xs text-slate-400 hover:text-white bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg transition-colors border border-custom disabled:opacity-30" disabled>›</button>
+                <button className="w-8 h-8 flex items-center justify-center text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] bg-[var(--bg-card)] hover:bg-[var(--accent-light)] rounded-lg transition-colors border border-[var(--border)] disabled:opacity-30 cursor-pointer" disabled>‹</button>
+                <button className="w-8 h-8 flex items-center justify-center text-xs text-white bg-[var(--accent)] rounded-lg font-bold">1</button>
+                <button className="w-8 h-8 flex items-center justify-center text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] bg-[var(--bg-card)] hover:bg-[var(--accent-light)] rounded-lg transition-colors border border-[var(--border)] disabled:opacity-30 cursor-pointer" disabled>›</button>
               </div>
             </div>
           </div>

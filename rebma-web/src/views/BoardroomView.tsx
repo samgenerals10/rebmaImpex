@@ -231,357 +231,359 @@ export default function BoardroomView({
 
       {/* ══ DESKTOP LAYOUT (lg+) ══ */}
       <div className="hidden lg:block">
-      <div className="space-y-6">
-      {/* Title Row */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight">Executive Boardroom</h1>
-          <p className="text-xs sm:text-sm text-slate-500 text-muted">Slack-like announcements, private direct messaging, scheduling, and live video minutes.</p>
-        </div>
-        {activeSubTab === 'VideoConf' && (
-          <div className="flex gap-2 w-full sm:w-auto justify-end">
-            <button 
-              onClick={handleExportCSV}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold cursor-pointer border border-slate-200"
-            >
-              <FileSpreadsheet className="w-3.5 h-3.5" />
-              <span>Export Minutes (CSV)</span>
-            </button>
-            <button 
-              onClick={handleExportPDF}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold cursor-pointer border border-slate-200"
-            >
-              <FileText className="w-3.5 h-3.5" />
-              <span>Export Minutes (PDF)</span>
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* Main Tab Rendering */}
-      <div className="border-t border-slate-100 pt-6">
-        {activeSubTab === 'VideoConf' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Live Jitsi Video Frame */}
-            <div className="lg:col-span-2 p-4 md:p-6 app-card space-y-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Video className="w-5 h-5 text-blue-500" />
-                <h3 className="text-base md:text-lg font-bold">Secure Jitsi Video Stream</h3>
-              </div>
-              <div className="h-60 sm:h-80 md:h-[400px] lg:h-[480px] bg-slate-950 rounded-2xl overflow-hidden border border-slate-800 relative">
-                <iframe
-                  src="https://meet.jit.si/RembaImpexGhanaExecutiveBoardroom_101"
-                  style={{ border: 0, width: '100%', height: '100%' }}
-                  allow="camera; microphone; fullscreen; display-capture; autoplay"
-                ></iframe>
-              </div>
+        <div className="space-y-6">
+          {/* Title Row */}
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight text-[var(--text-primary)]">Executive Boardroom</h1>
+              <p className="text-xs sm:text-sm text-[var(--text-muted)]">Slack-like announcements, private direct messaging, scheduling, and live video minutes.</p>
             </div>
+            {activeSubTab === 'VideoConf' && (
+              <div className="flex gap-2 w-full sm:w-auto justify-end">
+                <button 
+                  onClick={handleExportCSV}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--accent-light)] hover:opacity-90 text-[var(--accent)] rounded-lg text-xs font-semibold cursor-pointer border border-[var(--border)] transition-all"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5" />
+                  <span>Export Minutes (CSV)</span>
+                </button>
+                <button 
+                  onClick={handleExportPDF}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--accent-light)] hover:opacity-90 text-[var(--accent)] rounded-lg text-xs font-semibold cursor-pointer border border-[var(--border)] transition-all"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  <span>Export Minutes (PDF)</span>
+                </button>
+              </div>
+            )}
+          </div>
 
-            {/* Live notepad and active presence */}
-            <div className="p-4 md:p-6 app-card flex flex-col justify-between space-y-6">
-              <div>
-                <div className="flex items-center gap-2 mb-4">
-                  <Users className="w-5 h-5 text-emerald-500" />
-                  <h3 className="text-base md:text-lg font-bold">Active Presence</h3>
+          {/* Main Tab Rendering */}
+          <div className="border-t border-[var(--border)] pt-6">
+            {activeSubTab === 'VideoConf' && (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Live Jitsi Video Frame */}
+                <div className="lg:col-span-2 p-4 md:p-6 bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] border border-[var(--border)] space-y-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Video className="w-5 h-5 text-[var(--accent)]" />
+                    <h3 className="text-base md:text-lg font-bold text-[var(--text-primary)]">Secure Jitsi Video Stream</h3>
+                  </div>
+                  <div className="h-60 sm:h-80 md:h-[400px] lg:h-[480px] bg-black rounded-2xl overflow-hidden border border-[var(--border)] relative">
+                    <iframe
+                      src="https://meet.jit.si/RembaImpexGhanaExecutiveBoardroom_101"
+                      style={{ border: 0, width: '100%', height: '100%' }}
+                      allow="camera; microphone; fullscreen; display-capture; autoplay"
+                    ></iframe>
+                  </div>
                 </div>
-                
-                {/* Participant presence */}
-                <div className="space-y-2 mb-6">
-                  {[
-                    { role: 'CEO', name: 'Samuel Remba', status: 'Online' },
-                    { role: 'Operations', name: 'Ops Lead Frank', status: 'Online' },
-                    { role: 'Finance', name: 'Finance Controller Ama', status: 'Online' },
-                    { role: 'HR', name: 'HR Manager Derrick', status: 'Away' }
-                  ].map((p, idx) => (
-                    <div key={idx} className="flex justify-between items-center p-2.5 bg-slate-50 rounded-xl text-xs">
-                      <div>
-                        <span className="font-semibold text-slate-800">{p.name}</span>
-                        <p className="text-[10px] text-slate-400 font-medium">{p.role}</p>
-                      </div>
-                      <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
-                        p.status === 'Online' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'
-                      }`}>{p.status}</span>
+
+                {/* Live notepad and active presence */}
+                <div className="p-4 md:p-6 bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] border border-[var(--border)] flex flex-col justify-between space-y-6">
+                  <div>
+                    <div className="flex items-center gap-2 mb-4">
+                      <Users className="w-5 h-5 text-emerald-500" />
+                      <h3 className="text-base md:text-lg font-bold text-[var(--text-primary)]">Active Presence</h3>
                     </div>
+                    
+                    {/* Participant presence */}
+                    <div className="space-y-2 mb-6">
+                      {[
+                        { role: 'CEO', name: 'Samuel Remba', status: 'Online' },
+                        { role: 'Operations', name: 'Ops Lead Frank', status: 'Online' },
+                        { role: 'Finance', name: 'Finance Controller Ama', status: 'Online' },
+                        { role: 'HR', name: 'HR Manager Derrick', status: 'Away' }
+                      ].map((p, idx) => (
+                        <div key={idx} className="flex justify-between items-center p-2.5 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs">
+                          <div>
+                            <span className="font-semibold text-[var(--text-primary)]">{p.name}</span>
+                            <p className="text-[10px] text-[var(--text-muted)] font-medium">{p.role}</p>
+                          </div>
+                          <span className={`px-2 py-0.5 rounded text-[9px] font-bold border ${
+                            p.status === 'Online' 
+                              ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' 
+                              : 'bg-slate-500/10 text-slate-500 border-slate-500/20'
+                          }`}>{p.status}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Notepad Editor */}
+                    <div className="space-y-2">
+                      <label className="block text-xs font-bold text-[var(--text-muted)] uppercase tracking-wide">Live Meeting Minutes Editor</label>
+                      <textarea
+                        value={boardroomMinutes}
+                        onChange={(e) => setBoardroomMinutes(e.target.value)}
+                        className="w-full h-48 px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)] font-mono resize-none leading-relaxed"
+                        placeholder="Type boardroom updates here..."
+                      ></textarea>
+                    </div>
+                  </div>
+                  
+                  <div className="p-3 bg-[var(--accent-light)] border border-[var(--accent)]/20 rounded-xl text-[10px] text-[var(--accent)] leading-normal">
+                    <strong>Active boardroom log:</strong> Document auto-syncs to database server storage. Shared with all participants.
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeSubTab === 'Announcements' && (
+              <div className="p-4 md:p-6 bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] border border-[var(--border)] space-y-4 max-w-4xl mx-auto flex flex-col h-[550px]">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-[var(--border)] gap-2">
+                  <div>
+                    <h3 className="text-base md:text-lg font-bold text-[var(--text-primary)]"># community-chat</h3>
+                    <p className="text-xs text-[var(--text-muted)]">Public Slack-style pool chat channel for staff updates.</p>
+                  </div>
+                  <span className="text-[10px] px-2 py-1 bg-[var(--accent-light)] text-[var(--accent)] font-bold uppercase rounded self-start sm:self-auto">Public Board</span>
+                </div>
+
+                {/* Chat Messages */}
+                <div className="flex-1 overflow-y-auto space-y-4 pr-2">
+                  {publicMessages.map(msg => (
+                    <div key={msg.id} className="flex gap-3 text-xs">
+                      <div className="w-8 h-8 rounded-full bg-[var(--accent-light)] text-[var(--accent)] flex items-center justify-center font-bold font-mono">
+                        {msg.sender[0].toUpperCase()}
+                      </div>
+                      <div className="flex-1 bg-[var(--bg)] p-3 rounded-2xl border border-[var(--border)]">
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="font-bold text-[var(--text-primary)]">{msg.sender}</span>
+                          <span className="text-[10px] text-[var(--text-muted)]">{msg.time}</span>
+                        </div>
+                        <p className="text-[var(--text-primary)] leading-relaxed">{msg.content}</p>
+                      </div>
+                    </div>
+                  ))}
+                  {publicMessages.length === 0 && (
+                    <p className="text-xs text-[var(--text-muted)] text-center py-12">No announcements logged. Be the first to post!</p>
+                  )}
+                </div>
+
+                {/* Chat Input */}
+                <form onSubmit={handleSendAnnouncement} className="flex gap-2 pt-3 border-t border-[var(--border)]">
+                  <input 
+                    type="text" 
+                    value={announcementText}
+                    onChange={(e) => setAnnouncementText(e.target.value)}
+                    placeholder="Type an announcement to the entire team..."
+                    className="flex-1 px-4 py-2.5 bg-[var(--bg)] border border-[var(--border)] rounded-full text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
+                  />
+                  <button 
+                    type="submit" 
+                    className="p-2.5 bg-[var(--accent)] hover:opacity-90 text-white rounded-full cursor-pointer transition-all shrink-0"
+                  >
+                    <Send className="w-4 h-4" />
+                  </button>
+                </form>
+              </div>
+            )}
+
+            {activeSubTab === 'DirectMessages' && (
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6 h-auto md:h-[550px] max-w-5xl mx-auto">
+                {/* Sidebar departments list */}
+                <div className="p-4 bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-[var(--box-shadow)] overflow-x-auto md:overflow-x-visible md:overflow-y-auto md:col-span-1 flex flex-row md:flex-col gap-2 md:gap-1 shrink-0 pb-3 md:pb-4 select-none">
+                  <h4 className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider mb-0 md:mb-3 px-2 self-center md:self-start hidden md:block">Departments</h4>
+                  {departmentsList.map(dept => (
+                    <button
+                      key={dept}
+                      onClick={() => setSelectedDept(dept)}
+                      className={`flex-none md:w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold text-left transition-all ${
+                        selectedDept === dept 
+                          ? 'bg-[var(--accent)] text-white shadow' 
+                          : 'text-[var(--text-primary)] hover:bg-[var(--accent-light)] hover:text-[var(--accent)]'
+                      }`}
+                    >
+                      <span>{dept}</span>
+                      {dept === userRole && (
+                        <span className="text-[8px] bg-[var(--accent-light)] text-[var(--accent)] px-1 py-0.5 rounded uppercase ml-1.5 md:ml-0">You</span>
+                      )}
+                    </button>
                   ))}
                 </div>
 
-                {/* Notepad Editor */}
-                <div className="space-y-2">
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide">Live Meeting Minutes Editor</label>
-                  <textarea
-                    value={boardroomMinutes}
-                    onChange={(e) => setBoardroomMinutes(e.target.value)}
-                    className="w-full h-48 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-blue-500 font-mono resize-none leading-relaxed"
-                    placeholder="Type boardroom updates here..."
-                  ></textarea>
-                </div>
-              </div>
-              
-              <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-xl text-[10px] text-blue-500 leading-normal">
-                <strong>Active boardroom log:</strong> Document auto-syncs to database server storage. Shared with all participants.
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeSubTab === 'Announcements' && (
-          <div className="p-4 md:p-6 app-card space-y-4 max-w-4xl mx-auto flex flex-col h-[550px]">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-100 gap-2">
-              <div>
-                <h3 className="text-base md:text-lg font-bold"># community-chat</h3>
-                <p className="text-xs text-slate-500">Public Slack-style pool chat channel for staff updates.</p>
-              </div>
-              <span className="text-[10px] px-2 py-1 bg-blue-50 text-blue-600 font-bold uppercase rounded self-start sm:self-auto">Public Board</span>
-            </div>
-
-            {/* Chat Messages */}
-            <div className="flex-1 overflow-y-auto space-y-4 pr-2">
-              {publicMessages.map(msg => (
-                <div key={msg.id} className="flex gap-3 text-xs">
-                  <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-800 flex items-center justify-center font-bold font-mono">
-                    {msg.sender[0].toUpperCase()}
-                  </div>
-                  <div className="flex-1 bg-slate-50/50 p-3 rounded-2xl border border-slate-100">
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="font-bold text-slate-800">{msg.sender}</span>
-                      <span className="text-[10px] text-slate-400">{msg.time}</span>
+                {/* Chat thread console */}
+                <div className="md:col-span-3 p-4 md:p-6 bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-[var(--box-shadow)] flex flex-col justify-between h-[450px] md:h-full">
+                  <div className="flex items-center justify-between pb-3 border-b border-[var(--border)] mb-4">
+                    <div>
+                      <h3 className="text-sm font-bold text-[var(--text-primary)]">Secure DM: {selectedDept}</h3>
+                      <p className="text-[10px] text-[var(--text-muted)]">1-on-1 private messaging channel with {selectedDept} desk.</p>
                     </div>
-                    <p className="text-slate-700 leading-relaxed">{msg.content}</p>
                   </div>
-                </div>
-              ))}
-              {publicMessages.length === 0 && (
-                <p className="text-xs text-slate-400 text-center py-12">No announcements logged. Be the first to post!</p>
-              )}
-            </div>
 
-            {/* Chat Input */}
-            <form onSubmit={handleSendAnnouncement} className="flex gap-2 pt-3 border-t border-slate-100">
-              <input 
-                type="text" 
-                value={announcementText}
-                onChange={(e) => setAnnouncementText(e.target.value)}
-                placeholder="Type an announcement to the entire team..."
-                className="flex-1 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-full text-xs focus:outline-none focus:border-blue-500"
-              />
-              <button 
-                type="submit" 
-                className="p-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-full cursor-pointer transition-all shrink-0"
-              >
-                <Send className="w-4 h-4" />
-              </button>
-            </form>
-          </div>
-        )}
+                  {/* Chat Timeline */}
+                  <div className="flex-1 overflow-y-auto space-y-4 pr-2 mb-4">
+                    {directMessages.map(msg => {
+                      const isSentByMe = msg.sender === currentUser?.fullName || msg.sender === userRole;
+                      return (
+                        <div key={msg.id} className={`flex gap-3 text-xs ${isSentByMe ? 'justify-end' : 'justify-start'}`}>
+                          {!isSentByMe && (
+                            <div className="w-8 h-8 rounded-full bg-[var(--accent-light)] text-[var(--accent)] flex items-center justify-center font-bold font-mono">
+                              {msg.sender[0].toUpperCase()}
+                            </div>
+                          )}
+                          <div className={`p-3 rounded-2xl border max-w-sm ${
+                            isSentByMe 
+                              ? 'bg-[var(--accent)] text-white border-[var(--accent)] rounded-tr-none' 
+                              : 'bg-[var(--bg)] text-[var(--text-primary)] border-[var(--border)] rounded-tl-none'
+                          }`}>
+                            <div className="flex justify-between gap-4 items-center mb-1">
+                              <span className={`font-bold ${isSentByMe ? 'text-white' : 'text-[var(--text-primary)]'}`}>
+                                {isSentByMe ? 'You' : msg.sender}
+                              </span>
+                              <span className={`text-[9px] ${isSentByMe ? 'text-white/60' : 'text-[var(--text-muted)]'}`}>
+                                {msg.time}
+                              </span>
+                            </div>
+                            <p className="leading-relaxed">{msg.content}</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {directMessages.length === 0 && (
+                      <p className="text-xs text-[var(--text-muted)] text-center py-12">No message thread history found with {selectedDept} desk.</p>
+                    )}
+                  </div>
 
-        {activeSubTab === 'DirectMessages' && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 h-auto md:h-[550px] max-w-5xl mx-auto">
-            {/* Sidebar departments list */}
-            <div className="p-4 app-card overflow-x-auto md:overflow-x-visible md:overflow-y-auto md:col-span-1 flex flex-row md:flex-col gap-2 md:gap-1 shrink-0 pb-3 md:pb-4 select-none">
-              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-0 md:mb-3 px-2 self-center md:self-start hidden md:block">Departments</h4>
-              {departmentsList.map(dept => (
-                <button
-                  key={dept}
-                  onClick={() => setSelectedDept(dept)}
-                  className={`flex-none md:w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold text-left transition-all ${
-                    selectedDept === dept 
-                      ? 'bg-blue-600 text-white shadow' 
-                      : 'text-slate-700 hover:bg-slate-100'
-                  }`}
-                >
-                  <span>{dept}</span>
-                  {dept === userRole && (
-                    <span className="text-[8px] bg-slate-200/50 text-slate-600 px-1 py-0.5 rounded uppercase ml-1.5 md:ml-0">You</span>
-                  )}
-                </button>
-              ))}
-            </div>
-
-            {/* Chat thread console */}
-            <div className="md:col-span-3 p-4 md:p-6 app-card flex flex-col justify-between h-[450px] md:h-full border border-slate-100">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
-                <div>
-                  <h3 className="text-sm font-bold text-slate-800">Secure DM: {selectedDept}</h3>
-                  <p className="text-[10px] text-slate-400">1-on-1 private messaging channel with {selectedDept} desk.</p>
+                  {/* Input console */}
+                  <form onSubmit={handleSendDM} className="flex gap-2 pt-3 border-t border-[var(--border)]">
+                    <input 
+                      type="text" 
+                      value={dmText}
+                      onChange={(e) => setDmText(e.target.value)}
+                      placeholder={`Send direct message to ${selectedDept}...`}
+                      className="flex-1 px-4 py-2.5 bg-[var(--bg)] border border-[var(--border)] rounded-full text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
+                    />
+                    <button 
+                      type="submit" 
+                      className="p-2.5 bg-[var(--accent)] hover:bg-blue-700 text-white rounded-full cursor-pointer transition-all shrink-0"
+                    >
+                      <Send className="w-4 h-4" />
+                    </button>
+                  </form>
                 </div>
               </div>
+            )}
 
-              {/* Chat Timeline */}
-              <div className="flex-1 overflow-y-auto space-y-4 pr-2 mb-4">
-                {directMessages.map(msg => {
-                  const isSentByMe = msg.sender === currentUser?.fullName || msg.sender === userRole;
-                  return (
-                    <div key={msg.id} className={`flex gap-3 text-xs ${isSentByMe ? 'justify-end' : 'justify-start'}`}>
-                      {!isSentByMe && (
-                        <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-800 flex items-center justify-center font-bold font-mono">
-                          {msg.sender[0].toUpperCase()}
-                        </div>
-                      )}
-                      <div className={`p-3 rounded-2xl border max-w-sm ${
-                        isSentByMe 
-                          ? 'bg-blue-600 text-white border-blue-700 rounded-tr-none' 
-                          : 'bg-slate-50 text-slate-800 border-slate-100 rounded-tl-none'
-                      }`}>
-                        <div className="flex justify-between gap-4 items-center mb-1">
-                          <span className={`font-bold ${isSentByMe ? 'text-white' : 'text-slate-800'}`}>
-                            {isSentByMe ? 'You' : msg.sender}
-                          </span>
-                          <span className={`text-[9px] ${isSentByMe ? 'text-white/60' : 'text-slate-400'}`}>
-                            {msg.time}
-                          </span>
-                        </div>
-                        <p className="leading-relaxed">{msg.content}</p>
-                      </div>
+            {activeSubTab === 'Meetings' && (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Scheduler Form */}
+                <div className="p-4 md:p-6 bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] border border-[var(--border)] space-y-4">
+                  <div className="flex items-center gap-1.5">
+                    <Calendar className="w-5 h-5 text-[var(--accent)]" />
+                    <h3 className="text-base md:text-lg font-bold text-[var(--text-primary)]">Organize Meeting</h3>
+                  </div>
+                  <form onSubmit={handleScheduleMeeting} className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Meeting Title / Topic</label>
+                      <input 
+                        type="text" 
+                        value={meetingTitle}
+                        onChange={(e) => setMeetingTitle(e.target.value)}
+                        required
+                        placeholder="E.g., Logistics & Fleet Align"
+                        className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
+                      />
                     </div>
-                  );
-                })}
-                {directMessages.length === 0 && (
-                  <p className="text-xs text-slate-400 text-center py-12">No message thread history found with {selectedDept} desk.</p>
-                )}
-              </div>
-
-              {/* Input console */}
-              <form onSubmit={handleSendDM} className="flex gap-2 pt-3 border-t border-slate-100">
-                <input 
-                  type="text" 
-                  value={dmText}
-                  onChange={(e) => setDmText(e.target.value)}
-                  placeholder={`Send direct message to ${selectedDept}...`}
-                  className="flex-1 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-full text-xs focus:outline-none focus:border-blue-500"
-                />
-                <button 
-                  type="submit" 
-                  className="p-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-full cursor-pointer transition-all shrink-0"
-                >
-                  <Send className="w-4 h-4" />
-                </button>
-              </form>
-            </div>
-          </div>
-        )}
-
-        {activeSubTab === 'Meetings' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Scheduler Form */}
-            <div className="p-4 md:p-6 app-card space-y-4">
-              <div className="flex items-center gap-1.5">
-                <Calendar className="w-5 h-5 text-blue-500" />
-                <h3 className="text-base md:text-lg font-bold">Organize Meeting</h3>
-              </div>
-              <form onSubmit={handleScheduleMeeting} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-500 mb-1.5">Meeting Title / Topic</label>
-                  <input 
-                    type="text" 
-                    value={meetingTitle}
-                    onChange={(e) => setMeetingTitle(e.target.value)}
-                    required
-                    placeholder="E.g., Logistics & Fleet Align"
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-blue-500"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-500 mb-1.5">Date</label>
-                    <input 
-                      type="date" 
-                      value={meetingDate}
-                      onChange={(e) => setMeetingDate(e.target.value)}
-                      required
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-500 mb-1.5">Time</label>
-                    <input 
-                      type="time" 
-                      value={meetingTime}
-                      onChange={(e) => setMeetingTime(e.target.value)}
-                      required
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-blue-500"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-500 mb-1.5">Select Participants</label>
-                  <div className="grid grid-cols-2 gap-2 max-h-36 overflow-y-auto p-2 bg-slate-50 border border-slate-200 rounded-xl">
-                    {departmentsList.map(dept => (
-                      <label key={dept} className="flex items-center gap-1.5 text-xs cursor-pointer">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Date</label>
                         <input 
-                          type="checkbox" 
-                          checked={meetingParticipants.includes(dept)} 
-                          onChange={() => handleParticipantToggle(dept)} 
-                          className="cursor-pointer"
+                          type="date" 
+                          value={meetingDate}
+                          onChange={(e) => setMeetingDate(e.target.value)}
+                          required
+                          className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
                         />
-                        {dept}
-                      </label>
-                    ))}
-                  </div>
-                </div>
-
-                <button 
-                  type="submit" 
-                  className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow cursor-pointer transition-all"
-                >
-                  Schedule Executive Board Meeting
-                </button>
-              </form>
-            </div>
-
-            {/* Scheduled Timeline */}
-            <div className="p-4 md:p-6 app-card lg:col-span-2 space-y-4">
-              <h3 className="text-base md:text-lg font-bold">Scheduled Board Meetings Timeline</h3>
-              <div className="space-y-4 max-h-[420px] overflow-y-auto pr-1">
-                {meetingsList.map(mtg => (
-                  <div key={mtg.id} className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 hover:scale-101 transition-all">
-                    <div className="space-y-1 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[9px] bg-indigo-100 text-indigo-800 font-bold px-2 py-0.5 rounded font-mono">
-                          {mtg.id}
-                        </span>
-                        <h4 className="text-sm font-bold text-slate-800">{mtg.title}</h4>
                       </div>
-                      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500 font-medium">
-                        <p className="flex items-center gap-1 text-[10px]">
-                          <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                          {mtg.date}
-                        </p>
-                        <p className="flex items-center gap-1 text-[10px]">
-                          <Clock className="w-3.5 h-3.5 text-slate-400" />
-                          {mtg.time}
-                        </p>
-                        <p className="text-[10px]">Organizer: <strong className="text-slate-700">{mtg.organizer}</strong></p>
+                      <div>
+                        <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Time</label>
+                        <input 
+                          type="time" 
+                          value={meetingTime}
+                          onChange={(e) => setMeetingTime(e.target.value)}
+                          required
+                          className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
+                        />
                       </div>
-                      <div className="pt-2 flex flex-wrap gap-1">
-                        {mtg.participants.map(p => (
-                          <span key={p} className="text-[8px] bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded font-semibold uppercase">
-                            {p}
-                          </span>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Select Participants</label>
+                      <div className="grid grid-cols-2 gap-2 max-h-36 overflow-y-auto p-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl">
+                        {departmentsList.map(dept => (
+                          <label key={dept} className="flex items-center gap-1.5 text-xs text-[var(--text-primary)] cursor-pointer">
+                            <input 
+                              type="checkbox" 
+                              checked={meetingParticipants.includes(dept)} 
+                              onChange={() => handleParticipantToggle(dept)} 
+                              className="cursor-pointer"
+                            />
+                            {dept}
+                          </label>
                         ))}
                       </div>
                     </div>
-                    <div className="shrink-0 flex items-center">
-                      <a 
-                        href="https://meet.jit.si/RembaImpexGhanaExecutiveBoardroom_101" 
-                        target="_blank" 
-                        rel="noreferrer"
-                        className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold cursor-pointer transition-all shadow"
-                      >
-                        Join Stream
-                      </a>
-                    </div>
+
+                    <button 
+                      type="submit" 
+                      className="w-full py-2.5 bg-[var(--accent)] hover:opacity-90 text-white rounded-xl text-xs font-bold shadow cursor-pointer transition-all"
+                    >
+                      Schedule Executive Board Meeting
+                    </button>
+                  </form>
+                </div>
+
+                {/* Scheduled Timeline */}
+                <div className="p-4 md:p-6 bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] border border-[var(--border)] lg:col-span-2 space-y-4">
+                  <h3 className="text-base md:text-lg font-bold text-[var(--text-primary)]">Scheduled Board Meetings Timeline</h3>
+                  <div className="space-y-4 max-h-[420px] overflow-y-auto pr-1">
+                    {meetingsList.map(mtg => (
+                      <div key={mtg.id} className="p-4 bg-[var(--bg)] border border-[var(--border)] rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 hover:scale-101 transition-all">
+                        <div className="space-y-1 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[9px] bg-[var(--accent-light)] text-[var(--accent)] font-bold px-2 py-0.5 rounded font-mono">
+                              {mtg.id}
+                            </span>
+                            <h4 className="text-sm font-bold text-[var(--text-primary)]">{mtg.title}</h4>
+                          </div>
+                          <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-[var(--text-muted)] font-medium">
+                            <p className="flex items-center gap-1 text-[10px]">
+                              <Calendar className="w-3.5 h-3.5 text-[var(--text-muted)]" />
+                              {mtg.date}
+                            </p>
+                            <p className="flex items-center gap-1 text-[10px]">
+                              <Clock className="w-3.5 h-3.5 text-[var(--text-muted)]" />
+                              {mtg.time}
+                            </p>
+                            <p className="text-[10px]">Organizer: <strong className="text-[var(--text-primary)]">{mtg.organizer}</strong></p>
+                          </div>
+                          <div className="pt-2 flex flex-wrap gap-1">
+                            {mtg.participants.map(p => (
+                              <span key={p} className="text-[8px] bg-[var(--accent-light)] text-[var(--accent)] px-1.5 py-0.5 rounded font-semibold uppercase">
+                                {p}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="shrink-0 flex items-center">
+                          <a 
+                            href="https://meet.jit.si/RembaImpexGhanaExecutiveBoardroom_101" 
+                            target="_blank" 
+                            rel="noreferrer"
+                            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold cursor-pointer transition-all shadow"
+                          >
+                            Join Stream
+                          </a>
+                        </div>
+                      </div>
+                    ))}
+                    {meetingsList.length === 0 && (
+                      <p className="text-xs text-[var(--text-muted)] text-center py-12">No meetings scheduled on the board calendar.</p>
+                    )}
                   </div>
-                ))}
-                {meetingsList.length === 0 && (
-                  <p className="text-xs text-slate-400 text-center py-12">No meetings scheduled on the board calendar.</p>
-                )}
+                </div>
               </div>
-            </div>
+            )}
           </div>
-        )}
-      </div>
-      </div>
+        </div>
       </div>
     </>
   );

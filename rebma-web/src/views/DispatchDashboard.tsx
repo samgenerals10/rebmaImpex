@@ -390,16 +390,16 @@ export default function DispatchDashboard({
       <div className="hidden lg:block">
       <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-[var(--text-primary)]">
         <div>
-          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight">Dispatch Fleet Management</h1>
-          <p className="text-xs sm:text-sm text-muted">Monitor active deliveries, driver activities, and fleet history.</p>
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight text-[var(--text-primary)]">Dispatch Fleet Management</h1>
+          <p className="text-xs sm:text-sm text-[var(--text-secondary)] opacity-85">Monitor active deliveries, driver activities, and fleet history.</p>
         </div>
         <div className="flex gap-2 w-full sm:w-auto justify-end">
-          <button onClick={() => exportToCSV(localDeliveries, ['id', 'orderId', 'clientName', 'destination', 'driverName', 'driverId', 'dispatchedAt', 'deliveredAt', 'status'], 'dispatch_logs')} className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold cursor-pointer border border-slate-200 transition-colors">
+          <button onClick={() => exportToCSV(localDeliveries, ['id', 'orderId', 'clientName', 'destination', 'driverName', 'driverId', 'dispatchedAt', 'deliveredAt', 'status'], 'dispatch_logs')} className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--bg)] hover:bg-[var(--accent-light)] text-[var(--text-primary)] rounded-lg text-xs font-semibold cursor-pointer border border-[var(--border)] transition-colors">
             <FileSpreadsheet className="w-3.5 h-3.5" /><span>Export Logs (CSV)</span>
           </button>
-          <button onClick={() => exportToPDF('Dispatch Fleet Logs', localDeliveries, ['id', 'orderId', 'clientName', 'destination', 'driverName', 'dispatchedAt', 'deliveredAt', 'status'])} className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold cursor-pointer border border-slate-200 transition-colors">
+          <button onClick={() => exportToPDF('Dispatch Fleet Logs', localDeliveries, ['id', 'orderId', 'clientName', 'destination', 'driverName', 'dispatchedAt', 'deliveredAt', 'status'])} className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--bg)] hover:bg-[var(--accent-light)] text-[var(--text-primary)] rounded-lg text-xs font-semibold cursor-pointer border border-[var(--border)] transition-colors">
             <FileText className="w-3.5 h-3.5" /><span>Export Logs (PDF)</span>
           </button>
         </div>
@@ -410,30 +410,30 @@ export default function DispatchDashboard({
         {stats.map((card, idx) => {
           const Icon = card.icon;
           return (
-            <div key={idx} className="p-4 md:p-6 app-card flex items-center justify-between hover:scale-102 transition-all duration-300">
+            <div key={idx} className="p-4 md:p-6 bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] border-b-[3px] border-[var(--accent)] flex items-center justify-between hover:scale-[1.02] transition-all duration-300 text-[var(--text-primary)]">
               <div>
-                <span className="text-xs text-slate-400 uppercase font-semibold">{card.title}</span>
-                <h3 className="text-xl md:text-2xl font-bold mt-1">{card.value}</h3>
-                <p className="text-[10px] text-slate-400 mt-1">{card.sub}</p>
+                <span className="text-xs text-[var(--text-secondary)] uppercase font-semibold">{card.title}</span>
+                <h3 className="text-xl md:text-2xl font-bold mt-1 text-[var(--text-primary)]">{card.value}</h3>
+                <p className="text-[10px] text-[var(--text-secondary)] opacity-80 mt-1">{card.sub}</p>
               </div>
-              <div className={`p-3 md:p-4 bg-slate-100 rounded-2xl ${card.color} bg-accent-light`}><Icon className="w-5 h-5 md:w-6 md:h-6" /></div>
+              <div className="w-12 h-12 rounded-full bg-[var(--accent-light)] flex items-center justify-center text-[var(--accent)] shrink-0"><Icon className="w-5 h-5 md:w-6 md:h-6" /></div>
             </div>
           );
         })}
       </div>
 
       {/* Chart */}
-      <div className="p-4 md:p-6 app-card">
-        <h3 className="text-base md:text-lg font-bold">Dispatch Delivery & Shipments Velocity</h3>
-        <p className="text-xs text-muted font-semibold text-slate-500">Weekly active deliveries cleared vs transit delay logs.</p>
+      <div className="p-4 md:p-6 bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-[var(--box-shadow)] text-[var(--text-primary)]">
+        <h3 className="text-base md:text-lg font-bold text-[var(--text-primary)]">Dispatch Delivery & Shipments Velocity</h3>
+        <p className="text-xs text-[var(--text-secondary)] opacity-80 font-semibold">Weekly active deliveries cleared vs transit delay logs.</p>
         <div className="h-48 md:h-60 mt-4">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={lineChartData}>
-              <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
-              <XAxis dataKey="name" stroke="#94a3b8" fontSize={10} />
-              <YAxis stroke="#94a3b8" fontSize={10} />
-              <Tooltip />
-              <Line type="monotone" dataKey="Shipments" stroke="#3b82f6" strokeWidth={2} activeDot={{ r: 8 }} />
+              <CartesianGrid strokeDasharray="3 3" opacity={0.1} stroke="var(--border)" />
+              <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={10} />
+              <YAxis stroke="var(--text-muted)" fontSize={10} />
+              <Tooltip contentStyle={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)', color: 'var(--text-primary)' }} />
+              <Line type="monotone" dataKey="Shipments" stroke="var(--accent)" strokeWidth={2} activeDot={{ r: 8 }} />
               <Line type="monotone" dataKey="Delays" stroke="#f43f5e" strokeWidth={2} />
             </LineChart>
           </ResponsiveContainer>
@@ -441,18 +441,18 @@ export default function DispatchDashboard({
       </div>
 
       {/* Tab Views */}
-      <div className="border-t border-custom pt-6">
+      <div className="border-t border-[var(--border)] pt-6">
 
         {/* ACTIVE DELIVERIES MAP */}
         {activeSubTab === 'Deliveries' && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Live Map */}
-            <div className="p-4 md:p-6 app-card space-y-4">
+            <div className="p-4 md:p-6 bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-[var(--box-shadow)] space-y-4 text-[var(--text-primary)]">
               <div className="flex items-center gap-2">
-                <MapPin className="w-5 h-5 text-blue-500" />
-                <h3 className="text-base md:text-lg font-bold">Live Delivery Map — Accra</h3>
+                <MapPin className="w-5 h-5 text-[var(--accent)]" />
+                <h3 className="text-base md:text-lg font-bold text-[var(--text-primary)]">Live Delivery Map — Accra</h3>
               </div>
-              <div className="h-[240px] sm:h-72 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 rounded-2xl relative overflow-hidden border border-custom">
+              <div className="h-[240px] sm:h-72 bg-gradient-to-br from-[var(--bg)] to-[var(--accent-light)] rounded-2xl relative overflow-hidden border border-[var(--border)]">
                 {/* Grid overlay */}
                 <div className="absolute inset-0 opacity-20 bg-[radial-gradient(#3b82f6_1px,transparent_1px)] [background-size:20px_20px]"></div>
                 
@@ -464,10 +464,10 @@ export default function DispatchDashboard({
                 </svg>
 
                 {/* Location labels */}
-                <div className="absolute top-4 left-4 text-[9px] font-bold text-slate-500 bg-white/80 dark:bg-slate-900/80 px-2 py-0.5 rounded border border-custom">Kotoka Intl Airport</div>
-                <div className="absolute bottom-10 right-6 text-[9px] font-bold text-slate-500 bg-white/80 dark:bg-slate-900/80 px-2 py-0.5 rounded border border-custom">Tema Harbour</div>
-                <div className="absolute bottom-4 left-6 text-[9px] font-bold text-slate-500 bg-white/80 dark:bg-slate-900/80 px-2 py-0.5 rounded border border-custom">Accra Central</div>
-                <div className="absolute top-6 right-8 text-[9px] font-bold text-slate-500 bg-white/80 dark:bg-slate-900/80 px-2 py-0.5 rounded border border-custom">Madina</div>
+                <div className="absolute top-4 left-4 text-[9px] font-bold text-[var(--text-primary)] bg-[var(--bg-card)] border border-[var(--border)] px-2 py-0.5 rounded">Kotoka Intl Airport</div>
+                <div className="absolute bottom-10 right-6 text-[9px] font-bold text-[var(--text-primary)] bg-[var(--bg-card)] border border-[var(--border)] px-2 py-0.5 rounded">Tema Harbour</div>
+                <div className="absolute bottom-4 left-6 text-[9px] font-bold text-[var(--text-primary)] bg-[var(--bg-card)] border border-[var(--border)] px-2 py-0.5 rounded">Accra Central</div>
+                <div className="absolute top-6 right-8 text-[9px] font-bold text-[var(--text-primary)] bg-[var(--bg-card)] border border-[var(--border)] px-2 py-0.5 rounded">Madina</div>
 
                 {/* Animated truck marker */}
                 <motion.div
@@ -479,31 +479,31 @@ export default function DispatchDashboard({
                     top: `${Math.max(10, Math.min(80, 50 + (activeCoordinates.lng + 0.187) * 2000))}%`
                   }}
                 >
-                  <div className="bg-blue-500/30 border-2 border-blue-500 p-3 rounded-full">
-                    <div className="w-4 h-4 bg-blue-600 rounded-full border-2 border-white flex items-center justify-center">
+                  <div className="bg-[var(--accent)]/30 border-2 border-[var(--accent)] p-3 rounded-full">
+                    <div className="w-4 h-4 bg-[var(--accent)] rounded-full border-2 border-white flex items-center justify-center">
                       <Truck className="w-2.5 h-2.5 text-white" />
                     </div>
                   </div>
                 </motion.div>
 
                 {/* Info overlay */}
-                <div className="absolute bottom-3 left-3 bg-slate-900/90 backdrop-blur px-3 py-2 rounded-xl border border-slate-700 text-[10px] text-white space-y-0.5">
-                  <p className="font-bold text-blue-400">🚛 Truck #L-404 — Kofi Acheampong</p>
-                  <p>Lat: {activeCoordinates.lat.toFixed(6)}</p>
-                  <p>Lng: {activeCoordinates.lng.toFixed(6)}</p>
+                <div className="absolute bottom-3 left-3 bg-[var(--bg-card)]/95 backdrop-blur px-3 py-2 rounded-xl border border-[var(--border)] text-[10px] text-[var(--text-primary)] space-y-0.5">
+                  <p className="font-bold text-[var(--accent)]">🚛 Truck #L-404 — Kofi Acheampong</p>
+                  <p className="text-[var(--text-secondary)]">Lat: {activeCoordinates.lat.toFixed(6)}</p>
+                  <p className="text-[var(--text-secondary)]">Lng: {activeCoordinates.lng.toFixed(6)}</p>
                   <p>Status: <span className={`font-bold uppercase ${deliveryStatus === 'DELIVERED' ? 'text-emerald-400' : 'text-amber-400 animate-pulse'}`}>{deliveryStatus}</span></p>
                 </div>
               </div>
 
               {/* Driver panel */}
-              <div className="p-4 bg-slate-100/50 dark:bg-slate-800/20 border border-custom rounded-xl space-y-3">
+              <div className="p-4 bg-[var(--bg)] border border-[var(--border)] rounded-xl space-y-3">
                 <div className="flex justify-between items-center text-xs">
                   <span>Driver: <strong>DRV-404 (Kofi Acheampong)</strong></span>
-                  <span className={`px-2 py-0.5 rounded font-bold text-[9px] ${deliveryStatus === 'DELIVERED' ? 'bg-emerald-500/10 text-emerald-450' : 'bg-blue-500/10 text-blue-455 animate-pulse'}`}>{deliveryStatus}</span>
+                  <span className={`px-2 py-0.5 rounded font-bold text-[9px] ${deliveryStatus === 'DELIVERED' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-blue-500/10 text-blue-400 border border-blue-550/20 animate-pulse'}`}>{deliveryStatus}</span>
                 </div>
-                <div className="text-xs text-slate-400 space-y-1">
-                  <p>Active Cargo: <strong>Order ORD-101 (Inter-Ghana Foods)</strong></p>
-                  <p>Destination: <strong>Tema Port Depot</strong></p>
+                <div className="text-xs text-[var(--text-secondary)] space-y-1">
+                  <p>Active Cargo: <strong className="text-[var(--text-primary)]">Order ORD-101 (Inter-Ghana Foods)</strong></p>
+                  <p>Destination: <strong className="text-[var(--text-primary)]">Tema Port Depot</strong></p>
                 </div>
                 {deliveryStatus === 'IN_TRANSIT' && (
                   <button
@@ -512,7 +512,7 @@ export default function DispatchDashboard({
                   >Signal Order Received / Delivered</button>
                 )}
                 {deliveryStatus === 'DELIVERED' && (
-                  <div className="p-3 bg-emerald-500/10 text-emerald-400 rounded-xl text-xs text-center font-semibold border border-custom">
+                  <div className="p-3 bg-emerald-500/10 text-emerald-400 rounded-xl text-xs text-center font-semibold border border-emerald-500/20">
                     ✅ Delivery Completed. Coordinates saved to logs.
                   </div>
                 )}
@@ -520,23 +520,23 @@ export default function DispatchDashboard({
             </div>
 
             {/* In-transit deliveries list */}
-            <div className="p-4 md:p-6 app-card space-y-4">
-              <h3 className="text-base md:text-lg font-bold">In-Transit Orders</h3>
+            <div className="p-4 md:p-6 bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-[var(--box-shadow)] space-y-4 text-[var(--text-primary)]">
+              <h3 className="text-base md:text-lg font-bold text-[var(--text-primary)]">In-Transit Orders</h3>
               <div className="space-y-3">
                 {localDeliveries.filter(d => d.status === 'IN_TRANSIT').map(del => (
-                  <div key={del.id} className="p-4 bg-blue-500/5 border border-blue-500/25 rounded-xl space-y-1">
+                  <div key={del.id} className="p-4 bg-[var(--accent-light)] border border-[var(--accent)]/20 rounded-xl space-y-1">
                     <div className="flex justify-between items-center">
-                      <span className="text-xs font-bold">{del.clientName}</span>
-                      <span className="px-2 py-0.5 bg-blue-500/10 text-blue-400 rounded text-[9px] font-bold animate-pulse">IN TRANSIT</span>
+                      <span className="text-xs font-bold text-[var(--text-primary)]">{del.clientName}</span>
+                      <span className="px-2 py-0.5 bg-blue-500/10 text-blue-450 rounded text-[9px] font-bold animate-pulse">IN TRANSIT</span>
                     </div>
-                    <p className="text-[10px] text-slate-400">Order: <code>{del.orderId}</code> | Del ID: <code>{del.id}</code></p>
-                    <p className="text-[10px] text-slate-400">Destination: <strong>{del.destination}</strong></p>
-                    <p className="text-[10px] text-slate-400">Driver: <strong>{del.driverName}</strong> ({del.driverId})</p>
-                    <p className="text-[10px] text-slate-500 font-mono">Dispatched: {del.dispatchedAt}</p>
+                    <p className="text-[10px] text-[var(--text-secondary)] opacity-85 font-mono">Order: <code>{del.orderId}</code> | Del ID: <code>{del.id}</code></p>
+                    <p className="text-[10px] text-[var(--text-secondary)]">Destination: <strong>{del.destination}</strong></p>
+                    <p className="text-[10px] text-[var(--text-secondary)]">Driver: <strong>{del.driverName}</strong> ({del.driverId})</p>
+                    <p className="text-[10px] text-[var(--text-secondary)] opacity-80 font-mono">Dispatched: {del.dispatchedAt}</p>
                   </div>
                 ))}
                 {localDeliveries.filter(d => d.status === 'IN_TRANSIT').length === 0 && (
-                  <p className="text-xs text-slate-400 text-center py-6">No active in-transit deliveries.</p>
+                  <p className="text-xs text-[var(--text-secondary)] opacity-85 text-center py-6">No active in-transit deliveries.</p>
                 )}
               </div>
             </div>
@@ -545,42 +545,42 @@ export default function DispatchDashboard({
 
         {/* DELIVERY HISTORY */}
         {activeSubTab === 'DispatchHistory' && (
-          <div className="theme-table-wrapper">
+          <div className="theme-table-wrapper border border-[var(--border)] bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)]">
             {/* Toolbar */}
-            <div className="theme-table-toolbar flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-5 py-4">
+            <div className="theme-table-toolbar flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-5 py-4 border-b border-[var(--border)] bg-[var(--bg)] text-[var(--text-primary)]">
               <div className="flex items-center gap-2">
-                <History className="w-5 h-5 text-indigo-500" />
+                <History className="w-5 h-5 text-[var(--accent)]" />
                 <h3 className="text-sm font-bold">Delivery History Log</h3>
-                <span className="text-xs font-mono text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">{filteredDeliveries.length} logs</span>
+                <span className="text-xs font-mono text-[var(--text-secondary)] bg-[var(--bg-card)] px-2 py-0.5 rounded-full border border-[var(--border)]">{filteredDeliveries.length} logs</span>
               </div>
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
                 {/* Search */}
                 <div className="relative flex items-center w-full sm:w-auto">
-                  <span className="absolute left-3 text-slate-500 text-xs pointer-events-none">🔍</span>
+                  <span className="absolute left-3 text-[var(--text-secondary)] text-xs pointer-events-none">🔍</span>
                   <input
                     type="text"
                     placeholder="Search logs…"
                     value={dispatchSearch}
                     onChange={e => setDispatchSearch(e.target.value)}
-                    className="pl-8 pr-3 py-1.5 text-xs rounded-lg outline-none transition w-full sm:w-40"
+                    className="pl-8 pr-3 py-1.5 text-xs bg-[var(--bg-card)] border border-[var(--border)] rounded-lg outline-none text-[var(--text-primary)] focus:border-[var(--accent)] transition w-full sm:w-40"
                   />
                 </div>
                 {/* Status dropdown */}
                 <div className="relative w-full sm:w-auto">
                   <button
                     onClick={(e) => { e.stopPropagation(); setIsDispatchFilterOpen(!isDispatchFilterOpen); }}
-                    className="flex items-center justify-between sm:justify-start gap-1.5 text-xs text-[var(--text-primary)] bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 px-3 py-1.5 rounded-lg transition-colors border border-custom w-full sm:w-auto"
+                    className="flex items-center justify-between sm:justify-start gap-1.5 text-xs text-[var(--text-primary)] bg-[var(--bg-card)] hover:bg-[var(--accent-light)] px-3 py-1.5 rounded-lg transition-colors border border-[var(--border)] w-full sm:w-auto"
                   >
                     <span>Status: {dispatchStatusFilter === 'ALL' ? 'All' : dispatchStatusFilter}</span>
                     <span className="text-[10px]">▼</span>
                   </button>
                   {isDispatchFilterOpen && (
-                    <div className="absolute right-0 top-full mt-1.5 w-48 bg-[var(--bg-card)] border border-custom rounded-xl shadow-xl z-20 p-1 flex flex-col">
+                    <div className="absolute right-0 top-full mt-1.5 w-48 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl z-20 p-1 flex flex-col">
                       {(['ALL', 'DELIVERED', 'IN_TRANSIT'] as const).map(st => (
                         <button
                           key={st}
                           onClick={() => { setDispatchStatusFilter(st); setIsDispatchFilterOpen(false); }}
-                          className="flex items-center gap-2 px-3 py-2 text-xs rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-left transition-colors text-[var(--text-primary)]"
+                          className="flex items-center gap-2 px-3 py-2 text-xs rounded-lg hover:bg-[var(--accent-light)] text-left transition-colors text-[var(--text-primary)]"
                         >
                           <span className={`w-2 h-2 rounded-full ${st === 'DELIVERED' ? 'bg-emerald-400' : st === 'IN_TRANSIT' ? 'bg-blue-450' : 'bg-slate-400'}`} />
                           {st === 'ALL' ? 'All Logs' : st}
@@ -596,58 +596,58 @@ export default function DispatchDashboard({
             <div className="overflow-x-auto w-full">
               <table className="w-full text-xs text-left">
                 <thead>
-                  <tr className="theme-table-header-row text-slate-400 uppercase font-semibold text-[10px]">
+                  <tr className="theme-table-header-row text-[var(--text-secondary)] opacity-85 uppercase font-semibold text-[10px] border-b border-[var(--border)] bg-[var(--bg)]">
                     <th className="py-3 px-5 whitespace-nowrap">
                       <input
                         type="checkbox"
                         checked={filteredDeliveries.length > 0 && selectedDispatchRows.size === filteredDeliveries.length}
                         onChange={handleSelectAllDispatch}
-                        className="accent-blue-600 w-3.5 h-3.5"
+                        className="accent-[var(--accent)] w-3.5 h-3.5"
                       />
                     </th>
-                    <th onClick={() => handleSort('id', delSortField, setDelSortField, delSortDir, setDelSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                    <th onClick={() => handleSort('id', delSortField, setDelSortField, delSortDir, setDelSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none">
                       <div className="flex items-center gap-1">
                         <span>Delivery ID</span>
                         <span className="text-[9px] opacity-70">{delSortField === 'id' ? (delSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
-                    <th onClick={() => handleSort('orderId', delSortField, setDelSortField, delSortDir, setDelSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                    <th onClick={() => handleSort('orderId', delSortField, setDelSortField, delSortDir, setDelSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none">
                       <div className="flex items-center gap-1">
                         <span>Order ID</span>
                         <span className="text-[9px] opacity-70">{delSortField === 'orderId' ? (delSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
-                    <th onClick={() => handleSort('clientName', delSortField, setDelSortField, delSortDir, setDelSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                    <th onClick={() => handleSort('clientName', delSortField, setDelSortField, delSortDir, setDelSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none">
                       <div className="flex items-center gap-1">
                         <span>Client</span>
                         <span className="text-[9px] opacity-70">{delSortField === 'clientName' ? (delSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
-                    <th onClick={() => handleSort('destination', delSortField, setDelSortField, delSortDir, setDelSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                    <th onClick={() => handleSort('destination', delSortField, setDelSortField, delSortDir, setDelSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none">
                       <div className="flex items-center gap-1">
                         <span>Destination</span>
                         <span className="text-[9px] opacity-70">{delSortField === 'destination' ? (delSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
-                    <th onClick={() => handleSort('driverName', delSortField, setDelSortField, delSortDir, setDelSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                    <th onClick={() => handleSort('driverName', delSortField, setDelSortField, delSortDir, setDelSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none">
                       <div className="flex items-center gap-1">
                         <span>Driver</span>
                         <span className="text-[9px] opacity-70">{delSortField === 'driverName' ? (delSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
-                    <th onClick={() => handleSort('dispatchedAt', delSortField, setDelSortField, delSortDir, setDelSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none hidden sm:table-cell">
+                    <th onClick={() => handleSort('dispatchedAt', delSortField, setDelSortField, delSortDir, setDelSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none hidden sm:table-cell">
                       <div className="flex items-center gap-1">
                         <span>Dispatched</span>
                         <span className="text-[9px] opacity-70">{delSortField === 'dispatchedAt' ? (delSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
-                    <th onClick={() => handleSort('deliveredAt', delSortField, setDelSortField, delSortDir, setDelSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none hidden sm:table-cell">
+                    <th onClick={() => handleSort('deliveredAt', delSortField, setDelSortField, delSortDir, setDelSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none hidden sm:table-cell">
                       <div className="flex items-center gap-1">
                         <span>Delivered</span>
                         <span className="text-[9px] opacity-70">{delSortField === 'deliveredAt' ? (delSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
-                    <th onClick={() => handleSort('status', delSortField, setDelSortField, delSortDir, setDelSortDir)} className="py-3 px-3 text-center whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                    <th onClick={() => handleSort('status', delSortField, setDelSortField, delSortDir, setDelSortDir)} className="py-3 px-3 text-center whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none">
                       <div className="flex items-center justify-center gap-1">
                         <span>Status</span>
                         <span className="text-[9px] opacity-70">{delSortField === 'status' ? (delSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
@@ -656,45 +656,45 @@ export default function DispatchDashboard({
                     <th className="py-3 px-5 text-center whitespace-nowrap">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-custom">
+                <tbody className="divide-y divide-[var(--border)] text-[var(--text-primary)]">
                   {sortedDeliveries.map(del => (
-                    <tr key={del.id} className="theme-table-row group">
+                    <tr key={del.id} className="theme-table-row border-b border-[var(--border)] hover:bg-[var(--accent-light)] transition-colors text-[var(--text-primary)]">
                       <td className="py-3.5 px-5">
                         <input
                           type="checkbox"
                           checked={selectedDispatchRows.has(del.id)}
                           onChange={() => handleSelectDispatchRow(del.id)}
-                          className="accent-blue-600 w-3.5 h-3.5"
+                          className="accent-[var(--accent)] w-3.5 h-3.5"
                         />
                       </td>
-                      <td className="py-3.5 px-3 font-mono font-bold">{del.id}</td>
-                      <td className="py-3.5 px-3 font-mono text-slate-400">{del.orderId}</td>
-                      <td className="py-3.5 px-3 font-semibold text-sm">{del.clientName}</td>
-                      <td className="py-3.5 px-3 text-slate-400">{del.destination}</td>
-                      <td className="py-3.5 px-3 text-slate-300 font-medium">{del.driverName}</td>
-                      <td className="py-3.5 px-3 text-slate-450 font-mono text-[10px] hidden sm:table-cell">{del.dispatchedAt}</td>
-                      <td className="py-3.5 px-3 text-slate-450 font-mono text-[10px] hidden sm:table-cell">{del.deliveredAt || '—'}</td>
+                      <td className="py-3.5 px-3 font-mono font-bold text-[var(--accent)]">{del.id}</td>
+                      <td className="py-3.5 px-3 font-mono text-[var(--text-secondary)] opacity-85">{del.orderId}</td>
+                      <td className="py-3.5 px-3 font-semibold text-sm text-[var(--text-primary)]">{del.clientName}</td>
+                      <td className="py-3.5 px-3 text-[var(--text-secondary)]">{del.destination}</td>
+                      <td className="py-3.5 px-3 text-[var(--text-secondary)] font-medium">{del.driverName}</td>
+                      <td className="py-3.5 px-3 text-[var(--text-secondary)] opacity-85 font-mono text-[10px] hidden sm:table-cell">{del.dispatchedAt}</td>
+                      <td className="py-3.5 px-3 text-[var(--text-secondary)] opacity-85 font-mono text-[10px] hidden sm:table-cell">{del.deliveredAt || '—'}</td>
                       <td className="py-3.5 px-3 text-center">
                         <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
                           del.status === 'DELIVERED' ? 'bg-emerald-500/10 text-emerald-400' :
-                          del.status === 'IN_TRANSIT' ? 'bg-blue-500/10 text-blue-400 animate-pulse' :
+                          del.status === 'IN_TRANSIT' ? 'bg-blue-500/10 text-blue-450 animate-pulse' :
                           'bg-rose-500/10 text-rose-400'
                         }`}>{del.status.replace('_', ' ')}</span>
                       </td>
                       <td className="py-3.5 px-5 text-center relative" onClick={(e) => e.stopPropagation()}>
                         <button
                           onClick={() => setActiveDispatchMenu(activeDispatchMenu === del.id ? null : del.id)}
-                          className="w-8 h-8 inline-flex items-center justify-center bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg text-slate-500 dark:text-slate-400 transition-colors select-none"
+                          className="w-8 h-8 inline-flex items-center justify-center bg-[var(--bg)] hover:bg-[var(--accent-light)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-lg transition-colors border border-[var(--border)] select-none cursor-pointer"
                         >
                           ···
                         </button>
                         {activeDispatchMenu === del.id && (
-                          <div className="absolute right-5 mt-1 w-44 bg-[var(--bg-card)] border border-custom rounded-xl shadow-xl z-30 p-1 flex flex-col">
-                            <button onClick={() => handleEditDelivery(del)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-left">✏ Edit Log</button>
-                            <button onClick={() => handleDuplicateDelivery(del)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-left">📋 Duplicate</button>
-                            <button onClick={() => handleShareDelivery(del)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-left">🔗 Share Link</button>
-                            <div className="h-px bg-slate-200 dark:bg-slate-700 my-1"></div>
-                            <button onClick={() => handleDeleteDelivery(del.id)} className="flex items-center gap-2 px-3 py-2 text-xs text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors text-left">🗑 Delete Log</button>
+                          <div className="absolute right-5 mt-1 w-44 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl z-30 p-1 flex flex-col">
+                            <button onClick={() => handleEditDelivery(del)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left cursor-pointer">✏ Edit Log</button>
+                            <button onClick={() => handleDuplicateDelivery(del)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left cursor-pointer">📋 Duplicate</button>
+                            <button onClick={() => handleShareDelivery(del)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left cursor-pointer">🔗 Share Link</button>
+                            <div className="h-px bg-[var(--border)] my-1"></div>
+                            <button onClick={() => handleDeleteDelivery(del.id)} className="flex items-center gap-2 px-3 py-2 text-xs text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors text-left cursor-pointer">🗑 Delete Log</button>
                           </div>
                         )}
                       </td>
@@ -705,12 +705,12 @@ export default function DispatchDashboard({
             </div>
 
             {/* Pagination Footer */}
-            <div className="theme-table-footer flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-4">
-              <p className="text-xs text-slate-400 font-mono">Showing {filteredDeliveries.length} of {localDeliveries.length} log records</p>
+            <div className="theme-table-footer flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-4 border-t border-[var(--border)] bg-[var(--bg)] text-[var(--text-secondary)]">
+              <p className="text-xs text-[var(--text-secondary)] font-mono">Showing {filteredDeliveries.length} of {localDeliveries.length} log records</p>
               <div className="flex items-center gap-1">
-                <button className="w-8 h-8 flex items-center justify-center text-xs text-slate-400 hover:text-white bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg transition-colors border border-custom disabled:opacity-30" disabled>‹</button>
-                <button className="w-8 h-8 flex items-center justify-center text-xs text-white bg-blue-600 rounded-lg font-bold">1</button>
-                <button className="w-8 h-8 flex items-center justify-center text-xs text-slate-400 hover:text-white bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg transition-colors border border-custom disabled:opacity-30" disabled>›</button>
+                <button className="w-8 h-8 flex items-center justify-center text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] bg-[var(--bg-card)] hover:bg-[var(--accent-light)] rounded-lg transition-colors border border-[var(--border)] disabled:opacity-30 cursor-pointer" disabled>‹</button>
+                <button className="w-8 h-8 flex items-center justify-center text-xs text-white bg-[var(--accent)] rounded-lg font-bold">1</button>
+                <button className="w-8 h-8 flex items-center justify-center text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] bg-[var(--bg-card)] hover:bg-[var(--accent-light)] rounded-lg transition-colors border border-[var(--border)] disabled:opacity-30 cursor-pointer" disabled>›</button>
               </div>
             </div>
           </div>
@@ -718,33 +718,33 @@ export default function DispatchDashboard({
 
         {/* DRIVER LOGS / DETAILS */}
         {activeSubTab === 'DriverLogs' && (
-          <div className="p-6 app-card space-y-4">
+          <div className="p-6 bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-[var(--box-shadow)] space-y-4 text-[var(--text-primary)]">
             <div className="flex items-center gap-2">
-              <UserCheck className="w-5 h-5 text-emerald-500" />
-              <h3 className="text-lg font-bold">Driver Activities & Details</h3>
+              <UserCheck className="w-5 h-5 text-[var(--accent)]" />
+              <h3 className="text-lg font-bold text-[var(--text-primary)]">Driver Activities & Details</h3>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {seedDrivers.map(driver => (
-                <div key={driver.id} className="p-4 bg-slate-100/50 dark:bg-slate-800/20 border border-custom rounded-xl space-y-3">
+                <div key={driver.id} className="p-4 bg-[var(--bg)] border border-[var(--border)] rounded-xl space-y-3">
                   <div className="flex justify-between items-start">
                     <div>
-                      <p className="text-xs font-bold">{driver.fullName}</p>
-                      <p className="text-[10px] text-slate-400 font-mono">ID: <code className="bg-white dark:bg-slate-800 px-1 rounded border border-custom">{driver.id}</code></p>
+                      <p className="text-xs font-bold text-[var(--text-primary)]">{driver.fullName}</p>
+                      <p className="text-[10px] text-[var(--text-secondary)] font-mono">ID: <code className="bg-[var(--bg-card)] px-1 rounded border border-[var(--border)] text-[var(--text-primary)]">{driver.id}</code></p>
                     </div>
                     <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${driverStatusColor(driver.status)}`}>{driver.status.replace('_', ' ')}</span>
                   </div>
-                  <div className="grid grid-cols-2 gap-2 text-[10px] text-slate-400">
-                    <div><span className="text-slate-500">Phone:</span> {driver.phone}</div>
-                    <div><span className="text-slate-500">Truck:</span> <strong>{driver.truckId}</strong></div>
-                    <div><span className="text-slate-500">License:</span> <code>{driver.licenseNumber}</code></div>
-                    <div><span className="text-slate-500">Deliveries:</span> <strong>{driver.totalDeliveries}</strong></div>
-                    <div className="col-span-2"><span className="text-slate-500">Ghana Card:</span> <code className="bg-white dark:bg-slate-800 px-1 rounded border border-custom">{driver.ghanaCard}</code></div>
-                    <div><span className="text-slate-500">Joined:</span> {driver.joinedAt}</div>
+                  <div className="grid grid-cols-2 gap-2 text-[10px] text-[var(--text-secondary)]">
+                    <div><span className="text-[var(--text-secondary)]">Phone:</span> <span className="text-[var(--text-primary)]">{driver.phone}</span></div>
+                    <div><span className="text-[var(--text-secondary)]">Truck:</span> <strong className="text-[var(--text-primary)]">{driver.truckId}</strong></div>
+                    <div><span className="text-[var(--text-secondary)]">License:</span> <code className="text-[var(--text-primary)]">{driver.licenseNumber}</code></div>
+                    <div><span className="text-[var(--text-secondary)]">Deliveries:</span> <strong className="text-[var(--text-primary)]">{driver.totalDeliveries}</strong></div>
+                    <div className="col-span-2"><span className="text-[var(--text-secondary)]">Ghana Card:</span> <code className="bg-[var(--bg-card)] px-1 rounded border border-[var(--border)] text-[var(--text-primary)]">{driver.ghanaCard}</code></div>
+                    <div><span className="text-[var(--text-secondary)]">Joined:</span> <span className="text-[var(--text-primary)]">{driver.joinedAt}</span></div>
                   </div>
                 </div>
               ))}
             </div>
-            <button onClick={() => exportToCSV(seedDrivers, ['id', 'fullName', 'phone', 'ghanaCard', 'licenseNumber', 'truckId', 'status', 'totalDeliveries', 'joinedAt'], 'drivers_roster')} className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold cursor-pointer border border-slate-200 transition-colors w-full sm:w-auto justify-center">
+            <button onClick={() => exportToCSV(seedDrivers, ['id', 'fullName', 'phone', 'ghanaCard', 'licenseNumber', 'truckId', 'status', 'totalDeliveries', 'joinedAt'], 'drivers_roster')} className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--bg)] hover:bg-[var(--accent-light)] text-[var(--text-primary)] rounded-lg text-xs font-semibold cursor-pointer border border-[var(--border)] transition-colors w-full sm:w-auto justify-center">
               <FileSpreadsheet className="w-3.5 h-3.5" /> Export Drivers Roster (CSV)
             </button>
           </div>

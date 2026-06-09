@@ -180,20 +180,20 @@ export default function LogisticsDashboard() {
         <div className="space-y-6">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
-              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight">Logistics Control Panel</h1>
-              <p className="text-xs sm:text-sm text-slate-500 text-muted">Manage fleet maintenance records and monitor supply chain metrics.</p>
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight text-[var(--text-primary)]">Logistics Control Panel</h1>
+              <p className="text-xs sm:text-sm text-[var(--text-muted)]">Manage fleet maintenance records and monitor supply chain metrics.</p>
             </div>
             <div className="flex gap-2 w-full sm:w-auto justify-end">
               <button 
                 onClick={handleExportCSV}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold cursor-pointer border border-slate-200"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--accent-light)] hover:opacity-90 text-[var(--accent)] rounded-lg text-xs font-semibold cursor-pointer border border-[var(--border)] transition-all"
               >
                 <FileSpreadsheet className="w-3.5 h-3.5" />
                 <span>Export Maintenance (CSV)</span>
               </button>
               <button 
                 onClick={handleExportPDF}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold cursor-pointer border border-slate-200"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--accent-light)] hover:opacity-90 text-[var(--accent)] rounded-lg text-xs font-semibold cursor-pointer border border-[var(--border)] transition-all"
               >
                 <FileText className="w-3.5 h-3.5" />
                 <span>Export Maintenance (PDF)</span>
@@ -206,13 +206,13 @@ export default function LogisticsDashboard() {
             {stats.map((card, idx) => {
               const Icon = card.icon;
               return (
-                <div key={idx} className="p-4 md:p-6 app-card flex items-center justify-between hover:scale-102 transition-all">
+                <div key={idx} className="p-4 md:p-6 bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] border-b-[3px] border-[var(--accent)] flex items-center justify-between hover:scale-102 transition-all">
                   <div>
-                    <span className="text-xs text-slate-400 uppercase font-semibold">{card.title}</span>
-                    <h3 className="text-xl md:text-2xl font-bold mt-1">{card.value}</h3>
-                    <p className="text-[10px] text-slate-400 mt-1">{card.sub}</p>
+                    <span className="text-xs text-[var(--text-muted)] uppercase font-semibold">{card.title}</span>
+                    <h3 className="text-xl md:text-2xl font-bold mt-1 text-[var(--text-primary)]">{card.value}</h3>
+                    <p className="text-[10px] text-[var(--text-muted)] mt-1">{card.sub}</p>
                   </div>
-                  <div className={`p-3 md:p-4 bg-slate-100 rounded-2xl ${card.color} bg-accent-light`}>
+                  <div className="p-3 md:p-4 bg-[var(--accent-light)] text-[var(--accent)] rounded-2xl">
                     <Icon className="w-5 h-5 md:w-6 md:h-6" />
                   </div>
                 </div>
@@ -221,19 +221,19 @@ export default function LogisticsDashboard() {
           </div>
 
           {/* Performance Chart */}
-          <div className="p-4 md:p-6 app-card flex flex-col justify-between">
+          <div className="p-4 md:p-6 bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] border border-[var(--border)] flex flex-col justify-between">
             <div>
-              <h3 className="text-base md:text-lg font-bold">Logistics Fleet Performance</h3>
-              <p className="text-xs text-slate-500 text-muted">Weekly fleet distance logs vs fuel usage metrics.</p>
+              <h3 className="text-base md:text-lg font-bold text-[var(--text-primary)]">Logistics Fleet Performance</h3>
+              <p className="text-xs text-[var(--text-muted)]">Weekly fleet distance logs vs fuel usage metrics.</p>
             </div>
             <div className="h-48 md:h-60 mt-4">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={lineChartData}>
-                  <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
-                  <XAxis dataKey="name" stroke="#94a3b8" fontSize={10} />
-                  <YAxis stroke="#94a3b8" fontSize={10} />
-                  <Tooltip />
-                  <Line type="monotone" dataKey="Distance" stroke="#3b82f6" strokeWidth={2} activeDot={{ r: 8 }} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" opacity={0.5} />
+                  <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={10} />
+                  <YAxis stroke="var(--text-muted)" fontSize={10} />
+                  <Tooltip contentStyle={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)', color: 'var(--text-primary)' }} />
+                  <Line type="monotone" dataKey="Distance" stroke="var(--accent)" strokeWidth={2.5} activeDot={{ r: 8 }} />
                   <Line type="monotone" dataKey="Fuel" stroke="#10b981" strokeWidth={2} />
                 </LineChart>
               </ResponsiveContainer>
@@ -243,17 +243,19 @@ export default function LogisticsDashboard() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             
             {/* Fleet Maintenance Logs */}
-            <div className="p-4 md:p-6 app-card space-y-4">
-              <h3 className="text-base md:text-lg font-bold">Fleet Maintenance Schedule</h3>
+            <div className="p-4 md:p-6 bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] border border-[var(--border)] space-y-4">
+              <h3 className="text-base md:text-lg font-bold text-[var(--text-primary)]">Fleet Maintenance Schedule</h3>
               <div className="space-y-3">
                 {maintenanceSchedule.map((log, idx) => (
-                  <div key={idx} className="p-4 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
+                  <div key={idx} className="p-4 bg-[var(--bg)] border border-[var(--border)] rounded-xl flex items-center justify-between">
                     <div>
-                      <p className="text-xs font-bold text-slate-800">{log.id} - {log.type}</p>
-                      <p className="text-[10px] text-slate-500">Service Date: {log.date} | Cost: <strong>${log.cost}</strong></p>
+                      <p className="text-xs font-bold text-[var(--text-primary)]">{log.id} - {log.type}</p>
+                      <p className="text-[10px] text-[var(--text-muted)]">Service Date: {log.date} | Cost: <strong>${log.cost}</strong></p>
                     </div>
-                    <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
-                      log.status === 'Operational' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                    <span className={`px-2 py-0.5 rounded text-[9px] font-bold border ${
+                      log.status === 'Operational' 
+                        ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' 
+                        : 'bg-amber-500/10 text-amber-500 border-amber-500/20'
                     }`}>{log.status}</span>
                   </div>
                 ))}
@@ -261,16 +263,16 @@ export default function LogisticsDashboard() {
             </div>
 
             {/* Supply Chain Performance charts */}
-            <div className="p-4 md:p-6 app-card space-y-4">
-              <h3 className="text-base md:text-lg font-bold">Fuel Efficiency & Maintenance Metrics</h3>
+            <div className="p-4 md:p-6 bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] border border-[var(--border)] space-y-4">
+              <h3 className="text-base md:text-lg font-bold text-[var(--text-primary)]">Fuel Efficiency & Maintenance Metrics</h3>
               <div className="h-48 md:h-64 mt-4">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
-                    <XAxis dataKey="name" stroke="#94a3b8" fontSize={10} />
-                    <YAxis stroke="#94a3b8" fontSize={10} />
-                    <Tooltip />
-                    <Bar dataKey="Fuel" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" opacity={0.5} />
+                    <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={10} />
+                    <YAxis stroke="var(--text-muted)" fontSize={10} />
+                    <Tooltip contentStyle={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)', color: 'var(--text-primary)' }} />
+                    <Bar dataKey="Fuel" fill="var(--accent)" radius={[4, 4, 0, 0]} />
                     <Bar dataKey="Maintenance" fill="#f43f5e" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>

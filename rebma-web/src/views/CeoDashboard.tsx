@@ -193,119 +193,119 @@ export default function CeoDashboard({
         </div>
       </div>
 
-      {/* ══════════════ DESKTOP LAYOUT (lg+) — UNCHANGED ══════════════ */}
-      <div className="hidden lg:block">
+      {/* ══════════════ DESKTOP LAYOUT (lg+) ══════════════ */}
+      <div className="hidden lg:block text-[var(--text-primary)]">
         <div className="space-y-6">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
-              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight">CEO Command Terminal</h1>
-              <p className="text-xs sm:text-sm text-slate-500 text-muted">Global operations overview, metrics, and fleet map.</p>
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight text-[var(--text-primary)]">CEO Command Terminal</h1>
+              <p className="text-xs sm:text-sm text-[var(--text-muted)]">Global operations overview, metrics, and fleet map.</p>
             </div>
             <div className="flex gap-2 w-full sm:w-auto">
               <button 
                 onClick={handleExportCSV}
-                className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold cursor-pointer border border-slate-200"
+                className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 bg-[var(--accent-light)] hover:opacity-90 text-[var(--accent)] rounded-lg text-xs font-semibold cursor-pointer transition-all"
               >
                 <FileSpreadsheet className="w-3.5 h-3.5" />
                 <span>Export CSV</span>
               </button>
               <button 
                 onClick={handleExportPDF}
-                className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold cursor-pointer border border-slate-200"
+                className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 bg-[var(--accent-light)] hover:opacity-90 text-[var(--accent)] rounded-lg text-xs font-semibold cursor-pointer transition-all"
               >
                 <FileText className="w-3.5 h-3.5" />
                 <span>Export PDF</span>
               </button>
             </div>
           </div>
-
+ 
           {/* Operational KPI Counters */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
             {[
-              { title: 'Global Ingestion Flow', value: '1,020 Tons', sub: '+12% from last month', icon: Layers, color: 'text-blue-500' },
-              { title: 'Processing Invoices', value: '4 Invoices', sub: '2 awaiting clearance', icon: DollarSign, color: 'text-emerald-500' },
-              { title: 'Active Logistics Vehicles', value: '1 Truck', sub: 'GPS Streaming Live', icon: Truck, color: 'text-indigo-500' },
-              { title: 'Total Registered Staff', value: '25 Active', sub: '3 Pending approvals', icon: Users, color: 'text-amber-500' }
+              { title: 'Global Ingestion Flow', value: '1,020 Tons', sub: '+12% from last month', icon: Layers },
+              { title: 'Processing Invoices', value: '4 Invoices', sub: '2 awaiting clearance', icon: DollarSign },
+              { title: 'Active Logistics Vehicles', value: '1 Truck', sub: 'GPS Streaming Live', icon: Truck },
+              { title: 'Total Registered Staff', value: '25 Active', sub: '3 Pending approvals', icon: Users }
             ].map((card, idx) => {
               const Icon = card.icon;
               const isProminent = idx < 2;
               return (
-                <div key={idx} className="p-4 sm:p-6 app-card flex items-center justify-between hover:scale-102 transition-all">
+                <div key={idx} className="p-4 sm:p-6 bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] border-b-[3px] border-[var(--accent)] flex items-center justify-between hover:scale-102 transition-all">
                   <div>
-                    <span className="text-[10px] sm:text-xs text-slate-400 uppercase font-semibold">{card.title}</span>
-                    <h3 className={`font-bold mt-1 ${isProminent ? 'text-2xl sm:text-3xl' : 'text-lg sm:text-xl'}`}>{card.value}</h3>
-                    <p className="text-[9px] sm:text-[10px] text-slate-400 mt-1">{card.sub}</p>
+                    <span className="text-[10px] sm:text-xs text-[var(--text-muted)] uppercase font-semibold">{card.title}</span>
+                    <h3 className={`font-bold mt-1 text-[var(--text-primary)] ${isProminent ? 'text-2xl sm:text-3xl' : 'text-lg sm:text-xl'}`}>{card.value}</h3>
+                    <p className="text-[9px] sm:text-[10px] text-[var(--text-muted)] mt-1">{card.sub}</p>
                   </div>
-                  <div className="p-3 sm:p-4 bg-slate-100 rounded-2xl text-blue-500 bg-accent-light shrink-0">
-                    <Icon className="w-5 h-5 sm:w-6 sm:h-6" />
+                  <div className="w-12 h-12 rounded-full bg-[var(--accent-light)] flex items-center justify-center shrink-0">
+                    <Icon className="w-5 h-5 sm:w-6 sm:h-6 text-[var(--accent)]" />
                   </div>
                 </div>
               );
             })}
           </div>
-
+ 
           {/* Map and Chart */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             
             {/* Live Fleet Tracking Map */}
-            <div className="lg:col-span-2 p-6 app-card flex flex-col justify-between">
+            <div className="lg:col-span-2 p-6 bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] border border-[var(--border)] flex flex-col justify-between">
               <div className="mb-4">
-                <h3 className="text-lg font-bold">Live Fleet Tracking Map</h3>
-                <p className="text-xs text-slate-500 text-muted">Simulated real-time vehicle GPS coordinate logging.</p>
+                <h3 className="text-lg font-bold text-[var(--text-primary)]">Live Fleet Tracking Map</h3>
+                <p className="text-xs text-[var(--text-muted)]">Simulated real-time vehicle GPS coordinate logging.</p>
               </div>
               
-              <div className="h-[200px] sm:h-64 bg-slate-100 rounded-2xl relative overflow-hidden flex items-center justify-center border border-slate-200">
-                <div className="absolute inset-0 opacity-20 bg-[radial-gradient(#3b82f6_1px,transparent_1px)] [background-size:16px_16px]"></div>
+              <div className="h-[200px] sm:h-64 bg-[var(--bg)] rounded-2xl relative overflow-hidden flex items-center justify-center border border-[var(--border)]">
+                <div className="absolute inset-0 opacity-20 bg-[radial-gradient(var(--accent)_1px,transparent_1px)] [background-size:16px_16px]"></div>
                 
                 <motion.div 
                   animate={{ scale: [1, 1.2, 1] }}
                   transition={{ repeat: Infinity, duration: 2 }}
-                  className="absolute bg-blue-500/30 border border-blue-500 p-2.5 rounded-full z-10"
+                  className="absolute bg-[var(--accent-light)] border border-[var(--accent)] p-2.5 rounded-full z-10"
                   style={{
                     left: `${45 + (activeCoordinates.lat - 5.6037) * 2000}%`,
                     top: `${50 + (activeCoordinates.lng + 0.1870) * 2000}%`
                   }}
                 >
-                  <div className="w-3.5 h-3.5 bg-blue-600 rounded-full border-2 border-white"></div>
+                  <div className="w-3.5 h-3.5 bg-[var(--accent)] rounded-full border-2 border-white"></div>
                 </motion.div>
                 
-                <div className="absolute top-10 left-12 text-[10px] font-bold text-slate-400">Kotoka Intl Airport</div>
-                <div className="absolute bottom-16 right-20 text-[10px] font-bold text-slate-400">Tema Harbour Port</div>
-                <div className="absolute bottom-10 left-10 text-[10px] font-bold text-slate-400 font-semibold">Accra Central</div>
-
-                <div className="absolute bottom-4 left-4 bg-slate-900/80 backdrop-blur px-3 py-1.5 rounded-lg border border-slate-800 text-[10px] text-white space-y-0.5">
-                  <p className="font-semibold text-blue-400">Truck #L-404 Active</p>
-                  <p>Lat: {activeCoordinates.lat.toFixed(6)}</p>
-                  <p>Lng: {activeCoordinates.lng.toFixed(6)}</p>
-                  <p>Status: <span className="text-emerald-400 font-bold uppercase">{deliveryStatus}</span></p>
+                <div className="absolute top-10 left-12 text-[10px] font-bold text-[var(--text-muted)]">Kotoka Intl Airport</div>
+                <div className="absolute bottom-16 right-20 text-[10px] font-bold text-[var(--text-muted)]">Tema Harbour Port</div>
+                <div className="absolute bottom-10 left-10 text-[10px] font-bold text-[var(--text-muted)] font-semibold">Accra Central</div>
+ 
+                <div className="absolute bottom-4 left-4 bg-slate-900/95 backdrop-blur px-3 py-1.5 rounded-lg border border-slate-800 text-[10px] text-white space-y-0.5 shadow-lg">
+                  <p className="font-semibold text-[var(--accent)]">Truck #L-404 Active</p>
+                  <p className="opacity-90">Lat: {activeCoordinates.lat.toFixed(6)}</p>
+                  <p className="opacity-90">Lng: {activeCoordinates.lng.toFixed(6)}</p>
+                  <p className="opacity-90">Status: <span className="text-emerald-400 font-bold uppercase">{deliveryStatus}</span></p>
                 </div>
               </div>
-              <div className="mt-4 flex items-center justify-between text-xs text-slate-400">
+              <div className="mt-4 flex items-center justify-between text-xs text-[var(--text-muted)]">
                 <span>Map Provider: Google Maps Platform SDK</span>
                 <span>Stream interval: {gpsInterval}s</span>
               </div>
             </div>
-
+ 
             {/* Line Chart */}
-            <div className="p-6 app-card flex flex-col justify-between">
+            <div className="p-6 bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] border border-[var(--border)] flex flex-col justify-between">
               <div>
-                <h3 className="text-lg font-bold">Inflow Revenue VS Orders</h3>
-                <p className="text-xs text-slate-500 text-muted">Weekly transactional volumes.</p>
+                <h3 className="text-lg font-bold text-[var(--text-primary)]">Inflow Revenue VS Orders</h3>
+                <p className="text-xs text-[var(--text-muted)]">Weekly transactional volumes.</p>
               </div>
               <div className="h-[200px] sm:h-60 lg:h-[300px] mt-4">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={lineChartData}>
-                    <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
-                    <XAxis dataKey="name" stroke="#94a3b8" fontSize={10} />
-                    <YAxis stroke="#94a3b8" fontSize={10} />
-                    <Tooltip />
-                    <Line type="monotone" dataKey="Inflow" stroke="#3b82f6" strokeWidth={2} activeDot={{ r: 8 }} />
-                    <Line type="monotone" dataKey="Orders" stroke="#10b981" strokeWidth={2} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" opacity={0.5} />
+                    <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={10} />
+                    <YAxis stroke="var(--text-muted)" fontSize={10} />
+                    <Tooltip contentStyle={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)', color: 'var(--text-primary)' }} />
+                    <Line type="monotone" dataKey="Inflow" stroke="var(--accent)" strokeWidth={2.5} activeDot={{ r: 8 }} />
+                    <Line type="monotone" dataKey="Orders" stroke="#6366f1" strokeWidth={2} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
             </div>
-
+ 
           </div>
         </div>
       </div>

@@ -641,25 +641,25 @@ export default function OperationsDashboard({
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight">Operations Control Terminal</h1>
-          <p className="text-xs sm:text-sm text-muted">Register port inventory intakes, monitor logged cargo, and process warehouse releases.</p>
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight text-[var(--text-primary)]">Operations Control Terminal</h1>
+          <p className="text-xs sm:text-sm text-[var(--text-muted)]">Register port inventory intakes, monitor logged cargo, and process warehouse releases.</p>
         </div>
         <div className="flex gap-2 w-full sm:w-auto justify-end">
           {activeSubTab === 'LoggedCargo' ? (
             <>
-              <button onClick={handleExportCargoCSV} className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold cursor-pointer border border-slate-200 transition-colors">
+              <button onClick={handleExportCargoCSV} className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--accent-light)] hover:opacity-90 text-[var(--accent)] rounded-lg text-xs font-semibold cursor-pointer border border-[var(--border)] transition-opacity">
                 <FileSpreadsheet className="w-3.5 h-3.5" /><span>Cargo (CSV)</span>
               </button>
-              <button onClick={handleExportCargoPDF} className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold cursor-pointer border border-slate-200 transition-colors">
+              <button onClick={handleExportCargoPDF} className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--accent-light)] hover:opacity-90 text-[var(--accent)] rounded-lg text-xs font-semibold cursor-pointer border border-[var(--border)] transition-opacity">
                 <FileText className="w-3.5 h-3.5" /><span>Cargo (PDF)</span>
               </button>
             </>
           ) : (
             <>
-              <button onClick={handleExportReleasesCSV} className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold cursor-pointer border border-slate-200 transition-colors">
+              <button onClick={handleExportReleasesCSV} className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--accent-light)] hover:opacity-90 text-[var(--accent)] rounded-lg text-xs font-semibold cursor-pointer border border-[var(--border)] transition-opacity">
                 <FileSpreadsheet className="w-3.5 h-3.5" /><span>Releases (CSV)</span>
               </button>
-              <button onClick={handleExportReleasesPDF} className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold cursor-pointer border border-slate-200 transition-colors">
+              <button onClick={handleExportReleasesPDF} className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--accent-light)] hover:opacity-90 text-[var(--accent)] rounded-lg text-xs font-semibold cursor-pointer border border-[var(--border)] transition-opacity">
                 <FileText className="w-3.5 h-3.5" /><span>Releases (PDF)</span>
               </button>
             </>
@@ -671,16 +671,15 @@ export default function OperationsDashboard({
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
         {stats.map((card, idx) => {
           const Icon = card.icon;
-          const isProminent = idx < 2;
           return (
-            <div key={idx} className="p-4 md:p-6 app-card flex items-center justify-between hover:scale-102 transition-all duration-300">
+            <div key={idx} className="p-6 bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] border-b-[3px] border-[var(--accent)] flex items-center justify-between hover:scale-102 transition-all duration-300">
               <div>
-                <span className="text-xs text-slate-400 uppercase font-semibold">{card.title}</span>
-                <h3 className={`font-bold mt-1 ${isProminent ? 'text-2xl sm:text-3xl' : 'text-lg sm:text-xl'}`}>{card.value}</h3>
-                <p className="text-[10px] text-slate-400 mt-1">{card.sub}</p>
+                <span className="text-xs text-[var(--text-muted)] uppercase font-semibold">{card.title}</span>
+                <h3 className="text-2xl font-bold mt-1 text-[var(--text-primary)]">{card.value}</h3>
+                <p className="text-[10px] text-[var(--text-muted)] mt-1">{card.sub}</p>
               </div>
-              <div className={`p-3 md:p-4 bg-slate-100 rounded-2xl ${card.color} bg-accent-light`}>
-                <Icon className="w-5 h-5 md:w-6 md:h-6" />
+              <div className="w-12 h-12 rounded-full bg-[var(--accent-light)] flex items-center justify-center shrink-0">
+                <Icon className="w-6 h-6 text-[var(--accent)]" />
               </div>
             </div>
           );
@@ -688,19 +687,19 @@ export default function OperationsDashboard({
       </div>
 
       {/* Chart */}
-      <div className="p-4 md:p-6 app-card">
+      <div className="p-6 bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] border border-[var(--border)]">
         <div>
-          <h3 className="text-base md:text-lg font-bold">Cargo Inflow vs Release Velocity</h3>
-          <p className="text-xs text-muted">Ingestion tonnage vs cargo shipments cleared weekly.</p>
+          <h3 className="text-lg font-bold text-[var(--text-primary)]">Cargo Inflow vs Release Velocity</h3>
+          <p className="text-xs text-[var(--text-muted)]">Ingestion tonnage vs cargo shipments cleared weekly.</p>
         </div>
         <div className="h-48 md:h-60 mt-4">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={lineChartData}>
-              <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
-              <XAxis dataKey="name" stroke="#94a3b8" fontSize={10} />
-              <YAxis stroke="#94a3b8" fontSize={10} />
-              <Tooltip />
-              <Line type="monotone" dataKey="Ingested" stroke="#3b82f6" strokeWidth={2} activeDot={{ r: 8 }} />
+              <CartesianGrid strokeDasharray="3 3" opacity={0.1} stroke="var(--border)" />
+              <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={10} />
+              <YAxis stroke="var(--text-muted)" fontSize={10} />
+              <Tooltip contentStyle={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)', color: 'var(--text-primary)' }} />
+              <Line type="monotone" dataKey="Ingested" stroke="var(--accent)" strokeWidth={2} activeDot={{ r: 8 }} />
               <Line type="monotone" dataKey="Released" stroke="#10b981" strokeWidth={2} />
             </LineChart>
           </ResponsiveContainer>
@@ -709,44 +708,44 @@ export default function OperationsDashboard({
 
       {/* Approved Orders Section — always visible */}
       {approvedOrders.length > 0 && (
-        <div className="theme-table-wrapper">
+        <div className="theme-table-wrapper border border-[var(--border)] bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] mt-6">
           {/* Toolbar */}
-          <div className="theme-table-toolbar flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-5 py-4">
+          <div className="theme-table-toolbar flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-5 py-4 border-b border-[var(--border)] bg-[var(--bg)]">
             <div className="flex items-center gap-2">
-              <TicketCheck className="w-5 h-5 text-emerald-500" />
-              <h3 className="text-sm font-bold">Approved Orders (with Ticket Numbers)</h3>
-              <span className="text-xs font-mono text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">{filteredOrders.length} orders</span>
+              <TicketCheck className="w-5 h-5 text-[var(--accent)]" />
+              <h3 className="text-sm font-bold text-[var(--text-primary)]">Approved Orders (with Ticket Numbers)</h3>
+              <span className="text-xs font-mono text-[var(--text-muted)] bg-[var(--accent-light)] px-2 py-0.5 rounded-full">{filteredOrders.length} orders</span>
             </div>
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
               {/* Search */}
               <div className="relative flex items-center w-full sm:w-auto">
-                <span className="absolute left-3 text-slate-500 text-xs pointer-events-none">🔍</span>
+                <span className="absolute left-3 text-[var(--text-muted)] text-xs pointer-events-none">🔍</span>
                 <input
                   type="text"
                   placeholder="Search orders…"
                   value={ordersSearch}
                   onChange={e => setOrdersSearch(e.target.value)}
-                  className="pl-8 pr-3 py-1.5 text-xs rounded-lg outline-none transition w-full sm:w-40"
+                  className="pl-8 pr-3 py-1.5 text-xs rounded-lg outline-none border border-[var(--border)] transition w-full sm:w-40 bg-[var(--bg-card)] text-[var(--text-primary)] focus:border-[var(--accent)]"
                 />
               </div>
               {/* Status dropdown */}
               <div className="relative w-full sm:w-auto">
                 <button
                   onClick={(e) => { e.stopPropagation(); setIsOrdersFilterOpen(!isOrdersFilterOpen); }}
-                  className="flex items-center justify-between sm:justify-start gap-1.5 text-xs text-[var(--text-primary)] bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 px-3 py-1.5 rounded-lg transition-colors border border-custom w-full sm:w-auto"
+                  className="flex items-center justify-between sm:justify-start gap-1.5 text-xs text-[var(--text-primary)] bg-[var(--bg-card)] hover:bg-[var(--accent-light)] px-3 py-1.5 rounded-lg transition-colors border border-[var(--border)] w-full sm:w-auto"
                 >
                   <span>Status: {ordersStatusFilter === 'ALL' ? 'All' : ordersStatusFilter.replace(/_/g, ' ')}</span>
                   <span className="text-[10px]">▼</span>
                 </button>
                 {isOrdersFilterOpen && (
-                  <div className="absolute right-0 top-full mt-1.5 w-full sm:w-48 bg-[var(--bg-card)] border border-custom rounded-xl shadow-xl z-20 p-1 flex flex-col">
+                  <div className="absolute right-0 top-full mt-1.5 w-full sm:w-48 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl z-20 p-1 flex flex-col text-left">
                     {(['ALL', 'PROCESSING', 'APPROVED', 'OUT_FOR_DELIVERY', 'DELIVERED'] as const).map(st => (
                       <button
                         key={st}
                         onClick={() => { setOrdersStatusFilter(st); setIsOrdersFilterOpen(false); }}
-                        className="flex items-center gap-2 px-3 py-2 text-xs rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-left transition-colors text-[var(--text-primary)]"
+                        className="flex items-center gap-2 px-3 py-2 text-xs rounded-lg hover:bg-[var(--accent-light)] text-left transition-colors text-[var(--text-primary)]"
                       >
-                        <span className={`w-2 h-2 rounded-full ${st === 'APPROVED' || st === 'DELIVERED' ? 'bg-emerald-400' : st === 'PROCESSING' ? 'bg-indigo-400' : 'bg-slate-400'}`} />
+                        <span className={`w-2 h-2 rounded-full ${st === 'APPROVED' || st === 'DELIVERED' ? 'bg-emerald-500' : st === 'PROCESSING' ? 'bg-indigo-500' : 'bg-slate-450'}`} />
                         {st === 'ALL' ? 'All Status' : st.replace(/_/g, ' ')}
                       </button>
                     ))}
@@ -759,33 +758,33 @@ export default function OperationsDashboard({
           {/* Scrollable table / Mobile Card List */}
           <div>
             {/* Mobile Card List */}
-            <div className="lg:hidden space-y-3">
+            <div className="lg:hidden space-y-3 p-4">
               {sortedOrders.map(order => (
                 <div 
                   key={order.id} 
                   onClick={() => setActiveMobileDetail({ type: 'order', data: order })}
-                  className="bg-white dark:bg-slate-850 rounded-2xl shadow-sm p-4 border border-slate-100 dark:border-slate-800 flex items-center justify-between cursor-pointer"
+                  className="bg-[var(--bg-card)] rounded-2xl shadow-sm p-4 border border-[var(--border)] flex items-center justify-between cursor-pointer"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-base shrink-0">
+                    <div className="w-10 h-10 rounded-full bg-[var(--accent-light)] text-[var(--accent)] flex items-center justify-center font-bold text-base shrink-0">
                       {order.clientName[0]}
                     </div>
                     <div>
-                      <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">{order.clientName}</h4>
-                      <p className="text-xs text-slate-400 font-semibold">{order.productName || '—'}</p>
-                      <p className="text-[10px] text-slate-400 mt-0.5 font-mono">{order.ticketNumber || order.id}</p>
+                      <h4 className="text-sm font-bold text-[var(--text-primary)]">{order.clientName}</h4>
+                      <p className="text-xs text-[var(--text-secondary)] font-semibold">{order.productName || '—'}</p>
+                      <p className="text-[10px] text-[var(--text-muted)] mt-0.5 font-mono">{order.ticketNumber || order.id}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${statusBadge(order.status)}`}>
                       {order.status.replace(/_/g, ' ')}
                     </span>
-                    <ChevronRight className="w-4 h-4 text-slate-400" />
+                    <ChevronRight className="w-4 h-4 text-[var(--text-muted)]" />
                   </div>
                 </div>
               ))}
               {filteredOrders.length === 0 && (
-                <div className="p-8 text-center text-slate-400 text-xs bg-white dark:bg-slate-850 rounded-2xl">No orders found.</div>
+                <div className="p-8 text-center text-[var(--text-muted)] text-xs bg-[var(--bg-card)] rounded-2xl border border-[var(--border)]">No orders found.</div>
               )}
             </div>
 
@@ -793,77 +792,77 @@ export default function OperationsDashboard({
             <div className="hidden lg:block overflow-x-auto w-full">
               <table className="w-full text-xs text-left">
               <thead>
-                <tr className="theme-table-header-row text-slate-400 uppercase font-semibold text-[10px]">
+                <tr className="theme-table-header-row text-[var(--text-muted)] uppercase font-semibold text-[10px] border-b border-[var(--border)]">
                   <th className="py-3 px-5 whitespace-nowrap">
                     <input
                       type="checkbox"
                       checked={filteredOrders.length > 0 && selectedOrdersRows.size === filteredOrders.length}
                       onChange={handleSelectAllOrders}
-                      className="accent-blue-600 w-3.5 h-3.5"
+                      className="accent-[var(--accent)] w-3.5 h-3.5"
                     />
                   </th>
-                  <th onClick={() => handleSort('ticketNumber', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                  <th onClick={() => handleSort('ticketNumber', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none text-[var(--text-primary)]">
                     <div className="flex items-center gap-1">
                       <span>Ticket #</span>
                       <span className="text-[9px] opacity-70">{ordersSortField === 'ticketNumber' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                     </div>
                   </th>
-                  <th onClick={() => handleSort('id', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none hidden sm:table-cell">
+                  <th onClick={() => handleSort('id', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none hidden sm:table-cell text-[var(--text-primary)]">
                     <div className="flex items-center gap-1">
                       <span>Order ID</span>
                       <span className="text-[9px] opacity-70">{ordersSortField === 'id' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                     </div>
                   </th>
-                  <th onClick={() => handleSort('clientName', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                  <th onClick={() => handleSort('clientName', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none text-[var(--text-primary)]">
                     <div className="flex items-center gap-1">
                       <span>Client</span>
                       <span className="text-[9px] opacity-70">{ordersSortField === 'clientName' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                     </div>
                   </th>
-                  <th onClick={() => handleSort('productName', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none hidden md:table-cell">
+                  <th onClick={() => handleSort('productName', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none hidden md:table-cell text-[var(--text-primary)]">
                     <div className="flex items-center gap-1">
                       <span>Product</span>
                       <span className="text-[9px] opacity-70">{ordersSortField === 'productName' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                     </div>
                   </th>
-                  <th onClick={() => handleSort('destination', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none hidden lg:table-cell">
+                  <th onClick={() => handleSort('destination', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none hidden lg:table-cell text-[var(--text-primary)]">
                     <div className="flex items-center gap-1">
                       <span>Destination</span>
                       <span className="text-[9px] opacity-70">{ordersSortField === 'destination' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                     </div>
                   </th>
-                  <th onClick={() => handleSort('totalAmount', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 text-right whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                  <th onClick={() => handleSort('totalAmount', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 text-right whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none text-[var(--text-primary)]">
                     <div className="flex items-center justify-end gap-1">
                       <span>Amount</span>
                       <span className="text-[9px] opacity-70">{ordersSortField === 'totalAmount' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                     </div>
                   </th>
-                  <th onClick={() => handleSort('status', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 text-center whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                  <th onClick={() => handleSort('status', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 text-center whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none text-[var(--text-primary)]">
                     <div className="flex items-center justify-center gap-1">
                       <span>Status</span>
                       <span className="text-[9px] opacity-70">{ordersSortField === 'status' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                     </div>
                   </th>
-                  <th className="py-3 px-5 text-center whitespace-nowrap">Actions</th>
+                  <th className="py-3 px-5 text-center whitespace-nowrap text-[var(--text-primary)]">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-custom">
+              <tbody className="divide-y divide-[var(--border)]">
                 {sortedOrders.map(order => (
-                  <tr key={order.id} className="theme-table-row group">
-                    <td className="py-3.5 px-5">
+                  <tr key={order.id} className="theme-table-row hover:bg-[var(--accent-light)] transition-colors group cursor-pointer text-[var(--text-primary)]">
+                    <td className="py-3 px-5" onClick={e => e.stopPropagation()}>
                       <input
                         type="checkbox"
                         checked={selectedOrdersRows.has(order.id)}
                         onChange={() => handleSelectOrdersRow(order.id)}
-                        className="accent-blue-600 w-3.5 h-3.5"
+                        className="accent-[var(--accent)] w-3.5 h-3.5"
                       />
                     </td>
-                    <td className="py-3.5 px-3 font-mono font-bold text-emerald-400">{order.ticketNumber || '—'}</td>
-                    <td className="py-3.5 px-3 font-mono font-semibold hidden sm:table-cell">{order.id}</td>
+                    <td className="py-3.5 px-3 font-mono font-bold text-emerald-500">{order.ticketNumber || '—'}</td>
+                    <td className="py-3.5 px-3 font-mono font-semibold hidden sm:table-cell text-[var(--text-primary)]">{order.id}</td>
                     <td className="py-3.5 px-3 font-semibold text-[13px]">{order.clientName}</td>
-                    <td className="py-3.5 px-3 text-slate-400 hidden md:table-cell">{order.productName || '—'}</td>
-                    <td className="py-3.5 px-3 text-slate-400 hidden lg:table-cell">{order.destination || '—'}</td>
-                    <td className="py-3.5 px-3 text-right font-bold font-mono text-[13px]">GHS {order.totalAmount.toLocaleString()}</td>
+                    <td className="py-3.5 px-3 text-[var(--text-muted)] hidden md:table-cell">{order.productName || '—'}</td>
+                    <td className="py-3.5 px-3 text-[var(--text-muted)] hidden lg:table-cell">{order.destination || '—'}</td>
+                    <td className="py-3.5 px-3 text-right font-bold font-mono text-[13px] text-[var(--text-primary)]">GHS {order.totalAmount.toLocaleString()}</td>
                     <td className="py-3.5 px-3 text-center">
                       <span className={`px-2.5 py-0.5 rounded text-[9px] font-bold ${statusBadge(order.status)}`}>
                         {order.status.replace(/_/g, ' ')}
@@ -872,17 +871,17 @@ export default function OperationsDashboard({
                     <td className="py-3.5 px-5 text-center relative" onClick={(e) => e.stopPropagation()}>
                       <button
                         onClick={() => setActiveOrdersMenu(activeOrdersMenu === order.id ? null : order.id)}
-                        className="w-8 h-8 inline-flex items-center justify-center bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg text-slate-500 dark:text-slate-400 transition-colors select-none"
+                        className="w-8 h-8 inline-flex items-center justify-center bg-[var(--bg)] hover:bg-[var(--accent-light)] rounded-lg text-[var(--text-secondary)] transition-colors select-none border border-[var(--border)]"
                       >
                         ···
                       </button>
                       {activeOrdersMenu === order.id && (
-                        <div className="absolute right-5 mt-1 w-44 bg-[var(--bg-card)] border border-custom rounded-xl shadow-xl z-30 p-1 flex flex-col">
-                          <button onClick={() => handleEditOrder(order)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-left">✏ Edit Details</button>
-                          <button onClick={() => handleDuplicateOrder(order)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-left">📋 Duplicate</button>
-                          <button onClick={() => handleShareOrder(order)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-left">🔗 Share Link</button>
-                          <div className="h-px bg-slate-200 dark:bg-slate-700 my-1"></div>
-                          <button onClick={() => handleDeleteOrder(order.id)} className="flex items-center gap-2 px-3 py-2 text-xs text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors text-left">🗑 Delete</button>
+                        <div className="absolute right-5 mt-1 w-44 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl z-30 p-1 flex flex-col text-left">
+                          <button onClick={() => handleEditOrder(order)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left">✏ Edit Details</button>
+                          <button onClick={() => handleDuplicateOrder(order)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left">📋 Duplicate</button>
+                          <button onClick={() => handleShareOrder(order)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left">🔗 Share Link</button>
+                          <div className="h-px bg-[var(--border)] my-1"></div>
+                          <button onClick={() => handleDeleteOrder(order.id)} className="flex items-center gap-2 px-3 py-2 text-xs text-rose-500 hover:bg-rose-50 rounded-lg transition-colors text-left">🗑 Delete</button>
                         </div>
                       )}
                     </td>
@@ -894,12 +893,12 @@ export default function OperationsDashboard({
         </div>
 
           {/* Footer */}
-          <div className="theme-table-footer flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-4">
-            <p className="text-xs text-slate-400 font-mono">Showing {filteredOrders.length} of {approvedOrders.length} shipments</p>
+          <div className="theme-table-footer flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-4 border-t border-[var(--border)] bg-[var(--bg)]">
+            <p className="text-xs text-[var(--text-muted)] font-mono">Showing {filteredOrders.length} of {approvedOrders.length} shipments</p>
             <div className="flex items-center gap-1">
-              <button className="w-8 h-8 flex items-center justify-center text-xs text-slate-400 hover:text-white bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg transition-colors border border-custom disabled:opacity-30" disabled>‹</button>
-              <button className="w-8 h-8 flex items-center justify-center text-xs text-white bg-blue-600 rounded-lg font-bold">1</button>
-              <button className="w-8 h-8 flex items-center justify-center text-xs text-slate-400 hover:text-white bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg transition-colors border border-custom disabled:opacity-30" disabled>›</button>
+              <button className="w-8 h-8 flex items-center justify-center text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-[var(--bg-card)] hover:bg-[var(--accent-light)] rounded-lg transition-colors border border-[var(--border)] disabled:opacity-30" disabled>‹</button>
+              <button className="w-8 h-8 flex items-center justify-center text-xs text-white bg-[var(--accent)] rounded-lg font-bold">1</button>
+              <button className="w-8 h-8 flex items-center justify-center text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-[var(--bg-card)] hover:bg-[var(--accent-light)] rounded-lg transition-colors border border-[var(--border)] disabled:opacity-30" disabled>›</button>
             </div>
           </div>
         </div>
@@ -907,27 +906,27 @@ export default function OperationsDashboard({
 
       {/* Approved Goods Section — always visible */}
       {approvedGoods.length > 0 && (
-        <div className="p-6 app-card space-y-3">
+        <div className="p-6 bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] border border-[var(--border)] space-y-3 mt-6">
           <div className="flex items-center gap-2">
-            <PackageCheck className="w-5 h-5 text-blue-500" />
-            <h3 className="text-lg font-bold">Approved Incoming Goods</h3>
+            <PackageCheck className="w-5 h-5 text-[var(--accent)]" />
+            <h3 className="text-lg font-bold text-[var(--text-primary)]">Approved Incoming Goods</h3>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {approvedGoods.map(item => (
-              <div key={item.id} className="p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-xl space-y-2">
+              <div key={item.id} className="p-4 bg-[var(--bg)] border border-[var(--border)] rounded-xl space-y-2 text-[var(--text-primary)]">
                 {item.productImage && (
-                  <img src={item.productImage} alt={item.productName} className="w-full h-24 object-cover rounded-lg" />
+                  <img src={item.productImage} alt={item.productName} className="w-full h-24 object-cover rounded-lg border border-[var(--border)]" />
                 )}
                 <div className="flex justify-between items-start">
                   <div>
-                    <p className="text-xs font-bold">{item.productName || 'Unnamed Product'}</p>
-                    <p className="text-[10px] text-slate-400">Code: <code>{item.goodsCode || item.id}</code></p>
+                    <p className="text-xs font-bold text-[var(--text-primary)]">{item.productName || 'Unnamed Product'}</p>
+                    <p className="text-[10px] text-[var(--text-muted)]">Code: <code>{item.goodsCode || item.id}</code></p>
                   </div>
-                  <span className="px-2 py-0.5 rounded font-bold text-[9px] bg-emerald-500/10 text-emerald-400">APPROVED</span>
+                  <span className="px-2 py-0.5 rounded font-bold text-[9px] bg-emerald-500/10 text-emerald-500">APPROVED</span>
                 </div>
-                <p className="text-[10px] text-slate-400">From: <strong>{item.country}</strong> via {item.company}</p>
-                <p className="text-[10px] text-slate-400">Destination: <strong>{item.destination || 'Accra Warehouse'}</strong></p>
-                <p className="text-[10px] text-slate-400">Qty: <strong>{item.quantity}</strong> | Weight: <strong>{item.weight}T</strong> | Unit: <strong>GHS {item.unitPrice || '—'}</strong></p>
+                <p className="text-[10px] text-[var(--text-muted)]">From: <strong className="text-[var(--text-primary)]">{item.country}</strong> via {item.company}</p>
+                <p className="text-[10px] text-[var(--text-muted)]">Destination: <strong className="text-[var(--text-primary)]">{item.destination || 'Accra Warehouse'}</strong></p>
+                <p className="text-[10px] text-[var(--text-muted)]">Qty: <strong className="text-[var(--text-primary)]">{item.quantity}</strong> | Weight: <strong className="text-[var(--text-primary)]">{item.weight}T</strong> | Unit: <strong className="text-[var(--text-primary)]">GHS {item.unitPrice || '—'}</strong></p>
               </div>
             ))}
           </div>
@@ -935,46 +934,46 @@ export default function OperationsDashboard({
       )}
 
       {/* Tab-based views */}
-      <div className="border-t border-custom pt-6">
+      <div className="border-t border-[var(--border)] pt-6">
 
         {/* PORT INGESTION FORM */}
         {activeSubTab === 'PortIngestion' && (
-          <div className="p-6 app-card space-y-4 max-w-3xl">
-            <h3 className="text-lg font-bold">Workflow A: Log Incoming Port Cargo</h3>
+          <div className="p-6 bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] border border-[var(--border)] space-y-4 max-w-3xl">
+            <h3 className="text-lg font-bold text-[var(--text-primary)]">Workflow A: Log Incoming Port Cargo</h3>
             <form onSubmit={handleSubmitIntake} className="space-y-4">
               {/* Product Name & Goods Code */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-500 mb-1.5">Product / Goods Name <span className="text-rose-500">*</span></label>
+                  <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Product / Goods Name <span className="text-rose-500">*</span></label>
                   <input
                     type="text"
                     value={productName}
                     onChange={e => setProductName(e.target.value)}
                     required
                     placeholder="E.g., Palm Oil Barrels"
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-blue-500"
+                    className="w-full px-3 py-2 bg-[var(--bg)] text-[var(--text-primary)] border border-[var(--border)] focus:border-[var(--accent)] rounded-xl text-xs focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-500 mb-1.5">Goods Code <span className="text-slate-400 font-normal">(auto-generated if empty)</span></label>
+                  <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Goods Code <span className="text-[var(--text-muted)] font-normal">(auto-generated if empty)</span></label>
                   <input
                     type="text"
                     value={goodsCode}
                     onChange={e => setGoodsCode(e.target.value)}
                     placeholder={`E.g., ${autoGoodsCode()}`}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-blue-500"
+                    className="w-full px-3 py-2 bg-[var(--bg)] text-[var(--text-primary)] border border-[var(--border)] focus:border-[var(--accent)] rounded-xl text-xs focus:outline-none"
                   />
                 </div>
               </div>
 
               {/* Product Image Upload */}
               <div>
-                <label className="block text-xs font-semibold text-slate-500 mb-1.5">Product Image <span className="text-slate-400 font-normal">(optional)</span></label>
+                <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Product Image <span className="text-[var(--text-muted)] font-normal">(optional)</span></label>
                 <div className="flex items-center gap-4">
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="flex items-center gap-2 px-4 py-2 border-2 border-dashed border-slate-350 hover:border-blue-400 rounded-xl text-xs text-slate-400 hover:text-blue-500 cursor-pointer transition-all"
+                    className="flex items-center gap-2 px-4 py-2 border-2 border-dashed border-[var(--border)] hover:border-[var(--accent)] rounded-xl text-xs text-[var(--text-muted)] hover:text-[var(--accent)] cursor-pointer transition-all"
                   >
                     <ImageIcon className="w-4 h-4" />
                     {imagePreview ? 'Change Image' : 'Upload Product Image'}
@@ -988,7 +987,7 @@ export default function OperationsDashboard({
                   />
                   {imagePreview && (
                     <div className="relative">
-                      <img src={imagePreview} alt="Preview" className="w-16 h-16 object-cover rounded-lg border border-custom" />
+                      <img src={imagePreview} alt="Preview" className="w-16 h-16 object-cover rounded-lg border border-[var(--border)]" />
                       <button type="button" onClick={() => setImagePreview('')} className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-rose-500 text-white rounded-full text-[10px] flex items-center justify-center cursor-pointer">✕</button>
                     </div>
                   )}
@@ -997,54 +996,54 @@ export default function OperationsDashboard({
 
               {/* Destination */}
               <div>
-                <label className="block text-xs font-semibold text-slate-500 mb-1.5">Delivery Destination <span className="text-rose-500">*</span></label>
+                <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Delivery Destination <span className="text-rose-500">*</span></label>
                 <input
                   type="text"
                   value={destination}
                   onChange={e => setDestination(e.target.value)}
                   required
                   placeholder="E.g., Accra Main Warehouse, Tema Port Depot"
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-blue-500"
+                  className="w-full px-3 py-2 bg-[var(--bg)] text-[var(--text-primary)] border border-[var(--border)] focus:border-[var(--accent)] rounded-xl text-xs focus:outline-none"
                 />
               </div>
 
               {/* Country & Company */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-500 mb-1.5">Country of Origin <span className="text-rose-500">*</span></label>
-                  <input type="text" name="country" required placeholder="E.g., Germany" className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-blue-500" />
+                  <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Country of Origin <span className="text-rose-500">*</span></label>
+                  <input type="text" name="country" required placeholder="E.g., Germany" className="w-full px-3 py-2 bg-[var(--bg)] text-[var(--text-primary)] border border-[var(--border)] focus:border-[var(--accent)] rounded-xl text-xs focus:outline-none" />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-500 mb-1.5">Shipping Company <span className="text-rose-500">*</span></label>
-                  <input type="text" name="company" required placeholder="E.g., COSCO, Maersk" className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-blue-500" />
+                  <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Shipping Company <span className="text-rose-500">*</span></label>
+                  <input type="text" name="company" required placeholder="E.g., COSCO, Maersk" className="w-full px-3 py-2 bg-[var(--bg)] text-[var(--text-primary)] border border-[var(--border)] focus:border-[var(--accent)] rounded-xl text-xs focus:outline-none" />
                 </div>
               </div>
 
               {/* Quantity & Weight */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-500 mb-1.5">Total Quantity <span className="text-rose-500">*</span></label>
-                  <input type="number" name="quantity" required placeholder="E.g., 350" className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-blue-500" />
+                  <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Total Quantity <span className="text-rose-500">*</span></label>
+                  <input type="number" name="quantity" required placeholder="E.g., 350" className="w-full px-3 py-2 bg-[var(--bg)] text-[var(--text-primary)] border border-[var(--border)] focus:border-[var(--accent)] rounded-xl text-xs focus:outline-none" />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-500 mb-1.5">Weight (Metric Tons) <span className="text-rose-500">*</span></label>
-                  <input type="number" step="0.1" name="weight" required placeholder="E.g., 12.5" className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-blue-500" />
+                  <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Weight (Metric Tons) <span className="text-rose-500">*</span></label>
+                  <input type="number" step="0.1" name="weight" required placeholder="E.g., 12.5" className="w-full px-3 py-2 bg-[var(--bg)] text-[var(--text-primary)] border border-[var(--border)] focus:border-[var(--accent)] rounded-xl text-xs focus:outline-none" />
                 </div>
               </div>
 
               {/* Date/Time auto-display */}
-              <div className="p-3 bg-blue-500/10 border border-blue-200 dark:border-blue-900/50 rounded-xl text-xs text-blue-400 flex items-center gap-2">
-                <CheckCircle className="w-4 h-4 shrink-0" />
+              <div className="p-3 bg-[var(--accent-light)] border border-[var(--border)] rounded-xl text-xs text-[var(--accent)] flex items-center gap-2">
+                <CheckCircle className="w-4 h-4 shrink-0 text-[var(--accent)]" />
                 <span><strong>Date & Time</strong> will be auto-generated on submission: <strong>{new Date().toLocaleString()}</strong></span>
               </div>
 
               {/* Discrepancy Notes */}
               <div>
-                <label className="block text-xs font-semibold text-slate-500 mb-1.5">Discrepancy Notes / Faults</label>
-                <input type="text" name="discrepancies" placeholder="Optional: E.g., 2 boxes damaged, missing tags" className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-blue-500" />
+                <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Discrepancy Notes / Faults</label>
+                <input type="text" name="discrepancies" placeholder="Optional: E.g., 2 boxes damaged, missing tags" className="w-full px-3 py-2 bg-[var(--bg)] text-[var(--text-primary)] border border-[var(--border)] focus:border-[var(--accent)] rounded-xl text-xs focus:outline-none" />
               </div>
 
-              <button type="submit" className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow cursor-pointer transition-all">
+              <button type="submit" className="w-full py-2.5 bg-[var(--accent)] hover:opacity-90 text-white rounded-xl text-xs font-bold shadow cursor-pointer transition-opacity">
                 Submit Cargo Logs
               </button>
             </form>
@@ -1053,26 +1052,26 @@ export default function OperationsDashboard({
 
         {/* FULFILLMENT RELEASES */}
         {activeSubTab === 'Releases' && (
-          <div className="p-6 app-card space-y-4">
-            <h3 className="text-lg font-bold">Fulfillment Releasing Queue</h3>
-            <div className="divide-y divide-custom">
+          <div className="p-6 bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] border border-[var(--border)] space-y-4">
+            <h3 className="text-lg font-bold text-[var(--text-primary)]">Fulfillment Releasing Queue</h3>
+            <div className="divide-y divide-[var(--border)]">
               {localOrders.filter(o => o.status === 'PROCESSING').map(order => (
                 <div key={order.id} className="py-4 flex items-center justify-between">
-                  <div>
+                  <div className="text-[var(--text-primary)]">
                     <div className="flex items-center gap-2">
-                      <p className="text-xs font-bold">Order: {order.id}</p>
+                      <p className="text-xs font-bold text-[var(--text-primary)]">Order: {order.id}</p>
                       {order.ticketNumber && (
-                        <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 rounded text-[9px] font-bold">🎫 {order.ticketNumber}</span>
+                        <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-500 rounded text-[9px] font-bold">🎫 {order.ticketNumber}</span>
                       )}
                     </div>
-                    <p className="text-[10px] text-slate-400 mt-0.5">Client: <strong>{order.clientName}</strong> | Product: <strong>{order.productName || 'N/A'}</strong></p>
-                    <p className="text-[10px] text-slate-400">Destination: <strong>{order.destination || '—'}</strong> | Value: <strong>GHS {order.totalAmount.toLocaleString()}</strong></p>
-                    <p className="text-[10px] text-emerald-400 font-semibold mt-1">Invoice Generated. Release Authorized.</p>
+                    <p className="text-[10px] text-[var(--text-muted)] mt-0.5">Client: <strong>{order.clientName}</strong> | Product: <strong>{order.productName || 'N/A'}</strong></p>
+                    <p className="text-[10px] text-[var(--text-muted)]">Destination: <strong>{order.destination || '—'}</strong> | Value: <strong>GHS {order.totalAmount.toLocaleString()}</strong></p>
+                    <p className="text-[10px] text-emerald-500 font-semibold mt-1">Invoice Generated. Release Authorized.</p>
                   </div>
                   <div>
                     <button
                       onClick={() => onReleaseToDispatch(order.id)}
-                      className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold cursor-pointer transition-all shadow"
+                      className="px-3 py-1.5 bg-[var(--accent)] hover:opacity-90 text-white rounded-lg text-xs font-bold cursor-pointer transition-opacity shadow"
                     >
                       Release & Load Truck
                     </button>
@@ -1080,7 +1079,7 @@ export default function OperationsDashboard({
                 </div>
               ))}
               {localOrders.filter(o => o.status === 'PROCESSING').length === 0 && (
-                <p className="text-xs text-slate-400 text-center py-6">No orders pending release from warehouse floor.</p>
+                <p className="text-xs text-[var(--text-muted)] text-center py-6">No orders pending release from warehouse floor.</p>
               )}
             </div>
           </div>
@@ -1088,43 +1087,43 @@ export default function OperationsDashboard({
 
         {/* INTAKE RECORDS LOG */}
         {activeSubTab === 'LoggedCargo' && (
-          <div className="theme-table-wrapper">
+          <div className="theme-table-wrapper border border-[var(--border)] bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)]">
             {/* Toolbar */}
-            <div className="theme-table-toolbar flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-5 py-4">
+            <div className="theme-table-toolbar flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-5 py-4 border-b border-[var(--border)] bg-[var(--bg)]">
               <div className="flex items-center gap-2">
-                <h3 className="font-bold text-sm">Operations Intake Logging Records</h3>
-                <span className="text-xs font-mono text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">{filteredCargo.length} records</span>
+                <h3 className="font-bold text-sm text-[var(--text-primary)]">Operations Intake Logging Records</h3>
+                <span className="text-xs font-mono text-[var(--text-muted)] bg-[var(--accent-light)] px-2 py-0.5 rounded-full">{filteredCargo.length} records</span>
               </div>
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
                 {/* Search */}
                 <div className="relative flex items-center w-full sm:w-auto">
-                  <span className="absolute left-3 text-slate-500 text-xs pointer-events-none">🔍</span>
+                  <span className="absolute left-3 text-[var(--text-muted)] text-xs pointer-events-none">🔍</span>
                   <input
                     type="text"
                     placeholder="Search cargo…"
                     value={cargoSearch}
                     onChange={e => setCargoSearch(e.target.value)}
-                    className="pl-8 pr-3 py-1.5 text-xs rounded-lg outline-none transition w-full sm:w-40"
+                    className="pl-8 pr-3 py-1.5 text-xs rounded-lg outline-none border border-[var(--border)] transition w-full sm:w-40 bg-[var(--bg-card)] text-[var(--text-primary)] focus:border-[var(--accent)]"
                   />
                 </div>
                 {/* Status dropdown */}
                 <div className="relative w-full sm:w-auto">
                   <button
                     onClick={(e) => { e.stopPropagation(); setIsCargoFilterOpen(!isCargoFilterOpen); }}
-                    className="flex items-center justify-between sm:justify-start gap-1.5 text-xs text-[var(--text-primary)] bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 px-3 py-1.5 rounded-lg transition-colors border border-custom w-full sm:w-auto"
+                    className="flex items-center justify-between sm:justify-start gap-1.5 text-xs text-[var(--text-primary)] bg-[var(--bg-card)] hover:bg-[var(--accent-light)] px-3 py-1.5 rounded-lg transition-colors border border-[var(--border)] w-full sm:w-auto"
                   >
                     <span>Status: {cargoStatusFilter === 'ALL' ? 'All' : cargoStatusFilter.replace(/_/g, ' ')}</span>
                     <span className="text-[10px]">▼</span>
                   </button>
                   {isCargoFilterOpen && (
-                    <div className="absolute right-0 top-full mt-1.5 w-full sm:w-48 bg-[var(--bg-card)] border border-custom rounded-xl shadow-xl z-20 p-1 flex flex-col">
+                    <div className="absolute right-0 top-full mt-1.5 w-full sm:w-48 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl z-20 p-1 flex flex-col text-left">
                       {(['ALL', 'PENDING_MANAGEMENT_APPROVAL', 'APPROVED', 'REJECTED'] as const).map(st => (
                         <button
                           key={st}
                           onClick={() => { setCargoStatusFilter(st); setIsCargoFilterOpen(false); }}
-                          className="flex items-center gap-2 px-3 py-2 text-xs rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-left transition-colors text-[var(--text-primary)]"
+                          className="flex items-center gap-2 px-3 py-2 text-xs rounded-lg hover:bg-[var(--accent-light)] text-left transition-colors text-[var(--text-primary)]"
                         >
-                          <span className={`w-2 h-2 rounded-full ${st === 'APPROVED' ? 'bg-emerald-400' : st === 'REJECTED' ? 'bg-rose-450' : 'bg-amber-400'}`} />
+                          <span className={`w-2 h-2 rounded-full ${st === 'APPROVED' ? 'bg-emerald-500' : st === 'REJECTED' ? 'bg-rose-500' : 'bg-amber-500'}`} />
                           {st === 'ALL' ? 'All Status' : st.replace(/_/g, ' ')}
                         </button>
                       ))}
@@ -1137,37 +1136,37 @@ export default function OperationsDashboard({
             {/* Scrollable table / Mobile Card List */}
             <div>
               {/* Mobile Card List */}
-              <div className="lg:hidden space-y-3">
+              <div className="lg:hidden space-y-3 p-4">
                 {sortedCargo.map(item => (
                   <div 
                     key={item.id} 
                     onClick={() => setActiveMobileDetail({ type: 'cargo', data: item })}
-                    className="bg-white dark:bg-slate-850 rounded-2xl shadow-sm p-4 border border-slate-100 dark:border-slate-800 flex items-center justify-between cursor-pointer"
+                    className="bg-[var(--bg-card)] rounded-2xl shadow-sm p-4 border border-[var(--border)] flex items-center justify-between cursor-pointer"
                   >
                     <div className="flex items-center gap-3">
                       {item.productImage ? (
-                        <img src={item.productImage} alt={item.productName} className="w-10 h-10 object-cover rounded-lg border border-custom shrink-0" />
+                        <img src={item.productImage} alt={item.productName} className="w-10 h-10 object-cover rounded-lg border border-[var(--border)] shrink-0" />
                       ) : (
-                        <div className="w-10 h-10 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-base shrink-0">
+                        <div className="w-10 h-10 rounded-full bg-[var(--accent-light)] text-[var(--accent)] flex items-center justify-center font-bold text-base shrink-0">
                           {item.productName ? item.productName[0] : 'C'}
                         </div>
                       )}
                       <div>
-                        <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">{item.productName || 'Unnamed'}</h4>
-                        <p className="text-xs text-slate-400 font-semibold">{item.company}</p>
-                        <p className="text-[10px] text-slate-400 mt-0.5 font-mono">CARGO-{item.id}</p>
+                        <h4 className="text-sm font-bold text-[var(--text-primary)]">{item.productName || 'Unnamed'}</h4>
+                        <p className="text-xs text-[var(--text-secondary)] font-semibold">{item.company}</p>
+                        <p className="text-[10px] text-[var(--text-muted)] mt-0.5 font-mono">CARGO-{item.id}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${statusBadge(item.status)}`}>
                         {item.status.replace(/_/g, ' ')}
                       </span>
-                      <ChevronRight className="w-4 h-4 text-slate-400" />
+                      <ChevronRight className="w-4 h-4 text-[var(--text-muted)]" />
                     </div>
                   </div>
                 ))}
                 {filteredCargo.length === 0 && (
-                  <div className="p-8 text-center text-slate-400 text-xs bg-white dark:bg-slate-850 rounded-2xl">No cargo records found.</div>
+                  <div className="p-8 text-center text-[var(--text-muted)] text-xs bg-[var(--bg-card)] rounded-2xl border border-[var(--border)]">No cargo records found.</div>
                 )}
               </div>
 
@@ -1175,108 +1174,108 @@ export default function OperationsDashboard({
               <div className="hidden lg:block overflow-x-auto w-full">
                 <table className="w-full text-left text-xs">
                 <thead>
-                  <tr className="theme-table-header-row text-slate-400 uppercase font-semibold text-[10px]">
+                  <tr className="theme-table-header-row text-[var(--text-muted)] uppercase font-semibold text-[10px] border-b border-[var(--border)]">
                     <th className="py-3 px-5 whitespace-nowrap">
                       <input
                         type="checkbox"
                         checked={filteredCargo.length > 0 && selectedCargoRows.size === filteredCargo.length}
                         onChange={handleSelectAllCargo}
-                        className="accent-blue-600 w-3.5 h-3.5"
+                        className="accent-[var(--accent)] w-3.5 h-3.5"
                       />
                     </th>
-                    <th className="py-3 px-2 whitespace-nowrap hidden sm:table-cell">Image</th>
-                    <th onClick={() => handleSort('id', cargoSortField, setCargoSortField, cargoSortDir, setCargoSortDir)} className="py-3 px-2 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                    <th className="py-3 px-2 whitespace-nowrap hidden sm:table-cell text-[var(--text-primary)]">Image</th>
+                    <th onClick={() => handleSort('id', cargoSortField, setCargoSortField, cargoSortDir, setCargoSortDir)} className="py-3 px-2 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none text-[var(--text-primary)]">
                       <div className="flex items-center gap-1">
                         <span>Cargo ID</span>
                         <span className="text-[9px] opacity-70">{cargoSortField === 'id' ? (cargoSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
-                    <th onClick={() => handleSort('productName', cargoSortField, setCargoSortField, cargoSortDir, setCargoSortDir)} className="py-3 px-2 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                    <th onClick={() => handleSort('productName', cargoSortField, setCargoSortField, cargoSortDir, setCargoSortDir)} className="py-3 px-2 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none text-[var(--text-primary)]">
                       <div className="flex items-center gap-1">
                         <span>Product</span>
                         <span className="text-[9px] opacity-70">{cargoSortField === 'productName' ? (cargoSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
-                    <th onClick={() => handleSort('createdAt', cargoSortField, setCargoSortField, cargoSortDir, setCargoSortDir)} className="py-3 px-2 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none hidden lg:table-cell">
+                    <th onClick={() => handleSort('createdAt', cargoSortField, setCargoSortField, cargoSortDir, setCargoSortDir)} className="py-3 px-2 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none hidden lg:table-cell text-[var(--text-primary)]">
                       <div className="flex items-center gap-1">
                         <span>Timestamp</span>
                         <span className="text-[9px] opacity-70">{cargoSortField === 'createdAt' ? (cargoSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
-                    <th onClick={() => handleSort('country', cargoSortField, setCargoSortField, cargoSortDir, setCargoSortDir)} className="py-3 px-2 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none hidden md:table-cell">
+                    <th onClick={() => handleSort('country', cargoSortField, setCargoSortField, cargoSortDir, setCargoSortDir)} className="py-3 px-2 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none hidden md:table-cell text-[var(--text-primary)]">
                       <div className="flex items-center gap-1">
                         <span>Origin</span>
                         <span className="text-[9px] opacity-70">{cargoSortField === 'country' ? (cargoSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
-                    <th onClick={() => handleSort('company', cargoSortField, setCargoSortField, cargoSortDir, setCargoSortDir)} className="py-3 px-2 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none hidden md:table-cell">
+                    <th onClick={() => handleSort('company', cargoSortField, setCargoSortField, cargoSortDir, setCargoSortDir)} className="py-3 px-2 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none hidden md:table-cell text-[var(--text-primary)]">
                       <div className="flex items-center gap-1">
                         <span>Carrier</span>
                         <span className="text-[9px] opacity-70">{cargoSortField === 'company' ? (cargoSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
-                    <th onClick={() => handleSort('destination', cargoSortField, setCargoSortField, cargoSortDir, setCargoSortDir)} className="py-3 px-2 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none hidden lg:table-cell">
+                    <th onClick={() => handleSort('destination', cargoSortField, setCargoSortField, cargoSortDir, setCargoSortDir)} className="py-3 px-2 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none hidden lg:table-cell text-[var(--text-primary)]">
                       <div className="flex items-center gap-1">
                         <span>Destination</span>
                         <span className="text-[9px] opacity-70">{cargoSortField === 'destination' ? (cargoSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
-                    <th onClick={() => handleSort('quantity', cargoSortField, setCargoSortField, cargoSortDir, setCargoSortDir)} className="py-3 px-2 text-right whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                    <th onClick={() => handleSort('quantity', cargoSortField, setCargoSortField, cargoSortDir, setCargoSortDir)} className="py-3 px-2 text-right whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none text-[var(--text-primary)]">
                       <div className="flex items-center justify-end gap-1">
                         <span>Qty</span>
                         <span className="text-[9px] opacity-70">{cargoSortField === 'quantity' ? (cargoSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
-                    <th onClick={() => handleSort('weight', cargoSortField, setCargoSortField, cargoSortDir, setCargoSortDir)} className="py-3 px-2 text-right whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                    <th onClick={() => handleSort('weight', cargoSortField, setCargoSortField, cargoSortDir, setCargoSortDir)} className="py-3 px-2 text-right whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none text-[var(--text-primary)]">
                       <div className="flex items-center justify-end gap-1">
                         <span>Weight</span>
                         <span className="text-[9px] opacity-70">{cargoSortField === 'weight' ? (cargoSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
-                    <th onClick={() => handleSort('discrepancies', cargoSortField, setCargoSortField, cargoSortDir, setCargoSortDir)} className="py-3 px-2 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none hidden sm:table-cell">
+                    <th onClick={() => handleSort('discrepancies', cargoSortField, setCargoSortField, cargoSortDir, setCargoSortDir)} className="py-3 px-2 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none hidden sm:table-cell text-[var(--text-primary)]">
                       <div className="flex items-center gap-1">
                         <span>Discrepancies</span>
                         <span className="text-[9px] opacity-70">{cargoSortField === 'discrepancies' ? (cargoSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
-                    <th onClick={() => handleSort('status', cargoSortField, setCargoSortField, cargoSortDir, setCargoSortDir)} className="py-3 px-2 text-center whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                    <th onClick={() => handleSort('status', cargoSortField, setCargoSortField, cargoSortDir, setCargoSortDir)} className="py-3 px-2 text-center whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none text-[var(--text-primary)]">
                       <div className="flex items-center justify-center gap-1">
                         <span>Status</span>
                         <span className="text-[9px] opacity-70">{cargoSortField === 'status' ? (cargoSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
-                    <th className="py-3 px-5 text-center whitespace-nowrap">Actions</th>
+                    <th className="py-3 px-5 text-center whitespace-nowrap text-[var(--text-primary)]">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-custom">
+                <tbody className="divide-y divide-[var(--border)]">
                   {sortedCargo.map(item => (
-                    <tr key={item.id} className="theme-table-row group">
-                      <td className="py-3 px-5">
+                    <tr key={item.id} className="theme-table-row hover:bg-[var(--accent-light)] transition-colors group cursor-pointer text-[var(--text-primary)]" onClick={() => setActiveMobileDetail({ type: 'cargo', data: item })}>
+                      <td className="py-3 px-5" onClick={e => e.stopPropagation()}>
                         <input
                           type="checkbox"
                           checked={selectedCargoRows.has(item.id)}
                           onChange={() => handleSelectCargoRow(item.id)}
-                          className="accent-blue-600 w-3.5 h-3.5"
+                          className="accent-[var(--accent)] w-3.5 h-3.5"
                         />
                       </td>
-                      <td className="py-3 px-2 hidden sm:table-cell">
+                      <td className="py-3 px-2 hidden sm:table-cell text-[var(--text-primary)]">
                         {item.productImage ? (
-                          <img src={item.productImage} alt={item.productName} className="w-10 h-10 object-cover rounded-lg border border-custom" />
+                          <img src={item.productImage} alt={item.productName} className="w-10 h-10 object-cover rounded-lg border border-[var(--border)]" />
                         ) : (
-                          <div className="w-10 h-10 bg-slate-100/10 rounded-lg flex items-center justify-center border border-custom">
-                             <ImageIcon className="w-4 h-4 text-slate-400" />
+                          <div className="w-10 h-10 bg-[var(--accent-light)] rounded-lg flex items-center justify-center border border-[var(--border)]">
+                             <ImageIcon className="w-4 h-4 text-[var(--accent)]" />
                           </div>
                         )}
                       </td>
                       <td className="py-3 px-2">
-                        <p className="font-mono font-bold">CARGO-{item.id}</p>
-                        {item.goodsCode && <p className="text-[9px] text-slate-400">{item.goodsCode}</p>}
+                        <p className="font-mono font-bold text-[var(--text-primary)]">CARGO-{item.id}</p>
+                        {item.goodsCode && <p className="text-[9px] text-[var(--text-muted)]">{item.goodsCode}</p>}
                       </td>
                       <td className="py-3 px-2 font-medium text-[13px]">{item.productName || '—'}</td>
-                      <td className="py-3 px-2 text-slate-400 font-mono text-[10px] whitespace-nowrap hidden lg:table-cell">{item.createdAt || 'N/A'}</td>
+                      <td className="py-3 px-2 text-[var(--text-muted)] font-mono text-[10px] whitespace-nowrap hidden lg:table-cell">{item.createdAt || 'N/A'}</td>
                       <td className="py-3 px-2 font-semibold text-[13px] hidden md:table-cell">{item.country}</td>
-                      <td className="py-3 px-2 text-slate-400 hidden md:table-cell">{item.company}</td>
-                      <td className="py-3 px-2 text-slate-400 hidden lg:table-cell">{item.destination || '—'}</td>
+                      <td className="py-3 px-2 text-[var(--text-muted)] hidden md:table-cell">{item.company}</td>
+                      <td className="py-3 px-2 text-[var(--text-muted)] hidden lg:table-cell">{item.destination || '—'}</td>
                       <td className="py-3 px-2 text-right font-mono font-bold text-[13px]">{item.quantity} u.</td>
                       <td className="py-3 px-2 text-right font-mono font-bold text-[13px]">{item.weight}T</td>
                       <td className="py-3 px-2 text-rose-500 font-semibold hidden sm:table-cell">{item.discrepancies}</td>
@@ -1288,17 +1287,17 @@ export default function OperationsDashboard({
                       <td className="py-3 px-5 text-center relative" onClick={(e) => e.stopPropagation()}>
                         <button
                           onClick={() => setActiveCargoMenu(activeCargoMenu === item.id ? null : item.id)}
-                          className="w-8 h-8 inline-flex items-center justify-center bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg text-slate-500 dark:text-slate-400 transition-colors select-none"
+                          className="w-8 h-8 inline-flex items-center justify-center bg-[var(--bg)] hover:bg-[var(--accent-light)] rounded-lg text-[var(--text-secondary)] transition-colors select-none border border-[var(--border)]"
                         >
                           ···
                         </button>
                         {activeCargoMenu === item.id && (
-                          <div className="absolute right-5 mt-1 w-44 bg-[var(--bg-card)] border border-custom rounded-xl shadow-xl z-30 p-1 flex flex-col">
-                            <button onClick={() => handleEditCargo(item)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-left">✏ Edit Ingest</button>
-                            <button onClick={() => handleDuplicateCargo(item)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-left">📋 Duplicate</button>
-                            <button onClick={() => handleShareCargo(item)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-left">🔗 Share Link</button>
-                            <div className="h-px bg-slate-200 dark:bg-slate-700 my-1"></div>
-                            <button onClick={() => handleDeleteCargo(item.id)} className="flex items-center gap-2 px-3 py-2 text-xs text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors text-left">🗑 Delete</button>
+                          <div className="absolute right-5 mt-1 w-44 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl z-30 p-1 flex flex-col text-left">
+                            <button onClick={() => handleEditCargo(item)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left">✏ Edit Ingest</button>
+                            <button onClick={() => handleDuplicateCargo(item)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left">📋 Duplicate</button>
+                            <button onClick={() => handleShareCargo(item)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left">🔗 Share Link</button>
+                            <div className="h-px bg-[var(--border)] my-1"></div>
+                            <button onClick={() => handleDeleteCargo(item.id)} className="flex items-center gap-2 px-3 py-2 text-xs text-rose-500 hover:bg-rose-50 rounded-lg transition-colors text-left">🗑 Delete</button>
                           </div>
                         )}
                       </td>
@@ -1306,7 +1305,7 @@ export default function OperationsDashboard({
                   ))}
                   {filteredCargo.length === 0 && (
                     <tr>
-                      <td colSpan={13} className="py-6 text-center text-slate-400">No cargo intake logs found matching criteria.</td>
+                      <td colSpan={13} className="py-6 text-center text-[var(--text-muted)]">No cargo intake logs found matching criteria.</td>
                     </tr>
                   )}
                 </tbody>
@@ -1314,178 +1313,178 @@ export default function OperationsDashboard({
             </div>
           </div>
 
-            {/* Footer */}
-            <div className="theme-table-footer flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-4">
-              <p className="text-xs text-slate-400 font-mono">Showing {filteredCargo.length} of {localCargo.length} records</p>
-              <div className="flex items-center gap-1">
-                <button className="w-8 h-8 flex items-center justify-center text-xs text-slate-400 hover:text-white bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg transition-colors border border-custom disabled:opacity-30" disabled>‹</button>
-                <button className="w-8 h-8 flex items-center justify-center text-xs text-white bg-blue-600 rounded-lg font-bold">1</button>
-                <button className="w-8 h-8 flex items-center justify-center text-xs text-slate-400 hover:text-white bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg transition-colors border border-custom disabled:opacity-30" disabled>›</button>
+          {/* Footer */}
+          <div className="theme-table-footer flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-4 border-t border-[var(--border)] bg-[var(--bg)]">
+            <p className="text-xs text-[var(--text-muted)] font-mono">Showing {filteredCargo.length} of {localCargo.length} records</p>
+            <div className="flex items-center gap-1">
+              <button className="w-8 h-8 flex items-center justify-center text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-[var(--bg-card)] hover:bg-[var(--accent-light)] rounded-lg transition-colors border border-[var(--border)] disabled:opacity-30" disabled>‹</button>
+              <button className="w-8 h-8 flex items-center justify-center text-xs text-white bg-[var(--accent)] rounded-lg font-bold">1</button>
+              <button className="w-8 h-8 flex items-center justify-center text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-[var(--bg-card)] hover:bg-[var(--accent-light)] rounded-lg transition-colors border border-[var(--border)] disabled:opacity-30" disabled>›</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* HISTORY */}
+      {activeSubTab === 'OpsHistory' && (
+        <div className="theme-table-wrapper border border-[var(--border)] bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)]">
+          {/* Toolbar */}
+          <div className="theme-table-toolbar flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-5 py-4 border-b border-[var(--border)] bg-[var(--bg)]">
+            <div className="flex items-center gap-2">
+              <History className="w-5 h-5 text-[var(--accent)]" />
+              <h3 className="text-sm font-bold text-[var(--text-primary)]">Operations Activity History</h3>
+              <span className="text-xs font-mono text-[var(--text-muted)] bg-[var(--accent-light)] px-2 py-0.5 rounded-full">{filteredHistory.length} logs</span>
+            </div>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
+              {/* Search */}
+              <div className="relative flex items-center w-full sm:w-auto">
+                <span className="absolute left-3 text-[var(--text-muted)] text-xs pointer-events-none">🔍</span>
+                <input
+                  type="text"
+                  placeholder="Search history…"
+                  value={historySearch}
+                  onChange={e => setHistorySearch(e.target.value)}
+                  className="pl-8 pr-3 py-1.5 text-xs rounded-lg outline-none border border-[var(--border)] transition w-full sm:w-40 bg-[var(--bg-card)] text-[var(--text-primary)] focus:border-[var(--accent)]"
+                />
+              </div>
+              {/* Status dropdown */}
+              <div className="relative w-full sm:w-auto">
+                <button
+                  onClick={(e) => { e.stopPropagation(); setIsHistoryFilterOpen(!isHistoryFilterOpen); }}
+                  className="flex items-center justify-between sm:justify-start gap-1.5 text-xs text-[var(--text-primary)] bg-[var(--bg-card)] hover:bg-[var(--accent-light)] px-3 py-1.5 rounded-lg transition-colors border border-[var(--border)] w-full sm:w-auto"
+                >
+                  <span>Status: {historyStatusFilter === 'ALL' ? 'All' : historyStatusFilter.replace(/_/g, ' ')}</span>
+                  <span className="text-[10px]">▼</span>
+                </button>
+                {isHistoryFilterOpen && (
+                  <div className="absolute right-0 top-full mt-1.5 w-full sm:w-48 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl z-20 p-1 flex flex-col text-left">
+                    {(['ALL', 'PENDING_MANAGEMENT_APPROVAL', 'APPROVED', 'REJECTED'] as const).map(st => (
+                      <button
+                        key={st}
+                        onClick={() => { setHistoryStatusFilter(st); setIsHistoryFilterOpen(false); }}
+                        className="flex items-center gap-2 px-3 py-2 text-xs rounded-lg hover:bg-[var(--accent-light)] text-left transition-colors text-[var(--text-primary)]"
+                      >
+                        <span className={`w-2 h-2 rounded-full ${st === 'APPROVED' ? 'bg-emerald-500' : st === 'REJECTED' ? 'bg-rose-500' : 'bg-amber-500'}`} />
+                        {st === 'ALL' ? 'All History' : st.replace(/_/g, ' ')}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>
-        )}
 
-        {/* HISTORY */}
-        {activeSubTab === 'OpsHistory' && (
-          <div className="theme-table-wrapper">
-            {/* Toolbar */}
-            <div className="theme-table-toolbar flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-5 py-4">
-              <div className="flex items-center gap-2">
-                <History className="w-5 h-5 text-indigo-500" />
-                <h3 className="text-sm font-bold">Operations Activity History</h3>
-                <span className="text-xs font-mono text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">{filteredHistory.length} logs</span>
-              </div>
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
-                {/* Search */}
-                <div className="relative flex items-center w-full sm:w-auto">
-                  <span className="absolute left-3 text-slate-500 text-xs pointer-events-none">🔍</span>
-                  <input
-                    type="text"
-                    placeholder="Search history…"
-                    value={historySearch}
-                    onChange={e => setHistorySearch(e.target.value)}
-                    className="pl-8 pr-3 py-1.5 text-xs rounded-lg outline-none transition w-full sm:w-40"
-                  />
-                </div>
-                {/* Status dropdown */}
-                <div className="relative w-full sm:w-auto">
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setIsHistoryFilterOpen(!isHistoryFilterOpen); }}
-                    className="flex items-center justify-between sm:justify-start gap-1.5 text-xs text-[var(--text-primary)] bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 px-3 py-1.5 rounded-lg transition-colors border border-custom w-full sm:w-auto"
-                  >
-                    <span>Status: {historyStatusFilter === 'ALL' ? 'All' : historyStatusFilter.replace(/_/g, ' ')}</span>
-                    <span className="text-[10px]">▼</span>
-                  </button>
-                  {isHistoryFilterOpen && (
-                    <div className="absolute right-0 top-full mt-1.5 w-full sm:w-48 bg-[var(--bg-card)] border border-custom rounded-xl shadow-xl z-20 p-1 flex flex-col">
-                      {(['ALL', 'PENDING_MANAGEMENT_APPROVAL', 'APPROVED', 'REJECTED'] as const).map(st => (
-                        <button
-                          key={st}
-                          onClick={() => { setHistoryStatusFilter(st); setIsHistoryFilterOpen(false); }}
-                          className="flex items-center gap-2 px-3 py-2 text-xs rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-left transition-colors text-[var(--text-primary)]"
-                        >
-                          <span className={`w-2 h-2 rounded-full ${st === 'APPROVED' ? 'bg-emerald-400' : st === 'REJECTED' ? 'bg-rose-400' : 'bg-amber-400'}`} />
-                          {st === 'ALL' ? 'All History' : st.replace(/_/g, ' ')}
-                        </button>
-                      ))}
+          {/* Scrollable table */}
+          <div className="overflow-x-auto w-full">
+            <table className="w-full text-xs text-left">
+              <thead>
+                <tr className="theme-table-header-row text-[var(--text-muted)] uppercase font-semibold text-[10px] border-b border-[var(--border)]">
+                  <th className="py-3 px-5 whitespace-nowrap text-[var(--text-primary)]">
+                    <input
+                      type="checkbox"
+                      checked={filteredHistory.length > 0 && selectedHistoryRows.size === filteredHistory.length}
+                      onChange={handleSelectAllHistory}
+                      className="accent-[var(--accent)] w-3.5 h-3.5"
+                    />
+                  </th>
+                  <th onClick={() => handleSort('goodsCode', historySortField, setHistorySortField, historySortDir, setHistorySortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none text-[var(--text-primary)]">
+                    <div className="flex items-center gap-1">
+                      <span>Goods Code</span>
+                      <span className="text-[9px] opacity-70">{historySortField === 'goodsCode' ? (historySortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                     </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Scrollable table */}
-            <div className="overflow-x-auto w-full">
-              <table className="w-full text-xs text-left">
-                <thead>
-                  <tr className="theme-table-header-row text-slate-400 uppercase font-semibold text-[10px]">
-                    <th className="py-3 px-5 whitespace-nowrap">
+                  </th>
+                  <th onClick={() => handleSort('productName', historySortField, setHistorySortField, historySortDir, setHistorySortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none text-[var(--text-primary)]">
+                    <div className="flex items-center gap-1">
+                      <span>Product</span>
+                      <span className="text-[9px] opacity-70">{historySortField === 'productName' ? (historySortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                    </div>
+                  </th>
+                  <th onClick={() => handleSort('country', historySortField, setHistorySortField, historySortDir, setHistorySortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none hidden md:table-cell text-[var(--text-primary)]">
+                    <div className="flex items-center gap-1">
+                      <span>Origin</span>
+                      <span className="text-[9px] opacity-70">{historySortField === 'country' ? (historySortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                    </div>
+                  </th>
+                  <th onClick={() => handleSort('destination', historySortField, setHistorySortField, historySortDir, setHistorySortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none hidden lg:table-cell text-[var(--text-primary)]">
+                    <div className="flex items-center gap-1">
+                      <span>Destination</span>
+                      <span className="text-[9px] opacity-70">{historySortField === 'destination' ? (historySortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                    </div>
+                  </th>
+                  <th onClick={() => handleSort('createdAt', historySortField, setHistorySortField, historySortDir, setHistorySortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none hidden sm:table-cell text-[var(--text-primary)]">
+                    <div className="flex items-center gap-1">
+                      <span>Logged At</span>
+                      <span className="text-[9px] opacity-70">{historySortField === 'createdAt' ? (historySortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                    </div>
+                  </th>
+                  <th onClick={() => handleSort('status', historySortField, setHistorySortField, historySortDir, setHistorySortDir)} className="py-3 px-3 text-center whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none text-[var(--text-primary)]">
+                    <div className="flex items-center justify-center gap-1">
+                      <span>Status</span>
+                      <span className="text-[9px] opacity-70">{historySortField === 'status' ? (historySortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                    </div>
+                  </th>
+                  <th onClick={() => handleSort('unitPrice', historySortField, setHistorySortField, historySortDir, setHistorySortDir)} className="py-3 px-3 text-right whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none text-[var(--text-primary)]">
+                    <div className="flex items-center justify-end gap-1">
+                      <span>Unit Price</span>
+                      <span className="text-[9px] opacity-70">{historySortField === 'unitPrice' ? (historySortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                    </div>
+                  </th>
+                  <th className="py-3 px-5 text-center whitespace-nowrap text-[var(--text-primary)]">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--border)]">
+                {sortedHistory.map(item => (
+                  <tr key={item.id} className="theme-table-row hover:bg-[var(--accent-light)] transition-colors group cursor-pointer text-[var(--text-primary)]" onClick={() => setActiveMobileDetail({ type: 'cargo', data: item })}>
+                    <td className="py-3.5 px-5" onClick={e => e.stopPropagation()}>
                       <input
                         type="checkbox"
-                        checked={filteredHistory.length > 0 && selectedHistoryRows.size === filteredHistory.length}
-                        onChange={handleSelectAllHistory}
-                        className="accent-blue-600 w-3.5 h-3.5"
+                        checked={selectedHistoryRows.has(item.id)}
+                        onChange={() => handleSelectHistoryRow(item.id)}
+                        className="accent-[var(--accent)] w-3.5 h-3.5"
                       />
-                    </th>
-                    <th onClick={() => handleSort('goodsCode', historySortField, setHistorySortField, historySortDir, setHistorySortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
-                      <div className="flex items-center gap-1">
-                        <span>Goods Code</span>
-                        <span className="text-[9px] opacity-70">{historySortField === 'goodsCode' ? (historySortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
-                      </div>
-                    </th>
-                    <th onClick={() => handleSort('productName', historySortField, setHistorySortField, historySortDir, setHistorySortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
-                      <div className="flex items-center gap-1">
-                        <span>Product</span>
-                        <span className="text-[9px] opacity-70">{historySortField === 'productName' ? (historySortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
-                      </div>
-                    </th>
-                    <th onClick={() => handleSort('country', historySortField, setHistorySortField, historySortDir, setHistorySortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none hidden md:table-cell">
-                      <div className="flex items-center gap-1">
-                        <span>Origin</span>
-                        <span className="text-[9px] opacity-70">{historySortField === 'country' ? (historySortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
-                      </div>
-                    </th>
-                    <th onClick={() => handleSort('destination', historySortField, setHistorySortField, historySortDir, setHistorySortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none hidden lg:table-cell">
-                      <div className="flex items-center gap-1">
-                        <span>Destination</span>
-                        <span className="text-[9px] opacity-70">{historySortField === 'destination' ? (historySortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
-                      </div>
-                    </th>
-                    <th onClick={() => handleSort('createdAt', historySortField, setHistorySortField, historySortDir, setHistorySortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none hidden sm:table-cell">
-                      <div className="flex items-center gap-1">
-                        <span>Logged At</span>
-                        <span className="text-[9px] opacity-70">{historySortField === 'createdAt' ? (historySortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
-                      </div>
-                    </th>
-                    <th onClick={() => handleSort('status', historySortField, setHistorySortField, historySortDir, setHistorySortDir)} className="py-3 px-3 text-center whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
-                      <div className="flex items-center justify-center gap-1">
-                        <span>Status</span>
-                        <span className="text-[9px] opacity-70">{historySortField === 'status' ? (historySortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
-                      </div>
-                    </th>
-                    <th onClick={() => handleSort('unitPrice', historySortField, setHistorySortField, historySortDir, setHistorySortDir)} className="py-3 px-3 text-right whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
-                      <div className="flex items-center justify-end gap-1">
-                        <span>Unit Price</span>
-                        <span className="text-[9px] opacity-70">{historySortField === 'unitPrice' ? (historySortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
-                      </div>
-                    </th>
-                    <th className="py-3 px-5 text-center whitespace-nowrap">Actions</th>
+                    </td>
+                    <td className="py-3.5 px-3 font-mono font-bold text-[var(--text-primary)]">{item.goodsCode || `CARGO-${item.id}`}</td>
+                    <td className="py-3.5 px-3 font-medium text-[13px]">{item.productName || '—'}</td>
+                    <td className="py-3.5 px-3 text-[var(--text-muted)] hidden md:table-cell">{item.country} / {item.company}</td>
+                    <td className="py-3.5 px-3 text-[var(--text-muted)] hidden lg:table-cell">{item.destination || '—'}</td>
+                    <td className="py-3.5 px-3 text-[var(--text-muted)] font-mono text-[10px] hidden sm:table-cell">{item.createdAt || 'N/A'}</td>
+                    <td className="py-3.5 px-3 text-center">
+                      <span className={`px-2 py-0.5 rounded font-bold text-[9px] ${statusBadge(item.status)}`}>{item.status.replace(/_/g, ' ')}</span>
+                    </td>
+                    <td className="py-3.5 px-3 text-right font-mono font-bold text-[13px] text-[var(--text-primary)]">{item.unitPrice ? `GHS ${item.unitPrice}` : '—'}</td>
+                    <td className="py-3.5 px-5 text-center relative" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        onClick={() => setActiveHistoryMenu(activeHistoryMenu === item.id ? null : item.id)}
+                        className="w-8 h-8 inline-flex items-center justify-center bg-[var(--bg)] hover:bg-[var(--accent-light)] rounded-lg text-[var(--text-secondary)] transition-colors select-none border border-[var(--border)]"
+                      >
+                        ···
+                      </button>
+                      {activeHistoryMenu === item.id && (
+                        <div className="absolute right-5 mt-1 w-44 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl z-30 p-1 flex flex-col text-left">
+                          <button onClick={() => handleDuplicateCargo(item)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left">📋 Duplicate Log</button>
+                          <button onClick={() => handleShareCargo(item)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left">🔗 Share Link</button>
+                          <div className="h-px bg-[var(--border)] my-1"></div>
+                          <button onClick={() => handleDeleteCargo(item.id)} className="flex items-center gap-2 px-3 py-2 text-xs text-rose-500 hover:bg-rose-50 rounded-lg transition-colors text-left">🗑 Delete</button>
+                        </div>
+                      )}
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-custom">
-                  {sortedHistory.map(item => (
-                    <tr key={item.id} className="theme-table-row group">
-                      <td className="py-3.5 px-5">
-                        <input
-                          type="checkbox"
-                          checked={selectedHistoryRows.has(item.id)}
-                          onChange={() => handleSelectHistoryRow(item.id)}
-                          className="accent-blue-600 w-3.5 h-3.5"
-                        />
-                      </td>
-                      <td className="py-3.5 px-3 font-mono font-bold">{item.goodsCode || `CARGO-${item.id}`}</td>
-                      <td className="py-3.5 px-3 font-medium text-[13px]">{item.productName || '—'}</td>
-                      <td className="py-3.5 px-3 text-slate-400 hidden md:table-cell">{item.country} / {item.company}</td>
-                      <td className="py-3.5 px-3 text-slate-400 hidden lg:table-cell">{item.destination || '—'}</td>
-                      <td className="py-3.5 px-3 text-slate-400 font-mono text-[10px] hidden sm:table-cell">{item.createdAt || 'N/A'}</td>
-                      <td className="py-3.5 px-3 text-center">
-                        <span className={`px-2 py-0.5 rounded font-bold text-[9px] ${statusBadge(item.status)}`}>{item.status.replace(/_/g, ' ')}</span>
-                      </td>
-                      <td className="py-3.5 px-3 text-right font-mono font-bold text-[13px]">{item.unitPrice ? `GHS ${item.unitPrice}` : '—'}</td>
-                      <td className="py-3.5 px-5 text-center relative" onClick={(e) => e.stopPropagation()}>
-                        <button
-                          onClick={() => setActiveHistoryMenu(activeHistoryMenu === item.id ? null : item.id)}
-                          className="w-8 h-8 inline-flex items-center justify-center bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg text-slate-500 dark:text-slate-400 transition-colors select-none"
-                        >
-                          ···
-                        </button>
-                        {activeHistoryMenu === item.id && (
-                          <div className="absolute right-5 mt-1 w-44 bg-[var(--bg-card)] border border-custom rounded-xl shadow-xl z-30 p-1 flex flex-col">
-                            <button onClick={() => handleDuplicateCargo(item)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-left">📋 Duplicate Log</button>
-                            <button onClick={() => handleShareCargo(item)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-left">🔗 Share Link</button>
-                            <div className="h-px bg-slate-200 dark:bg-slate-700 my-1"></div>
-                            <button onClick={() => handleDeleteCargo(item.id)} className="flex items-center gap-2 px-3 py-2 text-xs text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors text-left">🗑 Delete Log</button>
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
-            {/* Footer */}
-            <div className="theme-table-footer flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-4">
-              <p className="text-xs text-slate-400 font-mono">Showing {filteredHistory.length} of {localCargo.length} logs</p>
-              <div className="flex items-center gap-1">
-                <button className="w-8 h-8 flex items-center justify-center text-xs text-slate-400 hover:text-white bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg transition-colors border border-custom disabled:opacity-30" disabled>‹</button>
-                <button className="w-8 h-8 flex items-center justify-center text-xs text-white bg-blue-600 rounded-lg font-bold">1</button>
-                <button className="w-8 h-8 flex items-center justify-center text-xs text-slate-400 hover:text-white bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg transition-colors border border-custom disabled:opacity-30" disabled>›</button>
-              </div>
+          {/* Footer */}
+          <div className="theme-table-footer flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-4 border-t border-[var(--border)] bg-[var(--bg)]">
+            <p className="text-xs text-[var(--text-muted)] font-mono">Showing {filteredHistory.length} of {localCargo.length} logs</p>
+            <div className="flex items-center gap-1">
+              <button className="w-8 h-8 flex items-center justify-center text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-[var(--bg-card)] hover:bg-[var(--accent-light)] rounded-lg transition-colors border border-[var(--border)] disabled:opacity-30" disabled>‹</button>
+              <button className="w-8 h-8 flex items-center justify-center text-xs text-white bg-[var(--accent)] rounded-lg font-bold">1</button>
+              <button className="w-8 h-8 flex items-center justify-center text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-[var(--bg-card)] hover:bg-[var(--accent-light)] rounded-lg transition-colors border border-[var(--border)] disabled:opacity-30" disabled>›</button>
             </div>
           </div>
-        )}
+        </div>
+      )}
       </div>
       </div>
       </div>

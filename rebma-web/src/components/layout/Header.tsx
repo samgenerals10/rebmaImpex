@@ -309,61 +309,50 @@ export default function Header({
       </div>
 
       {/* 2. DESKTOP HEADER */}
-      <div className="hidden lg:flex items-center justify-between py-3 relative gap-2 w-full">
+      <div className="hidden lg:flex items-center justify-between h-16 px-6 bg-[var(--bg-card)] border-b border-[var(--border)] relative gap-4 w-full">
         {/* Search bar */}
-        <div className="flex items-center gap-2 flex-1 max-w-xl">
-          {onToggleSidebar && (
-            <button 
-              onClick={onToggleSidebar}
-              className="lg:hidden p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg cursor-pointer shrink-0"
-              title="Open menu"
-            >
-              <Menu className="w-5 h-5" />
-            </button>
-          )}
+        <div className="flex items-center gap-2 flex-1 max-w-[400px]">
           <div className="relative w-full">
-            <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
               <Search className="h-4 w-4 text-slate-400" />
             </span>
             <input
               type="text"
-              placeholder="Search..."
+              placeholder="Search records..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-2.5 bg-white border border-slate-200 rounded-full text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full pl-10 pr-3.5 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-full text-xs text-[var(--text-primary)] placeholder-slate-400 focus:outline-none focus:border-[var(--accent)]"
             />
           </div>
         </div>
 
         {/* Status badges & Widgets */}
-        <div className="flex items-center gap-4 relative">
-          <div className="flex items-center gap-1.5 text-xs text-emerald-500 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
-            <Wifi className="w-3.5 h-3.5" />
-            <span className="font-semibold uppercase tracking-wider">
-              {networkOnline ? 'Live' : 'Offline'}
-            </span>
+        <div className="flex items-center gap-3 relative">
+          {/* LIVE indicator */}
+          <div className="flex items-center gap-1.5 text-[10px] text-[var(--accent)] bg-[var(--accent-light)] px-3 py-1 rounded-full font-bold uppercase tracking-wider">
+            <Wifi className="w-3.5 h-3.5 animate-pulse text-[var(--accent)]" />
+            <span>{networkOnline ? 'Live' : 'Offline'}</span>
           </div>
 
           {/* Chat Button */}
           <button
             onClick={onOpenChat}
-            className="relative p-2.5 bg-white hover:bg-slate-50 border border-slate-200 rounded-full text-slate-600 transition-all cursor-pointer shadow-sm"
+            className="p-2 bg-[var(--bg-card)] hover:bg-[var(--accent-light)] border border-[var(--border)] rounded-xl text-[var(--text-secondary)] hover:text-[var(--accent)] transition-all cursor-pointer shadow-sm shrink-0"
             title="Open Chat Terminal"
           >
             <MessageSquare className="w-4 h-4" />
-            <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-blue-500 rounded-full border-2 border-white"></span>
           </button>
 
           {/* Notification Bell */}
           <div className="relative">
             <button
               onClick={() => setShowPanel(p => !p)}
-              className="relative p-2.5 bg-white border border-slate-200 rounded-full text-slate-600 cursor-pointer shadow-sm hover:bg-slate-50 transition-all"
+              className="p-2 bg-[var(--bg-card)] hover:bg-[var(--accent-light)] border border-[var(--border)] rounded-xl text-[var(--text-secondary)] hover:text-[var(--accent)] transition-all cursor-pointer shadow-sm shrink-0 relative"
               title="Notifications"
             >
               <Bell className="w-4 h-4" />
               {notifications.length > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] bg-rose-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center border-2 border-white px-0.5">
+                <span className="absolute -top-1 -right-1 min-w-[16px] h-[16px] bg-rose-500 text-white text-[8px] font-bold rounded-full flex items-center justify-center border-2 border-[var(--bg-card)] px-0.5">
                   {notifications.length > 9 ? '9+' : notifications.length}
                 </span>
               )}
@@ -377,48 +366,150 @@ export default function Header({
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -8, scale: 0.95 }}
                   transition={{ duration: 0.15 }}
-                  className="absolute right-0 top-full mt-2 w-80 bg-white rounded-2xl shadow-xl border border-slate-200 z-[200] overflow-hidden"
+                  className="absolute right-0 top-full mt-2 w-80 bg-[var(--bg-card)] rounded-2xl shadow-xl border border-[var(--border)] z-[200] overflow-hidden"
                 >
                   {/* Header */}
-                  <div className="flex justify-between items-center px-4 py-3 border-b border-slate-100">
+                  <div className="flex justify-between items-center px-4 py-3 border-b border-[var(--border)] bg-[var(--bg)]">
                     <div className="flex items-center gap-2">
-                      <Bell className="w-4 h-4 text-blue-500" />
-                      <span className="text-sm font-bold text-slate-800">Notifications</span>
+                      <Bell className="w-4 h-4 text-[var(--accent)]" />
+                      <span className="text-xs font-bold text-[var(--text-primary)]">Notifications</span>
                       {notifications.length > 0 && (
-                        <span className="px-1.5 py-0.5 bg-rose-100 text-rose-700 text-[9px] font-bold rounded-full">{notifications.length}</span>
+                        <span className="px-1.5 py-0.5 bg-rose-100 text-rose-700 text-[8px] font-bold rounded-full">{notifications.length}</span>
                       )}
                     </div>
                     <div className="flex items-center gap-2">
                       {notifications.length > 0 && onClearNotifications && (
-                        <button onClick={onClearNotifications} className="text-[10px] text-slate-400 hover:text-slate-600 flex items-center gap-1 cursor-pointer">
-                          <CheckCheck className="w-3 h-3" /> Clear all
+                        <button onClick={onClearNotifications} className="text-[10px] text-slate-400 hover:text-slate-650 flex items-center gap-1 cursor-pointer font-semibold">
+                          <CheckCheck className="w-3.5 h-3.5" /> Clear all
                         </button>
                       )}
-                      <button onClick={() => setShowPanel(false)} className="text-slate-400 hover:text-slate-600 cursor-pointer">
+                      <button onClick={() => setShowPanel(false)} className="text-slate-400 hover:text-slate-650 cursor-pointer">
                         <X className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
 
                   {/* Notification list */}
-                  <div className="max-h-80 overflow-y-auto">
+                  <div className="max-h-80 overflow-y-auto divide-y divide-[var(--border)]">
                     {notifications.length === 0 ? (
-                      <div className="py-8 text-center">
+                      <div className="py-8 text-center bg-[var(--bg-card)]">
                         <Bell className="w-8 h-8 text-slate-200 mx-auto mb-2" />
-                        <p className="text-xs text-slate-400">No new notifications</p>
+                        <p className="text-xs text-[var(--text-secondary)]">No new notifications</p>
                       </div>
                     ) : (
-                      <div className="divide-y divide-slate-100">
-                        {notifications.map(n => (
-                          <div key={n.id} className="px-4 py-3 hover:bg-slate-50 transition-colors">
-                            <p className="text-xs text-slate-700 leading-relaxed">{n.msg}</p>
-                            <p className="text-[10px] text-slate-400 mt-1">{n.time}</p>
-                          </div>
-                        ))}
-                      </div>
+                      notifications.map(n => (
+                        <div key={n.id} className="px-4 py-3 hover:bg-[var(--bg)] transition-colors bg-[var(--bg-card)]">
+                          <p className="text-xs text-[var(--text-primary)] leading-relaxed">{n.msg}</p>
+                          <p className="text-[10px] text-[var(--text-secondary)] mt-1">{n.time}</p>
+                        </div>
+                      ))
                     )}
                   </div>
                 </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Dark Mode Toggle */}
+          <button
+            onClick={() => setDarkMode(!darkMode)}
+            className="p-2 bg-[var(--bg-card)] hover:bg-[var(--accent-light)] border border-[var(--border)] rounded-xl text-[var(--text-secondary)] hover:text-[var(--accent)] transition-all cursor-pointer shadow-sm shrink-0"
+            title="Toggle Light/Dark Mode"
+          >
+            {darkMode ? <Sun className="w-4 h-4 text-amber-500" /> : <Moon className="w-4 h-4" />}
+          </button>
+
+          {/* User profile avatar dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => setShowAvatarDropdown(prev => !prev)}
+              className="w-9 h-9 rounded-full bg-[var(--accent)] text-white flex items-center justify-center font-bold text-xs shadow-sm cursor-pointer hover:scale-105 active:scale-95 transition-all shrink-0 border border-white"
+            >
+              {currentUser?.fullName?.[0] || 'U'}
+            </button>
+
+            {/* Avatar Dropdown Menu */}
+            <AnimatePresence>
+              {showAvatarDropdown && (
+                <>
+                  <div className="fixed inset-0 z-[199]" onClick={() => setShowAvatarDropdown(false)} />
+                  <motion.div
+                    initial={{ opacity: 0, y: -8, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -8, scale: 0.95 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute right-0 top-full mt-2 w-64 bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-xl z-[200] py-3 text-[var(--text-primary)] overflow-hidden"
+                  >
+                    <div className="px-4 pb-3 border-b border-[var(--border)]">
+                      <p className="text-xs font-bold text-[var(--text-primary)]">{currentUser?.fullName}</p>
+                      <p className="text-[10px] text-[var(--text-secondary)] mt-0.5">{currentUser?.department}</p>
+                    </div>
+
+                    <div className="max-h-52 overflow-y-auto py-2">
+                      <p className="text-[9px] font-bold text-[var(--text-secondary)] uppercase tracking-widest px-4 py-1">Departments</p>
+                      {availableDepts.map(d => {
+                        const isActive = d.value === activeDepartment;
+                        const IconComponent = d.icon;
+                        return (
+                          <button
+                            key={d.value}
+                            onClick={() => {
+                              if (setActiveDepartment) {
+                                setActiveDepartment(d.value);
+                                const defaultSubTabs: Record<string, string> = {
+                                  CEO: 'Overview', MANAGEMENT: 'CargoApproval', HR: 'Employees',
+                                  MARKETING: 'CreateOrder', OPERATIONS: 'PortIngestion', FINANCE: 'Evaluation',
+                                  PRODUCTION: 'Requisition', RECEPTION: 'VisitorLog', DISPATCH: 'Deliveries',
+                                  LOGISTICS: 'Maintenance', BOARDROOM: 'VideoConf', SETTINGS: 'Themes'
+                                };
+                                if (setActiveSubTab) {
+                                  setActiveSubTab(defaultSubTabs[d.value] || 'Overview');
+                                }
+                              }
+                              setShowAvatarDropdown(false);
+                            }}
+                            className={`w-full flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-left transition-colors ${
+                              isActive 
+                                ? 'border-l-4 border-[var(--accent)] text-[var(--accent)] bg-[var(--accent-light)] pl-3.5'
+                                : 'text-[var(--text-secondary)] hover:bg-[var(--accent-light)]'
+                            }`}
+                          >
+                            <IconComponent className="w-3.5 h-3.5 shrink-0 text-[var(--accent)]" />
+                            <span className="truncate">{d.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <div className="h-px bg-[var(--border)] my-1" />
+
+                    <div className="px-2 pt-1 space-y-0.5">
+                      <button
+                        onClick={() => {
+                          if (setActiveDepartment) {
+                            setActiveDepartment('SETTINGS');
+                            if (setActiveSubTab) setActiveSubTab('Themes');
+                          }
+                          setShowAvatarDropdown(false);
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-[var(--text-secondary)] hover:bg-[var(--accent-light)] hover:text-[var(--text-primary)] text-left transition-colors"
+                      >
+                        <Settings className="w-4 h-4 text-[var(--text-secondary)]" />
+                        Settings
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowAvatarDropdown(false);
+                          onLogout?.();
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 text-left transition-colors"
+                      >
+                        <LogOut className="w-4 h-4 text-rose-500" />
+                        Sign Out
+                      </button>
+                    </div>
+                  </motion.div>
+                </>
               )}
             </AnimatePresence>
           </div>

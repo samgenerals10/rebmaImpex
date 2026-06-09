@@ -557,18 +557,18 @@ export default function MarketingDashboard({
       {/* ── ORDER MODAL ── */}
       {showOrderModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-0 md:p-4" onClick={() => setShowOrderModal(false)}>
-          <div className="bg-[var(--bg-card)] border-0 md:border border-custom rounded-none md:rounded-2xl shadow-2xl w-full h-full md:h-auto md:max-w-lg overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-5 flex justify-between items-center text-white">
+          <div className="bg-[var(--bg-card)] border-0 md:border border-[var(--border)] rounded-none md:rounded-2xl shadow-2xl w-full h-full md:h-auto md:max-w-lg overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="bg-gradient-to-r from-[var(--accent)] to-indigo-600 p-5 flex justify-between items-center text-white">
               <div>
-                <h2 className="font-bold text-lg">Create Client Sales Order</h2>
+                <h2 className="font-bold text-lg text-white">Create Client Sales Order</h2>
                 <p className="text-white/70 text-xs mt-0.5">Fill all required fields to book a new sales order</p>
               </div>
-              <button onClick={() => setShowOrderModal(false)} className="p-1.5 hover:bg-white/10 rounded-full cursor-pointer"><X className="w-5 h-5" /></button>
+              <button onClick={() => setShowOrderModal(false)} className="p-1.5 hover:bg-white/10 rounded-full cursor-pointer"><X className="w-5 h-5 text-white" /></button>
             </div>
             <form onSubmit={handleSubmitOrder} className="p-6 space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-500 mb-1.5">Client Customer <span className="text-rose-500">*</span></label>
-                <select value={orderClient} onChange={e => setOrderClient(e.target.value)} required className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none">
+                <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Client Customer <span className="text-rose-500">*</span></label>
+                <select value={orderClient} onChange={e => setOrderClient(e.target.value)} required className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs focus:outline-none focus:border-[var(--accent)] text-[var(--text-primary)]">
                   <option value="">-- Select a registered customer --</option>
                   {localCustomers.map(c => <option key={c.id} value={c.name}>{c.name} ({c.companyName})</option>)}
                   <option value="Walk-in Customer">Walk-in Customer</option>
@@ -577,12 +577,12 @@ export default function MarketingDashboard({
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-500 mb-1.5">Product Name <span className="text-rose-500">*</span></label>
-                  <input type="text" value={orderProduct} onChange={e => setOrderProduct(e.target.value)} required placeholder="E.g., Palm Oil Barrel" className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-blue-500" />
+                  <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Product Name <span className="text-rose-500">*</span></label>
+                  <input type="text" value={orderProduct} onChange={e => setOrderProduct(e.target.value)} required placeholder="E.g., Palm Oil Barrel" className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs focus:outline-none focus:border-[var(--accent)] text-[var(--text-primary)]" />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-500 mb-1.5">Payment Mode</label>
-                  <select value={orderPayMode} onChange={e => setOrderPayMode(e.target.value as any)} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none">
+                  <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Payment Mode</label>
+                  <select value={orderPayMode} onChange={e => setOrderPayMode(e.target.value as any)} className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs focus:outline-none focus:border-[var(--accent)] text-[var(--text-primary)]">
                     <option value="CASH">Cash Payment</option>
                     <option value="ONLINE">Prepaid Online</option>
                     <option value="CREDIT">On Credit Terms</option>
@@ -591,25 +591,25 @@ export default function MarketingDashboard({
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-500 mb-1.5">Delivery Destination</label>
-                <input type="text" value={orderDestination} onChange={e => setOrderDestination(e.target.value)} placeholder="E.g., Kumasi Central Depot" className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-blue-500" />
+                <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Delivery Destination</label>
+                <input type="text" value={orderDestination} onChange={e => setOrderDestination(e.target.value)} placeholder="E.g., Kumasi Central Depot" className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs focus:outline-none focus:border-[var(--accent)] text-[var(--text-primary)]" />
               </div>
 
               {orderPayMode === 'CREDIT' && (
-                <div className="p-3 bg-amber-500/10 border border-amber-900/50 rounded-xl space-y-3">
-                  <p className="text-xs font-semibold text-amber-400">Credit Order — Ghana Card Required</p>
-                  <input type="text" value={orderGhanaCard} onChange={e => setOrderGhanaCard(e.target.value)} required placeholder="E.g., GHA-1234567-8" className="w-full px-3 py-2 bg-white border border-amber-300 rounded-xl text-xs focus:outline-none focus:border-amber-500" />
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl space-y-3">
+                  <p className="text-xs font-semibold text-amber-700">Credit Order — Ghana Card Required</p>
+                  <input type="text" value={orderGhanaCard} onChange={e => setOrderGhanaCard(e.target.value)} required placeholder="E.g., GHA-1234567-8" className="w-full px-3 py-2 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl text-xs focus:outline-none focus:border-[var(--accent)] text-[var(--text-primary)]" />
                 </div>
               )}
 
               <div>
-                <label className="block text-xs font-semibold text-slate-500 mb-1.5">Order Amount (GHS) <span className="text-rose-500">*</span></label>
-                <input type="number" value={orderAmount} onChange={e => setOrderAmount(e.target.value)} required placeholder="35000" className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-blue-500" />
+                <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Order Amount (GHS) <span className="text-rose-500">*</span></label>
+                <input type="number" value={orderAmount} onChange={e => setOrderAmount(e.target.value)} required placeholder="35000" className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs focus:outline-none focus:border-[var(--accent)] text-[var(--text-primary)]" />
               </div>
 
               <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setShowOrderModal(false)} className="flex-1 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-755 rounded-xl text-xs font-bold cursor-pointer transition-colors">Cancel</button>
-                <button type="submit" className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold cursor-pointer shadow transition-colors">Submit Order</button>
+                <button type="button" onClick={() => setShowOrderModal(false)} className="flex-1 py-2.5 bg-[var(--bg-card)] hover:bg-[var(--accent-light)] border border-[var(--border)] text-[var(--text-primary)] rounded-xl text-xs font-bold cursor-pointer transition-colors">Cancel</button>
+                <button type="submit" className="flex-1 py-2.5 bg-[var(--accent)] hover:opacity-90 text-white rounded-xl text-xs font-bold cursor-pointer shadow transition-opacity">Submit Order</button>
               </div>
             </form>
           </div>
@@ -619,13 +619,13 @@ export default function MarketingDashboard({
       {/* ── REGISTER CUSTOMER MODAL ── */}
       {showCustomerModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-0 md:p-4" onClick={() => setShowCustomerModal(false)}>
-          <div className="bg-[var(--bg-card)] border-0 md:border border-custom rounded-none md:rounded-2xl shadow-2xl w-full h-full md:h-auto md:max-w-lg overflow-y-auto" onClick={e => e.stopPropagation()}>
+          <div className="bg-[var(--bg-card)] border-0 md:border border-[var(--border)] rounded-none md:rounded-2xl shadow-2xl w-full h-full md:h-auto md:max-w-lg overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="bg-gradient-to-r from-emerald-600 to-teal-600 p-5 flex justify-between items-center text-white">
               <div>
                 <h2 className="font-bold text-white text-lg">Register New Customer</h2>
                 <p className="text-white/70 text-xs mt-0.5">Add a new client to the customer directory</p>
               </div>
-              <button onClick={() => setShowCustomerModal(false)} className="p-1.5 hover:bg-white/10 rounded-full cursor-pointer"><X className="w-5 h-5" /></button>
+              <button onClick={() => setShowCustomerModal(false)} className="p-1.5 hover:bg-white/10 rounded-full cursor-pointer"><X className="w-5 h-5 text-white" /></button>
             </div>
             <form onSubmit={handleSubmitCustomer} className="p-6 space-y-4">
               {/* Photo upload */}
@@ -634,54 +634,54 @@ export default function MarketingDashboard({
                   {custPhoto ? (
                     <img src={custPhoto} alt="Customer" className="w-16 h-16 rounded-full object-cover border-2 border-emerald-400" />
                   ) : (
-                    <div className="w-16 h-16 rounded-full bg-slate-100/10 border-2 border-dashed border-slate-300 flex items-center justify-center">
-                      <Camera className="w-6 h-6 text-slate-400" />
+                    <div className="w-16 h-16 rounded-full bg-[var(--bg)] border-2 border-dashed border-[var(--border)] flex items-center justify-center">
+                      <Camera className="w-6 h-6 text-[var(--text-muted)]" />
                     </div>
                   )}
                   <button type="button" onClick={() => photoRef.current?.click()} className="absolute -bottom-1 -right-1 w-6 h-6 bg-emerald-500 text-white rounded-full flex items-center justify-center cursor-pointer text-[10px]">+</button>
                   <input ref={photoRef} type="file" accept="image/*" onChange={handlePhotoChange} className="hidden" />
                 </div>
                 <div>
-                  <p className="text-xs font-semibold">Customer Photo <span className="text-slate-400 font-normal">(optional)</span></p>
-                  <p className="text-[10px] text-slate-400 mt-0.5">Click the + button to upload a photo</p>
+                  <p className="text-xs font-semibold text-[var(--text-primary)]">Customer Photo <span className="text-[var(--text-muted)] font-normal">(optional)</span></p>
+                  <p className="text-[10px] text-[var(--text-muted)] mt-0.5">Click the + button to upload a photo</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-500 mb-1.5">Customer Name <span className="text-rose-500">*</span></label>
-                  <input type="text" value={custName} onChange={e => setCustName(e.target.value)} required placeholder="E.g., Kofi Owusu" className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-emerald-500" />
+                  <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Customer Name <span className="text-rose-500">*</span></label>
+                  <input type="text" value={custName} onChange={e => setCustName(e.target.value)} required placeholder="E.g., Kofi Owusu" className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs focus:outline-none focus:border-[var(--accent)] text-[var(--text-primary)]" />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-500 mb-1.5">Company Name</label>
-                  <input type="text" value={custCompany} onChange={e => setCustCompany(e.target.value)} placeholder="E.g., Owusu Retail Hub" className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-emerald-500" />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-500 mb-1.5">Phone Number <span className="text-rose-500">*</span></label>
-                  <input type="tel" value={custPhone} onChange={e => setCustPhone(e.target.value)} required placeholder="+233 24 123 4567" className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-emerald-500" />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-500 mb-1.5">City / Location</label>
-                  <input type="text" value={custLocation} onChange={e => setCustLocation(e.target.value)} placeholder="E.g., Kumasi" className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none" />
+                  <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Company Name</label>
+                  <input type="text" value={custCompany} onChange={e => setCustCompany(e.target.value)} placeholder="E.g., Owusu Retail Hub" className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs focus:outline-none focus:border-[var(--accent)] text-[var(--text-primary)]" />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-500 mb-1.5">Email Address</label>
-                  <input type="email" value={custEmail} onChange={e => setCustEmail(e.target.value)} placeholder="client@company.com" className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none" />
+                  <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Phone Number <span className="text-rose-500">*</span></label>
+                  <input type="tel" value={custPhone} onChange={e => setCustPhone(e.target.value)} required placeholder="+233 24 123 4567" className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs focus:outline-none focus:border-[var(--accent)] text-[var(--text-primary)]" />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-500 mb-1.5">Ghana Card ID</label>
-                  <input type="text" value={custGhanaCard} onChange={e => setCustGhanaCard(e.target.value)} placeholder="GHA-XXXXXXX-X" className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none" />
+                  <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">City / Location</label>
+                  <input type="text" value={custLocation} onChange={e => setCustLocation(e.target.value)} placeholder="E.g., Kumasi" className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs focus:outline-none focus:border-[var(--accent)] text-[var(--text-primary)]" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Email Address</label>
+                  <input type="email" value={custEmail} onChange={e => setCustEmail(e.target.value)} placeholder="client@company.com" className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs focus:outline-none focus:border-[var(--accent)] text-[var(--text-primary)]" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Ghana Card ID</label>
+                  <input type="text" value={custGhanaCard} onChange={e => setCustGhanaCard(e.target.value)} placeholder="GHA-XXXXXXX-X" className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs focus:outline-none focus:border-[var(--accent)] text-[var(--text-primary)]" />
                 </div>
               </div>
 
               <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setShowCustomerModal(false)} className="flex-1 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold cursor-pointer transition-colors">Cancel</button>
+                <button type="button" onClick={() => setShowCustomerModal(false)} className="flex-1 py-2.5 bg-[var(--bg-card)] hover:bg-[var(--accent-light)] border border-[var(--border)] text-[var(--text-primary)] rounded-xl text-xs font-bold cursor-pointer transition-colors">Cancel</button>
                 <button type="submit" className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold cursor-pointer shadow transition-colors">Add to Directory</button>
               </div>
             </form>
@@ -692,50 +692,50 @@ export default function MarketingDashboard({
       {/* ── CUSTOMER PROFILE MODAL ── */}
       {selectedCustomer && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-0 md:p-4" onClick={() => setSelectedCustomer(null)}>
-          <div className="bg-[var(--bg-card)] border-0 md:border border-custom rounded-none md:rounded-2xl shadow-2xl w-full h-full md:h-auto md:max-w-lg overflow-y-auto" onClick={e => e.stopPropagation()}>
+          <div className="bg-[var(--bg-card)] border-0 md:border border-[var(--border)] rounded-none md:rounded-2xl shadow-2xl w-full h-full md:h-auto md:max-w-lg overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="bg-gradient-to-r from-slate-800 to-slate-700 p-5 text-white">
               <div className="flex justify-between items-center">
-                <h2 className="font-bold text-lg">Customer Profile</h2>
-                <button onClick={() => setSelectedCustomer(null)} className="p-1.5 hover:bg-white/10 rounded-full cursor-pointer"><X className="w-5 h-5" /></button>
+                <h2 className="font-bold text-lg text-white">Customer Profile</h2>
+                <button onClick={() => setSelectedCustomer(null)} className="p-1.5 hover:bg-white/10 rounded-full cursor-pointer"><X className="w-5 h-5 text-white" /></button>
               </div>
             </div>
             <div className="p-6 space-y-4">
               {/* Profile header */}
               <div className="flex items-center gap-4">
                 {selectedCustomer.photo ? (
-                  <img src={selectedCustomer.photo} alt={selectedCustomer.name} className="w-16 h-16 rounded-full object-cover border-2 border-slate-200" />
+                  <img src={selectedCustomer.photo} alt={selectedCustomer.name} className="w-16 h-16 rounded-full object-cover border-2 border-[var(--border)]" />
                 ) : (
-                  <div className="w-16 h-16 rounded-full bg-blue-500/10 flex items-center justify-center border border-custom">
-                    <Users className="w-7 h-7 text-blue-500" />
+                  <div className="w-16 h-16 rounded-full bg-[var(--accent-light)] flex items-center justify-center border border-[var(--border)]">
+                    <Users className="w-7 h-7 text-[var(--accent)]" />
                   </div>
                 )}
                 <div>
-                  <h3 className="font-bold">{selectedCustomer.name}</h3>
-                  <p className="text-xs text-slate-500">{selectedCustomer.companyName}</p>
-                  <p className="text-[10px] text-slate-450 mt-0.5 font-mono">Registered: {selectedCustomer.registeredAt}</p>
+                  <h3 className="font-bold text-[var(--text-primary)]">{selectedCustomer.name}</h3>
+                  <p className="text-xs text-[var(--text-muted)]">{selectedCustomer.companyName}</p>
+                  <p className="text-[10px] text-[var(--text-muted)] mt-0.5 font-mono">Registered: {selectedCustomer.registeredAt}</p>
                 </div>
               </div>
 
               {/* Details */}
               <div className="grid grid-cols-2 gap-3 text-xs">
-                <div className="p-3 bg-slate-100/50 dark:bg-slate-800/10 border border-custom rounded-xl">
-                  <p className="text-slate-400 text-[10px] uppercase font-semibold">Phone</p>
-                  <p className="font-medium mt-0.5 font-mono">{selectedCustomer.phone}</p>
+                <div className="p-3 bg-[var(--bg)] border border-[var(--border)] rounded-xl">
+                  <p className="text-[var(--text-muted)] text-[10px] uppercase font-semibold">Phone</p>
+                  <p className="font-medium mt-0.5 font-mono text-[var(--text-primary)]">{selectedCustomer.phone}</p>
                 </div>
-                <div className="p-3 bg-slate-100/50 dark:bg-slate-800/10 border border-custom rounded-xl">
-                  <p className="text-slate-400 text-[10px] uppercase font-semibold">Location</p>
-                  <p className="font-medium mt-0.5">{selectedCustomer.location || '—'}</p>
+                <div className="p-3 bg-[var(--bg)] border border-[var(--border)] rounded-xl">
+                  <p className="text-[var(--text-muted)] text-[10px] uppercase font-semibold">Location</p>
+                  <p className="font-medium mt-0.5 text-[var(--text-primary)]">{selectedCustomer.location || '—'}</p>
                 </div>
                 {selectedCustomer.email && (
-                  <div className="p-3 bg-slate-100/50 dark:bg-slate-800/10 border border-custom rounded-xl">
-                    <p className="text-slate-400 text-[10px] uppercase font-semibold">Email</p>
-                    <p className="font-medium mt-0.5 font-mono">{selectedCustomer.email}</p>
+                  <div className="p-3 bg-[var(--bg)] border border-[var(--border)] rounded-xl">
+                    <p className="text-[var(--text-muted)] text-[10px] uppercase font-semibold">Email</p>
+                    <p className="font-medium mt-0.5 font-mono text-[var(--text-primary)]">{selectedCustomer.email}</p>
                   </div>
                 )}
                 {selectedCustomer.ghanaCard && (
-                  <div className="p-3 bg-slate-100/50 dark:bg-slate-800/10 border border-custom rounded-xl">
-                    <p className="text-slate-400 text-[10px] uppercase font-semibold">Ghana Card</p>
-                    <p className="font-mono font-medium mt-0.5">{selectedCustomer.ghanaCard}</p>
+                  <div className="p-3 bg-[var(--bg)] border border-[var(--border)] rounded-xl">
+                    <p className="text-[var(--text-muted)] text-[10px] uppercase font-semibold">Ghana Card</p>
+                    <p className="font-mono font-medium mt-0.5 text-[var(--text-primary)]">{selectedCustomer.ghanaCard}</p>
                   </div>
                 )}
               </div>
@@ -743,18 +743,18 @@ export default function MarketingDashboard({
               {/* Order history */}
               <div>
                 <div className="flex items-center gap-2 mb-2">
-                  <History className="w-4 h-4 text-indigo-500" />
-                  <p className="text-xs font-bold">Order History ({customerOrders(selectedCustomer).length})</p>
+                  <History className="w-4 h-4 text-[var(--accent)]" />
+                  <p className="text-xs font-bold text-[var(--text-primary)]">Order History ({customerOrders(selectedCustomer).length})</p>
                 </div>
-                <div className="space-y-1.5 max-h-40 overflow-y-auto border-t border-custom pt-1.5">
+                <div className="space-y-1.5 max-h-40 overflow-y-auto border-t border-[var(--border)] pt-1.5">
                   {customerOrders(selectedCustomer).length === 0 && (
-                    <p className="text-[10px] text-slate-500 text-center py-3">No orders found for this customer.</p>
+                    <p className="text-[10px] text-[var(--text-muted)] text-center py-3">No orders found for this customer.</p>
                   )}
                   {customerOrders(selectedCustomer).map(o => (
-                    <div key={o.id} className="flex justify-between items-center p-2 bg-slate-100/5 dark:bg-slate-800/20 border border-custom rounded-lg text-[10px]">
-                      <span className="font-mono text-slate-550">{o.id}</span>
-                      <span className="text-slate-400">{o.productName || '—'}</span>
-                      <span className="font-bold font-mono">GHS {o.totalAmount.toLocaleString()}</span>
+                    <div key={o.id} className="flex justify-between items-center p-2 bg-[var(--bg)] border border-[var(--border)] rounded-lg text-[10px]">
+                      <span className="font-mono text-[var(--text-primary)]">{o.id}</span>
+                      <span className="text-[var(--text-muted)]">{o.productName || '—'}</span>
+                      <span className="font-bold font-mono text-[var(--text-primary)]">GHS {o.totalAmount.toLocaleString()}</span>
                       <span className={`px-1.5 py-0.5 rounded font-bold text-[8px] ${statusColor(o.status)}`}>{o.status.replace(/_/g, ' ')}</span>
                     </div>
                   ))}
@@ -768,18 +768,18 @@ export default function MarketingDashboard({
       {/* ── ORDER DETAIL MODAL ── */}
       {selectedOrder && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-0 md:p-4" onClick={() => setSelectedOrder(null)}>
-          <div className="bg-[var(--bg-card)] border-0 md:border border-custom rounded-none md:rounded-2xl shadow-2xl w-full h-full md:h-auto md:max-w-md overflow-y-auto" onClick={e => e.stopPropagation()}>
+          <div className="bg-[var(--bg-card)] border-0 md:border border-[var(--border)] rounded-none md:rounded-2xl shadow-2xl w-full h-full md:h-auto md:max-w-md overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-5 flex justify-between items-center text-white">
               <div>
-                <h2 className="font-bold">Order Details</h2>
+                <h2 className="font-bold text-white">Order Details</h2>
                 <p className="text-white/70 text-xs mt-0.5 font-mono">{selectedOrder.id}</p>
               </div>
-              <button onClick={() => setSelectedOrder(null)} className="p-1.5 hover:bg-white/10 rounded-full cursor-pointer"><X className="w-5 h-5" /></button>
+              <button onClick={() => setSelectedOrder(null)} className="p-1.5 hover:bg-white/10 rounded-full cursor-pointer"><X className="w-5 h-5 text-white" /></button>
             </div>
             <div className="p-6 space-y-3 text-xs">
               {selectedOrder.ticketNumber && (
                 <div className="text-center">
-                  <span className="px-4 py-1.5 bg-emerald-500/10 text-emerald-400 rounded-full text-xs font-bold font-mono">🎫 Ticket: {selectedOrder.ticketNumber}</span>
+                  <span className="px-4 py-1.5 bg-emerald-500/10 text-emerald-600 rounded-full text-xs font-bold font-mono">🎫 Ticket: {selectedOrder.ticketNumber}</span>
                 </div>
               )}
               {[
@@ -792,9 +792,9 @@ export default function MarketingDashboard({
                 ['Submitted', selectedOrder.createdAt],
                 ...(selectedOrder.ghanaCard ? [['Ghana Card', selectedOrder.ghanaCard]] : [])
               ].map(([label, value], idx) => (
-                <div key={idx} className="flex justify-between items-center py-2 border-b border-custom">
-                  <span className="text-slate-400 font-semibold uppercase text-[10px]">{label}</span>
-                  <span className="font-medium text-slate-300">{value}</span>
+                <div key={idx} className="flex justify-between items-center py-2 border-b border-[var(--border)]">
+                  <span className="text-[var(--text-muted)] font-semibold uppercase text-[10px]">{label}</span>
+                  <span className="font-medium text-[var(--text-primary)]">{value}</span>
                 </div>
               ))}
             </div>
@@ -805,20 +805,20 @@ export default function MarketingDashboard({
       {/* Header */}
       <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight">Marketing Pipeline</h1>
-          <p className="text-xs sm:text-sm text-muted">Create client sales orders, register customers, and inspect history logs.</p>
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight text-[var(--text-primary)]">Marketing Pipeline</h1>
+          <p className="text-xs sm:text-sm text-[var(--text-muted)]">Create client sales orders, register customers, and inspect history logs.</p>
         </div>
         <div className="flex flex-wrap gap-2 w-full xl:w-auto">
-          <button onClick={() => setShowOrderModal(true)} className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold cursor-pointer shadow transition-colors">
+          <button onClick={() => setShowOrderModal(true)} className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-2 bg-[var(--accent)] hover:opacity-90 text-white rounded-lg text-xs font-bold cursor-pointer shadow transition-opacity">
             <Clipboard className="w-3.5 h-3.5" /> Create Order
           </button>
           <button onClick={() => setShowCustomerModal(true)} className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold cursor-pointer shadow transition-colors">
             <UserPlus className="w-3.5 h-3.5" /> Register Customer
           </button>
-          <button onClick={() => exportToCSV(localOrders, ['id', 'ticketNumber', 'clientName', 'productName', 'destination', 'paymentMode', 'totalAmount', 'status', 'createdAt'], 'marketing_orders')} className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold cursor-pointer border border-slate-200 transition-colors">
+          <button onClick={() => exportToCSV(localOrders, ['id', 'ticketNumber', 'clientName', 'productName', 'destination', 'paymentMode', 'totalAmount', 'status', 'createdAt'], 'marketing_orders')} className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 bg-[var(--accent-light)] hover:opacity-90 text-[var(--accent)] rounded-lg text-xs font-semibold cursor-pointer border border-[var(--border)] transition-opacity">
             <FileSpreadsheet className="w-3.5 h-3.5" /> CSV
           </button>
-          <button onClick={() => exportToPDF('Sales Orders Ledger', localOrders, ['id', 'ticketNumber', 'clientName', 'productName', 'destination', 'paymentMode', 'totalAmount', 'status', 'createdAt'])} className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold cursor-pointer border border-slate-200 transition-colors">
+          <button onClick={() => exportToPDF('Sales Orders Ledger', localOrders, ['id', 'ticketNumber', 'clientName', 'productName', 'destination', 'paymentMode', 'totalAmount', 'status', 'createdAt'])} className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 bg-[var(--accent-light)] hover:opacity-90 text-[var(--accent)] rounded-lg text-xs font-semibold cursor-pointer border border-[var(--border)] transition-opacity">
             <FileText className="w-3.5 h-3.5" /> PDF
           </button>
         </div>
@@ -828,32 +828,33 @@ export default function MarketingDashboard({
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
         {stats.map((card, idx) => {
           const Icon = card.icon;
-          const isProminent = idx < 2;
           return (
-            <div key={idx} className="p-4 sm:p-6 app-card flex items-center justify-between hover:scale-102 transition-all duration-300">
+            <div key={idx} className="p-6 bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] border-b-[3px] border-[var(--accent)] flex items-center justify-between hover:scale-102 transition-all duration-300">
               <div>
-                <span className="text-[10px] sm:text-xs text-slate-400 uppercase font-semibold">{card.title}</span>
-                <h3 className={`font-bold mt-1 ${isProminent ? 'text-2xl sm:text-3xl' : 'text-lg sm:text-xl'}`}>{card.value}</h3>
-                <p className="text-[9px] sm:text-[10px] text-slate-400 mt-1">{card.sub}</p>
+                <span className="text-xs text-[var(--text-muted)] uppercase font-semibold">{card.title}</span>
+                <h3 className="text-2xl font-bold mt-1 text-[var(--text-primary)]">{card.value}</h3>
+                <p className="text-[10px] text-[var(--text-muted)] mt-1">{card.sub}</p>
               </div>
-              <div className={`p-3 sm:p-4 bg-slate-100 rounded-2xl ${card.color} bg-accent-light shrink-0`}><Icon className="w-5 h-5 sm:w-6 sm:h-6" /></div>
+              <div className="w-12 h-12 rounded-full bg-[var(--accent-light)] flex items-center justify-center shrink-0">
+                <Icon className="w-6 h-6 text-[var(--accent)]" />
+              </div>
             </div>
           );
         })}
       </div>
 
       {/* Chart */}
-      <div className="p-4 sm:p-6 app-card">
-        <h3 className="text-lg font-bold">Marketing Lead Inflow & Sales Closures</h3>
-        <p className="text-xs text-muted">Weekly lead pipeline velocity vs sales order bookings.</p>
+      <div className="p-6 bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] border border-[var(--border)]">
+        <h3 className="text-lg font-bold text-[var(--text-primary)]">Marketing Lead Inflow & Sales Closures</h3>
+        <p className="text-xs text-[var(--text-muted)]">Weekly lead pipeline velocity vs sales order bookings.</p>
         <div className="h-[200px] sm:h-60 lg:h-[300px] mt-4">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={lineChartData}>
-              <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
-              <XAxis dataKey="name" stroke="#94a3b8" fontSize={10} />
-              <YAxis stroke="#94a3b8" fontSize={10} />
-              <Tooltip />
-              <Line type="monotone" dataKey="Leads" stroke="#3b82f6" strokeWidth={2} activeDot={{ r: 8 }} />
+              <CartesianGrid strokeDasharray="3 3" opacity={0.1} stroke="var(--border)" />
+              <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={10} />
+              <YAxis stroke="var(--text-muted)" fontSize={10} />
+              <Tooltip contentStyle={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)', color: 'var(--text-primary)' }} />
+              <Line type="monotone" dataKey="Leads" stroke="var(--accent)" strokeWidth={2} activeDot={{ r: 8 }} />
               <Line type="monotone" dataKey="Sales" stroke="#10b981" strokeWidth={2} />
             </LineChart>
           </ResponsiveContainer>
@@ -861,44 +862,44 @@ export default function MarketingDashboard({
       </div>
 
       {/* Customer Directory — Table */}
-      <div className="theme-table-wrapper">
+      <div className="theme-table-wrapper border border-[var(--border)] bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)]">
         {/* Toolbar */}
-        <div className="theme-table-toolbar flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-5 py-4">
+        <div className="theme-table-toolbar flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-5 py-4 border-b border-[var(--border)] bg-[var(--bg)]">
           <div className="flex items-center gap-2">
-            <Users className="w-5 h-5 text-blue-500" />
-            <h3 className="text-sm font-bold">Customer Directory</h3>
-            <span className="text-xs font-mono text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">{filteredCust.length} accounts</span>
+            <Users className="w-5 h-5 text-[var(--accent)]" />
+            <h3 className="text-sm font-bold text-[var(--text-primary)]">Customer Directory</h3>
+            <span className="text-xs font-mono text-[var(--text-muted)] bg-[var(--accent-light)] px-2 py-0.5 rounded-full">{filteredCust.length} accounts</span>
           </div>
           <div className="flex items-center gap-3">
             {/* Search */}
             <div className="relative flex items-center">
-              <span className="absolute left-3 text-slate-550 text-xs pointer-events-none">🔍</span>
+              <span className="absolute left-3 text-[var(--text-muted)] text-xs pointer-events-none">🔍</span>
               <input
                 type="text"
                 placeholder="Search customers…"
                 value={custSearch}
                 onChange={e => setCustSearch(e.target.value)}
-                className="pl-8 pr-3 py-1.5 text-xs rounded-lg outline-none transition w-40"
+                className="pl-8 pr-3 py-1.5 text-xs rounded-lg outline-none border border-[var(--border)] transition w-40 bg-[var(--bg-card)] text-[var(--text-primary)] focus:border-[var(--accent)]"
               />
             </div>
             {/* Location filter */}
             <div className="relative">
               <button
                 onClick={(e) => { e.stopPropagation(); setIsCustFilterOpen(!isCustFilterOpen); }}
-                className="flex items-center gap-1.5 text-xs text-[var(--text-primary)] bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 px-3 py-1.5 rounded-lg transition-colors border border-custom"
+                className="flex items-center gap-1.5 text-xs text-[var(--text-primary)] bg-[var(--bg-card)] hover:bg-[var(--accent-light)] px-3 py-1.5 rounded-lg transition-colors border border-[var(--border)]"
               >
                 <span>City: {custLocationFilter === 'ALL' ? 'All' : custLocationFilter}</span>
                 <span className="text-[10px]">▼</span>
               </button>
               {isCustFilterOpen && (
-                <div className="absolute right-0 top-full mt-1.5 w-48 bg-[var(--bg-card)] border border-custom rounded-xl shadow-xl z-20 p-1 flex flex-col">
+                <div className="absolute right-0 top-full mt-1.5 w-48 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl z-20 p-1 flex flex-col">
                   {(['ALL', 'Accra', 'Kumasi', 'Tema', 'Takoradi'] as const).map(st => (
                     <button
                       key={st}
                       onClick={() => { setCustLocationFilter(st); setIsCustFilterOpen(false); }}
-                      className="flex items-center gap-2 px-3 py-2 text-xs rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-left transition-colors text-[var(--text-primary)]"
+                      className="flex items-center gap-2 px-3 py-2 text-xs rounded-lg hover:bg-[var(--accent-light)] text-left transition-colors text-[var(--text-primary)]"
                     >
-                      <span className="w-2 h-2 rounded-full bg-blue-500" />
+                      <span className="w-2 h-2 rounded-full bg-[var(--accent)]" />
                       {st === 'ALL' ? 'All Cities' : st}
                     </button>
                   ))}
@@ -906,7 +907,7 @@ export default function MarketingDashboard({
               )}
             </div>
             {/* Export */}
-            <button onClick={() => exportToCSV(localCustomers, ['id', 'name', 'phone', 'location', 'companyName', 'ghanaCard', 'email', 'registeredAt'], 'customers')} className="flex items-center gap-1 text-xs text-[var(--text-primary)] bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 px-3 py-1.5 rounded-lg transition-colors border border-custom">
+            <button onClick={() => exportToCSV(localCustomers, ['id', 'name', 'phone', 'location', 'companyName', 'ghanaCard', 'email', 'registeredAt'], 'customers')} className="flex items-center gap-1 text-xs text-[var(--text-primary)] bg-[var(--bg-card)] hover:bg-[var(--accent-light)] px-3 py-1.5 rounded-lg transition-colors border border-[var(--border)]">
               <span>⬇</span> Export
             </button>
           </div>
@@ -944,100 +945,100 @@ export default function MarketingDashboard({
         <div className="hidden lg:block overflow-x-auto w-full">
           <table className="w-full text-xs text-left">
             <thead>
-              <tr className="theme-table-header-row text-slate-400 uppercase font-semibold text-[10px]">
+              <tr className="theme-table-header-row text-[var(--text-muted)] uppercase font-semibold text-[10px] border-b border-[var(--border)]">
                 <th className="py-3 px-5 whitespace-nowrap">
                   <input
                     type="checkbox"
                     checked={filteredCust.length > 0 && selectedCustRows.size === filteredCust.length}
                     onChange={handleSelectAllCust}
-                    className="accent-blue-600 w-3.5 h-3.5"
+                    className="accent-[var(--accent)] w-3.5 h-3.5"
                   />
                 </th>
-                <th className="py-3 px-3 whitespace-nowrap">Photo</th>
-                <th onClick={() => handleSort('name', customerSortField, setCustomerSortField, customerSortDir, setCustomerSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                <th className="py-3 px-3 whitespace-nowrap text-[var(--text-primary)]">Photo</th>
+                <th onClick={() => handleSort('name', customerSortField, setCustomerSortField, customerSortDir, setCustomerSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none text-[var(--text-primary)]">
                   <div className="flex items-center gap-1">
                     <span>Name</span>
                     <span className="text-[9px] opacity-70">{customerSortField === 'name' ? (customerSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                   </div>
                 </th>
-                <th onClick={() => handleSort('companyName', customerSortField, setCustomerSortField, customerSortDir, setCustomerSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none hidden sm:table-cell">
+                <th onClick={() => handleSort('companyName', customerSortField, setCustomerSortField, customerSortDir, setCustomerSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none hidden sm:table-cell text-[var(--text-primary)]">
                   <div className="flex items-center gap-1">
                     <span>Company</span>
                     <span className="text-[9px] opacity-70">{customerSortField === 'companyName' ? (customerSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                   </div>
                 </th>
-                <th onClick={() => handleSort('phone', customerSortField, setCustomerSortField, customerSortDir, setCustomerSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                <th onClick={() => handleSort('phone', customerSortField, setCustomerSortField, customerSortDir, setCustomerSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none text-[var(--text-primary)]">
                   <div className="flex items-center gap-1">
                     <span>Phone</span>
                     <span className="text-[9px] opacity-70">{customerSortField === 'phone' ? (customerSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                   </div>
                 </th>
-                <th onClick={() => handleSort('location', customerSortField, setCustomerSortField, customerSortDir, setCustomerSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none hidden sm:table-cell">
+                <th onClick={() => handleSort('location', customerSortField, setCustomerSortField, customerSortDir, setCustomerSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none hidden sm:table-cell text-[var(--text-primary)]">
                   <div className="flex items-center gap-1">
                     <span>Location</span>
                     <span className="text-[9px] opacity-70">{customerSortField === 'location' ? (customerSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                   </div>
                 </th>
-                <th onClick={() => handleSort('ghanaCard', customerSortField, setCustomerSortField, customerSortDir, setCustomerSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none hidden md:table-cell">
+                <th onClick={() => handleSort('ghanaCard', customerSortField, setCustomerSortField, customerSortDir, setCustomerSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none hidden md:table-cell text-[var(--text-primary)]">
                   <div className="flex items-center gap-1">
                     <span>Ghana Card</span>
                     <span className="text-[9px] opacity-70">{customerSortField === 'ghanaCard' ? (customerSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                   </div>
                 </th>
-                <th className="py-3 px-3 text-center whitespace-nowrap">Orders</th>
-                <th onClick={() => handleSort('registeredAt', customerSortField, setCustomerSortField, customerSortDir, setCustomerSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none hidden lg:table-cell">
+                <th className="py-3 px-3 text-center whitespace-nowrap text-[var(--text-primary)]">Orders</th>
+                <th onClick={() => handleSort('registeredAt', customerSortField, setCustomerSortField, customerSortDir, setCustomerSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none hidden lg:table-cell text-[var(--text-primary)]">
                   <div className="flex items-center gap-1">
                     <span>Registered</span>
                     <span className="text-[9px] opacity-70">{customerSortField === 'registeredAt' ? (customerSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                   </div>
                 </th>
-                <th className="py-3 px-5 text-center whitespace-nowrap">Actions</th>
+                <th className="py-3 px-5 text-center whitespace-nowrap text-[var(--text-primary)]">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-custom">
+            <tbody className="divide-y divide-[var(--border)]">
               {sortedCust.map(cust => (
-                <tr key={cust.id} className="theme-table-row group cursor-pointer" onClick={() => setSelectedCustomer(cust)}>
+                <tr key={cust.id} className="theme-table-row hover:bg-[var(--accent-light)] transition-colors group cursor-pointer text-[var(--text-primary)]" onClick={() => setSelectedCustomer(cust)}>
                   <td className="py-3.5 px-5" onClick={e => e.stopPropagation()}>
                     <input
                       type="checkbox"
                       checked={selectedCustRows.has(cust.id)}
                       onChange={() => handleSelectCustRow(cust.id)}
-                      className="accent-blue-600 w-3.5 h-3.5"
+                      className="accent-[var(--accent)] w-3.5 h-3.5"
                     />
                   </td>
                   <td className="py-3.5 px-3">
                     {cust.photo ? (
-                      <img src={cust.photo} alt={cust.name} className="w-8 h-8 rounded-full object-cover border border-custom" />
+                      <img src={cust.photo} alt={cust.name} className="w-8 h-8 rounded-full object-cover border border-[var(--border)]" />
                     ) : (
-                      <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center border border-custom">
-                        <span className="text-xs font-bold text-blue-400">{cust.name[0]}</span>
+                      <div className="w-8 h-8 rounded-full bg-[var(--accent-light)] flex items-center justify-center border border-[var(--border)]">
+                        <span className="text-xs font-bold text-[var(--accent)]">{cust.name[0]}</span>
                       </div>
                     )}
                   </td>
                   <td className="py-3.5 px-3 font-semibold text-sm">{cust.name}</td>
-                  <td className="py-3.5 px-3 text-slate-400 hidden sm:table-cell">{cust.companyName}</td>
-                  <td className="py-3.5 px-3 text-slate-400 font-mono">{cust.phone}</td>
-                  <td className="py-3.5 px-3 text-slate-450 hidden sm:table-cell">{cust.location}</td>
-                  <td className="py-3.5 px-3 font-mono text-[10px] text-slate-400 hidden md:table-cell">{cust.ghanaCard || '—'}</td>
+                  <td className="py-3.5 px-3 text-[var(--text-muted)] hidden sm:table-cell">{cust.companyName}</td>
+                  <td className="py-3.5 px-3 text-[var(--text-muted)] font-mono">{cust.phone}</td>
+                  <td className="py-3.5 px-3 text-[var(--text-muted)] hidden sm:table-cell">{cust.location}</td>
+                  <td className="py-3.5 px-3 font-mono text-[10px] text-[var(--text-muted)] hidden md:table-cell">{cust.ghanaCard || '—'}</td>
                   <td className="py-3.5 px-3 text-center">
-                    <span className="px-2.5 py-0.5 bg-blue-500/15 text-blue-400 rounded-full text-[9px] font-bold">{customerOrders(cust).length}</span>
+                    <span className="px-2.5 py-0.5 bg-[var(--accent-light)] text-[var(--accent)] rounded-full text-[9px] font-bold">{customerOrders(cust).length}</span>
                   </td>
-                  <td className="py-3.5 px-3 text-slate-400 font-mono text-[10px] hidden lg:table-cell">{cust.registeredAt}</td>
+                  <td className="py-3.5 px-3 text-[var(--text-muted)] font-mono text-[10px] hidden lg:table-cell">{cust.registeredAt}</td>
                   <td className="py-3.5 px-5 text-center relative" onClick={(e) => e.stopPropagation()}>
                     <button
                       onClick={() => setActiveCustMenu(activeCustMenu === cust.id ? null : cust.id)}
-                      className="w-8 h-8 inline-flex items-center justify-center bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg text-slate-500 dark:text-slate-400 transition-colors select-none"
+                      className="w-8 h-8 inline-flex items-center justify-center bg-[var(--bg)] hover:bg-[var(--accent-light)] rounded-lg text-[var(--text-secondary)] transition-colors select-none border border-[var(--border)]"
                     >
                       ···
                     </button>
                     {activeCustMenu === cust.id && (
-                      <div className="absolute right-5 mt-1 w-44 bg-[var(--bg-card)] border border-custom rounded-xl shadow-xl z-30 p-1 flex flex-col">
-                        <button onClick={() => setSelectedCustomer(cust)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-left">👤 View Profile</button>
-                        <button onClick={() => handleEditCustomer(cust)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-left">✏ Edit Account</button>
-                        <button onClick={() => handleDuplicateCustomer(cust)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-left">📋 Duplicate</button>
-                        <button onClick={() => handleShareCustomer(cust)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-left">🔗 Share Link</button>
-                        <div className="h-px bg-slate-200 dark:bg-slate-700 my-1"></div>
-                        <button onClick={() => handleDeleteCustomer(cust.id)} className="flex items-center gap-2 px-3 py-2 text-xs text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors text-left">🗑 Delete</button>
+                      <div className="absolute right-5 mt-1 w-44 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl z-30 p-1 flex flex-col text-left">
+                        <button onClick={() => setSelectedCustomer(cust)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left">👤 View Profile</button>
+                        <button onClick={() => handleEditCustomer(cust)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left">✏ Edit Account</button>
+                        <button onClick={() => handleDuplicateCustomer(cust)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left">📋 Duplicate</button>
+                        <button onClick={() => handleShareCustomer(cust)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left">🔗 Share Link</button>
+                        <div className="h-px bg-[var(--border)] my-1"></div>
+                        <button onClick={() => handleDeleteCustomer(cust.id)} className="flex items-center gap-2 px-3 py-2 text-xs text-rose-500 hover:bg-rose-50 rounded-lg transition-colors text-left">🗑 Delete</button>
                       </div>
                     )}
                   </td>
@@ -1048,52 +1049,52 @@ export default function MarketingDashboard({
         </div>
 
         {/* Pagination Footer */}
-        <div className="theme-table-footer flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-4">
-          <p className="text-xs text-slate-400 font-mono">Showing {filteredCust.length} of {localCustomers.length} client accounts</p>
+        <div className="theme-table-footer flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-4 border-t border-[var(--border)] bg-[var(--bg)]">
+          <p className="text-xs text-[var(--text-muted)] font-mono">Showing {filteredCust.length} of {localCustomers.length} client accounts</p>
           <div className="flex items-center gap-1">
-            <button className="w-8 h-8 flex items-center justify-center text-xs text-slate-400 hover:text-white bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg transition-colors border border-custom disabled:opacity-30" disabled>‹</button>
-            <button className="w-8 h-8 flex items-center justify-center text-xs text-white bg-blue-600 rounded-lg font-bold">1</button>
-            <button className="w-8 h-8 flex items-center justify-center text-xs text-slate-400 hover:text-white bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg transition-colors border border-custom disabled:opacity-30" disabled>›</button>
+            <button className="w-8 h-8 flex items-center justify-center text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-[var(--bg-card)] hover:bg-[var(--accent-light)] rounded-lg transition-colors border border-[var(--border)] disabled:opacity-30" disabled>‹</button>
+            <button className="w-8 h-8 flex items-center justify-center text-xs text-white bg-[var(--accent)] rounded-lg font-bold">1</button>
+            <button className="w-8 h-8 flex items-center justify-center text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-[var(--bg-card)] hover:bg-[var(--accent-light)] rounded-lg transition-colors border border-[var(--border)] disabled:opacity-30" disabled>›</button>
           </div>
         </div>
       </div>
 
       {/* Active Sales Orders — Clickable */}
-      <div className="theme-table-wrapper">
+      <div className="theme-table-wrapper border border-[var(--border)] bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] mt-6">
         {/* Toolbar */}
-        <div className="theme-table-toolbar flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-5 py-4">
+        <div className="theme-table-toolbar flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-5 py-4 border-b border-[var(--border)] bg-[var(--bg)]">
           <div className="flex items-center gap-2">
-            <h3 className="font-bold text-sm">Active Sales Orders Pipeline</h3>
-            <span className="text-xs font-mono text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">{filteredOrders.length} bookings</span>
+            <h3 className="font-bold text-sm text-[var(--text-primary)]">Active Sales Orders Pipeline</h3>
+            <span className="text-xs font-mono text-[var(--text-muted)] bg-[var(--accent-light)] px-2 py-0.5 rounded-full">{filteredOrders.length} bookings</span>
           </div>
           <div className="flex items-center gap-3">
             {/* Search */}
             <div className="relative flex items-center">
-              <span className="absolute left-3 text-slate-500 text-xs pointer-events-none">🔍</span>
+              <span className="absolute left-3 text-[var(--text-muted)] text-xs pointer-events-none">🔍</span>
               <input
                 type="text"
                 placeholder="Search bookings…"
                 value={ordersSearch}
                 onChange={e => setOrdersSearch(e.target.value)}
-                className="pl-8 pr-3 py-1.5 text-xs rounded-lg outline-none transition w-40"
+                className="pl-8 pr-3 py-1.5 text-xs rounded-lg outline-none border border-[var(--border)] transition w-40 bg-[var(--bg-card)] text-[var(--text-primary)] focus:border-[var(--accent)]"
               />
             </div>
             {/* Mode dropdown */}
             <div className="relative">
               <button
                 onClick={(e) => { e.stopPropagation(); setIsOrdersFilterOpen(!isOrdersFilterOpen); }}
-                className="flex items-center gap-1.5 text-xs text-[var(--text-primary)] bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 px-3 py-1.5 rounded-lg transition-colors border border-custom"
+                className="flex items-center gap-1.5 text-xs text-[var(--text-primary)] bg-[var(--bg-card)] hover:bg-[var(--accent-light)] px-3 py-1.5 rounded-lg transition-colors border border-[var(--border)]"
               >
                 <span>Mode: {ordersModeFilter === 'ALL' ? 'All' : ordersModeFilter}</span>
                 <span className="text-[10px]">▼</span>
               </button>
               {isOrdersFilterOpen && (
-                <div className="absolute right-0 top-full mt-1.5 w-48 bg-[var(--bg-card)] border border-custom rounded-xl shadow-xl z-20 p-1 flex flex-col">
+                <div className="absolute right-0 top-full mt-1.5 w-48 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl z-20 p-1 flex flex-col">
                   {(['ALL', 'CASH', 'CREDIT', 'ONLINE'] as const).map(st => (
                     <button
                       key={st}
                       onClick={() => { setOrdersModeFilter(st); setIsOrdersFilterOpen(false); }}
-                      className="flex items-center gap-2 px-3 py-2 text-xs rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-left transition-colors text-[var(--text-primary)]"
+                      className="flex items-center gap-2 px-3 py-2 text-xs rounded-lg hover:bg-[var(--accent-light)] text-left transition-colors text-[var(--text-primary)]"
                     >
                       <span className={`w-2 h-2 rounded-full ${st === 'CASH' ? 'bg-emerald-400' : st === 'CREDIT' ? 'bg-amber-400' : 'bg-blue-400'}`} />
                       {st === 'ALL' ? 'All Modes' : st}
@@ -1111,24 +1112,24 @@ export default function MarketingDashboard({
             <div
               key={order.id}
               onClick={() => setActiveMobileDetail({ type: 'order', data: order })}
-              className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm p-4 border border-slate-100 dark:border-slate-700 flex items-center justify-between cursor-pointer"
+              className="bg-[var(--bg-card)] rounded-2xl shadow-sm p-4 border border-[var(--border)] flex items-center justify-between cursor-pointer"
             >
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-indigo-500/10 text-indigo-500 flex items-center justify-center font-bold text-sm shrink-0">{order.clientName[0]}</div>
+                <div className="w-10 h-10 rounded-full bg-[var(--accent-light)] text-[var(--accent)] flex items-center justify-center font-bold text-sm shrink-0">{order.clientName[0]}</div>
                 <div>
-                  <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">{order.clientName}</h4>
-                  <p className="text-xs text-slate-400">{order.productName || '—'}</p>
-                  <p className="text-[10px] text-slate-400 font-mono mt-0.5">GHS {order.totalAmount.toLocaleString()}</p>
+                  <h4 className="text-sm font-bold text-[var(--text-primary)]">{order.clientName}</h4>
+                  <p className="text-xs text-[var(--text-muted)]">{order.productName || '—'}</p>
+                  <p className="text-[10px] text-[var(--text-muted)] font-mono mt-0.5">GHS {order.totalAmount.toLocaleString()}</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
                 <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${statusColor(order.status)}`}>{order.status.replace(/_/g, ' ')}</span>
-                <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
+                <ChevronRight className="w-4 h-4 text-[var(--text-muted)] shrink-0" />
               </div>
             </div>
           ))}
           {filteredOrders.length === 0 && (
-            <div className="p-8 text-center text-slate-400 text-xs bg-white dark:bg-slate-800 rounded-2xl">No orders matched search.</div>
+            <div className="p-8 text-center text-[var(--text-muted)] text-xs bg-[var(--bg-card)] rounded-2xl border border-[var(--border)]">No orders matched search.</div>
           )}
         </div>
 
@@ -1136,111 +1137,111 @@ export default function MarketingDashboard({
         <div className="hidden lg:block overflow-x-auto w-full">
           <table className="w-full text-xs text-left">
             <thead>
-              <tr className="theme-table-header-row text-slate-400 uppercase font-semibold text-[10px]">
+              <tr className="theme-table-header-row text-[var(--text-muted)] uppercase font-semibold text-[10px] border-b border-[var(--border)]">
                 <th className="py-3 px-5 whitespace-nowrap">
                   <input
                     type="checkbox"
                     checked={filteredOrders.length > 0 && selectedOrdersRows.size === filteredOrders.length}
                     onChange={handleSelectAllOrders}
-                    className="accent-blue-600 w-3.5 h-3.5"
+                    className="accent-[var(--accent)] w-3.5 h-3.5"
                   />
                 </th>
-                <th onClick={() => handleSort('ticketNumber', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none hidden sm:table-cell">
+                <th onClick={() => handleSort('ticketNumber', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none hidden sm:table-cell text-[var(--text-primary)]">
                   <div className="flex items-center gap-1">
                     <span>Ticket #</span>
                     <span className="text-[9px] opacity-70">{ordersSortField === 'ticketNumber' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                   </div>
                 </th>
-                <th onClick={() => handleSort('id', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none hidden md:table-cell">
+                <th onClick={() => handleSort('id', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none hidden md:table-cell text-[var(--text-primary)]">
                   <div className="flex items-center gap-1">
                     <span>Order ID</span>
                     <span className="text-[9px] opacity-70">{ordersSortField === 'id' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                   </div>
                 </th>
-                <th onClick={() => handleSort('clientName', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                <th onClick={() => handleSort('clientName', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none text-[var(--text-primary)]">
                   <div className="flex items-center gap-1">
                     <span>Client</span>
                     <span className="text-[9px] opacity-70">{ordersSortField === 'clientName' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                   </div>
                 </th>
-                <th onClick={() => handleSort('productName', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                <th onClick={() => handleSort('productName', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none text-[var(--text-primary)]">
                   <div className="flex items-center gap-1">
                     <span>Product</span>
                     <span className="text-[9px] opacity-70">{ordersSortField === 'productName' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                   </div>
                 </th>
-                <th onClick={() => handleSort('destination', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none hidden md:table-cell">
+                <th onClick={() => handleSort('destination', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none hidden md:table-cell text-[var(--text-primary)]">
                   <div className="flex items-center gap-1">
                     <span>Destination</span>
                     <span className="text-[9px] opacity-70">{ordersSortField === 'destination' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                   </div>
                 </th>
-                <th onClick={() => handleSort('paymentMode', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                <th onClick={() => handleSort('paymentMode', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none text-[var(--text-primary)]">
                   <div className="flex items-center gap-1">
                     <span>Mode</span>
                     <span className="text-[9px] opacity-70">{ordersSortField === 'paymentMode' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                   </div>
                 </th>
-                <th onClick={() => handleSort('totalAmount', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 text-right whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                <th onClick={() => handleSort('totalAmount', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 text-right whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none text-[var(--text-primary)]">
                   <div className="flex items-center justify-end gap-1">
                     <span>Amount</span>
                     <span className="text-[9px] opacity-70">{ordersSortField === 'totalAmount' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                   </div>
                 </th>
-                <th onClick={() => handleSort('status', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 text-center whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                <th onClick={() => handleSort('status', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 text-center whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none text-[var(--text-primary)]">
                   <div className="flex items-center justify-center gap-1">
                     <span>Status</span>
                     <span className="text-[9px] opacity-70">{ordersSortField === 'status' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                   </div>
                 </th>
-                <th onClick={() => handleSort('createdAt', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none hidden lg:table-cell">
+                <th onClick={() => handleSort('createdAt', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none hidden lg:table-cell text-[var(--text-primary)]">
                   <div className="flex items-center gap-1">
                     <span>Submitted</span>
                     <span className="text-[9px] opacity-70">{ordersSortField === 'createdAt' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                   </div>
                 </th>
-                <th className="py-3 px-5 text-center whitespace-nowrap">Actions</th>
+                <th className="py-3 px-5 text-center whitespace-nowrap text-[var(--text-primary)]">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-custom">
+            <tbody className="divide-y divide-[var(--border)]">
               {sortedOrders.map(order => (
-                <tr key={order.id} className="theme-table-row group cursor-pointer animate-fade-in-up" onClick={() => setSelectedOrder(order)}>
+                <tr key={order.id} className="theme-table-row hover:bg-[var(--accent-light)] transition-colors group cursor-pointer text-[var(--text-primary)]" onClick={() => setSelectedOrder(order)}>
                   <td className="py-3 px-5" onClick={e => e.stopPropagation()}>
                     <input
                       type="checkbox"
                       checked={selectedOrdersRows.has(order.id)}
                       onChange={() => handleSelectOrdersRow(order.id)}
-                      className="accent-blue-600 w-3.5 h-3.5"
+                      className="accent-[var(--accent)] w-3.5 h-3.5"
                     />
                   </td>
-                  <td className="py-3.5 px-3 font-mono text-emerald-450 font-bold hidden sm:table-cell">{order.ticketNumber || '—'}</td>
-                  <td className="py-3.5 px-3 font-mono text-slate-400 hidden md:table-cell">{order.id}</td>
+                  <td className="py-3.5 px-3 font-mono font-bold hidden sm:table-cell text-[var(--text-primary)]">{order.ticketNumber || '—'}</td>
+                  <td className="py-3.5 px-3 font-mono text-[var(--text-muted)] hidden md:table-cell">{order.id}</td>
                   <td className="py-3.5 px-3 font-semibold text-sm">{order.clientName}</td>
-                  <td className="py-3.5 px-3 text-slate-350">{order.productName || '—'}</td>
-                  <td className="py-3.5 px-3 text-slate-400 hidden md:table-cell">{order.destination || '—'}</td>
+                  <td className="py-3.5 px-3 text-[var(--text-secondary)]">{order.productName || '—'}</td>
+                  <td className="py-3.5 px-3 text-[var(--text-muted)] hidden md:table-cell">{order.destination || '—'}</td>
                   <td className="py-3.5 px-3">
-                    <span className={`px-2.5 py-0.5 rounded text-[9px] font-bold ${order.paymentMode === 'CREDIT' ? 'bg-amber-500/10 text-amber-400' : order.paymentMode === 'CASH' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-blue-500/10 text-blue-450'}`}>{order.paymentMode}</span>
+                    <span className={`px-2.5 py-0.5 rounded text-[9px] font-bold ${order.paymentMode === 'CREDIT' ? 'bg-amber-500/10 text-amber-500' : order.paymentMode === 'CASH' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-blue-500/10 text-blue-500'}`}>{order.paymentMode}</span>
                   </td>
-                  <td className="py-3.5 px-3 text-right font-bold font-mono text-[13px]">GHS {order.totalAmount.toLocaleString()}</td>
+                  <td className="py-3.5 px-3 text-right font-bold font-mono text-[13px] text-[var(--text-primary)]">GHS {order.totalAmount.toLocaleString()}</td>
                   <td className="py-3.5 px-3 text-center">
                     <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${statusColor(order.status)}`}>{order.status.replace(/_/g, ' ')}</span>
                   </td>
-                  <td className="py-3.5 px-3 text-slate-400 font-mono text-[10px] hidden lg:table-cell">{order.createdAt}</td>
+                  <td className="py-3.5 px-3 text-[var(--text-muted)] font-mono text-[10px] hidden lg:table-cell">{order.createdAt}</td>
                   <td className="py-3.5 px-5 text-center relative" onClick={(e) => e.stopPropagation()}>
                     <button
                       onClick={() => setActiveOrdersMenu(activeOrdersMenu === order.id ? null : order.id)}
-                      className="w-8 h-8 inline-flex items-center justify-center bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg text-slate-500 dark:text-slate-400 transition-colors select-none"
+                      className="w-8 h-8 inline-flex items-center justify-center bg-[var(--bg)] hover:bg-[var(--accent-light)] rounded-lg text-[var(--text-secondary)] transition-colors select-none border border-[var(--border)]"
                     >
                       ···
                     </button>
                     {activeOrdersMenu === order.id && (
-                      <div className="absolute right-5 mt-1 w-44 bg-[var(--bg-card)] border border-custom rounded-xl shadow-xl z-30 p-1 flex flex-col">
-                        <button onClick={() => setSelectedOrder(order)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-left">📋 View Order</button>
-                        <button onClick={() => handleEditOrder(order)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-left">✏ Edit Value</button>
-                        <button onClick={() => handleDuplicateOrder(order)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-left">📋 Duplicate</button>
-                        <button onClick={() => handleShareOrder(order)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-left">🔗 Share Link</button>
-                        <div className="h-px bg-slate-200 dark:bg-slate-700 my-1"></div>
-                        <button onClick={() => handleDeleteOrder(order.id)} className="flex items-center gap-2 px-3 py-2 text-xs text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors text-left">🗑 Delete</button>
+                      <div className="absolute right-5 mt-1 w-44 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl z-30 p-1 flex flex-col text-left">
+                        <button onClick={() => setSelectedOrder(order)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left">📋 View Order</button>
+                        <button onClick={() => handleEditOrder(order)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left">✏ Edit Value</button>
+                        <button onClick={() => handleDuplicateOrder(order)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left">📋 Duplicate</button>
+                        <button onClick={() => handleShareOrder(order)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left">🔗 Share Link</button>
+                        <div className="h-px bg-[var(--border)] my-1"></div>
+                        <button onClick={() => handleDeleteOrder(order.id)} className="flex items-center gap-2 px-3 py-2 text-xs text-rose-500 hover:bg-rose-50 rounded-lg transition-colors text-left">🗑 Delete</button>
                       </div>
                     )}
                   </td>
@@ -1251,12 +1252,12 @@ export default function MarketingDashboard({
         </div>
 
         {/* Pagination Footer */}
-        <div className="theme-table-footer flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-4">
-          <p className="text-xs text-slate-400 font-mono">Showing {filteredOrders.length} of {localOrders.length} bookings</p>
+        <div className="theme-table-footer flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-4 border-t border-[var(--border)] bg-[var(--bg)]">
+          <p className="text-xs text-[var(--text-muted)] font-mono">Showing {filteredOrders.length} of {localOrders.length} bookings</p>
           <div className="flex items-center gap-1">
-            <button className="w-8 h-8 flex items-center justify-center text-xs text-slate-400 hover:text-white bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg transition-colors border border-custom disabled:opacity-30" disabled>‹</button>
-            <button className="w-8 h-8 flex items-center justify-center text-xs text-white bg-blue-600 rounded-lg font-bold">1</button>
-            <button className="w-8 h-8 flex items-center justify-center text-xs text-slate-400 hover:text-white bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg transition-colors border border-custom disabled:opacity-30" disabled>›</button>
+            <button className="w-8 h-8 flex items-center justify-center text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-[var(--bg-card)] hover:bg-[var(--accent-light)] rounded-lg transition-colors border border-[var(--border)] disabled:opacity-30" disabled>‹</button>
+            <button className="w-8 h-8 flex items-center justify-center text-xs text-white bg-[var(--accent)] rounded-lg font-bold">1</button>
+            <button className="w-8 h-8 flex items-center justify-center text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-[var(--bg-card)] hover:bg-[var(--accent-light)] rounded-lg transition-colors border border-[var(--border)] disabled:opacity-30" disabled>›</button>
           </div>
         </div>
       </div>

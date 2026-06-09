@@ -535,81 +535,81 @@ export default function HrDashboard({
         )}
       </div>
 
-      {/* ══ DESKTOP LAYOUT (lg+) — UNCHANGED ══ */}
-      <div className="hidden lg:block">
+      {/* ══ DESKTOP LAYOUT (lg+) ══ */}
+      <div className="hidden lg:block text-[var(--text-primary)]">
       <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight">Human Resources Workspace</h1>
-          <p className="text-xs sm:text-sm text-muted">Manage staff registrations, approvals, and attendance tracking.</p>
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight text-[var(--text-primary)]">Human Resources Workspace</h1>
+          <p className="text-xs sm:text-sm text-[var(--text-muted)]">Manage staff registrations, approvals, and daily attendance tracking.</p>
         </div>
         <div className="flex gap-2 w-full sm:w-auto">
-          <button onClick={() => exportToCSV(localAttendance, ['id', 'fullName', 'checkInTime', 'status'], 'hr_attendance')} className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold cursor-pointer border border-slate-200 transition-colors">
+          <button onClick={() => exportToCSV(localAttendance, ['id', 'fullName', 'checkInTime', 'status'], 'hr_attendance')} className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 bg-[var(--accent-light)] hover:opacity-90 text-[var(--accent)] rounded-lg text-xs font-semibold cursor-pointer border border-transparent transition-all">
             <FileSpreadsheet className="w-3.5 h-3.5" /><span>Attendance (CSV)</span>
           </button>
-          <button onClick={() => exportToPDF('Daily Staff Attendance Log', localAttendance, ['id', 'fullName', 'checkInTime', 'status'])} className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold cursor-pointer border border-slate-200 transition-colors">
+          <button onClick={() => exportToPDF('Daily Staff Attendance Log', localAttendance, ['id', 'fullName', 'checkInTime', 'status'])} className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 bg-[var(--accent-light)] hover:opacity-90 text-[var(--accent)] rounded-lg text-xs font-semibold cursor-pointer border border-transparent transition-all">
             <FileText className="w-3.5 h-3.5" /><span>Attendance (PDF)</span>
           </button>
         </div>
       </div>
-
+ 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
         {stats.map((card, idx) => {
           const Icon = card.icon;
           const isProminent = idx < 2;
           return (
-            <div key={idx} className="p-4 sm:p-6 app-card flex items-center justify-between hover:scale-102 transition-all duration-300">
+            <div key={idx} className="p-4 sm:p-6 bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] border-b-[3px] border-[var(--accent)] flex items-center justify-between hover:scale-102 transition-all duration-300">
               <div>
-                <span className="text-[10px] sm:text-xs text-slate-400 uppercase font-semibold">{card.title}</span>
-                <h3 className={`font-bold mt-1 ${isProminent ? 'text-2xl sm:text-3xl' : 'text-lg sm:text-xl'}`}>{card.value}</h3>
-                <p className="text-[9px] sm:text-[10px] text-slate-400 mt-1">{card.sub}</p>
+                <span className="text-[10px] sm:text-xs text-[var(--text-muted)] uppercase font-semibold">{card.title}</span>
+                <h3 className={`font-bold mt-1 text-[var(--text-primary)] ${isProminent ? 'text-2xl sm:text-3xl' : 'text-lg sm:text-xl'}`}>{card.value}</h3>
+                <p className="text-[9px] sm:text-[10px] text-[var(--text-muted)] mt-1">{card.sub}</p>
               </div>
-              <div className={`p-3 sm:p-4 bg-slate-100 rounded-2xl ${card.color} bg-accent-light shrink-0`}>
-                <Icon className="w-5 h-5 sm:w-6 sm:h-6" />
+              <div className="w-12 h-12 rounded-full bg-[var(--accent-light)] flex items-center justify-center shrink-0">
+                <Icon className="w-5 h-5 sm:w-6 sm:h-6 text-[var(--accent)]" />
               </div>
             </div>
           );
         })}
       </div>
-
+ 
       {/* Chart */}
-      <div className="p-4 sm:p-6 app-card">
-        <h3 className="text-lg font-bold">Attendance & On-Time Performance Index</h3>
-        <p className="text-xs text-muted">Weekly present vs late clock-in trends.</p>
+      <div className="p-4 sm:p-6 bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] border border-[var(--border)]">
+        <h3 className="text-lg font-bold text-[var(--text-primary)]">Attendance & On-Time Performance Index</h3>
+        <p className="text-xs text-[var(--text-muted)]">Weekly present vs late clock-in trends.</p>
         <div className="h-[200px] sm:h-60 lg:h-[300px] mt-4">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={lineChartData}>
-              <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
-              <XAxis dataKey="name" stroke="#94a3b8" fontSize={10} />
-              <YAxis stroke="#94a3b8" fontSize={10} />
-              <Tooltip />
-              <Line type="monotone" dataKey="Present" stroke="#10b981" strokeWidth={2} activeDot={{ r: 8 }} />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" opacity={0.5} />
+              <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={10} />
+              <YAxis stroke="var(--text-muted)" fontSize={10} />
+              <Tooltip contentStyle={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)', color: 'var(--text-primary)' }} />
+              <Line type="monotone" dataKey="Present" stroke="var(--accent)" strokeWidth={2.5} activeDot={{ r: 8 }} />
               <Line type="monotone" dataKey="Late" stroke="#f43f5e" strokeWidth={2} />
             </LineChart>
           </ResponsiveContainer>
         </div>
       </div>
-
+ 
       {/* Tab views */}
-      <div className="border-t border-custom pt-6">
-
+      <div className="border-t border-[var(--border)] pt-6">
+ 
         {/* EMPLOYEE DATABASE */}
         {activeSubTab === 'Employees' && (
           <div className="space-y-6">
             {/* Registration Approval Queue */}
-            <div className="p-6 app-card space-y-4">
-              <h3 className="text-lg font-bold">New Registration Approval Queue</h3>
-              <p className="text-xs text-muted">Approve to generate login password & email; Deny to send rejection notice.</p>
-              <div className="divide-y divide-custom">
+            <div className="p-6 bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] border border-[var(--border)] space-y-4">
+              <h3 className="text-lg font-bold text-[var(--text-primary)]">New Registration Approval Queue</h3>
+              <p className="text-xs text-[var(--text-muted)]">Approve to generate login password & email; Deny to send rejection notice.</p>
+              <div className="divide-y divide-[var(--border)]">
                 {pendingRegistrations.filter(r => r.status === 'PENDING').map(reg => (
                   <div key={reg.id}>
                     {/* Mobile list card layout */}
                     <div className="lg:hidden mobile-list-card">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0">
-                          <User className="w-5 h-5 text-[var(--accent-color,#068d5c)]" />
+                          <User className="w-5 h-5 text-[var(--accent,#068d5c)]" />
                         </div>
                         <div>
                           <p className="text-sm font-bold text-slate-800 dark:text-slate-200">{reg.fullName}</p>
@@ -625,20 +625,20 @@ export default function HrDashboard({
                         <ChevronRight className="w-4 h-4 text-slate-400" />
                       </div>
                     </div>
-
+ 
                     {/* Desktop layout */}
-                    <div className="hidden lg:flex py-4 items-center justify-between gap-3">
+                    <div className="hidden lg:flex py-4 items-center justify-between gap-3 border-b border-[var(--border)]">
                       <div>
-                        <p className="text-sm font-bold">{reg.fullName}</p>
-                        <p className="text-xs text-slate-500">{reg.email} | Dept: <strong>{reg.department}</strong></p>
-                        {reg.phone && <p className="text-[10px] text-slate-400">Phone: {reg.phone}</p>}
-                        <p className="text-[10px] text-slate-400">Ghana Card: <code className="bg-slate-100 dark:bg-slate-800 text-[var(--text-primary)] px-1 rounded">{reg.ghanaCard}</code> | Submitted: {reg.submittedAt}</p>
+                        <p className="text-sm font-bold text-[var(--text-primary)]">{reg.fullName}</p>
+                        <p className="text-xs text-[var(--text-muted)]">{reg.email} | Dept: <strong>{reg.department}</strong></p>
+                        {reg.phone && <p className="text-[10px] text-[var(--text-muted)]">Phone: {reg.phone}</p>}
+                        <p className="text-[10px] text-[var(--text-muted)]">Ghana Card: <code className="bg-[var(--bg)] text-[var(--text-primary)] border border-[var(--border)] px-1.5 py-0.5 rounded">{reg.ghanaCard}</code> | Submitted: {reg.submittedAt}</p>
                       </div>
                       <div className="flex gap-2 shrink-0 w-full sm:w-auto">
-                        <button onClick={() => handleApprove(reg)} className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold cursor-pointer transition-colors">
+                        <button onClick={() => handleApprove(reg)} className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 bg-[var(--accent)] hover:opacity-90 text-white rounded-lg text-xs font-bold cursor-pointer transition-all">
                           <UserCheck className="w-3.5 h-3.5" /> Approve
                         </button>
-                        <button onClick={() => handleDeny(reg)} className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 dark:text-slate-300 dark:bg-slate-800 rounded-lg text-xs font-bold cursor-pointer transition-colors">
+                        <button onClick={() => handleDeny(reg)} className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-650 rounded-lg text-xs font-bold cursor-pointer transition-all">
                           <UserX className="w-3.5 h-3.5" /> Deny
                         </button>
                       </div>
@@ -646,66 +646,66 @@ export default function HrDashboard({
                   </div>
                 ))}
                 {pendingRegistrations.filter(r => r.status === 'PENDING').length === 0 && (
-                  <p className="text-xs text-slate-400 text-center py-6">No pending registrations.</p>
+                  <p className="text-xs text-[var(--text-muted)] text-center py-6">No pending registrations.</p>
                 )}
               </div>
-
+ 
               {/* Approval log */}
               {approvalLog.length > 0 && (
-                <div className="mt-4 pt-4 border-t border-custom">
-                  <p className="text-xs font-bold text-slate-500 mb-2">Recent Decisions</p>
+                <div className="mt-4 pt-4 border-t border-[var(--border)]">
+                  <p className="text-xs font-bold text-[var(--text-muted)] mb-2">Recent Decisions</p>
                   <div className="space-y-2">
                     {approvalLog.slice(0, 5).map((log, idx) => (
-                      <div key={idx} className={`flex justify-between items-center p-2.5 rounded-xl text-[10px] ${log.action === 'APPROVED' ? 'bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/50' : 'bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/50'}`}>
-                        <span className="font-medium">{log.name}</span>
+                      <div key={idx} className={`flex justify-between items-center p-2.5 rounded-xl text-[10px] ${log.action === 'APPROVED' ? 'bg-[var(--accent-light)] border border-[var(--accent)] text-[var(--text-primary)]' : 'bg-red-50/50 dark:bg-rose-950/10 border border-red-200 text-red-600'}`}>
+                        <span className="font-semibold">{log.name}</span>
                         {log.action === 'APPROVED' && log.password && (
-                          <span className="text-slate-500">Password: <code className="bg-white dark:bg-slate-850 px-1 rounded border border-custom">{log.password}</code></span>
+                          <span className="text-[var(--text-muted)]">Password: <code className="bg-[var(--bg)] px-1.5 py-0.5 rounded border border-[var(--border)]">{log.password}</code></span>
                         )}
-                        <span className={`font-bold ${log.action === 'APPROVED' ? 'text-emerald-600' : 'text-rose-600'}`}>{log.action}</span>
-                        <span className="text-slate-400">{log.at}</span>
+                        <span className={`font-bold ${log.action === 'APPROVED' ? 'text-[var(--accent)]' : 'text-red-500'}`}>{log.action}</span>
+                        <span className="text-[var(--text-muted)]">{log.at}</span>
                       </div>
                     ))}
                   </div>
                 </div>
               )}
             </div>
-
+ 
             {/* Staff Members Table */}
-            <div className="theme-table-wrapper">
+            <div className="bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] border border-[var(--border)] overflow-hidden">
               {/* Table Toolbar */}
-              <div className="theme-table-toolbar flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-5 py-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-5 py-4 border-b border-[var(--border)]">
                 <div className="flex items-center gap-2">
-                  <h3 className="font-bold text-sm">Staff Members Directory</h3>
-                  <span className="text-xs font-mono text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">{filteredStaff.length} users</span>
+                  <h3 className="font-bold text-sm text-[var(--text-primary)]">Staff Members Directory</h3>
+                  <span className="text-xs font-mono text-[var(--text-muted)] bg-[var(--bg)] border border-[var(--border)] px-2.5 py-0.5 rounded-full">{filteredStaff.length} users</span>
                 </div>
                 <div className="flex items-center gap-3">
                   {/* Search */}
                   <div className="relative flex items-center">
-                    <span className="absolute left-3 text-slate-500 text-xs pointer-events-none">🔍</span>
+                    <span className="absolute left-3 text-slate-400 text-xs pointer-events-none">🔍</span>
                     <input
                       type="text"
                       placeholder="Search staff…"
                       value={staffSearch}
                       onChange={e => setStaffSearch(e.target.value)}
-                      className="pl-8 pr-3 py-1.5 text-xs rounded-lg outline-none transition w-40"
+                      className="pl-8 pr-3 py-1.5 text-xs rounded-lg bg-[var(--bg)] border border-[var(--border)] text-[var(--text-primary)] placeholder-slate-400 focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] outline-none transition w-40"
                     />
                   </div>
                   {/* Status Dropdown */}
                   <div className="relative">
                     <button
                       onClick={(e) => { e.stopPropagation(); setIsStaffFilterOpen(!isStaffFilterOpen); }}
-                      className="flex items-center gap-1.5 text-xs text-[var(--text-primary)] bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 px-3 py-1.5 rounded-lg transition-colors border border-custom"
+                      className="flex items-center gap-1.5 text-xs text-[var(--text-primary)] bg-[var(--accent-light)] hover:opacity-90 text-[var(--accent)] px-3 py-1.5 rounded-lg transition-all border-none font-semibold cursor-pointer"
                     >
                       <span>Filter: {staffStatusFilter === 'ALL' ? 'All' : staffStatusFilter}</span>
                       <span className="text-[10px]">▼</span>
                     </button>
                     {isStaffFilterOpen && (
-                      <div className="absolute right-0 top-full mt-1.5 w-40 bg-[var(--bg-card)] border border-custom rounded-xl shadow-xl z-20 p-1 flex flex-col">
+                      <div className="absolute right-0 top-full mt-1.5 w-40 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl z-20 p-1 flex flex-col">
                         {(['ALL', 'ACTIVE', 'INACTIVE'] as const).map(st => (
                           <button
                             key={st}
                             onClick={() => { setStaffStatusFilter(st); setIsStaffFilterOpen(false); }}
-                            className="flex items-center gap-2 px-3 py-2 text-xs rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-left transition-colors text-[var(--text-primary)]"
+                            className="flex items-center gap-2 px-3 py-2 text-xs rounded-lg hover:bg-[var(--accent-light)] text-left transition-colors text-[var(--text-primary)] cursor-pointer"
                           >
                             <span className={`w-2 h-2 rounded-full ${st === 'ACTIVE' ? 'bg-emerald-400' : st === 'INACTIVE' ? 'bg-rose-400' : 'bg-slate-400'}`} />
                             {st === 'ALL' ? 'All Status' : st}
@@ -715,28 +715,28 @@ export default function HrDashboard({
                     )}
                   </div>
                   {/* Export */}
-                  <button onClick={() => exportToCSV(filteredStaff, ['id', 'fullName', 'email', 'department', 'role', 'ghanaCard', 'phone', 'joinedAt', 'status'], 'staff_directory')} className="flex items-center gap-1 text-xs text-[var(--text-primary)] bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 px-3 py-1.5 rounded-lg transition-colors border border-custom">
+                  <button onClick={() => exportToCSV(filteredStaff, ['id', 'fullName', 'email', 'department', 'role', 'ghanaCard', 'phone', 'joinedAt', 'status'], 'staff_directory')} className="flex items-center gap-1.5 text-xs text-[var(--text-primary)] bg-[var(--accent-light)] hover:opacity-90 text-[var(--accent)] px-3 py-1.5 rounded-lg transition-all border-none font-semibold cursor-pointer">
                     <span>⬇</span> Export
                   </button>
                   {/* Add Staff */}
-                  <button onClick={handleAddStaff} className="flex items-center gap-1 text-xs text-white bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-lg transition-colors font-bold">
+                  <button onClick={handleAddStaff} className="flex items-center gap-1.5 text-xs text-white bg-gradient-to-r from-[var(--accent)] to-[var(--accent-hover)] hover:opacity-90 px-3 py-1.5 rounded-lg transition-all font-bold cursor-pointer">
                     <span>＋</span> Add Staff
                   </button>
                 </div>
               </div>
-
+ 
               {/* Scrollable table / Card lists */}
               <div>
                 {/* Mobile Card List */}
-                <div className="lg:hidden space-y-3">
+                <div className="lg:hidden space-y-3 p-4">
                   {sortedStaff.map(staff => (
                     <div 
                       key={staff.id} 
                       onClick={() => setActiveMobileDetail({ type: 'staff', data: staff })}
-                      className="bg-white dark:bg-slate-850 rounded-2xl shadow-sm p-4 border border-slate-100 dark:border-slate-800 flex items-center justify-between cursor-pointer"
+                      className="bg-white dark:bg-slate-855 rounded-2xl shadow-sm p-4 border border-slate-100 dark:border-slate-800 flex items-center justify-between cursor-pointer"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-base shrink-0">
+                        <div className="w-10 h-10 rounded-full bg-blue-550 text-white flex items-center justify-center font-bold text-base shrink-0">
                           {staff.fullName[0]}
                         </div>
                         <div>
@@ -754,101 +754,101 @@ export default function HrDashboard({
                     </div>
                   ))}
                   {filteredStaff.length === 0 && (
-                    <div className="p-8 text-center text-slate-400 text-xs bg-white dark:bg-slate-850 rounded-2xl">No staff members found.</div>
+                    <div className="p-8 text-center text-slate-400 text-xs bg-white dark:bg-slate-855 rounded-2xl">No staff members found.</div>
                   )}
                 </div>
-
+ 
                 {/* Desktop Table View */}
                 <div className="hidden lg:block overflow-x-auto w-full animate-fade-in">
                   <table className="w-full text-xs text-left">
                   <thead>
-                    <tr className="theme-table-header-row text-slate-400 uppercase font-semibold text-[10px]">
-                      <th className="py-3 px-5 whitespace-nowrap">
+                    <tr className="bg-[var(--bg)] border-b border-[var(--border)] text-[var(--text-muted)] uppercase font-semibold text-[10px]">
+                      <th className="py-3 px-5 whitespace-nowrap w-12">
                         <input
                           type="checkbox"
                           checked={filteredStaff.length > 0 && selectedStaffRows.size === filteredStaff.length}
                           onChange={handleSelectAllStaff}
-                          className="accent-blue-600 w-3.5 h-3.5"
+                          className="accent-[var(--accent)] w-3.5 h-3.5"
                         />
                       </th>
-                      <th onClick={() => handleSort('id', staffSortField, setStaffSortField, staffSortDir, setStaffSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none hidden sm:table-cell">
+                      <th onClick={() => handleSort('id', staffSortField, setStaffSortField, staffSortDir, setStaffSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none hidden sm:table-cell">
                         <div className="flex items-center gap-1">
                           <span>Staff ID</span>
                           <span className="text-[9px] opacity-70">{staffSortField === 'id' ? (staffSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                         </div>
                       </th>
-                      <th onClick={() => handleSort('fullName', staffSortField, setStaffSortField, staffSortDir, setStaffSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                      <th onClick={() => handleSort('fullName', staffSortField, setStaffSortField, staffSortDir, setStaffSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none">
                         <div className="flex items-center gap-1">
                           <span>Name</span>
                           <span className="text-[9px] opacity-70">{staffSortField === 'fullName' ? (staffSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                         </div>
                       </th>
-                      <th onClick={() => handleSort('department', staffSortField, setStaffSortField, staffSortDir, setStaffSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                      <th onClick={() => handleSort('department', staffSortField, setStaffSortField, staffSortDir, setStaffSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none">
                         <div className="flex items-center gap-1">
                           <span>Department</span>
                           <span className="text-[9px] opacity-70">{staffSortField === 'department' ? (staffSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                         </div>
                       </th>
-                      <th onClick={() => handleSort('role', staffSortField, setStaffSortField, staffSortDir, setStaffSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none hidden sm:table-cell">
+                      <th onClick={() => handleSort('role', staffSortField, setStaffSortField, staffSortDir, setStaffSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none hidden sm:table-cell">
                         <div className="flex items-center gap-1">
                           <span>Role</span>
                           <span className="text-[9px] opacity-70">{staffSortField === 'role' ? (staffSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                         </div>
                       </th>
-                      <th onClick={() => handleSort('ghanaCard', staffSortField, setStaffSortField, staffSortDir, setStaffSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none hidden md:table-cell">
+                      <th onClick={() => handleSort('ghanaCard', staffSortField, setStaffSortField, staffSortDir, setStaffSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none hidden md:table-cell">
                         <div className="flex items-center gap-1">
                           <span>Ghana Card</span>
                           <span className="text-[9px] opacity-70">{staffSortField === 'ghanaCard' ? (staffSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                         </div>
                       </th>
-                      <th onClick={() => handleSort('phone', staffSortField, setStaffSortField, staffSortDir, setStaffSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none hidden md:table-cell">
+                      <th onClick={() => handleSort('phone', staffSortField, setStaffSortField, staffSortDir, setStaffSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none hidden md:table-cell">
                         <div className="flex items-center gap-1">
                           <span>Phone</span>
                           <span className="text-[9px] opacity-70">{staffSortField === 'phone' ? (staffSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                         </div>
                       </th>
-                      <th onClick={() => handleSort('joinedAt', staffSortField, setStaffSortField, staffSortDir, setStaffSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none hidden lg:table-cell">
+                      <th onClick={() => handleSort('joinedAt', staffSortField, setStaffSortField, staffSortDir, setStaffSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none hidden lg:table-cell">
                         <div className="flex items-center gap-1">
                           <span>Joined</span>
                           <span className="text-[9px] opacity-70">{staffSortField === 'joinedAt' ? (staffSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                         </div>
                       </th>
-                      <th onClick={() => handleSort('status', staffSortField, setStaffSortField, staffSortDir, setStaffSortDir)} className="py-3 px-3 whitespace-nowrap text-center cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                      <th onClick={() => handleSort('status', staffSortField, setStaffSortField, staffSortDir, setStaffSortDir)} className="py-3 px-3 whitespace-nowrap text-center cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none">
                         <div className="flex items-center justify-center gap-1">
                           <span>Status</span>
                           <span className="text-[9px] opacity-70">{staffSortField === 'status' ? (staffSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                         </div>
                       </th>
-                      <th className="py-3 px-5 whitespace-nowrap text-center">Actions</th>
+                      <th className="py-3 px-5 whitespace-nowrap text-center w-20">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-custom">
+                  <tbody className="divide-y divide-[var(--border)]">
                     {sortedStaff.map(staff => (
-                      <tr key={staff.id} className="theme-table-row group">
+                      <tr key={staff.id} className="hover:bg-[var(--accent-light)] text-[var(--text-primary)] transition-colors duration-150">
                         <td className="py-3.5 px-5">
                           <input
                             type="checkbox"
                             checked={selectedStaffRows.has(staff.id)}
                             onChange={() => handleSelectStaffRow(staff.id)}
-                            className="accent-blue-600 w-3.5 h-3.5"
+                            className="accent-[var(--accent)] w-3.5 h-3.5"
                           />
                         </td>
-                        <td className="py-3.5 px-3 font-mono font-bold hidden sm:table-cell" title={staff.id}>
+                        <td className="py-3.5 px-3 font-mono font-bold hidden sm:table-cell text-[var(--text-muted)]" title={staff.id}>
                           ...{staff.id.slice(-8)}
                         </td>
                         <td className="py-3.5 px-3 font-medium">
                           <div className="flex flex-col">
-                            <span className="font-semibold text-sm">{staff.fullName}</span>
-                            <span className="text-[10px] text-slate-400 font-mono">{staff.email}</span>
+                            <span className="font-semibold text-sm text-[var(--text-primary)]">{staff.fullName}</span>
+                            <span className="text-[10px] text-[var(--text-muted)] font-mono">{staff.email}</span>
                           </div>
                         </td>
                         <td className="py-3.5 px-3">
-                          <span className="px-2.5 py-0.5 bg-blue-500/10 text-blue-400 rounded-full text-[9px] font-bold">{staff.department}</span>
+                          <span className="px-2.5 py-0.5 bg-[var(--accent-light)] text-[var(--accent)] rounded-full text-[9px] font-bold">{staff.department}</span>
                         </td>
-                        <td className="py-3.5 px-3 text-slate-400 hidden sm:table-cell">{staff.role}</td>
-                        <td className="py-3.5 px-3 font-mono text-[10px] text-slate-400 hidden md:table-cell">{staff.ghanaCard}</td>
-                        <td className="py-3.5 px-3 text-slate-400 font-mono hidden md:table-cell">{staff.phone}</td>
-                        <td className="py-3.5 px-3 text-slate-400 text-[10px] font-mono hidden lg:table-cell">{staff.joinedAt}</td>
+                        <td className="py-3.5 px-3 text-[var(--text-primary)] opacity-90 hidden sm:table-cell">{staff.role}</td>
+                        <td className="py-3.5 px-3 font-mono text-[10px] text-[var(--text-muted)] hidden md:table-cell">{staff.ghanaCard}</td>
+                        <td className="py-3.5 px-3 text-[var(--text-muted)] font-mono hidden md:table-cell">{staff.phone}</td>
+                        <td className="py-3.5 px-3 text-[var(--text-muted)] text-[10px] font-mono hidden lg:table-cell">{staff.joinedAt}</td>
                         <td className="py-3.5 px-3 text-center">
                           <span className={`px-2.5 py-0.5 rounded text-[9px] font-bold ${staff.status === 'ACTIVE' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-slate-500/10 text-slate-400'}`}>
                             {staff.status}
@@ -857,17 +857,17 @@ export default function HrDashboard({
                         <td className="py-3.5 px-5 text-center relative" onClick={(e) => e.stopPropagation()}>
                           <button
                             onClick={() => setActiveStaffMenu(activeStaffMenu === staff.id ? null : staff.id)}
-                            className="w-8 h-8 inline-flex items-center justify-center bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg text-slate-500 dark:text-slate-400 transition-colors select-none"
+                            className="w-8 h-8 inline-flex items-center justify-center bg-[var(--bg)] hover:bg-[var(--accent-light)] border border-[var(--border)] rounded-lg text-slate-500 dark:text-slate-400 transition-colors select-none"
                           >
                             ···
                           </button>
                           {activeStaffMenu === staff.id && (
-                            <div className="absolute right-5 mt-1 w-44 bg-[var(--bg-card)] border border-custom rounded-xl shadow-xl z-30 p-1 flex flex-col">
-                              <button onClick={() => handleEditStaff(staff)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-left">✏ Edit</button>
-                              <button onClick={() => handleDuplicateStaff(staff)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-left">📋 Duplicate</button>
-                              <button onClick={() => handleShareStaff(staff)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-left">🔗 Share Link</button>
-                              <div className="h-px bg-slate-200 dark:bg-slate-700 my-1"></div>
-                              <button onClick={() => handleDeleteStaff(staff.id)} className="flex items-center gap-2 px-3 py-2 text-xs text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors text-left">🗑 Delete</button>
+                            <div className="absolute right-5 mt-1 w-44 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl z-30 p-1 flex flex-col">
+                              <button onClick={() => handleEditStaff(staff)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left cursor-pointer">✏ Edit</button>
+                              <button onClick={() => handleDuplicateStaff(staff)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left cursor-pointer">📋 Duplicate</button>
+                              <button onClick={() => handleShareStaff(staff)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left cursor-pointer">🔗 Share Link</button>
+                              <div className="h-px bg-[var(--border)] my-1"></div>
+                              <button onClick={() => handleDeleteStaff(staff.id)} className="flex items-center gap-2 px-3 py-2 text-xs text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors text-left cursor-pointer">🗑 Delete</button>
                             </div>
                           )}
                         </td>
@@ -875,34 +875,34 @@ export default function HrDashboard({
                     ))}
                     {filteredStaff.length === 0 && (
                       <tr>
-                        <td colSpan={10} className="py-6 text-center text-slate-400">No staff members found.</td>
+                        <td colSpan={10} className="py-6 text-center text-[var(--text-muted)]">No staff members found.</td>
                       </tr>
                     )}
                   </tbody>
-                </table>
+                  </table>
+                </div>
               </div>
-            </div>
-
+ 
               {/* Table Footer / Pagination */}
-              <div className="theme-table-footer flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-4">
-                <p className="text-xs text-slate-400 font-mono">Showing {filteredStaff.length} of {localStaff.length} profiles</p>
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-4 border-t border-[var(--border)]">
+                <p className="text-xs text-[var(--text-muted)] font-mono">Showing {filteredStaff.length} of {localStaff.length} profiles</p>
                 <div className="flex items-center gap-1">
-                  <button className="w-8 h-8 flex items-center justify-center text-xs text-slate-400 hover:text-white bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg transition-colors border border-custom disabled:opacity-30" disabled>‹</button>
-                  <button className="w-8 h-8 flex items-center justify-center text-xs text-white bg-blue-600 rounded-lg font-bold">1</button>
-                  <button className="w-8 h-8 flex items-center justify-center text-xs text-slate-400 hover:text-white bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg transition-colors border border-custom disabled:opacity-30" disabled>›</button>
+                  <button className="w-8 h-8 flex items-center justify-center text-xs text-[var(--text-muted)] bg-[var(--bg)] rounded-lg border border-[var(--border)] cursor-not-allowed opacity-50" disabled>‹</button>
+                  <button className="w-8 h-8 flex items-center justify-center text-xs text-white bg-[var(--accent)] rounded-lg font-bold">1</button>
+                  <button className="w-8 h-8 flex items-center justify-center text-xs text-[var(--text-muted)] bg-[var(--bg)] rounded-lg border border-[var(--border)] cursor-not-allowed opacity-50" disabled>›</button>
                 </div>
               </div>
             </div>
           </div>
         )}
-
+ 
         {/* ATTENDANCE RECORDS */}
         {activeSubTab === 'Attendance' && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
             {/* Today's Attendance — max 5 visible, rest scrollable */}
-            <div className="p-6 app-card space-y-4">
-              <h3 className="text-lg font-bold">Today's Attendance Logs</h3>
-              <p className="text-xs text-slate-400">Showing today's check-ins (scroll for more).</p>
+            <div className="p-6 bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] border border-[var(--border)] space-y-4">
+              <h3 className="text-lg font-bold text-[var(--text-primary)]">Today's Attendance Logs</h3>
+              <p className="text-xs text-[var(--text-muted)]">Showing today's check-ins (scroll for more).</p>
               {/* First 5 always visible */}
               <div className="space-y-2">
                 {localAttendance.slice(0, 5).map(a => (
@@ -923,21 +923,21 @@ export default function HrDashboard({
                         <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
                       </div>
                     </div>
-
+ 
                     {/* Desktop layout */}
-                    <div className="hidden lg:flex justify-between items-center p-3 bg-slate-100/50 dark:bg-slate-800/50 rounded-xl">
+                    <div className="hidden lg:flex justify-between items-center p-3 bg-[var(--bg)] rounded-xl border border-[var(--border)]">
                       <div>
-                        <p className="text-xs font-bold">{a.fullName}</p>
-                        <p className="text-[10px] text-slate-400 mt-0.5">Checked In: {a.checkInTime}</p>
+                        <p className="text-xs font-bold text-[var(--text-primary)]">{a.fullName}</p>
+                        <p className="text-[10px] text-[var(--text-muted)] mt-0.5 font-mono">Checked In: {a.checkInTime}</p>
                       </div>
-                      <span className={`px-2.5 py-0.5 rounded text-[10px] font-bold ${a.status === 'PRESENT' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'}`}>{a.status}</span>
+                      <span className={`px-2.5 py-0.5 rounded text-[10px] font-bold ${a.status === 'PRESENT' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-amber-550 text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20'}`}>{a.status}</span>
                     </div>
                   </div>
                 ))}
               </div>
               {/* Overflow scrollable */}
               {localAttendance.length > 5 && (
-                <div className="max-h-48 overflow-y-auto space-y-2 border-t border-custom pt-2">
+                <div className="max-h-48 overflow-y-auto space-y-2 border-t border-[var(--border)] pt-2 pr-1">
                   {localAttendance.slice(5).map(a => (
                     <div key={a.id}>
                       {/* Mobile list card layout */}
@@ -956,57 +956,57 @@ export default function HrDashboard({
                           <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
                         </div>
                       </div>
-
+ 
                       {/* Desktop layout */}
-                      <div className="hidden lg:flex justify-between items-center p-3 bg-slate-100/20 dark:bg-slate-800/20 rounded-xl">
+                      <div className="hidden lg:flex justify-between items-center p-3 bg-[var(--bg)] rounded-xl opacity-90 hover:opacity-100 transition-opacity border border-[var(--border)]">
                         <div>
-                          <p className="text-xs font-bold text-slate-400">{a.fullName}</p>
-                          <p className="text-[10px] text-slate-400 mt-0.5">{a.checkInTime}</p>
+                          <p className="text-xs font-bold text-[var(--text-primary)]">{a.fullName}</p>
+                          <p className="text-[10px] text-[var(--text-muted)] mt-0.5 font-mono">{a.checkInTime}</p>
                         </div>
-                        <span className={`px-2.5 py-0.5 rounded text-[10px] font-bold ${a.status === 'PRESENT' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'}`}>{a.status}</span>
+                        <span className={`px-2.5 py-0.5 rounded text-[10px] font-bold ${a.status === 'PRESENT' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-amber-550 text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20'}`}>{a.status}</span>
                       </div>
                     </div>
                   ))}
                 </div>
               )}
             </div>
-
+ 
             {/* Attendance History Table */}
-            <div className="theme-table-wrapper lg:col-span-2">
+            <div className="bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] border border-[var(--border)] overflow-hidden lg:col-span-2">
               {/* Table Toolbar */}
-              <div className="theme-table-toolbar flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-5 py-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-5 py-4 border-b border-[var(--border)]">
                 <div className="flex items-center gap-2">
-                  <h3 className="font-bold text-sm">Attendance Log Ledger</h3>
-                  <span className="text-xs font-mono text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">{filteredAttendance.length} records</span>
+                  <h3 className="font-bold text-sm text-[var(--text-primary)]">Attendance Log Ledger</h3>
+                  <span className="text-xs font-mono text-[var(--text-muted)] bg-[var(--bg)] border border-[var(--border)] px-2.5 py-0.5 rounded-full">{filteredAttendance.length} records</span>
                 </div>
                 <div className="flex items-center gap-3">
                   {/* Search */}
                   <div className="relative flex items-center">
-                    <span className="absolute left-3 text-slate-500 text-xs pointer-events-none">🔍</span>
+                    <span className="absolute left-3 text-slate-400 text-xs pointer-events-none">🔍</span>
                     <input
                       type="text"
                       placeholder="Search name…"
                       value={attendanceSearch}
                       onChange={e => setAttendanceSearch(e.target.value)}
-                      className="pl-8 pr-3 py-1.5 text-xs rounded-lg outline-none transition w-36"
+                      className="pl-8 pr-3 py-1.5 text-xs rounded-lg bg-[var(--bg)] border border-[var(--border)] text-[var(--text-primary)] placeholder-slate-400 focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] outline-none transition w-36"
                     />
                   </div>
                   {/* Status Dropdown */}
                   <div className="relative">
                     <button
                       onClick={(e) => { e.stopPropagation(); setIsAttendanceFilterOpen(!isAttendanceFilterOpen); }}
-                      className="flex items-center gap-1.5 text-xs text-[var(--text-primary)] bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 px-3 py-1.5 rounded-lg transition-colors border border-custom"
+                      className="flex items-center gap-1.5 text-xs text-[var(--text-primary)] bg-[var(--accent-light)] hover:opacity-90 text-[var(--accent)] px-3 py-1.5 rounded-lg transition-all border-none font-semibold cursor-pointer"
                     >
                       <span>Filter: {attendanceStatusFilter === 'ALL' ? 'All' : attendanceStatusFilter}</span>
                       <span className="text-[10px]">▼</span>
                     </button>
                     {isAttendanceFilterOpen && (
-                      <div className="absolute right-0 top-full mt-1.5 w-40 bg-[var(--bg-card)] border border-custom rounded-xl shadow-xl z-20 p-1 flex flex-col">
+                      <div className="absolute right-0 top-full mt-1.5 w-40 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl z-20 p-1 flex flex-col">
                         {(['ALL', 'PRESENT', 'LATE'] as const).map(st => (
                           <button
                             key={st}
                             onClick={() => { setAttendanceStatusFilter(st); setIsAttendanceFilterOpen(false); }}
-                            className="flex items-center gap-2 px-3 py-2 text-xs rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-left transition-colors text-[var(--text-primary)]"
+                            className="flex items-center gap-2 px-3 py-2 text-xs rounded-lg hover:bg-[var(--accent-light)] text-left transition-colors text-[var(--text-primary)] cursor-pointer"
                           >
                             <span className={`w-2 h-2 rounded-full ${st === 'PRESENT' ? 'bg-emerald-400' : st === 'LATE' ? 'bg-amber-400' : 'bg-slate-400'}`} />
                             {st === 'ALL' ? 'All Logs' : st}
@@ -1016,21 +1016,21 @@ export default function HrDashboard({
                     )}
                   </div>
                   {/* Export */}
-                  <button onClick={() => exportToCSV(filteredAttendance, ['id', 'fullName', 'checkInTime', 'status'], 'attendance_history')} className="flex items-center gap-1 text-xs text-[var(--text-primary)] bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 px-3 py-1.5 rounded-lg transition-colors border border-custom">
+                  <button onClick={() => exportToCSV(filteredAttendance, ['id', 'fullName', 'checkInTime', 'status'], 'attendance_history')} className="flex items-center gap-1.5 text-xs text-[var(--text-primary)] bg-[var(--accent-light)] hover:opacity-90 text-[var(--accent)] px-3 py-1.5 rounded-lg transition-all border-none font-semibold cursor-pointer">
                     <span>⬇</span> Export
                   </button>
                 </div>
               </div>
-
+ 
               {/* Scrollable Table / Card List */}
               <div>
-                {/* Mobile Card List */}
-                <div className="lg:hidden space-y-3">
+                {/* Mobile Card List (lg:hidden, unchanged) */}
+                <div className="lg:hidden space-y-3 p-4">
                   {sortedAttendance.map(a => (
                     <div 
                       key={a.id} 
                       onClick={() => setActiveMobileDetail({ type: 'attendance', data: a })}
-                      className="bg-white dark:bg-slate-850 rounded-2xl shadow-sm p-4 border border-slate-100 dark:border-slate-800 flex items-center justify-between cursor-pointer"
+                      className="bg-white dark:bg-slate-855 rounded-2xl shadow-sm p-4 border border-slate-100 dark:border-slate-800 flex items-center justify-between cursor-pointer"
                     >
                       <div className="flex items-center gap-3">
                         <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white shrink-0 ${a.status === 'PRESENT' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-amber-500/10 text-amber-500'}`}>
@@ -1051,64 +1051,64 @@ export default function HrDashboard({
                     </div>
                   ))}
                   {filteredAttendance.length === 0 && (
-                    <div className="p-8 text-center text-slate-400 text-xs bg-white dark:bg-slate-850 rounded-2xl">No attendance entries matched filters.</div>
+                    <div className="p-8 text-center text-slate-400 text-xs bg-white dark:bg-slate-855 rounded-2xl">No attendance entries matched filters.</div>
                   )}
                 </div>
-
-                {/* Desktop Table */}
+ 
+                {/* Desktop Table View */}
                 <div className="hidden lg:block overflow-x-auto w-full">
                   <table className="w-full text-xs text-left">
                   <thead>
-                    <tr className="theme-table-header-row text-slate-400 uppercase font-semibold text-[10px]">
-                      <th className="py-3 px-5 whitespace-nowrap">
+                    <tr className="bg-[var(--bg)] border-b border-[var(--border)] text-[var(--text-muted)] uppercase font-semibold text-[10px]">
+                      <th className="py-3 px-5 whitespace-nowrap w-12">
                         <input
                           type="checkbox"
                           checked={filteredAttendance.length > 0 && selectedAttendanceRows.size === filteredAttendance.length}
                           onChange={handleSelectAllAttendance}
-                          className="accent-blue-600 w-3.5 h-3.5"
+                          className="accent-[var(--accent)] w-3.5 h-3.5"
                         />
                       </th>
-                      <th onClick={() => handleSort('id', attendanceSortField, setAttendanceSortField, attendanceSortDir, setAttendanceSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                      <th onClick={() => handleSort('id', attendanceSortField, setAttendanceSortField, attendanceSortDir, setAttendanceSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none w-28">
                         <div className="flex items-center gap-1">
                           <span>Staff ID</span>
                           <span className="text-[9px] opacity-70">{attendanceSortField === 'id' ? (attendanceSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                         </div>
                       </th>
-                      <th onClick={() => handleSort('fullName', attendanceSortField, setAttendanceSortField, attendanceSortDir, setAttendanceSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                      <th onClick={() => handleSort('fullName', attendanceSortField, setAttendanceSortField, attendanceSortDir, setAttendanceSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none">
                         <div className="flex items-center gap-1">
                           <span>Name</span>
                           <span className="text-[9px] opacity-70">{attendanceSortField === 'fullName' ? (attendanceSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                         </div>
                       </th>
-                      <th onClick={() => handleSort('checkInTime', attendanceSortField, setAttendanceSortField, attendanceSortDir, setAttendanceSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                      <th onClick={() => handleSort('checkInTime', attendanceSortField, setAttendanceSortField, attendanceSortDir, setAttendanceSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none w-36">
                         <div className="flex items-center gap-1">
                           <span>Check-in Time</span>
                           <span className="text-[9px] opacity-70">{attendanceSortField === 'checkInTime' ? (attendanceSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                         </div>
                       </th>
-                      <th onClick={() => handleSort('status', attendanceSortField, setAttendanceSortField, attendanceSortDir, setAttendanceSortDir)} className="py-3 px-3 whitespace-nowrap text-center cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors select-none">
+                      <th onClick={() => handleSort('status', attendanceSortField, setAttendanceSortField, attendanceSortDir, setAttendanceSortDir)} className="py-3 px-3 whitespace-nowrap text-center cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none w-28">
                         <div className="flex items-center justify-center gap-1">
                           <span>Status</span>
                           <span className="text-[9px] opacity-70">{attendanceSortField === 'status' ? (attendanceSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                         </div>
                       </th>
-                      <th className="py-3 px-5 whitespace-nowrap text-center">Actions</th>
+                      <th className="py-3 px-5 whitespace-nowrap text-center w-20">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-custom">
+                  <tbody className="divide-y divide-[var(--border)]">
                     {sortedAttendance.map(a => (
-                      <tr key={a.id} className="theme-table-row group">
+                      <tr key={a.id} className="hover:bg-[var(--accent-light)] text-[var(--text-primary)] transition-colors duration-150">
                         <td className="py-3.5 px-5">
                           <input
                             type="checkbox"
                             checked={selectedAttendanceRows.has(a.id)}
                             onChange={() => handleSelectAttendanceRow(a.id)}
-                            className="accent-blue-600 w-3.5 h-3.5"
+                            className="accent-[var(--accent)] w-3.5 h-3.5"
                           />
                         </td>
-                        <td className="py-3.5 px-3 font-mono font-bold">{a.id}</td>
+                        <td className="py-3.5 px-3 font-mono font-bold text-[var(--text-muted)]">{a.id}</td>
                         <td className="py-3.5 px-3 font-semibold text-sm">{a.fullName}</td>
-                        <td className="py-3.5 px-3 text-slate-400 font-mono">{a.checkInTime}</td>
+                        <td className="py-3.5 px-3 text-[var(--text-muted)] font-mono">{a.checkInTime}</td>
                         <td className="py-3.5 px-3 text-center">
                           <span className={`px-2.5 py-0.5 rounded text-[9px] font-bold ${a.status === 'PRESENT' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'}`}>
                             {a.status}
@@ -1117,17 +1117,17 @@ export default function HrDashboard({
                         <td className="py-3.5 px-5 text-center relative" onClick={(e) => e.stopPropagation()}>
                           <button
                             onClick={() => setActiveAttendanceMenu(activeAttendanceMenu === a.id ? null : a.id)}
-                            className="w-8 h-8 inline-flex items-center justify-center bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg text-slate-500 dark:text-slate-400 transition-colors select-none"
+                            className="w-8 h-8 inline-flex items-center justify-center bg-[var(--bg)] hover:bg-[var(--accent-light)] border border-[var(--border)] rounded-lg text-slate-500 dark:text-slate-400 transition-colors select-none"
                           >
                             ···
                           </button>
                           {activeAttendanceMenu === a.id && (
-                            <div className="absolute right-5 mt-1 w-44 bg-[var(--bg-card)] border border-custom rounded-xl shadow-xl z-30 p-1 flex flex-col">
-                              <button onClick={() => handleEditAttendance(a)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-left">✏ Edit Status</button>
-                              <button onClick={() => handleDuplicateAttendance(a)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-left">📋 Duplicate Log</button>
-                              <button onClick={() => handleShareAttendance(a)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-left">🔗 Share Link</button>
-                              <div className="h-px bg-slate-200 dark:bg-slate-700 my-1"></div>
-                              <button onClick={() => handleDeleteAttendance(a.id)} className="flex items-center gap-2 px-3 py-2 text-xs text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors text-left">🗑 Delete Log</button>
+                            <div className="absolute right-5 mt-1 w-44 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl z-30 p-1 flex flex-col">
+                              <button onClick={() => handleEditAttendance(a)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left cursor-pointer">✏ Edit Status</button>
+                              <button onClick={() => handleDuplicateAttendance(a)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left cursor-pointer">📋 Duplicate Log</button>
+                              <button onClick={() => handleShareAttendance(a)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left cursor-pointer">🔗 Share Link</button>
+                              <div className="h-px bg-[var(--border)] my-1"></div>
+                              <button onClick={() => handleDeleteAttendance(a.id)} className="flex items-center gap-2 px-3 py-2 text-xs text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors text-left cursor-pointer">🗑 Delete Log</button>
                             </div>
                           )}
                         </td>
@@ -1135,67 +1135,68 @@ export default function HrDashboard({
                     ))}
                     {filteredAttendance.length === 0 && (
                       <tr>
-                        <td colSpan={6} className="py-6 text-center text-slate-400">No attendance entries matched filters.</td>
+                        <td colSpan={6} className="py-6 text-center text-[var(--text-muted)]">No attendance entries matched filters.</td>
                       </tr>
                     )}
                   </tbody>
-                </table>
+                  </table>
+                </div>
               </div>
-            </div>
-
+ 
               {/* Footer */}
-              <div className="theme-table-footer flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-4">
-                <p className="text-xs text-slate-400 font-mono">Showing {filteredAttendance.length} of {localAttendance.length} records</p>
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-4 border-t border-[var(--border)]">
+                <p className="text-xs text-[var(--text-muted)] font-mono">Showing {filteredAttendance.length} of {localAttendance.length} records</p>
                 <div className="flex items-center gap-1">
-                  <button className="w-8 h-8 flex items-center justify-center text-xs text-slate-400 hover:text-white bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg transition-colors border border-custom disabled:opacity-30" disabled>‹</button>
-                  <button className="w-8 h-8 flex items-center justify-center text-xs text-white bg-blue-600 rounded-lg font-bold">1</button>
-                  <button className="w-8 h-8 flex items-center justify-center text-xs text-slate-400 hover:text-white bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg transition-colors border border-custom disabled:opacity-30" disabled>›</button>
+                  <button className="w-8 h-8 flex items-center justify-center text-xs text-[var(--text-muted)] bg-[var(--bg)] rounded-lg border border-[var(--border)] cursor-not-allowed opacity-50" disabled>‹</button>
+                  <button className="w-8 h-8 flex items-center justify-center text-xs text-white bg-[var(--accent)] rounded-lg font-bold">1</button>
+                  <button className="w-8 h-8 flex items-center justify-center text-xs text-[var(--text-muted)] bg-[var(--bg)] rounded-lg border border-[var(--border)] cursor-not-allowed opacity-50" disabled>›</button>
                 </div>
               </div>
             </div>
           </div>
         )}
-
+ 
         {/* STAFF PERFORMANCE */}
         {activeSubTab === 'Performance' && (
-          <div className="p-6 app-card space-y-4">
-            <h3 className="text-lg font-bold">Departmental Staff & Visitors</h3>
-            <p className="text-xs text-muted font-semibold text-slate-500">Comparative chart of active personnel and daily visitor count.</p>
+          <div className="p-6 bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] border border-[var(--border)] space-y-4">
+            <h3 className="text-lg font-bold text-[var(--text-primary)]">Departmental Staff & Visitors</h3>
+            <p className="text-xs text-[var(--text-muted)] font-semibold">Comparative chart of active personnel and daily visitor count.</p>
             <div className="h-64 mt-4">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={barChartData}>
-                  <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
-                  <XAxis dataKey="name" stroke="#94a3b8" fontSize={10} />
-                  <YAxis stroke="#94a3b8" fontSize={10} />
-                  <Tooltip />
-                  <Bar dataKey="Staff" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" opacity={0.5} />
+                  <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={10} />
+                  <YAxis stroke="var(--text-muted)" fontSize={10} />
+                  <Tooltip contentStyle={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)', color: 'var(--text-primary)' }} />
+                  <Bar dataKey="Staff" fill="var(--accent)" radius={[4, 4, 0, 0]} />
                   <Bar dataKey="Visitors" fill="#10b981" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
           </div>
         )}
+      </div>
 
-        {/* INSTANT HR POPUP MODAL */}
+      {/* INSTANT HR POPUP MODAL */}
         {credentialsPopup && credentialsPopup.show && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-0 md:p-4">
-            <div className="bg-[var(--bg-card)] border-0 md:border border-custom rounded-none md:rounded-2xl shadow-2xl w-full h-full md:h-auto md:max-w-md overflow-y-auto p-6 space-y-4 text-[var(--text-primary)] flex flex-col justify-center md:block">
-              <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-0 md:p-4 animate-fade-in">
+            <div className="bg-[var(--bg-card)] border-0 md:border border-[var(--border)] rounded-none md:rounded-2xl shadow-2xl w-full h-full md:h-auto md:max-w-md overflow-y-auto p-6 space-y-4 text-[var(--text-primary)] flex flex-col justify-center md:block">
+              <div className="flex items-center justify-between border-b border-[var(--border)] pb-3">
                 <h3 className="font-bold text-lg text-emerald-500">Account Credentials Generated</h3>
                 <button 
                   onClick={() => setCredentialsPopup(null)}
-                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors cursor-pointer"
+                  className="text-slate-400 hover:text-slate-650 dark:hover:text-slate-200 transition-colors cursor-pointer"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
-              <div className="space-y-3 text-xs leading-relaxed text-slate-600 dark:text-slate-300">
+              <div className="space-y-3 text-xs leading-relaxed text-[var(--text-primary)] opacity-90">
                 <p><strong>Employee:</strong> {credentialsPopup.fullName} ({credentialsPopup.email})</p>
-                <div className="bg-slate-100 dark:bg-slate-800/80 p-3 rounded-xl border border-slate-200 dark:border-slate-700 font-mono space-y-2 relative">
-                  <p className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Temporary Password</p>
-                  <p className="text-sm font-bold text-emerald-600 break-all select-all">{credentialsPopup.password}</p>
-                  <div className="h-px bg-slate-200 dark:bg-slate-700 my-2"></div>
-                  <p className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Magic Link URL</p>
+                <div className="bg-[var(--bg)] p-3 rounded-xl border border-[var(--border)] font-mono space-y-2 relative">
+                  <p className="text-[10px] uppercase tracking-wider text-[var(--text-muted)] font-bold">Temporary Password</p>
+                  <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400 break-all select-all">{credentialsPopup.password}</p>
+                  <div className="h-px bg-[var(--border)] my-2"></div>
+                  <p className="text-[10px] uppercase tracking-wider text-[var(--text-muted)] font-bold">Magic Link URL</p>
                   <p className="text-[11px] text-blue-500 hover:underline break-all select-all">{credentialsPopup.magicLink}</p>
                 </div>
               </div>
@@ -1212,7 +1213,7 @@ export default function HrDashboard({
                 </button>
                 <button
                   onClick={() => setCredentialsPopup(null)}
-                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 rounded-xl transition-all font-semibold text-xs border border-custom cursor-pointer"
+                  className="px-4 py-2.5 bg-[var(--bg)] hover:bg-[var(--accent-light)] text-[var(--text-primary)] rounded-xl transition-all font-semibold text-xs border border-[var(--border)] cursor-pointer"
                 >
                   Close
                 </button>
@@ -1220,7 +1221,6 @@ export default function HrDashboard({
             </div>
           </div>
         )}
-      </div>
       </div>
       </div>
     </>

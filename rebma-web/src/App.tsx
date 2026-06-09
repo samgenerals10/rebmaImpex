@@ -1761,7 +1761,7 @@ export default function App() {
           className="space-y-4 text-slate-800"
         >
           <div className="text-center">
-            <h3 className="text-xl font-bold text-emerald-800">Sign In</h3>
+            <h3 className="text-xl font-bold text-[var(--accent)]">Sign In</h3>
             <p className="text-[10px] text-slate-400 mt-0.5 font-medium">REMBA IMPEX ERP GATEWAY</p>
           </div>
 
@@ -1772,7 +1772,7 @@ export default function App() {
           )}
 
           {/* Email Input */}
-          <div className="flex items-center gap-2 border-b border-slate-200 focus-within:border-emerald-600 pb-1.5 transition-colors">
+          <div className="flex items-center gap-2 border-b border-slate-300 lg:border-slate-350 focus-within:border-[var(--accent)] focus-within:border-b-2 pb-1.5 transition-all bg-transparent">
             <Mail className="w-4 h-4 text-slate-400" />
             <input 
               type="email" 
@@ -1785,7 +1785,7 @@ export default function App() {
           </div>
 
           {/* Password Input */}
-          <div className="flex items-center gap-2 border-b border-slate-200 focus-within:border-emerald-600 pb-1.5 transition-colors">
+          <div className="flex items-center gap-2 border-b border-slate-300 lg:border-slate-350 focus-within:border-[var(--accent)] focus-within:border-b-2 pb-1.5 transition-all bg-transparent">
             <Lock className="w-4 h-4 text-slate-400" />
             <input 
               type={showPassword ? "text" : "password"} 
@@ -1810,7 +1810,7 @@ export default function App() {
                 type="checkbox" 
                 checked={staySignedIn} 
                 onChange={(e) => setStaySignedIn(e.target.checked)}
-                className="w-3.5 h-3.5 rounded border-slate-350 text-emerald-600 focus:ring-emerald-500 cursor-pointer" 
+                className="w-3.5 h-3.5 rounded border-slate-300 text-[var(--accent)] focus:ring-[var(--accent)] cursor-pointer" 
               />
               <span className="text-slate-500 font-medium">Keep me logged in</span>
             </label>
@@ -1820,7 +1820,7 @@ export default function App() {
                 e.preventDefault();
                 setAuthScreen('forgot');
               }} 
-              className="text-[#068d5c] hover:underline font-bold cursor-pointer"
+              className="text-[var(--accent)] hover:underline font-bold cursor-pointer"
             >
               Forgot Password?
             </button>
@@ -1829,7 +1829,7 @@ export default function App() {
           <button 
             type="submit" 
             disabled={isLoggingIn}
-            className="w-full py-3 bg-[#55dfa5] hover:bg-[#40cf93] disabled:bg-[#a7f3d0] disabled:cursor-not-allowed rounded-full text-sm font-bold text-white shadow-md hover:shadow-lg transition-all cursor-pointer text-center flex items-center justify-center gap-2"
+            className="w-full py-3 bg-gradient-to-r from-[var(--accent)] to-[var(--accent-hover)] disabled:from-emerald-300 disabled:to-emerald-400 disabled:cursor-not-allowed rounded-full text-sm font-bold text-white shadow-md hover:shadow-lg transition-all cursor-pointer text-center flex items-center justify-center gap-2"
           >
             {isLoggingIn ? (
               <>
@@ -2360,13 +2360,13 @@ export default function App() {
     );
 
     return (
-      <div className="min-h-screen w-full flex items-center justify-center bg-[#068d5c] p-3 md:p-8 relative select-none font-sans">
+      <div className="min-h-screen w-full flex lg:grid lg:grid-cols-2 items-center justify-center lg:items-stretch bg-[#068d5c] lg:bg-white p-3 md:p-8 lg:p-0 relative select-none font-sans">
 
-        {/* Symmetrical Split Card */}
-        <div className="w-full max-w-5xl bg-white rounded-[32px] shadow-[0_25px_60px_-15px_rgba(0,0,0,0.25)] flex flex-col md:flex-row overflow-hidden min-h-[580px] relative">
+        {/* Symmetrical Split Card on Mobile/Tablet, direct grid layout on Desktop */}
+        <div className="w-full max-w-5xl lg:max-w-none lg:w-full bg-white lg:bg-transparent rounded-[32px] lg:rounded-none shadow-[0_25px_60px_-15px_rgba(0,0,0,0.25)] lg:shadow-none flex flex-col md:flex-row lg:contents overflow-hidden min-h-[580px] lg:min-h-0 relative">
           
           {/* Left half: Brand, logo, floating coworker illustration */}
-          <div className="hidden md:flex w-full md:w-1/2 bg-white p-8 md:p-12 flex-col justify-between items-start">
+          <div className="hidden md:flex w-full md:w-1/2 lg:w-full bg-white p-8 md:p-12 lg:p-16 flex-col justify-between items-start">
             {/* Sourced from /logo.png with proper Open Sans typography */}
             <div className="flex items-center gap-2 select-none ml-2 mt-2 shrink-0">
               <img 
@@ -2390,9 +2390,9 @@ export default function App() {
                 repeat: Infinity, 
                 ease: "easeInOut" 
               }}
-              className="my-auto flex flex-col items-center justify-center w-full py-6"
+              className="my-auto flex flex-col items-center justify-center w-full py-6 lg:scale-110"
             >
-              <div className="relative overflow-hidden w-[279px] h-[252px] select-none pointer-events-none rounded-2xl">
+              <div className="relative overflow-hidden w-[279px] h-[252px] select-none pointer-events-none rounded-2xl shadow-sm">
                 <img 
                   src="/login_full.png" 
                   alt="Coworkers collaborating at desk" 
@@ -2407,6 +2407,16 @@ export default function App() {
               </div>
             </motion.div>
 
+            {/* Desktop tagline */}
+            <div className="hidden lg:block mt-2 max-w-md text-left">
+              <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 leading-tight">
+                Empowering global logistics & trade management
+              </h1>
+              <p className="text-sm text-slate-500 mt-2">
+                Streamlining Tema port operations, fleet dispatches, marketing pipelines, and financial ledgers in real-time.
+              </p>
+            </div>
+
             {/* Footer copyrights */}
             <div className="text-[10px] text-slate-400 font-medium">
               © {new Date().getFullYear()} REMBA IMPEX GHANA LIMITED.
@@ -2414,11 +2424,11 @@ export default function App() {
           </div>
 
           {/* Right half: solid green bg with white container card */}
-          <div className="w-full md:w-1/2 bg-[#068d5c] p-4 md:p-12 flex flex-col justify-center items-center relative">
+          <div className="w-full md:w-1/2 lg:w-full bg-[#068d5c] lg:bg-[var(--accent)] p-4 md:p-12 lg:p-16 flex flex-col justify-center items-center relative transition-colors duration-300">
             <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-600 rounded-full filter blur-3xl opacity-20 -mr-8 -mt-8"></div>
             
             {/* White card container for form */}
-            <div className="w-full max-w-[380px] bg-white rounded-3xl p-5 md:p-8 shadow-[0_15px_30px_rgba(0,0,0,0.08)] relative z-10 flex flex-col justify-center min-h-[420px]">
+            <div className="w-full max-w-[380px] lg:max-w-md bg-white rounded-3xl p-5 md:p-8 lg:p-10 shadow-[0_15px_30px_rgba(0,0,0,0.08)] lg:shadow-2xl relative z-10 flex flex-col justify-center min-h-[420px] lg:min-h-[485px]">
               
               {registrationMessage && (
                 <div className="mb-4 p-2.5 bg-emerald-50 border border-emerald-100 rounded-xl text-[10px] text-emerald-800 text-center font-medium">
@@ -3175,7 +3185,7 @@ export default function App() {
 
   return (
     <MotionConfig reducedMotion={reducedMotion ? 'always' : 'user'}>
-      <div className="min-h-screen w-full flex p-0 lg:p-6 transition-all duration-300 bg-slate-100 dark:bg-slate-950">
+      <div className="min-h-screen w-full flex p-0 lg:p-6 transition-all duration-300 bg-[var(--bg)]">
         
         {/* 1. LEFT SIDEBAR */}
         <Sidebar
@@ -3205,7 +3215,7 @@ export default function App() {
         )}
 
         {/* 2. MAIN SHEET WRAPPER */}
-        <main className="flex-1 ml-0 lg:ml-6 bg-slate-50 dark:bg-slate-900 lg:bg-white rounded-none lg:rounded-3xl shadow-none lg:shadow-xl flex flex-col border-none lg:border lg:border-slate-100 app-sheet overflow-hidden h-screen lg:h-[calc(100vh-3rem)]">
+        <main className="flex-1 ml-0 lg:ml-6 bg-[var(--bg-card)] rounded-none lg:rounded-3xl shadow-none lg:shadow-[var(--box-shadow)] flex flex-col border-none lg:border lg:border-[var(--border)] app-sheet overflow-hidden h-screen lg:h-[calc(100vh-3rem)]">
           
           {/* TOP STATUS BAR & HERO HEADER */}
           <div className="lg:px-6 lg:pt-6 pb-0 shrink-0">
