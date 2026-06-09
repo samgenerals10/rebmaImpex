@@ -165,8 +165,12 @@ export default function App() {
     }
   }, [currentUser]);
   
-  const [activeDepartment, setActiveDepartmentRaw] = useState<string>('CEO');
-  const [activeSubTab, setActiveSubTabRaw] = useState<string>('Overview');
+  const [activeDepartment, setActiveDepartmentRaw] = useState<string>(
+    () => sessionStorage.getItem('rebma-last-dept') || 'CEO'
+  );
+  const [activeSubTab, setActiveSubTabRaw] = useState<string>(
+    () => sessionStorage.getItem('rebma-last-tab') || 'Overview'
+  );
   const isInitialLoad = useRef(true);
 
   const setActiveDepartment = (department: string) => {
@@ -798,14 +802,11 @@ export default function App() {
           const lastTab = sessionStorage.getItem('rebma-last-tab');
           if (lastDept) {
             setActiveDepartment(lastDept as any);
-            sessionStorage.setItem('rebma-last-dept', lastDept);
           } else {
             setActiveDepartment(profile.department);
-            sessionStorage.setItem('rebma-last-dept', profile.department);
           }
           if (lastTab) {
             setActiveSubTab(lastTab);
-            sessionStorage.setItem('rebma-last-tab', lastTab);
           }
 
           setIsAuthLoading(false);
