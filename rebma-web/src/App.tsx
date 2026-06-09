@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { FormEvent } from 'react';
 import { motion, AnimatePresence, MotionConfig } from 'framer-motion';
 import { Eye, EyeOff, Check, X, ArrowRight, Lock, Mail, User, CreditCard, Phone, AlertCircle, Info, CheckCircle, Home, Search, Plus, Bell, Camera, Send, Globe, ChevronRight, Settings, LogOut, Users, MessagesSquare, UserPlus, ClipboardList, Calendar, Megaphone, UserCheck, BarChart3, Video, Building2, Ship, Ticket, Flag, Truck, DollarSign, BookOpen, ShoppingCart, TrendingUp, Download, Boxes, Hammer, PackagePlus, MapPin, LogIn, Map, GitMerge, Tag, ShieldAlert, FileText, CheckSquare } from 'lucide-react';
@@ -165,8 +165,19 @@ export default function App() {
     }
   }, [currentUser]);
   
-  const [activeDepartment, setActiveDepartment] = useState<string>('CEO');
-  const [activeSubTab, setActiveSubTab] = useState<string>('Overview');
+  const [activeDepartment, setActiveDepartmentRaw] = useState<string>('CEO');
+  const [activeSubTab, setActiveSubTabRaw] = useState<string>('Overview');
+  const isInitialLoad = useRef(true);
+
+  const setActiveDepartment = (department: string) => {
+    setActiveDepartmentRaw(department);
+    sessionStorage.setItem('rebma-last-dept', department);
+  };
+
+  const setActiveSubTab = (tab: string) => {
+    setActiveSubTabRaw(tab);
+    sessionStorage.setItem('rebma-last-tab', tab);
+  };
   const [searchQuery, setSearchQuery] = useState<string>('');
   
   // Multi-Step Registration UI
@@ -776,6 +787,11 @@ export default function App() {
           });
           setActiveDepartment(profile.department);
           setIsAuthenticated(true);
+
+          const lastDept = sessionStorage.getItem('rebma-last-dept');
+          const lastTab = sessionStorage.getItem('rebma-last-tab');
+          if (lastDept) setActiveDepartment(lastDept as any);
+          if (lastTab) setActiveSubTab(lastTab);
         }
       } catch (e: any) {
         console.error('Session initialization error:', e);
@@ -1045,6 +1061,16 @@ export default function App() {
 
   // Reset to default sub-tab when switching department
   useEffect(() => {
+    if (isInitialLoad.current) {
+      const lastDept = sessionStorage.getItem('rebma-last-dept');
+      const lastTab = sessionStorage.getItem('rebma-last-tab');
+      if (lastDept === activeDepartment && lastTab) {
+        setActiveSubTab(lastTab);
+        isInitialLoad.current = false;
+        return;
+      }
+    }
+
     if (activeDepartment === 'OPERATIONS') setActiveSubTab('PortIngestion');
     else if (activeDepartment === 'FINANCE') setActiveSubTab('Evaluation');
     else if (activeDepartment === 'MARKETING') setActiveSubTab('CreateOrder');
@@ -1057,6 +1083,10 @@ export default function App() {
     else if (activeDepartment === 'BOARDROOM') setActiveSubTab('VideoConf');
     else if (activeDepartment === 'SETTINGS') setActiveSubTab('Themes');
     else setActiveSubTab('Overview');
+
+    if (activeDepartment !== 'CEO') {
+      isInitialLoad.current = false;
+    }
   }, [activeDepartment]);
 
   // Simple location simulation for fleet Map
@@ -1921,74 +1951,88 @@ export default function App() {
       </motion.form>
     );
 
-    const renderForgotForm = () => (
-      <motion.form
-        key="forgot"
-        initial={{ opacity: 0, x: -10 }}
-        animate={{ opacity: 1, x: 0 }}
-        exit={{ opacity: 0, x: 10 }}
-        onSubmit={(e: FormEvent) => {
-          e.preventDefault();
-          if (!forgotEmail) {
-            alert('Please enter your email.');
-            return;
-          }
+    const renderForgotForm = () => {
+      const handleForgotPassword = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!forgotEmail) {
+          alert('Please enter your email address.');
+          return;
+        }
+        try {
+          const { error } = await supabase.auth.resetPasswordForEmail(
+            forgotEmail.trim().toLowerCase(),
+            {
+              redirectTo: 'https://rebma-impex.vercel.app',
+            }
+          );
+          if (error) throw error;
           setForgotSubmitted(true);
-        }}
-        className="space-y-4 text-slate-800"
-      >
-        <div className="text-center">
-          <h3 className="text-xl font-bold text-[#068d5c]">Reset Password</h3>
-        </div>
+        } catch (err: any) {
+          alert(err.message || 'Failed to send reset email. Please try again.');
+        }
+      };
 
-        {forgotSubmitted ? (
-          <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100 text-xs text-emerald-800 text-center space-y-2">
-            <p className="font-bold">Reset Request Dispatched!</p>
-            <p>A recovery instructions token has been sent to <strong>{forgotEmail}</strong>.</p>
-            <button
-              type="button"
-              onClick={() => {
-                setForgotSubmitted(false);
-                setForgotEmail('');
-                setAuthScreen('login');
-              }}
-              className="text-[#068d5c] hover:underline font-bold text-xs mt-3 block mx-auto cursor-pointer"
-            >
-              ← Back to Login
-            </button>
+      return (
+        <motion.form
+          key="forgot"
+          initial={{ opacity: 0, x: -10 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: 10 }}
+          onSubmit={handleForgotPassword}
+          className="space-y-4 text-slate-800"
+        >
+          <div className="text-center">
+            <h3 className="text-xl font-bold text-[#068d5c]">Reset Password</h3>
           </div>
-        ) : (
-          <>
-            <div className="flex items-center gap-2 border-b border-slate-200 focus-within:border-emerald-600 pb-1.5 transition-colors">
-              <Mail className="w-4 h-4 text-slate-400" />
-              <input
-                type="email"
-                required
-                placeholder="name@rembaimpex.com"
-                value={forgotEmail}
-                onChange={(e) => setForgotEmail(e.target.value)}
-                className="w-full bg-transparent border-0 p-0 text-sm text-slate-800 placeholder-slate-400 focus:ring-0 focus:outline-none"
-              />
+
+          {forgotSubmitted ? (
+            <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100 text-xs text-emerald-800 text-center space-y-2">
+              <p>A password reset link has been sent to <strong>{forgotEmail}</strong>. Check your inbox and click the link to reset your password.</p>
+              <button
+                type="button"
+                onClick={() => {
+                  setForgotSubmitted(false);
+                  setForgotEmail('');
+                  setAuthScreen('login');
+                }}
+                className="text-[#068d5c] hover:underline font-bold text-xs mt-3 block mx-auto cursor-pointer"
+              >
+                ← Back to Login
+              </button>
             </div>
+          ) : (
+            <>
+              <div className="flex items-center gap-2 border-b border-slate-200 focus-within:border-emerald-600 pb-1.5 transition-colors">
+                <Mail className="w-4 h-4 text-slate-400" />
+                <input
+                  type="email"
+                  required
+                  placeholder="name@rembaimpex.com"
+                  value={forgotEmail}
+                  onChange={(e) => setForgotEmail(e.target.value)}
+                  className="w-full bg-transparent border-0 p-0 text-sm text-slate-800 placeholder-slate-400 focus:ring-0 focus:outline-none"
+                />
+              </div>
 
-            <button
-              type="submit"
-              className="w-full py-2.5 bg-gradient-to-r from-[#5ce1ab] to-[#34d399] hover:from-[#4fd69e] hover:to-[#059669] rounded-full text-xs font-bold text-slate-900 shadow-md hover:shadow-lg transition-all cursor-pointer text-center"
-            >
-              Send Reset Link
-            </button>
+              <button
+                type="submit"
+                className="w-full py-2.5 bg-gradient-to-r from-[#5ce1ab] to-[#34d399] hover:from-[#4fd69e] hover:to-[#059669] rounded-full text-xs font-bold text-slate-900 shadow-md hover:shadow-lg transition-all cursor-pointer text-center"
+              >
+                Send Reset Link
+              </button>
 
-            <button
-              type="button"
-              onClick={() => setAuthScreen('login')}
-              className="w-full text-center text-xs text-slate-400 hover:text-slate-600 transition-colors font-semibold"
-            >
-              Cancel and Return
-            </button>
-          </>
-        )}
-      </motion.form>
-    );
+              <button
+                type="button"
+                onClick={() => setAuthScreen('login')}
+                className="w-full text-center text-xs text-slate-400 hover:text-slate-600 transition-colors font-semibold"
+              >
+                Cancel and Return
+              </button>
+            </>
+          )}
+        </motion.form>
+      );
+    };
 
     /* SMS OTP Form removed */
 
