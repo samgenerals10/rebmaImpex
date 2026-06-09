@@ -181,7 +181,13 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   
   // Multi-Step Registration UI
-  const [authScreen, setAuthScreen] = useState<'welcome' | 'login' | 'register' | 'otp' | 'forgot' | 'email_verification_sent' | 'activation_expired'>('login');
+  const [authScreen, setAuthScreen] = useState<'welcome' | 'login' | 'register' | 'otp' | 'forgot' | 'email_verification_sent' | 'activation_expired' | 'forgot_reset'>('login');
+  const [resetPassword, setResetPassword] = useState<string>('');
+  const [resetConfirmPassword, setResetConfirmPassword] = useState<string>('');
+  const [showResetPassword, setShowResetPassword] = useState<boolean>(false);
+  const [resetMessage, setResetMessage] = useState<string>('');
+  const [resetError, setResetError] = useState<string>('');
+  const isResettingPassword = useRef(false);
   const [registerEmail, setRegisterEmail] = useState<string>('');
   const [registerPhone, setRegisterPhone] = useState<string>('');
   const [loginEmail, setLoginEmail] = useState<string>('');
@@ -785,13 +791,24 @@ export default function App() {
             requiresPasswordReset: profile.requiresPasswordReset,
             photo: profile.photo
           });
-          setActiveDepartment(profile.department);
+          
           setIsAuthenticated(true);
 
           const lastDept = sessionStorage.getItem('rebma-last-dept');
           const lastTab = sessionStorage.getItem('rebma-last-tab');
-          if (lastDept) setActiveDepartment(lastDept as any);
-          if (lastTab) setActiveSubTab(lastTab);
+          if (lastDept) {
+            setActiveDepartment(lastDept as any);
+            sessionStorage.setItem('rebma-last-dept', lastDept);
+          } else {
+            setActiveDepartment(profile.department);
+            sessionStorage.setItem('rebma-last-dept', profile.department);
+          }
+          if (lastTab) {
+            setActiveSubTab(lastTab);
+            sessionStorage.setItem('rebma-last-tab', lastTab);
+          }
+
+          setIsAuthLoading(false);
         }
       } catch (e: any) {
         console.error('Session initialization error:', e);
@@ -800,20 +817,27 @@ export default function App() {
           clearToken();
           setIsAuthenticated(false);
           setCurrentUser(null);
+          setIsAuthLoading(false);
         }
       }
     };
 
     const initializeAuth = async () => {
+      setIsAuthLoading(true);
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (session && isMounted) {
           await handleSession(session);
+        } else {
+          if (isMounted) {
+            setIsAuthenticated(false);
+            setIsAuthLoading(false);
+          }
         }
       } catch (err) {
         console.error('Initial session check error:', err);
-      } finally {
         if (isMounted) {
+          setIsAuthenticated(false);
           setIsAuthLoading(false);
         }
       }
@@ -822,7 +846,24 @@ export default function App() {
     initializeAuth();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        if (isMounted) {
+          isResettingPassword.current = true;
+          setIsAuthenticated(false);
+          setAuthScreen('forgot_reset');
+          setIsAuthLoading(false);
+        }
+        return;
+      }
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        if (isResettingPassword.current) {
+          if (isMounted) {
+            setIsAuthenticated(false);
+            setAuthScreen('forgot_reset');
+            setIsAuthLoading(false);
+          }
+          return;
+        }
         if (session && isMounted) {
           await handleSession(session);
           if (window.location.hash) {
@@ -834,6 +875,7 @@ export default function App() {
           setIsAuthenticated(false);
           setCurrentUser(null);
           clearToken();
+          setIsAuthLoading(false);
         }
       }
     });
@@ -1257,6 +1299,7 @@ export default function App() {
           photo: res.user.photo
         });
         setActiveDepartment(res.user.department);
+        sessionStorage.setItem('rebma-last-dept', res.user.department);
         setIsAuthenticated(true);
         addNotification(`Logged in as ${res.user.fullName} (${res.user.department})`);
         setLoginPassword('');
@@ -2034,6 +2077,157 @@ export default function App() {
       );
     };
 
+    const pwStrength = (pw: string) => {
+      if (!pw) return null;
+      const checks = [
+        { pass: pw.length >= 8, label: 'At least 8 characters' },
+        { pass: /[A-Z]/.test(pw), label: 'Uppercase letter' },
+        { pass: /[a-z]/.test(pw), label: 'Lowercase letter' },
+        { pass: /[0-9]/.test(pw), label: 'Number' },
+        { pass: /[^A-Za-z0-9]/.test(pw), label: 'Special character' },
+      ];
+      const score = checks.filter(c => c.pass).length;
+      const color = score <= 2 ? 'bg-rose-500' : score <= 3 ? 'bg-amber-500' : 'bg-emerald-500';
+      const label = score <= 2 ? 'Weak' : score <= 3 ? 'Fair' : 'Strong';
+      return { checks, score, color, label };
+    };
+
+    const renderPasswordResetForm = () => {
+      const strength = pwStrength(resetPassword);
+
+      const handleUpdatePassword = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setResetError('');
+        setResetMessage('');
+
+        if (resetPassword !== resetConfirmPassword) {
+          setResetError('Passwords do not match.');
+          return;
+        }
+        if (resetPassword.length < 8) {
+          setResetError('Password must be at least 8 characters.');
+          return;
+        }
+        if (!/[A-Z]/.test(resetPassword)) {
+          setResetError('Password must contain at least one uppercase letter.');
+          return;
+        }
+        if (!/[^A-Za-z0-9]/.test(resetPassword)) {
+          setResetError('Password must contain at least one special character.');
+          return;
+        }
+
+        try {
+          const { error } = await supabase.auth.updateUser({ password: resetPassword });
+          if (error) throw error;
+          
+          setResetMessage('Password updated successfully!');
+          await supabase.auth.signOut().catch(() => {});
+          isResettingPassword.current = false;
+          setTimeout(() => {
+            setResetPassword('');
+            setResetConfirmPassword('');
+            setAuthScreen('login');
+          }, 2000);
+        } catch (err: any) {
+          setResetError(err.message || 'Failed to update password. Please try again.');
+        }
+      };
+
+      return (
+        <motion.form
+          key="forgot_reset"
+          initial={{ opacity: 0, x: -10 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: 10 }}
+          onSubmit={handleUpdatePassword}
+          className="space-y-4 text-slate-800"
+        >
+          <div className="text-center">
+            <h3 className="text-xl font-bold text-[#068d5c]">Set New Password</h3>
+          </div>
+
+          {resetMessage && (
+            <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-100 text-xs text-emerald-800 text-center font-medium">
+              {resetMessage}
+            </div>
+          )}
+
+          {resetError && (
+            <div className="p-3 bg-rose-50 rounded-xl border border-rose-100 text-xs text-rose-800 text-center font-medium">
+              {resetError}
+            </div>
+          )}
+
+          <div className="space-y-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 mb-1">New Password</label>
+              <div className="relative flex items-center gap-2 border-b border-slate-200 focus-within:border-emerald-600 pb-1.5 transition-colors">
+                <Lock className="w-4 h-4 text-slate-400" />
+                <input
+                  type={showResetPassword ? 'text' : 'password'}
+                  required
+                  placeholder="New secure password"
+                  value={resetPassword}
+                  onChange={(e) => setResetPassword(e.target.value)}
+                  className="w-full bg-transparent border-0 p-0 text-sm text-slate-800 placeholder-slate-400 focus:ring-0 focus:outline-none pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowResetPassword(!showResetPassword)}
+                  className="absolute right-0 text-slate-400 cursor-pointer"
+                >
+                  {showResetPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 mb-1">Confirm New Password</label>
+              <div className="flex items-center gap-2 border-b border-slate-200 focus-within:border-emerald-600 pb-1.5 transition-colors">
+                <Lock className="w-4 h-4 text-slate-400" />
+                <input
+                  type="password"
+                  required
+                  placeholder="Retype new password"
+                  value={resetConfirmPassword}
+                  onChange={(e) => setResetConfirmPassword(e.target.value)}
+                  className="w-full bg-transparent border-0 p-0 text-sm text-slate-800 placeholder-slate-400 focus:ring-0 focus:outline-none"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Strength meter */}
+          {strength && (
+            <div className="mt-2 space-y-1.5">
+              <div className="flex items-center justify-between text-[10px]">
+                <span className="text-slate-400">Password Strength</span>
+                <span className={`font-bold ${strength.score >= 4 ? 'text-emerald-600' : strength.score >= 3 ? 'text-amber-600' : 'text-rose-600'}`}>{strength.label}</span>
+              </div>
+              <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                <div className={`h-full rounded-full transition-all ${strength.color}`} style={{ width: `${(strength.score / 5) * 100}%` }} />
+              </div>
+              <div className="grid grid-cols-2 gap-1">
+                {strength.checks.map((c, i) => (
+                  <div key={i} className={`flex items-center gap-1 text-[9px] ${c.pass ? 'text-emerald-600' : 'text-slate-400'}`}>
+                    <span>{c.pass ? '✓' : '○'}</span><span>{c.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <button
+            type="submit"
+            className="w-full py-2.5 bg-gradient-to-r from-[#5ce1ab] to-[#34d399] hover:from-[#4fd69e] hover:to-[#059669] rounded-full text-xs font-bold text-slate-900 shadow-md hover:shadow-lg transition-all cursor-pointer text-center"
+          >
+            Update Password
+          </button>
+        </motion.form>
+      );
+    };
+
     /* SMS OTP Form removed */
 
     const renderEmailVerificationSentCard = () => (
@@ -2236,6 +2430,7 @@ export default function App() {
                 {authScreen === 'login' && renderLoginForm()}
                 {authScreen === 'register' && renderRegisterForm()}
                 {authScreen === 'forgot' && renderForgotForm()}
+                {authScreen === 'forgot_reset' && renderPasswordResetForm()}
                 {/* SMS OTP Flow retracted */}
                 {authScreen === 'email_verification_sent' && renderEmailVerificationSentCard()}
                 {authScreen === 'activation_expired' && renderActivationExpiredCard()}
@@ -2557,28 +2752,34 @@ export default function App() {
     if (dept === 'HR') {
       if (actionName === 'Add New Staff' || actionName === 'Approve Pending Staff') {
         setActiveDepartment('HR');
+        sessionStorage.setItem('rebma-last-dept', 'HR');
         setActiveSubTab('Employees');
         setActiveMobileView('dashboard');
       } else if (actionName === 'Log Attendance') {
         setActiveDepartment('HR');
+        sessionStorage.setItem('rebma-last-dept', 'HR');
         setActiveSubTab('Attendance');
         setActiveMobileView('dashboard');
       } else if (actionName === 'Schedule Meeting') {
         setActiveDepartment('BOARDROOM');
+        sessionStorage.setItem('rebma-last-dept', 'BOARDROOM');
         setActiveSubTab('Meetings');
         setActiveMobileView('dashboard');
       } else if (actionName === 'Send Announcement') {
         setActiveDepartment('BOARDROOM');
+        sessionStorage.setItem('rebma-last-dept', 'BOARDROOM');
         setActiveSubTab('Announcements');
         setActiveMobileView('dashboard');
       }
     } else if (dept === 'CEO') {
       if (actionName === 'View Reports') {
         setActiveDepartment('CEO');
+        sessionStorage.setItem('rebma-last-dept', 'CEO');
         setActiveSubTab('Overview');
         setActiveMobileView('dashboard');
       } else if (actionName === 'Schedule Boardroom') {
         setActiveDepartment('BOARDROOM');
+        sessionStorage.setItem('rebma-last-dept', 'BOARDROOM');
         setActiveSubTab('Meetings');
         setActiveMobileView('dashboard');
       } else if (actionName === 'Send Alert') {
@@ -2590,10 +2791,12 @@ export default function App() {
     } else if (dept === 'OPERATIONS') {
       if (actionName === 'Log Cargo Intake') {
         setActiveDepartment('OPERATIONS');
+        sessionStorage.setItem('rebma-last-dept', 'OPERATIONS');
         setActiveSubTab('PortIngestion');
         setActiveMobileView('dashboard');
       } else if (actionName === 'Create Fulfillment Ticket' || actionName === 'Release to Dispatch') {
         setActiveDepartment('OPERATIONS');
+        sessionStorage.setItem('rebma-last-dept', 'OPERATIONS');
         setActiveSubTab('Releases');
         setActiveMobileView('dashboard');
       } else if (actionName === 'Flag Discrepancy') {
@@ -2603,32 +2806,39 @@ export default function App() {
     } else if (dept === 'FINANCE') {
       if (actionName === 'Record Payment') {
         setActiveDepartment('FINANCE');
+        sessionStorage.setItem('rebma-last-dept', 'FINANCE');
         setActiveSubTab('RecordPayment');
         setActiveMobileView('dashboard');
       } else if (actionName === 'Create Invoice') {
         setActiveDepartment('FINANCE');
+        sessionStorage.setItem('rebma-last-dept', 'FINANCE');
         setActiveSubTab('Invoices');
         setActiveMobileView('dashboard');
       } else if (actionName === 'Approve Credit Order') {
         setActiveDepartment('FINANCE');
+        sessionStorage.setItem('rebma-last-dept', 'FINANCE');
         setActiveSubTab('Evaluation');
         setActiveMobileView('dashboard');
       } else if (actionName === 'View Ledger') {
         setActiveDepartment('FINANCE');
+        sessionStorage.setItem('rebma-last-dept', 'FINANCE');
         setActiveSubTab('Tickets');
         setActiveMobileView('dashboard');
       }
     } else if (dept === 'MARKETING') {
       if (actionName === 'Create Order') {
         setActiveDepartment('MARKETING');
+        sessionStorage.setItem('rebma-last-dept', 'MARKETING');
         setActiveSubTab('CreateOrder');
         setActiveMobileView('dashboard');
       } else if (actionName === 'Register Customer') {
         setActiveDepartment('MARKETING');
+        sessionStorage.setItem('rebma-last-dept', 'MARKETING');
         setActiveSubTab('RegisterCustomer');
         setActiveMobileView('dashboard');
       } else if (actionName === 'View Pipeline') {
         setActiveDepartment('MARKETING');
+        sessionStorage.setItem('rebma-last-dept', 'MARKETING');
         setActiveSubTab('SalesHistory');
         setActiveMobileView('dashboard');
       } else if (actionName === 'Export Report') {
@@ -2638,10 +2848,12 @@ export default function App() {
     } else if (dept === 'PRODUCTION') {
       if (actionName === 'Request Materials') {
         setActiveDepartment('PRODUCTION');
+        sessionStorage.setItem('rebma-last-dept', 'PRODUCTION');
         setActiveSubTab('Requisition');
         setActiveMobileView('dashboard');
       } else if (actionName === 'Update WIP Status') {
         setActiveDepartment('PRODUCTION');
+        sessionStorage.setItem('rebma-last-dept', 'PRODUCTION');
         setActiveSubTab('WIPStock');
         setActiveMobileView('dashboard');
       } else if (actionName === 'Log Output') {
@@ -2649,12 +2861,14 @@ export default function App() {
         alert("Output production units logged successfully.");
       } else if (actionName === 'View Requisitions') {
         setActiveDepartment('PRODUCTION');
+        sessionStorage.setItem('rebma-last-dept', 'PRODUCTION');
         setActiveSubTab('RawMaterials');
         setActiveMobileView('dashboard');
       }
     } else if (dept === 'DISPATCH') {
       if (actionName === 'Assign Delivery') {
         setActiveDepartment('DISPATCH');
+        sessionStorage.setItem('rebma-last-dept', 'DISPATCH');
         setActiveSubTab('Deliveries');
         setActiveMobileView('dashboard');
       } else if (actionName === 'Update GPS') {
@@ -2662,26 +2876,31 @@ export default function App() {
         alert("GPS coordinates updated.");
       } else if (actionName === 'Mark Delivered') {
         setActiveDepartment('DISPATCH');
+        sessionStorage.setItem('rebma-last-dept', 'DISPATCH');
         setActiveSubTab('DispatchHistory');
         setActiveMobileView('dashboard');
       } else if (actionName === 'View Fleet') {
         setActiveDepartment('DISPATCH');
+        sessionStorage.setItem('rebma-last-dept', 'DISPATCH');
         setActiveSubTab('DriverLogs');
         setActiveMobileView('dashboard');
       }
     } else if (dept === 'RECEPTION') {
       if (actionName === 'Check In Visitor' || actionName === 'Check Out Visitor' || actionName === 'View Today\'s Log') {
         setActiveDepartment('RECEPTION');
+        sessionStorage.setItem('rebma-last-dept', 'RECEPTION');
         setActiveSubTab('VisitorLog');
         setActiveMobileView('dashboard');
       } else if (actionName === 'Log Staff Attendance') {
         setActiveDepartment('RECEPTION');
+        sessionStorage.setItem('rebma-last-dept', 'RECEPTION');
         setActiveSubTab('EmployeeCheckin');
         setActiveMobileView('dashboard');
       }
     } else if (dept === 'LOGISTICS') {
       if (actionName === 'Add Shipment' || actionName === 'Update Route') {
         setActiveDepartment('LOGISTICS');
+        sessionStorage.setItem('rebma-last-dept', 'LOGISTICS');
         setActiveSubTab('Dispatch');
         setActiveMobileView('dashboard');
       } else if (actionName === 'View Supply Chain') {
@@ -2694,18 +2913,22 @@ export default function App() {
     } else if (dept === 'MANAGEMENT') {
       if (actionName === 'Approve Intake') {
         setActiveDepartment('MANAGEMENT');
+        sessionStorage.setItem('rebma-last-dept', 'MANAGEMENT');
         setActiveSubTab('CargoApproval');
         setActiveMobileView('dashboard');
       } else if (actionName === 'Set Price') {
         setActiveDepartment('MANAGEMENT');
+        sessionStorage.setItem('rebma-last-dept', 'MANAGEMENT');
         setActiveSubTab('SetPrices');
         setActiveMobileView('dashboard');
       } else if (actionName === 'Approve Credit') {
         setActiveDepartment('MANAGEMENT');
+        sessionStorage.setItem('rebma-last-dept', 'MANAGEMENT');
         setActiveSubTab('CreditApproval');
         setActiveMobileView('dashboard');
       } else if (actionName === 'View Audit Log') {
         setActiveDepartment('MANAGEMENT');
+        sessionStorage.setItem('rebma-last-dept', 'MANAGEMENT');
         setActiveSubTab('Ledger');
         setActiveMobileView('dashboard');
       }
@@ -2780,7 +3003,7 @@ export default function App() {
         <div className="p-2 app-card divide-y divide-slate-100 dark:divide-slate-800">
           <button 
             type="button"
-            onClick={() => { setActiveDepartment('SETTINGS'); setActiveSubTab('ChangePassword'); setActiveMobileView('dashboard'); }}
+            onClick={() => { setActiveDepartment('SETTINGS'); sessionStorage.setItem('rebma-last-dept', 'SETTINGS'); setActiveSubTab('ChangePassword'); setActiveMobileView('dashboard'); }}
             className="w-full flex items-center justify-between p-4 text-xs font-bold text-slate-700 dark:text-slate-350 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-855 transition-colors animate-none"
           >
             <span>Change Password</span>
@@ -2788,7 +3011,7 @@ export default function App() {
           </button>
           <button 
             type="button"
-            onClick={() => { setActiveDepartment('SETTINGS'); setActiveSubTab('Appearance'); setActiveMobileView('dashboard'); }}
+            onClick={() => { setActiveDepartment('SETTINGS'); sessionStorage.setItem('rebma-last-dept', 'SETTINGS'); setActiveSubTab('Appearance'); setActiveMobileView('dashboard'); }}
             className="w-full flex items-center justify-between p-4 text-xs font-bold text-slate-700 dark:text-slate-350 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-855 transition-colors animate-none"
           >
             <span>Display & Appearance Settings</span>
@@ -2967,7 +3190,7 @@ export default function App() {
             setCurrentUser(null);
           }}
           addNotification={addNotification}
-          openBoardroom={() => { setActiveDepartment('BOARDROOM'); setActiveSubTab('VideoConf'); }}
+          openBoardroom={() => { setActiveDepartment('BOARDROOM'); sessionStorage.setItem('rebma-last-dept', 'BOARDROOM'); setActiveSubTab('VideoConf'); }}
           isOpen={isSidebarOpen}
           onClose={() => setIsSidebarOpen(false)}
         />
@@ -2997,7 +3220,7 @@ export default function App() {
               darkMode={darkMode}
               setDarkMode={setDarkMode}
               onProfileClick={() => setActiveMobileView('profile')}
-              onDisplaySettingsClick={() => { setActiveDepartment('SETTINGS'); setActiveSubTab(window.innerWidth < 1024 ? 'Appearance' : 'Themes'); setActiveMobileView('dashboard'); }}
+              onDisplaySettingsClick={() => { setActiveDepartment('SETTINGS'); sessionStorage.setItem('rebma-last-dept', 'SETTINGS'); setActiveSubTab(window.innerWidth < 1024 ? 'Appearance' : 'Themes'); setActiveMobileView('dashboard'); }}
               onSwitchDepartmentClick={() => setIsSidebarOpen(true)}
               onLogout={async () => {
                 await auth.signOut();
@@ -3059,6 +3282,7 @@ export default function App() {
               onClick={() => {
                 const userDept = (currentUser?.department || 'CEO').toUpperCase() === 'HUMAN RESOURCES' ? 'HR' : (currentUser?.department || 'CEO').toUpperCase();
                 setActiveDepartment(userDept);
+                sessionStorage.setItem('rebma-last-dept', userDept);
                 setIsMobileSearchActive(false);
                 setIsMobileNotificationsActive(false);
                 setActiveMobileView('dashboard');
