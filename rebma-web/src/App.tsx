@@ -42,29 +42,31 @@ export default function App() {
   };
 
   // Redesigned 10 Display & Appearance preferences
+  // erp-appearance JSON takes priority over individual keys (written by Settings Apply)
+  const _getAppearance = () => { try { return JSON.parse(localStorage.getItem('erp-appearance') || '{}'); } catch { return {}; } };
   const [theme, setTheme] = useState<any>(() => {
-    return localStorage.getItem('erp-theme') || 'salespulse';
+    const a = _getAppearance(); return a.template || localStorage.getItem('erp-theme') || 'salespulse';
   });
   const [accentColor, setAccentColor] = useState<string>(() => {
-    return localStorage.getItem('erp-accent') || '#068d5c';
+    const a = _getAppearance(); return (a.accentType === 'solid' ? a.accentSolid : undefined) || localStorage.getItem('erp-accent') || '#22c55e';
   });
   const [fontFamily, setFontFamily] = useState<string>(() => {
-    return localStorage.getItem('erp-font') || 'Inter';
+    const a = _getAppearance(); return a.fontFamily || localStorage.getItem('erp-font') || 'Inter';
   });
   const [fontSize, setFontSize] = useState<string>(() => {
-    return localStorage.getItem('erp-font-size') || 'Medium';
+    const a = _getAppearance(); return a.fontSize || localStorage.getItem('erp-font-size') || 'Medium';
   });
   const [navStyle, setNavStyle] = useState<string>(() => {
     return localStorage.getItem('erp-nav-style') || 'Pill';
   });
   const [buttonStyle, setButtonStyle] = useState<string>(() => {
-    return localStorage.getItem('erp-button-style') || 'Rounded';
+    const a = _getAppearance(); return a.buttonStyle || localStorage.getItem('erp-button-style') || 'Rounded';
   });
   const [cardStyle, setCardStyle] = useState<string>(() => {
-    return localStorage.getItem('erp-card-style') || 'Float';
+    const a = _getAppearance(); return a.cardStyle || localStorage.getItem('erp-card-style') || 'Float';
   });
   const [density, setDensity] = useState<string>(() => {
-    return localStorage.getItem('erp-density') || 'Normal';
+    const a = _getAppearance(); return a.density || localStorage.getItem('erp-density') || 'Normal';
   });
   const [motionSetting, setMotionSetting] = useState<string>(() => {
     return localStorage.getItem('erp-motion') || 'Full';
@@ -314,7 +316,7 @@ export default function App() {
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.95 }}
-          className="bg-white rounded-[24px] border border-slate-100 shadow-2xl max-w-md w-full overflow-hidden p-6 space-y-4 relative text-slate-800"
+          className="bg-bg-card rounded-[24px] border border-slate-100 shadow-2xl max-w-md w-full overflow-hidden p-6 space-y-4 relative text-slate-800"
         >
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-2.5">
@@ -360,7 +362,7 @@ export default function App() {
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.95 }}
-          className="bg-white rounded-[24px] border border-slate-100 shadow-2xl max-w-md w-full overflow-hidden p-6 space-y-4 relative text-slate-800"
+          className="bg-bg-card rounded-[24px] border border-slate-100 shadow-2xl max-w-md w-full overflow-hidden p-6 space-y-4 relative text-slate-800"
         >
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-2.5">
@@ -428,7 +430,7 @@ export default function App() {
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.95 }}
-          className="bg-white rounded-[24px] border border-slate-100 shadow-2xl max-w-md w-full overflow-hidden p-6 space-y-4 relative text-slate-800"
+          className="bg-bg-card rounded-[24px] border border-slate-100 shadow-2xl max-w-md w-full overflow-hidden p-6 space-y-4 relative text-slate-800"
         >
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-2.5">
@@ -1723,7 +1725,7 @@ export default function App() {
             <button 
               type="submit" 
               disabled={isRegisteringPriv}
-              className="w-full py-3 bg-[#55dfa5] hover:bg-[#40cf93] disabled:bg-[#a7f3d0] disabled:cursor-not-allowed rounded-full text-sm font-bold text-white shadow-md hover:shadow-lg transition-all cursor-pointer text-center flex items-center justify-center gap-2"
+              className="w-full py-3 bg-[#55dfa5] hover:bg-[#40cf93] disabled:bg-[#a7f3d0] disabled:cursor-not-allowed rounded-full text-sm font-bold text-white shadow-card hover:shadow-lg transition-all cursor-pointer text-center flex items-center justify-center gap-2"
             >
               {isRegisteringPriv ? (
                 <>
@@ -1833,7 +1835,7 @@ export default function App() {
           <button 
             type="submit" 
             disabled={isLoggingIn}
-            className="w-full py-3 bg-gradient-to-r from-[var(--accent)] to-[var(--accent-hover)] disabled:from-emerald-300 disabled:to-emerald-400 disabled:cursor-not-allowed rounded-full text-sm font-bold text-white shadow-md hover:shadow-lg transition-all cursor-pointer text-center flex items-center justify-center gap-2"
+            className="w-full py-3 bg-gradient-to-r from-[var(--accent)] to-[var(--accent-hover)] disabled:from-emerald-300 disabled:to-emerald-400 disabled:cursor-not-allowed rounded-full text-sm font-bold text-white shadow-card hover:shadow-lg transition-all cursor-pointer text-center flex items-center justify-center gap-2"
           >
             {isLoggingIn ? (
               <>
@@ -1874,7 +1876,7 @@ export default function App() {
               setRegisterDept('Human Resources');
               addNotification('Staging: Gmail SSO pre-filled HR registration details.');
             }}
-            className="flex items-center justify-center gap-1.5 py-2 px-3 bg-white hover:bg-slate-50 rounded-xl text-xs font-semibold text-slate-700 transition-all cursor-pointer shadow-sm hover:shadow hover:scale-102 border border-slate-200"
+            className="flex items-center justify-center gap-1.5 py-2 px-3 bg-bg-card hover:bg-slate-50 rounded-xl text-xs font-semibold text-slate-700 transition-all cursor-pointer shadow-card hover:shadow hover:scale-102 border border-slate-200"
           >
             <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="currentColor">
               <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
@@ -1892,7 +1894,7 @@ export default function App() {
               setRegisterDept('Production Line');
               addNotification('Staging: Outlook SSO pre-filled Production registration details.');
             }}
-            className="flex items-center justify-center gap-1.5 py-2 px-3 bg-white hover:bg-slate-50 rounded-xl text-xs font-semibold text-slate-700 transition-all cursor-pointer shadow-sm hover:shadow hover:scale-102 border border-slate-200"
+            className="flex items-center justify-center gap-1.5 py-2 px-3 bg-bg-card hover:bg-slate-50 rounded-xl text-xs font-semibold text-slate-700 transition-all cursor-pointer shadow-card hover:shadow hover:scale-102 border border-slate-200"
           >
             <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 23 23" fill="currentColor">
               <path d="M0 0h11v11H0z" fill="#F25022"/>
@@ -1906,7 +1908,7 @@ export default function App() {
 
         <div className="relative my-2.5 flex items-center justify-center">
           <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-200"></div></div>
-          <span className="relative bg-white px-2 text-[9px] font-bold text-slate-400 uppercase tracking-widest">OR REGISTER WITH DETAILS</span>
+          <span className="relative bg-bg-card px-2 text-[9px] font-bold text-slate-400 uppercase tracking-widest">OR REGISTER WITH DETAILS</span>
         </div>
 
         {/* Name Input */}
@@ -1992,7 +1994,7 @@ export default function App() {
 
         <button 
           type="submit" 
-          className="w-full py-2.5 bg-gradient-to-r from-[#5ce1ab] to-[#34d399] hover:from-[#4fd69e] hover:to-[#059669] rounded-full text-xs font-bold text-slate-900 shadow-md hover:shadow-lg transition-all cursor-pointer text-center"
+          className="w-full py-2.5 bg-gradient-to-r from-[#5ce1ab] to-[#34d399] hover:from-[#4fd69e] hover:to-[#059669] rounded-full text-xs font-bold text-slate-900 shadow-card hover:shadow-lg transition-all cursor-pointer text-center"
         >
           Register Team
         </button>
@@ -2064,7 +2066,7 @@ export default function App() {
 
               <button
                 type="submit"
-                className="w-full py-2.5 bg-gradient-to-r from-[#5ce1ab] to-[#34d399] hover:from-[#4fd69e] hover:to-[#059669] rounded-full text-xs font-bold text-slate-900 shadow-md hover:shadow-lg transition-all cursor-pointer text-center"
+                className="w-full py-2.5 bg-gradient-to-r from-[#5ce1ab] to-[#34d399] hover:from-[#4fd69e] hover:to-[#059669] rounded-full text-xs font-bold text-slate-900 shadow-card hover:shadow-lg transition-all cursor-pointer text-center"
               >
                 Send Reset Link
               </button>
@@ -2225,7 +2227,7 @@ export default function App() {
 
           <button
             type="submit"
-            className="w-full py-2.5 bg-gradient-to-r from-[#5ce1ab] to-[#34d399] hover:from-[#4fd69e] hover:to-[#059669] rounded-full text-xs font-bold text-slate-900 shadow-md hover:shadow-lg transition-all cursor-pointer text-center"
+            className="w-full py-2.5 bg-gradient-to-r from-[#5ce1ab] to-[#34d399] hover:from-[#4fd69e] hover:to-[#059669] rounded-full text-xs font-bold text-slate-900 shadow-card hover:shadow-lg transition-all cursor-pointer text-center"
           >
             Update Password
           </button>
@@ -2253,7 +2255,7 @@ export default function App() {
         <button
           type="button"
           onClick={() => setAuthScreen('login')}
-          className="w-full py-2.5 bg-gradient-to-r from-[#5ce1ab] to-[#34d399] hover:from-[#4fd69e] hover:to-[#059669] rounded-full text-xs font-bold text-slate-900 shadow-md hover:shadow-lg transition-all cursor-pointer text-center"
+          className="w-full py-2.5 bg-gradient-to-r from-[#5ce1ab] to-[#34d399] hover:from-[#4fd69e] hover:to-[#059669] rounded-full text-xs font-bold text-slate-900 shadow-card hover:shadow-lg transition-all cursor-pointer text-center"
         >
           ← Return to Login
         </button>
@@ -2275,7 +2277,7 @@ export default function App() {
         <button
           type="button"
           onClick={() => setAuthScreen('login')}
-          className="w-full py-2.5 bg-gradient-to-r from-[#5ce1ab] to-[#34d399] hover:from-[#4fd69e] hover:to-[#059669] rounded-full text-xs font-bold text-slate-900 shadow-md hover:shadow-lg transition-all cursor-pointer text-center"
+          className="w-full py-2.5 bg-gradient-to-r from-[#5ce1ab] to-[#34d399] hover:from-[#4fd69e] hover:to-[#059669] rounded-full text-xs font-bold text-slate-900 shadow-card hover:shadow-lg transition-all cursor-pointer text-center"
         >
           ← Return to Login
         </button>
@@ -2305,7 +2307,7 @@ export default function App() {
           {/* Scrolling transactions list */}
           <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
             {liveTrades.map(trade => (
-              <div key={trade.id} className="flex justify-between items-center p-2 bg-white rounded-xl border border-slate-100 text-[9px] text-left">
+              <div key={trade.id} className="flex justify-between items-center p-2 bg-bg-card rounded-xl border border-slate-100 text-[9px] text-left">
                 <div className="flex items-center gap-1.5">
                   <span className={`px-1 py-0.2 rounded text-[7px] font-bold ${
                     trade.type === 'BUY' ? 'bg-emerald-500/20 text-emerald-600 animate-pulse-green' : 'bg-red-500/20 text-red-600 animate-pulse-red'
@@ -2345,7 +2347,7 @@ export default function App() {
               setPassword('');
               setAuthScreen('login');
             }}
-            className="py-2.5 px-3 bg-gradient-to-r from-[#5ce1ab] to-[#34d399] hover:from-[#4fd69e] hover:to-[#059669] text-slate-900 rounded-full text-xs font-bold shadow-md hover:scale-102 transition-all cursor-pointer flex items-center justify-center gap-1"
+            className="py-2.5 px-3 bg-gradient-to-r from-[#5ce1ab] to-[#34d399] hover:from-[#4fd69e] hover:to-[#059669] text-slate-900 rounded-full text-xs font-bold shadow-card hover:scale-102 transition-all cursor-pointer flex items-center justify-center gap-1"
           >
             <span>Sign In</span>
             <ArrowRight className="w-3.5 h-3.5" />
@@ -2355,7 +2357,7 @@ export default function App() {
               setPassword('');
               setAuthScreen('register');
             }}
-            className="py-2.5 px-3 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-full text-xs font-bold cursor-pointer transition-all hover:scale-102"
+            className="py-2.5 px-3 bg-bg-card hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-full text-xs font-bold cursor-pointer transition-all hover:scale-102"
           >
             Register Team
           </button>
@@ -2364,13 +2366,13 @@ export default function App() {
     );
 
     return (
-      <div className="min-h-screen w-full flex lg:grid lg:grid-cols-2 items-center justify-center lg:items-stretch bg-[#068d5c] lg:bg-white p-3 md:p-8 lg:p-0 relative select-none font-sans">
+      <div className="min-h-screen w-full flex lg:grid lg:grid-cols-2 items-center justify-center lg:items-stretch bg-[#068d5c] lg:bg-bg-card p-3 md:p-8 lg:p-0 relative select-none font-sans">
 
         {/* Symmetrical Split Card on Mobile/Tablet, direct grid layout on Desktop */}
-        <div className="w-full max-w-5xl lg:max-w-none lg:w-full bg-white lg:bg-transparent rounded-[32px] lg:rounded-none shadow-[0_25px_60px_-15px_rgba(0,0,0,0.25)] lg:shadow-none flex flex-col md:flex-row lg:contents overflow-hidden min-h-[580px] lg:min-h-0 relative">
+        <div className="w-full max-w-5xl lg:max-w-none lg:w-full bg-bg-card lg:bg-transparent rounded-[32px] lg:rounded-none shadow-[0_25px_60px_-15px_rgba(0,0,0,0.25)] lg:shadow-none flex flex-col md:flex-row lg:contents overflow-hidden min-h-[580px] lg:min-h-0 relative">
           
           {/* Left half: Brand, logo, floating coworker illustration */}
-          <div className="hidden md:flex w-full md:w-1/2 lg:w-full bg-white p-8 md:p-12 lg:p-16 flex-col justify-between items-start">
+          <div className="hidden md:flex w-full md:w-1/2 lg:w-full bg-bg-card p-8 md:p-12 lg:p-16 flex-col justify-between items-start">
             {/* Sourced from /logo.png with proper Open Sans typography */}
             <div className="flex items-center gap-2 select-none ml-2 mt-2 shrink-0">
               <img 
@@ -2396,7 +2398,7 @@ export default function App() {
               }}
               className="my-auto flex flex-col items-center justify-center w-full py-6 lg:scale-110"
             >
-              <div className="relative overflow-hidden w-[279px] h-[252px] select-none pointer-events-none rounded-2xl shadow-sm">
+              <div className="relative overflow-hidden w-[279px] h-[252px] select-none pointer-events-none rounded-2xl shadow-card">
                 <img 
                   src="/login_full.png" 
                   alt="Coworkers collaborating at desk" 
@@ -2432,7 +2434,7 @@ export default function App() {
             <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-600 rounded-full filter blur-3xl opacity-20 -mr-8 -mt-8"></div>
             
             {/* White card container for form */}
-            <div className="w-full max-w-[380px] lg:max-w-md bg-white rounded-3xl p-5 md:p-8 lg:p-10 shadow-[0_15px_30px_rgba(0,0,0,0.08)] lg:shadow-2xl relative z-10 flex flex-col justify-center min-h-[420px] lg:min-h-[485px]">
+            <div className="w-full max-w-[380px] lg:max-w-md bg-bg-card rounded-3xl p-5 md:p-8 lg:p-10 shadow-[0_15px_30px_rgba(0,0,0,0.08)] lg:shadow-2xl relative z-10 flex flex-col justify-center min-h-[420px] lg:min-h-[485px]">
               
               {registrationMessage && (
                 <div className="mb-4 p-2.5 bg-emerald-50 border border-emerald-100 rounded-xl text-[10px] text-emerald-800 text-center font-medium">
@@ -2971,7 +2973,7 @@ export default function App() {
             <button 
               type="button"
               onClick={handleProfilePhotoClick}
-              className="absolute bottom-0 right-0 p-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full shadow-md cursor-pointer border-2 border-white dark:border-slate-900"
+              className="absolute bottom-0 right-0 p-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full shadow-card cursor-pointer border-2 border-white dark:border-slate-900"
               title="Change Photo"
             >
               <Camera className="w-4 h-4" />
@@ -3091,12 +3093,12 @@ export default function App() {
     return (
       <div className="flex flex-col h-[calc(100vh-12rem)] max-w-md mx-auto bg-slate-50 dark:bg-slate-950 pb-2 flex-1 relative animate-fade-in-up">
         {/* Tabs switcher */}
-        <div className="flex bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-1 rounded-full shrink-0 mb-4 shadow-sm">
+        <div className="flex bg-bg-card dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-1 rounded-full shrink-0 mb-4 shadow-card">
           <button 
             type="button"
             onClick={() => setChatTab('global')}
             className={`flex-1 py-2 rounded-full text-xs font-extrabold flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
-              chatTab === 'global' ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-400 dark:text-slate-500'
+              chatTab === 'global' ? 'bg-emerald-600 text-white shadow-card' : 'text-slate-400 dark:text-slate-500'
             }`}
           >
             <Globe className="w-3.5 h-3.5 animate-none" />
@@ -3106,7 +3108,7 @@ export default function App() {
             type="button"
             onClick={() => setChatTab('department')}
             className={`flex-1 py-2 rounded-full text-xs font-extrabold flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
-              chatTab === 'department' ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-400 dark:text-slate-500'
+              chatTab === 'department' ? 'bg-emerald-600 text-white shadow-card' : 'text-slate-400 dark:text-slate-500'
             }`}
           >
             <Users className="w-3.5 h-3.5 animate-none" />
@@ -3139,10 +3141,10 @@ export default function App() {
                         </div>
                       )}
 
-                      <div className={`max-w-[75%] rounded-2xl px-3.5 py-2.5 shadow-sm text-xs relative ${
+                      <div className={`max-w-[75%] rounded-2xl px-3.5 py-2.5 shadow-card text-xs relative ${
                         isSelf 
                           ? 'bg-emerald-600 text-white rounded-tr-none' 
-                          : 'bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 text-slate-800 dark:text-slate-200 rounded-tl-none'
+                          : 'bg-bg-card dark:bg-slate-900 border border-slate-100 dark:border-slate-800 text-slate-800 dark:text-slate-200 rounded-tl-none'
                       }`}>
                         {!isSelf && (
                           <p className="text-[9px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wide leading-none mb-1">{m.sender}</p>
@@ -3167,7 +3169,7 @@ export default function App() {
 
         {/* Input area fixed at bottom of chat view */}
         <div className="absolute bottom-0 inset-x-0 bg-slate-50 dark:bg-slate-950 py-1.5 shrink-0 z-10">
-          <div className="flex gap-2 items-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-full px-3 py-1">
+          <div className="flex gap-2 items-center bg-bg-card dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-full px-3 py-1">
             <input 
               type="text" 
               placeholder={`Send message to ${chatTab === 'global' ? 'Global' : currentUser.department}...`}
@@ -3294,8 +3296,8 @@ export default function App() {
         {!isSidebarOpen && (
           <div className={
             navStyle === 'Pill'
-              ? "lg:hidden fixed bottom-5 left-4 right-4 h-16 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-100 dark:border-slate-800/80 rounded-full flex items-center justify-around z-50 shadow-xl px-2"
-              : "lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex items-center justify-around z-50 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] pb-safe"
+              ? "lg:hidden fixed bottom-5 left-4 right-4 h-16 bg-bg-card/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-100 dark:border-slate-800/80 rounded-full flex items-center justify-around z-50 shadow-xl px-2"
+              : "lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-bg-card dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex items-center justify-around z-50 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] pb-safe"
           }>
             {/* Home */}
             <button 
@@ -3391,7 +3393,7 @@ export default function App() {
               onClick={() => setIsQuickActionOpen(false)}
             />
             {/* Sheet */}
-            <div className="fixed inset-x-0 bottom-0 max-h-[80vh] bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 rounded-t-3xl p-6 z-[260] overflow-y-auto flex flex-col gap-4 animate-fade-in-up">
+            <div className="fixed inset-x-0 bottom-0 max-h-[80vh] bg-bg-card dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 rounded-t-3xl p-6 z-[260] overflow-y-auto flex flex-col gap-4 animate-fade-in-up">
               <div className="w-12 h-1 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto mb-1 shrink-0" />
               
               <div className="flex justify-between items-center">
@@ -3403,31 +3405,31 @@ export default function App() {
                 {activeDepartment === 'HR' && (
                   <>
                     <button onClick={() => handleQuickAction('Add New Staff', 'HR')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-emerald-500 shadow-sm shrink-0">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-emerald-500 shadow-card shrink-0">
                         <UserPlus className="w-5 h-5" />
                       </div>
                       <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Add New Staff</span>
                     </button>
                     <button onClick={() => handleQuickAction('Log Attendance', 'HR')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-blue-500 shadow-sm shrink-0">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-blue-500 shadow-card shrink-0">
                         <ClipboardList className="w-5 h-5" />
                       </div>
                       <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Log Attendance</span>
                     </button>
                     <button onClick={() => handleQuickAction('Schedule Meeting', 'HR')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-indigo-500 shadow-sm shrink-0">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-indigo-500 shadow-card shrink-0">
                         <Calendar className="w-5 h-5" />
                       </div>
                       <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Schedule Meeting</span>
                     </button>
                     <button onClick={() => handleQuickAction('Send Announcement', 'HR')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-amber-500 shadow-sm shrink-0">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-amber-500 shadow-card shrink-0">
                         <Megaphone className="w-5 h-5" />
                       </div>
                       <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Send Announcement</span>
                     </button>
                     <button onClick={() => handleQuickAction('Approve Pending Staff', 'HR')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-teal-500 shadow-sm shrink-0">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-teal-500 shadow-card shrink-0">
                         <UserCheck className="w-5 h-5" />
                       </div>
                       <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Approve Pending</span>
@@ -3437,25 +3439,25 @@ export default function App() {
                 {activeDepartment === 'CEO' && (
                   <>
                     <button onClick={() => handleQuickAction('View Reports', 'CEO')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-indigo-500 shadow-sm shrink-0">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-indigo-500 shadow-card shrink-0">
                         <BarChart3 className="w-5 h-5" />
                       </div>
                       <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">View Reports</span>
                     </button>
                     <button onClick={() => handleQuickAction('Schedule Boardroom', 'CEO')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-violet-500 shadow-sm shrink-0">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-violet-500 shadow-card shrink-0">
                         <Video className="w-5 h-5" />
                       </div>
                       <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Schedule Boardroom</span>
                     </button>
                     <button onClick={() => handleQuickAction('Send Alert', 'CEO')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-rose-500 shadow-sm shrink-0">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-rose-500 shadow-card shrink-0">
                         <AlertCircle className="w-5 h-5" />
                       </div>
                       <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Send Alert</span>
                     </button>
                     <button onClick={() => handleQuickAction('View All Departments', 'CEO')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-sky-500 shadow-sm shrink-0">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-sky-500 shadow-card shrink-0">
                         <Building2 className="w-5 h-5" />
                       </div>
                       <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">View All Depts</span>
@@ -3465,25 +3467,25 @@ export default function App() {
                 {activeDepartment === 'OPERATIONS' && (
                   <>
                     <button onClick={() => handleQuickAction('Log Cargo Intake', 'OPERATIONS')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-sky-500 shadow-sm shrink-0">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-sky-500 shadow-card shrink-0">
                         <Ship className="w-5 h-5" />
                       </div>
                       <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Log Cargo Intake</span>
                     </button>
                     <button onClick={() => handleQuickAction('Create Fulfillment Ticket', 'OPERATIONS')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-teal-500 shadow-sm shrink-0">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-teal-500 shadow-card shrink-0">
                         <Ticket className="w-5 h-5" />
                       </div>
                       <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Fulfillment Ticket</span>
                     </button>
                     <button onClick={() => handleQuickAction('Flag Discrepancy', 'OPERATIONS')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-rose-500 shadow-sm shrink-0">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-rose-500 shadow-card shrink-0">
                         <Flag className="w-5 h-5" />
                       </div>
                       <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Flag Discrepancy</span>
                     </button>
                     <button onClick={() => handleQuickAction('Release to Dispatch', 'OPERATIONS')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-amber-500 shadow-sm shrink-0">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-amber-500 shadow-card shrink-0">
                         <Truck className="w-5 h-5" />
                       </div>
                       <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Release Dispatch</span>
@@ -3493,25 +3495,25 @@ export default function App() {
                 {activeDepartment === 'FINANCE' && (
                   <>
                     <button onClick={() => handleQuickAction('Record Payment', 'FINANCE')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-emerald-500 shadow-sm shrink-0">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-emerald-500 shadow-card shrink-0">
                         <DollarSign className="w-5 h-5" />
                       </div>
                       <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Record Payment</span>
                     </button>
                     <button onClick={() => handleQuickAction('Create Invoice', 'FINANCE')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-blue-500 shadow-sm shrink-0">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-blue-500 shadow-card shrink-0">
                         <FileText className="w-5 h-5" />
                       </div>
                       <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Create Invoice</span>
                     </button>
                     <button onClick={() => handleQuickAction('Approve Credit Order', 'FINANCE')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-teal-500 shadow-sm shrink-0">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-teal-500 shadow-card shrink-0">
                         <CheckSquare className="w-5 h-5" />
                       </div>
                       <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Approve Credit</span>
                     </button>
                     <button onClick={() => handleQuickAction('View Ledger', 'FINANCE')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-indigo-500 shadow-sm shrink-0">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-indigo-500 shadow-card shrink-0">
                         <BookOpen className="w-5 h-5" />
                       </div>
                       <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">View Ledger</span>
@@ -3521,25 +3523,25 @@ export default function App() {
                 {activeDepartment === 'MARKETING' && (
                   <>
                     <button onClick={() => handleQuickAction('Create Order', 'MARKETING')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-emerald-500 shadow-sm shrink-0">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-emerald-500 shadow-card shrink-0">
                         <ShoppingCart className="w-5 h-5" />
                       </div>
                       <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Create Order</span>
                     </button>
                     <button onClick={() => handleQuickAction('Register Customer', 'MARKETING')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-blue-500 shadow-sm shrink-0">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-blue-500 shadow-card shrink-0">
                         <UserPlus className="w-5 h-5" />
                       </div>
                       <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Register Customer</span>
                     </button>
                     <button onClick={() => handleQuickAction('View Pipeline', 'MARKETING')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-indigo-500 shadow-sm shrink-0">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-indigo-500 shadow-card shrink-0">
                         <TrendingUp className="w-5 h-5" />
                       </div>
                       <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">View Pipeline</span>
                     </button>
                     <button onClick={() => handleQuickAction('Export Report', 'MARKETING')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-amber-500 shadow-sm shrink-0">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-amber-500 shadow-card shrink-0">
                         <Download className="w-5 h-5" />
                       </div>
                       <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Export Report</span>
@@ -3549,25 +3551,25 @@ export default function App() {
                 {activeDepartment === 'PRODUCTION' && (
                   <>
                     <button onClick={() => handleQuickAction('Request Materials', 'PRODUCTION')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-indigo-500 shadow-sm shrink-0">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-indigo-500 shadow-card shrink-0">
                         <Boxes className="w-5 h-5" />
                       </div>
                       <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Request Materials</span>
                     </button>
                     <button onClick={() => handleQuickAction('Update WIP Status', 'PRODUCTION')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-amber-500 shadow-sm shrink-0">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-amber-500 shadow-card shrink-0">
                         <Hammer className="w-5 h-5" />
                       </div>
                       <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Update WIP Status</span>
                     </button>
                     <button onClick={() => handleQuickAction('Log Output', 'PRODUCTION')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-teal-500 shadow-sm shrink-0">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-teal-500 shadow-card shrink-0">
                         <BarChart3 className="w-5 h-5" />
                       </div>
                       <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Log Output</span>
                     </button>
                     <button onClick={() => handleQuickAction('View Requisitions', 'PRODUCTION')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-blue-500 shadow-sm shrink-0">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-blue-500 shadow-card shrink-0">
                         <ClipboardList className="w-5 h-5" />
                       </div>
                       <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">View Requisitions</span>
@@ -3577,25 +3579,25 @@ export default function App() {
                 {activeDepartment === 'DISPATCH' && (
                   <>
                     <button onClick={() => handleQuickAction('Assign Delivery', 'DISPATCH')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-blue-500 shadow-sm shrink-0">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-blue-500 shadow-card shrink-0">
                         <PackagePlus className="w-5 h-5" />
                       </div>
                       <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Assign Delivery</span>
                     </button>
                     <button onClick={() => handleQuickAction('Update GPS', 'DISPATCH')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-rose-500 shadow-sm shrink-0">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-rose-500 shadow-card shrink-0">
                         <MapPin className="w-5 h-5" />
                       </div>
                       <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Update GPS</span>
                     </button>
                     <button onClick={() => handleQuickAction('Mark Delivered', 'DISPATCH')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-emerald-500 shadow-sm shrink-0">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-emerald-500 shadow-card shrink-0">
                         <CheckCircle className="w-5 h-5" />
                       </div>
                       <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Mark Delivered</span>
                     </button>
                     <button onClick={() => handleQuickAction('View Fleet', 'DISPATCH')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-sky-500 shadow-sm shrink-0">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-sky-500 shadow-card shrink-0">
                         <Truck className="w-5 h-5" />
                       </div>
                       <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">View Fleet</span>
@@ -3605,25 +3607,25 @@ export default function App() {
                 {activeDepartment === 'RECEPTION' && (
                   <>
                     <button onClick={() => handleQuickAction('Check In Visitor', 'RECEPTION')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-emerald-500 shadow-sm shrink-0">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-emerald-500 shadow-card shrink-0">
                         <LogIn className="w-5 h-5" />
                       </div>
                       <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Check In Visitor</span>
                     </button>
                     <button onClick={() => handleQuickAction('Check Out Visitor', 'RECEPTION')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-rose-500 shadow-sm shrink-0">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-rose-500 shadow-card shrink-0">
                         <LogOut className="w-5 h-5" />
                       </div>
                       <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Check Out Visitor</span>
                     </button>
                     <button onClick={() => handleQuickAction('Log Staff Attendance', 'RECEPTION')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-blue-500 shadow-sm shrink-0">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-blue-500 shadow-card shrink-0">
                         <ClipboardList className="w-5 h-5" />
                       </div>
                       <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Staff Attendance</span>
                     </button>
                     <button onClick={() => handleQuickAction('View Today\'s Log', 'RECEPTION')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-indigo-500 shadow-sm shrink-0">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-indigo-500 shadow-card shrink-0">
                         <BookOpen className="w-5 h-5" />
                       </div>
                       <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">View Today's Log</span>
@@ -3633,25 +3635,25 @@ export default function App() {
                 {activeDepartment === 'LOGISTICS' && (
                   <>
                     <button onClick={() => handleQuickAction('Add Shipment', 'LOGISTICS')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-blue-500 shadow-sm shrink-0">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-blue-500 shadow-card shrink-0">
                         <Ship className="w-5 h-5" />
                       </div>
                       <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Add Shipment</span>
                     </button>
                     <button onClick={() => handleQuickAction('Update Route', 'LOGISTICS')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-teal-500 shadow-sm shrink-0">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-teal-500 shadow-card shrink-0">
                         <Map className="w-5 h-5" />
                       </div>
                       <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Update Route</span>
                     </button>
                     <button onClick={() => handleQuickAction('View Supply Chain', 'LOGISTICS')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-indigo-500 shadow-sm shrink-0">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-indigo-500 shadow-card shrink-0">
                         <GitMerge className="w-5 h-5" />
                       </div>
                       <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">View Supply Chain</span>
                     </button>
                     <button onClick={() => handleQuickAction('Export Manifest', 'LOGISTICS')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-amber-500 shadow-sm shrink-0">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-amber-500 shadow-card shrink-0">
                         <FileText className="w-5 h-5" />
                       </div>
                       <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Export Manifest</span>
@@ -3661,25 +3663,25 @@ export default function App() {
                 {activeDepartment === 'MANAGEMENT' && (
                   <>
                     <button onClick={() => handleQuickAction('Approve Intake', 'MANAGEMENT')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-emerald-500 shadow-sm shrink-0">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-emerald-500 shadow-card shrink-0">
                         <CheckCircle className="w-5 h-5" />
                       </div>
                       <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Approve Intake</span>
                     </button>
                     <button onClick={() => handleQuickAction('Set Price', 'MANAGEMENT')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-amber-500 shadow-sm shrink-0">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-amber-500 shadow-card shrink-0">
                         <Tag className="w-5 h-5" />
                       </div>
                       <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Set Price</span>
                     </button>
                     <button onClick={() => handleQuickAction('Approve Credit', 'MANAGEMENT')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-indigo-500 shadow-sm shrink-0">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-indigo-500 shadow-card shrink-0">
                         <CreditCard className="w-5 h-5" />
                       </div>
                       <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Approve Credit</span>
                     </button>
                     <button onClick={() => handleQuickAction('View Audit Log', 'MANAGEMENT')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-rose-500 shadow-sm shrink-0">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-rose-500 shadow-card shrink-0">
                         <ShieldAlert className="w-5 h-5" />
                       </div>
                       <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">View Audit Log</span>
@@ -3711,7 +3713,7 @@ export default function App() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   autoFocus
-                  className="w-full pl-9 pr-3 py-2.5 bg-white border border-slate-200 rounded-full text-sm text-slate-800 placeholder-slate-400 focus:outline-none"
+                  className="w-full pl-9 pr-3 py-2.5 bg-bg-card border border-slate-200 rounded-full text-sm text-slate-800 placeholder-slate-400 focus:outline-none"
                 />
               </div>
               <button 
@@ -3726,7 +3728,7 @@ export default function App() {
             <div className="space-y-4">
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Search Results</p>
               {searchQuery ? (
-                <div className="p-4 bg-white dark:bg-slate-800 rounded-2xl border border-custom text-center py-8">
+                <div className="p-4 bg-bg-card dark:bg-slate-800 rounded-2xl border border-custom text-center py-8">
                   <p className="text-xs text-slate-500 dark:text-slate-400">Searching details containing "{searchQuery}"</p>
                   <p className="text-[10px] text-slate-400 mt-1">Filtered dashboard view displays matching records.</p>
                 </div>
@@ -3760,7 +3762,7 @@ export default function App() {
             ) : (
               <div className="space-y-3">
                 {notifications.map(n => (
-                  <div key={n.id} className="p-4 bg-white dark:bg-slate-800 rounded-2xl border border-custom shadow-sm flex items-start gap-3">
+                  <div key={n.id} className="p-4 bg-bg-card dark:bg-slate-800 rounded-2xl border border-custom shadow-card flex items-start gap-3">
                     <div className="w-2 h-2 rounded-full bg-blue-500 mt-1.5 shrink-0" />
                     <div className="flex-1">
                       <p className="text-xs text-slate-800 dark:text-slate-200 font-medium leading-relaxed">{n.msg}</p>

@@ -1,6 +1,40 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300..800&family=Poppins:wght@300..800&family=DM+Sans:wght@300..800&family=Nunito:wght@300..800&family=Outfit:wght@300..800&family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap');
 @import "tailwindcss";
 
+/* ─── TAILWIND v4 THEME TOKENS ─── */
+/* These map CSS custom properties to Tailwind utility classes.         */
+/* Using `inline` so Tailwind references our existing CSS vars directly */
+/* instead of emitting duplicate CSS variables.                         */
+@theme inline {
+  /* Colors → bg-*, text-*, border-* utilities */
+  --color-accent:         var(--accent);
+  --color-accent-2:       var(--accent-2);
+  --color-accent-soft:    var(--accent-soft);
+  --color-bg-page:        var(--bg-page);
+  --color-bg-sidebar:     var(--bg-sidebar);
+  --color-bg-header:      var(--bg-header);
+  --color-bg-card:        var(--bg-card);
+  --color-bg-input:       var(--bg-input);
+  --color-text-primary:   var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted:     var(--text-muted);
+  --color-border-color:   var(--border);
+
+  /* Font family → font-base utility */
+  --font-base: var(--font-base);
+
+  /* Border radius → rounded-card, rounded-btn, rounded-input utilities */
+  --radius-card:  var(--radius-card);
+  --radius-btn:   var(--radius-btn);
+  --radius-input: var(--radius-input);
+
+  /* Box shadow → shadow-card, shadow-sidebar, shadow-header, shadow-dropdown utilities */
+  --shadow-card:     var(--shadow-card);
+  --shadow-sidebar:  var(--shadow-sidebar);
+  --shadow-header:   var(--shadow-header);
+  --shadow-dropdown: var(--shadow-dropdown);
+}
+
 /* ─── DEFAULT (SalesPulse theme active on load) ─── */
 :root {
   --accent:            #22c55e;
@@ -309,6 +343,21 @@ html.dark {
   --text-sidebar:   #f1f5f9;
   color-scheme: dark;
 }
+
+/* ─── DENSITY VARIANTS ─── */
+body.density-compact   { --density-padding: 12px; --font-size-base: 13px; font-size: 13px; }
+body.density-normal    { --density-padding: 20px; --font-size-base: 14px; font-size: 14px; }
+body.density-comfortable { --density-padding: 28px; --font-size-base: 15px; font-size: 15px; }
+
+/* ─── BUTTON STYLE VARIANTS ─── */
+body.btn-style-rounded { --radius-btn: 9999px; }
+body.btn-style-soft    { --radius-btn: 8px; }
+body.btn-style-sharp   { --radius-btn: 2px; }
+
+/* ─── CARD STYLE VARIANTS ─── */
+body.card-style-float  { --shadow-card: 0 4px 16px rgba(0,0,0,0.10); }
+body.card-style-flat   { --shadow-card: none; }
+body.card-style-glass  { }
 
 /* ─── BASE UTILITY CLASSES ─── */
 

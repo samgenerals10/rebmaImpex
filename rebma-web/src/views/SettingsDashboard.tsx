@@ -176,6 +176,98 @@ export default function SettingsDashboard({
 
   const strength = pwStrength();
 
+  // ── Template data for Appearance tab ──
+  const APPEARANCE_TEMPLATES = [
+    { id: 'salespulse',  label: 'SalesPulse',   desc: 'Clean green growth',    sidebar: '#ffffff', page: '#f0fdf4', accent: '#22c55e' },
+    { id: 'foodie',      label: 'Foodie',        desc: 'Dark indigo sidebar',   sidebar: '#1e1b4b', page: '#faf5ff', accent: '#7c3aed' },
+    { id: 'finova',      label: 'Finova',        desc: 'Blue finance gradient', sidebar: '#ffffff', page: '#f0f9ff', accent: '#3b82f6' },
+    { id: 'aczone',      label: 'AC Zone',       desc: 'Purple violet energy',  sidebar: '#ffffff', page: '#fafafa', accent: '#7c3aed' },
+    { id: 'liamfinance', label: 'Liam Finance',  desc: 'Compact icon sidebar',  sidebar: '#f1f5f9', page: '#f8fafc', accent: '#6366f1' },
+    { id: 'finloflash',  label: 'Finlo Flash',   desc: 'Warm orange fire',      sidebar: '#ffffff', page: '#fff7ed', accent: '#f97316' },
+    { id: 'routines',    label: 'Routines',      desc: 'Clear sky blue focus',  sidebar: '#ffffff', page: '#eff6ff', accent: '#3b82f6' },
+    { id: 'multicolor',  label: 'Multicolor',    desc: 'Rainbow nav icons',     sidebar: '#ffffff', page: '#fafafa', accent: '#8b5cf6' },
+  ];
+
+  // ── Draft Appearance State (local — only applied on Apply click) ──
+  const _loadDraft = () => { try { return JSON.parse(localStorage.getItem('erp-appearance') || '{}'); } catch { return {}; } };
+  const _d = _loadDraft();
+  const [draftTemplate,   setDraftTemplate]   = useState(() => _loadDraft().template   || theme);
+  const [draftFontFamily, setDraftFontFamily] = useState(() => _loadDraft().fontFamily  || fontFamily);
+  const [draftFontSize,   setDraftFontSize]   = useState(() => _loadDraft().fontSize    || 'Medium');
+  const [draftButtonStyle,setDraftButtonStyle]= useState(() => _loadDraft().buttonStyle || buttonStyle);
+  const [draftCardStyle,  setDraftCardStyle]  = useState(() => _loadDraft().cardStyle   || cardStyle);
+  const [draftDensity,    setDraftDensity]    = useState(() => _loadDraft().density     || density);
+  const [draftAccentType, setDraftAccentType] = useState<'solid'|'gradient'>(() => _loadDraft().accentType || 'solid');
+  const [draftAccentSolid,setDraftAccentSolid]= useState(() => _loadDraft().accentSolid || accentColor || '#22c55e');
+  const [draftGradC1, setDraftGradC1] = useState(() => _loadDraft().gradientColor1 || '#22c55e');
+  const [draftGradC2, setDraftGradC2] = useState(() => _loadDraft().gradientColor2 || '#16a34a');
+  const [draftGradDir,setDraftGradDir]= useState(() => _loadDraft().gradientDirection || '135deg');
+  const [isSavingApp, setIsSavingApp] = useState(false);
+  const [savedApp, setSavedApp] = useState(false);
+  // suppress unused variable warning for _d
+  void _d;
+
+  const previewAccent = draftAccentType === 'solid'
+    ? draftAccentSolid
+    : `linear-gradient(${draftGradDir}, ${draftGradC1}, ${draftGradC2})`;
+
+  const activeTpl = APPEARANCE_TEMPLATES.find(t => t.id === draftTemplate) || APPEARANCE_TEMPLATES[0];
+
+  const handleApplyAppearance = async () => {
+    setIsSavingApp(true);
+    const obj = {
+      template: draftTemplate, fontFamily: draftFontFamily, fontSize: draftFontSize,
+      buttonStyle: draftButtonStyle, cardStyle: draftCardStyle, density: draftDensity,
+      accentType: draftAccentType, accentSolid: draftAccentSolid,
+      gradientColor1: draftGradC1, gradientColor2: draftGradC2, gradientDirection: draftGradDir,
+    };
+    // 1. Save to localStorage
+    localStorage.setItem('erp-appearance', JSON.stringify(obj));
+    // 2. Apply via parent setters (triggers App.tsx useEffect → DOM update)
+    setTheme(draftTemplate);
+    setFontFamily(draftFontFamily);
+    setButtonStyle(draftButtonStyle);
+    setCardStyle(draftCardStyle);
+    setDensity(draftDensity);
+    if (draftAccentType === 'solid') {
+      setAccentColor(draftAccentSolid);
+    } else {
+      const grad = `linear-gradient(${draftGradDir},${draftGradC1},${draftGradC2})`;
+      document.documentElement.style.setProperty('--accent-gradient', grad);
+      setAccentColor(draftGradC1);
+    }
+    // 3. Supabase save
+    try {
+      if (currentUser?.id) {
+        await supabase.from('profiles').update({
+          metadata: { appearance: obj },
+          updated_at: new Date().toISOString()
+        }).eq('id', currentUser.id);
+      }
+      setSavedApp(true);
+      addNotification?.('Appearance settings saved.');
+      setTimeout(() => setSavedApp(false), 3000);
+    } catch {
+      addNotification?.('Applied locally — Supabase sync unavailable.');
+    }
+    setIsSavingApp(false);
+  };
+
+  const handleResetAppearance = () => {
+    const s = _loadDraft();
+    setDraftTemplate(s.template || theme);
+    setDraftFontFamily(s.fontFamily || fontFamily);
+    setDraftFontSize(s.fontSize || 'Medium');
+    setDraftButtonStyle(s.buttonStyle || buttonStyle);
+    setDraftCardStyle(s.cardStyle || cardStyle);
+    setDraftDensity(s.density || density);
+    setDraftAccentType(s.accentType || 'solid');
+    setDraftAccentSolid(s.accentSolid || accentColor || '#22c55e');
+    setDraftGradC1(s.gradientColor1 || '#22c55e');
+    setDraftGradC2(s.gradientColor2 || '#16a34a');
+    setDraftGradDir(s.gradientDirection || '135deg');
+  };
+
   return (
     <div className="space-y-6 text-[var(--text-primary)]">
       {/* Header */}
@@ -283,7 +375,7 @@ export default function SettingsDashboard({
                     onClick={() => setGhanaCardValidation(!ghanaCardValidation)}
                     className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${ghanaCardValidation ? 'bg-[var(--accent)]' : 'bg-[var(--border)]'}`}
                   >
-                    <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${ghanaCardValidation ? 'translate-x-6' : 'translate-x-1'}`} />
+                    <span className={`inline-block h-4 w-4 rounded-full bg-bg-card shadow transition-transform ${ghanaCardValidation ? 'translate-x-6' : 'translate-x-1'}`} />
                   </button>
                 </div>
               </div>
@@ -468,373 +560,406 @@ export default function SettingsDashboard({
         </div>
       )}
 
-      {/* DISPLAY & APPEARANCE */}
+      {/* DISPLAY & APPEARANCE — 3-Layer System */}
       {activeSubTab === 'Appearance' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in-up">
-          
-          {/* Controls - Column 1 & 2 */}
-          <div className="lg:col-span-2 space-y-6">
-            
-            {/* Theme Preset selector */}
-            <div className="p-4 md:p-6 bg-[var(--bg-card)] border border-[var(--border)] rounded-3xl space-y-6 shadow-sm">
+
+          {/* ── Controls: Layers 1–3 ── */}
+          <div className="lg:col-span-2 space-y-5">
+
+            {/* ── LAYER 1: Template Selector ── */}
+            <div className="p-5 bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-card space-y-4">
               <div>
-                <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--text-primary)]">System Theme Preset</h3>
-                <p className="text-[11px] text-[var(--text-muted)]">Select one of our 10 dynamic color configurations.</p>
+                <h3 className="text-sm font-bold text-[var(--text-primary)]">Choose Template</h3>
+                <p className="text-xs text-[var(--text-muted)] mt-0.5">Selecting a template transforms the entire app</p>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {[
-                  { id: 'salespulse',  label: 'SalesPulse',   desc: 'Clean green growth',      sidebar: '#ffffff', accent: '#22c55e' },
-                  { id: 'foodie',      label: 'Foodie',        desc: 'Dark indigo sidebar',     sidebar: '#1e1b4b', accent: '#7c3aed' },
-                  { id: 'finova',      label: 'Finova',        desc: 'Blue finance gradient',   sidebar: '#ffffff', accent: '#3b82f6' },
-                  { id: 'aczone',      label: 'AC Zone',       desc: 'Purple violet energy',    sidebar: '#ffffff', accent: '#7c3aed' },
-                  { id: 'liamfinance', label: 'Liam Finance',  desc: 'Compact icon sidebar',    sidebar: '#f1f5f9', accent: '#6366f1' },
-                  { id: 'finloflash',  label: 'Finlo Flash',   desc: 'Warm orange fire',        sidebar: '#ffffff', accent: '#f97316' },
-                  { id: 'routines',    label: 'Routines',      desc: 'Clear sky blue focus',    sidebar: '#ffffff', accent: '#3b82f6' },
-                  { id: 'multicolor',  label: 'Multicolor',    desc: 'Rainbow nav icons',       sidebar: '#ffffff', accent: 'linear-gradient(135deg,#f59e0b,#ef4444,#8b5cf6,#3b82f6,#10b981)' },
-                ].map(t => (
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                {APPEARANCE_TEMPLATES.map(t => (
                   <button
                     key={t.id}
                     type="button"
-                    onClick={() => setTheme(t.id)}
-                    className={`p-3 text-left border rounded-2xl hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer flex items-center gap-3 ${
-                      theme === t.id
-                        ? 'border-[var(--accent)] bg-[var(--accent-light)]'
-                        : 'border-[var(--border)] bg-[var(--bg-card)] hover:bg-[var(--accent-light)]/5'
+                    onClick={() => setDraftTemplate(t.id)}
+                    className={`rounded-xl overflow-hidden cursor-pointer border-2 transition-all hover:shadow-md hover:scale-[1.02] text-left ${
+                      draftTemplate === t.id
+                        ? 'border-[var(--accent)] ring-2 ring-offset-1 ring-[var(--accent-soft)]'
+                        : 'border-transparent hover:border-[var(--border)]'
                     }`}
                   >
-                    {/* Mini preview */}
-                    <div className="flex-shrink-0 w-12 h-12 rounded-xl overflow-hidden border border-[var(--border)] flex">
-                      <div className="w-3 h-full" style={{ backgroundColor: t.sidebar }} />
-                      <div className="flex-1 flex flex-col gap-1 p-1 bg-slate-50">
-                        <div className="h-1.5 rounded-full" style={{ background: t.accent }} />
-                        <div className="h-1 rounded-full bg-slate-200" />
-                        <div className="h-1 rounded-full bg-slate-200 w-3/4" />
+                    {/* 80px mini preview */}
+                    <div className="flex overflow-hidden" style={{ height: '80px', background: t.page }}>
+                      {/* Sidebar strip */}
+                      <div className="w-10 h-full flex-shrink-0 flex flex-col pt-3 items-center gap-1.5" style={{ background: t.sidebar }}>
+                        <div className="w-4 h-1.5 rounded-full" style={{ background: t.accent }} />
+                        <div className="w-4 h-1 rounded-full bg-gray-200" />
+                        <div className="w-4 h-1 rounded-full bg-gray-200" />
+                        <div className="w-4 h-1 rounded-full bg-gray-200" />
+                      </div>
+                      {/* Page area */}
+                      <div className="flex-1 p-2">
+                        <div className="h-2 rounded mb-1.5" style={{ background: t.accent }} />
+                        <div className="grid grid-cols-2 gap-1 mb-1.5">
+                          <div className="h-4 rounded-sm" style={{ background: 'rgba(255,255,255,0.8)', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }} />
+                          <div className="h-4 rounded-sm" style={{ background: 'rgba(255,255,255,0.8)', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }} />
+                        </div>
+                        <div className="h-2 rounded bg-white/70 mb-1" />
+                        <div className="h-2 rounded bg-white/50 w-3/4" />
                       </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded-full flex-shrink-0 border border-[var(--border)]" style={{ background: t.accent }} />
-                        <h4 className="text-sm font-semibold text-[var(--text-primary)] truncate">{t.label}</h4>
+                    {/* Card footer */}
+                    <div className="px-2.5 py-2 bg-[var(--bg-card)]">
+                      <div className="flex items-center gap-1.5 mb-0.5">
+                        <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: t.accent }} />
+                        <span className="text-[11px] font-semibold text-[var(--text-primary)] leading-none">{t.label}</span>
                       </div>
-                      <p className="text-xs text-[var(--text-muted)] mt-0.5">{t.desc}</p>
-                      {theme === t.id && (
-                        <span className="text-[9px] font-extrabold text-[var(--accent)] mt-1.5 inline-flex items-center gap-1 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 w-fit">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                          ACTIVE
-                        </span>
-                      )}
+                      <p className="text-[9px] text-[var(--text-muted)] leading-none">{t.desc}</p>
                     </div>
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Accent Color picker */}
-            <div className="p-4 md:p-6 bg-[var(--bg-card)] border border-[var(--border)] rounded-3xl space-y-4 shadow-sm">
-              <div>
-                <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--text-primary)]">System Accent Swatch</h3>
-                <p className="text-[11px] text-[var(--text-muted)]">Apply a custom action highlight color across interactive components.</p>
-              </div>
-              <div className="flex items-center gap-2.5 flex-wrap">
-                {[
-                  { hex: '#068d5c', name: 'Green' },
-                  { hex: '#3b82f6', name: 'Blue' },
-                  { hex: '#8b5cf6', name: 'Purple' },
-                  { hex: '#f97316', name: 'Orange' },
-                  { hex: '#f43f5e', name: 'Rose' },
-                  { hex: '#14b8a6', name: 'Teal' },
-                  { hex: '#0ea5e9', name: 'Sky' },
-                  { hex: '#eab308', name: 'Yellow' }
-                ].map(c => {
-                  const isSelected = accentColor.toLowerCase() === c.hex.toLowerCase();
-                  return (
+            {/* ── LAYER 2: Typography & Interface ── */}
+            <div className="p-5 bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-card space-y-4">
+              <h3 className="text-sm font-bold text-[var(--text-primary)]">Typography & Interface</h3>
+
+              {/* Font Family chips */}
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-[var(--text-muted)]">Font Family</label>
+                <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+                  {['Inter', 'Poppins', 'DM Sans', 'Nunito', 'Outfit'].map(f => (
                     <button
-                      key={c.hex}
+                      key={f}
                       type="button"
-                      onClick={() => setAccentColor(c.hex)}
-                      className={`w-10 h-10 rounded-full relative hover:scale-105 active:scale-95 transition-all cursor-pointer border-2 ${
-                        isSelected ? 'border-[var(--text-primary)] ring-2 ring-offset-2 ring-[var(--accent-light)] ring-offset-[var(--bg-card)]' : 'border-transparent'
+                      onClick={() => setDraftFontFamily(f)}
+                      className={`flex-shrink-0 px-4 py-1.5 rounded-full border text-xs font-semibold transition-all cursor-pointer ${
+                        draftFontFamily === f
+                          ? 'bg-[var(--accent)] text-white border-[var(--accent)]'
+                          : 'border-[var(--border)] text-[var(--text-secondary)] hover:border-[var(--accent)]'
                       }`}
-                      style={{ backgroundColor: c.hex }}
-                      title={c.name}
+                      style={{ fontFamily: `'${f}', sans-serif` }}
+                    >{f}</button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Font Size */}
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-[var(--text-muted)]">Font Size</label>
+                <div className="flex gap-2">
+                  {[{ v: 'Small', label: 'Small', px: '13px' }, { v: 'Medium', label: 'Default', px: '14px' }, { v: 'Large', label: 'Large', px: '15px' }].map(s => (
+                    <button
+                      key={s.v}
+                      type="button"
+                      onClick={() => setDraftFontSize(s.v)}
+                      className={`flex-1 py-2 rounded-lg border text-xs font-semibold transition-all cursor-pointer ${
+                        draftFontSize === s.v
+                          ? 'bg-[var(--accent)] text-white border-[var(--accent)]'
+                          : 'border-[var(--border)] text-[var(--text-secondary)] hover:border-[var(--accent)]'
+                      }`}
                     >
-                      {isSelected && (
-                        <span className="absolute inset-0 flex items-center justify-center text-white text-xs font-bold shadow-sm">✓</span>
-                      )}
+                      <span style={{ fontSize: s.px }}>{s.label}</span>
                     </button>
-                  );
-                })}
+                  ))}
+                </div>
+              </div>
+
+              {/* Button Style */}
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-[var(--text-muted)]">Button Style</label>
+                <div className="flex gap-2">
+                  {[{ v: 'Rounded', label: 'Pill', r: '999px' }, { v: 'Soft', label: 'Rounded', r: '8px' }, { v: 'Sharp', label: 'Sharp', r: '2px' }].map(b => (
+                    <button
+                      key={b.v}
+                      type="button"
+                      onClick={() => setDraftButtonStyle(b.v)}
+                      className={`flex-1 py-2.5 border text-xs font-semibold transition-all cursor-pointer flex flex-col items-center gap-1.5 rounded-lg ${
+                        draftButtonStyle === b.v
+                          ? 'bg-[var(--accent-soft)] border-[var(--accent)] text-[var(--accent)]'
+                          : 'border-[var(--border)] text-[var(--text-secondary)] hover:border-[var(--accent)]'
+                      }`}
+                    >
+                      <div className="px-3 py-0.5 bg-[var(--accent)] text-white text-[9px] font-bold" style={{ borderRadius: b.r }}>Btn</div>
+                      {b.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Card Style */}
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-[var(--text-muted)]">Card Style</label>
+                <div className="flex gap-2">
+                  {[
+                    { v: 'Float', label: 'Elevated', shadow: '0 4px 12px rgba(0,0,0,0.10)', border: 'transparent' },
+                    { v: 'Flat',  label: 'Flat',     shadow: 'none', border: '#e2e8f0' },
+                    { v: 'Glass', label: 'Glass',    shadow: '0 4px 12px rgba(0,0,0,0.06)', border: 'rgba(255,255,255,0.5)' },
+                  ].map(c => (
+                    <button
+                      key={c.v}
+                      type="button"
+                      onClick={() => setDraftCardStyle(c.v)}
+                      className={`flex-1 py-2.5 border text-xs font-semibold transition-all cursor-pointer flex flex-col items-center gap-1.5 rounded-lg ${
+                        draftCardStyle === c.v
+                          ? 'bg-[var(--accent-soft)] border-[var(--accent)] text-[var(--accent)]'
+                          : 'border-[var(--border)] text-[var(--text-secondary)] hover:border-[var(--accent)]'
+                      }`}
+                    >
+                      <div className="w-8 h-4 rounded-sm bg-[var(--bg-card)]"
+                        style={{ boxShadow: c.shadow, border: `1px solid ${c.border}` }} />
+                      {c.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Density */}
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-[var(--text-muted)]">Density</label>
+                <div className="flex gap-2">
+                  {[{ v: 'Compact', label: 'Compact' }, { v: 'Normal', label: 'Comfortable' }, { v: 'Comfortable', label: 'Spacious' }].map(d => (
+                    <button
+                      key={d.v}
+                      type="button"
+                      onClick={() => setDraftDensity(d.v)}
+                      className={`flex-1 py-2 rounded-lg border text-xs font-semibold transition-all cursor-pointer ${
+                        draftDensity === d.v
+                          ? 'bg-[var(--accent-soft)] border-[var(--accent)] text-[var(--accent)]'
+                          : 'border-[var(--border)] text-[var(--text-secondary)] hover:border-[var(--accent)]'
+                      }`}
+                    >{d.label}</button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Dark Mode + Sidebar toggles kept here for convenience */}
+              <div className="grid grid-cols-2 gap-3 pt-1">
+                <div className="flex justify-between items-center p-2.5 bg-[var(--bg)] border border-[var(--border)] rounded-xl">
+                  <span className="text-xs font-semibold text-[var(--text-primary)]">Dark Mode</span>
+                  <button type="button" onClick={() => setDarkMode(!darkMode)}
+                    className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors cursor-pointer ${darkMode ? 'bg-[var(--accent)]' : 'bg-[var(--border)]'}`}>
+                    <span className={`inline-block h-3 w-3 rounded-full bg-bg-card shadow transition-transform ${darkMode ? 'translate-x-5' : 'translate-x-1'}`} />
+                  </button>
+                </div>
+                <div className="flex justify-between items-center p-2.5 bg-[var(--bg)] border border-[var(--border)] rounded-xl">
+                  <span className="text-xs font-semibold text-[var(--text-primary)]">Collapse Sidebar</span>
+                  <button type="button" onClick={() => setSidebarCollapsed?.(!sidebarCollapsed)}
+                    className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors cursor-pointer ${sidebarCollapsed ? 'bg-[var(--accent)]' : 'bg-[var(--border)]'}`}>
+                    <span className={`inline-block h-3 w-3 rounded-full bg-bg-card shadow transition-transform ${sidebarCollapsed ? 'translate-x-5' : 'translate-x-1'}`} />
+                  </button>
+                </div>
               </div>
             </div>
 
-            {/* Layout Options */}
-            <div className="p-4 md:p-6 bg-[var(--bg-card)] border border-[var(--border)] rounded-3xl space-y-6 shadow-sm">
+            {/* ── LAYER 3: Accent Color ── */}
+            <div className="p-5 bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-card space-y-4">
               <div>
-                <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--text-primary)]">Typography & Interface Styles</h3>
-                <p className="text-[11px] text-[var(--text-muted)]">Fine-tune font scaling, shape profiles, and layout patterns.</p>
+                <h3 className="text-sm font-bold text-[var(--text-primary)]">Accent Color</h3>
+                <p className="text-xs text-[var(--text-muted)] mt-0.5">Overrides the template accent color</p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                
-                {/* Font Family */}
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-semibold text-[var(--text-muted)]">Font Family</label>
-                  <select
-                    value={fontFamily}
-                    onChange={e => setFontFamily(e.target.value)}
-                    className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs text-[var(--text-primary)] focus:outline-none"
-                  >
-                    {['Inter', 'Poppins', 'DM Sans', 'Nunito', 'Outfit'].map(f => (
-                      <option key={f} value={f}>{f}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Font Size */}
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-semibold text-[var(--text-muted)]">Font Size Scale</label>
-                  <div className="flex bg-[var(--bg)] p-1 rounded-xl border border-[var(--border)]">
-                    {['Small', 'Medium', 'Large'].map(sz => (
-                      <button
-                        key={sz}
-                        type="button"
-                        onClick={() => setFontSize(sz)}
-                        className={`flex-1 py-1 text-[11px] font-bold rounded-lg transition-all cursor-pointer ${
-                          fontSize === sz
-                            ? 'bg-[var(--bg-card)] text-[var(--text-primary)] shadow-sm'
-                            : 'text-[var(--text-muted)]'
-                        }`}
-                      >
-                        {sz}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Navigation Style */}
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-semibold text-[var(--text-muted)]">Mobile Navigation Style</label>
-                  <div className="flex bg-[var(--bg)] p-1 rounded-xl border border-[var(--border)]">
-                    {[
-                      { id: 'Pill', label: 'Floating Pill' },
-                      { id: 'Bar', label: 'Fixed Bar' }
-                    ].map(n => (
-                      <button
-                        key={n.id}
-                        type="button"
-                        onClick={() => setNavStyle(n.id)}
-                        className={`flex-1 py-1 text-[11px] font-bold rounded-lg transition-all cursor-pointer ${
-                          navStyle === n.id
-                            ? 'bg-[var(--bg-card)] text-[var(--text-primary)] shadow-sm'
-                            : 'text-[var(--text-muted)]'
-                        }`}
-                      >
-                        {n.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Button Style */}
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-semibold text-[var(--text-muted)]">Button Corner Radius</label>
-                  <div className="flex bg-[var(--bg)] p-1 rounded-xl border border-[var(--border)]">
-                    {['Rounded', 'Soft', 'Sharp'].map(b => (
-                      <button
-                        key={b}
-                        type="button"
-                        onClick={() => setButtonStyle(b)}
-                        className={`flex-1 py-1 text-[11px] font-bold rounded-lg transition-all cursor-pointer ${
-                          buttonStyle === b
-                            ? 'bg-[var(--bg-card)] text-[var(--text-primary)] shadow-sm'
-                            : 'text-[var(--text-muted)]'
-                        }`}
-                      >
-                        {b}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Card Style */}
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-semibold text-[var(--text-muted)]">Card Frame Profile</label>
-                  <div className="flex bg-[var(--bg)] p-1 rounded-xl border border-[var(--border)]">
-                    {['Float', 'Flat', 'Glass'].map(c => (
-                      <button
-                        key={c}
-                        type="button"
-                        onClick={() => setCardStyle(c)}
-                        className={`flex-1 py-1 text-[11px] font-bold rounded-lg transition-all cursor-pointer ${
-                          cardStyle === c
-                            ? 'bg-[var(--bg-card)] text-[var(--text-primary)] shadow-sm'
-                            : 'text-[var(--text-muted)]'
-                        }`}
-                      >
-                        {c}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Spacing Density */}
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-semibold text-[var(--text-muted)]">Padding & Spacing Density</label>
-                  <div className="flex bg-[var(--bg)] p-1 rounded-xl border border-[var(--border)]">
-                    {['Compact', 'Normal', 'Comfortable'].map(d => (
-                      <button
-                        key={d}
-                        type="button"
-                        onClick={() => setDensity(d)}
-                        className={`flex-1 py-1 text-[11px] font-bold rounded-lg transition-all cursor-pointer ${
-                          density === d
-                            ? 'bg-[var(--bg-card)] text-[var(--text-primary)] shadow-sm'
-                            : 'text-[var(--text-muted)]'
-                        }`}
-                      >
-                        {d}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Motion Rules */}
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-semibold text-[var(--text-muted)]">Transitions & Motion Physics</label>
-                  <div className="flex bg-[var(--bg)] p-1 rounded-xl border border-[var(--border)]">
-                    {['Full', 'Reduced', 'None'].map(m => (
-                      <button
-                        key={m}
-                        type="button"
-                        onClick={() => setMotion(m)}
-                        className={`flex-1 py-1 text-[11px] font-bold rounded-lg transition-all cursor-pointer ${
-                          motion === m
-                            ? 'bg-[var(--bg-card)] text-[var(--text-primary)] shadow-sm'
-                            : 'text-[var(--text-muted)]'
-                        }`}
-                      >
-                        {m}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Dark Mode Switch */}
-                <div className="space-y-1.5 flex flex-col justify-end">
-                  <div className="flex justify-between items-center p-2.5 bg-[var(--bg)] border border-[var(--border)] rounded-xl h-10">
-                    <span className="text-xs font-semibold text-[var(--text-primary)]">Dark Mode</span>
-                    <button
-                      type="button"
-                      onClick={() => setDarkMode(!darkMode)}
-                      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors cursor-pointer ${darkMode ? 'bg-[var(--accent)]' : 'bg-[var(--border)]'}`}
-                    >
-                      <span className={`inline-block h-3 w-3 rounded-full bg-white shadow transition-transform ${darkMode ? 'translate-x-5' : 'translate-x-1'}`} />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Collapsible Sidebar (Desktop) */}
-                <div className="space-y-1.5 flex flex-col justify-end">
-                  <div className="flex justify-between items-center p-2.5 bg-[var(--bg)] border border-[var(--border)] rounded-xl h-10">
-                    <span className="text-xs font-semibold text-[var(--text-primary)]">Collapsible Sidebar</span>
-                    <button
-                      type="button"
-                      onClick={() => setSidebarCollapsed?.(!sidebarCollapsed)}
-                      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors cursor-pointer ${sidebarCollapsed ? 'bg-[var(--accent)]' : 'bg-[var(--border)]'}`}
-                    >
-                      <span className={`inline-block h-3 w-3 rounded-full bg-white shadow transition-transform ${sidebarCollapsed ? 'translate-x-5' : 'translate-x-1'}`} />
-                    </button>
-                  </div>
-                </div>
+              {/* Solid / Gradient toggle */}
+              <div className="flex gap-1 p-1 bg-[var(--bg)] rounded-xl border border-[var(--border)] w-fit">
+                {(['solid', 'gradient'] as const).map(t => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setDraftAccentType(t)}
+                    className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer capitalize ${
+                      draftAccentType === t
+                        ? 'bg-[var(--accent)] text-white shadow'
+                        : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                    }`}
+                  >{t === 'solid' ? 'Solid Color' : 'Gradient'}</button>
+                ))}
               </div>
+
+              {draftAccentType === 'solid' ? (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-4">
+                    <label className="relative cursor-pointer group">
+                      <input type="color" value={draftAccentSolid} onChange={e => setDraftAccentSolid(e.target.value)} className="sr-only" />
+                      <div className="w-14 h-14 rounded-full border-4 border-[var(--border)] shadow-card cursor-pointer hover:scale-105 transition-transform"
+                        style={{ backgroundColor: draftAccentSolid }} />
+                    </label>
+                    <input
+                      type="text"
+                      value={draftAccentSolid}
+                      onChange={e => { if (/^#[0-9a-fA-F]{0,6}$/.test(e.target.value)) setDraftAccentSolid(e.target.value); }}
+                      className="w-28 px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-lg text-xs text-[var(--text-primary)] font-mono focus:outline-none focus:border-[var(--accent)]"
+                    />
+                  </div>
+                  <div className="flex gap-2 flex-wrap">
+                    {['#22c55e', '#3b82f6', '#7c3aed', '#f97316', '#ef4444', '#ec4899', '#06b6d4', '#f59e0b'].map(c => (
+                      <button key={c} type="button" onClick={() => setDraftAccentSolid(c)}
+                        className={`w-8 h-8 rounded-full border-2 transition-all hover:scale-110 cursor-pointer ${
+                          draftAccentSolid === c ? 'border-[var(--text-primary)] scale-110' : 'border-transparent'
+                        }`}
+                        style={{ backgroundColor: c }} />
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex items-end gap-4">
+                    <div className="flex flex-col items-center gap-1.5">
+                      <span className="text-[10px] text-[var(--text-muted)] font-semibold">Color 1</span>
+                      <label className="relative cursor-pointer">
+                        <input type="color" value={draftGradC1} onChange={e => setDraftGradC1(e.target.value)} className="sr-only" />
+                        <div className="w-10 h-10 rounded-full border-2 border-[var(--border)] shadow hover:scale-105 transition-transform cursor-pointer" style={{ backgroundColor: draftGradC1 }} />
+                      </label>
+                    </div>
+                    <div className="flex-1 space-y-1.5">
+                      <span className="text-[10px] text-[var(--text-muted)] font-semibold">Direction</span>
+                      <div className="flex gap-1">
+                        {[{ v: '45deg', icon: '↗' }, { v: '90deg', icon: '→' }, { v: '135deg', icon: '↘' }, { v: '180deg', icon: '↓' }].map(d => (
+                          <button key={d.v} type="button" onClick={() => setDraftGradDir(d.v)}
+                            className={`flex-1 py-1.5 border rounded-lg text-xs font-bold cursor-pointer transition-all ${
+                              draftGradDir === d.v
+                                ? 'bg-[var(--accent)] text-white border-[var(--accent)]'
+                                : 'border-[var(--border)] text-[var(--text-secondary)]'
+                            }`}>{d.icon}</button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-center gap-1.5">
+                      <span className="text-[10px] text-[var(--text-muted)] font-semibold">Color 2</span>
+                      <label className="relative cursor-pointer">
+                        <input type="color" value={draftGradC2} onChange={e => setDraftGradC2(e.target.value)} className="sr-only" />
+                        <div className="w-10 h-10 rounded-full border-2 border-[var(--border)] shadow hover:scale-105 transition-transform cursor-pointer" style={{ backgroundColor: draftGradC2 }} />
+                      </label>
+                    </div>
+                  </div>
+                  <div className="h-10 rounded-xl"
+                    style={{ background: `linear-gradient(${draftGradDir}, ${draftGradC1}, ${draftGradC2})` }} />
+                </div>
+              )}
+            </div>
+
+            {/* ── Apply + Reset ── */}
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={handleResetAppearance}
+                className="flex-none px-5 py-2.5 border border-[var(--border)] rounded-xl text-xs font-bold text-[var(--text-secondary)] hover:bg-[var(--bg)] cursor-pointer transition-all"
+              >
+                Reset
+              </button>
+              <button
+                type="button"
+                onClick={handleApplyAppearance}
+                disabled={isSavingApp}
+                className="flex-1 py-2.5 bg-[var(--accent)] hover:opacity-90 text-white rounded-xl text-xs font-bold cursor-pointer transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+              >
+                {isSavingApp ? (
+                  <>
+                    <div className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                    Applying...
+                  </>
+                ) : savedApp ? '✓ Applied!' : 'Apply Changes'}
+              </button>
             </div>
 
           </div>
 
-          {/* Live Preview - Column 3 */}
-          <div className="space-y-4">
-            <div className="sticky top-6">
-              <div className="p-4 md:p-6 bg-[var(--bg-card)] border border-[var(--border)] rounded-3xl space-y-4 shadow-inner">
-                <div>
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">Live Preview</h4>
-                  <p className="text-[10px] text-[var(--text-muted)]">Simulating active visual overrides instantly.</p>
-                </div>
+          {/* ── Live Preview (right col, sticky) ── */}
+          <div className="sticky top-6 space-y-4 self-start">
+            <div className="p-4 bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-card space-y-3">
+              <div>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">Live Preview</h4>
+                <p className="text-[10px] text-[var(--text-muted)]">Updates as you change settings</p>
+              </div>
 
-                {/* Simulated Screen Body Frame */}
-                <div 
-                  className="p-4 bg-[var(--bg)] border border-[var(--border)] rounded-2xl space-y-3 relative overflow-hidden transition-all duration-300"
-                  style={{ fontFamily: fontFamily }}
-                >
-                  <div className="flex items-center justify-between border-b border-[var(--border)] pb-2 text-[var(--text-primary)]">
-                    <span className="text-[10px] font-bold">ERP Terminal</span>
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              {/* Mini ERP layout */}
+              <div className="rounded-xl overflow-hidden border border-[var(--border)]"
+                style={{ height: '330px', fontFamily: `'${draftFontFamily}', sans-serif` }}>
+                <div className="flex h-full">
+                  {/* Mini sidebar */}
+                  <div className="w-11 flex-shrink-0 flex flex-col py-3 px-1.5 gap-1.5" style={{ background: activeTpl.sidebar }}>
+                    <div className="w-6 h-6 rounded-lg mx-auto mb-1" style={{ background: activeTpl.accent, opacity: 0.9 }} />
+                    {[...Array(5)].map((_, i) => (
+                      <div key={i}
+                        className="h-5 rounded-md flex items-center justify-center"
+                        style={i === 0
+                          ? { background: previewAccent, boxShadow: '0 2px 6px rgba(0,0,0,0.15)' }
+                          : { background: 'rgba(0,0,0,0.05)' }}
+                      >
+                        <div className="w-3 h-1 rounded-full" style={{ background: i === 0 ? '#fff' : 'rgba(0,0,0,0.2)' }} />
+                      </div>
+                    ))}
                   </div>
 
-                  {/* Simulated Card based on configurations */}
-                  <div 
-                    className={`border transition-all duration-300 ${
-                      cardStyle === 'Float' ? 'bg-[var(--bg-card)] shadow-md border-transparent text-[var(--text-primary)]' :
-                      cardStyle === 'Flat' ? 'bg-[var(--bg-card)] border-[var(--border)] text-[var(--text-primary)]' :
-                      'bg-[var(--bg-card)]/40 backdrop-blur-md border-[var(--border)] text-[var(--text-primary)]'
-                    } ${
-                      fontSize === 'Small' ? 'text-xs p-2' :
-                      fontSize === 'Medium' ? 'text-sm p-4' :
-                      'text-base p-6'
-                    } ${
-                      density === 'Compact' ? 'p-2 space-y-1' :
-                      density === 'Normal' ? 'p-4 space-y-3' :
-                      'p-6 space-y-5'
-                    }`}
-                    style={{ borderRadius: '24px' }}
-                  >
-                    <div className="flex justify-between items-center">
-                      <h5 className="font-bold text-[var(--text-primary)]" style={{ fontSize: fontSize === 'Small' ? '12px' : fontSize === 'Medium' ? '14px' : '16px' }}>
-                        Active Balance
-                      </h5>
-                      <span className="text-[9px] px-2 py-0.5 rounded-full text-white font-bold" style={{ backgroundColor: accentColor }}>
-                        GHS
-                      </span>
+                  {/* Main content */}
+                  <div className="flex-1 flex flex-col overflow-hidden" style={{ background: activeTpl.page }}>
+                    {/* Mini header */}
+                    <div className="h-8 border-b flex items-center px-2 gap-2 flex-shrink-0"
+                      style={{ background: '#ffffff', borderColor: '#e2e8f0' }}>
+                      <div className="flex-1 h-3 rounded-full bg-gray-100" />
+                      <div className="w-5 h-5 rounded-full" style={{ background: previewAccent }} />
                     </div>
 
-                    <p className="text-[var(--text-muted)]" style={{ fontSize: fontSize === 'Small' ? '10px' : fontSize === 'Medium' ? '11px' : '12px' }}>
-                      Samuel Remba • Port Operations Ledger
-                    </p>
+                    {/* Body */}
+                    <div className="flex-1 p-2 space-y-2 overflow-hidden">
+                      {/* KPI cards */}
+                      <div className="grid grid-cols-2 gap-1.5">
+                        {[...Array(2)].map((_, i) => (
+                          <div key={i} className="p-1.5 rounded-lg"
+                            style={{
+                              background: '#ffffff',
+                              boxShadow: draftCardStyle === 'Float' ? '0 2px 8px rgba(0,0,0,0.08)' : 'none',
+                              border: draftCardStyle === 'Flat' ? '1px solid #e2e8f0' : 'none',
+                            }}>
+                            <div className="h-1.5 w-8 rounded-full bg-gray-200 mb-1" />
+                            <div className="h-2.5 w-12 rounded"
+                              style={{ background: previewAccent }} />
+                          </div>
+                        ))}
+                      </div>
 
-                    <p className="font-black text-[var(--text-primary)]" style={{ fontSize: fontSize === 'Small' ? '16px' : fontSize === 'Medium' ? '20px' : '24px' }}>
-                      ₵ 142,500.00
-                    </p>
+                      {/* Mini table */}
+                      <div className="rounded-lg overflow-hidden bg-white/80">
+                        {[...Array(3)].map((_, i) => (
+                          <div key={i} className="flex gap-1 items-center py-1 px-1.5"
+                            style={{ borderBottom: i < 2 ? '1px solid #f1f5f9' : 'none' }}>
+                            <div className="w-5 h-1.5 rounded-full bg-gray-200" />
+                            <div className="flex-1 h-1.5 rounded-full bg-gray-100" />
+                            <div className="w-6 h-3 rounded text-white flex items-center justify-center"
+                              style={{ background: previewAccent, fontSize: '6px', fontWeight: 700 }}>OK</div>
+                          </div>
+                        ))}
+                      </div>
 
-                    {/* Button based on configurations */}
-                    <button
-                      type="button"
-                      className="w-full py-2 text-xs font-bold text-white transition-all text-center flex items-center justify-center gap-1.5 shadow-sm"
-                      style={{ 
-                        backgroundColor: accentColor, 
-                        borderRadius: buttonStyle === 'Rounded' ? '9999px' : buttonStyle === 'Soft' ? '12px' : '0px',
-                        transitionDuration: motion === 'None' ? '0ms' : motion === 'Reduced' ? '300ms' : '150ms'
-                      }}
-                    >
-                      Authorize Disbursal
-                    </button>
-                  </div>
+                      {/* Buttons */}
+                      <div className="flex gap-1.5">
+                        <div className="h-5 flex-1 flex items-center justify-center text-white"
+                          style={{
+                            background: previewAccent,
+                            borderRadius: draftButtonStyle === 'Rounded' ? '999px' : draftButtonStyle === 'Soft' ? '5px' : '2px',
+                            fontSize: '7px', fontWeight: 700
+                          }}>Primary</div>
+                        <div className="h-5 flex-1 flex items-center justify-center border"
+                          style={{
+                            borderColor: draftAccentSolid,
+                            color: draftAccentSolid,
+                            borderRadius: draftButtonStyle === 'Rounded' ? '999px' : draftButtonStyle === 'Soft' ? '5px' : '2px',
+                            fontSize: '7px', fontWeight: 700
+                          }}>Ghost</div>
+                      </div>
 
-                  {/* Simulated Nav style representation */}
-                  <div className="pt-2 flex justify-center">
-                    <div 
-                      className={`h-4 border border-[var(--border)] text-[8px] flex items-center justify-center font-bold px-3 text-[var(--text-muted)] ${
-                        navStyle === 'Pill' ? 'rounded-full w-24' : 'w-full'
-                      }`}
-                    >
-                      {navStyle === 'Pill' ? '💊 Pill Navigation' : '▬ Bar Navigation'}
+                      {/* Input */}
+                      <div className="h-5 flex items-center px-1.5 border bg-white"
+                        style={{
+                          borderColor: '#e2e8f0',
+                          borderRadius: draftButtonStyle === 'Sharp' ? '2px' : '5px',
+                          fontSize: '7px', color: '#94a3b8'
+                        }}>
+                        Search records...
+                      </div>
                     </div>
                   </div>
-                </div>
-
-                {/* Quick Helper info */}
-                <div className="p-3 bg-[var(--accent-light)] border border-[var(--accent)]/20 rounded-2xl text-[10px] text-[var(--accent)]">
-                  ⚡ Settings are synchronized and updated in real-time on mobile screen layout configurations.
                 </div>
               </div>
+
+              <p className="text-[10px] text-[var(--text-muted)] text-center">Preview only — click Apply to save</p>
             </div>
           </div>
 
