@@ -60,8 +60,8 @@ export default function LogisticsDashboard() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-lg font-bold text-slate-800 tracking-tight">Logistics Panel</h1>
-            <p className="text-[11px] text-slate-400 mt-0.5">Fleet maintenance & supply chain metrics</p>
+            <h1 className="text-lg font-bold text-text-primary tracking-tight">Logistics Panel</h1>
+            <p className="text-[11px] text-text-muted mt-0.5">Fleet maintenance & supply chain metrics</p>
           </div>
           <div className="flex gap-2">
             <button onClick={handleExportCSV} className="p-2 bg-bg-card rounded-xl border border-[var(--border)] shadow-card" title="Export CSV">
@@ -108,9 +108,9 @@ export default function LogisticsDashboard() {
                   <Icon className="w-5 h-5" style={{ color: s.color }} />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[9px] text-slate-400 uppercase font-bold tracking-wider truncate">{s.label}</p>
-                  <p className="text-sm font-bold text-slate-800 mt-0.5">{s.value}</p>
-                  <p className="text-[9px] text-slate-400">{s.sub}</p>
+                  <p className="text-[9px] text-text-muted uppercase font-bold tracking-wider truncate">{s.label}</p>
+                  <p className="text-sm font-bold text-text-primary mt-0.5">{s.value}</p>
+                  <p className="text-[9px] text-text-muted">{s.sub}</p>
                 </div>
               </div>
             );
@@ -127,9 +127,9 @@ export default function LogisticsDashboard() {
                   <Truck className="w-5 h-5" style={{ color: log.status === 'Operational' ? '#16a34a' : '#d97706' }} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-bold text-slate-800 truncate">{log.id}</p>
-                  <p className="text-[10px] text-slate-400 truncate">{log.type}</p>
-                  <p className="text-[9px] text-slate-400">{log.date} • <strong>${log.cost}</strong></p>
+                  <p className="text-xs font-bold text-text-primary truncate">{log.id}</p>
+                  <p className="text-[10px] text-text-muted truncate">{log.type}</p>
+                  <p className="text-[9px] text-text-muted">{log.date} • <strong>${log.cost}</strong></p>
                 </div>
                 <span className={`mobile-status-pill ${log.status === 'Operational' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
                   {log.status}
@@ -141,8 +141,8 @@ export default function LogisticsDashboard() {
 
         {/* Mini fleet performance chart */}
         <div className="bg-bg-card rounded-2xl border border-[var(--border)] shadow-card p-4">
-          <h3 className="text-xs font-bold text-slate-800 mb-1">Fleet Performance</h3>
-          <p className="text-[10px] text-slate-400 mb-3">Weekly distance vs fuel</p>
+          <h3 className="text-xs font-bold text-text-primary mb-1">Fleet Performance</h3>
+          <p className="text-[10px] text-text-muted mb-3">Weekly distance vs fuel</p>
           <div className="h-36">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={lineChartData}>
@@ -159,7 +159,7 @@ export default function LogisticsDashboard() {
 
         {/* Fuel & Maintenance bar chart */}
         <div className="bg-bg-card rounded-2xl border border-[var(--border)] shadow-card p-4">
-          <h3 className="text-xs font-bold text-slate-800 mb-3">Fuel & Maintenance by Truck</h3>
+          <h3 className="text-xs font-bold text-text-primary mb-3">Fuel & Maintenance by Truck</h3>
           <div className="h-36">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData}>

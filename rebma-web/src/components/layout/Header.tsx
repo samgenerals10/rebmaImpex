@@ -108,14 +108,14 @@ export default function Header({
             {showAvatarDropdown && (
               <>
                 <div className="fixed inset-0 z-[490]" onClick={() => setShowAvatarDropdown(false)} />
-                <div className="absolute left-0 mt-2 w-64 bg-bg-card dark:bg-slate-900 border border-[var(--border)] dark:border-slate-800 rounded-2xl shadow-2xl z-[500] py-3 animate-fade-in-up text-slate-800 dark:text-slate-200">
+                <div className="absolute left-0 mt-2 w-64 bg-bg-card dark:bg-slate-900 border border-[var(--border)] dark:border-slate-800 rounded-2xl shadow-2xl z-[500] py-3 animate-fade-in-up text-text-primary dark:text-slate-200">
                   <div className="px-4 pb-3 border-b border-[var(--border)] dark:border-slate-800">
-                    <p className="text-xs font-extrabold text-slate-900 dark:text-slate-100">{currentUser?.fullName}</p>
+                    <p className="text-xs font-extrabold text-text-primary">{currentUser?.fullName}</p>
                     <p className="text-[10px] text-text-secondary mt-0.5">{currentUser?.department}</p>
                   </div>
                   
                   <div className="max-h-52 overflow-y-auto py-2">
-                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-4 py-1">Departments</p>
+                    <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest px-4 py-1">Departments</p>
                     {availableDepts.map(d => {
                       const isActive = d.value === activeDepartment;
                       const IconComponent = d.icon;
@@ -139,8 +139,8 @@ export default function Header({
                           }}
                           className={`w-full flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-left transition-colors ${
                             isActive 
-                              ? 'border-l-4 border-[var(--accent,#068d5c)] text-[var(--accent,#068d5c)] bg-slate-50 dark:bg-slate-850 pl-3.5'
-                              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
+                              ? 'border-l-4 border-[var(--accent,#068d5c)] text-[var(--accent,#068d5c)] bg-bg-page pl-3.5'
+                              : 'text-text-secondary dark:text-text-muted hover:bg-[var(--accent-light)] hover:text-[var(--accent)]'
                           }`}
                         >
                           <IconComponent className="w-4 h-4 shrink-0" />
@@ -150,7 +150,7 @@ export default function Header({
                     })}
                   </div>
                   
-                  <div className="h-px bg-slate-100 dark:bg-slate-800 my-1" />
+                  <div className="h-px bg-bg-page my-1" />
                   
                   <div className="px-2 pt-1 space-y-0.5">
                     <button
@@ -161,7 +161,7 @@ export default function Header({
                         }
                         setShowAvatarDropdown(false);
                       }}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-800 text-left transition-colors"
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-text-primary hover:bg-[var(--accent-light)] hover:text-[var(--accent)] text-left transition-colors"
                     >
                       <Settings className="w-4 h-4 text-text-secondary" />
                       Settings
@@ -192,7 +192,7 @@ export default function Header({
             {/* Chat Icon */}
             <button
               onClick={onOpenChat}
-              className="p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl cursor-pointer transition-all"
+              className="p-2 text-text-secondary dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl cursor-pointer transition-all"
               title="Open Chat"
             >
               <MessageSquare className="w-5 h-5" />
@@ -201,7 +201,7 @@ export default function Header({
             {/* Notification Bell */}
             <button
               onClick={onOpenNotifications}
-              className="p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl cursor-pointer relative transition-all"
+              className="p-2 text-text-secondary dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl cursor-pointer relative transition-all"
               title="Notifications"
             >
               <Bell className="w-5 h-5" />
@@ -213,7 +213,7 @@ export default function Header({
             {/* Dark Mode Toggle */}
             <button
               onClick={() => setDarkMode(!darkMode)}
-              className="p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl cursor-pointer transition-all"
+              className="p-2 text-text-secondary dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl cursor-pointer transition-all"
               title="Toggle Theme"
             >
               {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
@@ -223,7 +223,7 @@ export default function Header({
             <div className="relative">
               <button
                 onClick={() => setShowMoreMenu(prev => !prev)}
-                className="p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl cursor-pointer transition-all"
+                className="p-2 text-text-secondary dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl cursor-pointer transition-all"
                 title="More Options"
               >
                 <MoreVertical className="w-5 h-5" />
@@ -232,43 +232,43 @@ export default function Header({
               {showMoreMenu && (
                 <>
                   <div className="fixed inset-0 z-[290]" onClick={() => setShowMoreMenu(false)} />
-                  <div className="absolute right-0 mt-2 w-48 bg-bg-card dark:bg-slate-900 border border-[var(--border)] dark:border-slate-800 rounded-2xl shadow-2xl z-[300] py-2 animate-fade-in-up text-slate-800 dark:text-slate-200">
+                  <div className="absolute right-0 mt-2 w-48 bg-bg-card dark:bg-slate-900 border border-[var(--border)] dark:border-slate-800 rounded-2xl shadow-2xl z-[300] py-2 animate-fade-in-up text-text-primary dark:text-slate-200">
                     <button
                       type="button"
                       onClick={() => { setShowMoreMenu(false); onProfileClick?.(); }}
-                      className="w-full text-left px-4 py-2.5 text-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors font-bold"
+                      className="w-full text-left px-4 py-2.5 text-xs hover:bg-[var(--accent-light)] hover:text-[var(--accent)] transition-colors font-bold"
                     >
                       Profile & Account
                     </button>
                     <button
                       type="button"
                       onClick={() => { setShowMoreMenu(false); if (setActiveDepartment) { setActiveDepartment('SETTINGS'); if (setActiveSubTab) setActiveSubTab('Appearance'); } }}
-                      className="w-full text-left px-4 py-2.5 text-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors font-bold"
+                      className="w-full text-left px-4 py-2.5 text-xs hover:bg-[var(--accent-light)] hover:text-[var(--accent)] transition-colors font-bold"
                     >
                       Display & Appearance
                     </button>
                     <button
                       type="button"
                       onClick={() => { setShowMoreMenu(false); onToggleSidebar?.(); }}
-                      className="w-full text-left px-4 py-2.5 text-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors font-bold"
+                      className="w-full text-left px-4 py-2.5 text-xs hover:bg-[var(--accent-light)] hover:text-[var(--accent)] transition-colors font-bold"
                     >
                       Switch Department
                     </button>
                     <button
                       type="button"
                       onClick={() => { setShowMoreMenu(false); onOpenNotifications?.(); }}
-                      className="w-full text-left px-4 py-2.5 text-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors font-bold"
+                      className="w-full text-left px-4 py-2.5 text-xs hover:bg-[var(--accent-light)] hover:text-[var(--accent)] transition-colors font-bold"
                     >
                       Notifications
                     </button>
                     <button
                       type="button"
                       onClick={() => { setShowMoreMenu(false); window.alert("REBMA IMPEX Help Desk is active 24/7. Call +233 (0) 302 000 000."); }}
-                      className="w-full text-left px-4 py-2.5 text-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors font-bold"
+                      className="w-full text-left px-4 py-2.5 text-xs hover:bg-[var(--accent-light)] hover:text-[var(--accent)] transition-colors font-bold"
                     >
                       Help & Support
                     </button>
-                    <div className="h-px bg-slate-100 dark:bg-slate-800 my-1" />
+                    <div className="h-px bg-bg-page my-1" />
                     <button
                       type="button"
                       onClick={() => { setShowMoreMenu(false); onLogout?.(); }}
@@ -300,9 +300,9 @@ export default function Header({
         <div className="w-full mt-1.5">
           <div
             onClick={onSearchClick}
-            className="flex items-center gap-2.5 px-4 py-2.5 bg-slate-100 dark:bg-slate-850 hover:bg-slate-200/60 dark:hover:bg-slate-800 rounded-full text-xs text-slate-400 dark:text-slate-500 cursor-pointer transition-all border border-transparent hover:border-slate-200 dark:hover:border-slate-700"
+            className="flex items-center gap-2.5 px-4 py-2.5 bg-slate-100 dark:bg-slate-850 hover:bg-slate-200/60 dark:hover:bg-slate-800 rounded-full text-xs text-text-muted dark:text-slate-500 cursor-pointer transition-all border border-transparent hover:border-slate-200 dark:hover:border-slate-700"
           >
-            <Search className="w-4 h-4 text-slate-400" />
+            <Search className="w-4 h-4 text-text-muted" />
             <span>Search...</span>
           </div>
         </div>
@@ -314,7 +314,7 @@ export default function Header({
         <div className="flex items-center gap-2 flex-1 max-w-[400px]">
           <div className="relative w-full">
             <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-              <Search className="h-4 w-4 text-slate-400" />
+              <Search className="h-4 w-4 text-text-muted" />
             </span>
             <input
               type="text"
@@ -379,11 +379,11 @@ export default function Header({
                     </div>
                     <div className="flex items-center gap-2">
                       {notifications.length > 0 && onClearNotifications && (
-                        <button onClick={onClearNotifications} className="text-[10px] text-slate-400 hover:text-slate-650 flex items-center gap-1 cursor-pointer font-semibold">
+                        <button onClick={onClearNotifications} className="text-[10px] text-text-muted hover:text-slate-650 flex items-center gap-1 cursor-pointer font-semibold">
                           <CheckCheck className="w-3.5 h-3.5" /> Clear all
                         </button>
                       )}
-                      <button onClick={() => setShowPanel(false)} className="text-slate-400 hover:text-slate-650 cursor-pointer">
+                      <button onClick={() => setShowPanel(false)} className="text-text-muted hover:text-slate-650 cursor-pointer">
                         <X className="w-4 h-4" />
                       </button>
                     </div>
@@ -393,7 +393,7 @@ export default function Header({
                   <div className="max-h-80 overflow-y-auto divide-y divide-[var(--border)]">
                     {notifications.length === 0 ? (
                       <div className="py-8 text-center bg-[var(--bg-card)]">
-                        <Bell className="w-8 h-8 text-slate-200 mx-auto mb-2" />
+                        <Bell className="w-8 h-8 text-text-muted mx-auto mb-2" />
                         <p className="text-xs text-[var(--text-secondary)]">No new notifications</p>
                       </div>
                     ) : (

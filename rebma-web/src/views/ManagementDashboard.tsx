@@ -150,7 +150,7 @@ export default function ManagementDashboard({
       'PENDING_FINANCE': 'bg-sky-500/10 text-sky-400',
       'PENDING_MANAGEMENT': 'bg-amber-500/10 text-amber-400',
     };
-    return map[status] || 'bg-slate-500/10 text-slate-400';
+    return map[status] || 'bg-slate-500/10 text-text-muted';
   };
 
   // Row Action Handlers: Ledger
@@ -350,8 +350,8 @@ export default function ManagementDashboard({
       <div className="lg:hidden mobile-only space-y-4 pb-4 mobile-animate-up">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-lg font-bold text-slate-800 tracking-tight">Management</h1>
-            <p className="text-[11px] text-slate-400 mt-0.5">Cargo approvals & credit control</p>
+            <h1 className="text-lg font-bold text-text-primary tracking-tight">Management</h1>
+            <p className="text-[11px] text-text-muted mt-0.5">Cargo approvals & credit control</p>
           </div>
           <div className="flex gap-2">
             <button onClick={() => exportToCSV(localGoods, ['id', 'goodsName', 'quantity', 'portName', 'status'], 'cargo_list')} className="p-2 bg-bg-card rounded-xl border border-[var(--border)] shadow-card"><FileSpreadsheet className="w-4 h-4 text-text-secondary" /></button>
@@ -385,9 +385,9 @@ export default function ManagementDashboard({
             <div key={i} className="mobile-stat-card">
               <div className="mobile-stat-icon" style={{ background: s.bg }}><Icon className="w-5 h-5" style={{ color: s.color }} /></div>
               <div className="min-w-0">
-                <p className="text-[9px] text-slate-400 uppercase font-bold tracking-wider">{s.label}</p>
-                <p className="text-sm font-bold text-slate-800 mt-0.5">{s.value}</p>
-                <p className="text-[9px] text-slate-400">{s.sub}</p>
+                <p className="text-[9px] text-text-muted uppercase font-bold tracking-wider">{s.label}</p>
+                <p className="text-sm font-bold text-text-primary mt-0.5">{s.value}</p>
+                <p className="text-[9px] text-text-muted">{s.sub}</p>
               </div>
             </div>
           ); })}
@@ -402,10 +402,10 @@ export default function ManagementDashboard({
                   <Clipboard className="w-5 h-5" style={{ color: g.status === 'APPROVED' ? '#16a34a' : '#d97706' }} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-bold text-slate-800 truncate">{g.productName || 'Unnamed Cargo'}</p>
-                  <p className="text-[10px] text-slate-400 truncate">{g.quantity} units • {g.country}</p>
+                  <p className="text-xs font-bold text-text-primary truncate">{g.productName || 'Unnamed Cargo'}</p>
+                  <p className="text-[10px] text-text-muted truncate">{g.quantity} units • {g.country}</p>
                 </div>
-                <span className={`mobile-status-pill ${g.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-700' : g.status === 'PENDING_MANAGEMENT_APPROVAL' ? 'bg-amber-50 text-amber-700' : 'bg-slate-100 text-text-secondary'}`}>
+                <span className={`mobile-status-pill ${g.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-700' : g.status === 'PENDING_MANAGEMENT_APPROVAL' ? 'bg-amber-50 text-amber-700' : 'bg-bg-input text-text-secondary'}`}>
                   {g.status.replace(/_/g, ' ')}
                 </span>
               </div>
@@ -427,7 +427,7 @@ export default function ManagementDashboard({
           <button onClick={() => exportToCSV(localGoods, ['id', 'goodsCode', 'productName', 'country', 'company', 'quantity', 'weight', 'destination', 'discrepancies', 'status', 'unitPrice'], 'incoming_port_cargo_audit')} className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 bg-[var(--accent-light)] text-[var(--accent)] hover:opacity-90 rounded-lg text-xs font-semibold cursor-pointer border border-[var(--border)] transition-opacity">
             <FileSpreadsheet className="w-3.5 h-3.5" /><span>Cargo (CSV)</span>
           </button>
-          <button onClick={() => exportToPDF('Incoming Port Cargo Audit', localGoods, ['id', 'goodsCode', 'productName', 'country', 'company', 'quantity', 'weight', 'destination', 'discrepancies', 'status', 'unitPrice'])} className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 bg-[var(--accent-light)] text-[var(--accent)] hover:opacity-90 text-slate-700 rounded-lg text-xs font-semibold cursor-pointer border border-[var(--border)] transition-opacity">
+          <button onClick={() => exportToPDF('Incoming Port Cargo Audit', localGoods, ['id', 'goodsCode', 'productName', 'country', 'company', 'quantity', 'weight', 'destination', 'discrepancies', 'status', 'unitPrice'])} className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 bg-[var(--accent-light)] text-[var(--accent)] hover:opacity-90 text-text-primary rounded-lg text-xs font-semibold cursor-pointer border border-[var(--border)] transition-opacity">
             <FileText className="w-3.5 h-3.5" /><span>Cargo (PDF)</span>
           </button>
         </div>
@@ -893,7 +893,7 @@ export default function ManagementDashboard({
                       <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
                         gp.category === 'NEW_GOODS' ? 'bg-[var(--accent-light)] text-[var(--accent)]' :
                         gp.category === 'INCOMING_GOODS' ? 'bg-amber-500/10 text-amber-600' :
-                        'bg-slate-100 text-slate-600'
+                        'bg-bg-input text-text-secondary'
                       }`}>{gp.category.replace(/_/g, ' ')}</span>
                     </div>
                   </div>

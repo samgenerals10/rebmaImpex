@@ -197,7 +197,7 @@ export default function MarketingDashboard({
       APPROVED: 'bg-blue-500/10 text-blue-400',
       PENDING_FINANCE: 'bg-amber-500/10 text-amber-400',
     };
-    return m[status] || 'bg-slate-500/10 text-slate-400';
+    return m[status] || 'bg-slate-500/10 text-text-muted';
   };
 
   const customerOrders = (cust: Customer) => localOrders.filter(o => o.clientName === cust.name);
@@ -348,11 +348,11 @@ export default function MarketingDashboard({
 
   if (activeMobileDetail) {
     return (
-      <div className="lg:hidden bg-bg-card min-h-screen p-4 pb-24 space-y-6 animate-fade-in-up text-slate-800">
+      <div className="lg:hidden bg-bg-card min-h-screen p-4 pb-24 space-y-6 animate-fade-in-up text-text-primary">
         <div className="flex items-center gap-3">
           <button 
             onClick={() => setActiveMobileDetail(null)}
-            className="px-3 py-1.5 bg-bg-card dark:bg-slate-800 border border-[var(--border)] dark:border-slate-700 rounded-full text-xs font-bold text-slate-600 cursor-pointer shadow-card"
+            className="px-3 py-1.5 bg-bg-card dark:bg-slate-800 border border-[var(--border)] dark:border-slate-700 rounded-full text-xs font-bold text-text-secondary cursor-pointer shadow-card"
           >
             ← Back
           </button>
@@ -373,14 +373,14 @@ export default function MarketingDashboard({
                 )}
                 <div>
                   <h3 className="text-base font-bold">{cust.name}</h3>
-                  <p className="text-xs text-slate-400 font-mono mt-0.5">{cust.id}</p>
+                  <p className="text-xs text-text-muted font-mono mt-0.5">{cust.id}</p>
                   <span className="inline-block mt-2 px-2.5 py-0.5 bg-blue-500/10 text-blue-500 rounded-full text-[9px] font-bold uppercase">{cust.companyName}</span>
                 </div>
               </div>
               <div className="bg-bg-card dark:bg-slate-800 rounded-2xl p-4 shadow-card border border-[var(--border)] dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-700">
                 {[['Phone', cust.phone], ['Location', cust.location || '—'], ['Email', cust.email || '—'], ['Ghana Card', cust.ghanaCard || '—'], ['Registered', cust.registeredAt]].map(([label, value]) => (
                   <div key={label} className="py-3 flex justify-between items-center text-xs">
-                    <span className="text-slate-400 font-medium">{label}</span>
+                    <span className="text-text-muted font-medium">{label}</span>
                     <span className="font-semibold font-mono">{value}</span>
                   </div>
                 ))}
@@ -399,7 +399,7 @@ export default function MarketingDashboard({
                 <div className="w-16 h-16 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 flex items-center justify-center font-bold text-xl">{order.clientName[0]}</div>
                 <div>
                   <h3 className="text-base font-bold">{order.clientName}</h3>
-                  <p className="text-xs text-slate-400 font-mono mt-0.5">{order.id}</p>
+                  <p className="text-xs text-text-muted font-mono mt-0.5">{order.id}</p>
                 </div>
               </div>
               <div className="bg-bg-card dark:bg-slate-800 rounded-2xl p-4 shadow-card border border-[var(--border)] dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-700">
@@ -413,7 +413,7 @@ export default function MarketingDashboard({
                   ['Submitted', order.createdAt],
                 ].map(([label, value]) => (
                   <div key={label} className="py-3 flex justify-between items-center text-xs">
-                    <span className="text-slate-400 font-medium">{label}</span>
+                    <span className="text-text-muted font-medium">{label}</span>
                     <span className="font-semibold">{value}</span>
                   </div>
                 ))}
@@ -436,8 +436,8 @@ export default function MarketingDashboard({
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-lg font-bold text-slate-800 tracking-tight">Marketing</h1>
-            <p className="text-[11px] text-slate-400 mt-0.5">Sales pipeline & customer records</p>
+            <h1 className="text-lg font-bold text-text-primary tracking-tight">Marketing</h1>
+            <p className="text-[11px] text-text-muted mt-0.5">Sales pipeline & customer records</p>
           </div>
           <div className="flex gap-2">
             <button onClick={() => exportToCSV(localOrders, ['id', 'clientName', 'productName', 'totalAmount', 'status'], 'sales_orders')} className="p-2 bg-bg-card rounded-xl border border-[var(--border)] shadow-card" title="Export CSV">
@@ -484,9 +484,9 @@ export default function MarketingDashboard({
                   <Icon className="w-5 h-5" style={{ color: s.color }} />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[9px] text-slate-400 uppercase font-bold tracking-wider truncate">{s.label}</p>
-                  <p className="text-sm font-bold text-slate-800 mt-0.5">{s.value}</p>
-                  <p className="text-[9px] text-slate-400 truncate">{s.sub}</p>
+                  <p className="text-[9px] text-text-muted uppercase font-bold tracking-wider truncate">{s.label}</p>
+                  <p className="text-sm font-bold text-text-primary mt-0.5">{s.value}</p>
+                  <p className="text-[9px] text-text-muted truncate">{s.sub}</p>
                 </div>
               </div>
             );
@@ -498,7 +498,7 @@ export default function MarketingDashboard({
           <button onClick={() => setShowOrderModal(true)} className="flex items-center justify-center gap-1.5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-card">
             <UserPlus className="w-4 h-4" /> Book Order
           </button>
-          <button onClick={() => setShowCustomerModal(true)} className="flex items-center justify-center gap-1.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition-all border border-[var(--border)]">
+          <button onClick={() => setShowCustomerModal(true)} className="flex items-center justify-center gap-1.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-text-primary rounded-xl text-xs font-bold transition-all border border-[var(--border)]">
             <Users className="w-4 h-4" /> Add Customer
           </button>
         </div>
@@ -513,13 +513,13 @@ export default function MarketingDashboard({
                   <Clipboard className="w-5 h-5 text-blue-600" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-bold text-slate-800 truncate">{o.clientName}</p>
-                  <p className="text-[10px] text-slate-400 truncate">{o.productName} • GHS {o.totalAmount.toLocaleString()}</p>
+                  <p className="text-xs font-bold text-text-primary truncate">{o.clientName}</p>
+                  <p className="text-[10px] text-text-muted truncate">{o.productName} • GHS {o.totalAmount.toLocaleString()}</p>
                 </div>
                 <span className={`mobile-status-pill ${
                   o.status === 'DELIVERED' ? 'bg-emerald-50 text-emerald-700' :
                   o.status.startsWith('PENDING') ? 'bg-amber-50 text-amber-700' :
-                  'bg-slate-100 text-slate-700'
+                  'bg-bg-input text-text-secondary'
                 }`}>{o.status.replace(/_/g, ' ')}</span>
               </div>
             ))}
@@ -540,10 +540,10 @@ export default function MarketingDashboard({
                   </div>
                 )}
                 <div className="flex-1 min-w-0 ml-2">
-                  <p className="text-xs font-bold text-slate-800 truncate">{c.name}</p>
-                  <p className="text-[10px] text-slate-400 truncate">{c.companyName} • {c.location || 'No Location'}</p>
+                  <p className="text-xs font-bold text-text-primary truncate">{c.name}</p>
+                  <p className="text-[10px] text-text-muted truncate">{c.companyName} • {c.location || 'No Location'}</p>
                 </div>
-                <ChevronRight className="w-4 h-4 text-slate-400" />
+                <ChevronRight className="w-4 h-4 text-text-muted" />
               </div>
             ))}
           </div>
@@ -928,16 +928,16 @@ export default function MarketingDashboard({
                   <div className="w-10 h-10 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center font-bold text-sm shrink-0">{cust.name[0]}</div>
                 )}
                 <div>
-                  <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">{cust.name}</h4>
-                  <p className="text-xs text-slate-400">{cust.companyName}</p>
-                  <p className="text-[10px] text-slate-400 font-mono mt-0.5">{cust.phone}</p>
+                  <h4 className="text-sm font-bold text-text-primary dark:text-slate-200">{cust.name}</h4>
+                  <p className="text-xs text-text-muted">{cust.companyName}</p>
+                  <p className="text-[10px] text-text-muted font-mono mt-0.5">{cust.phone}</p>
                 </div>
               </div>
-              <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
+              <ChevronRight className="w-4 h-4 text-text-muted shrink-0" />
             </div>
           ))}
           {filteredCust.length === 0 && (
-            <div className="p-8 text-center text-slate-400 text-xs bg-bg-card dark:bg-slate-800 rounded-2xl">No customers matched search.</div>
+            <div className="p-8 text-center text-text-muted text-xs bg-bg-card dark:bg-slate-800 rounded-2xl">No customers matched search.</div>
           )}
         </div>
 

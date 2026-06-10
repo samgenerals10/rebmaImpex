@@ -197,7 +197,7 @@ export default function OperationsDashboard({
       'DELIVERED': 'bg-emerald-500/10 text-emerald-400',
       'OUT_FOR_DELIVERY': 'bg-blue-500/10 text-blue-400',
     };
-    return map[status] || 'bg-slate-500/10 text-slate-400';
+    return map[status] || 'bg-slate-500/10 text-text-muted';
   };
 
   // Row Action Handlers
@@ -380,12 +380,12 @@ export default function OperationsDashboard({
 
   if (activeMobileDetail) {
     return (
-      <div className="lg:hidden bg-bg-card min-h-screen p-4 pb-24 space-y-6 animate-fade-in-up text-slate-800">
+      <div className="lg:hidden bg-bg-card min-h-screen p-4 pb-24 space-y-6 animate-fade-in-up text-text-primary">
         {/* Header with Back button */}
         <div className="flex items-center gap-3">
           <button 
             onClick={() => setActiveMobileDetail(null)}
-            className="px-3 py-1.5 bg-bg-card dark:bg-slate-850 border border-[var(--border)] dark:border-slate-800 rounded-full text-xs font-bold text-slate-600 dark:text-slate-350 cursor-pointer shadow-card"
+            className="px-3 py-1.5 bg-bg-card dark:bg-slate-850 border border-[var(--border)] dark:border-slate-800 rounded-full text-xs font-bold text-text-secondary dark:text-slate-350 cursor-pointer shadow-card"
           >
             ← Back
           </button>
@@ -402,8 +402,8 @@ export default function OperationsDashboard({
                   {order.clientName[0]}
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-slate-800 dark:text-slate-200">{order.clientName}</h3>
-                  <p className="text-xs text-slate-400 font-mono mt-0.5">{order.id}</p>
+                  <h3 className="text-base font-bold text-text-primary dark:text-slate-200">{order.clientName}</h3>
+                  <p className="text-xs text-text-muted font-mono mt-0.5">{order.id}</p>
                   <span className="inline-block mt-2 px-2.5 py-0.5 bg-blue-500/10 text-blue-500 rounded-full text-[9px] font-bold uppercase tracking-wider">{order.productName || 'Unnamed Product'}</span>
                 </div>
               </div>
@@ -411,19 +411,19 @@ export default function OperationsDashboard({
               {/* Fields */}
               <div className="bg-bg-card dark:bg-slate-855 rounded-2xl p-4 shadow-card border border-[var(--border)] dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
                 <div className="py-3 flex justify-between items-center text-xs">
-                  <span className="text-slate-400 font-medium">Ticket Number</span>
-                  <span className="font-semibold text-slate-800 dark:text-slate-200 font-mono">{order.ticketNumber || '—'}</span>
+                  <span className="text-text-muted font-medium">Ticket Number</span>
+                  <span className="font-semibold text-text-primary dark:text-slate-200 font-mono">{order.ticketNumber || '—'}</span>
                 </div>
                 <div className="py-3 flex justify-between items-center text-xs">
-                  <span className="text-slate-400 font-medium">Destination</span>
-                  <span className="font-semibold text-slate-800 dark:text-slate-200">{order.destination || '—'}</span>
+                  <span className="text-text-muted font-medium">Destination</span>
+                  <span className="font-semibold text-text-primary dark:text-slate-200">{order.destination || '—'}</span>
                 </div>
                 <div className="py-3 flex justify-between items-center text-xs">
-                  <span className="text-slate-400 font-medium">Amount</span>
-                  <span className="font-semibold font-mono text-slate-800 dark:text-slate-200">GHS {order.totalAmount.toLocaleString()}</span>
+                  <span className="text-text-muted font-medium">Amount</span>
+                  <span className="font-semibold font-mono text-text-primary dark:text-slate-200">GHS {order.totalAmount.toLocaleString()}</span>
                 </div>
                 <div className="py-3 flex justify-between items-center text-xs">
-                  <span className="text-slate-400 font-medium">Status</span>
+                  <span className="text-text-muted font-medium">Status</span>
                   <span className={`px-2.5 py-0.5 rounded text-[9px] font-bold ${statusBadge(order.status)}`}>{order.status.replace(/_/g, ' ')}</span>
                 </div>
               </div>
@@ -432,7 +432,7 @@ export default function OperationsDashboard({
               <div className="grid grid-cols-2 gap-3">
                 <button 
                   onClick={() => { handleEditOrder(order); setActiveMobileDetail(null); }}
-                  className="py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-xs font-bold text-center border border-[var(--border)] dark:border-slate-700 cursor-pointer text-slate-700 dark:text-slate-200"
+                  className="py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-xs font-bold text-center border border-[var(--border)] dark:border-slate-700 cursor-pointer text-text-primary dark:text-slate-200"
                 >
                   Edit Details
                 </button>
@@ -461,43 +461,43 @@ export default function OperationsDashboard({
                   </div>
                 )}
                 <div>
-                  <h3 className="text-base font-bold text-slate-800 dark:text-slate-200">{cargo.productName || 'Unnamed Cargo'}</h3>
-                  <p className="text-xs text-slate-400 font-mono mt-0.5">CARGO-{cargo.id}</p>
+                  <h3 className="text-base font-bold text-text-primary dark:text-slate-200">{cargo.productName || 'Unnamed Cargo'}</h3>
+                  <p className="text-xs text-text-muted font-mono mt-0.5">CARGO-{cargo.id}</p>
                 </div>
               </div>
 
               {/* Fields */}
               <div className="bg-bg-card dark:bg-slate-855 rounded-2xl p-4 shadow-card border border-[var(--border)] dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
                 <div className="py-3 flex justify-between items-center text-xs">
-                  <span className="text-slate-400 font-medium">Goods Code</span>
-                  <span className="font-semibold text-slate-800 dark:text-slate-200 font-mono">{cargo.goodsCode || '—'}</span>
+                  <span className="text-text-muted font-medium">Goods Code</span>
+                  <span className="font-semibold text-text-primary dark:text-slate-200 font-mono">{cargo.goodsCode || '—'}</span>
                 </div>
                 <div className="py-3 flex justify-between items-center text-xs">
-                  <span className="text-slate-400 font-medium">Country of Origin</span>
-                  <span className="font-semibold text-slate-800 dark:text-slate-200">{cargo.country}</span>
+                  <span className="text-text-muted font-medium">Country of Origin</span>
+                  <span className="font-semibold text-text-primary dark:text-slate-200">{cargo.country}</span>
                 </div>
                 <div className="py-3 flex justify-between items-center text-xs">
-                  <span className="text-slate-400 font-medium">Carrier (Company)</span>
-                  <span className="font-semibold text-slate-800 dark:text-slate-200">{cargo.company}</span>
+                  <span className="text-text-muted font-medium">Carrier (Company)</span>
+                  <span className="font-semibold text-text-primary dark:text-slate-200">{cargo.company}</span>
                 </div>
                 <div className="py-3 flex justify-between items-center text-xs">
-                  <span className="text-slate-400 font-medium">Quantity</span>
-                  <span className="font-semibold text-slate-800 dark:text-slate-200">{cargo.quantity} units</span>
+                  <span className="text-text-muted font-medium">Quantity</span>
+                  <span className="font-semibold text-text-primary dark:text-slate-200">{cargo.quantity} units</span>
                 </div>
                 <div className="py-3 flex justify-between items-center text-xs">
-                  <span className="text-slate-400 font-medium">Weight</span>
-                  <span className="font-semibold text-slate-800 dark:text-slate-200 font-mono">{cargo.weight}T</span>
+                  <span className="text-text-muted font-medium">Weight</span>
+                  <span className="font-semibold text-text-primary dark:text-slate-200 font-mono">{cargo.weight}T</span>
                 </div>
                 <div className="py-3 flex justify-between items-center text-xs">
-                  <span className="text-slate-400 font-medium">Discrepancies</span>
+                  <span className="text-text-muted font-medium">Discrepancies</span>
                   <span className="font-semibold text-rose-500">{cargo.discrepancies}</span>
                 </div>
                 <div className="py-3 flex justify-between items-center text-xs">
-                  <span className="text-slate-400 font-medium">Destination</span>
-                  <span className="font-semibold text-slate-800 dark:text-slate-200">{cargo.destination || '—'}</span>
+                  <span className="text-text-muted font-medium">Destination</span>
+                  <span className="font-semibold text-text-primary dark:text-slate-200">{cargo.destination || '—'}</span>
                 </div>
                 <div className="py-3 flex justify-between items-center text-xs">
-                  <span className="text-slate-400 font-medium">Status</span>
+                  <span className="text-text-muted font-medium">Status</span>
                   <span className={`px-2.5 py-0.5 rounded text-[9px] font-bold ${statusBadge(cargo.status)}`}>{cargo.status.replace(/_/g, ' ')}</span>
                 </div>
               </div>
@@ -506,7 +506,7 @@ export default function OperationsDashboard({
               <div className="grid grid-cols-2 gap-3">
                 <button 
                   onClick={() => { handleEditCargo(cargo); setActiveMobileDetail(null); }}
-                  className="py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-xs font-bold text-center border border-[var(--border)] dark:border-slate-700 cursor-pointer text-slate-700 dark:text-slate-200"
+                  className="py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-xs font-bold text-center border border-[var(--border)] dark:border-slate-700 cursor-pointer text-text-primary dark:text-slate-200"
                 >
                   Edit Ingest
                 </button>
@@ -531,8 +531,8 @@ export default function OperationsDashboard({
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-lg font-bold text-slate-800 tracking-tight">Operations</h1>
-            <p className="text-[11px] text-slate-400 mt-0.5">Port intakes & release queue</p>
+            <h1 className="text-lg font-bold text-text-primary tracking-tight">Operations</h1>
+            <p className="text-[11px] text-text-muted mt-0.5">Port intakes & release queue</p>
           </div>
           <div className="flex gap-2">
             <button onClick={() => exportToCSV(localCargo, ['id', 'productName', 'weight', 'status'], 'operations_cargo')} className="p-2 bg-bg-card rounded-xl border border-[var(--border)] shadow-card" title="Export CSV">
@@ -579,9 +579,9 @@ export default function OperationsDashboard({
                   <Icon className="w-5 h-5" style={{ color: s.color }} />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[9px] text-slate-400 uppercase font-bold tracking-wider truncate">{s.label}</p>
-                  <p className="text-sm font-bold text-slate-800 mt-0.5">{s.value}</p>
-                  <p className="text-[9px] text-slate-400 truncate">{s.sub}</p>
+                  <p className="text-[9px] text-text-muted uppercase font-bold tracking-wider truncate">{s.label}</p>
+                  <p className="text-sm font-bold text-text-primary mt-0.5">{s.value}</p>
+                  <p className="text-[9px] text-text-muted truncate">{s.sub}</p>
                 </div>
               </div>
             );
@@ -594,17 +594,17 @@ export default function OperationsDashboard({
           <div className="space-y-2">
             {localCargo.slice(0, 5).map(c => (
               <div key={c.id} onClick={() => setActiveMobileDetail({ type: 'cargo', data: c })} className="mobile-data-row cursor-pointer">
-                <div className="mobile-data-row-icon bg-slate-50 text-slate-600">
-                  <Layers className="w-5 h-5 text-slate-600" />
+                <div className="mobile-data-row-icon bg-bg-page text-text-secondary">
+                  <Layers className="w-5 h-5 text-text-secondary" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-bold text-slate-800 truncate">{c.productName}</p>
-                  <p className="text-[10px] text-slate-400 truncate">{c.company} • {c.weight}T • {c.country}</p>
+                  <p className="text-xs font-bold text-text-primary truncate">{c.productName}</p>
+                  <p className="text-[10px] text-text-muted truncate">{c.company} • {c.weight}T • {c.country}</p>
                 </div>
                 <span className={`mobile-status-pill ${
                   c.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-700' :
                   c.status === 'PENDING_MANAGEMENT_APPROVAL' ? 'bg-amber-50 text-amber-700' :
-                  'bg-slate-100 text-slate-700'
+                  'bg-bg-input text-text-secondary'
                 }`}>{c.status.replace(/_/g, ' ')}</span>
               </div>
             ))}
@@ -621,13 +621,13 @@ export default function OperationsDashboard({
                   <Truck className="w-5 h-5 text-blue-600" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-bold text-slate-800 truncate">{o.clientName}</p>
-                  <p className="text-[10px] text-slate-400 truncate">{o.productName} • GHS {o.totalAmount.toLocaleString()}</p>
+                  <p className="text-xs font-bold text-text-primary truncate">{o.clientName}</p>
+                  <p className="text-[10px] text-text-muted truncate">{o.productName} • GHS {o.totalAmount.toLocaleString()}</p>
                 </div>
                 <span className={`mobile-status-pill ${
                   o.status === 'PROCESSING' ? 'bg-blue-50 text-blue-700' :
                   o.status === 'DELIVERED' ? 'bg-emerald-50 text-emerald-700' :
-                  'bg-slate-100 text-slate-700'
+                  'bg-bg-input text-text-secondary'
                 }`}>{o.status.replace(/_/g, ' ')}</span>
               </div>
             ))}

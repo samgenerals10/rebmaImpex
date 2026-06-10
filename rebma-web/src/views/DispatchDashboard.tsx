@@ -173,12 +173,12 @@ export default function DispatchDashboard({
 
   if (activeMobileDetail) {
     return (
-      <div className="lg:hidden bg-bg-card min-h-screen p-4 pb-24 space-y-6 animate-fade-in-up text-slate-800">
+      <div className="lg:hidden bg-bg-card min-h-screen p-4 pb-24 space-y-6 animate-fade-in-up text-text-primary">
         {/* Header with Back button */}
         <div className="flex items-center gap-3">
           <button 
             onClick={() => setActiveMobileDetail(null)}
-            className="px-3 py-1.5 bg-bg-card dark:bg-slate-855 border border-[var(--border)] dark:border-slate-800 rounded-full text-xs font-bold text-slate-600 dark:text-slate-350 cursor-pointer shadow-card"
+            className="px-3 py-1.5 bg-bg-card dark:bg-slate-855 border border-[var(--border)] dark:border-slate-800 rounded-full text-xs font-bold text-text-secondary dark:text-slate-350 cursor-pointer shadow-card"
           >
             ← Back
           </button>
@@ -191,42 +191,42 @@ export default function DispatchDashboard({
               <Truck className="w-8 h-8" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-slate-800 dark:text-slate-205">{activeMobileDetail.clientName}</h3>
-              <p className="text-xs text-slate-400 font-mono mt-0.5">{activeMobileDetail.id}</p>
+              <h3 className="text-base font-bold text-text-primary dark:text-slate-205">{activeMobileDetail.clientName}</h3>
+              <p className="text-xs text-text-muted font-mono mt-0.5">{activeMobileDetail.id}</p>
             </div>
           </div>
 
           <div className="bg-bg-card dark:bg-slate-855 rounded-2xl p-4 shadow-card border border-[var(--border)] dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
             <div className="py-3 flex justify-between items-center text-xs">
-              <span className="text-slate-400 font-medium">Delivery ID</span>
-              <span className="font-semibold text-slate-800 dark:text-slate-205 font-mono">{activeMobileDetail.id}</span>
+              <span className="text-text-muted font-medium">Delivery ID</span>
+              <span className="font-semibold text-text-primary dark:text-slate-205 font-mono">{activeMobileDetail.id}</span>
             </div>
             <div className="py-3 flex justify-between items-center text-xs">
-              <span className="text-slate-400 font-medium">Order ID</span>
-              <span className="font-semibold text-slate-800 dark:text-slate-205 font-mono">{activeMobileDetail.orderId}</span>
+              <span className="text-text-muted font-medium">Order ID</span>
+              <span className="font-semibold text-text-primary dark:text-slate-205 font-mono">{activeMobileDetail.orderId}</span>
             </div>
             <div className="py-3 flex justify-between items-center text-xs">
-              <span className="text-slate-400 font-medium">Client Name</span>
-              <span className="font-semibold text-slate-800 dark:text-slate-205">{activeMobileDetail.clientName}</span>
+              <span className="text-text-muted font-medium">Client Name</span>
+              <span className="font-semibold text-text-primary dark:text-slate-205">{activeMobileDetail.clientName}</span>
             </div>
             <div className="py-3 flex justify-between items-center text-xs">
-              <span className="text-slate-400 font-medium">Destination</span>
-              <span className="font-semibold text-slate-800 dark:text-slate-205">{activeMobileDetail.destination}</span>
+              <span className="text-text-muted font-medium">Destination</span>
+              <span className="font-semibold text-text-primary dark:text-slate-205">{activeMobileDetail.destination}</span>
             </div>
             <div className="py-3 flex justify-between items-center text-xs">
-              <span className="text-slate-400 font-medium">Driver Name</span>
-              <span className="font-semibold text-slate-800 dark:text-slate-205">{activeMobileDetail.driverName}</span>
+              <span className="text-text-muted font-medium">Driver Name</span>
+              <span className="font-semibold text-text-primary dark:text-slate-205">{activeMobileDetail.driverName}</span>
             </div>
             <div className="py-3 flex justify-between items-center text-xs">
-              <span className="text-slate-400 font-medium">Dispatched At</span>
-              <span className="font-semibold text-slate-800 dark:text-slate-205 font-mono">{activeMobileDetail.dispatchedAt}</span>
+              <span className="text-text-muted font-medium">Dispatched At</span>
+              <span className="font-semibold text-text-primary dark:text-slate-205 font-mono">{activeMobileDetail.dispatchedAt}</span>
             </div>
             <div className="py-3 flex justify-between items-center text-xs">
-              <span className="text-slate-400 font-medium">Delivered At</span>
-              <span className="font-semibold text-slate-800 dark:text-slate-205 font-mono">{activeMobileDetail.deliveredAt || '—'}</span>
+              <span className="text-text-muted font-medium">Delivered At</span>
+              <span className="font-semibold text-text-primary dark:text-slate-205 font-mono">{activeMobileDetail.deliveredAt || '—'}</span>
             </div>
             <div className="py-3 flex justify-between items-center text-xs">
-              <span className="text-slate-400 font-medium">Status</span>
+              <span className="text-text-muted font-medium">Status</span>
               <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
                 activeMobileDetail.status === 'DELIVERED' ? 'bg-emerald-500/10 text-emerald-450' :
                 activeMobileDetail.status === 'IN_TRANSIT' ? 'bg-blue-500/10 text-blue-450 animate-pulse' :
@@ -278,8 +278,8 @@ export default function DispatchDashboard({
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-lg font-bold text-slate-800 tracking-tight">Dispatch Fleet</h1>
-            <p className="text-[11px] text-slate-400 mt-0.5">Active routes & delivery history</p>
+            <h1 className="text-lg font-bold text-text-primary tracking-tight">Dispatch Fleet</h1>
+            <p className="text-[11px] text-text-muted mt-0.5">Active routes & delivery history</p>
           </div>
           <div className="flex gap-2">
             <button onClick={() => exportToCSV(localDeliveries, ['id', 'orderId', 'clientName', 'destination', 'driverName', 'status'], 'dispatch_logs')} className="p-2 bg-bg-card rounded-xl border border-[var(--border)] shadow-card">
@@ -326,9 +326,9 @@ export default function DispatchDashboard({
                   <Icon className="w-5 h-5" style={{ color: s.color }} />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[9px] text-slate-400 uppercase font-bold tracking-wider">{s.label}</p>
-                  <p className="text-sm font-bold text-slate-800 mt-0.5">{s.value}</p>
-                  <p className="text-[9px] text-slate-400">{s.sub}</p>
+                  <p className="text-[9px] text-text-muted uppercase font-bold tracking-wider">{s.label}</p>
+                  <p className="text-sm font-bold text-text-primary mt-0.5">{s.value}</p>
+                  <p className="text-[9px] text-text-muted">{s.sub}</p>
                 </div>
               </div>
             );
@@ -345,13 +345,13 @@ export default function DispatchDashboard({
                   {d.fullName[0]}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-bold text-slate-800 truncate">{d.fullName}</p>
-                  <p className="text-[10px] text-slate-400 truncate">{d.truckId} • {d.totalDeliveries} deliveries</p>
+                  <p className="text-xs font-bold text-text-primary truncate">{d.fullName}</p>
+                  <p className="text-[10px] text-text-muted truncate">{d.truckId} • {d.totalDeliveries} deliveries</p>
                 </div>
                 <span className={`mobile-status-pill ${
                   d.status === 'ON_DELIVERY' ? 'bg-blue-50 text-blue-700' : 
                   d.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-700' : 
-                  'bg-slate-100 text-text-secondary'
+                  'bg-bg-input text-text-secondary'
                 }`}>
                   {d.status.replace('_', ' ')}
                 </span>
@@ -370,8 +370,8 @@ export default function DispatchDashboard({
                   <Truck className="w-5 h-5" style={{ color: del.status === 'DELIVERED' ? '#16a34a' : del.status === 'IN_TRANSIT' ? '#3b82f6' : '#d97706' }} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-bold text-slate-800 truncate">{del.clientName}</p>
-                  <p className="text-[10px] text-slate-400 truncate">{del.destination}</p>
+                  <p className="text-xs font-bold text-text-primary truncate">{del.clientName}</p>
+                  <p className="text-[10px] text-text-muted truncate">{del.destination}</p>
                 </div>
                 <span className={`mobile-status-pill ${
                   del.status === 'DELIVERED' ? 'bg-emerald-50 text-emerald-700' : 
@@ -582,7 +582,7 @@ export default function DispatchDashboard({
                           onClick={() => { setDispatchStatusFilter(st); setIsDispatchFilterOpen(false); }}
                           className="flex items-center gap-2 px-3 py-2 text-xs rounded-lg hover:bg-[var(--accent-light)] text-left transition-colors text-[var(--text-primary)]"
                         >
-                          <span className={`w-2 h-2 rounded-full ${st === 'DELIVERED' ? 'bg-emerald-400' : st === 'IN_TRANSIT' ? 'bg-blue-450' : 'bg-slate-400'}`} />
+                          <span className={`w-2 h-2 rounded-full ${st === 'DELIVERED' ? 'bg-emerald-400' : st === 'IN_TRANSIT' ? 'bg-blue-450' : 'bg-text-muted'}`} />
                           {st === 'ALL' ? 'All Logs' : st}
                         </button>
                       ))}

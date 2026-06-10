@@ -134,8 +134,8 @@ export default function BoardroomView({
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-lg font-bold text-slate-800 tracking-tight">Boardroom</h1>
-            <p className="text-[11px] text-slate-400 mt-0.5">Announcements & schedules</p>
+            <h1 className="text-lg font-bold text-text-primary tracking-tight">Boardroom</h1>
+            <p className="text-[11px] text-text-muted mt-0.5">Announcements & schedules</p>
           </div>
           <div className="flex gap-2">
             <button onClick={handleExportCSV} className="p-2 bg-bg-card rounded-xl border border-[var(--border)] shadow-card" title="Export CSV">
@@ -181,8 +181,8 @@ export default function BoardroomView({
                       <Calendar className="w-5 h-5 text-indigo-600" />
                     </div>
                     <div>
-                      <p className="text-xs font-bold text-slate-800">{mtg.title}</p>
-                      <p className="text-[9px] text-slate-400 font-mono">{mtg.date} at {mtg.time}</p>
+                      <p className="text-xs font-bold text-text-primary">{mtg.title}</p>
+                      <p className="text-[9px] text-text-muted font-mono">{mtg.date} at {mtg.time}</p>
                     </div>
                   </div>
                   <a href="https://meet.jit.si/RembaImpexGhanaExecutiveBoardroom_101" target="_blank" rel="noreferrer" className="px-2 py-1 bg-emerald-50 text-emerald-700 rounded text-[10px] font-bold">
@@ -192,7 +192,7 @@ export default function BoardroomView({
               </div>
             ))}
             {meetingsList.length === 0 && (
-              <p className="text-xs text-slate-400 text-center py-4 bg-slate-50 rounded-xl">No boardroom meetings scheduled</p>
+              <p className="text-xs text-text-muted text-center py-4 bg-bg-page rounded-xl">No boardroom meetings scheduled</p>
             )}
           </div>
         </div>
@@ -206,13 +206,13 @@ export default function BoardroomView({
                 <div key={msg.id} className="text-xs">
                   <div className="flex items-center gap-1.5 font-bold text-[10px] text-text-secondary">
                     <span>{msg.sender}</span>
-                    <span className="font-normal text-[9px] text-slate-400">• {msg.time}</span>
+                    <span className="font-normal text-[9px] text-text-muted">• {msg.time}</span>
                   </div>
-                  <p className="text-slate-800 mt-0.5 bg-slate-50 rounded-lg p-2">{msg.content}</p>
+                  <p className="text-text-primary mt-0.5 bg-bg-page rounded-lg p-2">{msg.content}</p>
                 </div>
               ))}
               {publicMessages.length === 0 && (
-                <p className="text-xs text-slate-400 text-center py-4">No announcements posted.</p>
+                <p className="text-xs text-text-muted text-center py-4">No announcements posted.</p>
               )}
             </div>
             <form onSubmit={handleSendAnnouncement} className="flex gap-1">

@@ -341,7 +341,7 @@ export default function App() {
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.95 }}
-          className="bg-bg-card rounded-[24px] border border-slate-100 shadow-2xl max-w-md w-full overflow-hidden p-6 space-y-4 relative text-slate-800"
+          className="bg-bg-card rounded-[24px] border border-[var(--border)] shadow-2xl max-w-md w-full overflow-hidden p-6 space-y-4 relative text-text-primary"
         >
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-2.5">
@@ -352,24 +352,24 @@ export default function App() {
               ) : (
                 <Info className="w-5 h-5 text-blue-500 shrink-0" />
               )}
-              <h4 className="text-sm font-bold text-slate-900 leading-none">
+              <h4 className="text-sm font-bold text-text-primary leading-none">
                 {alertModal.title}
               </h4>
             </div>
             <button 
               onClick={() => setAlertModal(prev => ({ ...prev, isOpen: false }))}
-              className="text-slate-400 hover:text-slate-600 transition-colors p-1 rounded-lg hover:bg-slate-50 cursor-pointer"
+              className="text-text-muted hover:text-text-secondary transition-colors p-1 rounded-lg hover:bg-bg-page cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
           </div>
-          <p className="text-xs text-slate-600 whitespace-pre-wrap leading-relaxed">
+          <p className="text-xs text-text-secondary whitespace-pre-wrap leading-relaxed">
             {alertModal.message}
           </p>
           <div className="flex justify-end gap-2 pt-2">
             <button
               onClick={() => setAlertModal(prev => ({ ...prev, isOpen: false }))}
-              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+              className="px-4 py-2 bg-bg-input hover:bg-slate-200 text-text-primary rounded-xl text-xs font-bold transition-colors cursor-pointer"
             >
               Close
             </button>
@@ -387,12 +387,12 @@ export default function App() {
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.95 }}
-          className="bg-bg-card rounded-[24px] border border-slate-100 shadow-2xl max-w-md w-full overflow-hidden p-6 space-y-4 relative text-slate-800"
+          className="bg-bg-card rounded-[24px] border border-[var(--border)] shadow-2xl max-w-md w-full overflow-hidden p-6 space-y-4 relative text-text-primary"
         >
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-2.5">
               <Info className="w-5 h-5 text-emerald-500 shrink-0" />
-              <h4 className="text-sm font-bold text-slate-900 leading-none">
+              <h4 className="text-sm font-bold text-text-primary leading-none">
                 Input Required
               </h4>
             </div>
@@ -401,19 +401,19 @@ export default function App() {
                 promptModal.resolve(null);
                 setPromptModal(null);
               }}
-              className="text-slate-400 hover:text-slate-600 transition-colors p-1 rounded-lg hover:bg-slate-50 cursor-pointer"
+              className="text-text-muted hover:text-text-secondary transition-colors p-1 rounded-lg hover:bg-bg-page cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
           </div>
-          <p className="text-xs text-slate-600 leading-relaxed">
+          <p className="text-xs text-text-secondary leading-relaxed">
             {promptModal.message}
           </p>
           <input
             type="text"
             value={promptInputValue}
             onChange={(e) => setPromptInputValue(e.target.value)}
-            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600"
+            className="w-full px-3 py-2 bg-bg-page border border-[var(--border)] rounded-xl text-xs text-text-primary placeholder-slate-400 focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600"
             autoFocus
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
@@ -428,7 +428,7 @@ export default function App() {
                 promptModal.resolve(null);
                 setPromptModal(null);
               }}
-              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+              className="px-4 py-2 bg-bg-input hover:bg-slate-200 text-text-primary rounded-xl text-xs font-bold transition-colors cursor-pointer"
             >
               Cancel
             </button>
@@ -455,17 +455,17 @@ export default function App() {
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.95 }}
-          className="bg-bg-card rounded-[24px] border border-slate-100 shadow-2xl max-w-md w-full overflow-hidden p-6 space-y-4 relative text-slate-800"
+          className="bg-bg-card rounded-[24px] border border-[var(--border)] shadow-2xl max-w-md w-full overflow-hidden p-6 space-y-4 relative text-text-primary"
         >
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-2.5">
               <AlertCircle className="w-5 h-5 text-amber-500 shrink-0" />
-              <h4 className="text-sm font-bold text-slate-900 leading-none">
+              <h4 className="text-sm font-bold text-text-primary leading-none">
                 Confirmation Required
               </h4>
             </div>
           </div>
-          <p className="text-xs text-slate-600 leading-relaxed">
+          <p className="text-xs text-text-secondary leading-relaxed">
             {confirmModal.message}
           </p>
           <div className="flex justify-end gap-2 pt-2">
@@ -474,7 +474,7 @@ export default function App() {
                 confirmModal.resolve(false);
                 setConfirmModal(null);
               }}
-              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+              className="px-4 py-2 bg-bg-input hover:bg-slate-200 text-text-primary rounded-xl text-xs font-bold transition-colors cursor-pointer"
             >
               Cancel
             </button>
@@ -1631,9 +1631,9 @@ export default function App() {
   // Render Authentication screens
   if (isAuthLoading) {
     return (
-      <div className="fixed inset-0 flex flex-col items-center justify-center bg-slate-950 text-white z-[10000]">
+      <div className="fixed inset-0 flex flex-col items-center justify-center bg-[#0f172a] text-white z-[10000]">
         <div className="animate-spin rounded-full h-12 w-12 border-4 border-t-[#55dfa5] border-r-yellow-500 border-b-rose-500 border-l-slate-800"></div>
-        <p className="text-sm font-bold text-slate-400 mt-4 tracking-wider animate-pulse uppercase">REBMA IMPEX ERP...</p>
+        <p className="text-sm font-bold text-text-muted mt-4 tracking-wider animate-pulse uppercase">REBMA IMPEX ERP...</p>
       </div>
     );
   }
@@ -1650,11 +1650,11 @@ export default function App() {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 10 }}
             onSubmit={handlePrivilegedRegister} 
-            className="space-y-4 text-slate-800"
+            className="space-y-4 text-text-primary"
           >
             <div className="text-center">
               <h3 className="text-xl font-bold text-emerald-800">Privileged Registration</h3>
-              <p className="text-[10px] text-slate-400 mt-0.5 font-medium">CREATE CEO / HR ACCOUNT</p>
+              <p className="text-[10px] text-text-muted mt-0.5 font-medium">CREATE CEO / HR ACCOUNT</p>
             </div>
 
             {loginError && (
@@ -1665,53 +1665,53 @@ export default function App() {
 
             {/* Full Name Input */}
             <div className="space-y-1">
-              <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider">Full Name</label>
-              <div className="flex items-center gap-2 border-b border-slate-200 focus-within:border-emerald-600 pb-1.5 transition-colors">
-                <User className="w-4 h-4 text-slate-400" />
+              <label className="block text-[9px] font-bold text-text-muted uppercase tracking-wider">Full Name</label>
+              <div className="flex items-center gap-2 border-b border-[var(--border)] focus-within:border-emerald-600 pb-1.5 transition-colors">
+                <User className="w-4 h-4 text-text-muted" />
                 <input 
                   type="text" 
                   required 
                   placeholder="Ama Boateng"
                   value={privName}
                   onChange={(e) => setPrivName(e.target.value)}
-                  className="w-full bg-transparent border-0 p-0 text-sm text-slate-800 placeholder-slate-400 focus:ring-0 focus:outline-none"
+                  className="w-full bg-transparent border-0 p-0 text-sm text-text-primary placeholder-slate-400 focus:ring-0 focus:outline-none"
                 />
               </div>
             </div>
 
             {/* Email Input */}
             <div className="space-y-1">
-              <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider">Email Address</label>
-              <div className="flex items-center gap-2 border-b border-slate-200 focus-within:border-emerald-600 pb-1.5 transition-colors">
-                <Mail className="w-4 h-4 text-slate-400" />
+              <label className="block text-[9px] font-bold text-text-muted uppercase tracking-wider">Email Address</label>
+              <div className="flex items-center gap-2 border-b border-[var(--border)] focus-within:border-emerald-600 pb-1.5 transition-colors">
+                <Mail className="w-4 h-4 text-text-muted" />
                 <input 
                   type="email" 
                   required 
                   placeholder="name@rembaimpex.com"
                   value={privEmail}
                   onChange={(e) => setPrivEmail(e.target.value)}
-                  className="w-full bg-transparent border-0 p-0 text-sm text-slate-800 placeholder-slate-400 focus:ring-0 focus:outline-none"
+                  className="w-full bg-transparent border-0 p-0 text-sm text-text-primary placeholder-slate-400 focus:ring-0 focus:outline-none"
                 />
               </div>
             </div>
 
             {/* Password Input */}
             <div className="space-y-1">
-              <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider">Password</label>
-              <div className="flex items-center gap-2 border-b border-slate-200 focus-within:border-emerald-600 pb-1.5 transition-colors">
-                <Lock className="w-4 h-4 text-slate-400" />
+              <label className="block text-[9px] font-bold text-text-muted uppercase tracking-wider">Password</label>
+              <div className="flex items-center gap-2 border-b border-[var(--border)] focus-within:border-emerald-600 pb-1.5 transition-colors">
+                <Lock className="w-4 h-4 text-text-muted" />
                 <input 
                   type={showPrivPassword ? "text" : "password"} 
                   required
                   placeholder="Password"
                   value={privPassword}
                   onChange={(e) => setPrivPassword(e.target.value)}
-                  className="w-full bg-transparent border-0 p-0 text-sm text-slate-800 placeholder-slate-400 focus:ring-0 focus:outline-none"
+                  className="w-full bg-transparent border-0 p-0 text-sm text-text-primary placeholder-slate-400 focus:ring-0 focus:outline-none"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPrivPassword(!showPrivPassword)}
-                  className="text-slate-400 hover:text-slate-600 cursor-pointer"
+                  className="text-text-muted hover:text-text-secondary cursor-pointer"
                 >
                   {showPrivPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -1720,27 +1720,27 @@ export default function App() {
 
             {/* Confirm Password Input */}
             <div className="space-y-1">
-              <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider">Confirm Password</label>
-              <div className="flex items-center gap-2 border-b border-slate-200 focus-within:border-emerald-600 pb-1.5 transition-colors">
-                <Lock className="w-4 h-4 text-slate-400" />
+              <label className="block text-[9px] font-bold text-text-muted uppercase tracking-wider">Confirm Password</label>
+              <div className="flex items-center gap-2 border-b border-[var(--border)] focus-within:border-emerald-600 pb-1.5 transition-colors">
+                <Lock className="w-4 h-4 text-text-muted" />
                 <input 
                   type={showPrivPassword ? "text" : "password"} 
                   required
                   placeholder="Confirm Password"
                   value={privConfirmPassword}
                   onChange={(e) => setPrivConfirmPassword(e.target.value)}
-                  className="w-full bg-transparent border-0 p-0 text-sm text-slate-800 placeholder-slate-400 focus:ring-0 focus:outline-none"
+                  className="w-full bg-transparent border-0 p-0 text-sm text-text-primary placeholder-slate-400 focus:ring-0 focus:outline-none"
                 />
               </div>
             </div>
 
             {/* Access Role Dropdown */}
             <div className="space-y-1">
-              <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider">Access Role</label>
+              <label className="block text-[9px] font-bold text-text-muted uppercase tracking-wider">Access Role</label>
               <select 
                 value={privRole}
                 onChange={(e) => setPrivRole(e.target.value)}
-                className="w-full bg-transparent border-b border-slate-200 pb-1.5 text-sm text-slate-800 focus:outline-none focus:border-emerald-600 cursor-pointer"
+                className="w-full bg-transparent border-b border-[var(--border)] pb-1.5 text-sm text-text-primary focus:outline-none focus:border-emerald-600 cursor-pointer"
               >
                 <option value="CEO">CEO</option>
                 <option value="Human Resources">Human Resources</option>
@@ -1773,7 +1773,7 @@ export default function App() {
                   window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
                   setShowMagicLinkRequest(false);
                 }}
-                className="text-xs text-slate-400 hover:text-emerald-600 hover:underline font-semibold transition-colors cursor-pointer"
+                className="text-xs text-text-muted hover:text-emerald-600 hover:underline font-semibold transition-colors cursor-pointer"
               >
                 Back to Sign In
               </button>
@@ -1789,11 +1789,11 @@ export default function App() {
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: 10 }}
           onSubmit={handleLogin} 
-          className="space-y-4 text-slate-800"
+          className="space-y-4 text-text-primary"
         >
           <div className="text-center">
             <h3 className="text-xl font-bold text-[var(--accent)]">Sign In</h3>
-            <p className="text-[10px] text-slate-400 mt-0.5 font-medium">REMBA IMPEX ERP GATEWAY</p>
+            <p className="text-[10px] text-text-muted mt-0.5 font-medium">REMBA IMPEX ERP GATEWAY</p>
           </div>
 
           {loginError && (
@@ -1803,47 +1803,47 @@ export default function App() {
           )}
 
           {/* Email Input */}
-          <div className="flex items-center gap-2 border-b border-slate-300 lg:border-slate-350 focus-within:border-[var(--accent)] focus-within:border-b-2 pb-1.5 transition-all bg-transparent">
-            <Mail className="w-4 h-4 text-slate-400" />
+          <div className="flex items-center gap-2 border-b border-[var(--border)] lg:border-[var(--border)] focus-within:border-[var(--accent)] focus-within:border-b-2 pb-1.5 transition-all bg-transparent">
+            <Mail className="w-4 h-4 text-text-muted" />
             <input 
               type="email" 
               required 
               placeholder="name@rembaimpex.com"
               value={loginEmail}
               onChange={(e) => setLoginEmail(e.target.value)}
-              className="w-full bg-transparent border-0 p-0 text-sm text-slate-800 placeholder-slate-400 focus:ring-0 focus:outline-none"
+              className="w-full bg-transparent border-0 p-0 text-sm text-text-primary placeholder-slate-400 focus:ring-0 focus:outline-none"
             />
           </div>
 
           {/* Password Input */}
-          <div className="flex items-center gap-2 border-b border-slate-300 lg:border-slate-350 focus-within:border-[var(--accent)] focus-within:border-b-2 pb-1.5 transition-all bg-transparent">
-            <Lock className="w-4 h-4 text-slate-400" />
+          <div className="flex items-center gap-2 border-b border-[var(--border)] lg:border-[var(--border)] focus-within:border-[var(--accent)] focus-within:border-b-2 pb-1.5 transition-all bg-transparent">
+            <Lock className="w-4 h-4 text-text-muted" />
             <input 
               type={showPassword ? "text" : "password"} 
               required
               placeholder="Password"
               value={loginPassword}
               onChange={(e) => setLoginPassword(e.target.value)}
-              className="w-full bg-transparent border-0 p-0 text-sm text-slate-800 placeholder-slate-400 focus:ring-0 focus:outline-none"
+              className="w-full bg-transparent border-0 p-0 text-sm text-text-primary placeholder-slate-400 focus:ring-0 focus:outline-none"
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="text-slate-400 hover:text-slate-600 cursor-pointer"
+              className="text-text-muted hover:text-text-secondary cursor-pointer"
             >
               {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </button>
           </div>
 
-          <div className="flex items-center justify-between text-[11px] text-slate-400 select-none pt-1">
+          <div className="flex items-center justify-between text-[11px] text-text-muted select-none pt-1">
             <label className="flex items-center gap-1.5 cursor-pointer">
               <input 
                 type="checkbox" 
                 checked={staySignedIn} 
                 onChange={(e) => setStaySignedIn(e.target.checked)}
-                className="w-3.5 h-3.5 rounded border-slate-300 text-[var(--accent)] focus:ring-[var(--accent)] cursor-pointer" 
+                className="w-3.5 h-3.5 rounded border-[var(--border)] text-[var(--accent)] focus:ring-[var(--accent)] cursor-pointer" 
               />
-              <span className="text-slate-500 font-medium">Keep me logged in</span>
+              <span className="text-text-secondary font-medium">Keep me logged in</span>
             </label>
             <button 
               type="button" 
@@ -1885,7 +1885,7 @@ export default function App() {
         animate={{ opacity: 1, x: 0 }}
         exit={{ opacity: 0, x: 10 }}
         onSubmit={handleRegister} 
-        className="space-y-3.5 text-slate-800"
+        className="space-y-3.5 text-text-primary"
       >
         <div className="text-center">
           <h3 className="text-xl font-bold text-emerald-800">Create Account</h3>
@@ -1901,7 +1901,7 @@ export default function App() {
               setRegisterDept('Human Resources');
               addNotification('Staging: Gmail SSO pre-filled HR registration details.');
             }}
-            className="flex items-center justify-center gap-1.5 py-2 px-3 bg-bg-card hover:bg-slate-50 rounded-xl text-xs font-semibold text-slate-700 transition-all cursor-pointer shadow-card hover:shadow hover:scale-102 border border-slate-200"
+            className="flex items-center justify-center gap-1.5 py-2 px-3 bg-bg-card hover:bg-bg-page rounded-xl text-xs font-semibold text-text-primary transition-all cursor-pointer shadow-card hover:shadow hover:scale-102 border border-[var(--border)]"
           >
             <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="currentColor">
               <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
@@ -1919,7 +1919,7 @@ export default function App() {
               setRegisterDept('Production Line');
               addNotification('Staging: Outlook SSO pre-filled Production registration details.');
             }}
-            className="flex items-center justify-center gap-1.5 py-2 px-3 bg-bg-card hover:bg-slate-50 rounded-xl text-xs font-semibold text-slate-700 transition-all cursor-pointer shadow-card hover:shadow hover:scale-102 border border-slate-200"
+            className="flex items-center justify-center gap-1.5 py-2 px-3 bg-bg-card hover:bg-bg-page rounded-xl text-xs font-semibold text-text-primary transition-all cursor-pointer shadow-card hover:shadow hover:scale-102 border border-[var(--border)]"
           >
             <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 23 23" fill="currentColor">
               <path d="M0 0h11v11H0z" fill="#F25022"/>
@@ -1932,46 +1932,46 @@ export default function App() {
         </div>
 
         <div className="relative my-2.5 flex items-center justify-center">
-          <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-200"></div></div>
-          <span className="relative bg-bg-card px-2 text-[9px] font-bold text-slate-400 uppercase tracking-widest">OR REGISTER WITH DETAILS</span>
+          <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-[var(--border)]"></div></div>
+          <span className="relative bg-bg-card px-2 text-[9px] font-bold text-text-muted uppercase tracking-widest">OR REGISTER WITH DETAILS</span>
         </div>
 
         {/* Name Input */}
-        <div className="flex items-center gap-2 border-b border-slate-200 focus-within:border-emerald-600 pb-1.5 transition-colors">
-          <User className="w-4 h-4 text-slate-400" />
+        <div className="flex items-center gap-2 border-b border-[var(--border)] focus-within:border-emerald-600 pb-1.5 transition-colors">
+          <User className="w-4 h-4 text-text-muted" />
           <input 
             type="text" 
             required 
             placeholder="Ama Boateng"
             value={registerName}
             onChange={(e) => setRegisterName(e.target.value)}
-            className="w-full bg-transparent border-0 p-0 text-sm text-slate-800 placeholder-slate-400 focus:ring-0 focus:outline-none"
+            className="w-full bg-transparent border-0 p-0 text-sm text-text-primary placeholder-slate-400 focus:ring-0 focus:outline-none"
           />
         </div>
 
         {/* Email Input */}
-        <div className="flex items-center gap-2 border-b border-slate-200 focus-within:border-emerald-600 pb-1.5 transition-colors">
-          <Mail className="w-4 h-4 text-slate-400" />
+        <div className="flex items-center gap-2 border-b border-[var(--border)] focus-within:border-emerald-600 pb-1.5 transition-colors">
+          <Mail className="w-4 h-4 text-text-muted" />
           <input 
             type="email" 
             required 
             placeholder="name@rembaimpex.com"
             value={registerEmail}
             onChange={(e) => setRegisterEmail(e.target.value)}
-            className="w-full bg-transparent border-0 p-0 text-sm text-slate-800 placeholder-slate-400 focus:ring-0 focus:outline-none"
+            className="w-full bg-transparent border-0 p-0 text-sm text-text-primary placeholder-slate-400 focus:ring-0 focus:outline-none"
           />
         </div>
 
         {/* Phone Input */}
-        <div className="flex items-center gap-2 border-b border-slate-200 focus-within:border-emerald-600 pb-1.5 transition-colors">
-          <Phone className="w-4 h-4 text-slate-400" />
+        <div className="flex items-center gap-2 border-b border-[var(--border)] focus-within:border-emerald-600 pb-1.5 transition-colors">
+          <Phone className="w-4 h-4 text-text-muted" />
           <input 
             type="tel" 
             required 
             placeholder="Phone number (e.g. +233555123456)"
             value={registerPhone}
             onChange={(e) => setRegisterPhone(e.target.value)}
-            className="w-full bg-transparent border-0 p-0 text-sm text-slate-800 placeholder-slate-400 focus:ring-0 focus:outline-none"
+            className="w-full bg-transparent border-0 p-0 text-sm text-text-primary placeholder-slate-400 focus:ring-0 focus:outline-none"
           />
         </div>
 
@@ -1979,11 +1979,11 @@ export default function App() {
 
         {/* Department Dropdown */}
         <div className="space-y-1">
-          <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider">Target Department</label>
+          <label className="block text-[9px] font-bold text-text-muted uppercase tracking-wider">Target Department</label>
           <select 
             value={registerDept}
             onChange={(e) => setRegisterDept(e.target.value)}
-            className="w-full bg-transparent border-b border-slate-200 pb-1.5 text-sm text-slate-800 focus:outline-none focus:border-emerald-600 cursor-pointer"
+            className="w-full bg-transparent border-b border-[var(--border)] pb-1.5 text-sm text-text-primary focus:outline-none focus:border-emerald-600 cursor-pointer"
           >
             <option value="Management Office">Management Office</option>
             <option value="Marketing Department">Marketing Department</option>
@@ -1998,15 +1998,15 @@ export default function App() {
 
         {/* Ghana Card ID Input */}
         {getNormalizedRole(registerDept) !== 'CEO' && (
-          <div className="flex items-center gap-2 border-b border-slate-200 focus-within:border-emerald-600 pb-1.5 transition-colors">
-            <CreditCard className="w-4 h-4 text-slate-400" />
+          <div className="flex items-center gap-2 border-b border-[var(--border)] focus-within:border-emerald-600 pb-1.5 transition-colors">
+            <CreditCard className="w-4 h-4 text-text-muted" />
             <input 
               type="text" 
               required={ghanaCardValidation}
               placeholder="Ghana Card (GHA-123456789-0)"
               value={registerCard}
               onChange={(e) => setRegisterCard(e.target.value)}
-              className="w-full bg-transparent border-0 p-0 text-sm text-slate-800 placeholder-slate-400 focus:ring-0 focus:outline-none"
+              className="w-full bg-transparent border-0 p-0 text-sm text-text-primary placeholder-slate-400 focus:ring-0 focus:outline-none"
             />
           </div>
         )}
@@ -2019,7 +2019,7 @@ export default function App() {
 
         <button 
           type="submit" 
-          className="w-full py-2.5 bg-gradient-to-r from-[#5ce1ab] to-[#34d399] hover:from-[#4fd69e] hover:to-[#059669] rounded-full text-xs font-bold text-slate-900 shadow-card hover:shadow-lg transition-all cursor-pointer text-center"
+          className="w-full py-2.5 bg-gradient-to-r from-[#5ce1ab] to-[#34d399] hover:from-[#4fd69e] hover:to-[#059669] rounded-full text-xs font-bold text-text-primary shadow-card hover:shadow-lg transition-all cursor-pointer text-center"
         >
           Register Team
         </button>
@@ -2054,10 +2054,10 @@ export default function App() {
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: 10 }}
           onSubmit={handleForgotPassword}
-          className="space-y-4 text-slate-800"
+          className="space-y-4 text-text-primary"
         >
           <div className="text-center">
-            <h3 className="text-xl font-bold text-[#068d5c]">Reset Password</h3>
+            <h3 className="text-xl font-bold text-accent">Reset Password</h3>
           </div>
 
           {forgotSubmitted ? (
@@ -2070,28 +2070,28 @@ export default function App() {
                   setForgotEmail('');
                   setAuthScreen('login');
                 }}
-                className="text-[#068d5c] hover:underline font-bold text-xs mt-3 block mx-auto cursor-pointer"
+                className="text-accent hover:underline font-bold text-xs mt-3 block mx-auto cursor-pointer"
               >
                 ← Back to Login
               </button>
             </div>
           ) : (
             <>
-              <div className="flex items-center gap-2 border-b border-slate-200 focus-within:border-emerald-600 pb-1.5 transition-colors">
-                <Mail className="w-4 h-4 text-slate-400" />
+              <div className="flex items-center gap-2 border-b border-[var(--border)] focus-within:border-emerald-600 pb-1.5 transition-colors">
+                <Mail className="w-4 h-4 text-text-muted" />
                 <input
                   type="email"
                   required
                   placeholder="name@rembaimpex.com"
                   value={forgotEmail}
                   onChange={(e) => setForgotEmail(e.target.value)}
-                  className="w-full bg-transparent border-0 p-0 text-sm text-slate-800 placeholder-slate-400 focus:ring-0 focus:outline-none"
+                  className="w-full bg-transparent border-0 p-0 text-sm text-text-primary placeholder-slate-400 focus:ring-0 focus:outline-none"
                 />
               </div>
 
               <button
                 type="submit"
-                className="w-full py-2.5 bg-gradient-to-r from-[#5ce1ab] to-[#34d399] hover:from-[#4fd69e] hover:to-[#059669] rounded-full text-xs font-bold text-slate-900 shadow-card hover:shadow-lg transition-all cursor-pointer text-center"
+                className="w-full py-2.5 bg-gradient-to-r from-[#5ce1ab] to-[#34d399] hover:from-[#4fd69e] hover:to-[#059669] rounded-full text-xs font-bold text-text-primary shadow-card hover:shadow-lg transition-all cursor-pointer text-center"
               >
                 Send Reset Link
               </button>
@@ -2099,7 +2099,7 @@ export default function App() {
               <button
                 type="button"
                 onClick={() => setAuthScreen('login')}
-                className="w-full text-center text-xs text-slate-400 hover:text-slate-600 transition-colors font-semibold"
+                className="w-full text-center text-xs text-text-muted hover:text-text-secondary transition-colors font-semibold"
               >
                 Cancel and Return
               </button>
@@ -2173,10 +2173,10 @@ export default function App() {
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: 10 }}
           onSubmit={handleUpdatePassword}
-          className="space-y-4 text-slate-800"
+          className="space-y-4 text-text-primary"
         >
           <div className="text-center">
-            <h3 className="text-xl font-bold text-[#068d5c]">Set New Password</h3>
+            <h3 className="text-xl font-bold text-accent">Set New Password</h3>
           </div>
 
           {resetMessage && (
@@ -2193,21 +2193,21 @@ export default function App() {
 
           <div className="space-y-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-500 mb-1">New Password</label>
-              <div className="relative flex items-center gap-2 border-b border-slate-200 focus-within:border-emerald-600 pb-1.5 transition-colors">
-                <Lock className="w-4 h-4 text-slate-400" />
+              <label className="block text-xs font-semibold text-text-secondary mb-1">New Password</label>
+              <div className="relative flex items-center gap-2 border-b border-[var(--border)] focus-within:border-emerald-600 pb-1.5 transition-colors">
+                <Lock className="w-4 h-4 text-text-muted" />
                 <input
                   type={showResetPassword ? 'text' : 'password'}
                   required
                   placeholder="New secure password"
                   value={resetPassword}
                   onChange={(e) => setResetPassword(e.target.value)}
-                  className="w-full bg-transparent border-0 p-0 text-sm text-slate-800 placeholder-slate-400 focus:ring-0 focus:outline-none pr-10"
+                  className="w-full bg-transparent border-0 p-0 text-sm text-text-primary placeholder-slate-400 focus:ring-0 focus:outline-none pr-10"
                 />
                 <button
                   type="button"
                   onClick={() => setShowResetPassword(!showResetPassword)}
-                  className="absolute right-0 text-slate-400 cursor-pointer"
+                  className="absolute right-0 text-text-muted cursor-pointer"
                 >
                   {showResetPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -2215,16 +2215,16 @@ export default function App() {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-500 mb-1">Confirm New Password</label>
-              <div className="flex items-center gap-2 border-b border-slate-200 focus-within:border-emerald-600 pb-1.5 transition-colors">
-                <Lock className="w-4 h-4 text-slate-400" />
+              <label className="block text-xs font-semibold text-text-secondary mb-1">Confirm New Password</label>
+              <div className="flex items-center gap-2 border-b border-[var(--border)] focus-within:border-emerald-600 pb-1.5 transition-colors">
+                <Lock className="w-4 h-4 text-text-muted" />
                 <input
                   type="password"
                   required
                   placeholder="Retype new password"
                   value={resetConfirmPassword}
                   onChange={(e) => setResetConfirmPassword(e.target.value)}
-                  className="w-full bg-transparent border-0 p-0 text-sm text-slate-800 placeholder-slate-400 focus:ring-0 focus:outline-none"
+                  className="w-full bg-transparent border-0 p-0 text-sm text-text-primary placeholder-slate-400 focus:ring-0 focus:outline-none"
                 />
               </div>
             </div>
@@ -2234,15 +2234,15 @@ export default function App() {
           {strength && (
             <div className="mt-2 space-y-1.5">
               <div className="flex items-center justify-between text-[10px]">
-                <span className="text-slate-400">Password Strength</span>
+                <span className="text-text-muted">Password Strength</span>
                 <span className={`font-bold ${strength.score >= 4 ? 'text-emerald-600' : strength.score >= 3 ? 'text-amber-600' : 'text-rose-600'}`}>{strength.label}</span>
               </div>
-              <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+              <div className="h-1.5 bg-bg-input rounded-full overflow-hidden">
                 <div className={`h-full rounded-full transition-all ${strength.color}`} style={{ width: `${(strength.score / 5) * 100}%` }} />
               </div>
               <div className="grid grid-cols-2 gap-1">
                 {strength.checks.map((c, i) => (
-                  <div key={i} className={`flex items-center gap-1 text-[9px] ${c.pass ? 'text-emerald-600' : 'text-slate-400'}`}>
+                  <div key={i} className={`flex items-center gap-1 text-[9px] ${c.pass ? 'text-emerald-600' : 'text-text-muted'}`}>
                     <span>{c.pass ? '✓' : '○'}</span><span>{c.label}</span>
                   </div>
                 ))}
@@ -2252,7 +2252,7 @@ export default function App() {
 
           <button
             type="submit"
-            className="w-full py-2.5 bg-gradient-to-r from-[#5ce1ab] to-[#34d399] hover:from-[#4fd69e] hover:to-[#059669] rounded-full text-xs font-bold text-slate-900 shadow-card hover:shadow-lg transition-all cursor-pointer text-center"
+            className="w-full py-2.5 bg-gradient-to-r from-[#5ce1ab] to-[#34d399] hover:from-[#4fd69e] hover:to-[#059669] rounded-full text-xs font-bold text-text-primary shadow-card hover:shadow-lg transition-all cursor-pointer text-center"
           >
             Update Password
           </button>
@@ -2268,19 +2268,19 @@ export default function App() {
         initial={{ opacity: 0, x: -10 }}
         animate={{ opacity: 1, x: 0 }}
         exit={{ opacity: 0, x: 10 }}
-        className="space-y-4 text-slate-800 text-center"
+        className="space-y-4 text-text-primary text-center"
       >
         <h3 className="text-xl font-bold text-emerald-800">Login Link Dispatched</h3>
         <div className="p-3 bg-emerald-50 rounded-2xl border border-emerald-100 text-xs text-emerald-800 leading-relaxed font-medium">
           A login link has been sent to your email. Click the link to access the REBMA IMPEX ERP.
         </div>
-        <p className="text-[10px] text-slate-400">
+        <p className="text-[10px] text-text-muted">
           The link is valid for 1 hour.
         </p>
         <button
           type="button"
           onClick={() => setAuthScreen('login')}
-          className="w-full py-2.5 bg-gradient-to-r from-[#5ce1ab] to-[#34d399] hover:from-[#4fd69e] hover:to-[#059669] rounded-full text-xs font-bold text-slate-900 shadow-card hover:shadow-lg transition-all cursor-pointer text-center"
+          className="w-full py-2.5 bg-gradient-to-r from-[#5ce1ab] to-[#34d399] hover:from-[#4fd69e] hover:to-[#059669] rounded-full text-xs font-bold text-text-primary shadow-card hover:shadow-lg transition-all cursor-pointer text-center"
         >
           ← Return to Login
         </button>
@@ -2293,7 +2293,7 @@ export default function App() {
         initial={{ opacity: 0, x: -10 }}
         animate={{ opacity: 1, x: 0 }}
         exit={{ opacity: 0, x: 10 }}
-        className="space-y-4 text-slate-800 text-center"
+        className="space-y-4 text-text-primary text-center"
       >
         <h3 className="text-xl font-bold text-rose-800">Login Link Expired</h3>
         <div className="p-3 bg-rose-50 rounded-2xl border border-rose-100 text-xs text-rose-800 leading-relaxed font-medium">
@@ -2302,7 +2302,7 @@ export default function App() {
         <button
           type="button"
           onClick={() => setAuthScreen('login')}
-          className="w-full py-2.5 bg-gradient-to-r from-[#5ce1ab] to-[#34d399] hover:from-[#4fd69e] hover:to-[#059669] rounded-full text-xs font-bold text-slate-900 shadow-card hover:shadow-lg transition-all cursor-pointer text-center"
+          className="w-full py-2.5 bg-gradient-to-r from-[#5ce1ab] to-[#34d399] hover:from-[#4fd69e] hover:to-[#059669] rounded-full text-xs font-bold text-text-primary shadow-card hover:shadow-lg transition-all cursor-pointer text-center"
         >
           ← Return to Login
         </button>
@@ -2316,11 +2316,11 @@ export default function App() {
         initial={{ opacity: 0, x: -10 }}
         animate={{ opacity: 1, x: 0 }}
         exit={{ opacity: 0, x: 10 }}
-        className="space-y-4 text-slate-800"
+        className="space-y-4 text-text-primary"
       >
         <div className="text-center">
-          <h3 className="text-xl font-bold text-[#068d5c]">Welcome to ERP</h3>
-          <p className="text-[10px] text-slate-400 mt-0.5 font-medium">REMBA IMPEX GHANA LIMITED</p>
+          <h3 className="text-xl font-bold text-accent">Welcome to ERP</h3>
+          <p className="text-[10px] text-text-muted mt-0.5 font-medium">REMBA IMPEX GHANA LIMITED</p>
         </div>
 
         <div className="p-3 bg-emerald-50 rounded-2xl border border-emerald-100/50">
@@ -2332,7 +2332,7 @@ export default function App() {
           {/* Scrolling transactions list */}
           <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
             {liveTrades.map(trade => (
-              <div key={trade.id} className="flex justify-between items-center p-2 bg-bg-card rounded-xl border border-slate-100 text-[9px] text-left">
+              <div key={trade.id} className="flex justify-between items-center p-2 bg-bg-card rounded-xl border border-[var(--border)] text-[9px] text-left">
                 <div className="flex items-center gap-1.5">
                   <span className={`px-1 py-0.2 rounded text-[7px] font-bold ${
                     trade.type === 'BUY' ? 'bg-emerald-500/20 text-emerald-600 animate-pulse-green' : 'bg-red-500/20 text-red-600 animate-pulse-red'
@@ -2340,13 +2340,13 @@ export default function App() {
                     {trade.type}
                   </span>
                   <div>
-                    <span className="font-semibold text-slate-800">{trade.item}</span>
-                    <span className="text-slate-400 ml-1">({trade.qty})</span>
+                    <span className="font-semibold text-text-primary">{trade.item}</span>
+                    <span className="text-text-muted ml-1">({trade.qty})</span>
                   </div>
                 </div>
                 <div className="text-right">
                   <span className="text-emerald-600 font-bold">{trade.amount}</span>
-                  <p className="text-[7px] text-slate-400 font-mono">{trade.dest} | {trade.time}</p>
+                  <p className="text-[7px] text-text-muted font-mono">{trade.dest} | {trade.time}</p>
                 </div>
               </div>
             ))}
@@ -2354,14 +2354,14 @@ export default function App() {
         </div>
 
         {/* Animated graphics of ship bobbing and truck driving */}
-        <div className="relative h-16 bg-slate-50 border border-slate-100 rounded-2xl overflow-hidden p-2 flex items-center justify-between">
+        <div className="relative h-16 bg-bg-page border border-[var(--border)] rounded-2xl overflow-hidden p-2 flex items-center justify-between">
           <div className="absolute bottom-1 left-0 right-0 h-0.5 bg-sky-500/20 border-b border-sky-400/40"></div>
           <div className="absolute bottom-2 left-6 text-2xl animate-ship select-none">🚢</div>
           <div className="absolute top-1 left-0 text-xl animate-truck select-none">🚚</div>
           <div className="absolute right-2 bottom-1 text-2xl select-none">🏢</div>
           <div className="absolute left-2 bottom-1 text-2xl select-none">🏗️</div>
           <div className="z-10 ml-auto text-right pr-1">
-            <p className="text-[8px] uppercase tracking-widest text-slate-400 font-bold font-mono">Logistics Pipeline</p>
+            <p className="text-[8px] uppercase tracking-widest text-text-muted font-bold font-mono">Logistics Pipeline</p>
             <p className="text-[9px] font-semibold text-sky-650 mt-0.5">Accra ➔ Tema Port</p>
           </div>
         </div>
@@ -2372,7 +2372,7 @@ export default function App() {
               setPassword('');
               setAuthScreen('login');
             }}
-            className="py-2.5 px-3 bg-gradient-to-r from-[#5ce1ab] to-[#34d399] hover:from-[#4fd69e] hover:to-[#059669] text-slate-900 rounded-full text-xs font-bold shadow-card hover:scale-102 transition-all cursor-pointer flex items-center justify-center gap-1"
+            className="py-2.5 px-3 bg-gradient-to-r from-[#5ce1ab] to-[#34d399] hover:from-[#4fd69e] hover:to-[#059669] text-text-primary rounded-full text-xs font-bold shadow-card hover:scale-102 transition-all cursor-pointer flex items-center justify-center gap-1"
           >
             <span>Sign In</span>
             <ArrowRight className="w-3.5 h-3.5" />
@@ -2382,7 +2382,7 @@ export default function App() {
               setPassword('');
               setAuthScreen('register');
             }}
-            className="py-2.5 px-3 bg-bg-card hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-full text-xs font-bold cursor-pointer transition-all hover:scale-102"
+            className="py-2.5 px-3 bg-bg-card hover:bg-bg-page text-text-primary border border-[var(--border)] rounded-full text-xs font-bold cursor-pointer transition-all hover:scale-102"
           >
             Register Team
           </button>
@@ -2391,7 +2391,7 @@ export default function App() {
     );
 
     return (
-      <div className="min-h-screen w-full flex lg:grid lg:grid-cols-2 items-center justify-center lg:items-stretch bg-[#068d5c] lg:bg-bg-card p-3 md:p-8 lg:p-0 relative select-none font-sans">
+      <div className="min-h-screen w-full flex lg:grid lg:grid-cols-2 items-center justify-center lg:items-stretch bg-accent lg:bg-bg-card p-3 md:p-8 lg:p-0 relative select-none font-sans">
 
         {/* Symmetrical Split Card on Mobile/Tablet, direct grid layout on Desktop */}
         <div className="w-full max-w-5xl lg:max-w-none lg:w-full bg-bg-card lg:bg-transparent rounded-[32px] lg:rounded-none shadow-[0_25px_60px_-15px_rgba(0,0,0,0.25)] lg:shadow-none flex flex-col md:flex-row lg:contents overflow-hidden min-h-[580px] lg:min-h-0 relative">
@@ -2405,9 +2405,9 @@ export default function App() {
                 alt="REBMA Logo" 
                 className="h-10 w-auto object-contain select-none pointer-events-none"
               />
-              <div className="flex flex-col select-none text-slate-800">
+              <div className="flex flex-col select-none text-text-primary">
                 <span className="font-extrabold text-xl tracking-wider leading-none">REBMA</span>
-                <span className="font-bold text-[9px] uppercase tracking-widest mt-0.5 text-slate-500">IMPEX GHANA</span>
+                <span className="font-bold text-[9px] uppercase tracking-widest mt-0.5 text-text-secondary">IMPEX GHANA</span>
               </div>
             </div>
 
@@ -2440,22 +2440,22 @@ export default function App() {
 
             {/* Desktop tagline */}
             <div className="hidden lg:block mt-2 max-w-md text-left">
-              <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 leading-tight">
+              <h1 className="text-3xl font-extrabold tracking-tight text-text-primary leading-tight">
                 Empowering global logistics & trade management
               </h1>
-              <p className="text-sm text-slate-500 mt-2">
+              <p className="text-sm text-text-secondary mt-2">
                 Streamlining Tema port operations, fleet dispatches, marketing pipelines, and financial ledgers in real-time.
               </p>
             </div>
 
             {/* Footer copyrights */}
-            <div className="text-[10px] text-slate-400 font-medium">
+            <div className="text-[10px] text-text-muted font-medium">
               © {new Date().getFullYear()} REMBA IMPEX GHANA LIMITED.
             </div>
           </div>
 
           {/* Right half: solid green bg with white container card */}
-          <div className="w-full md:w-1/2 lg:w-full bg-[#068d5c] lg:bg-[var(--accent)] p-4 md:p-12 lg:p-16 flex flex-col justify-center items-center relative transition-colors duration-300">
+          <div className="w-full md:w-1/2 lg:w-full bg-accent lg:bg-[var(--accent)] p-4 md:p-12 lg:p-16 flex flex-col justify-center items-center relative transition-colors duration-300">
             <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-600 rounded-full filter blur-3xl opacity-20 -mr-8 -mt-8"></div>
             
             {/* White card container for form */}
@@ -2751,7 +2751,7 @@ export default function App() {
       default:
         return (
           <div className="p-6 text-center">
-            <h2 className="text-xl font-bold text-slate-800">Select a Department</h2>
+            <h2 className="text-xl font-bold text-text-primary">Select a Department</h2>
           </div>
         );
     }
@@ -2992,7 +2992,7 @@ export default function App() {
               {currentUser.photo ? (
                 <img src={currentUser.photo} alt="Avatar" className="w-full h-full object-cover" />
               ) : (
-                <span className="text-3xl font-bold text-slate-500">{currentUser.fullName?.[0] || 'U'}</span>
+                <span className="text-3xl font-bold text-text-secondary">{currentUser.fullName?.[0] || 'U'}</span>
               )}
             </div>
             <button 
@@ -3012,16 +3012,16 @@ export default function App() {
                   type="text" 
                   value={profileTempName}
                   onChange={e => setProfileTempName(e.target.value)}
-                  className="px-3 py-1.5 text-sm bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:border-emerald-600 text-center w-48 text-slate-800 dark:text-slate-100"
+                  className="px-3 py-1.5 text-sm bg-bg-page dark:bg-slate-850 border border-[var(--border)] dark:border-slate-800 rounded-xl focus:outline-none focus:border-emerald-600 text-center w-48 text-text-primary dark:text-slate-100"
                   autoFocus
                 />
                 <button type="button" onClick={handleProfileNameSave} className="px-2 py-1.5 bg-emerald-600 text-white text-xs font-bold rounded-lg cursor-pointer">Save</button>
-                <button type="button" onClick={() => { setIsEditingProfileName(false); setProfileTempName(currentUser.fullName); }} className="px-2 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-xs rounded-lg cursor-pointer">Cancel</button>
+                <button type="button" onClick={() => { setIsEditingProfileName(false); setProfileTempName(currentUser.fullName); }} className="px-2 py-1.5 bg-bg-input dark:bg-slate-800 text-text-secondary dark:text-text-muted text-xs rounded-lg cursor-pointer">Cancel</button>
               </div>
             ) : (
               <div className="flex items-center justify-center gap-1.5">
-                <h2 className="text-lg font-bold text-slate-800 dark:text-slate-200">{currentUser.fullName}</h2>
-                <button type="button" onClick={() => setIsEditingProfileName(true)} className="text-slate-400 hover:text-slate-600 text-xs font-semibold cursor-pointer">✏️</button>
+                <h2 className="text-lg font-bold text-text-primary dark:text-text-muted">{currentUser.fullName}</h2>
+                <button type="button" onClick={() => setIsEditingProfileName(true)} className="text-text-muted hover:text-text-secondary text-xs font-semibold cursor-pointer">✏️</button>
               </div>
             )}
             <span className="inline-block mt-2 px-3 py-0.5 bg-emerald-500/10 text-emerald-500 rounded-full text-[10px] font-extrabold uppercase tracking-wide">
@@ -3032,15 +3032,15 @@ export default function App() {
 
         {/* Details Card */}
         <div className="p-4 sm:p-6 app-card space-y-4">
-          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Account Details</h3>
+          <h3 className="text-xs font-bold text-text-muted uppercase tracking-widest">Account Details</h3>
           <div className="space-y-3.5">
             <div>
-              <p className="text-[10px] text-slate-450 uppercase font-semibold">Email Address</p>
-              <p className="text-xs font-medium text-slate-700 dark:text-slate-200 mt-0.5">{currentUser.email}</p>
+              <p className="text-[10px] text-text-muted uppercase font-semibold">Email Address</p>
+              <p className="text-xs font-medium text-text-primary dark:text-text-muted mt-0.5">{currentUser.email}</p>
             </div>
             <div>
-              <p className="text-[10px] text-slate-455 uppercase font-semibold">Member Since</p>
-              <p className="text-xs font-medium text-slate-700 dark:text-slate-200 mt-0.5 font-mono">May 24, 2026</p>
+              <p className="text-[10px] text-text-muted uppercase font-semibold">Member Since</p>
+              <p className="text-xs font-medium text-text-primary dark:text-text-muted mt-0.5 font-mono">May 24, 2026</p>
             </div>
           </div>
         </div>
@@ -3050,26 +3050,26 @@ export default function App() {
           <button 
             type="button"
             onClick={() => { setActiveDepartment('SETTINGS'); sessionStorage.setItem('rebma-last-dept', 'SETTINGS'); setActiveSubTab('ChangePassword'); setActiveMobileView('dashboard'); }}
-            className="w-full flex items-center justify-between p-4 text-xs font-bold text-slate-700 dark:text-slate-350 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-855 transition-colors animate-none"
+            className="w-full flex items-center justify-between p-4 text-xs font-bold text-text-primary dark:text-slate-350 cursor-pointer hover:bg-bg-page dark:hover:bg-slate-855 transition-colors animate-none"
           >
             <span>Change Password</span>
-            <ChevronRight className="w-4 h-4 text-slate-400 animate-none" />
+            <ChevronRight className="w-4 h-4 text-text-muted animate-none" />
           </button>
           <button 
             type="button"
             onClick={() => { setActiveDepartment('SETTINGS'); sessionStorage.setItem('rebma-last-dept', 'SETTINGS'); setActiveSubTab('Appearance'); setActiveMobileView('dashboard'); }}
-            className="w-full flex items-center justify-between p-4 text-xs font-bold text-slate-700 dark:text-slate-350 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-855 transition-colors animate-none"
+            className="w-full flex items-center justify-between p-4 text-xs font-bold text-text-primary dark:text-slate-350 cursor-pointer hover:bg-bg-page dark:hover:bg-slate-855 transition-colors animate-none"
           >
             <span>Display & Appearance Settings</span>
-            <ChevronRight className="w-4 h-4 text-slate-400 animate-none" />
+            <ChevronRight className="w-4 h-4 text-text-muted animate-none" />
           </button>
           <button 
             type="button"
             onClick={() => window.alert("Notifications preferences saved.")}
-            className="w-full flex items-center justify-between p-4 text-xs font-bold text-slate-700 dark:text-slate-350 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-855 transition-colors animate-none"
+            className="w-full flex items-center justify-between p-4 text-xs font-bold text-text-primary dark:text-slate-350 cursor-pointer hover:bg-bg-page dark:hover:bg-slate-855 transition-colors animate-none"
           >
             <span>Notification Preferences</span>
-            <ChevronRight className="w-4 h-4 text-slate-400 animate-none" />
+            <ChevronRight className="w-4 h-4 text-text-muted animate-none" />
           </button>
           <button 
             type="button"
@@ -3116,14 +3116,14 @@ export default function App() {
     });
 
     return (
-      <div className="flex flex-col h-[calc(100vh-12rem)] max-w-md mx-auto bg-slate-50 dark:bg-slate-950 pb-2 flex-1 relative animate-fade-in-up">
+      <div className="flex flex-col h-[calc(100vh-12rem)] max-w-md mx-auto bg-bg-page dark:bg-[#0f172a] pb-2 flex-1 relative animate-fade-in-up">
         {/* Tabs switcher */}
-        <div className="flex bg-bg-card dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-1 rounded-full shrink-0 mb-4 shadow-card">
+        <div className="flex bg-bg-card dark:bg-slate-900 border border-[var(--border)] dark:border-slate-800 p-1 rounded-full shrink-0 mb-4 shadow-card">
           <button 
             type="button"
             onClick={() => setChatTab('global')}
             className={`flex-1 py-2 rounded-full text-xs font-extrabold flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
-              chatTab === 'global' ? 'bg-emerald-600 text-white shadow-card' : 'text-slate-400 dark:text-slate-500'
+              chatTab === 'global' ? 'bg-emerald-600 text-white shadow-card' : 'text-text-muted dark:text-text-secondary'
             }`}
           >
             <Globe className="w-3.5 h-3.5 animate-none" />
@@ -3133,7 +3133,7 @@ export default function App() {
             type="button"
             onClick={() => setChatTab('department')}
             className={`flex-1 py-2 rounded-full text-xs font-extrabold flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
-              chatTab === 'department' ? 'bg-emerald-600 text-white shadow-card' : 'text-slate-400 dark:text-slate-500'
+              chatTab === 'department' ? 'bg-emerald-600 text-white shadow-card' : 'text-text-muted dark:text-text-secondary'
             }`}
           >
             <Users className="w-3.5 h-3.5 animate-none" />
@@ -3144,8 +3144,8 @@ export default function App() {
         {/* Message Thread Area */}
         <div className="flex-1 overflow-y-auto space-y-4 px-1.5 pr-2 mb-16 pb-2">
           {Object.keys(groups).length === 0 ? (
-            <div className="text-center py-20 text-slate-400">
-              <MessagesSquare className="w-12 h-12 mx-auto text-slate-300 mb-3" />
+            <div className="text-center py-20 text-text-muted">
+              <MessagesSquare className="w-12 h-12 mx-auto text-text-muted mb-3" />
               <p className="text-xs">No chat logs recorded in this channel yet.</p>
             </div>
           ) : (
@@ -3153,7 +3153,7 @@ export default function App() {
               <div key={date} className="space-y-3.5">
                 {/* Date marker */}
                 <div className="flex justify-center my-2">
-                  <span className="bg-slate-200 dark:bg-slate-850 px-2.5 py-0.5 rounded-full text-[9px] font-mono text-slate-500 dark:text-slate-400">{date}</span>
+                  <span className="bg-slate-200 dark:bg-slate-850 px-2.5 py-0.5 rounded-full text-[9px] font-mono text-text-secondary dark:text-text-muted">{date}</span>
                 </div>
                 {msgs.map(m => {
                   const isSelf = m.sender === currentUser.fullName || m.sender === 'Self';
@@ -3161,7 +3161,7 @@ export default function App() {
                     <div key={m.id} className={`flex items-start gap-2.5 ${isSelf ? 'justify-end' : 'justify-start'}`}>
                       {/* Avatar */}
                       {!isSelf && (
-                        <div className="w-7 h-7 rounded-full bg-slate-300 text-slate-705 dark:bg-slate-800 dark:text-slate-300 flex items-center justify-center font-bold text-[10px] shrink-0">
+                        <div className="w-7 h-7 rounded-full bg-slate-300 text-slate-705 dark:bg-slate-800 dark:text-text-muted flex items-center justify-center font-bold text-[10px] shrink-0">
                           {m.sender?.[0] || 'U'}
                         </div>
                       )}
@@ -3169,13 +3169,13 @@ export default function App() {
                       <div className={`max-w-[75%] rounded-2xl px-3.5 py-2.5 shadow-card text-xs relative ${
                         isSelf 
                           ? 'bg-emerald-600 text-white rounded-tr-none' 
-                          : 'bg-bg-card dark:bg-slate-900 border border-slate-100 dark:border-slate-800 text-slate-800 dark:text-slate-200 rounded-tl-none'
+                          : 'bg-bg-card dark:bg-slate-900 border border-[var(--border)] dark:border-slate-800 text-text-primary dark:text-text-muted rounded-tl-none'
                       }`}>
                         {!isSelf && (
-                          <p className="text-[9px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wide leading-none mb-1">{m.sender}</p>
+                          <p className="text-[9px] font-extrabold text-text-secondary dark:text-text-muted uppercase tracking-wide leading-none mb-1">{m.sender}</p>
                         )}
                         <p className="leading-relaxed leading-normal">{m.content}</p>
-                        <p className={`text-[8px] mt-1 text-right ${isSelf ? 'text-white/60' : 'text-slate-400 font-mono'}`}>{m.time}</p>
+                        <p className={`text-[8px] mt-1 text-right ${isSelf ? 'text-white/60' : 'text-text-muted font-mono'}`}>{m.time}</p>
                       </div>
 
                       {/* Self Avatar */}
@@ -3193,14 +3193,14 @@ export default function App() {
         </div>
 
         {/* Input area fixed at bottom of chat view */}
-        <div className="absolute bottom-0 inset-x-0 bg-slate-50 dark:bg-slate-950 py-1.5 shrink-0 z-10">
-          <div className="flex gap-2 items-center bg-bg-card dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-full px-3 py-1">
+        <div className="absolute bottom-0 inset-x-0 bg-bg-page dark:bg-[#0f172a] py-1.5 shrink-0 z-10">
+          <div className="flex gap-2 items-center bg-bg-card dark:bg-slate-900 border border-[var(--border)] dark:border-slate-800 rounded-full px-3 py-1">
             <input 
               type="text" 
               placeholder={`Send message to ${chatTab === 'global' ? 'Global' : currentUser.department}...`}
               value={chatMobileInput}
               onChange={e => setChatMobileInput(e.target.value)}
-              className="flex-1 bg-transparent py-2 border-0 focus:outline-none focus:ring-0 text-xs text-slate-800 dark:text-slate-100"
+              className="flex-1 bg-transparent py-2 border-0 focus:outline-none focus:ring-0 text-xs text-text-primary dark:text-slate-100"
               onKeyDown={e => {
                 if (e.key === 'Enter') handleSendMobileChat();
               }}
@@ -3410,304 +3410,304 @@ export default function App() {
               onClick={() => setIsQuickActionOpen(false)}
             />
             {/* Sheet */}
-            <div className="fixed inset-x-0 bottom-0 max-h-[80vh] bg-bg-card dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 rounded-t-3xl p-6 z-[260] overflow-y-auto flex flex-col gap-4 animate-fade-in-up">
+            <div className="fixed inset-x-0 bottom-0 max-h-[80vh] bg-bg-card dark:bg-slate-900 border-t border-[var(--border)] dark:border-slate-800 rounded-t-3xl p-6 z-[260] overflow-y-auto flex flex-col gap-4 animate-fade-in-up">
               <div className="w-12 h-1 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto mb-1 shrink-0" />
               
               <div className="flex justify-between items-center">
-                <h3 className="text-sm font-bold text-slate-850 dark:text-slate-200 uppercase tracking-wider">Quick Actions ({activeDepartment})</h3>
-                <button onClick={() => setIsQuickActionOpen(false)} className="text-slate-400 hover:text-slate-600 text-xs font-bold">Close</button>
+                <h3 className="text-sm font-bold text-slate-850 dark:text-text-muted uppercase tracking-wider">Quick Actions ({activeDepartment})</h3>
+                <button onClick={() => setIsQuickActionOpen(false)} className="text-text-muted hover:text-text-secondary text-xs font-bold">Close</button>
               </div>
 
               <div className="grid grid-cols-2 gap-3 py-2">
                 {activeDepartment === 'HR' && (
                   <>
-                    <button onClick={() => handleQuickAction('Add New Staff', 'HR')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                    <button onClick={() => handleQuickAction('Add New Staff', 'HR')} className="p-4 bg-bg-page dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-[var(--border)] dark:border-slate-800 hover:bg-bg-input dark:hover:bg-slate-700 transition-colors cursor-pointer">
                       <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-emerald-500 shadow-card shrink-0">
                         <UserPlus className="w-5 h-5" />
                       </div>
-                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Add New Staff</span>
+                      <span className="text-[11px] font-bold text-text-primary dark:text-text-muted text-center">Add New Staff</span>
                     </button>
-                    <button onClick={() => handleQuickAction('Log Attendance', 'HR')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                    <button onClick={() => handleQuickAction('Log Attendance', 'HR')} className="p-4 bg-bg-page dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-[var(--border)] dark:border-slate-800 hover:bg-bg-input dark:hover:bg-slate-700 transition-colors cursor-pointer">
                       <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-blue-500 shadow-card shrink-0">
                         <ClipboardList className="w-5 h-5" />
                       </div>
-                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Log Attendance</span>
+                      <span className="text-[11px] font-bold text-text-primary dark:text-text-muted text-center">Log Attendance</span>
                     </button>
-                    <button onClick={() => handleQuickAction('Schedule Meeting', 'HR')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                    <button onClick={() => handleQuickAction('Schedule Meeting', 'HR')} className="p-4 bg-bg-page dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-[var(--border)] dark:border-slate-800 hover:bg-bg-input dark:hover:bg-slate-700 transition-colors cursor-pointer">
                       <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-indigo-500 shadow-card shrink-0">
                         <Calendar className="w-5 h-5" />
                       </div>
-                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Schedule Meeting</span>
+                      <span className="text-[11px] font-bold text-text-primary dark:text-text-muted text-center">Schedule Meeting</span>
                     </button>
-                    <button onClick={() => handleQuickAction('Send Announcement', 'HR')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                    <button onClick={() => handleQuickAction('Send Announcement', 'HR')} className="p-4 bg-bg-page dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-[var(--border)] dark:border-slate-800 hover:bg-bg-input dark:hover:bg-slate-700 transition-colors cursor-pointer">
                       <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-amber-500 shadow-card shrink-0">
                         <Megaphone className="w-5 h-5" />
                       </div>
-                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Send Announcement</span>
+                      <span className="text-[11px] font-bold text-text-primary dark:text-text-muted text-center">Send Announcement</span>
                     </button>
-                    <button onClick={() => handleQuickAction('Approve Pending Staff', 'HR')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                    <button onClick={() => handleQuickAction('Approve Pending Staff', 'HR')} className="p-4 bg-bg-page dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-[var(--border)] dark:border-slate-800 hover:bg-bg-input dark:hover:bg-slate-700 transition-colors cursor-pointer">
                       <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-teal-500 shadow-card shrink-0">
                         <UserCheck className="w-5 h-5" />
                       </div>
-                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Approve Pending</span>
+                      <span className="text-[11px] font-bold text-text-primary dark:text-text-muted text-center">Approve Pending</span>
                     </button>
                   </>
                 )}
                 {activeDepartment === 'CEO' && (
                   <>
-                    <button onClick={() => handleQuickAction('View Reports', 'CEO')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                    <button onClick={() => handleQuickAction('View Reports', 'CEO')} className="p-4 bg-bg-page dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-[var(--border)] dark:border-slate-800 hover:bg-bg-input dark:hover:bg-slate-700 transition-colors cursor-pointer">
                       <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-indigo-500 shadow-card shrink-0">
                         <BarChart3 className="w-5 h-5" />
                       </div>
-                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">View Reports</span>
+                      <span className="text-[11px] font-bold text-text-primary dark:text-text-muted text-center">View Reports</span>
                     </button>
-                    <button onClick={() => handleQuickAction('Schedule Boardroom', 'CEO')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                    <button onClick={() => handleQuickAction('Schedule Boardroom', 'CEO')} className="p-4 bg-bg-page dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-[var(--border)] dark:border-slate-800 hover:bg-bg-input dark:hover:bg-slate-700 transition-colors cursor-pointer">
                       <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-violet-500 shadow-card shrink-0">
                         <Video className="w-5 h-5" />
                       </div>
-                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Schedule Boardroom</span>
+                      <span className="text-[11px] font-bold text-text-primary dark:text-text-muted text-center">Schedule Boardroom</span>
                     </button>
-                    <button onClick={() => handleQuickAction('Send Alert', 'CEO')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                    <button onClick={() => handleQuickAction('Send Alert', 'CEO')} className="p-4 bg-bg-page dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-[var(--border)] dark:border-slate-800 hover:bg-bg-input dark:hover:bg-slate-700 transition-colors cursor-pointer">
                       <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-rose-500 shadow-card shrink-0">
                         <AlertCircle className="w-5 h-5" />
                       </div>
-                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Send Alert</span>
+                      <span className="text-[11px] font-bold text-text-primary dark:text-text-muted text-center">Send Alert</span>
                     </button>
-                    <button onClick={() => handleQuickAction('View All Departments', 'CEO')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                    <button onClick={() => handleQuickAction('View All Departments', 'CEO')} className="p-4 bg-bg-page dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-[var(--border)] dark:border-slate-800 hover:bg-bg-input dark:hover:bg-slate-700 transition-colors cursor-pointer">
                       <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-sky-500 shadow-card shrink-0">
                         <Building2 className="w-5 h-5" />
                       </div>
-                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">View All Depts</span>
+                      <span className="text-[11px] font-bold text-text-primary dark:text-text-muted text-center">View All Depts</span>
                     </button>
                   </>
                 )}
                 {activeDepartment === 'OPERATIONS' && (
                   <>
-                    <button onClick={() => handleQuickAction('Log Cargo Intake', 'OPERATIONS')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                    <button onClick={() => handleQuickAction('Log Cargo Intake', 'OPERATIONS')} className="p-4 bg-bg-page dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-[var(--border)] dark:border-slate-800 hover:bg-bg-input dark:hover:bg-slate-700 transition-colors cursor-pointer">
                       <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-sky-500 shadow-card shrink-0">
                         <Ship className="w-5 h-5" />
                       </div>
-                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Log Cargo Intake</span>
+                      <span className="text-[11px] font-bold text-text-primary dark:text-text-muted text-center">Log Cargo Intake</span>
                     </button>
-                    <button onClick={() => handleQuickAction('Create Fulfillment Ticket', 'OPERATIONS')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                    <button onClick={() => handleQuickAction('Create Fulfillment Ticket', 'OPERATIONS')} className="p-4 bg-bg-page dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-[var(--border)] dark:border-slate-800 hover:bg-bg-input dark:hover:bg-slate-700 transition-colors cursor-pointer">
                       <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-teal-500 shadow-card shrink-0">
                         <Ticket className="w-5 h-5" />
                       </div>
-                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Fulfillment Ticket</span>
+                      <span className="text-[11px] font-bold text-text-primary dark:text-text-muted text-center">Fulfillment Ticket</span>
                     </button>
-                    <button onClick={() => handleQuickAction('Flag Discrepancy', 'OPERATIONS')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                    <button onClick={() => handleQuickAction('Flag Discrepancy', 'OPERATIONS')} className="p-4 bg-bg-page dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-[var(--border)] dark:border-slate-800 hover:bg-bg-input dark:hover:bg-slate-700 transition-colors cursor-pointer">
                       <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-rose-500 shadow-card shrink-0">
                         <Flag className="w-5 h-5" />
                       </div>
-                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Flag Discrepancy</span>
+                      <span className="text-[11px] font-bold text-text-primary dark:text-text-muted text-center">Flag Discrepancy</span>
                     </button>
-                    <button onClick={() => handleQuickAction('Release to Dispatch', 'OPERATIONS')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                    <button onClick={() => handleQuickAction('Release to Dispatch', 'OPERATIONS')} className="p-4 bg-bg-page dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-[var(--border)] dark:border-slate-800 hover:bg-bg-input dark:hover:bg-slate-700 transition-colors cursor-pointer">
                       <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-amber-500 shadow-card shrink-0">
                         <Truck className="w-5 h-5" />
                       </div>
-                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Release Dispatch</span>
+                      <span className="text-[11px] font-bold text-text-primary dark:text-text-muted text-center">Release Dispatch</span>
                     </button>
                   </>
                 )}
                 {activeDepartment === 'FINANCE' && (
                   <>
-                    <button onClick={() => handleQuickAction('Record Payment', 'FINANCE')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                    <button onClick={() => handleQuickAction('Record Payment', 'FINANCE')} className="p-4 bg-bg-page dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-[var(--border)] dark:border-slate-800 hover:bg-bg-input dark:hover:bg-slate-700 transition-colors cursor-pointer">
                       <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-emerald-500 shadow-card shrink-0">
                         <DollarSign className="w-5 h-5" />
                       </div>
-                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Record Payment</span>
+                      <span className="text-[11px] font-bold text-text-primary dark:text-text-muted text-center">Record Payment</span>
                     </button>
-                    <button onClick={() => handleQuickAction('Create Invoice', 'FINANCE')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                    <button onClick={() => handleQuickAction('Create Invoice', 'FINANCE')} className="p-4 bg-bg-page dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-[var(--border)] dark:border-slate-800 hover:bg-bg-input dark:hover:bg-slate-700 transition-colors cursor-pointer">
                       <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-blue-500 shadow-card shrink-0">
                         <FileText className="w-5 h-5" />
                       </div>
-                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Create Invoice</span>
+                      <span className="text-[11px] font-bold text-text-primary dark:text-text-muted text-center">Create Invoice</span>
                     </button>
-                    <button onClick={() => handleQuickAction('Approve Credit Order', 'FINANCE')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                    <button onClick={() => handleQuickAction('Approve Credit Order', 'FINANCE')} className="p-4 bg-bg-page dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-[var(--border)] dark:border-slate-800 hover:bg-bg-input dark:hover:bg-slate-700 transition-colors cursor-pointer">
                       <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-teal-500 shadow-card shrink-0">
                         <CheckSquare className="w-5 h-5" />
                       </div>
-                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Approve Credit</span>
+                      <span className="text-[11px] font-bold text-text-primary dark:text-text-muted text-center">Approve Credit</span>
                     </button>
-                    <button onClick={() => handleQuickAction('View Ledger', 'FINANCE')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                    <button onClick={() => handleQuickAction('View Ledger', 'FINANCE')} className="p-4 bg-bg-page dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-[var(--border)] dark:border-slate-800 hover:bg-bg-input dark:hover:bg-slate-700 transition-colors cursor-pointer">
                       <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-indigo-500 shadow-card shrink-0">
                         <BookOpen className="w-5 h-5" />
                       </div>
-                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">View Ledger</span>
+                      <span className="text-[11px] font-bold text-text-primary dark:text-text-muted text-center">View Ledger</span>
                     </button>
                   </>
                 )}
                 {activeDepartment === 'MARKETING' && (
                   <>
-                    <button onClick={() => handleQuickAction('Create Order', 'MARKETING')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                    <button onClick={() => handleQuickAction('Create Order', 'MARKETING')} className="p-4 bg-bg-page dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-[var(--border)] dark:border-slate-800 hover:bg-bg-input dark:hover:bg-slate-700 transition-colors cursor-pointer">
                       <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-emerald-500 shadow-card shrink-0">
                         <ShoppingCart className="w-5 h-5" />
                       </div>
-                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Create Order</span>
+                      <span className="text-[11px] font-bold text-text-primary dark:text-text-muted text-center">Create Order</span>
                     </button>
-                    <button onClick={() => handleQuickAction('Register Customer', 'MARKETING')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                    <button onClick={() => handleQuickAction('Register Customer', 'MARKETING')} className="p-4 bg-bg-page dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-[var(--border)] dark:border-slate-800 hover:bg-bg-input dark:hover:bg-slate-700 transition-colors cursor-pointer">
                       <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-blue-500 shadow-card shrink-0">
                         <UserPlus className="w-5 h-5" />
                       </div>
-                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Register Customer</span>
+                      <span className="text-[11px] font-bold text-text-primary dark:text-text-muted text-center">Register Customer</span>
                     </button>
-                    <button onClick={() => handleQuickAction('View Pipeline', 'MARKETING')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                    <button onClick={() => handleQuickAction('View Pipeline', 'MARKETING')} className="p-4 bg-bg-page dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-[var(--border)] dark:border-slate-800 hover:bg-bg-input dark:hover:bg-slate-700 transition-colors cursor-pointer">
                       <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-indigo-500 shadow-card shrink-0">
                         <TrendingUp className="w-5 h-5" />
                       </div>
-                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">View Pipeline</span>
+                      <span className="text-[11px] font-bold text-text-primary dark:text-text-muted text-center">View Pipeline</span>
                     </button>
-                    <button onClick={() => handleQuickAction('Export Report', 'MARKETING')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                    <button onClick={() => handleQuickAction('Export Report', 'MARKETING')} className="p-4 bg-bg-page dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-[var(--border)] dark:border-slate-800 hover:bg-bg-input dark:hover:bg-slate-700 transition-colors cursor-pointer">
                       <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-amber-500 shadow-card shrink-0">
                         <Download className="w-5 h-5" />
                       </div>
-                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Export Report</span>
+                      <span className="text-[11px] font-bold text-text-primary dark:text-text-muted text-center">Export Report</span>
                     </button>
                   </>
                 )}
                 {activeDepartment === 'PRODUCTION' && (
                   <>
-                    <button onClick={() => handleQuickAction('Request Materials', 'PRODUCTION')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                    <button onClick={() => handleQuickAction('Request Materials', 'PRODUCTION')} className="p-4 bg-bg-page dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-[var(--border)] dark:border-slate-800 hover:bg-bg-input dark:hover:bg-slate-700 transition-colors cursor-pointer">
                       <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-indigo-500 shadow-card shrink-0">
                         <Boxes className="w-5 h-5" />
                       </div>
-                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Request Materials</span>
+                      <span className="text-[11px] font-bold text-text-primary dark:text-text-muted text-center">Request Materials</span>
                     </button>
-                    <button onClick={() => handleQuickAction('Update WIP Status', 'PRODUCTION')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                    <button onClick={() => handleQuickAction('Update WIP Status', 'PRODUCTION')} className="p-4 bg-bg-page dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-[var(--border)] dark:border-slate-800 hover:bg-bg-input dark:hover:bg-slate-700 transition-colors cursor-pointer">
                       <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-amber-500 shadow-card shrink-0">
                         <Hammer className="w-5 h-5" />
                       </div>
-                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Update WIP Status</span>
+                      <span className="text-[11px] font-bold text-text-primary dark:text-text-muted text-center">Update WIP Status</span>
                     </button>
-                    <button onClick={() => handleQuickAction('Log Output', 'PRODUCTION')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                    <button onClick={() => handleQuickAction('Log Output', 'PRODUCTION')} className="p-4 bg-bg-page dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-[var(--border)] dark:border-slate-800 hover:bg-bg-input dark:hover:bg-slate-700 transition-colors cursor-pointer">
                       <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-teal-500 shadow-card shrink-0">
                         <BarChart3 className="w-5 h-5" />
                       </div>
-                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Log Output</span>
+                      <span className="text-[11px] font-bold text-text-primary dark:text-text-muted text-center">Log Output</span>
                     </button>
-                    <button onClick={() => handleQuickAction('View Requisitions', 'PRODUCTION')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                    <button onClick={() => handleQuickAction('View Requisitions', 'PRODUCTION')} className="p-4 bg-bg-page dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-[var(--border)] dark:border-slate-800 hover:bg-bg-input dark:hover:bg-slate-700 transition-colors cursor-pointer">
                       <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-blue-500 shadow-card shrink-0">
                         <ClipboardList className="w-5 h-5" />
                       </div>
-                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">View Requisitions</span>
+                      <span className="text-[11px] font-bold text-text-primary dark:text-text-muted text-center">View Requisitions</span>
                     </button>
                   </>
                 )}
                 {activeDepartment === 'DISPATCH' && (
                   <>
-                    <button onClick={() => handleQuickAction('Assign Delivery', 'DISPATCH')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                    <button onClick={() => handleQuickAction('Assign Delivery', 'DISPATCH')} className="p-4 bg-bg-page dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-[var(--border)] dark:border-slate-800 hover:bg-bg-input dark:hover:bg-slate-700 transition-colors cursor-pointer">
                       <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-blue-500 shadow-card shrink-0">
                         <PackagePlus className="w-5 h-5" />
                       </div>
-                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Assign Delivery</span>
+                      <span className="text-[11px] font-bold text-text-primary dark:text-text-muted text-center">Assign Delivery</span>
                     </button>
-                    <button onClick={() => handleQuickAction('Update GPS', 'DISPATCH')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                    <button onClick={() => handleQuickAction('Update GPS', 'DISPATCH')} className="p-4 bg-bg-page dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-[var(--border)] dark:border-slate-800 hover:bg-bg-input dark:hover:bg-slate-700 transition-colors cursor-pointer">
                       <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-rose-500 shadow-card shrink-0">
                         <MapPin className="w-5 h-5" />
                       </div>
-                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Update GPS</span>
+                      <span className="text-[11px] font-bold text-text-primary dark:text-text-muted text-center">Update GPS</span>
                     </button>
-                    <button onClick={() => handleQuickAction('Mark Delivered', 'DISPATCH')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                    <button onClick={() => handleQuickAction('Mark Delivered', 'DISPATCH')} className="p-4 bg-bg-page dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-[var(--border)] dark:border-slate-800 hover:bg-bg-input dark:hover:bg-slate-700 transition-colors cursor-pointer">
                       <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-emerald-500 shadow-card shrink-0">
                         <CheckCircle className="w-5 h-5" />
                       </div>
-                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Mark Delivered</span>
+                      <span className="text-[11px] font-bold text-text-primary dark:text-text-muted text-center">Mark Delivered</span>
                     </button>
-                    <button onClick={() => handleQuickAction('View Fleet', 'DISPATCH')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                    <button onClick={() => handleQuickAction('View Fleet', 'DISPATCH')} className="p-4 bg-bg-page dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-[var(--border)] dark:border-slate-800 hover:bg-bg-input dark:hover:bg-slate-700 transition-colors cursor-pointer">
                       <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-sky-500 shadow-card shrink-0">
                         <Truck className="w-5 h-5" />
                       </div>
-                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">View Fleet</span>
+                      <span className="text-[11px] font-bold text-text-primary dark:text-text-muted text-center">View Fleet</span>
                     </button>
                   </>
                 )}
                 {activeDepartment === 'RECEPTION' && (
                   <>
-                    <button onClick={() => handleQuickAction('Check In Visitor', 'RECEPTION')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                    <button onClick={() => handleQuickAction('Check In Visitor', 'RECEPTION')} className="p-4 bg-bg-page dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-[var(--border)] dark:border-slate-800 hover:bg-bg-input dark:hover:bg-slate-700 transition-colors cursor-pointer">
                       <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-emerald-500 shadow-card shrink-0">
                         <LogIn className="w-5 h-5" />
                       </div>
-                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Check In Visitor</span>
+                      <span className="text-[11px] font-bold text-text-primary dark:text-text-muted text-center">Check In Visitor</span>
                     </button>
-                    <button onClick={() => handleQuickAction('Check Out Visitor', 'RECEPTION')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                    <button onClick={() => handleQuickAction('Check Out Visitor', 'RECEPTION')} className="p-4 bg-bg-page dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-[var(--border)] dark:border-slate-800 hover:bg-bg-input dark:hover:bg-slate-700 transition-colors cursor-pointer">
                       <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-rose-500 shadow-card shrink-0">
                         <LogOut className="w-5 h-5" />
                       </div>
-                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Check Out Visitor</span>
+                      <span className="text-[11px] font-bold text-text-primary dark:text-text-muted text-center">Check Out Visitor</span>
                     </button>
-                    <button onClick={() => handleQuickAction('Log Staff Attendance', 'RECEPTION')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                    <button onClick={() => handleQuickAction('Log Staff Attendance', 'RECEPTION')} className="p-4 bg-bg-page dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-[var(--border)] dark:border-slate-800 hover:bg-bg-input dark:hover:bg-slate-700 transition-colors cursor-pointer">
                       <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-blue-500 shadow-card shrink-0">
                         <ClipboardList className="w-5 h-5" />
                       </div>
-                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Staff Attendance</span>
+                      <span className="text-[11px] font-bold text-text-primary dark:text-text-muted text-center">Staff Attendance</span>
                     </button>
-                    <button onClick={() => handleQuickAction('View Today\'s Log', 'RECEPTION')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                    <button onClick={() => handleQuickAction('View Today\'s Log', 'RECEPTION')} className="p-4 bg-bg-page dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-[var(--border)] dark:border-slate-800 hover:bg-bg-input dark:hover:bg-slate-700 transition-colors cursor-pointer">
                       <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-indigo-500 shadow-card shrink-0">
                         <BookOpen className="w-5 h-5" />
                       </div>
-                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">View Today's Log</span>
+                      <span className="text-[11px] font-bold text-text-primary dark:text-text-muted text-center">View Today's Log</span>
                     </button>
                   </>
                 )}
                 {activeDepartment === 'LOGISTICS' && (
                   <>
-                    <button onClick={() => handleQuickAction('Add Shipment', 'LOGISTICS')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                    <button onClick={() => handleQuickAction('Add Shipment', 'LOGISTICS')} className="p-4 bg-bg-page dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-[var(--border)] dark:border-slate-800 hover:bg-bg-input dark:hover:bg-slate-700 transition-colors cursor-pointer">
                       <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-blue-500 shadow-card shrink-0">
                         <Ship className="w-5 h-5" />
                       </div>
-                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Add Shipment</span>
+                      <span className="text-[11px] font-bold text-text-primary dark:text-text-muted text-center">Add Shipment</span>
                     </button>
-                    <button onClick={() => handleQuickAction('Update Route', 'LOGISTICS')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                    <button onClick={() => handleQuickAction('Update Route', 'LOGISTICS')} className="p-4 bg-bg-page dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-[var(--border)] dark:border-slate-800 hover:bg-bg-input dark:hover:bg-slate-700 transition-colors cursor-pointer">
                       <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-teal-500 shadow-card shrink-0">
                         <Map className="w-5 h-5" />
                       </div>
-                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Update Route</span>
+                      <span className="text-[11px] font-bold text-text-primary dark:text-text-muted text-center">Update Route</span>
                     </button>
-                    <button onClick={() => handleQuickAction('View Supply Chain', 'LOGISTICS')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                    <button onClick={() => handleQuickAction('View Supply Chain', 'LOGISTICS')} className="p-4 bg-bg-page dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-[var(--border)] dark:border-slate-800 hover:bg-bg-input dark:hover:bg-slate-700 transition-colors cursor-pointer">
                       <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-indigo-500 shadow-card shrink-0">
                         <GitMerge className="w-5 h-5" />
                       </div>
-                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">View Supply Chain</span>
+                      <span className="text-[11px] font-bold text-text-primary dark:text-text-muted text-center">View Supply Chain</span>
                     </button>
-                    <button onClick={() => handleQuickAction('Export Manifest', 'LOGISTICS')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                    <button onClick={() => handleQuickAction('Export Manifest', 'LOGISTICS')} className="p-4 bg-bg-page dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-[var(--border)] dark:border-slate-800 hover:bg-bg-input dark:hover:bg-slate-700 transition-colors cursor-pointer">
                       <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-amber-500 shadow-card shrink-0">
                         <FileText className="w-5 h-5" />
                       </div>
-                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Export Manifest</span>
+                      <span className="text-[11px] font-bold text-text-primary dark:text-text-muted text-center">Export Manifest</span>
                     </button>
                   </>
                 )}
                 {activeDepartment === 'MANAGEMENT' && (
                   <>
-                    <button onClick={() => handleQuickAction('Approve Intake', 'MANAGEMENT')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                    <button onClick={() => handleQuickAction('Approve Intake', 'MANAGEMENT')} className="p-4 bg-bg-page dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-[var(--border)] dark:border-slate-800 hover:bg-bg-input dark:hover:bg-slate-700 transition-colors cursor-pointer">
                       <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-emerald-500 shadow-card shrink-0">
                         <CheckCircle className="w-5 h-5" />
                       </div>
-                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Approve Intake</span>
+                      <span className="text-[11px] font-bold text-text-primary dark:text-text-muted text-center">Approve Intake</span>
                     </button>
-                    <button onClick={() => handleQuickAction('Set Price', 'MANAGEMENT')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                    <button onClick={() => handleQuickAction('Set Price', 'MANAGEMENT')} className="p-4 bg-bg-page dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-[var(--border)] dark:border-slate-800 hover:bg-bg-input dark:hover:bg-slate-700 transition-colors cursor-pointer">
                       <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-amber-500 shadow-card shrink-0">
                         <Tag className="w-5 h-5" />
                       </div>
-                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Set Price</span>
+                      <span className="text-[11px] font-bold text-text-primary dark:text-text-muted text-center">Set Price</span>
                     </button>
-                    <button onClick={() => handleQuickAction('Approve Credit', 'MANAGEMENT')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                    <button onClick={() => handleQuickAction('Approve Credit', 'MANAGEMENT')} className="p-4 bg-bg-page dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-[var(--border)] dark:border-slate-800 hover:bg-bg-input dark:hover:bg-slate-700 transition-colors cursor-pointer">
                       <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-indigo-500 shadow-card shrink-0">
                         <CreditCard className="w-5 h-5" />
                       </div>
-                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">Approve Credit</span>
+                      <span className="text-[11px] font-bold text-text-primary dark:text-text-muted text-center">Approve Credit</span>
                     </button>
-                    <button onClick={() => handleQuickAction('View Audit Log', 'MANAGEMENT')} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                    <button onClick={() => handleQuickAction('View Audit Log', 'MANAGEMENT')} className="p-4 bg-bg-page dark:bg-slate-800 rounded-2xl flex flex-col items-center gap-2 border border-[var(--border)] dark:border-slate-800 hover:bg-bg-input dark:hover:bg-slate-700 transition-colors cursor-pointer">
                       <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-rose-500 shadow-card shrink-0">
                         <ShieldAlert className="w-5 h-5" />
                       </div>
-                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">View Audit Log</span>
+                      <span className="text-[11px] font-bold text-text-primary dark:text-text-muted text-center">View Audit Log</span>
                     </button>
                   </>
                 )}
                 {/* Fallback if no specific department match */}
                 {['CEO', 'HR', 'MANAGEMENT', 'MARKETING', 'OPERATIONS', 'FINANCE', 'PRODUCTION', 'RECEPTION', 'DISPATCH', 'LOGISTICS'].indexOf(activeDepartment) === -1 && (
-                  <div className="col-span-2 text-center text-xs text-slate-400 py-6">
+                  <div className="col-span-2 text-center text-xs text-text-muted py-6">
                     No quick actions available.
                   </div>
                 )}
@@ -3718,11 +3718,11 @@ export default function App() {
 
         {/* 6. MOBILE SEARCH OVERLAY */}
         {isMobileSearchActive && (
-          <div className="lg:hidden fixed inset-0 bg-slate-50 dark:bg-slate-900 z-40 p-6 pt-12 overflow-y-auto pb-24 animate-fade-in-up">
+          <div className="lg:hidden fixed inset-0 bg-bg-page dark:bg-slate-900 z-40 p-6 pt-12 overflow-y-auto pb-24 animate-fade-in-up">
             <div className="flex items-center gap-3 mb-6">
               <div className="relative flex-1">
                 <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Search className="h-4 w-4 text-slate-400" />
+                  <Search className="h-4 w-4 text-text-muted" />
                 </span>
                 <input
                   type="text"
@@ -3730,27 +3730,27 @@ export default function App() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   autoFocus
-                  className="w-full pl-9 pr-3 py-2.5 bg-bg-card border border-slate-200 rounded-full text-sm text-slate-800 placeholder-slate-400 focus:outline-none"
+                  className="w-full pl-9 pr-3 py-2.5 bg-bg-card border border-[var(--border)] rounded-full text-sm text-text-primary placeholder-slate-400 focus:outline-none"
                 />
               </div>
               <button 
                 type="button"
                 onClick={() => setIsMobileSearchActive(false)} 
-                className="text-slate-500 font-bold text-xs"
+                className="text-text-secondary font-bold text-xs"
               >
                 Cancel
               </button>
             </div>
             {/* Results section */}
             <div className="space-y-4">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Search Results</p>
+              <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Search Results</p>
               {searchQuery ? (
                 <div className="p-4 bg-bg-card dark:bg-slate-800 rounded-2xl border border-custom text-center py-8">
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Searching details containing "{searchQuery}"</p>
-                  <p className="text-[10px] text-slate-400 mt-1">Filtered dashboard view displays matching records.</p>
+                  <p className="text-xs text-text-secondary dark:text-text-muted">Searching details containing "{searchQuery}"</p>
+                  <p className="text-[10px] text-text-muted mt-1">Filtered dashboard view displays matching records.</p>
                 </div>
               ) : (
-                <div className="text-center py-8 text-slate-400">
+                <div className="text-center py-8 text-text-muted">
                   <p className="text-xs">Type a query to search the terminal databases.</p>
                 </div>
               )}
@@ -3760,20 +3760,20 @@ export default function App() {
 
         {/* 7. MOBILE NOTIFICATIONS OVERLAY */}
         {isMobileNotificationsActive && (
-          <div className="lg:hidden fixed inset-0 bg-slate-50 dark:bg-slate-900 z-40 p-6 pt-12 overflow-y-auto pb-24 animate-fade-in-up">
+          <div className="lg:hidden fixed inset-0 bg-bg-page dark:bg-slate-900 z-40 p-6 pt-12 overflow-y-auto pb-24 animate-fade-in-up">
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-base font-bold text-slate-800 dark:text-slate-200">Terminal Alerts</h3>
+              <h3 className="text-base font-bold text-text-primary dark:text-text-muted">Terminal Alerts</h3>
               <button 
                 type="button"
                 onClick={() => setIsMobileNotificationsActive(false)} 
-                className="text-slate-500 font-bold text-xs"
+                className="text-text-secondary font-bold text-xs"
               >
                 Close
               </button>
             </div>
             {notifications.length === 0 ? (
-              <div className="text-center py-12 text-slate-400">
-                <Bell className="w-12 h-12 text-slate-200 mx-auto mb-3" />
+              <div className="text-center py-12 text-text-muted">
+                <Bell className="w-12 h-12 text-text-muted mx-auto mb-3" />
                 <p className="text-xs">No active alerts or system notifications.</p>
               </div>
             ) : (
@@ -3782,8 +3782,8 @@ export default function App() {
                   <div key={n.id} className="p-4 bg-bg-card dark:bg-slate-800 rounded-2xl border border-custom shadow-card flex items-start gap-3">
                     <div className="w-2 h-2 rounded-full bg-blue-500 mt-1.5 shrink-0" />
                     <div className="flex-1">
-                      <p className="text-xs text-slate-800 dark:text-slate-200 font-medium leading-relaxed">{n.msg}</p>
-                      <p className="text-[10px] text-slate-400 mt-1">{n.time}</p>
+                      <p className="text-xs text-text-primary dark:text-text-muted font-medium leading-relaxed">{n.msg}</p>
+                      <p className="text-[10px] text-text-muted mt-1">{n.time}</p>
                     </div>
                   </div>
                 ))}
@@ -3818,12 +3818,12 @@ export default function App() {
                   <div className="w-2 h-2 rounded-full bg-blue-400 mt-1 shrink-0 animate-pulse" />
                   <div>
                     <p className="text-xs text-white leading-relaxed">{n.msg}</p>
-                    <p className="text-[10px] text-slate-400 mt-1">{n.time}</p>
+                    <p className="text-[10px] text-text-muted mt-1">{n.time}</p>
                   </div>
                   <button
                     type="button"
                     onClick={() => setNotifications(prev => prev.filter(x => x.id !== n.id))}
-                    className="ml-auto shrink-0 text-slate-500 hover:text-slate-300 cursor-pointer"
+                    className="ml-auto shrink-0 text-text-secondary hover:text-text-muted cursor-pointer"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
                   </button>

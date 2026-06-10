@@ -138,7 +138,7 @@ export default function ProductionDashboard({
       APPROVED: 'bg-blue-500/10 text-blue-400',
       PENDING_MANAGEMENT: 'bg-amber-500/10 text-amber-400',
     };
-    return m[status] || 'bg-slate-500/10 text-slate-400';
+    return m[status] || 'bg-slate-500/10 text-text-muted';
   };
 
   // Requisitions (Raw Materials) Actions
@@ -383,12 +383,12 @@ export default function ProductionDashboard({
 
   if (activeMobileDetail) {
     return (
-      <div className="lg:hidden bg-bg-card min-h-screen p-4 pb-24 space-y-6 animate-fade-in-up text-slate-800">
+      <div className="lg:hidden bg-bg-card min-h-screen p-4 pb-24 space-y-6 animate-fade-in-up text-text-primary">
         {/* Header with Back button */}
         <div className="flex items-center gap-3">
           <button 
             onClick={() => setActiveMobileDetail(null)}
-            className="px-3 py-1.5 bg-bg-card dark:bg-slate-850 border border-[var(--border)] dark:border-slate-800 rounded-full text-xs font-bold text-slate-600 dark:text-slate-350 cursor-pointer shadow-card"
+            className="px-3 py-1.5 bg-bg-card dark:bg-slate-850 border border-[var(--border)] dark:border-slate-800 rounded-full text-xs font-bold text-text-secondary dark:text-slate-350 cursor-pointer shadow-card"
           >
             ← Back
           </button>
@@ -404,33 +404,33 @@ export default function ProductionDashboard({
                   REQ
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-slate-800 dark:text-slate-200">{m.materialName}</h3>
-                  <p className="text-xs text-slate-400 font-mono mt-0.5">{m.flatId}</p>
+                  <h3 className="text-base font-bold text-text-primary dark:text-slate-200">{m.materialName}</h3>
+                  <p className="text-xs text-text-muted font-mono mt-0.5">{m.flatId}</p>
                 </div>
               </div>
 
               <div className="bg-bg-card dark:bg-slate-855 rounded-2xl p-4 shadow-card border border-[var(--border)] dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
                 <div className="py-3 flex justify-between items-center text-xs">
-                  <span className="text-slate-400 font-medium">Requisition ID</span>
-                  <span className="font-semibold text-slate-800 dark:text-slate-200 font-mono">{m.reqId}</span>
+                  <span className="text-text-muted font-medium">Requisition ID</span>
+                  <span className="font-semibold text-text-primary dark:text-slate-200 font-mono">{m.reqId}</span>
                 </div>
                 <div className="py-3 flex justify-between items-center text-xs">
-                  <span className="text-slate-400 font-medium">Material Name</span>
-                  <span className="font-semibold text-slate-800 dark:text-slate-200">{m.materialName}</span>
+                  <span className="text-text-muted font-medium">Material Name</span>
+                  <span className="font-semibold text-text-primary dark:text-slate-200">{m.materialName}</span>
                 </div>
                 <div className="py-3 flex justify-between items-center text-xs">
-                  <span className="text-slate-400 font-medium">Quantity</span>
-                  <span className="font-bold text-slate-800 dark:text-slate-200 font-mono">{m.quantity.toLocaleString()}</span>
+                  <span className="text-text-muted font-medium">Quantity</span>
+                  <span className="font-bold text-text-primary dark:text-slate-200 font-mono">{m.quantity.toLocaleString()}</span>
                 </div>
                 <div className="py-3 flex justify-between items-center text-xs">
-                  <span className="text-slate-400 font-medium">Status</span>
+                  <span className="text-text-muted font-medium">Status</span>
                   <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${statusColor(m.status)}`}>
                     {m.status.replace(/_/g, ' ')}
                   </span>
                 </div>
                 <div className="py-3 flex justify-between items-center text-xs">
-                  <span className="text-slate-400 font-medium">Created At</span>
-                  <span className="font-semibold text-slate-800 dark:text-slate-200 font-mono">{m.createdAt || 'N/A'}</span>
+                  <span className="text-text-muted font-medium">Created At</span>
+                  <span className="font-semibold text-text-primary dark:text-slate-200 font-mono">{m.createdAt || 'N/A'}</span>
                 </div>
               </div>
 
@@ -476,23 +476,23 @@ export default function ProductionDashboard({
                   WIP
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-slate-800 dark:text-slate-200">{item.productName}</h3>
-                  <p className="text-xs text-slate-400 font-mono mt-0.5">{item.id}</p>
+                  <h3 className="text-base font-bold text-text-primary dark:text-slate-200">{item.productName}</h3>
+                  <p className="text-xs text-text-muted font-mono mt-0.5">{item.id}</p>
                 </div>
               </div>
 
               {/* Fields */}
               <div className="bg-bg-card dark:bg-slate-855 rounded-2xl p-4 shadow-card border border-[var(--border)] dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
                 <div className="py-3 flex justify-between items-center text-xs">
-                  <span className="text-slate-400 font-medium">Item ID</span>
-                  <span className="font-semibold text-slate-800 dark:text-slate-200 font-mono">{item.id}</span>
+                  <span className="text-text-muted font-medium">Item ID</span>
+                  <span className="font-semibold text-text-primary dark:text-slate-200 font-mono">{item.id}</span>
                 </div>
                 <div className="py-3 flex justify-between items-center text-xs">
-                  <span className="text-slate-400 font-medium">Product Name</span>
-                  <span className="font-semibold text-slate-800 dark:text-slate-200">{item.productName}</span>
+                  <span className="text-text-muted font-medium">Product Name</span>
+                  <span className="font-semibold text-text-primary dark:text-slate-200">{item.productName}</span>
                 </div>
                 <div className="py-3 flex justify-between items-center text-xs">
-                  <span className="text-slate-400 font-medium">Stage</span>
+                  <span className="text-text-muted font-medium">Stage</span>
                   <span className={`px-2.5 py-0.5 rounded text-[9px] font-bold ${
                     item.stage === 'Awaiting Dispatch' ? 'bg-emerald-500/10 text-emerald-400' :
                     item.stage === 'Quality Check' ? 'bg-amber-500/10 text-amber-400' :
@@ -500,12 +500,12 @@ export default function ProductionDashboard({
                   }`}>{item.stage}</span>
                 </div>
                 <div className="py-3 flex justify-between items-center text-xs">
-                  <span className="text-slate-400 font-medium">Quantity</span>
-                  <span className="font-bold text-slate-800 dark:text-slate-200 font-mono">{item.qty.toLocaleString()}</span>
+                  <span className="text-text-muted font-medium">Quantity</span>
+                  <span className="font-bold text-text-primary dark:text-slate-200 font-mono">{item.qty.toLocaleString()}</span>
                 </div>
                 <div className="py-3 flex justify-between items-center text-xs">
-                  <span className="text-slate-400 font-medium">Last Updated</span>
-                  <span className="font-semibold text-slate-800 dark:text-slate-200 font-mono">{item.updatedAt}</span>
+                  <span className="text-text-muted font-medium">Last Updated</span>
+                  <span className="font-semibold text-text-primary dark:text-slate-200 font-mono">{item.updatedAt}</span>
                 </div>
               </div>
 
@@ -543,37 +543,37 @@ export default function ProductionDashboard({
                   HIS
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-slate-800 dark:text-slate-200">History Log</h3>
-                  <p className="text-xs text-slate-400 font-mono mt-0.5">{req.id}</p>
+                  <h3 className="text-base font-bold text-text-primary dark:text-slate-200">History Log</h3>
+                  <p className="text-xs text-text-muted font-mono mt-0.5">{req.id}</p>
                 </div>
               </div>
 
               {/* Fields */}
               <div className="bg-bg-card dark:bg-slate-855 rounded-2xl p-4 shadow-card border border-[var(--border)] dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
                 <div className="py-3 flex justify-between items-center text-xs">
-                  <span className="text-slate-400 font-medium">Requisition ID</span>
+                  <span className="text-text-muted font-medium">Requisition ID</span>
                   <span className="font-semibold text-slate-850 dark:text-slate-200 font-mono">{req.id}</span>
                 </div>
                 <div className="py-3 flex justify-between items-start text-xs">
-                  <span className="text-slate-400 font-medium pt-0.5">Materials</span>
-                  <div className="flex flex-col items-end gap-1 font-semibold text-slate-800 dark:text-slate-200">
+                  <span className="text-text-muted font-medium pt-0.5">Materials</span>
+                  <div className="flex flex-col items-end gap-1 font-semibold text-text-primary dark:text-slate-200">
                     {req.items.map((it, idx) => (
                       <span key={idx}>{it.materialName} ({it.quantity})</span>
                     ))}
                   </div>
                 </div>
                 <div className="py-3 flex justify-between items-center text-xs">
-                  <span className="text-slate-400 font-medium">Total Units</span>
-                  <span className="font-bold text-slate-800 dark:text-slate-200 font-mono">{req.items.reduce((s, i) => s + i.quantity, 0).toLocaleString()}</span>
+                  <span className="text-text-muted font-medium">Total Units</span>
+                  <span className="font-bold text-text-primary dark:text-slate-200 font-mono">{req.items.reduce((s, i) => s + i.quantity, 0).toLocaleString()}</span>
                 </div>
                 <div className="py-3 flex justify-between items-center text-xs">
-                  <span className="text-slate-400 font-medium">Status</span>
+                  <span className="text-text-muted font-medium">Status</span>
                   <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${statusColor(req.status)}`}>
                     {req.status.replace(/_/g, ' ')}
                   </span>
                 </div>
                 <div className="py-3 flex justify-between items-center text-xs">
-                  <span className="text-slate-400 font-medium">Date</span>
+                  <span className="text-text-muted font-medium">Date</span>
                   <span className="font-semibold text-slate-850 dark:text-slate-200 font-mono">{req.createdAt || 'N/A'}</span>
                 </div>
               </div>
@@ -613,8 +613,8 @@ export default function ProductionDashboard({
       <div className="lg:hidden mobile-only space-y-4 pb-4 mobile-animate-up">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-lg font-bold text-slate-800 tracking-tight">Production</h1>
-            <p className="text-[11px] text-slate-400 mt-0.5">Floor control & requisitions</p>
+            <h1 className="text-lg font-bold text-text-primary tracking-tight">Production</h1>
+            <p className="text-[11px] text-text-muted mt-0.5">Floor control & requisitions</p>
           </div>
           <div className="flex gap-2">
             <button onClick={() => exportToCSV(productionRequests, ['id', 'status', 'createdAt'], 'production_requests')} className="p-2 bg-bg-card rounded-xl border border-[var(--border)] shadow-card"><FileSpreadsheet className="w-4 h-4 text-text-secondary" /></button>
@@ -648,9 +648,9 @@ export default function ProductionDashboard({
             <div key={i} className="mobile-stat-card">
               <div className="mobile-stat-icon" style={{ background: s.bg }}><Icon className="w-5 h-5" style={{ color: s.color }} /></div>
               <div className="min-w-0">
-                <p className="text-[9px] text-slate-400 uppercase font-bold tracking-wider">{s.label}</p>
-                <p className="text-sm font-bold text-slate-800 mt-0.5">{s.value}</p>
-                <p className="text-[9px] text-slate-400">{s.sub}</p>
+                <p className="text-[9px] text-text-muted uppercase font-bold tracking-wider">{s.label}</p>
+                <p className="text-sm font-bold text-text-primary mt-0.5">{s.value}</p>
+                <p className="text-[9px] text-text-muted">{s.sub}</p>
               </div>
             </div>
           ); })}
@@ -665,8 +665,8 @@ export default function ProductionDashboard({
                   <Layers className="w-5 h-5" style={{ color: req.status === 'APPROVED' ? '#16a34a' : req.status === 'COMPLETED' || req.status === 'TICKETS_ISSUED' ? '#6366f1' : '#d97706' }} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-bold text-slate-800 truncate">{req.id}</p>
-                  <p className="text-[10px] text-slate-400 truncate">{req.items.map(i => i.materialName).join(', ')}</p>
+                  <p className="text-xs font-bold text-text-primary truncate">{req.id}</p>
+                  <p className="text-[10px] text-text-muted truncate">{req.items.map(i => i.materialName).join(', ')}</p>
                 </div>
                 <span className={`mobile-status-pill ${
                   req.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-700' :
@@ -688,8 +688,8 @@ export default function ProductionDashboard({
                   <Package className="w-5 h-5" style={{ color: '#7c3aed' }} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-bold text-slate-800 truncate">{w.productName}</p>
-                  <p className="text-[10px] text-slate-400 truncate">{w.stage} • {w.qty} units</p>
+                  <p className="text-xs font-bold text-text-primary truncate">{w.productName}</p>
+                  <p className="text-[10px] text-text-muted truncate">{w.stage} • {w.qty} units</p>
                 </div>
               </div>
             ))}
@@ -789,8 +789,8 @@ export default function ProductionDashboard({
                           <Settings className="w-5 h-5 text-[var(--accent-color,#068d5c)]" />
                         </div>
                         <div>
-                          <p className="text-sm font-bold text-slate-800 dark:text-slate-205">{req.id}</p>
-                          <div className="text-[10px] text-slate-400 space-y-0.5 mt-0.5">
+                          <p className="text-sm font-bold text-text-primary dark:text-slate-205">{req.id}</p>
+                          <div className="text-[10px] text-text-muted space-y-0.5 mt-0.5">
                             {req.items.map((item, idx) => (
                               <span key={idx} className="mr-1">{item.materialName}: <strong>{item.quantity.toLocaleString()}</strong></span>
                             ))}
@@ -799,7 +799,7 @@ export default function ProductionDashboard({
                       </div>
                       <div className="flex items-center gap-2">
                         <button onClick={() => handleIssueTicket(req.id)} className="px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-bold" title="Issue Goods Ticket">Issue</button>
-                        <ChevronRight className="w-4 h-4 text-slate-400" />
+                        <ChevronRight className="w-4 h-4 text-text-muted" />
                       </div>
                     </div>
 
@@ -866,7 +866,7 @@ export default function ProductionDashboard({
                           onClick={() => { setMaterialsStatusFilter(st); setIsMaterialsFilterOpen(false); }}
                           className="flex items-center gap-2 px-3 py-2 text-xs rounded-lg hover:bg-[var(--accent-light)] text-left transition-colors text-[var(--text-primary)]"
                         >
-                          <span className={`w-2 h-2 rounded-full ${st === 'APPROVED' ? 'bg-blue-400' : st === 'TICKETS_ISSUED' ? 'bg-emerald-400' : st === 'ALL' ? 'bg-slate-400' : 'bg-amber-400'}`} />
+                          <span className={`w-2 h-2 rounded-full ${st === 'APPROVED' ? 'bg-blue-400' : st === 'TICKETS_ISSUED' ? 'bg-emerald-400' : st === 'ALL' ? 'bg-text-muted' : 'bg-amber-400'}`} />
                           {st === 'ALL' ? 'All Status' : st.replace(/_/g, ' ')}
                         </button>
                       ))}
@@ -888,21 +888,21 @@ export default function ProductionDashboard({
                       Req
                     </div>
                     <div>
-                      <h4 className="text-sm font-bold text-slate-800 dark:text-slate-205">{m.materialName}</h4>
-                      <p className="text-xs text-slate-400 font-semibold">{m.reqId}</p>
-                      <p className="text-[10px] text-slate-400 mt-0.5 font-mono">{m.quantity.toLocaleString()} units</p>
+                      <h4 className="text-sm font-bold text-text-primary dark:text-slate-205">{m.materialName}</h4>
+                      <p className="text-xs text-text-muted font-semibold">{m.reqId}</p>
+                      <p className="text-[10px] text-text-muted mt-0.5 font-mono">{m.quantity.toLocaleString()} units</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${statusColor(m.status)}`}>
                       {m.status.replace(/_/g, ' ')}
                     </span>
-                    <ChevronRight className="w-4 h-4 text-slate-400" />
+                    <ChevronRight className="w-4 h-4 text-text-muted" />
                   </div>
                 </div>
               ))}
               {filteredMaterials.length === 0 && (
-                <div className="p-8 text-center text-slate-400 text-xs bg-bg-card dark:bg-slate-855 rounded-2xl">No raw materials matched search filters.</div>
+                <div className="p-8 text-center text-text-muted text-xs bg-bg-card dark:bg-slate-855 rounded-2xl">No raw materials matched search filters.</div>
               )}
             </div>
 
@@ -1051,7 +1051,7 @@ export default function ProductionDashboard({
                           onClick={() => { setWipStageFilter(st); setIsWipFilterOpen(false); }}
                           className="flex items-center gap-2 px-3 py-2 text-xs rounded-lg hover:bg-[var(--accent-light)] text-left transition-colors text-[var(--text-primary)]"
                         >
-                          <span className={`w-2 h-2 rounded-full ${st === 'Processing' ? 'bg-blue-400' : st === 'Awaiting Dispatch' ? 'bg-emerald-400' : st === 'ALL' ? 'bg-slate-400' : 'bg-amber-400'}`} />
+                          <span className={`w-2 h-2 rounded-full ${st === 'Processing' ? 'bg-blue-400' : st === 'Awaiting Dispatch' ? 'bg-emerald-400' : st === 'ALL' ? 'bg-text-muted' : 'bg-amber-400'}`} />
                           {st === 'ALL' ? 'All Stages' : st}
                         </button>
                       ))}
@@ -1207,7 +1207,7 @@ export default function ProductionDashboard({
                           onClick={() => { setHistoryStatusFilter(st); setIsHistoryFilterOpen(false); }}
                           className="flex items-center gap-2 px-3 py-2 text-xs rounded-lg hover:bg-[var(--accent-light)] text-left transition-colors text-[var(--text-primary)]"
                         >
-                          <span className={`w-2 h-2 rounded-full ${st === 'APPROVED' ? 'bg-blue-400' : st === 'TICKETS_ISSUED' ? 'bg-emerald-400' : st === 'ALL' ? 'bg-slate-400' : 'bg-amber-400'}`} />
+                          <span className={`w-2 h-2 rounded-full ${st === 'APPROVED' ? 'bg-blue-400' : st === 'TICKETS_ISSUED' ? 'bg-emerald-400' : st === 'ALL' ? 'bg-text-muted' : 'bg-amber-400'}`} />
                           {st === 'ALL' ? 'All History' : st.replace(/_/g, ' ')}
                         </button>
                       ))}
@@ -1230,23 +1230,23 @@ export default function ProductionDashboard({
                       His
                     </div>
                     <div>
-                      <h4 className="text-sm font-bold text-slate-800 dark:text-slate-205">{req.id}</h4>
-                      <p className="text-xs text-slate-400 font-semibold truncate max-w-[150px]">
+                      <h4 className="text-sm font-bold text-text-primary dark:text-slate-205">{req.id}</h4>
+                      <p className="text-xs text-text-muted font-semibold truncate max-w-[150px]">
                         {req.items.map(i => i.materialName).join(', ')}
                       </p>
-                      <p className="text-[10px] text-slate-400 mt-0.5 font-mono">{req.items.reduce((s, i) => s + i.quantity, 0).toLocaleString()} units</p>
+                      <p className="text-[10px] text-text-muted mt-0.5 font-mono">{req.items.reduce((s, i) => s + i.quantity, 0).toLocaleString()} units</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${statusColor(req.status)}`}>
                       {req.status.replace(/_/g, ' ')}
                     </span>
-                    <ChevronRight className="w-4 h-4 text-slate-400" />
+                    <ChevronRight className="w-4 h-4 text-text-muted" />
                   </div>
                 </div>
               ))}
               {filteredHistory.length === 0 && (
-                <div className="p-8 text-center text-slate-400 text-xs bg-bg-card dark:bg-slate-855 rounded-2xl">No history records found.</div>
+                <div className="p-8 text-center text-text-muted text-xs bg-bg-card dark:bg-slate-855 rounded-2xl">No history records found.</div>
               )}
             </div>
 

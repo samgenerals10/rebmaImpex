@@ -332,12 +332,12 @@ export default function FinanceDashboard({
 
   if (activeMobileDetail) {
     return (
-      <div className="lg:hidden bg-bg-card min-h-screen p-4 pb-24 space-y-6 animate-fade-in-up text-slate-800">
+      <div className="lg:hidden bg-bg-card min-h-screen p-4 pb-24 space-y-6 animate-fade-in-up text-text-primary">
         {/* Header with Back button */}
         <div className="flex items-center gap-3">
           <button 
             onClick={() => setActiveMobileDetail(null)}
-            className="px-3 py-1.5 bg-bg-card dark:bg-slate-850 border border-[var(--border)] dark:border-slate-800 rounded-full text-xs font-bold text-slate-600 dark:text-slate-350 cursor-pointer shadow-card"
+            className="px-3 py-1.5 bg-bg-card dark:bg-slate-850 border border-[var(--border)] dark:border-slate-800 rounded-full text-xs font-bold text-text-secondary dark:text-slate-350 cursor-pointer shadow-card"
           >
             ← Back
           </button>
@@ -354,39 +354,39 @@ export default function FinanceDashboard({
                   GHS
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-slate-800 dark:text-slate-200">{pay.clientName}</h3>
-                  <p className="text-xs text-slate-400 font-mono mt-0.5">{pay.id}</p>
+                  <h3 className="text-base font-bold text-text-primary dark:text-slate-200">{pay.clientName}</h3>
+                  <p className="text-xs text-text-muted font-mono mt-0.5">{pay.id}</p>
                 </div>
               </div>
 
               {/* Fields */}
               <div className="bg-bg-card dark:bg-slate-855 rounded-2xl p-4 shadow-card border border-[var(--border)] dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
                 <div className="py-3 flex justify-between items-center text-xs">
-                  <span className="text-slate-400 font-medium">Receipt #</span>
-                  <span className="font-semibold text-slate-800 dark:text-slate-200 font-mono">{pay.id}</span>
+                  <span className="text-text-muted font-medium">Receipt #</span>
+                  <span className="font-semibold text-text-primary dark:text-slate-200 font-mono">{pay.id}</span>
                 </div>
                 <div className="py-3 flex justify-between items-center text-xs">
-                  <span className="text-slate-400 font-medium">Type</span>
+                  <span className="text-text-muted font-medium">Type</span>
                   <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${pay.paymentType === 'DIRECT' ? 'bg-blue-500/10 text-blue-400' : 'bg-purple-500/10 text-purple-400'}`}>
                     {pay.paymentType === 'DIRECT' ? 'Direct' : 'Credit Settle'}
                   </span>
                 </div>
                 <div className="py-3 flex justify-between items-center text-xs">
-                  <span className="text-slate-400 font-medium">Payment Mode</span>
-                  <span className="font-semibold text-slate-800 dark:text-slate-200">{pay.paymentMode.replace('_', ' ')}</span>
+                  <span className="text-text-muted font-medium">Payment Mode</span>
+                  <span className="font-semibold text-text-primary dark:text-slate-200">{pay.paymentMode.replace('_', ' ')}</span>
                 </div>
                 {pay.orderId && (
                   <div className="py-3 flex justify-between items-center text-xs">
-                    <span className="text-slate-400 font-medium">Settled Order</span>
+                    <span className="text-text-muted font-medium">Settled Order</span>
                     <span className="font-mono font-semibold text-blue-400">{pay.orderId}</span>
                   </div>
                 )}
                 <div className="py-3 flex justify-between items-center text-xs">
-                  <span className="text-slate-400 font-medium">Amount</span>
+                  <span className="text-text-muted font-medium">Amount</span>
                   <span className="font-bold text-emerald-500 font-mono">GHS {pay.amount.toLocaleString()}</span>
                 </div>
                 <div className="py-3 flex justify-between items-center text-xs">
-                  <span className="text-slate-400 font-medium">Date</span>
+                  <span className="text-text-muted font-medium">Date</span>
                   <span className="font-semibold text-slate-850 dark:text-slate-200">{pay.createdAt}</span>
                 </div>
               </div>
@@ -432,31 +432,31 @@ export default function FinanceDashboard({
                   REQ
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-slate-800 dark:text-slate-200">Requisition Log</h3>
-                  <p className="text-xs text-slate-400 font-mono mt-0.5">{req.id}</p>
+                  <h3 className="text-base font-bold text-text-primary dark:text-slate-200">Requisition Log</h3>
+                  <p className="text-xs text-text-muted font-mono mt-0.5">{req.id}</p>
                 </div>
               </div>
 
               {/* Fields */}
               <div className="bg-bg-card dark:bg-slate-855 rounded-2xl p-4 shadow-card border border-[var(--border)] dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
                 <div className="py-3 flex justify-between items-center text-xs">
-                  <span className="text-slate-400 font-medium">Requisition ID</span>
+                  <span className="text-text-muted font-medium">Requisition ID</span>
                   <span className="font-semibold text-slate-850 dark:text-slate-200 font-mono">{req.id}</span>
                 </div>
                 <div className="py-3 flex justify-between items-start text-xs">
-                  <span className="text-slate-400 font-medium pt-0.5">Materials</span>
-                  <div className="flex flex-col items-end gap-1 font-semibold text-slate-800 dark:text-slate-200">
+                  <span className="text-text-muted font-medium pt-0.5">Materials</span>
+                  <div className="flex flex-col items-end gap-1 font-semibold text-text-primary dark:text-slate-200">
                     {req.items.map((it, idx) => (
                       <span key={idx}>{it.materialName} ({it.quantity})</span>
                     ))}
                   </div>
                 </div>
                 <div className="py-3 flex justify-between items-center text-xs">
-                  <span className="text-slate-400 font-medium">Total Units</span>
-                  <span className="font-bold text-slate-800 dark:text-slate-200 font-mono">{req.items.reduce((s, i) => s + i.quantity, 0).toLocaleString()}</span>
+                  <span className="text-text-muted font-medium">Total Units</span>
+                  <span className="font-bold text-text-primary dark:text-slate-200 font-mono">{req.items.reduce((s, i) => s + i.quantity, 0).toLocaleString()}</span>
                 </div>
                 <div className="py-3 flex justify-between items-center text-xs">
-                  <span className="text-slate-400 font-medium">Status</span>
+                  <span className="text-text-muted font-medium">Status</span>
                   <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
                     req.status === 'TICKETS_ISSUED' || req.status === 'COMPLETED' ? 'bg-emerald-500/10 text-emerald-450' :
                     req.status === 'APPROVED' ? 'bg-blue-500/10 text-blue-450' :
@@ -464,8 +464,8 @@ export default function FinanceDashboard({
                   }`}>{req.status.replace(/_/g, ' ')}</span>
                 </div>
                 <div className="py-3 flex justify-between items-center text-xs">
-                  <span className="text-slate-400 font-medium">Date</span>
-                  <span className="font-semibold text-slate-800 dark:text-slate-200 font-mono">{req.createdAt || 'N/A'}</span>
+                  <span className="text-text-muted font-medium">Date</span>
+                  <span className="font-semibold text-text-primary dark:text-slate-200 font-mono">{req.createdAt || 'N/A'}</span>
                 </div>
               </div>
 
@@ -505,8 +505,8 @@ export default function FinanceDashboard({
       <div className="lg:hidden mobile-only space-y-4 pb-4 mobile-animate-up">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-lg font-bold text-slate-800 tracking-tight">Finance</h1>
-            <p className="text-[11px] text-slate-400 mt-0.5">Revenue tracking & payments</p>
+            <h1 className="text-lg font-bold text-text-primary tracking-tight">Finance</h1>
+            <p className="text-[11px] text-text-muted mt-0.5">Revenue tracking & payments</p>
           </div>
           <div className="flex gap-2">
             <button onClick={() => exportToCSV(localPayments, ['id', 'clientName', 'amount', 'paymentMethod', 'createdAt'], 'payments')} className="p-2 bg-bg-card rounded-xl border border-[var(--border)] shadow-card"><FileSpreadsheet className="w-4 h-4 text-text-secondary" /></button>
@@ -540,9 +540,9 @@ export default function FinanceDashboard({
             <div key={i} className="mobile-stat-card">
               <div className="mobile-stat-icon" style={{ background: s.bg }}><Icon className="w-5 h-5" style={{ color: s.color }} /></div>
               <div className="min-w-0">
-                <p className="text-[9px] text-slate-400 uppercase font-bold tracking-wider">{s.label}</p>
-                <p className="text-sm font-bold text-slate-800 mt-0.5">{s.value}</p>
-                <p className="text-[9px] text-slate-400">{s.sub}</p>
+                <p className="text-[9px] text-text-muted uppercase font-bold tracking-wider">{s.label}</p>
+                <p className="text-sm font-bold text-text-primary mt-0.5">{s.value}</p>
+                <p className="text-[9px] text-text-muted">{s.sub}</p>
               </div>
             </div>
           ); })}
@@ -557,8 +557,8 @@ export default function FinanceDashboard({
                   <DollarSign className="w-5 h-5" style={{ color: '#16a34a' }} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-bold text-slate-800 truncate">{pay.clientName}</p>
-                  <p className="text-[10px] text-slate-400 truncate">GHS {pay.amount.toLocaleString()} • {pay.paymentMode}</p>
+                  <p className="text-xs font-bold text-text-primary truncate">{pay.clientName}</p>
+                  <p className="text-[10px] text-text-muted truncate">GHS {pay.amount.toLocaleString()} • {pay.paymentMode}</p>
                 </div>
                 <span className="mobile-status-pill bg-emerald-50 text-emerald-700">Paid</span>
               </div>
@@ -874,7 +874,7 @@ export default function FinanceDashboard({
                               onClick={() => { setPaymentsTypeFilter(st); setIsPaymentsFilterOpen(false); }}
                               className="flex items-center gap-2 px-3 py-2 text-xs rounded-lg hover:bg-[var(--accent-light)] text-left transition-colors text-[var(--text-primary)]"
                             >
-                              <span className={`w-2 h-2 rounded-full ${st === 'DIRECT' ? 'bg-blue-400' : st === 'CREDIT_SETTLEMENT' ? 'bg-purple-400' : 'bg-slate-400'}`} />
+                              <span className={`w-2 h-2 rounded-full ${st === 'DIRECT' ? 'bg-blue-400' : st === 'CREDIT_SETTLEMENT' ? 'bg-purple-400' : 'bg-text-muted'}`} />
                               {st === 'ALL' ? 'All Types' : st.replace(/_/g, ' ')}
                             </button>
                           ))}
@@ -901,19 +901,19 @@ export default function FinanceDashboard({
                           ₵
                         </div>
                         <div>
-                          <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">{pay.clientName}</h4>
-                          <p className="text-xs text-slate-400 font-semibold">{pay.paymentType === 'DIRECT' ? 'Direct' : 'Credit Settlement'}</p>
-                          <p className="text-[10px] text-slate-400 mt-0.5 font-mono">{pay.id}</p>
+                          <h4 className="text-sm font-bold text-text-primary dark:text-slate-200">{pay.clientName}</h4>
+                          <p className="text-xs text-text-muted font-semibold">{pay.paymentType === 'DIRECT' ? 'Direct' : 'Credit Settlement'}</p>
+                          <p className="text-[10px] text-text-muted mt-0.5 font-mono">{pay.id}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-bold text-emerald-500 font-mono">GHS {pay.amount.toLocaleString()}</span>
-                        <ChevronRight className="w-4 h-4 text-slate-400" />
+                        <ChevronRight className="w-4 h-4 text-text-muted" />
                       </div>
                     </div>
                   ))}
                   {filteredPayments.length === 0 && (
-                    <div className="p-8 text-center text-slate-400 text-xs bg-bg-card dark:bg-slate-850 rounded-2xl">No receipts found.</div>
+                    <div className="p-8 text-center text-text-muted text-xs bg-bg-card dark:bg-slate-850 rounded-2xl">No receipts found.</div>
                   )}
                 </div>
 
@@ -1123,11 +1123,11 @@ export default function FinanceDashboard({
                           Req
                         </div>
                         <div>
-                          <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">{req.id}</h4>
-                          <p className="text-xs text-slate-400 font-semibold truncate max-w-[150px]">
+                          <h4 className="text-sm font-bold text-text-primary dark:text-slate-200">{req.id}</h4>
+                          <p className="text-xs text-text-muted font-semibold truncate max-w-[150px]">
                             {req.items.map(it => it.materialName).join(', ')}
                           </p>
-                          <p className="text-[10px] text-slate-400 mt-0.5 font-mono">{req.items.reduce((s, i) => s + i.quantity, 0).toLocaleString()} units</p>
+                          <p className="text-[10px] text-text-muted mt-0.5 font-mono">{req.items.reduce((s, i) => s + i.quantity, 0).toLocaleString()} units</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
@@ -1136,12 +1136,12 @@ export default function FinanceDashboard({
                           req.status === 'APPROVED' ? 'bg-blue-500/10 text-blue-450' :
                           'bg-amber-500/10 text-amber-450'
                         }`}>{req.status.replace(/_/g, ' ')}</span>
-                        <ChevronRight className="w-4 h-4 text-slate-400" />
+                        <ChevronRight className="w-4 h-4 text-text-muted" />
                       </div>
                     </div>
                   ))}
                   {filteredWarehouse.length === 0 && (
-                    <div className="p-8 text-center text-slate-400 text-xs bg-bg-card dark:bg-slate-855 rounded-2xl">No warehouse requisitions found.</div>
+                    <div className="p-8 text-center text-text-muted text-xs bg-bg-card dark:bg-slate-855 rounded-2xl">No warehouse requisitions found.</div>
                   )}
                 </div>
 

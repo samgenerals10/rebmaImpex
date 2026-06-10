@@ -225,7 +225,7 @@ export default function Sidebar({
             {onClose && (
               <button 
                 onClick={onClose}
-                className="p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer shrink-0"
+                className="p-1.5 rounded-full hover:bg-[var(--accent-light)] text-text-muted hover:text-text-secondary transition-colors cursor-pointer shrink-0"
                 title="Close"
               >
                 <X className="w-5 h-5" />
@@ -248,7 +248,7 @@ export default function Sidebar({
           {/* Middle Channels Section */}
           <div className="flex-1 overflow-y-auto pt-4 space-y-4">
             <div>
-              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-2 mb-1.5">Channels</p>
+              <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest px-2 mb-1.5">Channels</p>
               <div className="space-y-1">
                 {availableDepts.map(dept => {
                   const isSelected = dept.value === activeDepartment;
@@ -272,7 +272,7 @@ export default function Sidebar({
                       className={`w-full flex items-center px-3 py-2 rounded-xl text-xs font-semibold transition-all text-left truncate ${
                         isSelected 
                           ? 'bg-[var(--accent,#068d5c)] text-white font-extrabold shadow-card' 
-                          : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
+                          : 'text-text-secondary hover:bg-[var(--accent-light)]'
                       }`}
                     >
                       <span className="opacity-50 mr-1.5">#</span>
@@ -290,7 +290,7 @@ export default function Sidebar({
           <button
             onClick={() => { setActiveDepartment('SETTINGS'); setActiveSubTab('Appearance'); onClose?.(); }}
             className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition-colors ${
-              activeDepartment === 'SETTINGS' ? 'bg-slate-100 dark:bg-slate-800 text-[var(--accent,#068d5c)] font-bold' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
+              activeDepartment === 'SETTINGS' ? 'bg-bg-input dark:bg-slate-800 text-[var(--accent,#068d5c)] font-bold' : 'text-text-secondary hover:bg-[var(--accent-light)]'
             }`}
           >
             <Settings className="w-4 h-4 text-text-secondary" />
