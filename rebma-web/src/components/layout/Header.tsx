@@ -108,10 +108,10 @@ export default function Header({
             {showAvatarDropdown && (
               <>
                 <div className="fixed inset-0 z-[490]" onClick={() => setShowAvatarDropdown(false)} />
-                <div className="absolute left-0 mt-2 w-64 bg-bg-card dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl z-[500] py-3 animate-fade-in-up text-slate-800 dark:text-slate-200">
-                  <div className="px-4 pb-3 border-b border-slate-100 dark:border-slate-800">
+                <div className="absolute left-0 mt-2 w-64 bg-bg-card dark:bg-slate-900 border border-[var(--border)] dark:border-slate-800 rounded-2xl shadow-2xl z-[500] py-3 animate-fade-in-up text-slate-800 dark:text-slate-200">
+                  <div className="px-4 pb-3 border-b border-[var(--border)] dark:border-slate-800">
                     <p className="text-xs font-extrabold text-slate-900 dark:text-slate-100">{currentUser?.fullName}</p>
-                    <p className="text-[10px] text-slate-500 mt-0.5">{currentUser?.department}</p>
+                    <p className="text-[10px] text-text-secondary mt-0.5">{currentUser?.department}</p>
                   </div>
                   
                   <div className="max-h-52 overflow-y-auto py-2">
@@ -163,7 +163,7 @@ export default function Header({
                       }}
                       className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-800 text-left transition-colors"
                     >
-                      <Settings className="w-4 h-4 text-slate-500" />
+                      <Settings className="w-4 h-4 text-text-secondary" />
                       Settings
                     </button>
                     <button
@@ -232,7 +232,7 @@ export default function Header({
               {showMoreMenu && (
                 <>
                   <div className="fixed inset-0 z-[290]" onClick={() => setShowMoreMenu(false)} />
-                  <div className="absolute right-0 mt-2 w-48 bg-bg-card dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl z-[300] py-2 animate-fade-in-up text-slate-800 dark:text-slate-200">
+                  <div className="absolute right-0 mt-2 w-48 bg-bg-card dark:bg-slate-900 border border-[var(--border)] dark:border-slate-800 rounded-2xl shadow-2xl z-[300] py-2 animate-fade-in-up text-slate-800 dark:text-slate-200">
                     <button
                       type="button"
                       onClick={() => { setShowMoreMenu(false); onProfileClick?.(); }}

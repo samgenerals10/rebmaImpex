@@ -385,7 +385,7 @@ export default function OperationsDashboard({
         <div className="flex items-center gap-3">
           <button 
             onClick={() => setActiveMobileDetail(null)}
-            className="px-3 py-1.5 bg-bg-card dark:bg-slate-850 border border-slate-200 dark:border-slate-800 rounded-full text-xs font-bold text-slate-600 dark:text-slate-350 cursor-pointer shadow-card"
+            className="px-3 py-1.5 bg-bg-card dark:bg-slate-850 border border-[var(--border)] dark:border-slate-800 rounded-full text-xs font-bold text-slate-600 dark:text-slate-350 cursor-pointer shadow-card"
           >
             ← Back
           </button>
@@ -397,7 +397,7 @@ export default function OperationsDashboard({
           return (
             <div className="space-y-6">
               {/* Profile Card */}
-              <div className="bg-bg-card dark:bg-slate-850 rounded-2xl p-6 shadow-card border border-slate-100 dark:border-slate-800 space-y-4 text-center flex flex-col items-center">
+              <div className="bg-bg-card dark:bg-slate-850 rounded-2xl p-6 shadow-card border border-[var(--border)] dark:border-slate-800 space-y-4 text-center flex flex-col items-center">
                 <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-900/50 dark:text-emerald-400 flex items-center justify-center font-bold text-xl">
                   {order.clientName[0]}
                 </div>
@@ -409,7 +409,7 @@ export default function OperationsDashboard({
               </div>
 
               {/* Fields */}
-              <div className="bg-bg-card dark:bg-slate-855 rounded-2xl p-4 shadow-card border border-slate-100 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
+              <div className="bg-bg-card dark:bg-slate-855 rounded-2xl p-4 shadow-card border border-[var(--border)] dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
                 <div className="py-3 flex justify-between items-center text-xs">
                   <span className="text-slate-400 font-medium">Ticket Number</span>
                   <span className="font-semibold text-slate-800 dark:text-slate-200 font-mono">{order.ticketNumber || '—'}</span>
@@ -432,7 +432,7 @@ export default function OperationsDashboard({
               <div className="grid grid-cols-2 gap-3">
                 <button 
                   onClick={() => { handleEditOrder(order); setActiveMobileDetail(null); }}
-                  className="py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-xs font-bold text-center border border-slate-200 dark:border-slate-700 cursor-pointer text-slate-700 dark:text-slate-200"
+                  className="py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-xs font-bold text-center border border-[var(--border)] dark:border-slate-700 cursor-pointer text-slate-700 dark:text-slate-200"
                 >
                   Edit Details
                 </button>
@@ -452,7 +452,7 @@ export default function OperationsDashboard({
           return (
             <div className="space-y-6">
               {/* Profile Card */}
-              <div className="bg-bg-card dark:bg-slate-855 rounded-2xl p-6 shadow-card border border-slate-100 dark:border-slate-800 space-y-4 text-center flex flex-col items-center">
+              <div className="bg-bg-card dark:bg-slate-855 rounded-2xl p-6 shadow-card border border-[var(--border)] dark:border-slate-800 space-y-4 text-center flex flex-col items-center">
                 {cargo.productImage ? (
                   <img src={cargo.productImage} alt={cargo.productName} className="w-16 h-16 object-cover rounded-full border border-custom shadow-card" />
                 ) : (
@@ -467,7 +467,7 @@ export default function OperationsDashboard({
               </div>
 
               {/* Fields */}
-              <div className="bg-bg-card dark:bg-slate-855 rounded-2xl p-4 shadow-card border border-slate-100 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
+              <div className="bg-bg-card dark:bg-slate-855 rounded-2xl p-4 shadow-card border border-[var(--border)] dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
                 <div className="py-3 flex justify-between items-center text-xs">
                   <span className="text-slate-400 font-medium">Goods Code</span>
                   <span className="font-semibold text-slate-800 dark:text-slate-200 font-mono">{cargo.goodsCode || '—'}</span>
@@ -506,7 +506,7 @@ export default function OperationsDashboard({
               <div className="grid grid-cols-2 gap-3">
                 <button 
                   onClick={() => { handleEditCargo(cargo); setActiveMobileDetail(null); }}
-                  className="py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-xs font-bold text-center border border-slate-200 dark:border-slate-700 cursor-pointer text-slate-700 dark:text-slate-200"
+                  className="py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-xs font-bold text-center border border-[var(--border)] dark:border-slate-700 cursor-pointer text-slate-700 dark:text-slate-200"
                 >
                   Edit Ingest
                 </button>
@@ -535,11 +535,11 @@ export default function OperationsDashboard({
             <p className="text-[11px] text-slate-400 mt-0.5">Port intakes & release queue</p>
           </div>
           <div className="flex gap-2">
-            <button onClick={() => exportToCSV(localCargo, ['id', 'productName', 'weight', 'status'], 'operations_cargo')} className="p-2 bg-bg-card rounded-xl border border-slate-200 shadow-card" title="Export CSV">
-              <FileSpreadsheet className="w-4 h-4 text-slate-500" />
+            <button onClick={() => exportToCSV(localCargo, ['id', 'productName', 'weight', 'status'], 'operations_cargo')} className="p-2 bg-bg-card rounded-xl border border-[var(--border)] shadow-card" title="Export CSV">
+              <FileSpreadsheet className="w-4 h-4 text-text-secondary" />
             </button>
-            <button onClick={() => exportToPDF('Operations Report', localCargo, ['id', 'productName', 'weight', 'status'])} className="p-2 bg-bg-card rounded-xl border border-slate-200 shadow-card" title="Export PDF">
-              <FileText className="w-4 h-4 text-slate-500" />
+            <button onClick={() => exportToPDF('Operations Report', localCargo, ['id', 'productName', 'weight', 'status'])} className="p-2 bg-bg-card rounded-xl border border-[var(--border)] shadow-card" title="Export PDF">
+              <FileText className="w-4 h-4 text-text-secondary" />
             </button>
           </div>
         </div>

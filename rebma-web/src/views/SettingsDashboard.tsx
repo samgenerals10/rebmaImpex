@@ -3,6 +3,7 @@ import { Settings, User, Lock, Trash2, Camera, ShieldCheck, Eye, EyeOff } from '
 import type { CurrentUser } from '../types/erp';
 import { auth } from '../services/apiClient';
 import { supabase } from '../lib/supabaseClient';
+import { applyAccentOverride, clearAccentOverride } from '../utils/accentOverride';
 
 interface SettingsDashboardProps {
   theme: string;
@@ -207,9 +208,15 @@ export default function SettingsDashboard({
   // suppress unused variable warning for _d
   void _d;
 
+  // previewAccent = the color/gradient value for accent-colored elements in the live preview
   const previewAccent = draftAccentType === 'solid'
     ? draftAccentSolid
-    : `linear-gradient(${draftGradDir}, ${draftGradC1}, ${draftGradC2})`;
+    : (draftGradC1 || '#22c55e');
+
+  // previewGradient = full gradient string (used for buttons, KPI icons, active nav)
+  const previewGradient = draftAccentType === 'gradient'
+    ? `linear-gradient(${draftGradDir || '135deg'}, ${draftGradC1 || '#22c55e'}, ${draftGradC2 || '#16a34a'})`
+    : previewAccent;
 
   const activeTpl = APPEARANCE_TEMPLATES.find(t => t.id === draftTemplate) || APPEARANCE_TEMPLATES[0];
 
@@ -292,6 +299,9 @@ export default function SettingsDashboard({
     // STEP 8: Save to localStorage
     localStorage.setItem('erp-appearance', JSON.stringify(obj));
 
+    // STEP 6: Apply accent override style tag (wins over theme-* CSS variable specificity)
+    applyAccentOverride(obj);
+
     // STEP 2 (parallel): Sync parent state so App.tsx useEffect stays in sync
     setTheme(draftTemplate);
     setFontFamily(draftFontFamily);
@@ -329,6 +339,8 @@ export default function SettingsDashboard({
     setDraftGradC1(s.gradientColor1 || '#22c55e');
     setDraftGradC2(s.gradientColor2 || '#16a34a');
     setDraftGradDir(s.gradientDirection || '135deg');
+    // Clear accent override so template default accent is restored
+    clearAccentOverride();
   };
 
   return (
@@ -556,8 +568,8 @@ export default function SettingsDashboard({
                           <div className="h-4 rounded-sm" style={{ background: 'rgba(255,255,255,0.8)', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }} />
                           <div className="h-4 rounded-sm" style={{ background: 'rgba(255,255,255,0.8)', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }} />
                         </div>
-                        <div className="h-2 rounded bg-white/70 mb-1" />
-                        <div className="h-2 rounded bg-white/50 w-3/4" />
+                        <div className="h-2 rounded bg-bg-card/70 mb-1" />
+                        <div className="h-2 rounded bg-bg-card/50 w-3/4" />
                       </div>
                     </div>
                     {/* Card footer */}
@@ -886,7 +898,7 @@ export default function SettingsDashboard({
                       <div key={i}
                         className="h-5 rounded-md flex items-center justify-center"
                         style={i === 0
-                          ? { background: previewAccent, boxShadow: '0 2px 6px rgba(0,0,0,0.15)' }
+                          ? { background: previewGradient, boxShadow: '0 2px 6px rgba(0,0,0,0.15)' }
                           : { background: 'rgba(0,0,0,0.05)' }}
                       >
                         <div className="w-3 h-1 rounded-full" style={{ background: i === 0 ? '#fff' : 'rgba(0,0,0,0.2)' }} />
@@ -922,14 +934,14 @@ export default function SettingsDashboard({
                       </div>
 
                       {/* Mini table */}
-                      <div className="rounded-lg overflow-hidden bg-white/80">
+                      <div className="rounded-lg overflow-hidden bg-bg-card/80">
                         {[...Array(3)].map((_, i) => (
                           <div key={i} className="flex gap-1 items-center py-1 px-1.5"
                             style={{ borderBottom: i < 2 ? '1px solid #f1f5f9' : 'none' }}>
                             <div className="w-5 h-1.5 rounded-full bg-gray-200" />
                             <div className="flex-1 h-1.5 rounded-full bg-gray-100" />
                             <div className="w-6 h-3 rounded text-white flex items-center justify-center"
-                              style={{ background: previewAccent, fontSize: '6px', fontWeight: 700 }}>OK</div>
+                              style={{ background: previewGradient, fontSize: '6px', fontWeight: 700 }}>OK</div>
                           </div>
                         ))}
                       </div>
@@ -938,21 +950,21 @@ export default function SettingsDashboard({
                       <div className="flex gap-1.5">
                         <div className="h-5 flex-1 flex items-center justify-center text-white"
                           style={{
-                            background: previewAccent,
+                            background: previewGradient,
                             borderRadius: draftButtonStyle === 'Rounded' ? '999px' : draftButtonStyle === 'Soft' ? '5px' : '2px',
                             fontSize: '7px', fontWeight: 700
                           }}>Primary</div>
                         <div className="h-5 flex-1 flex items-center justify-center border"
                           style={{
-                            borderColor: draftAccentSolid,
-                            color: draftAccentSolid,
+                            borderColor: previewAccent,
+                            color: previewAccent,
                             borderRadius: draftButtonStyle === 'Rounded' ? '999px' : draftButtonStyle === 'Soft' ? '5px' : '2px',
                             fontSize: '7px', fontWeight: 700
                           }}>Ghost</div>
                       </div>
 
                       {/* Input */}
-                      <div className="h-5 flex items-center px-1.5 border bg-white"
+                      <div className="h-5 flex items-center px-1.5 border bg-bg-card"
                         style={{
                           borderColor: '#e2e8f0',
                           borderRadius: draftButtonStyle === 'Sharp' ? '2px' : '5px',

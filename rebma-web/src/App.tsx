@@ -6,6 +6,7 @@ import type { Order, IncomingGoods, ProductionRequest, Visitor, Attendance, Chat
 
 import Sidebar from './components/layout/Sidebar';
 import Header from './components/layout/Header';
+import { applyAccentOverride } from './utils/accentOverride';
 import ChatDrawer from './components/collaborative/ChatDrawer';
 
 import CeoDashboard from './views/CeoDashboard';
@@ -169,7 +170,17 @@ export default function App() {
     // Set reducedMotion helper
     setReducedMotion(motionSetting === 'Reduced');
   }, [theme, accentColor, fontFamily, fontSize, navStyle, buttonStyle, cardStyle, density, motionSetting, darkMode]);
-  
+
+  // Restore accent override on mount (runs once — re-applies saved custom accent over theme CSS)
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('erp-appearance') || '{}');
+      if (saved.accentType && saved.accentType !== 'none') {
+        applyAccentOverride(saved);
+      }
+    } catch { /* ignore */ }
+  }, []);
+
   // Authentication & Onboarding States
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);

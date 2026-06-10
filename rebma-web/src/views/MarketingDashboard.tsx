@@ -352,7 +352,7 @@ export default function MarketingDashboard({
         <div className="flex items-center gap-3">
           <button 
             onClick={() => setActiveMobileDetail(null)}
-            className="px-3 py-1.5 bg-bg-card dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full text-xs font-bold text-slate-600 cursor-pointer shadow-card"
+            className="px-3 py-1.5 bg-bg-card dark:bg-slate-800 border border-[var(--border)] dark:border-slate-700 rounded-full text-xs font-bold text-slate-600 cursor-pointer shadow-card"
           >
             ← Back
           </button>
@@ -363,9 +363,9 @@ export default function MarketingDashboard({
           const cust = activeMobileDetail.data as Customer;
           return (
             <div className="space-y-4">
-              <div className="bg-bg-card dark:bg-slate-800 rounded-2xl p-6 shadow-card border border-slate-100 dark:border-slate-700 text-center flex flex-col items-center gap-3">
+              <div className="bg-bg-card dark:bg-slate-800 rounded-2xl p-6 shadow-card border border-[var(--border)] dark:border-slate-700 text-center flex flex-col items-center gap-3">
                 {cust.photo ? (
-                  <img src={cust.photo} alt={cust.name} className="w-16 h-16 rounded-full object-cover border-2 border-slate-200" />
+                  <img src={cust.photo} alt={cust.name} className="w-16 h-16 rounded-full object-cover border-2 border-[var(--border)]" />
                 ) : (
                   <div className="w-16 h-16 rounded-full bg-blue-500/10 flex items-center justify-center">
                     <span className="text-xl font-bold text-blue-500">{cust.name[0]}</span>
@@ -377,7 +377,7 @@ export default function MarketingDashboard({
                   <span className="inline-block mt-2 px-2.5 py-0.5 bg-blue-500/10 text-blue-500 rounded-full text-[9px] font-bold uppercase">{cust.companyName}</span>
                 </div>
               </div>
-              <div className="bg-bg-card dark:bg-slate-800 rounded-2xl p-4 shadow-card border border-slate-100 dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-700">
+              <div className="bg-bg-card dark:bg-slate-800 rounded-2xl p-4 shadow-card border border-[var(--border)] dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-700">
                 {[['Phone', cust.phone], ['Location', cust.location || '—'], ['Email', cust.email || '—'], ['Ghana Card', cust.ghanaCard || '—'], ['Registered', cust.registeredAt]].map(([label, value]) => (
                   <div key={label} className="py-3 flex justify-between items-center text-xs">
                     <span className="text-slate-400 font-medium">{label}</span>
@@ -386,7 +386,7 @@ export default function MarketingDashboard({
                 ))}
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <button onClick={() => { handleEditCustomer(cust); setActiveMobileDetail(null); }} className="py-3 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs font-bold cursor-pointer border border-slate-200 dark:border-slate-700">Edit Account</button>
+                <button onClick={() => { handleEditCustomer(cust); setActiveMobileDetail(null); }} className="py-3 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs font-bold cursor-pointer border border-[var(--border)] dark:border-slate-700">Edit Account</button>
                 <button onClick={() => { handleDeleteCustomer(cust.id); setActiveMobileDetail(null); }} className="py-3 bg-rose-50 dark:bg-rose-950/20 rounded-xl text-xs font-bold text-rose-600 cursor-pointer">Delete Customer</button>
               </div>
             </div>
@@ -395,14 +395,14 @@ export default function MarketingDashboard({
           const order = activeMobileDetail.data as Order;
           return (
             <div className="space-y-4">
-              <div className="bg-bg-card dark:bg-slate-800 rounded-2xl p-6 shadow-card border border-slate-100 dark:border-slate-700 text-center flex flex-col items-center gap-3">
+              <div className="bg-bg-card dark:bg-slate-800 rounded-2xl p-6 shadow-card border border-[var(--border)] dark:border-slate-700 text-center flex flex-col items-center gap-3">
                 <div className="w-16 h-16 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 flex items-center justify-center font-bold text-xl">{order.clientName[0]}</div>
                 <div>
                   <h3 className="text-base font-bold">{order.clientName}</h3>
                   <p className="text-xs text-slate-400 font-mono mt-0.5">{order.id}</p>
                 </div>
               </div>
-              <div className="bg-bg-card dark:bg-slate-800 rounded-2xl p-4 shadow-card border border-slate-100 dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-700">
+              <div className="bg-bg-card dark:bg-slate-800 rounded-2xl p-4 shadow-card border border-[var(--border)] dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-700">
                 {[
                   ['Ticket', order.ticketNumber || '—'],
                   ['Product', order.productName || '—'],
@@ -419,7 +419,7 @@ export default function MarketingDashboard({
                 ))}
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <button onClick={() => { handleEditOrder(order); setActiveMobileDetail(null); }} className="py-3 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs font-bold cursor-pointer border border-slate-200 dark:border-slate-700">Edit Order</button>
+                <button onClick={() => { handleEditOrder(order); setActiveMobileDetail(null); }} className="py-3 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs font-bold cursor-pointer border border-[var(--border)] dark:border-slate-700">Edit Order</button>
                 <button onClick={() => { handleDeleteOrder(order.id); setActiveMobileDetail(null); }} className="py-3 bg-rose-50 dark:bg-rose-950/20 rounded-xl text-xs font-bold text-rose-600 cursor-pointer">Delete Order</button>
               </div>
             </div>
@@ -440,11 +440,11 @@ export default function MarketingDashboard({
             <p className="text-[11px] text-slate-400 mt-0.5">Sales pipeline & customer records</p>
           </div>
           <div className="flex gap-2">
-            <button onClick={() => exportToCSV(localOrders, ['id', 'clientName', 'productName', 'totalAmount', 'status'], 'sales_orders')} className="p-2 bg-bg-card rounded-xl border border-slate-200 shadow-card" title="Export CSV">
-              <FileSpreadsheet className="w-4 h-4 text-slate-500" />
+            <button onClick={() => exportToCSV(localOrders, ['id', 'clientName', 'productName', 'totalAmount', 'status'], 'sales_orders')} className="p-2 bg-bg-card rounded-xl border border-[var(--border)] shadow-card" title="Export CSV">
+              <FileSpreadsheet className="w-4 h-4 text-text-secondary" />
             </button>
-            <button onClick={() => exportToPDF('Sales Orders Report', localOrders, ['id', 'clientName', 'totalAmount', 'status'])} className="p-2 bg-bg-card rounded-xl border border-slate-200 shadow-card" title="Export PDF">
-              <FileText className="w-4 h-4 text-slate-500" />
+            <button onClick={() => exportToPDF('Sales Orders Report', localOrders, ['id', 'clientName', 'totalAmount', 'status'])} className="p-2 bg-bg-card rounded-xl border border-[var(--border)] shadow-card" title="Export PDF">
+              <FileText className="w-4 h-4 text-text-secondary" />
             </button>
           </div>
         </div>
@@ -498,7 +498,7 @@ export default function MarketingDashboard({
           <button onClick={() => setShowOrderModal(true)} className="flex items-center justify-center gap-1.5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-card">
             <UserPlus className="w-4 h-4" /> Book Order
           </button>
-          <button onClick={() => setShowCustomerModal(true)} className="flex items-center justify-center gap-1.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition-all border border-slate-200">
+          <button onClick={() => setShowCustomerModal(true)} className="flex items-center justify-center gap-1.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition-all border border-[var(--border)]">
             <Users className="w-4 h-4" /> Add Customer
           </button>
         </div>
@@ -533,7 +533,7 @@ export default function MarketingDashboard({
             {localCustomers.slice(0, 5).map(c => (
               <div key={c.id} onClick={() => setActiveMobileDetail({ type: 'customer', data: c })} className="mobile-data-row cursor-pointer">
                 {c.photo ? (
-                  <img src={c.photo} alt={c.name} className="w-8 h-8 rounded-full object-cover border border-slate-100" />
+                  <img src={c.photo} alt={c.name} className="w-8 h-8 rounded-full object-cover border border-[var(--border)]" />
                 ) : (
                   <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-xs">
                     {c.name[0]}
@@ -919,11 +919,11 @@ export default function MarketingDashboard({
             <div
               key={cust.id}
               onClick={() => setActiveMobileDetail({ type: 'customer', data: cust })}
-              className="bg-bg-card dark:bg-slate-800 rounded-2xl shadow-card p-4 border border-slate-100 dark:border-slate-700 flex items-center justify-between cursor-pointer"
+              className="bg-bg-card dark:bg-slate-800 rounded-2xl shadow-card p-4 border border-[var(--border)] dark:border-slate-700 flex items-center justify-between cursor-pointer"
             >
               <div className="flex items-center gap-3">
                 {cust.photo ? (
-                  <img src={cust.photo} alt={cust.name} className="w-10 h-10 rounded-full object-cover border border-slate-200" />
+                  <img src={cust.photo} alt={cust.name} className="w-10 h-10 rounded-full object-cover border border-[var(--border)]" />
                 ) : (
                   <div className="w-10 h-10 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center font-bold text-sm shrink-0">{cust.name[0]}</div>
                 )}

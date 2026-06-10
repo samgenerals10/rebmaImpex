@@ -43,29 +43,29 @@ export default function ChatDrawer({
           animate={{ x: 0 }}
           exit={{ x: '100%' }}
           transition={{ type: 'tween', duration: 0.3 }}
-          className="fixed right-0 top-0 h-full w-full sm:w-80 bg-white border-l border-slate-200 shadow-2xl flex flex-col justify-between p-4 z-50 app-card"
+          className="fixed right-0 top-0 h-full w-full sm:w-80 bg-bg-card border-l border-[var(--border)] shadow-2xl flex flex-col justify-between p-4 z-50 app-card"
         >
           {/* Header info */}
           <div>
             <div className="flex justify-between items-center mb-4">
-              <h3 className="font-bold text-sm text-slate-800 flex items-center gap-2">
+              <h3 className="font-bold text-sm text-text-primary flex items-center gap-2">
                 <MessageSquare className="w-4 h-4 text-blue-500" />
                 <span>Real-time Messaging</span>
               </h3>
               <button 
                 onClick={onClose}
-                className="text-slate-400 hover:text-slate-600 text-xs font-bold cursor-pointer"
+                className="text-text-muted hover:text-slate-600 text-xs font-bold cursor-pointer"
               >
                 Close
               </button>
             </div>
 
             {/* Boardroom Tab Selector */}
-            <div className="border-b border-slate-100 pb-2 mb-4 flex gap-2">
+            <div className="border-b border-[var(--border)] pb-2 mb-4 flex gap-2">
               <button className="px-2.5 py-1 bg-blue-50 text-blue-600 text-[10px] rounded font-bold">1-on-1 Chat</button>
               <button 
                 onClick={handleEditBoardroom}
-                className="px-2.5 py-1 hover:bg-slate-50 text-slate-500 text-[10px] rounded font-bold flex items-center gap-1"
+                className="px-2.5 py-1 hover:bg-slate-50 text-text-secondary text-[10px] rounded font-bold flex items-center gap-1"
               >
                 <Video className="w-3 h-3" />
                 <span>Boardroom Docs</span>
@@ -75,26 +75,26 @@ export default function ChatDrawer({
             {/* Message items list */}
             <div className="space-y-3 h-96 overflow-y-auto pr-1">
               {chatMessages.map(msg => (
-                <div key={msg.id} className="p-2.5 bg-slate-50 rounded-xl space-y-1">
+                <div key={msg.id} className="p-2.5 bg-bg-page rounded-xl space-y-1">
                   <div className="flex justify-between items-center">
-                    <span className="text-[10px] font-bold text-slate-700">{msg.sender}</span>
-                    <span className="text-[8px] text-slate-400">{msg.time}</span>
+                    <span className="text-[10px] font-bold text-text-primary">{msg.sender}</span>
+                    <span className="text-[8px] text-text-muted">{msg.time}</span>
                   </div>
-                  <p className="text-xs text-slate-600 leading-relaxed">{msg.content}</p>
+                  <p className="text-xs text-text-secondary leading-relaxed">{msg.content}</p>
                 </div>
               ))}
             </div>
           </div>
 
           {/* Input message drawer */}
-          <div className="flex items-center gap-2 pt-4 border-t border-slate-100">
+          <div className="flex items-center gap-2 pt-4 border-t border-[var(--border)]">
             <input 
               type="text" 
               placeholder="Type message..."
               value={chatInput}
               onChange={(e) => setChatInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-              className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-blue-500"
+              className="flex-1 px-3 py-2 bg-bg-page border border-[var(--border)] rounded-xl text-xs focus:outline-none focus:border-blue-500"
             />
             <button 
               onClick={handleSend}

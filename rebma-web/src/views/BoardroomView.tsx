@@ -138,11 +138,11 @@ export default function BoardroomView({
             <p className="text-[11px] text-slate-400 mt-0.5">Announcements & schedules</p>
           </div>
           <div className="flex gap-2">
-            <button onClick={handleExportCSV} className="p-2 bg-white rounded-xl border border-slate-200 shadow-sm" title="Export CSV">
-              <FileSpreadsheet className="w-4 h-4 text-slate-500" />
+            <button onClick={handleExportCSV} className="p-2 bg-bg-card rounded-xl border border-[var(--border)] shadow-card" title="Export CSV">
+              <FileSpreadsheet className="w-4 h-4 text-text-secondary" />
             </button>
-            <button onClick={handleExportPDF} className="p-2 bg-white rounded-xl border border-slate-200 shadow-sm" title="Export PDF">
-              <FileText className="w-4 h-4 text-slate-500" />
+            <button onClick={handleExportPDF} className="p-2 bg-bg-card rounded-xl border border-[var(--border)] shadow-card" title="Export PDF">
+              <FileText className="w-4 h-4 text-text-secondary" />
             </button>
           </div>
         </div>
@@ -200,11 +200,11 @@ export default function BoardroomView({
         {/* Public Announcements board */}
         <div>
           <p className="mobile-section-label">Public Announcements ({publicMessages.length})</p>
-          <div className="bg-white rounded-2xl border border-slate-100 p-3 shadow-sm space-y-3">
+          <div className="bg-bg-card rounded-2xl border border-[var(--border)] p-3 shadow-card space-y-3">
             <div className="max-h-48 overflow-y-auto space-y-2 pr-1">
               {publicMessages.slice(-5).map(msg => (
                 <div key={msg.id} className="text-xs">
-                  <div className="flex items-center gap-1.5 font-bold text-[10px] text-slate-500">
+                  <div className="flex items-center gap-1.5 font-bold text-[10px] text-text-secondary">
                     <span>{msg.sender}</span>
                     <span className="font-normal text-[9px] text-slate-400">• {msg.time}</span>
                   </div>
@@ -221,7 +221,7 @@ export default function BoardroomView({
                 value={announcementText} 
                 onChange={e => setAnnouncementText(e.target.value)} 
                 placeholder="Broadcast to boardroom..." 
-                className="flex-1 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none"
+                className="flex-1 px-3 py-1.5 bg-slate-50 border border-[var(--border)] rounded-xl text-xs focus:outline-none"
               />
               <button type="submit" className="p-1.5 bg-blue-600 text-white rounded-xl"><Send className="w-4 h-4" /></button>
             </form>
@@ -301,7 +301,7 @@ export default function BoardroomView({
                           <span className={`px-2 py-0.5 rounded text-[9px] font-bold border ${
                             p.status === 'Online' 
                               ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' 
-                              : 'bg-slate-500/10 text-slate-500 border-slate-500/20'
+                              : 'bg-slate-500/10 text-text-secondary border-slate-500/20'
                           }`}>{p.status}</span>
                         </div>
                       ))}

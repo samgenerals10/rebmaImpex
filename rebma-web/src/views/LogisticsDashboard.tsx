@@ -64,11 +64,11 @@ export default function LogisticsDashboard() {
             <p className="text-[11px] text-slate-400 mt-0.5">Fleet maintenance & supply chain metrics</p>
           </div>
           <div className="flex gap-2">
-            <button onClick={handleExportCSV} className="p-2 bg-bg-card rounded-xl border border-slate-200 shadow-card" title="Export CSV">
-              <FileSpreadsheet className="w-4 h-4 text-slate-500" />
+            <button onClick={handleExportCSV} className="p-2 bg-bg-card rounded-xl border border-[var(--border)] shadow-card" title="Export CSV">
+              <FileSpreadsheet className="w-4 h-4 text-text-secondary" />
             </button>
-            <button onClick={handleExportPDF} className="p-2 bg-bg-card rounded-xl border border-slate-200 shadow-card" title="Export PDF">
-              <FileText className="w-4 h-4 text-slate-500" />
+            <button onClick={handleExportPDF} className="p-2 bg-bg-card rounded-xl border border-[var(--border)] shadow-card" title="Export PDF">
+              <FileText className="w-4 h-4 text-text-secondary" />
             </button>
           </div>
         </div>
@@ -140,7 +140,7 @@ export default function LogisticsDashboard() {
         </div>
 
         {/* Mini fleet performance chart */}
-        <div className="bg-bg-card rounded-2xl border border-slate-100 shadow-card p-4">
+        <div className="bg-bg-card rounded-2xl border border-[var(--border)] shadow-card p-4">
           <h3 className="text-xs font-bold text-slate-800 mb-1">Fleet Performance</h3>
           <p className="text-[10px] text-slate-400 mb-3">Weekly distance vs fuel</p>
           <div className="h-36">
@@ -158,7 +158,7 @@ export default function LogisticsDashboard() {
         </div>
 
         {/* Fuel & Maintenance bar chart */}
-        <div className="bg-bg-card rounded-2xl border border-slate-100 shadow-card p-4">
+        <div className="bg-bg-card rounded-2xl border border-[var(--border)] shadow-card p-4">
           <h3 className="text-xs font-bold text-slate-800 mb-3">Fuel & Maintenance by Truck</h3>
           <div className="h-36">
             <ResponsiveContainer width="100%" height="100%">

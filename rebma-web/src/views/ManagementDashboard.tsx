@@ -354,8 +354,8 @@ export default function ManagementDashboard({
             <p className="text-[11px] text-slate-400 mt-0.5">Cargo approvals & credit control</p>
           </div>
           <div className="flex gap-2">
-            <button onClick={() => exportToCSV(localGoods, ['id', 'goodsName', 'quantity', 'portName', 'status'], 'cargo_list')} className="p-2 bg-bg-card rounded-xl border border-slate-200 shadow-card"><FileSpreadsheet className="w-4 h-4 text-slate-500" /></button>
-            <button onClick={() => exportToPDF('Management Report', localGoods, ['id', 'goodsName', 'quantity', 'status'])} className="p-2 bg-bg-card rounded-xl border border-slate-200 shadow-card"><FileText className="w-4 h-4 text-slate-500" /></button>
+            <button onClick={() => exportToCSV(localGoods, ['id', 'goodsName', 'quantity', 'portName', 'status'], 'cargo_list')} className="p-2 bg-bg-card rounded-xl border border-[var(--border)] shadow-card"><FileSpreadsheet className="w-4 h-4 text-text-secondary" /></button>
+            <button onClick={() => exportToPDF('Management Report', localGoods, ['id', 'goodsName', 'quantity', 'status'])} className="p-2 bg-bg-card rounded-xl border border-[var(--border)] shadow-card"><FileText className="w-4 h-4 text-text-secondary" /></button>
           </div>
         </div>
 
@@ -405,7 +405,7 @@ export default function ManagementDashboard({
                   <p className="text-xs font-bold text-slate-800 truncate">{g.productName || 'Unnamed Cargo'}</p>
                   <p className="text-[10px] text-slate-400 truncate">{g.quantity} units • {g.country}</p>
                 </div>
-                <span className={`mobile-status-pill ${g.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-700' : g.status === 'PENDING_MANAGEMENT_APPROVAL' ? 'bg-amber-50 text-amber-700' : 'bg-slate-100 text-slate-500'}`}>
+                <span className={`mobile-status-pill ${g.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-700' : g.status === 'PENDING_MANAGEMENT_APPROVAL' ? 'bg-amber-50 text-amber-700' : 'bg-slate-100 text-text-secondary'}`}>
                   {g.status.replace(/_/g, ' ')}
                 </span>
               </div>

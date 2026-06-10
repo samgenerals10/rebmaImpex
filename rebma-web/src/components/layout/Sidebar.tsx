@@ -241,7 +241,7 @@ export default function Sidebar({
             </div>
             <div className="truncate flex-1">
               <p className="text-xs font-bold leading-none truncate text-[var(--text-primary)]">{currentUser?.fullName}</p>
-              <p className="text-[10px] text-slate-500 leading-none mt-1 truncate">{currentUser?.department}</p>
+              <p className="text-[10px] text-text-secondary leading-none mt-1 truncate">{currentUser?.department}</p>
             </div>
           </div>
 
@@ -293,7 +293,7 @@ export default function Sidebar({
               activeDepartment === 'SETTINGS' ? 'bg-slate-100 dark:bg-slate-800 text-[var(--accent,#068d5c)] font-bold' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
             }`}
           >
-            <Settings className="w-4 h-4 text-slate-500" />
+            <Settings className="w-4 h-4 text-text-secondary" />
             <span>Settings</span>
           </button>
           <button
@@ -434,7 +434,7 @@ export default function Sidebar({
                               CEO: 'Overview', MANAGEMENT: 'CargoApproval', HR: 'Employees',
                               MARKETING: 'CreateOrder', OPERATIONS: 'PortIngestion', FINANCE: 'Evaluation',
                               PRODUCTION: 'Requisition', RECEPTION: 'VisitorLog', DISPATCH: 'Deliveries',
-                              LOGISTICS: 'Maintenance', BOARDROOM: 'VideoConf', SETTINGS: 'Themes'
+                              LOGISTICS: 'Maintenance', BOARDROOM: 'VideoConf', SETTINGS: 'Appearance'
                             };
                             setActiveSubTab(defaultSubTabs[dept.value] || 'Overview');
                             setIsSwitcherOpen(false);

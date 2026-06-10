@@ -367,6 +367,52 @@ body.font-family-dmsans    { --font-base: 'DM Sans', sans-serif; }
 body.font-family-nunito    { --font-base: 'Nunito', sans-serif; }
 body.font-family-outfit    { --font-base: 'Outfit', sans-serif; }
 
+/* ─── GLOBAL BASE STYLES — cascade defaults for all elements ─── */
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  background-color: var(--bg-page);
+  color: var(--text-primary);
+  font-size: var(--font-size-base, 14px);
+}
+
+h1, h2, h3, h4, h5, h6 { color: var(--text-primary); }
+
+p { color: var(--text-secondary); }
+
+label { color: var(--text-secondary); }
+
+hr { border-color: var(--border); }
+
+a { color: var(--accent); }
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+select,
+textarea {
+  background-color: var(--bg-input);
+  color: var(--text-primary);
+  border-color: var(--border);
+}
+
+input::placeholder,
+textarea::placeholder { color: var(--text-muted); }
+
+table { color: var(--text-primary); }
+th    { color: var(--text-muted); border-bottom-color: var(--border); }
+td    { color: var(--text-primary); border-bottom-color: var(--border); }
+
+/* ─── DARK SIDEBAR THEME: scope text vars inside sidebar-shell ─── */
+/* Foodie sidebar is #1e1b4b — text must be white inside it */
+body.theme-foodie .sidebar-shell {
+  --text-primary:   #ffffff;
+  --text-secondary: rgba(255,255,255,0.85);
+  --text-muted:     rgba(255,255,255,0.55);
+  --border:         rgba(255,255,255,0.12);
+  --bg-input:       rgba(255,255,255,0.08);
+  --accent-soft:    rgba(124,58,237,0.30);
+  --accent-light:   rgba(124,58,237,0.30);
+}
+
 /* ─── BASE UTILITY CLASSES ─── */
 
 /* Cards */

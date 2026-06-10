@@ -66,15 +66,15 @@ export default function CeoDashboard({
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-lg font-bold text-slate-800 tracking-tight">CEO Command</h1>
-            <p className="text-[11px] text-slate-400 mt-0.5">Global operations overview</p>
+            <h1 className="text-lg font-bold text-text-primary tracking-tight">CEO Command</h1>
+            <p className="text-[11px] text-text-muted mt-0.5">Global operations overview</p>
           </div>
           <div className="flex gap-2">
-            <button onClick={handleExportCSV} className="p-2 bg-bg-card rounded-xl border border-slate-200 shadow-card" title="Export CSV">
-              <FileSpreadsheet className="w-4 h-4 text-slate-500" />
+            <button onClick={handleExportCSV} className="p-2 bg-bg-card rounded-xl border border-[var(--border)] shadow-card" title="Export CSV">
+              <FileSpreadsheet className="w-4 h-4 text-text-secondary" />
             </button>
-            <button onClick={handleExportPDF} className="p-2 bg-bg-card rounded-xl border border-slate-200 shadow-card" title="Export PDF">
-              <FileText className="w-4 h-4 text-slate-500" />
+            <button onClick={handleExportPDF} className="p-2 bg-bg-card rounded-xl border border-[var(--border)] shadow-card" title="Export PDF">
+              <FileText className="w-4 h-4 text-text-secondary" />
             </button>
           </div>
         </div>
@@ -133,9 +133,9 @@ export default function CeoDashboard({
                   <Icon className="w-5 h-5" style={{ color: s.color }} />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[9px] text-slate-400 uppercase font-bold tracking-wider truncate">{s.title}</p>
-                  <p className="text-sm font-bold text-slate-800 mt-0.5">{s.value}</p>
-                  <p className="text-[9px] text-slate-400 truncate">{s.sub}</p>
+                  <p className="text-[9px] text-text-muted uppercase font-bold tracking-wider truncate">{s.title}</p>
+                  <p className="text-sm font-bold text-text-primary mt-0.5">{s.value}</p>
+                  <p className="text-[9px] text-text-muted truncate">{s.sub}</p>
                 </div>
               </div>
             );
@@ -143,11 +143,11 @@ export default function CeoDashboard({
         </div>
 
         {/* Mini Chart card */}
-        <div className="bg-bg-card rounded-2xl border border-slate-100 shadow-card p-4">
+        <div className="bg-bg-card rounded-2xl border border-[var(--border)] shadow-card p-4">
           <div className="flex items-center justify-between mb-3">
             <div>
-              <h3 className="text-xs font-bold text-slate-800">Inflow vs Orders</h3>
-              <p className="text-[10px] text-slate-400">Weekly transactional volumes</p>
+              <h3 className="text-xs font-bold text-text-primary">Inflow vs Orders</h3>
+              <p className="text-[10px] text-text-muted">Weekly transactional volumes</p>
             </div>
             <svg width="60" height="26" viewBox="0 0 60 26" fill="none" className="opacity-60">
               <path d="M2 22 Q15 8 30 14 Q45 20 58 4" stroke="#068d5c" strokeWidth="2.5" strokeLinecap="round" fill="none" className="mobile-wave-path" />
@@ -168,9 +168,9 @@ export default function CeoDashboard({
         </div>
 
         {/* Fleet GPS mini card */}
-        <div className="bg-bg-card rounded-2xl border border-slate-100 shadow-card p-4">
-          <h3 className="text-xs font-bold text-slate-800 mb-2">Live Fleet Tracking</h3>
-          <div className="h-32 bg-slate-50 rounded-xl relative overflow-hidden flex items-center justify-center border border-slate-100">
+        <div className="bg-bg-card rounded-2xl border border-[var(--border)] shadow-card p-4">
+          <h3 className="text-xs font-bold text-text-primary mb-2">Live Fleet Tracking</h3>
+          <div className="h-32 bg-bg-page rounded-xl relative overflow-hidden flex items-center justify-center border border-[var(--border)]">
             <div className="absolute inset-0 opacity-15 bg-[radial-gradient(#3b82f6_1px,transparent_1px)] [background-size:14px_14px]" />
             <motion.div
               animate={{ scale: [1, 1.3, 1] }}
@@ -189,7 +189,7 @@ export default function CeoDashboard({
               <p>Status: <span className="text-emerald-400 font-bold">{deliveryStatus}</span></p>
             </div>
           </div>
-          <p className="text-[9px] text-slate-400 mt-2 text-right">Refresh: {gpsInterval}s</p>
+          <p className="text-[9px] text-text-muted mt-2 text-right">Refresh: {gpsInterval}s</p>
         </div>
       </div>
 

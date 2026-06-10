@@ -337,7 +337,7 @@ export default function FinanceDashboard({
         <div className="flex items-center gap-3">
           <button 
             onClick={() => setActiveMobileDetail(null)}
-            className="px-3 py-1.5 bg-bg-card dark:bg-slate-850 border border-slate-200 dark:border-slate-800 rounded-full text-xs font-bold text-slate-600 dark:text-slate-350 cursor-pointer shadow-card"
+            className="px-3 py-1.5 bg-bg-card dark:bg-slate-850 border border-[var(--border)] dark:border-slate-800 rounded-full text-xs font-bold text-slate-600 dark:text-slate-350 cursor-pointer shadow-card"
           >
             ← Back
           </button>
@@ -349,7 +349,7 @@ export default function FinanceDashboard({
           return (
             <div className="space-y-6">
               {/* Info Header */}
-              <div className="bg-bg-card dark:bg-slate-855 rounded-2xl p-6 shadow-card border border-slate-100 dark:border-slate-800 space-y-4 text-center flex flex-col items-center">
+              <div className="bg-bg-card dark:bg-slate-855 rounded-2xl p-6 shadow-card border border-[var(--border)] dark:border-slate-800 space-y-4 text-center flex flex-col items-center">
                 <div className="w-16 h-16 rounded-full bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-xl shrink-0">
                   GHS
                 </div>
@@ -360,7 +360,7 @@ export default function FinanceDashboard({
               </div>
 
               {/* Fields */}
-              <div className="bg-bg-card dark:bg-slate-855 rounded-2xl p-4 shadow-card border border-slate-100 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
+              <div className="bg-bg-card dark:bg-slate-855 rounded-2xl p-4 shadow-card border border-[var(--border)] dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
                 <div className="py-3 flex justify-between items-center text-xs">
                   <span className="text-slate-400 font-medium">Receipt #</span>
                   <span className="font-semibold text-slate-800 dark:text-slate-200 font-mono">{pay.id}</span>
@@ -402,13 +402,13 @@ export default function FinanceDashboard({
                 <div className="grid grid-cols-2 gap-3">
                   <button 
                     onClick={() => { handleEditPayment(pay); setActiveMobileDetail(null); }}
-                    className="py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-xs font-bold text-center border border-slate-200 dark:border-slate-800 text-slate-750 dark:text-slate-200 cursor-pointer"
+                    className="py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-xs font-bold text-center border border-[var(--border)] dark:border-slate-800 text-slate-750 dark:text-slate-200 cursor-pointer"
                   >
                     Edit Receipt
                   </button>
                   <button 
                     onClick={() => { handleDuplicatePayment(pay); setActiveMobileDetail(null); }}
-                    className="py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-xs font-bold text-center border border-slate-200 dark:border-slate-800 text-slate-750 dark:text-slate-200 cursor-pointer"
+                    className="py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-xs font-bold text-center border border-[var(--border)] dark:border-slate-800 text-slate-750 dark:text-slate-200 cursor-pointer"
                   >
                     Duplicate
                   </button>
@@ -427,7 +427,7 @@ export default function FinanceDashboard({
           return (
             <div className="space-y-6">
               {/* Info Header */}
-              <div className="bg-bg-card dark:bg-slate-855 rounded-2xl p-6 shadow-card border border-slate-100 dark:border-slate-800 space-y-4 text-center flex flex-col items-center">
+              <div className="bg-bg-card dark:bg-slate-855 rounded-2xl p-6 shadow-card border border-[var(--border)] dark:border-slate-800 space-y-4 text-center flex flex-col items-center">
                 <div className="w-16 h-16 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-xl shrink-0">
                   REQ
                 </div>
@@ -438,7 +438,7 @@ export default function FinanceDashboard({
               </div>
 
               {/* Fields */}
-              <div className="bg-bg-card dark:bg-slate-855 rounded-2xl p-4 shadow-card border border-slate-100 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
+              <div className="bg-bg-card dark:bg-slate-855 rounded-2xl p-4 shadow-card border border-[var(--border)] dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
                 <div className="py-3 flex justify-between items-center text-xs">
                   <span className="text-slate-400 font-medium">Requisition ID</span>
                   <span className="font-semibold text-slate-850 dark:text-slate-200 font-mono">{req.id}</span>
@@ -474,13 +474,13 @@ export default function FinanceDashboard({
                 <div className="grid grid-cols-2 gap-3">
                   <button 
                     onClick={() => { handleDuplicateRequisition(req); setActiveMobileDetail(null); }}
-                    className="py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-xs font-bold text-center border border-slate-200 dark:border-slate-800 text-slate-750 dark:text-slate-200 cursor-pointer"
+                    className="py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-xs font-bold text-center border border-[var(--border)] dark:border-slate-800 text-slate-750 dark:text-slate-200 cursor-pointer"
                   >
                     Duplicate Log
                   </button>
                   <button 
                     onClick={() => { handleShareRequisition(req); }}
-                    className="py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-xs font-bold text-center border border-slate-200 dark:border-slate-800 text-slate-750 dark:text-slate-200 cursor-pointer"
+                    className="py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-xs font-bold text-center border border-[var(--border)] dark:border-slate-800 text-slate-750 dark:text-slate-200 cursor-pointer"
                   >
                     Share Link
                   </button>
@@ -509,8 +509,8 @@ export default function FinanceDashboard({
             <p className="text-[11px] text-slate-400 mt-0.5">Revenue tracking & payments</p>
           </div>
           <div className="flex gap-2">
-            <button onClick={() => exportToCSV(localPayments, ['id', 'clientName', 'amount', 'paymentMethod', 'createdAt'], 'payments')} className="p-2 bg-bg-card rounded-xl border border-slate-200 shadow-card"><FileSpreadsheet className="w-4 h-4 text-slate-500" /></button>
-            <button onClick={() => exportToPDF('Finance Report', localPayments, ['id', 'clientName', 'amount'])} className="p-2 bg-bg-card rounded-xl border border-slate-200 shadow-card"><FileText className="w-4 h-4 text-slate-500" /></button>
+            <button onClick={() => exportToCSV(localPayments, ['id', 'clientName', 'amount', 'paymentMethod', 'createdAt'], 'payments')} className="p-2 bg-bg-card rounded-xl border border-[var(--border)] shadow-card"><FileSpreadsheet className="w-4 h-4 text-text-secondary" /></button>
+            <button onClick={() => exportToPDF('Finance Report', localPayments, ['id', 'clientName', 'amount'])} className="p-2 bg-bg-card rounded-xl border border-[var(--border)] shadow-card"><FileText className="w-4 h-4 text-text-secondary" /></button>
           </div>
         </div>
 
@@ -894,7 +894,7 @@ export default function FinanceDashboard({
                     <div 
                       key={pay.id} 
                       onClick={() => setActiveMobileDetail({ type: 'payment', data: pay })}
-                      className="bg-bg-card dark:bg-slate-850 rounded-2xl shadow-card p-4 border border-slate-100 dark:border-slate-800 flex items-center justify-between cursor-pointer"
+                      className="bg-bg-card dark:bg-slate-850 rounded-2xl shadow-card p-4 border border-[var(--border)] dark:border-slate-800 flex items-center justify-between cursor-pointer"
                     >
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-sm shrink-0">
@@ -1116,7 +1116,7 @@ export default function FinanceDashboard({
                     <div 
                       key={req.id} 
                       onClick={() => setActiveMobileDetail({ type: 'requisition', data: req })}
-                      className="bg-bg-card dark:bg-slate-850 rounded-2xl shadow-card p-4 border border-slate-100 dark:border-slate-800 flex items-center justify-between cursor-pointer"
+                      className="bg-bg-card dark:bg-slate-850 rounded-2xl shadow-card p-4 border border-[var(--border)] dark:border-slate-800 flex items-center justify-between cursor-pointer"
                     >
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-blue-50 dark:bg-blue-950/20 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-sm shrink-0">

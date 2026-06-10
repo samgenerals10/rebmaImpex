@@ -327,7 +327,7 @@ export default function HrDashboard({
         <div className="flex items-center gap-3">
           <button 
             onClick={() => setActiveMobileDetail(null)}
-            className="px-3 py-1.5 bg-bg-card dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full text-xs font-bold text-slate-600 dark:text-slate-350 cursor-pointer shadow-card"
+            className="px-3 py-1.5 bg-bg-card dark:bg-slate-800 border border-[var(--border)] dark:border-slate-700 rounded-full text-xs font-bold text-slate-600 dark:text-slate-350 cursor-pointer shadow-card"
           >
             ← Back
           </button>
@@ -339,7 +339,7 @@ export default function HrDashboard({
           return (
             <div className="space-y-6">
               {/* Profile Card */}
-              <div className="bg-bg-card dark:bg-slate-850 rounded-2xl p-6 shadow-card border border-slate-100 dark:border-slate-800 space-y-4 text-center flex flex-col items-center">
+              <div className="bg-bg-card dark:bg-slate-850 rounded-2xl p-6 shadow-card border border-[var(--border)] dark:border-slate-800 space-y-4 text-center flex flex-col items-center">
                 <div className="w-16 h-16 rounded-full bg-blue-100 text-blue-600 dark:bg-blue-900/50 dark:text-blue-400 flex items-center justify-center font-bold text-xl">
                   {staff.fullName[0]}
                 </div>
@@ -351,7 +351,7 @@ export default function HrDashboard({
               </div>
 
               {/* Fields */}
-              <div className="bg-bg-card dark:bg-slate-850 rounded-2xl p-4 shadow-card border border-slate-100 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
+              <div className="bg-bg-card dark:bg-slate-850 rounded-2xl p-4 shadow-card border border-[var(--border)] dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
                 <div className="py-3 flex justify-between items-center text-xs">
                   <span className="text-slate-400 font-medium">Email</span>
                   <span className="font-semibold text-slate-800 dark:text-slate-200">{staff.email}</span>
@@ -382,7 +382,7 @@ export default function HrDashboard({
               <div className="grid grid-cols-2 gap-3">
                 <button 
                   onClick={() => { handleEditStaff(staff); setActiveMobileDetail(null); }}
-                  className="py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-xs font-bold text-center border border-slate-200 dark:border-slate-700 cursor-pointer text-slate-700 dark:text-slate-200"
+                  className="py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-xs font-bold text-center border border-[var(--border)] dark:border-slate-700 cursor-pointer text-slate-700 dark:text-slate-200"
                 >
                   Edit Profile
                 </button>
@@ -400,7 +400,7 @@ export default function HrDashboard({
           return (
             <div className="space-y-6">
               {/* Profile Card */}
-              <div className="bg-bg-card dark:bg-slate-855 rounded-2xl p-6 shadow-card border border-slate-100 dark:border-slate-800 space-y-4 text-center flex flex-col items-center">
+              <div className="bg-bg-card dark:bg-slate-855 rounded-2xl p-6 shadow-card border border-[var(--border)] dark:border-slate-800 space-y-4 text-center flex flex-col items-center">
                 <div className={`w-16 h-16 rounded-full flex items-center justify-center font-bold text-xl ${att.status === 'PRESENT' ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/50 dark:text-emerald-400' : 'bg-amber-100 text-amber-600 dark:bg-amber-900/50 dark:text-amber-400'}`}>
                   {att.fullName[0]}
                 </div>
@@ -411,7 +411,7 @@ export default function HrDashboard({
               </div>
 
               {/* Fields */}
-              <div className="bg-bg-card dark:bg-slate-855 rounded-2xl p-4 shadow-card border border-slate-100 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
+              <div className="bg-bg-card dark:bg-slate-855 rounded-2xl p-4 shadow-card border border-[var(--border)] dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
                 <div className="py-3 flex justify-between items-center text-xs">
                   <span className="text-slate-400 font-medium">Clock-In Time</span>
                   <span className="font-semibold font-mono text-slate-800 dark:text-slate-200">{att.checkInTime}</span>
@@ -426,7 +426,7 @@ export default function HrDashboard({
               <div className="grid grid-cols-2 gap-3">
                 <button 
                   onClick={() => { handleEditAttendance(att); setActiveMobileDetail(null); }}
-                  className="py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-xs font-bold text-center border border-slate-200 dark:border-slate-700 cursor-pointer text-slate-700 dark:text-slate-200"
+                  className="py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-xs font-bold text-center border border-[var(--border)] dark:border-slate-700 cursor-pointer text-slate-700 dark:text-slate-200"
                 >
                   Edit Status
                 </button>
@@ -454,8 +454,8 @@ export default function HrDashboard({
             <p className="text-[11px] text-slate-400 mt-0.5">Staff management & attendance</p>
           </div>
           <div className="flex gap-2">
-            <button onClick={() => exportToCSV(localAttendance, ['id', 'fullName', 'checkInTime', 'status'], 'hr_attendance')} className="p-2 bg-bg-card rounded-xl border border-slate-200 shadow-card"><FileSpreadsheet className="w-4 h-4 text-slate-500" /></button>
-            <button onClick={() => exportToPDF('Daily Staff Attendance Log', localAttendance, ['id', 'fullName', 'checkInTime', 'status'])} className="p-2 bg-bg-card rounded-xl border border-slate-200 shadow-card"><FileText className="w-4 h-4 text-slate-500" /></button>
+            <button onClick={() => exportToCSV(localAttendance, ['id', 'fullName', 'checkInTime', 'status'], 'hr_attendance')} className="p-2 bg-bg-card rounded-xl border border-[var(--border)] shadow-card"><FileSpreadsheet className="w-4 h-4 text-text-secondary" /></button>
+            <button onClick={() => exportToPDF('Daily Staff Attendance Log', localAttendance, ['id', 'fullName', 'checkInTime', 'status'])} className="p-2 bg-bg-card rounded-xl border border-[var(--border)] shadow-card"><FileText className="w-4 h-4 text-text-secondary" /></button>
           </div>
         </div>
 
@@ -506,7 +506,7 @@ export default function HrDashboard({
                   <p className="text-xs font-bold text-slate-800 truncate">{s.fullName}</p>
                   <p className="text-[10px] text-slate-400 truncate">{s.department} • {s.role}</p>
                 </div>
-                <span className={`mobile-status-pill ${s.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>{s.status}</span>
+                <span className={`mobile-status-pill ${s.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-text-secondary'}`}>{s.status}</span>
               </div>
             ))}
           </div>
@@ -733,7 +733,7 @@ export default function HrDashboard({
                     <div 
                       key={staff.id} 
                       onClick={() => setActiveMobileDetail({ type: 'staff', data: staff })}
-                      className="bg-bg-card dark:bg-slate-855 rounded-2xl shadow-card p-4 border border-slate-100 dark:border-slate-800 flex items-center justify-between cursor-pointer"
+                      className="bg-bg-card dark:bg-slate-855 rounded-2xl shadow-card p-4 border border-[var(--border)] dark:border-slate-800 flex items-center justify-between cursor-pointer"
                     >
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-blue-550 text-white flex items-center justify-center font-bold text-base shrink-0">
@@ -857,7 +857,7 @@ export default function HrDashboard({
                         <td className="py-3.5 px-5 text-center relative" onClick={(e) => e.stopPropagation()}>
                           <button
                             onClick={() => setActiveStaffMenu(activeStaffMenu === staff.id ? null : staff.id)}
-                            className="w-8 h-8 inline-flex items-center justify-center bg-[var(--bg)] hover:bg-[var(--accent-light)] border border-[var(--border)] rounded-lg text-slate-500 dark:text-slate-400 transition-colors select-none"
+                            className="w-8 h-8 inline-flex items-center justify-center bg-[var(--bg)] hover:bg-[var(--accent-light)] border border-[var(--border)] rounded-lg text-text-secondary dark:text-slate-400 transition-colors select-none"
                           >
                             ···
                           </button>
@@ -1030,7 +1030,7 @@ export default function HrDashboard({
                     <div 
                       key={a.id} 
                       onClick={() => setActiveMobileDetail({ type: 'attendance', data: a })}
-                      className="bg-bg-card dark:bg-slate-855 rounded-2xl shadow-card p-4 border border-slate-100 dark:border-slate-800 flex items-center justify-between cursor-pointer"
+                      className="bg-bg-card dark:bg-slate-855 rounded-2xl shadow-card p-4 border border-[var(--border)] dark:border-slate-800 flex items-center justify-between cursor-pointer"
                     >
                       <div className="flex items-center gap-3">
                         <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white shrink-0 ${a.status === 'PRESENT' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-amber-500/10 text-amber-500'}`}>
@@ -1117,7 +1117,7 @@ export default function HrDashboard({
                         <td className="py-3.5 px-5 text-center relative" onClick={(e) => e.stopPropagation()}>
                           <button
                             onClick={() => setActiveAttendanceMenu(activeAttendanceMenu === a.id ? null : a.id)}
-                            className="w-8 h-8 inline-flex items-center justify-center bg-[var(--bg)] hover:bg-[var(--accent-light)] border border-[var(--border)] rounded-lg text-slate-500 dark:text-slate-400 transition-colors select-none"
+                            className="w-8 h-8 inline-flex items-center justify-center bg-[var(--bg)] hover:bg-[var(--accent-light)] border border-[var(--border)] rounded-lg text-text-secondary dark:text-slate-400 transition-colors select-none"
                           >
                             ···
                           </button>

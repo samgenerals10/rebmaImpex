@@ -388,7 +388,7 @@ export default function ProductionDashboard({
         <div className="flex items-center gap-3">
           <button 
             onClick={() => setActiveMobileDetail(null)}
-            className="px-3 py-1.5 bg-bg-card dark:bg-slate-850 border border-slate-200 dark:border-slate-800 rounded-full text-xs font-bold text-slate-600 dark:text-slate-350 cursor-pointer shadow-card"
+            className="px-3 py-1.5 bg-bg-card dark:bg-slate-850 border border-[var(--border)] dark:border-slate-800 rounded-full text-xs font-bold text-slate-600 dark:text-slate-350 cursor-pointer shadow-card"
           >
             ← Back
           </button>
@@ -399,7 +399,7 @@ export default function ProductionDashboard({
           const m = activeMobileDetail.data; // flattened requisition item
           return (
             <div className="space-y-6">
-              <div className="bg-bg-card dark:bg-slate-855 rounded-2xl p-6 shadow-card border border-slate-100 dark:border-slate-800 space-y-4 text-center flex flex-col items-center">
+              <div className="bg-bg-card dark:bg-slate-855 rounded-2xl p-6 shadow-card border border-[var(--border)] dark:border-slate-800 space-y-4 text-center flex flex-col items-center">
                 <div className="w-16 h-16 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-xl shrink-0">
                   REQ
                 </div>
@@ -409,7 +409,7 @@ export default function ProductionDashboard({
                 </div>
               </div>
 
-              <div className="bg-bg-card dark:bg-slate-855 rounded-2xl p-4 shadow-card border border-slate-100 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
+              <div className="bg-bg-card dark:bg-slate-855 rounded-2xl p-4 shadow-card border border-[var(--border)] dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
                 <div className="py-3 flex justify-between items-center text-xs">
                   <span className="text-slate-400 font-medium">Requisition ID</span>
                   <span className="font-semibold text-slate-800 dark:text-slate-200 font-mono">{m.reqId}</span>
@@ -446,13 +446,13 @@ export default function ProductionDashboard({
                 <div className="grid grid-cols-2 gap-3">
                   <button 
                     onClick={() => { handleEditRequisition(m.originalReq, m.itemIdx); setActiveMobileDetail(null); }}
-                    className="py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-xs font-bold text-center border border-slate-200 dark:border-slate-800 text-slate-750 dark:text-slate-200 cursor-pointer"
+                    className="py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-xs font-bold text-center border border-[var(--border)] dark:border-slate-800 text-slate-750 dark:text-slate-200 cursor-pointer"
                   >
                     Edit Request
                   </button>
                   <button 
                     onClick={() => { handleDuplicateRequisition(m.originalReq); setActiveMobileDetail(null); }}
-                    className="py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-xs font-bold text-center border border-slate-200 dark:border-slate-800 text-slate-750 dark:text-slate-200 cursor-pointer"
+                    className="py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-xs font-bold text-center border border-[var(--border)] dark:border-slate-800 text-slate-750 dark:text-slate-200 cursor-pointer"
                   >
                     Duplicate
                   </button>
@@ -471,7 +471,7 @@ export default function ProductionDashboard({
           return (
             <div className="space-y-6">
               {/* Profile Card */}
-              <div className="bg-bg-card dark:bg-slate-855 rounded-2xl p-6 shadow-card border border-slate-100 dark:border-slate-800 space-y-4 text-center flex flex-col items-center">
+              <div className="bg-bg-card dark:bg-slate-855 rounded-2xl p-6 shadow-card border border-[var(--border)] dark:border-slate-800 space-y-4 text-center flex flex-col items-center">
                 <div className="w-16 h-16 rounded-full bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold text-xl shrink-0">
                   WIP
                 </div>
@@ -482,7 +482,7 @@ export default function ProductionDashboard({
               </div>
 
               {/* Fields */}
-              <div className="bg-bg-card dark:bg-slate-855 rounded-2xl p-4 shadow-card border border-slate-100 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
+              <div className="bg-bg-card dark:bg-slate-855 rounded-2xl p-4 shadow-card border border-[var(--border)] dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
                 <div className="py-3 flex justify-between items-center text-xs">
                   <span className="text-slate-400 font-medium">Item ID</span>
                   <span className="font-semibold text-slate-800 dark:text-slate-200 font-mono">{item.id}</span>
@@ -513,13 +513,13 @@ export default function ProductionDashboard({
                 <div className="grid grid-cols-2 gap-3">
                   <button 
                     onClick={() => { handleEditWip(item); setActiveMobileDetail(null); }}
-                    className="py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-xs font-bold text-center border border-slate-200 dark:border-slate-800 text-slate-750 dark:text-slate-200 cursor-pointer"
+                    className="py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-xs font-bold text-center border border-[var(--border)] dark:border-slate-800 text-slate-750 dark:text-slate-200 cursor-pointer"
                   >
                     Edit Item
                   </button>
                   <button 
                     onClick={() => { handleDuplicateWip(item); setActiveMobileDetail(null); }}
-                    className="py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-xs font-bold text-center border border-slate-200 dark:border-slate-800 text-slate-750 dark:text-slate-200 cursor-pointer"
+                    className="py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-xs font-bold text-center border border-[var(--border)] dark:border-slate-800 text-slate-750 dark:text-slate-200 cursor-pointer"
                   >
                     Duplicate
                   </button>
@@ -538,7 +538,7 @@ export default function ProductionDashboard({
           return (
             <div className="space-y-6">
               {/* Profile Card */}
-              <div className="bg-bg-card dark:bg-slate-855 rounded-2xl p-6 shadow-card border border-slate-100 dark:border-slate-800 space-y-4 text-center flex flex-col items-center">
+              <div className="bg-bg-card dark:bg-slate-855 rounded-2xl p-6 shadow-card border border-[var(--border)] dark:border-slate-800 space-y-4 text-center flex flex-col items-center">
                 <div className="w-16 h-16 rounded-full bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-xl shrink-0">
                   HIS
                 </div>
@@ -549,7 +549,7 @@ export default function ProductionDashboard({
               </div>
 
               {/* Fields */}
-              <div className="bg-bg-card dark:bg-slate-855 rounded-2xl p-4 shadow-card border border-slate-100 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
+              <div className="bg-bg-card dark:bg-slate-855 rounded-2xl p-4 shadow-card border border-[var(--border)] dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
                 <div className="py-3 flex justify-between items-center text-xs">
                   <span className="text-slate-400 font-medium">Requisition ID</span>
                   <span className="font-semibold text-slate-850 dark:text-slate-200 font-mono">{req.id}</span>
@@ -582,13 +582,13 @@ export default function ProductionDashboard({
                 <div className="grid grid-cols-2 gap-3">
                   <button 
                     onClick={() => { handleDuplicateRequisition(req); setActiveMobileDetail(null); }}
-                    className="py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-xs font-bold text-center border border-slate-200 dark:border-slate-800 text-slate-750 dark:text-slate-200 cursor-pointer"
+                    className="py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-xs font-bold text-center border border-[var(--border)] dark:border-slate-800 text-slate-750 dark:text-slate-200 cursor-pointer"
                   >
                     Duplicate Order
                   </button>
                   <button 
                     onClick={() => { handleShareRequisition(req); }}
-                    className="py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-xs font-bold text-center border border-slate-200 dark:border-slate-800 text-slate-750 dark:text-slate-200 cursor-pointer"
+                    className="py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-xs font-bold text-center border border-[var(--border)] dark:border-slate-800 text-slate-750 dark:text-slate-200 cursor-pointer"
                   >
                     Share Details
                   </button>
@@ -617,8 +617,8 @@ export default function ProductionDashboard({
             <p className="text-[11px] text-slate-400 mt-0.5">Floor control & requisitions</p>
           </div>
           <div className="flex gap-2">
-            <button onClick={() => exportToCSV(productionRequests, ['id', 'status', 'createdAt'], 'production_requests')} className="p-2 bg-bg-card rounded-xl border border-slate-200 shadow-card"><FileSpreadsheet className="w-4 h-4 text-slate-500" /></button>
-            <button onClick={() => exportToPDF('Production Report', productionRequests, ['id', 'status'])} className="p-2 bg-bg-card rounded-xl border border-slate-200 shadow-card"><FileText className="w-4 h-4 text-slate-500" /></button>
+            <button onClick={() => exportToCSV(productionRequests, ['id', 'status', 'createdAt'], 'production_requests')} className="p-2 bg-bg-card rounded-xl border border-[var(--border)] shadow-card"><FileSpreadsheet className="w-4 h-4 text-text-secondary" /></button>
+            <button onClick={() => exportToPDF('Production Report', productionRequests, ['id', 'status'])} className="p-2 bg-bg-card rounded-xl border border-[var(--border)] shadow-card"><FileText className="w-4 h-4 text-text-secondary" /></button>
           </div>
         </div>
 
@@ -881,7 +881,7 @@ export default function ProductionDashboard({
                 <div 
                   key={m.flatId} 
                   onClick={() => setActiveMobileDetail({ type: 'requisition', data: m })}
-                  className="bg-bg-card dark:bg-slate-855 rounded-2xl shadow-card p-4 border border-slate-100 dark:border-slate-805 flex items-center justify-between cursor-pointer"
+                  className="bg-bg-card dark:bg-slate-855 rounded-2xl shadow-card p-4 border border-[var(--border)] dark:border-slate-805 flex items-center justify-between cursor-pointer"
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-blue-50 dark:bg-blue-950/20 text-blue-600 dark:text-blue-405 flex items-center justify-center font-bold text-sm shrink-0">
@@ -1223,7 +1223,7 @@ export default function ProductionDashboard({
                 <div 
                   key={req.id} 
                   onClick={() => setActiveMobileDetail({ type: 'history', data: req })}
-                  className="bg-bg-card dark:bg-slate-855 rounded-2xl shadow-card p-4 border border-slate-100 dark:border-slate-805 flex items-center justify-between cursor-pointer"
+                  className="bg-bg-card dark:bg-slate-855 rounded-2xl shadow-card p-4 border border-[var(--border)] dark:border-slate-805 flex items-center justify-between cursor-pointer"
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-indigo-50 dark:bg-indigo-950/20 text-indigo-600 dark:text-indigo-455 flex items-center justify-center font-bold text-sm shrink-0">
