@@ -497,6 +497,17 @@ export default function Sidebar({
           </nav>
         </div>
 
+        {/* AC Zone: Good cargo Great deals card */}
+        {theme === 'aczone' && !isActualCollapsed && (
+          <div className="aczone-sidebar-promo mb-3">
+            <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center mb-2">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+            </div>
+            <p className="text-[11px] font-extrabold text-white leading-snug">Good cargo<br />Great deals</p>
+            <p className="text-[9px] text-white/65 mt-1">Smart trade for your business.</p>
+          </div>
+        )}
+
         {/* Finova: Save more Grow more card */}
         {theme === 'finova' && !isActualCollapsed && (
           <div className="finova-sidebar-promo mb-3">

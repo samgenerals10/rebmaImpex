@@ -23,6 +23,7 @@ import BoardroomView from './views/BoardroomView';
 import SettingsDashboard from './views/SettingsDashboard';
 import FoodieShell from './components/FoodieShell';
 import FinovaShell from './components/FinovaShell';
+import AczoneShell from './components/AczoneShell';
 
 import { auth, hr, operations, management, marketing, finance, production, dispatch, reception, getToken, setToken, clearToken } from './services/apiClient';
 import { supabase } from './lib/supabaseClient';
@@ -2773,6 +2774,13 @@ export default function App() {
         <FinovaShell activeDepartment={activeDepartment} currentUser={currentUser}>
           {content}
         </FinovaShell>
+      );
+    }
+    if (theme === 'aczone') {
+      return (
+        <AczoneShell activeDepartment={activeDepartment} currentUser={currentUser}>
+          {content}
+        </AczoneShell>
       );
     }
     return content;

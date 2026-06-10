@@ -1363,6 +1363,62 @@ body.glass-theme-rose {
 }
 
 /* ═══════════════════════════════════════════════
+   AC ZONE TEMPLATE — Component classes
+   ═══════════════════════════════════════════════ */
+
+body.theme-aczone .aczone-kpi-card {
+  background: var(--bg-card);
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  box-shadow: 0 1px 8px rgba(0,0,0,0.04);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+body.theme-aczone .aczone-kpi-card:hover {
+  box-shadow: 0 4px 18px rgba(124,58,237,0.10);
+  transform: translateY(-1px);
+}
+
+body.theme-aczone .aczone-card {
+  background: var(--bg-card);
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  box-shadow: 0 1px 8px rgba(0,0,0,0.04);
+}
+
+body.theme-aczone .aczone-top-item-card {
+  background: var(--bg-page);
+  border: 1px solid var(--border);
+  text-align: center;
+}
+
+/* Status badges */
+body.theme-aczone .aczone-badge-completed  { background: #dcfce7; color: #166534; }
+body.theme-aczone .aczone-badge-processing { background: #ffedd5; color: #9a3412; }
+body.theme-aczone .aczone-badge-onway      { background: #dbeafe; color: #1e40af; }
+body.theme-aczone .aczone-badge-cancelled  { background: #fce7f3; color: #9d174d; }
+
+/* Sidebar "Good cargo Great deals" card */
+body.theme-aczone .aczone-sidebar-promo {
+  background: linear-gradient(135deg, #7c3aed 0%, #ec4899 100%);
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin: 0 8px;
+  position: relative;
+  overflow: hidden;
+}
+body.theme-aczone .aczone-sidebar-promo::before {
+  content: '';
+  position: absolute;
+  top: -20px; right: -20px;
+  width: 60px; height: 60px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.10);
+}
+
+/* ═══════════════════════════════════════════════
    FINOVA TEMPLATE — Component classes
    ═══════════════════════════════════════════════ */
 
