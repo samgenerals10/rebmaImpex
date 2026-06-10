@@ -11,7 +11,8 @@ import {
   LineChart,
   Line
 } from 'recharts';
-import { FileSpreadsheet, FileText, Truck, Settings, Activity, ShieldCheck } from 'lucide-react';
+import { FileSpreadsheet, FileText, Truck, Settings, Activity, ShieldCheck, MoreVertical, TrendingUp, TrendingDown } from 'lucide-react';
+import MiniSparkline from '../components/MiniSparkline';
 import { exportToCSV, exportToPDF } from '../utils/export';
 
 export default function LogisticsDashboard() {
@@ -202,18 +203,23 @@ export default function LogisticsDashboard() {
           </div>
 
           {/* Stats KPI Row */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
             {stats.map((card, idx) => {
-              const Icon = card.icon;
+              const sparkData = [[30,45,35,60,40,70,55],[25,38,28,50,33,55,42],[40,52,38,62,44,68,50],[15,25,20,35,25,40,30]][idx] || [40,50,45,60,55,65,50];
               return (
-                <div key={idx} className="p-4 md:p-6 bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] flex items-center justify-between hover:scale-102 transition-all">
-                  <div>
-                    <span className="text-xs text-[var(--text-muted)] uppercase font-semibold">{card.title}</span>
-                    <h3 className="text-xl md:text-2xl font-bold mt-1 text-[var(--text-primary)]">{card.value}</h3>
-                    <p className="text-[10px] text-[var(--text-muted)] mt-1">{card.sub}</p>
+                <div key={idx} className="kpi-card group">
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wide font-semibold leading-tight">{card.title}</span>
+                    <MoreVertical className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" />
                   </div>
-                  <div className="p-3 md:p-4 bg-[var(--accent-light)] text-[var(--accent)] rounded-2xl">
-                    <Icon className="w-5 h-5 md:w-6 md:h-6" />
+                  <div className="flex items-end justify-between mt-2 gap-2">
+                    <div>
+                      <h3 className="text-2xl sm:text-3xl font-bold text-[var(--text-primary)] leading-none">{card.value}</h3>
+                      <p className="flex items-center gap-0.5 text-[10px] font-semibold mt-1.5 text-emerald-500">
+                        <TrendingUp className="w-3 h-3" />{card.sub}
+                      </p>
+                    </div>
+                    <MiniSparkline data={sparkData} color="var(--accent)" width={60} height={36} />
                   </div>
                 </div>
               );

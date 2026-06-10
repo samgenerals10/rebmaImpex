@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import type { IncomingGoods, Order, Customer, GoodsPrice, AuditEntry } from '../types/erp';
-import { FileSpreadsheet, FileText, Clipboard, Activity, ShieldCheck, DollarSign, History, Tag, User, ChevronDown, ChevronUp } from 'lucide-react';
+import { FileSpreadsheet, FileText, Clipboard, Activity, ShieldCheck, DollarSign, History, Tag, User, ChevronDown, ChevronUp, MoreVertical, TrendingUp, TrendingDown } from 'lucide-react';
+import MiniSparkline from '../components/MiniSparkline';
 import { exportToCSV, exportToPDF } from '../utils/export';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 
@@ -438,16 +439,8 @@ export default function ManagementDashboard({
         {stats.map((card, idx) => {
           const Icon = card.icon;
           return (
-            <div key={idx} className="p-6 bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] flex items-center justify-between hover:scale-102 transition-all duration-300">
-              <div>
-                <span className="text-xs text-[var(--text-muted)] uppercase font-semibold">{card.title}</span>
-                <h3 className="text-2xl font-bold mt-1 text-[var(--text-primary)]">{card.value}</h3>
-                <p className="text-[10px] text-[var(--text-muted)] mt-1">{card.sub}</p>
-              </div>
-              <div className="w-12 h-12 rounded-full bg-[var(--accent-light)] flex items-center justify-center shrink-0">
-                <Icon className="w-6 h-6 text-[var(--accent)]" />
-              </div>
-            </div>
+            <div key={idx} className="kpi-card group">
+              <div className="flex items-start justify-between gap-2"><span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wide font-semibold leading-tight">{card.title}</span><MoreVertical className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" /></div><div className="flex items-end justify-between mt-2 gap-2"><div><h3 className="text-2xl sm:text-3xl font-bold text-[var(--text-primary)] leading-none">{card.value}</h3><p className="text-[10px] text-[var(--text-muted)] mt-1.5">{card.sub}</p></div><MiniSparkline width={60} height={36} /></div></div>
           );
         })}
       </div>

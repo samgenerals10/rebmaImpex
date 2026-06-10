@@ -468,8 +468,8 @@ export default function Sidebar({
 
           {/* Department Sub-Menu */}
           <nav className="space-y-1 flex-1 overflow-y-auto pr-0.5">
-            <div className={`text-[9px] uppercase text-[var(--text-secondary)] tracking-widest font-bold px-4 mb-2 transition-all duration-300 ${isActualCollapsed ? 'opacity-0 h-0 overflow-hidden' : ''}`}>
-              {activeDepartment} Controls
+            <div className={`text-[9px] uppercase text-[var(--text-muted)] tracking-widest font-bold px-4 mb-2 transition-all duration-300 ${isActualCollapsed ? 'opacity-0 h-0 overflow-hidden' : ''}`}>
+              Menu
             </div>
             {departmentTabs[activeDepartment]?.map(tab => {
               const Icon = tab.icon;

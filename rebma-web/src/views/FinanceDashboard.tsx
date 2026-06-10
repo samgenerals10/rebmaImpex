@@ -1,9 +1,10 @@
 // rebma-web/src/views/FinanceDashboard.tsx
 
 import { useState, useEffect } from 'react';
-import { 
-  FileSpreadsheet, FileText, DollarSign, Clipboard, ShieldCheck, Activity, X, ExternalLink, ChevronRight
+import {
+  FileSpreadsheet, FileText, DollarSign, Clipboard, ShieldCheck, Activity, X, ExternalLink, ChevronRight, MoreVertical, TrendingUp, TrendingDown
 } from 'lucide-react';
+import MiniSparkline from '../components/MiniSparkline';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import type { Order, FinancePayment, ProductionRequest } from '../types/erp';
 import { exportToCSV, exportToPDF } from '../utils/export';
@@ -645,19 +646,25 @@ export default function FinanceDashboard({
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
             {stats.map((card, idx) => {
-              const Icon = card.icon;
-              const isProminent = idx < 2;
+              const sparkData = [[30,45,35,60,40,70,55],[20,35,25,50,30,55,45],[40,55,38,62,44,68,52],[15,25,20,35,25,40,30]][idx] || [40,50,45,60,55,65,50];
+              const isUp = idx % 3 !== 0;
               return (
-                <div key={idx} className="p-4 md:p-6 bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] flex items-center justify-between hover:scale-102 transition-all duration-300">
-                  <div>
-                    <span className="text-xs text-[var(--text-secondary)] uppercase font-semibold">{card.title}</span>
-                    <h3 className={`font-bold mt-1 text-[var(--text-primary)] ${isProminent ? 'text-2xl sm:text-3xl' : 'text-lg sm:text-xl'}`}>{card.value}</h3>
-                    <p className="text-[10px] text-[var(--text-secondary)] opacity-80 mt-1">{card.sub}</p>
+                <div key={idx} className="kpi-card group">
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wide font-semibold leading-tight">{card.title}</span>
+                    <MoreVertical className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" />
                   </div>
-                  <div className="w-12 h-12 rounded-full bg-[var(--accent-light)] flex items-center justify-center text-[var(--accent)] shrink-0">
-                    <Icon className="w-5 h-5 md:w-6 md:h-6" />
+                  <div className="flex items-end justify-between mt-2 gap-2">
+                    <div>
+                      <h3 className="text-2xl sm:text-3xl font-bold text-[var(--text-primary)] leading-none">{card.value}</h3>
+                      <p className={`flex items-center gap-0.5 text-[10px] font-semibold mt-1.5 ${isUp ? 'text-emerald-500' : 'text-rose-500'}`}>
+                        {isUp ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                        {card.sub}
+                      </p>
+                    </div>
+                    <MiniSparkline data={sparkData} color={isUp ? 'var(--accent)' : '#f43f5e'} width={60} height={36} />
                   </div>
                 </div>
               );

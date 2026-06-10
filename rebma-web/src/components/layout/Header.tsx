@@ -309,9 +309,20 @@ export default function Header({
       </div>
 
       {/* 2. DESKTOP HEADER */}
-      <div className="header-shell hidden lg:flex items-center justify-between h-16 px-6 border-b border-[var(--border)] relative gap-4 w-full">
-        {/* Search bar */}
-        <div className="flex items-center gap-2 flex-1 max-w-[400px]">
+      <div className="header-shell hidden lg:flex items-center h-16 px-6 border-b border-[var(--border)] relative gap-4 w-full">
+        {/* Collapse sidebar toggle — far left, matches reference */}
+        {onToggleSidebar && (
+          <button
+            onClick={onToggleSidebar}
+            className="p-2 rounded-lg hover:bg-[var(--accent-light)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors shrink-0 cursor-pointer"
+            title="Toggle Sidebar"
+          >
+            <Menu className="w-4 h-4" />
+          </button>
+        )}
+
+        {/* Search bar — center, pill shape, matches reference */}
+        <div className="flex items-center flex-1 max-w-[420px]">
           <div className="relative w-full">
             <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
               <Search className="h-4 w-4 text-text-muted" />
@@ -321,7 +332,7 @@ export default function Header({
               placeholder="Search records..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-3.5 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-full text-xs text-[var(--text-primary)] placeholder-slate-400 focus:outline-none focus:border-[var(--accent)]"
+              className="w-full pl-10 pr-3.5 py-2 bg-[var(--bg-input)] border border-[var(--border)] rounded-full text-xs text-[var(--text-primary)] placeholder:text-text-muted focus:outline-none focus:border-[var(--accent)] transition-colors"
             />
           </div>
         </div>
@@ -419,13 +430,19 @@ export default function Header({
             {darkMode ? <Sun className="w-4 h-4 text-amber-500" /> : <Moon className="w-4 h-4" />}
           </button>
 
-          {/* User profile avatar dropdown */}
+          {/* User profile avatar + name dropdown — matches reference */}
           <div className="relative">
             <button
               onClick={() => setShowAvatarDropdown(prev => !prev)}
-              className="w-9 h-9 rounded-full bg-[var(--accent)] text-white flex items-center justify-center font-bold text-xs shadow-card cursor-pointer hover:scale-105 active:scale-95 transition-all shrink-0 border border-white"
+              className="flex items-center gap-2.5 px-2 py-1.5 rounded-xl hover:bg-[var(--accent-light)] transition-colors cursor-pointer"
             >
-              {currentUser?.fullName?.[0] || 'U'}
+              <div className="w-8 h-8 rounded-full bg-[var(--accent)] text-white flex items-center justify-center font-bold text-xs shadow-card shrink-0 border-2 border-white">
+                {currentUser?.fullName?.[0] || 'U'}
+              </div>
+              <span className="text-xs font-semibold text-[var(--text-primary)] hidden xl:block max-w-[120px] truncate">
+                {currentUser?.fullName || 'User'}
+              </span>
+              <User className="w-3.5 h-3.5 text-[var(--text-muted)] hidden xl:block" />
             </button>
 
             {/* Avatar Dropdown Menu */}

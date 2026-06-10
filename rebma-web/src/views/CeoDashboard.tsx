@@ -1,6 +1,7 @@
 // rebma-web/src/views/CeoDashboard.tsx
 
-import { Layers, DollarSign, Truck, Users, FileSpreadsheet, FileText } from 'lucide-react';
+import { Layers, DollarSign, Truck, Users, FileSpreadsheet, FileText, MoreVertical, TrendingUp, TrendingDown } from 'lucide-react';
+import MiniSparkline from '../components/MiniSparkline';
 import { 
   ResponsiveContainer, 
   LineChart, 
@@ -220,28 +221,30 @@ export default function CeoDashboard({
           </div>
  
           {/* Operational KPI Counters */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
             {[
-              { title: 'Global Ingestion Flow', value: '1,020 Tons', sub: '+12% from last month', icon: Layers },
-              { title: 'Processing Invoices', value: '4 Invoices', sub: '2 awaiting clearance', icon: DollarSign },
-              { title: 'Active Logistics Vehicles', value: '1 Truck', sub: 'GPS Streaming Live', icon: Truck },
-              { title: 'Total Registered Staff', value: '25 Active', sub: '3 Pending approvals', icon: Users }
-            ].map((card, idx) => {
-              const Icon = card.icon;
-              const isProminent = idx < 2;
-              return (
-                <div key={idx} className="p-4 sm:p-6 bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] flex items-center justify-between hover:scale-102 transition-all">
-                  <div>
-                    <span className="text-[10px] sm:text-xs text-[var(--text-muted)] uppercase font-semibold">{card.title}</span>
-                    <h3 className={`font-bold mt-1 text-[var(--text-primary)] ${isProminent ? 'text-2xl sm:text-3xl' : 'text-lg sm:text-xl'}`}>{card.value}</h3>
-                    <p className="text-[9px] sm:text-[10px] text-[var(--text-muted)] mt-1">{card.sub}</p>
-                  </div>
-                  <div className="w-12 h-12 rounded-full bg-[var(--accent-light)] flex items-center justify-center shrink-0">
-                    <Icon className="w-5 h-5 sm:w-6 sm:h-6 text-[var(--accent)]" />
-                  </div>
+              { title: 'Global Ingestion Flow', value: '1,020 Tons', trend: '+12%', up: true,  data: [30,45,35,60,40,70,55] },
+              { title: 'Processing Invoices',   value: '4 Invoices', trend: '+8%',  up: true,  data: [20,35,25,50,30,55,45] },
+              { title: 'Active Fleet Vehicles',  value: '1 Truck',   trend: '0%',   up: true,  data: [40,40,40,40,40,40,40] },
+              { title: 'Total Registered Staff', value: '25 Active', trend: '+3%',  up: true,  data: [15,25,20,35,25,40,30] }
+            ].map((card, idx) => (
+              <div key={idx} className="kpi-card group">
+                <div className="flex items-start justify-between gap-2">
+                  <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wide font-semibold leading-tight">{card.title}</span>
+                  <MoreVertical className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" />
                 </div>
-              );
-            })}
+                <div className="flex items-end justify-between mt-2 gap-2">
+                  <div>
+                    <h3 className="text-2xl sm:text-3xl font-bold text-[var(--text-primary)] leading-none">{card.value}</h3>
+                    <p className={`flex items-center gap-0.5 text-[10px] font-semibold mt-1.5 ${card.up ? 'text-emerald-500' : 'text-rose-500'}`}>
+                      {card.up ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                      {card.trend}
+                    </p>
+                  </div>
+                  <MiniSparkline data={card.data} color={card.up ? 'var(--accent)' : '#f43f5e'} width={60} height={36} />
+                </div>
+              </div>
+            ))}
           </div>
  
           {/* Map and Chart */}

@@ -428,19 +428,20 @@ body.theme-foodie .sidebar-shell {
   transform: translateY(-1px);
 }
 
-/* KPI cards */
+/* KPI cards — matches SalesPulse reference: white bg, shadow only, no border */
 .kpi-card {
   background: var(--bg-card);
   border-radius: var(--radius-card);
   box-shadow: var(--shadow-card);
+  border: none;
   padding: 20px 24px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
   transition: var(--transition);
+  position: relative;
 }
 .kpi-card:hover {
-  box-shadow: 0 4px 16px rgba(0,0,0,0.10);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.10);
   transform: translateY(-1px);
 }
 .kpi-icon {
