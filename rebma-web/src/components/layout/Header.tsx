@@ -99,7 +99,7 @@ export default function Header({
           <div className="relative">
             <button 
               onClick={() => setShowAvatarDropdown(prev => !prev)}
-              className="w-10 h-10 rounded-full bg-[var(--accent,#068d5c)] text-white flex items-center justify-center font-extrabold text-sm shadow-sm cursor-pointer hover:scale-105 active:scale-95 transition-all"
+              className="w-10 h-10 rounded-full bg-[var(--accent,#068d5c)] text-white flex items-center justify-center font-extrabold text-sm shadow-card cursor-pointer hover:scale-105 active:scale-95 transition-all"
             >
               {currentUser?.fullName?.[0] || 'U'}
             </button>
@@ -108,7 +108,7 @@ export default function Header({
             {showAvatarDropdown && (
               <>
                 <div className="fixed inset-0 z-[490]" onClick={() => setShowAvatarDropdown(false)} />
-                <div className="absolute left-0 mt-2 w-64 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl z-[500] py-3 animate-fade-in-up text-slate-800 dark:text-slate-200">
+                <div className="absolute left-0 mt-2 w-64 bg-bg-card dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl z-[500] py-3 animate-fade-in-up text-slate-800 dark:text-slate-200">
                   <div className="px-4 pb-3 border-b border-slate-100 dark:border-slate-800">
                     <p className="text-xs font-extrabold text-slate-900 dark:text-slate-100">{currentUser?.fullName}</p>
                     <p className="text-[10px] text-slate-500 mt-0.5">{currentUser?.department}</p>
@@ -232,7 +232,7 @@ export default function Header({
               {showMoreMenu && (
                 <>
                   <div className="fixed inset-0 z-[290]" onClick={() => setShowMoreMenu(false)} />
-                  <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl z-[300] py-2 animate-fade-in-up text-slate-800 dark:text-slate-200">
+                  <div className="absolute right-0 mt-2 w-48 bg-bg-card dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl z-[300] py-2 animate-fade-in-up text-slate-800 dark:text-slate-200">
                     <button
                       type="button"
                       onClick={() => { setShowMoreMenu(false); onProfileClick?.(); }}
@@ -242,7 +242,7 @@ export default function Header({
                     </button>
                     <button
                       type="button"
-                      onClick={() => { setShowMoreMenu(false); if (setActiveDepartment) { setActiveDepartment('SETTINGS'); if (setActiveSubTab) setActiveSubTab(window.innerWidth < 1024 ? 'Appearance' : 'Themes'); } }}
+                      onClick={() => { setShowMoreMenu(false); if (setActiveDepartment) { setActiveDepartment('SETTINGS'); if (setActiveSubTab) setActiveSubTab('Appearance'); } }}
                       className="w-full text-left px-4 py-2.5 text-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors font-bold"
                     >
                       Display & Appearance
@@ -337,7 +337,7 @@ export default function Header({
           {/* Chat Button */}
           <button
             onClick={onOpenChat}
-            className="p-2 bg-[var(--bg-card)] hover:bg-[var(--accent-light)] border border-[var(--border)] rounded-xl text-[var(--text-secondary)] hover:text-[var(--accent)] transition-all cursor-pointer shadow-sm shrink-0"
+            className="p-2 bg-[var(--bg-card)] hover:bg-[var(--accent-light)] border border-[var(--border)] rounded-xl text-[var(--text-secondary)] hover:text-[var(--accent)] transition-all cursor-pointer shadow-card shrink-0"
             title="Open Chat Terminal"
           >
             <MessageSquare className="w-4 h-4" />
@@ -347,7 +347,7 @@ export default function Header({
           <div className="relative">
             <button
               onClick={() => setShowPanel(p => !p)}
-              className="p-2 bg-[var(--bg-card)] hover:bg-[var(--accent-light)] border border-[var(--border)] rounded-xl text-[var(--text-secondary)] hover:text-[var(--accent)] transition-all cursor-pointer shadow-sm shrink-0 relative"
+              className="p-2 bg-[var(--bg-card)] hover:bg-[var(--accent-light)] border border-[var(--border)] rounded-xl text-[var(--text-secondary)] hover:text-[var(--accent)] transition-all cursor-pointer shadow-card shrink-0 relative"
               title="Notifications"
             >
               <Bell className="w-4 h-4" />
@@ -413,7 +413,7 @@ export default function Header({
           {/* Dark Mode Toggle */}
           <button
             onClick={() => setDarkMode(!darkMode)}
-            className="p-2 bg-[var(--bg-card)] hover:bg-[var(--accent-light)] border border-[var(--border)] rounded-xl text-[var(--text-secondary)] hover:text-[var(--accent)] transition-all cursor-pointer shadow-sm shrink-0"
+            className="p-2 bg-[var(--bg-card)] hover:bg-[var(--accent-light)] border border-[var(--border)] rounded-xl text-[var(--text-secondary)] hover:text-[var(--accent)] transition-all cursor-pointer shadow-card shrink-0"
             title="Toggle Light/Dark Mode"
           >
             {darkMode ? <Sun className="w-4 h-4 text-amber-500" /> : <Moon className="w-4 h-4" />}
@@ -423,7 +423,7 @@ export default function Header({
           <div className="relative">
             <button
               onClick={() => setShowAvatarDropdown(prev => !prev)}
-              className="w-9 h-9 rounded-full bg-[var(--accent)] text-white flex items-center justify-center font-bold text-xs shadow-sm cursor-pointer hover:scale-105 active:scale-95 transition-all shrink-0 border border-white"
+              className="w-9 h-9 rounded-full bg-[var(--accent)] text-white flex items-center justify-center font-bold text-xs shadow-card cursor-pointer hover:scale-105 active:scale-95 transition-all shrink-0 border border-white"
             >
               {currentUser?.fullName?.[0] || 'U'}
             </button>
@@ -460,7 +460,7 @@ export default function Header({
                                   CEO: 'Overview', MANAGEMENT: 'CargoApproval', HR: 'Employees',
                                   MARKETING: 'CreateOrder', OPERATIONS: 'PortIngestion', FINANCE: 'Evaluation',
                                   PRODUCTION: 'Requisition', RECEPTION: 'VisitorLog', DISPATCH: 'Deliveries',
-                                  LOGISTICS: 'Maintenance', BOARDROOM: 'VideoConf', SETTINGS: 'Themes'
+                                  LOGISTICS: 'Maintenance', BOARDROOM: 'VideoConf', SETTINGS: 'Appearance'
                                 };
                                 if (setActiveSubTab) {
                                   setActiveSubTab(defaultSubTabs[d.value] || 'Overview');

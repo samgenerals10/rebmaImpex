@@ -213,6 +213,26 @@ export default function SettingsDashboard({
 
   const activeTpl = APPEARANCE_TEMPLATES.find(t => t.id === draftTemplate) || APPEARANCE_TEMPLATES[0];
 
+  // Helpers for accent color variants
+  const _hexToRgba = (hex: string, alpha: number) => {
+    const r = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    if (!r) return `rgba(0,0,0,${alpha})`;
+    return `rgba(${parseInt(r[1],16)},${parseInt(r[2],16)},${parseInt(r[3],16)},${alpha})`;
+  };
+  const _darken = (hex: string, amount: number) => {
+    const r = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    if (!r) return hex;
+    const clamp = (n: number) => Math.max(0, Math.min(255, n));
+    return `rgb(${clamp(parseInt(r[1],16)-amount)},${clamp(parseInt(r[2],16)-amount)},${clamp(parseInt(r[3],16)-amount)})`;
+  };
+  const _fontMap: Record<string, string> = {
+    'Inter':   "'Inter', sans-serif",
+    'Poppins': "'Poppins', sans-serif",
+    'DM Sans': "'DM Sans', sans-serif",
+    'Nunito':  "'Nunito', sans-serif",
+    'Outfit':  "'Outfit', sans-serif",
+  };
+
   const handleApplyAppearance = async () => {
     setIsSavingApp(true);
     const obj = {
@@ -221,36 +241,79 @@ export default function SettingsDashboard({
       accentType: draftAccentType, accentSolid: draftAccentSolid,
       gradientColor1: draftGradC1, gradientColor2: draftGradC2, gradientDirection: draftGradDir,
     };
-    // 1. Save to localStorage
+
+    // STEP 1–7: Apply directly to DOM immediately (no waiting for React re-render)
+    const body = document.body;
+    const root = document.documentElement;
+
+    // Template class
+    body.className = body.className.split(' ').filter(c => !/^theme-/.test(c)).join(' ');
+    body.classList.add(`theme-${draftTemplate}`);
+
+    // Density
+    body.className = body.className.split(' ').filter(c => !/^density-/.test(c)).join(' ');
+    body.classList.add(`density-${draftDensity.toLowerCase()}`);
+
+    // Button style
+    body.className = body.className.split(' ').filter(c => !/^btn-style-/.test(c)).join(' ');
+    body.classList.add(`btn-style-${draftButtonStyle.toLowerCase()}`);
+
+    // Card style
+    body.className = body.className.split(' ').filter(c => !/^card-style-/.test(c)).join(' ');
+    body.classList.add(`card-style-${draftCardStyle.toLowerCase()}`);
+
+    // Font family
+    body.className = body.className.split(' ').filter(c => !/^font-family-/.test(c)).join(' ');
+    body.classList.add(`font-family-${draftFontFamily.toLowerCase().replace(/ /g, '')}`);
+    const fontStack = _fontMap[draftFontFamily] || "'Inter', sans-serif";
+    root.style.setProperty('--font-base', fontStack);
+    body.style.fontFamily = fontStack;
+
+    // Font size
+    body.className = body.className.split(' ').filter(c => !/^font-size-/.test(c)).join(' ');
+    body.classList.add(`font-size-${draftFontSize.toLowerCase()}`);
+
+    // Accent color
+    if (draftAccentType === 'solid') {
+      root.style.setProperty('--accent', draftAccentSolid);
+      root.style.setProperty('--accent-color', draftAccentSolid);
+      root.style.setProperty('--accent-soft',  _hexToRgba(draftAccentSolid, 0.10));
+      root.style.setProperty('--accent-light', _hexToRgba(draftAccentSolid, 0.15));
+      root.style.setProperty('--accent-2',     _darken(draftAccentSolid, 30));
+    } else {
+      const grad = `linear-gradient(${draftGradDir},${draftGradC1},${draftGradC2})`;
+      root.style.setProperty('--accent-gradient', grad);
+      root.style.setProperty('--accent', draftGradC1);
+      root.style.setProperty('--accent-color', draftGradC1);
+      root.style.setProperty('--accent-soft', _hexToRgba(draftGradC1, 0.10));
+      root.style.setProperty('--accent-light', _hexToRgba(draftGradC1, 0.15));
+    }
+
+    // STEP 8: Save to localStorage
     localStorage.setItem('erp-appearance', JSON.stringify(obj));
-    // 2. Apply via parent setters (triggers App.tsx useEffect → DOM update)
+
+    // STEP 2 (parallel): Sync parent state so App.tsx useEffect stays in sync
     setTheme(draftTemplate);
     setFontFamily(draftFontFamily);
     setButtonStyle(draftButtonStyle);
     setCardStyle(draftCardStyle);
     setDensity(draftDensity);
-    if (draftAccentType === 'solid') {
-      setAccentColor(draftAccentSolid);
-    } else {
-      const grad = `linear-gradient(${draftGradDir},${draftGradC1},${draftGradC2})`;
-      document.documentElement.style.setProperty('--accent-gradient', grad);
-      setAccentColor(draftGradC1);
-    }
-    // 3. Supabase save
-    try {
-      if (currentUser?.id) {
-        await supabase.from('profiles').update({
-          metadata: { appearance: obj },
-          updated_at: new Date().toISOString()
-        }).eq('id', currentUser.id);
-      }
-      setSavedApp(true);
-      addNotification?.('Appearance settings saved.');
-      setTimeout(() => setSavedApp(false), 3000);
-    } catch {
-      addNotification?.('Applied locally — Supabase sync unavailable.');
-    }
+    setAccentColor(draftAccentType === 'solid' ? draftAccentSolid : draftGradC1);
+
+    // STEP 9: Save to Supabase in background (don't block UI)
     setIsSavingApp(false);
+    setSavedApp(true);
+    addNotification?.('Appearance settings applied.');
+    setTimeout(() => setSavedApp(false), 3000);
+
+    if (currentUser?.id) {
+      supabase.from('profiles').update({
+        metadata: { appearance: obj },
+        updated_at: new Date().toISOString()
+      }).eq('id', currentUser.id).then(({ error }) => {
+        if (error) addNotification?.('Applied locally — cloud sync unavailable.');
+      });
+    }
   };
 
   const handleResetAppearance = () => {
