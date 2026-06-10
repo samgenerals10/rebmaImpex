@@ -76,7 +76,29 @@ export default function Sidebar({
 }: SidebarProps) {
   const [isSwitcherOpen, setIsSwitcherOpen] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
-  const isActualCollapsed = !!sidebarCollapsed && !isHovered;
+
+  const isLiamFinance = theme === 'liamfinance';
+
+  // Liam Finance manages its own collapse state, defaulting to collapsed
+  const [lfCollapsed, setLfCollapsed] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('erp-sidebar-collapsed');
+      return saved !== null ? saved === 'true' : true;
+    } catch {
+      return true;
+    }
+  });
+
+  const handleLfCollapseToggle = () => {
+    const next = !lfCollapsed;
+    setLfCollapsed(next);
+    try { localStorage.setItem('erp-sidebar-collapsed', String(next)); } catch {}
+  };
+
+  // LF: hover does not expand (stays at 68px; uses tooltip instead)
+  const isActualCollapsed = isLiamFinance
+    ? lfCollapsed
+    : !!sidebarCollapsed && !isHovered;
   
   // CEO and Management can view any department (CEO can view all, Management can view all except CEO)
   const isCeo = currentUser?.isCeo || currentUser?.department === 'CEO';
@@ -467,13 +489,48 @@ export default function Sidebar({
           </div>
 
           {/* Department Sub-Menu */}
-          <nav className="space-y-1 flex-1 overflow-y-auto pr-0.5">
+          <nav
+            className="space-y-1 flex-1 overflow-y-auto pr-0.5"
+            data-lf-collapsed={isLiamFinance ? String(lfCollapsed) : undefined}
+          >
             <div className={`text-[9px] uppercase text-[var(--text-muted)] tracking-widest font-bold px-4 mb-2 transition-all duration-300 ${isActualCollapsed ? 'opacity-0 h-0 overflow-hidden' : ''}`}>
               Menu
             </div>
             {departmentTabs[activeDepartment]?.map(tab => {
               const Icon = tab.icon;
               const isActive = activeSubTab === tab.id;
+
+              if (isLiamFinance) {
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveSubTab(tab.id)}
+                    className={`lf-nav-item w-full flex items-center ${lfCollapsed ? 'justify-center' : 'gap-3 px-3'} py-1 transition-all duration-200 cursor-pointer`}
+                    style={{ background: 'transparent', border: 'none' }}
+                    title={tab.label}
+                  >
+                    <span
+                      className="lf-nav-icon flex-shrink-0 transition-all duration-200"
+                      style={{
+                        width: 40, height: 40, borderRadius: '50%',
+                        background: isActive ? 'var(--accent)' : 'var(--lf-icon-bg, #eef0f3)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}
+                    >
+                      <Icon style={{ width: 18, height: 18, color: isActive ? '#fff' : 'var(--text-secondary)' }} />
+                    </span>
+                    {!lfCollapsed && (
+                      <span
+                        className="nav-label truncate text-xs font-semibold"
+                        style={{ color: isActive ? 'var(--accent)' : 'var(--text-secondary)' }}
+                      >
+                        {tab.label}
+                      </span>
+                    )}
+                  </button>
+                );
+              }
+
               return (
                 <button
                   key={tab.id}
@@ -567,18 +624,18 @@ export default function Sidebar({
           </div>
 
           {/* Collapse Toggle */}
-          {setSidebarCollapsed && (
+          {(isLiamFinance || setSidebarCollapsed) && (
             <button
-              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              onClick={() => isLiamFinance ? handleLfCollapseToggle() : setSidebarCollapsed?.(!sidebarCollapsed)}
               className={`hidden lg:flex items-center justify-center w-full py-2.5 border-t border-[var(--border)] hover:bg-[var(--accent-light)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors duration-200 cursor-pointer rounded-xl ${isActualCollapsed ? 'px-0' : 'gap-2 px-4'}`}
-              title={sidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+              title={isActualCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
             >
               {isActualCollapsed ? (
                 <ChevronRight className="w-4 h-4 text-[var(--accent)]" />
               ) : (
                 <div className="flex items-center gap-2">
-                  <ChevronLeft className="w-4 h-4 text-[var(--accent)] animate-pulse" />
-                  <span className="text-xs font-semibold">Collapse Sidebar</span>
+                  <ChevronLeft className="w-4 h-4 text-[var(--accent)]" />
+                  <span className="text-xs font-semibold">Collapse</span>
                 </div>
               )}
             </button>

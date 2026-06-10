@@ -1374,26 +1374,41 @@ body.theme-liamfinance .liam-card {
   box-shadow: 0 1px 6px rgba(0,0,0,0.04);
 }
 
-/* Liam Finance: active nav item uses circular icon, transparent button row */
-body.theme-liamfinance .nav-item--active {
-  background: transparent !important;
-  color: var(--accent) !important;
+/* Liam Finance: circular icon nav — inactive bg (light/dark aware) */
+body.theme-liamfinance {
+  --lf-icon-bg: #eef0f3;
 }
-body.theme-liamfinance .nav-item--active .nav-icon {
-  background: var(--accent) !important;
-  border-radius: 50% !important;
-  width: 32px !important;
-  height: 32px !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  flex-shrink: 0 !important;
+@media (prefers-color-scheme: dark) {
+  body.theme-liamfinance {
+    --lf-icon-bg: #2a2d35;
+  }
 }
-body.theme-liamfinance .nav-item--active .nav-icon svg {
-  color: #ffffff !important;
+
+/* Hover: slightly brighten the circle */
+body.theme-liamfinance .lf-nav-item:hover .lf-nav-icon {
+  filter: brightness(0.93);
 }
-body.theme-liamfinance .nav-item--active .nav-label {
-  color: var(--accent) !important;
+
+/* Tooltip to the right — only in collapsed state */
+body.theme-liamfinance .lf-nav-item {
+  position: relative;
+}
+body.theme-liamfinance nav[data-lf-collapsed="true"] .lf-nav-item[title]:hover::after {
+  content: attr(title);
+  position: absolute;
+  left: 52px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: #1e293b;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 8px;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 999;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.18);
 }
 
 /* Outer page wrapper — subtle rounded container effect (desktop) */
