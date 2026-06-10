@@ -25,6 +25,7 @@ import FoodieShell from './components/FoodieShell';
 import FinovaShell from './components/FinovaShell';
 import AczoneShell from './components/AczoneShell';
 import LiamFinanceShell from './components/LiamFinanceShell';
+import FinloFlashShell from './components/FinloFlashShell';
 
 import { auth, hr, operations, management, marketing, finance, production, dispatch, reception, getToken, setToken, clearToken } from './services/apiClient';
 import { supabase } from './lib/supabaseClient';
@@ -2789,6 +2790,13 @@ export default function App() {
         <LiamFinanceShell activeDepartment={activeDepartment} currentUser={currentUser}>
           {content}
         </LiamFinanceShell>
+      );
+    }
+    if (theme === 'finloflash') {
+      return (
+        <FinloFlashShell activeDepartment={activeDepartment} currentUser={currentUser}>
+          {content}
+        </FinloFlashShell>
       );
     }
     return content;

@@ -233,24 +233,53 @@ body.theme-finloflash {
   --accent-2:        #ea580c;
   --accent-soft:     rgba(249,115,22,0.10);
   --accent-gradient: linear-gradient(135deg,#f97316,#ef4444);
-  --bg-page:         #fff7ed;
+  --bg-page:         #f0f2f5;
   --bg-sidebar:      #ffffff;
   --bg-header:       #ffffff;
   --bg-card:         #ffffff;
-  --bg-input:        #fff7ed;
-  --bg:              #fff7ed;
-  --text-primary:    #0f172a;
-  --text-secondary:  #44403c;
-  --text-muted:      #a8a29e;
-  --border:          #fed7aa;
-  --font-base:       'Outfit', sans-serif;
+  --bg-input:        #f8f9fa;
+  --bg:              #f8f9fa;
+  --text-primary:    #111827;
+  --text-secondary:  #6b7280;
+  --text-muted:      #9ca3af;
+  --border:          #e5e7eb;
+  --font-base:       'Inter', sans-serif;
   --accent-color:    #f97316;
   --accent-hover:    #ea580c;
   --accent-light:    rgba(249,115,22,0.10);
-  --hover-table-row: rgba(249,115,22,0.05);
-  --bg-app-gradient: #fff7ed;
-  --border-color:    #fed7aa;
-  --text-sidebar:    #0f172a;
+  --hover-table-row: rgba(249,115,22,0.04);
+  --bg-app-gradient: #f0f2f5;
+  --border-color:    #e5e7eb;
+  --text-sidebar:    #111827;
+  --sidebar-width:   260px;
+}
+
+/* ── Finlo Flash: sidebar active item = dark, not orange ── */
+body.theme-finloflash .nav-item--active {
+  background: #111827 !important;
+  color: #ffffff !important;
+}
+body.theme-finloflash .nav-item--active .nav-icon svg {
+  color: #ffffff !important;
+}
+body.theme-finloflash .nav-item--active .nav-label {
+  color: #ffffff !important;
+}
+
+/* ── Finlo Flash: card component ── */
+body.theme-finloflash .ff-card {
+  background: #ffffff;
+  border-radius: 16px;
+  border: 1px solid #f3f4f6;
+  padding: 20px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+}
+
+/* ── Finlo Flash: outer app wrapper light gray ── */
+@media (min-width: 1024px) {
+  body.theme-finloflash .min-h-screen {
+    background: #f0f2f5 !important;
+  }
 }
 
 /* ─── THEME 7: Routines ─── */
