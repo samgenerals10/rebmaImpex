@@ -1374,10 +1374,26 @@ body.theme-liamfinance .liam-card {
   box-shadow: 0 1px 6px rgba(0,0,0,0.04);
 }
 
-/* Sidebar forced icon-only via sidebarCollapsed prop:
-   Additional CSS to hide collapse toggle button so it's cleaner */
-body.theme-liamfinance .sidebar-shell .lg\:flex.items-center.justify-center.w-full.py-2\.5.border-t {
-  display: none !important;
+/* Liam Finance: active nav item uses circular icon, transparent button row */
+body.theme-liamfinance .nav-item--active {
+  background: transparent !important;
+  color: var(--accent) !important;
+}
+body.theme-liamfinance .nav-item--active .nav-icon {
+  background: var(--accent) !important;
+  border-radius: 50% !important;
+  width: 32px !important;
+  height: 32px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-shrink: 0 !important;
+}
+body.theme-liamfinance .nav-item--active .nav-icon svg {
+  color: #ffffff !important;
+}
+body.theme-liamfinance .nav-item--active .nav-label {
+  color: var(--accent) !important;
 }
 
 /* Outer page wrapper — subtle rounded container effect (desktop) */

@@ -478,7 +478,7 @@ export default function Sidebar({
                 <button
                   key={tab.id}
                   onClick={() => setActiveSubTab(tab.id)}
-                  className={`nav-item w-full flex items-center ${isActualCollapsed ? 'justify-center px-0' : 'gap-3 px-4'} py-2.5 rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer`}
+                  className={`nav-item ${isActive ? 'nav-item--active' : ''} w-full flex items-center ${isActualCollapsed ? 'justify-center px-0' : 'gap-3 px-4'} py-2.5 rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer`}
                   style={isActive ? {
                     background: 'var(--accent)',
                     color: '#ffffff'

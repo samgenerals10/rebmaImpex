@@ -3276,7 +3276,7 @@ export default function App() {
           openBoardroom={() => { setActiveDepartment('BOARDROOM'); sessionStorage.setItem('rebma-last-dept', 'BOARDROOM'); setActiveSubTab('VideoConf'); }}
           isOpen={isSidebarOpen}
           onClose={() => setIsSidebarOpen(false)}
-          sidebarCollapsed={sidebarCollapsed || theme === 'liamfinance'}
+          sidebarCollapsed={sidebarCollapsed}
           setSidebarCollapsed={setSidebarCollapsed}
         />
 
