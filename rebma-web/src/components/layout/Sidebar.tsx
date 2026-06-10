@@ -497,6 +497,17 @@ export default function Sidebar({
           </nav>
         </div>
 
+        {/* Finova: Save more Grow more card */}
+        {theme === 'finova' && !isActualCollapsed && (
+          <div className="finova-sidebar-promo mb-3">
+            <p className="text-[10px] font-extrabold text-white leading-snug">Save more<br />Grow more</p>
+            <p className="text-[9px] text-white/65 mt-1 mb-2 leading-relaxed">Smart banking for your business future.</p>
+            <button className="flex items-center justify-center w-7 h-7 rounded-full bg-white/20 hover:bg-white/30 transition-colors cursor-pointer">
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 6h8M6 2l4 4-4 4" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </button>
+          </div>
+        )}
+
         {/* Foodie: Upgrade to Pro card */}
         {theme === 'foodie' && !isActualCollapsed && (
           <div className="foodie-upgrade-card mx-2 mb-3">

@@ -22,6 +22,7 @@ import LogisticsDashboard from './views/LogisticsDashboard';
 import BoardroomView from './views/BoardroomView';
 import SettingsDashboard from './views/SettingsDashboard';
 import FoodieShell from './components/FoodieShell';
+import FinovaShell from './components/FinovaShell';
 
 import { auth, hr, operations, management, marketing, finance, production, dispatch, reception, getToken, setToken, clearToken } from './services/apiClient';
 import { supabase } from './lib/supabaseClient';
@@ -2765,6 +2766,13 @@ export default function App() {
         <FoodieShell activeDepartment={activeDepartment} currentUser={currentUser}>
           {content}
         </FoodieShell>
+      );
+    }
+    if (theme === 'finova') {
+      return (
+        <FinovaShell activeDepartment={activeDepartment} currentUser={currentUser}>
+          {content}
+        </FinovaShell>
       );
     }
     return content;
