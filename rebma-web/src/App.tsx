@@ -43,7 +43,7 @@ export default function App() {
 
   // Redesigned 10 Display & Appearance preferences
   const [theme, setTheme] = useState<any>(() => {
-    return localStorage.getItem('erp-theme') || 'arctic-white';
+    return localStorage.getItem('erp-theme') || 'salespulse';
   });
   const [accentColor, setAccentColor] = useState<string>(() => {
     return localStorage.getItem('erp-accent') || '#068d5c';
@@ -103,8 +103,10 @@ export default function App() {
     // 1. Dark Mode
     if (darkMode) {
       document.documentElement.classList.add('dark');
+      document.body.classList.add('dark-mode');
     } else {
       document.documentElement.classList.remove('dark');
+      document.body.classList.remove('dark-mode');
     }
 
     // 2. Body class list sync
@@ -1097,13 +1099,11 @@ export default function App() {
     }, 6000);
   };
 
-  // Change theme class on document body
+  // Change theme class on document body (redundant safety sync)
   useEffect(() => {
     const body = document.body;
     body.className = body.className.split(' ').filter(c => !c.startsWith('theme-')).join(' ');
-    if (theme !== 'breeze') {
-      body.classList.add(`theme-${theme}`);
-    }
+    body.classList.add(`theme-${theme}`);
   }, [theme]);
 
   // Reset to default sub-tab when switching department
@@ -3193,7 +3193,7 @@ export default function App() {
 
   return (
     <MotionConfig reducedMotion={reducedMotion ? 'always' : 'user'}>
-      <div className="min-h-screen w-full flex p-0 lg:p-6 transition-all duration-300 bg-[var(--bg)]">
+      <div className="min-h-screen w-full flex p-0 lg:p-6 transition-all duration-300 bg-[var(--bg-page)]">
         
         {/* 1. LEFT SIDEBAR */}
         <Sidebar

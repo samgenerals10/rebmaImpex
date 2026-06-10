@@ -195,41 +195,47 @@ export default function SettingsDashboard({
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {[
-                { id: 'arctic-white', label: 'Arctic White', desc: 'Light contrast style', bg: '#ffffff', accent: '#0f172a' },
-                { id: 'rose-quartz', label: 'Rose Quartz', desc: 'Earthy pastel quartz', bg: '#ffffff', accent: '#f43f5e' },
-                { id: 'midnight-navy', label: 'Midnight Navy', desc: 'Premium royal blue', bg: '#1e293b', accent: '#3b82f6' },
-                { id: 'emerald-pro', label: 'Emerald Pro', desc: 'Teal corporate design', bg: '#ffffff', accent: '#059669' },
-                { id: 'royal-purple', label: 'Royal Purple', desc: 'Rich indigo amethyst', bg: '#ffffff', accent: '#8b5cf6' },
-                { id: 'sunset-orange', label: 'Sunset Orange', desc: 'Warm active amber', bg: '#ffffff', accent: '#f97316' },
-                { id: 'ocean-blue', label: 'Ocean Blue', desc: 'Calming azure water', bg: '#ffffff', accent: '#0ea5e9' },
-                { id: 'charcoal-dark', label: 'Charcoal Dark', desc: 'Elegant carbon dark', bg: '#27272a', accent: '#e4e4e7' },
-                { id: 'lavender-mist', label: 'Lavender Mist', desc: 'Soft violet focus', bg: '#ffffff', accent: '#7c3aed' },
-                { id: 'golden-sand', label: 'Golden Sand', desc: 'Luxury champagne sand', bg: '#ffffff', accent: '#d97706' },
+                { id: 'salespulse',  label: 'SalesPulse',   desc: 'Clean green growth',      sidebar: '#ffffff', accent: '#22c55e' },
+                { id: 'foodie',      label: 'Foodie',        desc: 'Dark indigo sidebar',     sidebar: '#1e1b4b', accent: '#7c3aed' },
+                { id: 'finova',      label: 'Finova',        desc: 'Blue finance gradient',   sidebar: '#ffffff', accent: '#3b82f6' },
+                { id: 'aczone',      label: 'AC Zone',       desc: 'Purple violet energy',    sidebar: '#ffffff', accent: '#7c3aed' },
+                { id: 'liamfinance', label: 'Liam Finance',  desc: 'Compact icon sidebar',    sidebar: '#f1f5f9', accent: '#6366f1' },
+                { id: 'finloflash',  label: 'Finlo Flash',   desc: 'Warm orange fire',        sidebar: '#ffffff', accent: '#f97316' },
+                { id: 'routines',    label: 'Routines',      desc: 'Clear sky blue focus',    sidebar: '#ffffff', accent: '#3b82f6' },
+                { id: 'multicolor',  label: 'Multicolor',    desc: 'Rainbow nav icons',       sidebar: '#ffffff', accent: 'linear-gradient(135deg,#f59e0b,#ef4444,#8b5cf6,#3b82f6,#10b981)' },
               ].map(t => (
                 <button
                   key={t.id}
                   type="button"
                   onClick={() => setTheme(t.id)}
-                  className={`p-4 text-left border rounded-2xl hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer flex flex-col justify-between h-full ${
+                  className={`p-3 text-left border rounded-2xl hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer flex items-center gap-3 ${
                     theme === t.id
                       ? 'border-[var(--accent)] bg-[var(--accent-light)]'
                       : 'border-[var(--border)] bg-[var(--bg-card)] hover:bg-[var(--accent-light)]/5'
                   }`}
                 >
-                  <div>
-                    <div className="flex items-center gap-1 mb-2">
-                      <div className="w-5 h-5 rounded-full border border-[var(--border)] shadow-sm" style={{ backgroundColor: t.bg }} title="Background preview" />
-                      <div className="w-5 h-5 rounded-full border border-[var(--border)] shadow-sm -ml-2" style={{ backgroundColor: t.accent }} title="Accent preview" />
+                  {/* Mini preview */}
+                  <div className="flex-shrink-0 w-12 h-12 rounded-xl overflow-hidden border border-[var(--border)] flex">
+                    <div className="w-3 h-full" style={{ backgroundColor: t.sidebar }} />
+                    <div className="flex-1 flex flex-col gap-1 p-1 bg-slate-50">
+                      <div className="h-1.5 rounded-full" style={{ background: t.accent }} />
+                      <div className="h-1 rounded-full bg-slate-200" />
+                      <div className="h-1 rounded-full bg-slate-200 w-3/4" />
                     </div>
-                    <h4 className="text-sm font-semibold text-[var(--text-primary)]">{t.label}</h4>
-                    <p className="text-xs text-[var(--text-muted)] mt-1">{t.desc}</p>
                   </div>
-                  {theme === t.id && (
-                    <span className="text-[9px] font-extrabold text-[var(--accent)] mt-3 inline-flex items-center gap-1 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 w-fit">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                      ACTIVE
-                    </span>
-                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full flex-shrink-0 border border-[var(--border)]" style={{ background: t.accent }} />
+                      <h4 className="text-sm font-semibold text-[var(--text-primary)] truncate">{t.label}</h4>
+                    </div>
+                    <p className="text-xs text-[var(--text-muted)] mt-0.5">{t.desc}</p>
+                    {theme === t.id && (
+                      <span className="text-[9px] font-extrabold text-[var(--accent)] mt-1.5 inline-flex items-center gap-1 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 w-fit">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        ACTIVE
+                      </span>
+                    )}
+                  </div>
                 </button>
               ))}
             </div>
@@ -477,41 +483,47 @@ export default function SettingsDashboard({
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {[
-                  { id: 'arctic-white', label: 'Arctic White', desc: 'Light contrast style', bg: '#ffffff', accent: '#0f172a' },
-                  { id: 'rose-quartz', label: 'Rose Quartz', desc: 'Earthy pastel quartz', bg: '#ffffff', accent: '#f43f5e' },
-                  { id: 'midnight-navy', label: 'Midnight Navy', desc: 'Premium royal blue', bg: '#1e293b', accent: '#3b82f6' },
-                  { id: 'emerald-pro', label: 'Emerald Pro', desc: 'Teal corporate design', bg: '#ffffff', accent: '#059669' },
-                  { id: 'royal-purple', label: 'Royal Purple', desc: 'Rich indigo amethyst', bg: '#ffffff', accent: '#8b5cf6' },
-                  { id: 'sunset-orange', label: 'Sunset Orange', desc: 'Warm active amber', bg: '#ffffff', accent: '#f97316' },
-                  { id: 'ocean-blue', label: 'Ocean Blue', desc: 'Calming azure water', bg: '#ffffff', accent: '#0ea5e9' },
-                  { id: 'charcoal-dark', label: 'Charcoal Dark', desc: 'Elegant carbon dark', bg: '#27272a', accent: '#e4e4e7' },
-                  { id: 'lavender-mist', label: 'Lavender Mist', desc: 'Soft violet focus', bg: '#ffffff', accent: '#7c3aed' },
-                  { id: 'golden-sand', label: 'Golden Sand', desc: 'Luxury champagne sand', bg: '#ffffff', accent: '#d97706' },
+                  { id: 'salespulse',  label: 'SalesPulse',   desc: 'Clean green growth',      sidebar: '#ffffff', accent: '#22c55e' },
+                  { id: 'foodie',      label: 'Foodie',        desc: 'Dark indigo sidebar',     sidebar: '#1e1b4b', accent: '#7c3aed' },
+                  { id: 'finova',      label: 'Finova',        desc: 'Blue finance gradient',   sidebar: '#ffffff', accent: '#3b82f6' },
+                  { id: 'aczone',      label: 'AC Zone',       desc: 'Purple violet energy',    sidebar: '#ffffff', accent: '#7c3aed' },
+                  { id: 'liamfinance', label: 'Liam Finance',  desc: 'Compact icon sidebar',    sidebar: '#f1f5f9', accent: '#6366f1' },
+                  { id: 'finloflash',  label: 'Finlo Flash',   desc: 'Warm orange fire',        sidebar: '#ffffff', accent: '#f97316' },
+                  { id: 'routines',    label: 'Routines',      desc: 'Clear sky blue focus',    sidebar: '#ffffff', accent: '#3b82f6' },
+                  { id: 'multicolor',  label: 'Multicolor',    desc: 'Rainbow nav icons',       sidebar: '#ffffff', accent: 'linear-gradient(135deg,#f59e0b,#ef4444,#8b5cf6,#3b82f6,#10b981)' },
                 ].map(t => (
                   <button
                     key={t.id}
                     type="button"
                     onClick={() => setTheme(t.id)}
-                    className={`p-4 text-left border rounded-2xl hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer flex flex-col justify-between h-full ${
+                    className={`p-3 text-left border rounded-2xl hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer flex items-center gap-3 ${
                       theme === t.id
                         ? 'border-[var(--accent)] bg-[var(--accent-light)]'
-                        : 'border-[var(--border)] bg-[var(--bg)] hover:bg-[var(--accent-light)]/5'
+                        : 'border-[var(--border)] bg-[var(--bg-card)] hover:bg-[var(--accent-light)]/5'
                     }`}
                   >
-                    <div>
-                      <div className="flex items-center gap-1 mb-2">
-                        <div className="w-5 h-5 rounded-full border border-[var(--border)] shadow-sm" style={{ backgroundColor: t.bg }} title="Background preview" />
-                        <div className="w-5 h-5 rounded-full border border-[var(--border)] shadow-sm -ml-2" style={{ backgroundColor: t.accent }} title="Accent preview" />
+                    {/* Mini preview */}
+                    <div className="flex-shrink-0 w-12 h-12 rounded-xl overflow-hidden border border-[var(--border)] flex">
+                      <div className="w-3 h-full" style={{ backgroundColor: t.sidebar }} />
+                      <div className="flex-1 flex flex-col gap-1 p-1 bg-slate-50">
+                        <div className="h-1.5 rounded-full" style={{ background: t.accent }} />
+                        <div className="h-1 rounded-full bg-slate-200" />
+                        <div className="h-1 rounded-full bg-slate-200 w-3/4" />
                       </div>
-                      <h4 className="text-sm font-semibold text-[var(--text-primary)]">{t.label}</h4>
-                      <p className="text-xs text-[var(--text-muted)] mt-1">{t.desc}</p>
                     </div>
-                    {theme === t.id && (
-                      <span className="text-[9px] font-extrabold text-[var(--accent)] mt-3 inline-flex items-center gap-1 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 w-fit">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                        ACTIVE
-                      </span>
-                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full flex-shrink-0 border border-[var(--border)]" style={{ background: t.accent }} />
+                        <h4 className="text-sm font-semibold text-[var(--text-primary)] truncate">{t.label}</h4>
+                      </div>
+                      <p className="text-xs text-[var(--text-muted)] mt-0.5">{t.desc}</p>
+                      {theme === t.id && (
+                        <span className="text-[9px] font-extrabold text-[var(--accent)] mt-1.5 inline-flex items-center gap-1 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 w-fit">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                          ACTIVE
+                        </span>
+                      )}
+                    </div>
                   </button>
                 ))}
               </div>

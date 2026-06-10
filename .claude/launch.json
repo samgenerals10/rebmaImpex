@@ -1,0 +1,23 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "rebma-web (Vite dev)",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "-w", "rebma-web"],
+      "port": 5173
+    },
+    {
+      "name": "rebma-web (Vite preview)",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "preview", "-w", "rebma-web"],
+      "port": 4173
+    },
+    {
+      "name": "rebma-mobile (Expo)",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "start", "--prefix", "rebma-mobile"],
+      "port": 8081
+    }
+  ]
+}

@@ -309,7 +309,7 @@ export default function Header({
       </div>
 
       {/* 2. DESKTOP HEADER */}
-      <div className="hidden lg:flex items-center justify-between h-16 px-6 bg-[var(--bg-card)] border-b border-[var(--border)] relative gap-4 w-full">
+      <div className="header-shell hidden lg:flex items-center justify-between h-16 px-6 border-b border-[var(--border)] relative gap-4 w-full">
         {/* Search bar */}
         <div className="flex items-center gap-2 flex-1 max-w-[400px]">
           <div className="relative w-full">

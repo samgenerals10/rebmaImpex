@@ -205,10 +205,10 @@ export default function Sidebar({
     <aside 
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className={`fixed inset-y-0 left-0 z-50 w-[80vw] max-w-[320px] bg-[var(--bg-card)] text-[var(--text-primary)] rounded-r-3xl flex flex-col justify-between shadow-2xl select-none transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full'} lg:rounded-none lg:bg-[var(--bg-card)] lg:text-[var(--text-primary)] lg:border-r lg:border-[var(--border)] lg:static lg:translate-x-0 lg:shadow-none transition-all duration-300 ${isActualCollapsed ? 'lg:w-[60px]' : 'lg:w-[260px]'}`}
+      className={`sidebar-shell fixed inset-y-0 left-0 z-50 w-[80vw] max-w-[320px] rounded-r-3xl flex flex-col justify-between shadow-2xl select-none transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full'} lg:rounded-none lg:border-r lg:border-[var(--border)] lg:static lg:translate-x-0 lg:shadow-none transition-all duration-300 ${isActualCollapsed ? 'lg:w-[var(--sidebar-collapsed-width,68px)]' : 'lg:w-[var(--sidebar-width,260px)]'}`}
     >
       {/* 1. MOBILE STYLE VIEW */}
-      <div className="lg:hidden flex flex-col h-full justify-between py-6 px-4 bg-[var(--bg-card)] text-[var(--text-primary)]">
+      <div className="lg:hidden flex flex-col h-full justify-between py-6 px-4" style={{ color: 'var(--text-sidebar, var(--text-primary))' }}>
         <div className="flex flex-col h-full overflow-hidden">
           {/* Top Header Section */}
           <div className="flex items-center justify-between pb-4 border-b border-[var(--border)]">
@@ -479,15 +479,21 @@ export default function Sidebar({
                 <button
                   key={tab.id}
                   onClick={() => setActiveSubTab(tab.id)}
-                  className={`w-full flex items-center ${isActualCollapsed ? 'justify-center px-0' : 'gap-3 px-4'} py-2.5 rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer ${
-                    isActive 
-                      ? 'bg-[var(--accent-light)] text-[var(--accent)] font-bold shadow-sm' 
-                      : 'text-[var(--text-secondary)] hover:bg-[var(--accent-light)] hover:text-[var(--text-primary)]'
-                  }`}
+                  className={`nav-item w-full flex items-center ${isActualCollapsed ? 'justify-center px-0' : 'gap-3 px-4'} py-2.5 rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer`}
+                  style={isActive ? {
+                    background: 'var(--accent-soft)',
+                    borderLeft: '3px solid var(--accent)',
+                    color: 'var(--accent)'
+                  } : {
+                    color: 'var(--text-sidebar, var(--text-secondary))',
+                    borderLeft: '3px solid transparent'
+                  }}
                   title={tab.label}
                 >
-                  <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-[var(--accent)]' : 'text-[var(--text-secondary)]'}`} />
-                  <span className={`truncate transition-all duration-300 ${isActualCollapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100'}`}>{tab.label}</span>
+                  <span className="nav-icon flex-shrink-0">
+                    <Icon className="w-4 h-4" style={{ color: isActive ? 'var(--accent)' : undefined }} />
+                  </span>
+                  <span className={`nav-label truncate transition-all duration-300 ${isActualCollapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100'}`}>{tab.label}</span>
                 </button>
               );
             })}
