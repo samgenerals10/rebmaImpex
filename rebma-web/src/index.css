@@ -1363,6 +1363,36 @@ body.glass-theme-rose {
 }
 
 /* ═══════════════════════════════════════════════
+   LIAM FINANCE TEMPLATE — Component classes
+   ═══════════════════════════════════════════════ */
+
+body.theme-liamfinance .liam-shell {}
+
+body.theme-liamfinance .liam-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  box-shadow: 0 1px 6px rgba(0,0,0,0.04);
+}
+
+/* Sidebar forced icon-only via sidebarCollapsed prop:
+   Additional CSS to hide collapse toggle button so it's cleaner */
+body.theme-liamfinance .sidebar-shell .lg\:flex.items-center.justify-center.w-full.py-2\.5.border-t {
+  display: none !important;
+}
+
+/* Outer page wrapper — subtle rounded container effect (desktop) */
+@media (min-width: 1024px) {
+  body.theme-liamfinance .min-h-screen {
+    background: #e8eaed !important;
+  }
+  body.theme-liamfinance main {
+    background: #f8fafc;
+    border-radius: 20px;
+    margin: 0;
+  }
+}
+
+/* ═══════════════════════════════════════════════
    AC ZONE TEMPLATE — Component classes
    ═══════════════════════════════════════════════ */
 

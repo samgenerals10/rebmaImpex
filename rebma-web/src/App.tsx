@@ -24,6 +24,7 @@ import SettingsDashboard from './views/SettingsDashboard';
 import FoodieShell from './components/FoodieShell';
 import FinovaShell from './components/FinovaShell';
 import AczoneShell from './components/AczoneShell';
+import LiamFinanceShell from './components/LiamFinanceShell';
 
 import { auth, hr, operations, management, marketing, finance, production, dispatch, reception, getToken, setToken, clearToken } from './services/apiClient';
 import { supabase } from './lib/supabaseClient';
@@ -2783,6 +2784,13 @@ export default function App() {
         </AczoneShell>
       );
     }
+    if (theme === 'liamfinance') {
+      return (
+        <LiamFinanceShell activeDepartment={activeDepartment} currentUser={currentUser}>
+          {content}
+        </LiamFinanceShell>
+      );
+    }
     return content;
   };
 
@@ -3268,7 +3276,7 @@ export default function App() {
           openBoardroom={() => { setActiveDepartment('BOARDROOM'); sessionStorage.setItem('rebma-last-dept', 'BOARDROOM'); setActiveSubTab('VideoConf'); }}
           isOpen={isSidebarOpen}
           onClose={() => setIsSidebarOpen(false)}
-          sidebarCollapsed={sidebarCollapsed}
+          sidebarCollapsed={sidebarCollapsed || theme === 'liamfinance'}
           setSidebarCollapsed={setSidebarCollapsed}
         />
 
