@@ -21,6 +21,7 @@ import DispatchDashboard from './views/DispatchDashboard';
 import LogisticsDashboard from './views/LogisticsDashboard';
 import BoardroomView from './views/BoardroomView';
 import SettingsDashboard from './views/SettingsDashboard';
+import FoodieShell from './components/FoodieShell';
 
 import { auth, hr, operations, management, marketing, finance, production, dispatch, reception, getToken, setToken, clearToken } from './services/apiClient';
 import { supabase } from './lib/supabaseClient';
@@ -2757,6 +2758,18 @@ export default function App() {
     }
   };
 
+  const renderWithShell = () => {
+    const content = renderDashboard();
+    if (theme === 'foodie') {
+      return (
+        <FoodieShell activeDepartment={activeDepartment} currentUser={currentUser}>
+          {content}
+        </FoodieShell>
+      );
+    }
+    return content;
+  };
+
   const handleProfilePhotoClick = async () => {
     const url = window.prompt("Enter profile image URL:", currentUser?.photo || "");
     if (url === null) return;
@@ -3282,6 +3295,7 @@ export default function App() {
                 setIsMobileSearchActive(true);
                 setIsMobileNotificationsActive(false);
               }}
+              theme={theme}
             />
           </div>
 
@@ -3302,12 +3316,12 @@ export default function App() {
                   ) : activeMobileView === 'chat' ? (
                     renderMobileChatPage()
                   ) : (
-                    renderDashboard()
+                    renderWithShell()
                   )}
                 </div>
                 {/* On desktop, always render the dashboard */}
                 <div className="hidden lg:block h-full">
-                  {renderDashboard()}
+                  {renderWithShell()}
                 </div>
               </motion.div>
             </AnimatePresence>

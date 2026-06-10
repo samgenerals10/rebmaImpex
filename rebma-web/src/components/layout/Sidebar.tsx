@@ -497,6 +497,17 @@ export default function Sidebar({
           </nav>
         </div>
 
+        {/* Foodie: Upgrade to Pro card */}
+        {theme === 'foodie' && !isActualCollapsed && (
+          <div className="foodie-upgrade-card mx-2 mb-3">
+            <p className="text-[10px] text-white/60 font-semibold uppercase tracking-widest mb-1">Pro Plan</p>
+            <p className="text-xs font-bold text-white leading-snug mb-2">Unlock advanced analytics & multi-port tracking</p>
+            <button className="w-full bg-white text-[#7c3aed] text-[10px] font-bold py-1.5 rounded-lg hover:bg-white/90 transition-colors cursor-pointer">
+              Upgrade to Pro
+            </button>
+          </div>
+        )}
+
         {/* Bottom section: Settings + User Card + Logout + Collapse Toggle */}
         <div className="space-y-3 pt-4 border-t border-[var(--border)] pb-6">
           {/* Settings shortcut */}

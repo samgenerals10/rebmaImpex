@@ -1361,3 +1361,100 @@ body.glass-theme-rose {
     color: var(--text-secondary) !important;
   }
 }
+
+/* ═══════════════════════════════════════════════
+   FOODIE TEMPLATE — Component classes
+   Applied globally when body.theme-foodie active
+   ═══════════════════════════════════════════════ */
+
+body.theme-foodie .foodie-shell {}
+
+body.theme-foodie .foodie-kpi-card {
+  background: var(--bg-card);
+  border-radius: 16px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  border: 1px solid var(--border);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  transition: box-shadow 0.2s, transform 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+body.theme-foodie .foodie-kpi-card:hover {
+  box-shadow: 0 6px 20px rgba(124,58,237,0.12);
+  transform: translateY(-2px);
+}
+
+body.theme-foodie .foodie-chart-card {
+  background: var(--bg-card);
+  border-radius: 16px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  border: 1px solid var(--border);
+  padding: 20px 24px;
+}
+
+body.theme-foodie .foodie-promo-card {
+  background: linear-gradient(135deg, #1e1b4b 0%, #4c1d95 50%, #7c3aed 100%);
+  border-radius: 16px;
+  padding: 24px 28px;
+  box-shadow: 0 8px 24px rgba(124,58,237,0.3);
+  overflow: hidden;
+  position: relative;
+}
+body.theme-foodie .foodie-promo-card::before {
+  content: '';
+  position: absolute;
+  top: -30px; right: -30px;
+  width: 120px; height: 120px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.06);
+}
+body.theme-foodie .foodie-promo-card::after {
+  content: '';
+  position: absolute;
+  bottom: -40px; right: 60px;
+  width: 160px; height: 160px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.04);
+}
+
+body.theme-foodie .foodie-order-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+body.theme-foodie .foodie-order-row:last-child {
+  border-bottom: none;
+}
+
+/* Foodie sidebar — Upgrade to Pro card */
+body.theme-foodie .foodie-upgrade-card {
+  background: linear-gradient(135deg, #4c1d95 0%, #7c3aed 100%);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin: 0 8px;
+  text-align: center;
+}
+
+/* Sidebar logo area override for foodie */
+body.theme-foodie .sidebar-logo-text {
+  color: #ffffff;
+}
+
+/* Header date chip */
+body.theme-foodie .foodie-date-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(124,58,237,0.12);
+  border: 1px solid rgba(124,58,237,0.25);
+  border-radius: 20px;
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #7c3aed;
+  white-space: nowrap;
+}

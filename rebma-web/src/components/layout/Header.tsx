@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { 
   Search, MessageSquare, Bell, Wifi, X, CheckCheck, Menu, Sun, Moon, MoreVertical,
-  User, ShieldCheck, Layers, Users, TrendingUp, Activity, DollarSign, Clipboard, Truck, Video, Settings, LogOut
+  User, ShieldCheck, Layers, Users, TrendingUp, Activity, DollarSign, Clipboard, Truck, Video, Settings, LogOut, Calendar
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { CurrentUser } from '../../types/erp';
@@ -28,6 +28,7 @@ interface HeaderProps {
   setActiveDepartment?: (dept: string) => void;
   setActiveSubTab?: (tab: string) => void;
   onSearchClick?: () => void;
+  theme?: string;
 }
 
 const getGreeting = () => {
@@ -56,7 +57,8 @@ export default function Header({
   activeDepartment,
   setActiveDepartment,
   setActiveSubTab,
-  onSearchClick
+  onSearchClick,
+  theme
 }: HeaderProps) {
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [showAvatarDropdown, setShowAvatarDropdown] = useState(false);
@@ -353,6 +355,14 @@ export default function Header({
           >
             <MessageSquare className="w-4 h-4" />
           </button>
+
+          {/* Foodie date chip */}
+          {theme === 'foodie' && (
+            <div className="foodie-date-chip hidden xl:flex">
+              <Calendar className="w-3.5 h-3.5" />
+              {new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+            </div>
+          )}
 
           {/* Notification Bell */}
           <div className="relative">
