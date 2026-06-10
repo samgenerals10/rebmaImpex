@@ -149,7 +149,6 @@ export default function Sidebar({
       { id: 'Meetings', label: 'Meetings Organizer', icon: Clipboard },
     ],
     SETTINGS: [
-      { id: 'Themes', label: 'Custom ERP Themes', icon: Settings },
       { id: 'Appearance', label: 'Display & Appearance', icon: Activity },
       { id: 'Profile', label: 'Profile & Account', icon: Users },
       { id: 'ChangePassword', label: 'Change Password', icon: ShieldCheck },

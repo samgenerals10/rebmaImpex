@@ -1130,7 +1130,7 @@ export default function App() {
     else if (activeDepartment === 'DISPATCH') setActiveSubTab('Deliveries');
     else if (activeDepartment === 'MANAGEMENT') setActiveSubTab('CargoApproval');
     else if (activeDepartment === 'BOARDROOM') setActiveSubTab('VideoConf');
-    else if (activeDepartment === 'SETTINGS') setActiveSubTab('Themes');
+    else if (activeDepartment === 'SETTINGS') setActiveSubTab('Appearance');
     else setActiveSubTab('Overview');
 
     if (activeDepartment !== 'CEO') {
@@ -3243,7 +3243,7 @@ export default function App() {
               darkMode={darkMode}
               setDarkMode={setDarkMode}
               onProfileClick={() => setActiveMobileView('profile')}
-              onDisplaySettingsClick={() => { setActiveDepartment('SETTINGS'); sessionStorage.setItem('rebma-last-dept', 'SETTINGS'); setActiveSubTab(window.innerWidth < 1024 ? 'Appearance' : 'Themes'); setActiveMobileView('dashboard'); }}
+              onDisplaySettingsClick={() => { setActiveDepartment('SETTINGS'); sessionStorage.setItem('rebma-last-dept', 'SETTINGS'); setActiveSubTab('Appearance'); setActiveMobileView('dashboard'); }}
               onSwitchDepartmentClick={() => setIsSidebarOpen(true)}
               onLogout={async () => {
                 await auth.signOut();
