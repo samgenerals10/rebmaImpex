@@ -40,6 +40,8 @@ interface SettingsDashboardProps {
   setDensity: (val: string) => void;
   motion: string;
   setMotion: (val: string) => void;
+  sidebarCollapsed?: boolean;
+  setSidebarCollapsed?: (val: boolean) => void;
 }
 
 export default function SettingsDashboard({
@@ -77,7 +79,9 @@ export default function SettingsDashboard({
   density,
   setDensity,
   motion,
-  setMotion
+  setMotion,
+  sidebarCollapsed = false,
+  setSidebarCollapsed
 }: SettingsDashboardProps) {
 
   // Profile editable fields
@@ -191,26 +195,41 @@ export default function SettingsDashboard({
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {[
-                { id: 'breeze', label: 'Drive Breeze', desc: 'Clean blue & white UI' },
-                { id: 'seven', label: 'Windows 7 Aero', desc: 'Glassmorphism effects' },
-                { id: 'royal', label: 'Royal Midnight', desc: 'Electric indigo dark' },
-                { id: 'mint', label: 'Emerald Mint', desc: 'Sleek dark mint tones' },
-                { id: 'sunset', label: 'Sunset Glow', desc: 'Deep warm purple neon' },
-                { id: 'forest', label: 'Forest Moss', desc: 'Natural earthy sage' },
-                { id: 'ghana', label: 'REBMA Ghana Official', desc: 'Teal & Gold official' }
+                { id: 'arctic-white', label: 'Arctic White', desc: 'Light contrast style', bg: '#ffffff', accent: '#0f172a' },
+                { id: 'rose-quartz', label: 'Rose Quartz', desc: 'Earthy pastel quartz', bg: '#ffffff', accent: '#f43f5e' },
+                { id: 'midnight-navy', label: 'Midnight Navy', desc: 'Premium royal blue', bg: '#1e293b', accent: '#3b82f6' },
+                { id: 'emerald-pro', label: 'Emerald Pro', desc: 'Teal corporate design', bg: '#ffffff', accent: '#059669' },
+                { id: 'royal-purple', label: 'Royal Purple', desc: 'Rich indigo amethyst', bg: '#ffffff', accent: '#8b5cf6' },
+                { id: 'sunset-orange', label: 'Sunset Orange', desc: 'Warm active amber', bg: '#ffffff', accent: '#f97316' },
+                { id: 'ocean-blue', label: 'Ocean Blue', desc: 'Calming azure water', bg: '#ffffff', accent: '#0ea5e9' },
+                { id: 'charcoal-dark', label: 'Charcoal Dark', desc: 'Elegant carbon dark', bg: '#27272a', accent: '#e4e4e7' },
+                { id: 'lavender-mist', label: 'Lavender Mist', desc: 'Soft violet focus', bg: '#ffffff', accent: '#7c3aed' },
+                { id: 'golden-sand', label: 'Golden Sand', desc: 'Luxury champagne sand', bg: '#ffffff', accent: '#d97706' },
               ].map(t => (
                 <button
                   key={t.id}
-                  onClick={() => setTheme(t.id as any)}
-                  className={`p-3 text-left border rounded-xl hover:scale-102 transition-all cursor-pointer ${
+                  type="button"
+                  onClick={() => setTheme(t.id)}
+                  className={`p-4 text-left border rounded-2xl hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer flex flex-col justify-between h-full ${
                     theme === t.id
                       ? 'border-[var(--accent)] bg-[var(--accent-light)]'
                       : 'border-[var(--border)] bg-[var(--bg-card)] hover:bg-[var(--accent-light)]/5'
                   }`}
                 >
-                  <p className={`text-xs font-bold ${theme === t.id ? 'text-[var(--accent)]' : 'text-[var(--text-primary)]'}`}>{t.label}</p>
-                  <p className="text-[10px] text-[var(--text-muted)] mt-0.5">{t.desc}</p>
-                  {theme === t.id && <span className="text-[9px] font-bold text-[var(--accent)] mt-1 block">● ACTIVE</span>}
+                  <div>
+                    <div className="flex items-center gap-1 mb-2">
+                      <div className="w-5 h-5 rounded-full border border-[var(--border)] shadow-sm" style={{ backgroundColor: t.bg }} title="Background preview" />
+                      <div className="w-5 h-5 rounded-full border border-[var(--border)] shadow-sm -ml-2" style={{ backgroundColor: t.accent }} title="Accent preview" />
+                    </div>
+                    <h4 className="text-sm font-semibold text-[var(--text-primary)]">{t.label}</h4>
+                    <p className="text-xs text-[var(--text-muted)] mt-1">{t.desc}</p>
+                  </div>
+                  {theme === t.id && (
+                    <span className="text-[9px] font-extrabold text-[var(--accent)] mt-3 inline-flex items-center gap-1 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 w-fit">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      ACTIVE
+                    </span>
+                  )}
                 </button>
               ))}
             </div>
@@ -456,34 +475,43 @@ export default function SettingsDashboard({
                 <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--text-primary)]">System Theme Preset</h3>
                 <p className="text-[11px] text-[var(--text-muted)]">Select one of our 10 dynamic color configurations.</p>
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {[
-                  { id: 'arctic-white', label: 'Arctic White', desc: 'Light contrast style' },
-                  { id: 'rose-quartz', label: 'Rose Quartz', desc: 'Earthy pastel quartz' },
-                  { id: 'midnight-navy', label: 'Midnight Navy', desc: 'Premium royal blue' },
-                  { id: 'emerald-pro', label: 'Emerald Pro', desc: 'Teal corporate design' },
-                  { id: 'royal-purple', label: 'Royal Purple', desc: 'Rich indigo amethyst' },
-                  { id: 'sunset-orange', label: 'Sunset Orange', desc: 'Warm active amber' },
-                  { id: 'ocean-blue', label: 'Ocean Blue', desc: 'Calming azure water' },
-                  { id: 'charcoal-dark', label: 'Charcoal Dark', desc: 'Elegant carbon dark' },
-                  { id: 'lavender-mist', label: 'Lavender Mist', desc: 'Soft violet focus' },
-                  { id: 'golden-sand', label: 'Golden Sand', desc: 'Luxury champagne sand' },
+                  { id: 'arctic-white', label: 'Arctic White', desc: 'Light contrast style', bg: '#ffffff', accent: '#0f172a' },
+                  { id: 'rose-quartz', label: 'Rose Quartz', desc: 'Earthy pastel quartz', bg: '#ffffff', accent: '#f43f5e' },
+                  { id: 'midnight-navy', label: 'Midnight Navy', desc: 'Premium royal blue', bg: '#1e293b', accent: '#3b82f6' },
+                  { id: 'emerald-pro', label: 'Emerald Pro', desc: 'Teal corporate design', bg: '#ffffff', accent: '#059669' },
+                  { id: 'royal-purple', label: 'Royal Purple', desc: 'Rich indigo amethyst', bg: '#ffffff', accent: '#8b5cf6' },
+                  { id: 'sunset-orange', label: 'Sunset Orange', desc: 'Warm active amber', bg: '#ffffff', accent: '#f97316' },
+                  { id: 'ocean-blue', label: 'Ocean Blue', desc: 'Calming azure water', bg: '#ffffff', accent: '#0ea5e9' },
+                  { id: 'charcoal-dark', label: 'Charcoal Dark', desc: 'Elegant carbon dark', bg: '#27272a', accent: '#e4e4e7' },
+                  { id: 'lavender-mist', label: 'Lavender Mist', desc: 'Soft violet focus', bg: '#ffffff', accent: '#7c3aed' },
+                  { id: 'golden-sand', label: 'Golden Sand', desc: 'Luxury champagne sand', bg: '#ffffff', accent: '#d97706' },
                 ].map(t => (
                   <button
                     key={t.id}
                     type="button"
                     onClick={() => setTheme(t.id)}
-                    className={`p-3 text-left border rounded-2xl hover:scale-[1.01] transition-all cursor-pointer ${
+                    className={`p-4 text-left border rounded-2xl hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer flex flex-col justify-between h-full ${
                       theme === t.id
                         ? 'border-[var(--accent)] bg-[var(--accent-light)]'
                         : 'border-[var(--border)] bg-[var(--bg)] hover:bg-[var(--accent-light)]/5'
                     }`}
                   >
-                    <div className="flex items-center justify-between">
-                      <p className="text-xs font-bold text-[var(--text-primary)]">{t.label}</p>
-                      {theme === t.id && <span className="w-2 h-2 rounded-full" style={{ backgroundColor: accentColor }} />}
+                    <div>
+                      <div className="flex items-center gap-1 mb-2">
+                        <div className="w-5 h-5 rounded-full border border-[var(--border)] shadow-sm" style={{ backgroundColor: t.bg }} title="Background preview" />
+                        <div className="w-5 h-5 rounded-full border border-[var(--border)] shadow-sm -ml-2" style={{ backgroundColor: t.accent }} title="Accent preview" />
+                      </div>
+                      <h4 className="text-sm font-semibold text-[var(--text-primary)]">{t.label}</h4>
+                      <p className="text-xs text-[var(--text-muted)] mt-1">{t.desc}</p>
                     </div>
-                    <p className="text-[10px] text-[var(--text-muted)] mt-0.5">{t.desc}</p>
+                    {theme === t.id && (
+                      <span className="text-[9px] font-extrabold text-[var(--accent)] mt-3 inline-flex items-center gap-1 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 w-fit">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        ACTIVE
+                      </span>
+                    )}
                   </button>
                 ))}
               </div>
@@ -693,6 +721,19 @@ export default function SettingsDashboard({
                   </div>
                 </div>
 
+                {/* Collapsible Sidebar (Desktop) */}
+                <div className="space-y-1.5 flex flex-col justify-end">
+                  <div className="flex justify-between items-center p-2.5 bg-[var(--bg)] border border-[var(--border)] rounded-xl h-10">
+                    <span className="text-xs font-semibold text-[var(--text-primary)]">Collapsible Sidebar</span>
+                    <button
+                      type="button"
+                      onClick={() => setSidebarCollapsed?.(!sidebarCollapsed)}
+                      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors cursor-pointer ${sidebarCollapsed ? 'bg-[var(--accent)]' : 'bg-[var(--border)]'}`}
+                    >
+                      <span className={`inline-block h-3 w-3 rounded-full bg-white shadow transition-transform ${sidebarCollapsed ? 'translate-x-5' : 'translate-x-1'}`} />
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
 

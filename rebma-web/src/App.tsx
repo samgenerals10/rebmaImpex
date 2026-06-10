@@ -72,6 +72,9 @@ export default function App() {
   const [darkMode, setDarkMode] = useState<boolean>(() => {
     return localStorage.getItem('erp-dark-mode') === 'true';
   });
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
+    return localStorage.getItem('erp-sidebar-collapsed') === 'true';
+  });
   
   // Keep support for old preferences/types if needed
   const [reducedMotion, setReducedMotion] = useState<boolean>(false);
@@ -95,6 +98,7 @@ export default function App() {
     localStorage.setItem('erp-density', density);
     localStorage.setItem('erp-motion', motionSetting);
     localStorage.setItem('erp-dark-mode', String(darkMode));
+    localStorage.setItem('erp-sidebar-collapsed', String(sidebarCollapsed));
 
     // 1. Dark Mode
     if (darkMode) {
@@ -2555,6 +2559,8 @@ export default function App() {
           setDensity={setDensity}
           motion={motionSetting}
           setMotion={setMotionSetting}
+          sidebarCollapsed={sidebarCollapsed}
+          setSidebarCollapsed={setSidebarCollapsed}
         />
       );
     }
@@ -2711,6 +2717,8 @@ export default function App() {
             setDensity={setDensity}
             motion={motionSetting}
             setMotion={setMotionSetting}
+            sidebarCollapsed={sidebarCollapsed}
+            setSidebarCollapsed={setSidebarCollapsed}
           />
         );
       default:
@@ -3204,6 +3212,8 @@ export default function App() {
           openBoardroom={() => { setActiveDepartment('BOARDROOM'); sessionStorage.setItem('rebma-last-dept', 'BOARDROOM'); setActiveSubTab('VideoConf'); }}
           isOpen={isSidebarOpen}
           onClose={() => setIsSidebarOpen(false)}
+          sidebarCollapsed={sidebarCollapsed}
+          setSidebarCollapsed={setSidebarCollapsed}
         />
 
         {/* Backdrop overlay for mobile/tablet */}
