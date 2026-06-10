@@ -215,7 +215,7 @@ export default function Sidebar({
             <div className="flex items-center gap-2">
               <img 
                 src="/logo.png" 
-                className="w-8 h-8 object-contain rounded bg-white/20 p-0.5" 
+                className="w-8 h-8 object-contain rounded bg-bg-card/20 p-0.5" 
                 alt="REBMA GHANA Logo" 
               />
               <div>
@@ -272,7 +272,7 @@ export default function Sidebar({
                       }}
                       className={`w-full flex items-center px-3 py-2 rounded-xl text-xs font-semibold transition-all text-left truncate ${
                         isSelected 
-                          ? 'bg-[var(--accent,#068d5c)] text-white font-extrabold shadow-sm' 
+                          ? 'bg-[var(--accent,#068d5c)] text-white font-extrabold shadow-card' 
                           : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
                       }`}
                     >
@@ -315,7 +315,7 @@ export default function Sidebar({
             <div className="flex items-center gap-3">
               <img 
                 src="/logo.png" 
-                className="w-9 h-9 object-contain rounded-lg bg-white p-0.5 shrink-0 select-none pointer-events-none shadow-sm" 
+                className="w-9 h-9 object-contain rounded-lg bg-bg-card p-0.5 shrink-0 select-none pointer-events-none shadow-card" 
                 alt="REBMA GHANA Logo" 
               />
               <div className={`transition-all duration-300 ${isActualCollapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100'}`}>
@@ -327,7 +327,7 @@ export default function Sidebar({
 
           {/* User Profile Section */}
           <div className={`mb-5 ${isActualCollapsed ? 'px-1 py-1 justify-center' : 'px-3 py-3'} bg-[var(--accent-light)] rounded-2xl flex items-center gap-3 border border-[var(--border)] relative transition-all duration-300`}>
-            <div className="w-10 h-10 rounded-full bg-[var(--accent)] text-white flex items-center justify-center font-bold text-sm shrink-0 relative shadow-sm">
+            <div className="w-10 h-10 rounded-full bg-[var(--accent)] text-white flex items-center justify-center font-bold text-sm shrink-0 relative shadow-card">
               {currentUser?.fullName?.[0] || 'U'}
               <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-white" />
             </div>
@@ -341,7 +341,7 @@ export default function Sidebar({
           <div className="mb-4 px-1">
             <button 
               onClick={handleBoardroomClick}
-              className={`w-full flex items-center justify-center gap-2 py-2.5 bg-[var(--bg-card)] hover:bg-[var(--accent-light)] text-[var(--accent)] rounded-full font-semibold shadow-sm border border-[var(--border)] hover:scale-[1.02] transition-all duration-200 cursor-pointer text-xs ${isActualCollapsed ? 'px-0' : ''}`}
+              className={`w-full flex items-center justify-center gap-2 py-2.5 bg-[var(--bg-card)] hover:bg-[var(--accent-light)] text-[var(--accent)] rounded-full font-semibold shadow-card border border-[var(--border)] hover:scale-[1.02] transition-all duration-200 cursor-pointer text-xs ${isActualCollapsed ? 'px-0' : ''}`}
               title="Executive Boardroom"
             >
               <MessagesSquare className="w-4 h-4 text-[var(--accent)] shrink-0" />
@@ -355,7 +355,7 @@ export default function Sidebar({
             <button
               type="button"
               onClick={() => setIsSwitcherOpen(prev => !prev)}
-              className={`w-full flex items-center ${isActualCollapsed ? 'justify-center py-2.5 px-0' : 'justify-between py-2.5 px-3'} bg-[var(--bg)] hover:bg-[var(--accent-light)] border border-[var(--border)] text-[var(--text-primary)] rounded-xl text-xs focus:outline-none transition-all cursor-pointer font-semibold shadow-sm`}
+              className={`w-full flex items-center ${isActualCollapsed ? 'justify-center py-2.5 px-0' : 'justify-between py-2.5 px-3'} bg-[var(--bg)] hover:bg-[var(--accent-light)] border border-[var(--border)] text-[var(--text-primary)] rounded-xl text-xs focus:outline-none transition-all cursor-pointer font-semibold shadow-card`}
               title="Switch Department"
             >
               <div className="flex items-center gap-2 justify-center">
@@ -399,7 +399,7 @@ export default function Sidebar({
                 
                 <div className={`fixed inset-x-0 bottom-0 lg:absolute lg:top-full lg:bottom-auto max-h-[80vh] lg:max-h-80 bg-[var(--bg-card)] border-t lg:border border-[var(--border)] rounded-t-3xl lg:rounded-xl p-5 lg:p-1.5 z-[260] overflow-y-auto shadow-xl flex flex-col gap-1 animate-fade-in-up transition-all duration-300 ${isActualCollapsed ? 'lg:w-[200px] lg:left-0' : 'lg:inset-x-0'}`}>
                   {/* Mobile Grab Handle */}
-                  <div className="lg:hidden w-12 h-1 bg-white/20 rounded-full mx-auto mb-1 shrink-0" />
+                  <div className="lg:hidden w-12 h-1 bg-bg-card/20 rounded-full mx-auto mb-1 shrink-0" />
                   
                   <div className="flex justify-between items-center lg:hidden mb-1">
                     <h3 className="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider">Switch Department</h3>
@@ -442,7 +442,7 @@ export default function Sidebar({
                           }}
                           className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                             isSelected 
-                              ? 'bg-[var(--accent)] text-white shadow-sm font-bold' 
+                              ? 'bg-[var(--accent)] text-white shadow-card font-bold' 
                               : 'text-[var(--text-primary)] hover:bg-[var(--accent-light)]'
                           }`}
                         >
@@ -481,17 +481,15 @@ export default function Sidebar({
                   onClick={() => setActiveSubTab(tab.id)}
                   className={`nav-item w-full flex items-center ${isActualCollapsed ? 'justify-center px-0' : 'gap-3 px-4'} py-2.5 rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer`}
                   style={isActive ? {
-                    background: 'var(--accent-soft)',
-                    borderLeft: '3px solid var(--accent)',
-                    color: 'var(--accent)'
+                    background: 'var(--accent)',
+                    color: '#ffffff'
                   } : {
-                    color: 'var(--text-sidebar, var(--text-secondary))',
-                    borderLeft: '3px solid transparent'
+                    color: 'var(--text-sidebar, var(--text-secondary))'
                   }}
                   title={tab.label}
                 >
                   <span className="nav-icon flex-shrink-0">
-                    <Icon className="w-4 h-4" style={{ color: isActive ? 'var(--accent)' : undefined }} />
+                    <Icon className="w-4 h-4" style={{ color: isActive ? '#ffffff' : undefined }} />
                   </span>
                   <span className={`nav-label truncate transition-all duration-300 ${isActualCollapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100'}`}>{tab.label}</span>
                 </button>
@@ -507,7 +505,7 @@ export default function Sidebar({
             onClick={() => { setActiveDepartment('SETTINGS'); setActiveSubTab('Appearance'); }}
             className={`w-full flex items-center ${isActualCollapsed ? 'justify-center px-0' : 'gap-3 px-4'} py-2.5 rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer ${
               activeDepartment === 'SETTINGS'
-                ? 'bg-[var(--accent-light)] text-[var(--accent)] font-bold shadow-sm'
+                ? 'bg-[var(--accent-light)] text-[var(--accent)] font-bold shadow-card'
                 : 'text-[var(--text-secondary)] hover:bg-[var(--accent-light)] hover:text-[var(--text-primary)]'
             }`}
             title="Settings"
@@ -519,7 +517,7 @@ export default function Sidebar({
           {/* User profile + logout */}
           <div className={`px-2 flex items-center ${isActualCollapsed ? 'flex-col gap-3 justify-center' : 'justify-between'}`}>
             <div className={`flex items-center ${isActualCollapsed ? 'justify-center' : 'gap-2'} truncate`}>
-              <div className="w-8 h-8 rounded-full bg-[var(--accent)] text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-sm">
+              <div className="w-8 h-8 rounded-full bg-[var(--accent)] text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-card">
                 {currentUser?.fullName?.[0] || 'U'}
               </div>
               <div className={`truncate transition-all duration-300 ${isActualCollapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100'}`}>

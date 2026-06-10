@@ -354,8 +354,8 @@ export default function ManagementDashboard({
             <p className="text-[11px] text-slate-400 mt-0.5">Cargo approvals & credit control</p>
           </div>
           <div className="flex gap-2">
-            <button onClick={() => exportToCSV(localGoods, ['id', 'goodsName', 'quantity', 'portName', 'status'], 'cargo_list')} className="p-2 bg-white rounded-xl border border-slate-200 shadow-sm"><FileSpreadsheet className="w-4 h-4 text-slate-500" /></button>
-            <button onClick={() => exportToPDF('Management Report', localGoods, ['id', 'goodsName', 'quantity', 'status'])} className="p-2 bg-white rounded-xl border border-slate-200 shadow-sm"><FileText className="w-4 h-4 text-slate-500" /></button>
+            <button onClick={() => exportToCSV(localGoods, ['id', 'goodsName', 'quantity', 'portName', 'status'], 'cargo_list')} className="p-2 bg-bg-card rounded-xl border border-slate-200 shadow-card"><FileSpreadsheet className="w-4 h-4 text-slate-500" /></button>
+            <button onClick={() => exportToPDF('Management Report', localGoods, ['id', 'goodsName', 'quantity', 'status'])} className="p-2 bg-bg-card rounded-xl border border-slate-200 shadow-card"><FileText className="w-4 h-4 text-slate-500" /></button>
           </div>
         </div>
 
@@ -438,7 +438,7 @@ export default function ManagementDashboard({
         {stats.map((card, idx) => {
           const Icon = card.icon;
           return (
-            <div key={idx} className="p-6 bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] border-b-[3px] border-[var(--accent)] flex items-center justify-between hover:scale-102 transition-all duration-300">
+            <div key={idx} className="p-6 bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] flex items-center justify-between hover:scale-102 transition-all duration-300">
               <div>
                 <span className="text-xs text-[var(--text-muted)] uppercase font-semibold">{card.title}</span>
                 <h3 className="text-2xl font-bold mt-1 text-[var(--text-primary)]">{card.value}</h3>

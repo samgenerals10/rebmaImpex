@@ -348,11 +348,11 @@ export default function MarketingDashboard({
 
   if (activeMobileDetail) {
     return (
-      <div className="lg:hidden bg-white min-h-screen p-4 pb-24 space-y-6 animate-fade-in-up text-slate-800">
+      <div className="lg:hidden bg-bg-card min-h-screen p-4 pb-24 space-y-6 animate-fade-in-up text-slate-800">
         <div className="flex items-center gap-3">
           <button 
             onClick={() => setActiveMobileDetail(null)}
-            className="px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full text-xs font-bold text-slate-600 cursor-pointer shadow-sm"
+            className="px-3 py-1.5 bg-bg-card dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full text-xs font-bold text-slate-600 cursor-pointer shadow-card"
           >
             ← Back
           </button>
@@ -363,7 +363,7 @@ export default function MarketingDashboard({
           const cust = activeMobileDetail.data as Customer;
           return (
             <div className="space-y-4">
-              <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-slate-100 dark:border-slate-700 text-center flex flex-col items-center gap-3">
+              <div className="bg-bg-card dark:bg-slate-800 rounded-2xl p-6 shadow-card border border-slate-100 dark:border-slate-700 text-center flex flex-col items-center gap-3">
                 {cust.photo ? (
                   <img src={cust.photo} alt={cust.name} className="w-16 h-16 rounded-full object-cover border-2 border-slate-200" />
                 ) : (
@@ -377,7 +377,7 @@ export default function MarketingDashboard({
                   <span className="inline-block mt-2 px-2.5 py-0.5 bg-blue-500/10 text-blue-500 rounded-full text-[9px] font-bold uppercase">{cust.companyName}</span>
                 </div>
               </div>
-              <div className="bg-white dark:bg-slate-800 rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-700">
+              <div className="bg-bg-card dark:bg-slate-800 rounded-2xl p-4 shadow-card border border-slate-100 dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-700">
                 {[['Phone', cust.phone], ['Location', cust.location || '—'], ['Email', cust.email || '—'], ['Ghana Card', cust.ghanaCard || '—'], ['Registered', cust.registeredAt]].map(([label, value]) => (
                   <div key={label} className="py-3 flex justify-between items-center text-xs">
                     <span className="text-slate-400 font-medium">{label}</span>
@@ -395,14 +395,14 @@ export default function MarketingDashboard({
           const order = activeMobileDetail.data as Order;
           return (
             <div className="space-y-4">
-              <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-slate-100 dark:border-slate-700 text-center flex flex-col items-center gap-3">
+              <div className="bg-bg-card dark:bg-slate-800 rounded-2xl p-6 shadow-card border border-slate-100 dark:border-slate-700 text-center flex flex-col items-center gap-3">
                 <div className="w-16 h-16 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 flex items-center justify-center font-bold text-xl">{order.clientName[0]}</div>
                 <div>
                   <h3 className="text-base font-bold">{order.clientName}</h3>
                   <p className="text-xs text-slate-400 font-mono mt-0.5">{order.id}</p>
                 </div>
               </div>
-              <div className="bg-white dark:bg-slate-800 rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-700">
+              <div className="bg-bg-card dark:bg-slate-800 rounded-2xl p-4 shadow-card border border-slate-100 dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-700">
                 {[
                   ['Ticket', order.ticketNumber || '—'],
                   ['Product', order.productName || '—'],
@@ -440,10 +440,10 @@ export default function MarketingDashboard({
             <p className="text-[11px] text-slate-400 mt-0.5">Sales pipeline & customer records</p>
           </div>
           <div className="flex gap-2">
-            <button onClick={() => exportToCSV(localOrders, ['id', 'clientName', 'productName', 'totalAmount', 'status'], 'sales_orders')} className="p-2 bg-white rounded-xl border border-slate-200 shadow-sm" title="Export CSV">
+            <button onClick={() => exportToCSV(localOrders, ['id', 'clientName', 'productName', 'totalAmount', 'status'], 'sales_orders')} className="p-2 bg-bg-card rounded-xl border border-slate-200 shadow-card" title="Export CSV">
               <FileSpreadsheet className="w-4 h-4 text-slate-500" />
             </button>
-            <button onClick={() => exportToPDF('Sales Orders Report', localOrders, ['id', 'clientName', 'totalAmount', 'status'])} className="p-2 bg-white rounded-xl border border-slate-200 shadow-sm" title="Export PDF">
+            <button onClick={() => exportToPDF('Sales Orders Report', localOrders, ['id', 'clientName', 'totalAmount', 'status'])} className="p-2 bg-bg-card rounded-xl border border-slate-200 shadow-card" title="Export PDF">
               <FileText className="w-4 h-4 text-slate-500" />
             </button>
           </div>
@@ -495,7 +495,7 @@ export default function MarketingDashboard({
 
         {/* Quick actions panel */}
         <div className="grid grid-cols-2 gap-2">
-          <button onClick={() => setShowOrderModal(true)} className="flex items-center justify-center gap-1.5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm">
+          <button onClick={() => setShowOrderModal(true)} className="flex items-center justify-center gap-1.5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-card">
             <UserPlus className="w-4 h-4" /> Book Order
           </button>
           <button onClick={() => setShowCustomerModal(true)} className="flex items-center justify-center gap-1.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition-all border border-slate-200">
@@ -563,7 +563,7 @@ export default function MarketingDashboard({
                 <h2 className="font-bold text-lg text-white">Create Client Sales Order</h2>
                 <p className="text-white/70 text-xs mt-0.5">Fill all required fields to book a new sales order</p>
               </div>
-              <button onClick={() => setShowOrderModal(false)} className="p-1.5 hover:bg-white/10 rounded-full cursor-pointer"><X className="w-5 h-5 text-white" /></button>
+              <button onClick={() => setShowOrderModal(false)} className="p-1.5 hover:bg-bg-card/10 rounded-full cursor-pointer"><X className="w-5 h-5 text-white" /></button>
             </div>
             <form onSubmit={handleSubmitOrder} className="p-6 space-y-4">
               <div>
@@ -625,7 +625,7 @@ export default function MarketingDashboard({
                 <h2 className="font-bold text-white text-lg">Register New Customer</h2>
                 <p className="text-white/70 text-xs mt-0.5">Add a new client to the customer directory</p>
               </div>
-              <button onClick={() => setShowCustomerModal(false)} className="p-1.5 hover:bg-white/10 rounded-full cursor-pointer"><X className="w-5 h-5 text-white" /></button>
+              <button onClick={() => setShowCustomerModal(false)} className="p-1.5 hover:bg-bg-card/10 rounded-full cursor-pointer"><X className="w-5 h-5 text-white" /></button>
             </div>
             <form onSubmit={handleSubmitCustomer} className="p-6 space-y-4">
               {/* Photo upload */}
@@ -696,7 +696,7 @@ export default function MarketingDashboard({
             <div className="bg-gradient-to-r from-slate-800 to-slate-700 p-5 text-white">
               <div className="flex justify-between items-center">
                 <h2 className="font-bold text-lg text-white">Customer Profile</h2>
-                <button onClick={() => setSelectedCustomer(null)} className="p-1.5 hover:bg-white/10 rounded-full cursor-pointer"><X className="w-5 h-5 text-white" /></button>
+                <button onClick={() => setSelectedCustomer(null)} className="p-1.5 hover:bg-bg-card/10 rounded-full cursor-pointer"><X className="w-5 h-5 text-white" /></button>
               </div>
             </div>
             <div className="p-6 space-y-4">
@@ -774,7 +774,7 @@ export default function MarketingDashboard({
                 <h2 className="font-bold text-white">Order Details</h2>
                 <p className="text-white/70 text-xs mt-0.5 font-mono">{selectedOrder.id}</p>
               </div>
-              <button onClick={() => setSelectedOrder(null)} className="p-1.5 hover:bg-white/10 rounded-full cursor-pointer"><X className="w-5 h-5 text-white" /></button>
+              <button onClick={() => setSelectedOrder(null)} className="p-1.5 hover:bg-bg-card/10 rounded-full cursor-pointer"><X className="w-5 h-5 text-white" /></button>
             </div>
             <div className="p-6 space-y-3 text-xs">
               {selectedOrder.ticketNumber && (
@@ -829,7 +829,7 @@ export default function MarketingDashboard({
         {stats.map((card, idx) => {
           const Icon = card.icon;
           return (
-            <div key={idx} className="p-6 bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] border-b-[3px] border-[var(--accent)] flex items-center justify-between hover:scale-102 transition-all duration-300">
+            <div key={idx} className="p-6 bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] flex items-center justify-between hover:scale-102 transition-all duration-300">
               <div>
                 <span className="text-xs text-[var(--text-muted)] uppercase font-semibold">{card.title}</span>
                 <h3 className="text-2xl font-bold mt-1 text-[var(--text-primary)]">{card.value}</h3>
@@ -919,7 +919,7 @@ export default function MarketingDashboard({
             <div
               key={cust.id}
               onClick={() => setActiveMobileDetail({ type: 'customer', data: cust })}
-              className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm p-4 border border-slate-100 dark:border-slate-700 flex items-center justify-between cursor-pointer"
+              className="bg-bg-card dark:bg-slate-800 rounded-2xl shadow-card p-4 border border-slate-100 dark:border-slate-700 flex items-center justify-between cursor-pointer"
             >
               <div className="flex items-center gap-3">
                 {cust.photo ? (
@@ -937,7 +937,7 @@ export default function MarketingDashboard({
             </div>
           ))}
           {filteredCust.length === 0 && (
-            <div className="p-8 text-center text-slate-400 text-xs bg-white dark:bg-slate-800 rounded-2xl">No customers matched search.</div>
+            <div className="p-8 text-center text-slate-400 text-xs bg-bg-card dark:bg-slate-800 rounded-2xl">No customers matched search.</div>
           )}
         </div>
 
@@ -1112,7 +1112,7 @@ export default function MarketingDashboard({
             <div
               key={order.id}
               onClick={() => setActiveMobileDetail({ type: 'order', data: order })}
-              className="bg-[var(--bg-card)] rounded-2xl shadow-sm p-4 border border-[var(--border)] flex items-center justify-between cursor-pointer"
+              className="bg-[var(--bg-card)] rounded-2xl shadow-card p-4 border border-[var(--border)] flex items-center justify-between cursor-pointer"
             >
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-[var(--accent-light)] text-[var(--accent)] flex items-center justify-center font-bold text-sm shrink-0">{order.clientName[0]}</div>

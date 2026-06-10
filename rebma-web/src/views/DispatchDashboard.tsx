@@ -173,12 +173,12 @@ export default function DispatchDashboard({
 
   if (activeMobileDetail) {
     return (
-      <div className="lg:hidden bg-white min-h-screen p-4 pb-24 space-y-6 animate-fade-in-up text-slate-800">
+      <div className="lg:hidden bg-bg-card min-h-screen p-4 pb-24 space-y-6 animate-fade-in-up text-slate-800">
         {/* Header with Back button */}
         <div className="flex items-center gap-3">
           <button 
             onClick={() => setActiveMobileDetail(null)}
-            className="px-3 py-1.5 bg-white dark:bg-slate-855 border border-slate-200 dark:border-slate-800 rounded-full text-xs font-bold text-slate-600 dark:text-slate-350 cursor-pointer shadow-sm"
+            className="px-3 py-1.5 bg-bg-card dark:bg-slate-855 border border-slate-200 dark:border-slate-800 rounded-full text-xs font-bold text-slate-600 dark:text-slate-350 cursor-pointer shadow-card"
           >
             ← Back
           </button>
@@ -186,7 +186,7 @@ export default function DispatchDashboard({
         </div>
 
         <div className="space-y-6">
-          <div className="bg-white dark:bg-slate-855 rounded-2xl p-6 shadow-sm border border-slate-100 dark:border-slate-800 space-y-4 text-center flex flex-col items-center">
+          <div className="bg-bg-card dark:bg-slate-855 rounded-2xl p-6 shadow-card border border-slate-100 dark:border-slate-800 space-y-4 text-center flex flex-col items-center">
             <div className="w-16 h-16 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-405 flex items-center justify-center font-bold text-xl shrink-0">
               <Truck className="w-8 h-8" />
             </div>
@@ -196,7 +196,7 @@ export default function DispatchDashboard({
             </div>
           </div>
 
-          <div className="bg-white dark:bg-slate-855 rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
+          <div className="bg-bg-card dark:bg-slate-855 rounded-2xl p-4 shadow-card border border-slate-100 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
             <div className="py-3 flex justify-between items-center text-xs">
               <span className="text-slate-400 font-medium">Delivery ID</span>
               <span className="font-semibold text-slate-800 dark:text-slate-205 font-mono">{activeMobileDetail.id}</span>
@@ -282,10 +282,10 @@ export default function DispatchDashboard({
             <p className="text-[11px] text-slate-400 mt-0.5">Active routes & delivery history</p>
           </div>
           <div className="flex gap-2">
-            <button onClick={() => exportToCSV(localDeliveries, ['id', 'orderId', 'clientName', 'destination', 'driverName', 'status'], 'dispatch_logs')} className="p-2 bg-white rounded-xl border border-slate-200 shadow-sm">
+            <button onClick={() => exportToCSV(localDeliveries, ['id', 'orderId', 'clientName', 'destination', 'driverName', 'status'], 'dispatch_logs')} className="p-2 bg-bg-card rounded-xl border border-slate-200 shadow-card">
               <FileSpreadsheet className="w-4 h-4 text-slate-500" />
             </button>
-            <button onClick={() => exportToPDF('Dispatch Logs', localDeliveries, ['id', 'orderId', 'clientName', 'status'])} className="p-2 bg-white rounded-xl border border-slate-200 shadow-sm">
+            <button onClick={() => exportToPDF('Dispatch Logs', localDeliveries, ['id', 'orderId', 'clientName', 'status'])} className="p-2 bg-bg-card rounded-xl border border-slate-200 shadow-card">
               <FileText className="w-4 h-4 text-slate-500" />
             </button>
           </div>
@@ -410,7 +410,7 @@ export default function DispatchDashboard({
         {stats.map((card, idx) => {
           const Icon = card.icon;
           return (
-            <div key={idx} className="p-4 md:p-6 bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] border-b-[3px] border-[var(--accent)] flex items-center justify-between hover:scale-[1.02] transition-all duration-300 text-[var(--text-primary)]">
+            <div key={idx} className="p-4 md:p-6 bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] flex items-center justify-between hover:scale-[1.02] transition-all duration-300 text-[var(--text-primary)]">
               <div>
                 <span className="text-xs text-[var(--text-secondary)] uppercase font-semibold">{card.title}</span>
                 <h3 className="text-xl md:text-2xl font-bold mt-1 text-[var(--text-primary)]">{card.value}</h3>

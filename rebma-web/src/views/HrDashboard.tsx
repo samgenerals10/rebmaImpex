@@ -322,12 +322,12 @@ export default function HrDashboard({
 
   if (activeMobileDetail) {
     return (
-      <div className="lg:hidden bg-white min-h-screen p-4 pb-24 space-y-6 animate-fade-in-up text-slate-800">
+      <div className="lg:hidden bg-bg-card min-h-screen p-4 pb-24 space-y-6 animate-fade-in-up text-slate-800">
         {/* Header with Back button */}
         <div className="flex items-center gap-3">
           <button 
             onClick={() => setActiveMobileDetail(null)}
-            className="px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full text-xs font-bold text-slate-600 dark:text-slate-350 cursor-pointer shadow-sm"
+            className="px-3 py-1.5 bg-bg-card dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full text-xs font-bold text-slate-600 dark:text-slate-350 cursor-pointer shadow-card"
           >
             ← Back
           </button>
@@ -339,7 +339,7 @@ export default function HrDashboard({
           return (
             <div className="space-y-6">
               {/* Profile Card */}
-              <div className="bg-white dark:bg-slate-850 rounded-2xl p-6 shadow-sm border border-slate-100 dark:border-slate-800 space-y-4 text-center flex flex-col items-center">
+              <div className="bg-bg-card dark:bg-slate-850 rounded-2xl p-6 shadow-card border border-slate-100 dark:border-slate-800 space-y-4 text-center flex flex-col items-center">
                 <div className="w-16 h-16 rounded-full bg-blue-100 text-blue-600 dark:bg-blue-900/50 dark:text-blue-400 flex items-center justify-center font-bold text-xl">
                   {staff.fullName[0]}
                 </div>
@@ -351,7 +351,7 @@ export default function HrDashboard({
               </div>
 
               {/* Fields */}
-              <div className="bg-white dark:bg-slate-850 rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
+              <div className="bg-bg-card dark:bg-slate-850 rounded-2xl p-4 shadow-card border border-slate-100 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
                 <div className="py-3 flex justify-between items-center text-xs">
                   <span className="text-slate-400 font-medium">Email</span>
                   <span className="font-semibold text-slate-800 dark:text-slate-200">{staff.email}</span>
@@ -400,7 +400,7 @@ export default function HrDashboard({
           return (
             <div className="space-y-6">
               {/* Profile Card */}
-              <div className="bg-white dark:bg-slate-855 rounded-2xl p-6 shadow-sm border border-slate-100 dark:border-slate-800 space-y-4 text-center flex flex-col items-center">
+              <div className="bg-bg-card dark:bg-slate-855 rounded-2xl p-6 shadow-card border border-slate-100 dark:border-slate-800 space-y-4 text-center flex flex-col items-center">
                 <div className={`w-16 h-16 rounded-full flex items-center justify-center font-bold text-xl ${att.status === 'PRESENT' ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/50 dark:text-emerald-400' : 'bg-amber-100 text-amber-600 dark:bg-amber-900/50 dark:text-amber-400'}`}>
                   {att.fullName[0]}
                 </div>
@@ -411,7 +411,7 @@ export default function HrDashboard({
               </div>
 
               {/* Fields */}
-              <div className="bg-white dark:bg-slate-855 rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
+              <div className="bg-bg-card dark:bg-slate-855 rounded-2xl p-4 shadow-card border border-slate-100 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
                 <div className="py-3 flex justify-between items-center text-xs">
                   <span className="text-slate-400 font-medium">Clock-In Time</span>
                   <span className="font-semibold font-mono text-slate-800 dark:text-slate-200">{att.checkInTime}</span>
@@ -454,8 +454,8 @@ export default function HrDashboard({
             <p className="text-[11px] text-slate-400 mt-0.5">Staff management & attendance</p>
           </div>
           <div className="flex gap-2">
-            <button onClick={() => exportToCSV(localAttendance, ['id', 'fullName', 'checkInTime', 'status'], 'hr_attendance')} className="p-2 bg-white rounded-xl border border-slate-200 shadow-sm"><FileSpreadsheet className="w-4 h-4 text-slate-500" /></button>
-            <button onClick={() => exportToPDF('Daily Staff Attendance Log', localAttendance, ['id', 'fullName', 'checkInTime', 'status'])} className="p-2 bg-white rounded-xl border border-slate-200 shadow-sm"><FileText className="w-4 h-4 text-slate-500" /></button>
+            <button onClick={() => exportToCSV(localAttendance, ['id', 'fullName', 'checkInTime', 'status'], 'hr_attendance')} className="p-2 bg-bg-card rounded-xl border border-slate-200 shadow-card"><FileSpreadsheet className="w-4 h-4 text-slate-500" /></button>
+            <button onClick={() => exportToPDF('Daily Staff Attendance Log', localAttendance, ['id', 'fullName', 'checkInTime', 'status'])} className="p-2 bg-bg-card rounded-xl border border-slate-200 shadow-card"><FileText className="w-4 h-4 text-slate-500" /></button>
           </div>
         </div>
 
@@ -560,7 +560,7 @@ export default function HrDashboard({
           const Icon = card.icon;
           const isProminent = idx < 2;
           return (
-            <div key={idx} className="p-4 sm:p-6 bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] border-b-[3px] border-[var(--accent)] flex items-center justify-between hover:scale-102 transition-all duration-300">
+            <div key={idx} className="p-4 sm:p-6 bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] flex items-center justify-between hover:scale-102 transition-all duration-300">
               <div>
                 <span className="text-[10px] sm:text-xs text-[var(--text-muted)] uppercase font-semibold">{card.title}</span>
                 <h3 className={`font-bold mt-1 text-[var(--text-primary)] ${isProminent ? 'text-2xl sm:text-3xl' : 'text-lg sm:text-xl'}`}>{card.value}</h3>
@@ -733,7 +733,7 @@ export default function HrDashboard({
                     <div 
                       key={staff.id} 
                       onClick={() => setActiveMobileDetail({ type: 'staff', data: staff })}
-                      className="bg-white dark:bg-slate-855 rounded-2xl shadow-sm p-4 border border-slate-100 dark:border-slate-800 flex items-center justify-between cursor-pointer"
+                      className="bg-bg-card dark:bg-slate-855 rounded-2xl shadow-card p-4 border border-slate-100 dark:border-slate-800 flex items-center justify-between cursor-pointer"
                     >
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-blue-550 text-white flex items-center justify-center font-bold text-base shrink-0">
@@ -754,7 +754,7 @@ export default function HrDashboard({
                     </div>
                   ))}
                   {filteredStaff.length === 0 && (
-                    <div className="p-8 text-center text-slate-400 text-xs bg-white dark:bg-slate-855 rounded-2xl">No staff members found.</div>
+                    <div className="p-8 text-center text-slate-400 text-xs bg-bg-card dark:bg-slate-855 rounded-2xl">No staff members found.</div>
                   )}
                 </div>
  
@@ -1030,7 +1030,7 @@ export default function HrDashboard({
                     <div 
                       key={a.id} 
                       onClick={() => setActiveMobileDetail({ type: 'attendance', data: a })}
-                      className="bg-white dark:bg-slate-855 rounded-2xl shadow-sm p-4 border border-slate-100 dark:border-slate-800 flex items-center justify-between cursor-pointer"
+                      className="bg-bg-card dark:bg-slate-855 rounded-2xl shadow-card p-4 border border-slate-100 dark:border-slate-800 flex items-center justify-between cursor-pointer"
                     >
                       <div className="flex items-center gap-3">
                         <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white shrink-0 ${a.status === 'PRESENT' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-amber-500/10 text-amber-500'}`}>
@@ -1051,7 +1051,7 @@ export default function HrDashboard({
                     </div>
                   ))}
                   {filteredAttendance.length === 0 && (
-                    <div className="p-8 text-center text-slate-400 text-xs bg-white dark:bg-slate-855 rounded-2xl">No attendance entries matched filters.</div>
+                    <div className="p-8 text-center text-slate-400 text-xs bg-bg-card dark:bg-slate-855 rounded-2xl">No attendance entries matched filters.</div>
                   )}
                 </div>
  
@@ -1207,7 +1207,7 @@ export default function HrDashboard({
                     navigator.clipboard.writeText(text);
                     alert('Credentials copied to clipboard!');
                   }}
-                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl py-2.5 font-bold transition-all text-sm cursor-pointer shadow-md shadow-emerald-600/20 text-center"
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl py-2.5 font-bold transition-all text-sm cursor-pointer shadow-card shadow-emerald-600/20 text-center"
                 >
                   📋 Copy Credentials
                 </button>

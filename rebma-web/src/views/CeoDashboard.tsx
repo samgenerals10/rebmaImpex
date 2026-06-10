@@ -70,10 +70,10 @@ export default function CeoDashboard({
             <p className="text-[11px] text-slate-400 mt-0.5">Global operations overview</p>
           </div>
           <div className="flex gap-2">
-            <button onClick={handleExportCSV} className="p-2 bg-white rounded-xl border border-slate-200 shadow-sm" title="Export CSV">
+            <button onClick={handleExportCSV} className="p-2 bg-bg-card rounded-xl border border-slate-200 shadow-card" title="Export CSV">
               <FileSpreadsheet className="w-4 h-4 text-slate-500" />
             </button>
-            <button onClick={handleExportPDF} className="p-2 bg-white rounded-xl border border-slate-200 shadow-sm" title="Export PDF">
+            <button onClick={handleExportPDF} className="p-2 bg-bg-card rounded-xl border border-slate-200 shadow-card" title="Export PDF">
               <FileText className="w-4 h-4 text-slate-500" />
             </button>
           </div>
@@ -143,7 +143,7 @@ export default function CeoDashboard({
         </div>
 
         {/* Mini Chart card */}
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
+        <div className="bg-bg-card rounded-2xl border border-slate-100 shadow-card p-4">
           <div className="flex items-center justify-between mb-3">
             <div>
               <h3 className="text-xs font-bold text-slate-800">Inflow vs Orders</h3>
@@ -168,7 +168,7 @@ export default function CeoDashboard({
         </div>
 
         {/* Fleet GPS mini card */}
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
+        <div className="bg-bg-card rounded-2xl border border-slate-100 shadow-card p-4">
           <h3 className="text-xs font-bold text-slate-800 mb-2">Live Fleet Tracking</h3>
           <div className="h-32 bg-slate-50 rounded-xl relative overflow-hidden flex items-center justify-center border border-slate-100">
             <div className="absolute inset-0 opacity-15 bg-[radial-gradient(#3b82f6_1px,transparent_1px)] [background-size:14px_14px]" />
@@ -230,7 +230,7 @@ export default function CeoDashboard({
               const Icon = card.icon;
               const isProminent = idx < 2;
               return (
-                <div key={idx} className="p-4 sm:p-6 bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] border-b-[3px] border-[var(--accent)] flex items-center justify-between hover:scale-102 transition-all">
+                <div key={idx} className="p-4 sm:p-6 bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] flex items-center justify-between hover:scale-102 transition-all">
                   <div>
                     <span className="text-[10px] sm:text-xs text-[var(--text-muted)] uppercase font-semibold">{card.title}</span>
                     <h3 className={`font-bold mt-1 text-[var(--text-primary)] ${isProminent ? 'text-2xl sm:text-3xl' : 'text-lg sm:text-xl'}`}>{card.value}</h3>

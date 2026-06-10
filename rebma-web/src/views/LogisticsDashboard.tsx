@@ -64,10 +64,10 @@ export default function LogisticsDashboard() {
             <p className="text-[11px] text-slate-400 mt-0.5">Fleet maintenance & supply chain metrics</p>
           </div>
           <div className="flex gap-2">
-            <button onClick={handleExportCSV} className="p-2 bg-white rounded-xl border border-slate-200 shadow-sm" title="Export CSV">
+            <button onClick={handleExportCSV} className="p-2 bg-bg-card rounded-xl border border-slate-200 shadow-card" title="Export CSV">
               <FileSpreadsheet className="w-4 h-4 text-slate-500" />
             </button>
-            <button onClick={handleExportPDF} className="p-2 bg-white rounded-xl border border-slate-200 shadow-sm" title="Export PDF">
+            <button onClick={handleExportPDF} className="p-2 bg-bg-card rounded-xl border border-slate-200 shadow-card" title="Export PDF">
               <FileText className="w-4 h-4 text-slate-500" />
             </button>
           </div>
@@ -140,7 +140,7 @@ export default function LogisticsDashboard() {
         </div>
 
         {/* Mini fleet performance chart */}
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
+        <div className="bg-bg-card rounded-2xl border border-slate-100 shadow-card p-4">
           <h3 className="text-xs font-bold text-slate-800 mb-1">Fleet Performance</h3>
           <p className="text-[10px] text-slate-400 mb-3">Weekly distance vs fuel</p>
           <div className="h-36">
@@ -158,7 +158,7 @@ export default function LogisticsDashboard() {
         </div>
 
         {/* Fuel & Maintenance bar chart */}
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
+        <div className="bg-bg-card rounded-2xl border border-slate-100 shadow-card p-4">
           <h3 className="text-xs font-bold text-slate-800 mb-3">Fuel & Maintenance by Truck</h3>
           <div className="h-36">
             <ResponsiveContainer width="100%" height="100%">
@@ -206,7 +206,7 @@ export default function LogisticsDashboard() {
             {stats.map((card, idx) => {
               const Icon = card.icon;
               return (
-                <div key={idx} className="p-4 md:p-6 bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] border-b-[3px] border-[var(--accent)] flex items-center justify-between hover:scale-102 transition-all">
+                <div key={idx} className="p-4 md:p-6 bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] flex items-center justify-between hover:scale-102 transition-all">
                   <div>
                     <span className="text-xs text-[var(--text-muted)] uppercase font-semibold">{card.title}</span>
                     <h3 className="text-xl md:text-2xl font-bold mt-1 text-[var(--text-primary)]">{card.value}</h3>

@@ -332,12 +332,12 @@ export default function FinanceDashboard({
 
   if (activeMobileDetail) {
     return (
-      <div className="lg:hidden bg-white min-h-screen p-4 pb-24 space-y-6 animate-fade-in-up text-slate-800">
+      <div className="lg:hidden bg-bg-card min-h-screen p-4 pb-24 space-y-6 animate-fade-in-up text-slate-800">
         {/* Header with Back button */}
         <div className="flex items-center gap-3">
           <button 
             onClick={() => setActiveMobileDetail(null)}
-            className="px-3 py-1.5 bg-white dark:bg-slate-850 border border-slate-200 dark:border-slate-800 rounded-full text-xs font-bold text-slate-600 dark:text-slate-350 cursor-pointer shadow-sm"
+            className="px-3 py-1.5 bg-bg-card dark:bg-slate-850 border border-slate-200 dark:border-slate-800 rounded-full text-xs font-bold text-slate-600 dark:text-slate-350 cursor-pointer shadow-card"
           >
             ← Back
           </button>
@@ -349,7 +349,7 @@ export default function FinanceDashboard({
           return (
             <div className="space-y-6">
               {/* Info Header */}
-              <div className="bg-white dark:bg-slate-855 rounded-2xl p-6 shadow-sm border border-slate-100 dark:border-slate-800 space-y-4 text-center flex flex-col items-center">
+              <div className="bg-bg-card dark:bg-slate-855 rounded-2xl p-6 shadow-card border border-slate-100 dark:border-slate-800 space-y-4 text-center flex flex-col items-center">
                 <div className="w-16 h-16 rounded-full bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-xl shrink-0">
                   GHS
                 </div>
@@ -360,7 +360,7 @@ export default function FinanceDashboard({
               </div>
 
               {/* Fields */}
-              <div className="bg-white dark:bg-slate-855 rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
+              <div className="bg-bg-card dark:bg-slate-855 rounded-2xl p-4 shadow-card border border-slate-100 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
                 <div className="py-3 flex justify-between items-center text-xs">
                   <span className="text-slate-400 font-medium">Receipt #</span>
                   <span className="font-semibold text-slate-800 dark:text-slate-200 font-mono">{pay.id}</span>
@@ -427,7 +427,7 @@ export default function FinanceDashboard({
           return (
             <div className="space-y-6">
               {/* Info Header */}
-              <div className="bg-white dark:bg-slate-855 rounded-2xl p-6 shadow-sm border border-slate-100 dark:border-slate-800 space-y-4 text-center flex flex-col items-center">
+              <div className="bg-bg-card dark:bg-slate-855 rounded-2xl p-6 shadow-card border border-slate-100 dark:border-slate-800 space-y-4 text-center flex flex-col items-center">
                 <div className="w-16 h-16 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-xl shrink-0">
                   REQ
                 </div>
@@ -438,7 +438,7 @@ export default function FinanceDashboard({
               </div>
 
               {/* Fields */}
-              <div className="bg-white dark:bg-slate-855 rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
+              <div className="bg-bg-card dark:bg-slate-855 rounded-2xl p-4 shadow-card border border-slate-100 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
                 <div className="py-3 flex justify-between items-center text-xs">
                   <span className="text-slate-400 font-medium">Requisition ID</span>
                   <span className="font-semibold text-slate-850 dark:text-slate-200 font-mono">{req.id}</span>
@@ -509,8 +509,8 @@ export default function FinanceDashboard({
             <p className="text-[11px] text-slate-400 mt-0.5">Revenue tracking & payments</p>
           </div>
           <div className="flex gap-2">
-            <button onClick={() => exportToCSV(localPayments, ['id', 'clientName', 'amount', 'paymentMethod', 'createdAt'], 'payments')} className="p-2 bg-white rounded-xl border border-slate-200 shadow-sm"><FileSpreadsheet className="w-4 h-4 text-slate-500" /></button>
-            <button onClick={() => exportToPDF('Finance Report', localPayments, ['id', 'clientName', 'amount'])} className="p-2 bg-white rounded-xl border border-slate-200 shadow-sm"><FileText className="w-4 h-4 text-slate-500" /></button>
+            <button onClick={() => exportToCSV(localPayments, ['id', 'clientName', 'amount', 'paymentMethod', 'createdAt'], 'payments')} className="p-2 bg-bg-card rounded-xl border border-slate-200 shadow-card"><FileSpreadsheet className="w-4 h-4 text-slate-500" /></button>
+            <button onClick={() => exportToPDF('Finance Report', localPayments, ['id', 'clientName', 'amount'])} className="p-2 bg-bg-card rounded-xl border border-slate-200 shadow-card"><FileText className="w-4 h-4 text-slate-500" /></button>
           </div>
         </div>
 
@@ -581,7 +581,7 @@ export default function FinanceDashboard({
                       <h2 className="font-bold text-lg">REBMA IMPEX GHANA LTD</h2>
                       <p className="text-white/70 text-xs mt-1">Official Payment Receipt</p>
                     </div>
-                    <button onClick={() => setSelectedTicket(null)} className="p-1.5 hover:bg-white/10 rounded-full cursor-pointer"><X className="w-5 h-5" /></button>
+                    <button onClick={() => setSelectedTicket(null)} className="p-1.5 hover:bg-bg-card/10 rounded-full cursor-pointer"><X className="w-5 h-5" /></button>
                   </div>
                 </div>
 
@@ -650,7 +650,7 @@ export default function FinanceDashboard({
               const Icon = card.icon;
               const isProminent = idx < 2;
               return (
-                <div key={idx} className="p-4 md:p-6 bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] border-b-[3px] border-[var(--accent)] flex items-center justify-between hover:scale-102 transition-all duration-300">
+                <div key={idx} className="p-4 md:p-6 bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] flex items-center justify-between hover:scale-102 transition-all duration-300">
                   <div>
                     <span className="text-xs text-[var(--text-secondary)] uppercase font-semibold">{card.title}</span>
                     <h3 className={`font-bold mt-1 text-[var(--text-primary)] ${isProminent ? 'text-2xl sm:text-3xl' : 'text-lg sm:text-xl'}`}>{card.value}</h3>
@@ -894,7 +894,7 @@ export default function FinanceDashboard({
                     <div 
                       key={pay.id} 
                       onClick={() => setActiveMobileDetail({ type: 'payment', data: pay })}
-                      className="bg-white dark:bg-slate-850 rounded-2xl shadow-sm p-4 border border-slate-100 dark:border-slate-800 flex items-center justify-between cursor-pointer"
+                      className="bg-bg-card dark:bg-slate-850 rounded-2xl shadow-card p-4 border border-slate-100 dark:border-slate-800 flex items-center justify-between cursor-pointer"
                     >
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-sm shrink-0">
@@ -913,7 +913,7 @@ export default function FinanceDashboard({
                     </div>
                   ))}
                   {filteredPayments.length === 0 && (
-                    <div className="p-8 text-center text-slate-400 text-xs bg-white dark:bg-slate-850 rounded-2xl">No receipts found.</div>
+                    <div className="p-8 text-center text-slate-400 text-xs bg-bg-card dark:bg-slate-850 rounded-2xl">No receipts found.</div>
                   )}
                 </div>
 
@@ -1116,7 +1116,7 @@ export default function FinanceDashboard({
                     <div 
                       key={req.id} 
                       onClick={() => setActiveMobileDetail({ type: 'requisition', data: req })}
-                      className="bg-white dark:bg-slate-850 rounded-2xl shadow-sm p-4 border border-slate-100 dark:border-slate-800 flex items-center justify-between cursor-pointer"
+                      className="bg-bg-card dark:bg-slate-850 rounded-2xl shadow-card p-4 border border-slate-100 dark:border-slate-800 flex items-center justify-between cursor-pointer"
                     >
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-blue-50 dark:bg-blue-950/20 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-sm shrink-0">
@@ -1141,7 +1141,7 @@ export default function FinanceDashboard({
                     </div>
                   ))}
                   {filteredWarehouse.length === 0 && (
-                    <div className="p-8 text-center text-slate-400 text-xs bg-white dark:bg-slate-855 rounded-2xl">No warehouse requisitions found.</div>
+                    <div className="p-8 text-center text-slate-400 text-xs bg-bg-card dark:bg-slate-855 rounded-2xl">No warehouse requisitions found.</div>
                   )}
                 </div>
 
