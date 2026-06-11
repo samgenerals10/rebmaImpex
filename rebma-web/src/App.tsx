@@ -30,6 +30,13 @@ import FinloFlashShell from './components/FinloFlashShell';
 import { auth, hr, operations, management, marketing, finance, production, dispatch, reception, getToken, setToken, clearToken } from './services/apiClient';
 import { supabase } from './lib/supabaseClient';
 
+import NotesPanel from './components/global/NotesPanel';
+import TasksPanel from './components/global/TasksPanel';
+import EmailsPanel from './components/global/EmailsPanel';
+import NotificationsPanel from './components/global/NotificationsPanel';
+import HelpDeskPanel from './components/global/HelpDeskPanel';
+import FeedbackPanel from './components/global/FeedbackPanel';
+
 export default function App() {
   // Helper to map UI dropdown values to database role values
   const getNormalizedRole = (dept: string): string => {
@@ -1117,6 +1124,9 @@ export default function App() {
   const [boardroomMinutes, setBoardroomMinutes] = useState<string>(
     "REMBA IMPEX GHANA LIMITED Boardroom Log - May 24, 2026\n1. Target fleet tracking refresh set to 10s.\n2. Ghana card formats must validate correctly."
   );
+
+  // Unread internal email count (for sidebar badge)
+  const [unreadEmailCount, setUnreadEmailCount] = useState<number>(0);
 
   // Notification system — real toast notifications
   const [notifications, setNotifications] = useState<Array<{ id: string; msg: string; time: string }>>([]);
@@ -2597,6 +2607,14 @@ export default function App() {
       );
     }
 
+    // Global panels — intercept before department switch
+    if (activeSubTab === 'Notes') return <NotesPanel currentUser={currentUser} addNotification={addNotification} />;
+    if (activeSubTab === 'Tasks') return <TasksPanel currentUser={currentUser} addNotification={addNotification} />;
+    if (activeSubTab === 'Emails') return <EmailsPanel currentUser={currentUser} addNotification={addNotification} onUnreadCountChange={setUnreadEmailCount} />;
+    if (activeSubTab === 'Notifications') return <NotificationsPanel notifications={notifications.map(n => n.msg)} onClear={() => setNotifications([])} />;
+    if (activeSubTab === 'HelpDesk') return <HelpDeskPanel currentUser={currentUser} addNotification={addNotification} />;
+    if (activeSubTab === 'Feedback') return <FeedbackPanel currentUser={currentUser} addNotification={addNotification} />;
+
     switch (activeDepartment) {
       case 'CEO':
         return (
@@ -3286,6 +3304,7 @@ export default function App() {
           onClose={() => setIsSidebarOpen(false)}
           sidebarCollapsed={sidebarCollapsed}
           setSidebarCollapsed={setSidebarCollapsed}
+          unreadEmailCount={unreadEmailCount}
         />
 
         {/* Backdrop overlay for mobile/tablet */}

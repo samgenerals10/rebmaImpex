@@ -1,18 +1,18 @@
 // rebma-web/src/components/layout/Sidebar.tsx
 
 import { useState } from 'react';
-import { 
-  ShieldCheck, 
-  Layers, 
-  Users, 
-  TrendingUp, 
-  DollarSign, 
-  Activity, 
-  Clipboard, 
-  Truck, 
+import {
+  ShieldCheck,
+  Layers,
+  Users,
+  TrendingUp,
+  DollarSign,
+  Activity,
+  Clipboard,
+  Truck,
   Video,
-  Settings, 
-  Plus, 
+  Settings,
+  Plus,
   LogOut,
   MessagesSquare,
   Tag,
@@ -23,7 +23,13 @@ import {
   TicketCheck,
   X,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  StickyNote,
+  CheckSquare,
+  Mail,
+  Bell,
+  HelpCircle,
+  MessageSquarePlus
 } from 'lucide-react';
 import type { CurrentUser } from '../../types/erp';
 
@@ -41,6 +47,7 @@ interface SidebarProps {
   onClose?: () => void;
   sidebarCollapsed?: boolean;
   setSidebarCollapsed?: (val: boolean) => void;
+  unreadEmailCount?: number;
 }
 
 const getChannelName = (val: string) => {
@@ -72,7 +79,8 @@ export default function Sidebar({
   isOpen = false,
   onClose,
   sidebarCollapsed = false,
-  setSidebarCollapsed
+  setSidebarCollapsed,
+  unreadEmailCount = 0
 }: SidebarProps) {
   const [isSwitcherOpen, setIsSwitcherOpen] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
@@ -552,6 +560,79 @@ export default function Sidebar({
               );
             })}
           </nav>
+
+          {/* PERSONAL section */}
+          <div className="mt-3">
+            <div className={`text-[9px] uppercase text-[var(--text-muted)] tracking-widest font-bold px-4 mb-1.5 transition-all duration-300 ${isActualCollapsed ? 'opacity-0 h-0 overflow-hidden' : ''}`}>Personal</div>
+            {([
+              { id: 'Notes',    label: 'Notes',    Icon: StickyNote,       badge: 0 },
+              { id: 'Tasks',    label: 'Tasks',    Icon: CheckSquare,      badge: 0 },
+              { id: 'Emails',   label: 'Emails',   Icon: Mail,             badge: unreadEmailCount },
+              { id: 'Notifications', label: 'Activity', Icon: Bell,        badge: 0 },
+            ]).map(({ id, label, Icon, badge }) => {
+              const isActive = activeSubTab === id;
+              if (isLiamFinance) {
+                return (
+                  <button key={id} onClick={() => setActiveSubTab(id)}
+                    className="lf-nav-item w-full flex items-center justify-center py-1 transition-all duration-200 cursor-pointer"
+                    style={{ background: 'transparent', border: 'none' }} title={label}>
+                    <span className="lf-nav-icon flex-shrink-0 relative"
+                      style={{ width: 40, height: 40, borderRadius: '50%', background: isActive ? 'var(--accent)' : 'var(--lf-icon-bg, #eef0f3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Icon style={{ width: 18, height: 18, color: isActive ? '#fff' : 'var(--text-secondary)' }} />
+                      {badge > 0 && <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-500 text-white text-[8px] font-bold flex items-center justify-center">{badge > 9 ? '9+' : badge}</span>}
+                    </span>
+                  </button>
+                );
+              }
+              return (
+                <button key={id} onClick={() => setActiveSubTab(id)}
+                  className={`nav-item ${isActive ? 'nav-item--active' : ''} w-full flex items-center ${isActualCollapsed ? 'justify-center px-0' : 'gap-3 px-4'} py-2 rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer relative`}
+                  style={isActive ? { background: 'var(--accent)', color: '#ffffff' } : { color: 'var(--text-sidebar, var(--text-secondary))' }}
+                  title={label}>
+                  <span className="nav-icon flex-shrink-0 relative">
+                    <Icon className="w-4 h-4" style={{ color: isActive ? '#ffffff' : undefined }} />
+                    {badge > 0 && <span className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 rounded-full bg-rose-500 text-white text-[8px] font-bold flex items-center justify-center">{badge > 9 ? '9+' : badge}</span>}
+                  </span>
+                  <span className={`nav-label truncate transition-all duration-300 ${isActualCollapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100'}`}>{label}</span>
+                  {badge > 0 && !isActualCollapsed && !isActive && (
+                    <span className="ml-auto text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-rose-500 text-white">{badge > 9 ? '9+' : badge}</span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* SUPPORT section */}
+          <div className="mt-3">
+            <div className={`text-[9px] uppercase text-[var(--text-muted)] tracking-widest font-bold px-4 mb-1.5 transition-all duration-300 ${isActualCollapsed ? 'opacity-0 h-0 overflow-hidden' : ''}`}>Support</div>
+            {([
+              { id: 'HelpDesk', label: 'Help & News',  Icon: HelpCircle },
+              { id: 'Feedback', label: 'Feedback',      Icon: MessageSquarePlus },
+            ]).map(({ id, label, Icon }) => {
+              const isActive = activeSubTab === id;
+              if (isLiamFinance) {
+                return (
+                  <button key={id} onClick={() => setActiveSubTab(id)}
+                    className="lf-nav-item w-full flex items-center justify-center py-1 transition-all duration-200 cursor-pointer"
+                    style={{ background: 'transparent', border: 'none' }} title={label}>
+                    <span className="lf-nav-icon flex-shrink-0"
+                      style={{ width: 40, height: 40, borderRadius: '50%', background: isActive ? 'var(--accent)' : 'var(--lf-icon-bg, #eef0f3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Icon style={{ width: 18, height: 18, color: isActive ? '#fff' : 'var(--text-secondary)' }} />
+                    </span>
+                  </button>
+                );
+              }
+              return (
+                <button key={id} onClick={() => setActiveSubTab(id)}
+                  className={`nav-item ${isActive ? 'nav-item--active' : ''} w-full flex items-center ${isActualCollapsed ? 'justify-center px-0' : 'gap-3 px-4'} py-2 rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer`}
+                  style={isActive ? { background: 'var(--accent)', color: '#ffffff' } : { color: 'var(--text-sidebar, var(--text-secondary))' }}
+                  title={label}>
+                  <span className="nav-icon flex-shrink-0"><Icon className="w-4 h-4" style={{ color: isActive ? '#ffffff' : undefined }} /></span>
+                  <span className={`nav-label truncate transition-all duration-300 ${isActualCollapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100'}`}>{label}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* AC Zone: Good cargo Great deals card */}
