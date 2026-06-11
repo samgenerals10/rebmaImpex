@@ -36,6 +36,10 @@ import EmailsPanel from './components/global/EmailsPanel';
 import NotificationsPanel from './components/global/NotificationsPanel';
 import HelpDeskPanel from './components/global/HelpDeskPanel';
 import FeedbackPanel from './components/global/FeedbackPanel';
+import AnalyticsDashboard from './views/AnalyticsDashboard';
+import DepartmentManager from './views/DepartmentManager';
+import PayrollPanel from './views/PayrollPanel';
+import PerformanceAlertsPanel from './views/PerformanceAlertsPanel';
 
 export default function App() {
   // Helper to map UI dropdown values to database role values
@@ -2615,6 +2619,13 @@ export default function App() {
     if (activeSubTab === 'HelpDesk') return <HelpDeskPanel currentUser={currentUser} addNotification={addNotification} />;
     if (activeSubTab === 'Feedback') return <FeedbackPanel currentUser={currentUser} addNotification={addNotification} />;
 
+    // Cross-department panels — routed by sub-tab before the department switch
+    if (activeSubTab === 'Analytics') return <AnalyticsDashboard department={activeDepartment} currentUser={currentUser} addNotification={addNotification} />;
+    if (activeSubTab === 'DepartmentManager') return <DepartmentManager currentUser={currentUser} addNotification={addNotification} />;
+    if (activeSubTab === 'Payroll') return <PayrollPanel currentUser={currentUser} addNotification={addNotification} />;
+    if (activeSubTab === 'PerformanceAlerts') return <PerformanceAlertsPanel currentUser={currentUser} addNotification={addNotification} />;
+    if (activeSubTab === 'Messages') { setActiveDepartment('BOARDROOM'); setActiveSubTab('VideoConf'); return null; }
+
     switch (activeDepartment) {
       case 'CEO':
         return (
@@ -3283,7 +3294,7 @@ export default function App() {
 
   return (
     <MotionConfig reducedMotion={reducedMotion ? 'always' : 'user'}>
-      <div className="min-h-screen w-full flex p-0 lg:p-6 transition-all duration-300 bg-[var(--bg-page)]">
+      <div className="min-h-screen w-full p-0 lg:p-6 transition-all duration-300 bg-[var(--bg-page)]">
         
         {/* 1. LEFT SIDEBAR */}
         <Sidebar
@@ -3316,7 +3327,9 @@ export default function App() {
         )}
 
         {/* 2. MAIN SHEET WRAPPER */}
-        <main className="flex-1 ml-0 lg:ml-6 bg-[var(--bg-card)] rounded-none lg:rounded-3xl shadow-none lg:shadow-[var(--box-shadow)] flex flex-col border-none lg:border lg:border-[var(--border)] app-sheet overflow-hidden h-screen lg:h-[calc(100vh-3rem)]">
+        <main
+          className={`ml-0 bg-[var(--bg-card)] rounded-none lg:rounded-3xl shadow-none lg:shadow-[var(--box-shadow)] flex flex-col border-none lg:border lg:border-[var(--border)] app-sheet overflow-hidden h-screen lg:h-[calc(100vh-3rem)] transition-all duration-300 ${sidebarCollapsed ? 'lg:ml-[92px]' : 'lg:ml-[284px]'}`}
+        >
           
           {/* TOP STATUS BAR & HERO HEADER */}
           <div className="lg:px-6 lg:pt-6 pb-0 shrink-0">

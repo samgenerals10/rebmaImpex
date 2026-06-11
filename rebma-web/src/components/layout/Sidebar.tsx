@@ -2,34 +2,13 @@
 
 import { useState } from 'react';
 import {
-  ShieldCheck,
-  Layers,
-  Users,
-  TrendingUp,
-  DollarSign,
-  Activity,
-  Clipboard,
-  Truck,
-  Video,
-  Settings,
-  Plus,
-  LogOut,
-  MessagesSquare,
-  Tag,
-  History,
-  Warehouse,
-  PackageCheck,
-  FileText,
-  TicketCheck,
-  X,
-  ChevronLeft,
-  ChevronRight,
-  StickyNote,
-  CheckSquare,
-  Mail,
-  Bell,
-  HelpCircle,
-  MessageSquarePlus
+  ShieldCheck, Layers, Users, TrendingUp, DollarSign, Activity, Clipboard, Truck, Video,
+  Settings, LogOut, MessagesSquare, Tag, History, Warehouse, PackageCheck, FileText,
+  TicketCheck, X, ChevronLeft, ChevronRight, StickyNote, CheckSquare, Mail, Bell,
+  HelpCircle, MessageSquarePlus, LayoutDashboard, BarChart2, ArrowLeftRight, Wallet,
+  CreditCard, ClipboardCheck, MapPin, MessageCircle, RefreshCw, Banknote, ShoppingCart,
+  Package, AlertTriangle, UserCheck, Camera, UserPlus, Calendar, Building2, AlertCircle,
+  FileBarChart, ClipboardList, Factory, Wrench, BarChart3, Gauge, Plus
 } from 'lucide-react';
 import type { CurrentUser } from '../../types/erp';
 
@@ -49,22 +28,6 @@ interface SidebarProps {
   setSidebarCollapsed?: (val: boolean) => void;
   unreadEmailCount?: number;
 }
-
-const getChannelName = (val: string) => {
-  if (val === 'CEO') return 'ceo-command';
-  if (val === 'MANAGEMENT') return 'management-office';
-  if (val === 'HR') return 'human-resources';
-  if (val === 'MARKETING') return 'marketing-pipeline';
-  if (val === 'OPERATIONS') return 'operations-warehouse';
-  if (val === 'FINANCE') return 'finance-ledgers';
-  if (val === 'PRODUCTION') return 'production-line';
-  if (val === 'RECEPTION') return 'reception-desk';
-  if (val === 'DISPATCH') return 'dispatch-fleet';
-  if (val === 'LOGISTICS') return 'logistics-fleet';
-  if (val === 'BOARDROOM') return 'executive-boardroom';
-  if (val === 'SETTINGS') return 'erp-settings';
-  return val.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-};
 
 export default function Sidebar({
   activeDepartment,
@@ -87,14 +50,11 @@ export default function Sidebar({
 
   const isLiamFinance = theme === 'liamfinance';
 
-  // Liam Finance manages its own collapse state, defaulting to collapsed
   const [lfCollapsed, setLfCollapsed] = useState<boolean>(() => {
     try {
       const saved = localStorage.getItem('erp-sidebar-collapsed');
       return saved !== null ? saved === 'true' : true;
-    } catch {
-      return true;
-    }
+    } catch { return true; }
   });
 
   const handleLfCollapseToggle = () => {
@@ -103,210 +63,279 @@ export default function Sidebar({
     try { localStorage.setItem('erp-sidebar-collapsed', String(next)); } catch {}
   };
 
-  // LF: hover does not expand (stays at 68px; uses tooltip instead)
   const isActualCollapsed = isLiamFinance
     ? lfCollapsed
     : !!sidebarCollapsed && !isHovered;
-  
-  // CEO and Management can view any department (CEO can view all, Management can view all except CEO)
+
   const isCeo = currentUser?.isCeo || currentUser?.department === 'CEO';
   const isManagement = currentUser?.department === 'MANAGEMENT';
   const userDept = currentUser?.department || 'CEO';
 
   const departmentTabs: Record<string, Array<{ id: string; label: string; icon: any }>> = {
     CEO: [
-      { id: 'Overview', label: 'Executive Overview', icon: ShieldCheck },
-      { id: 'Tracking', label: 'Accra GPS Tracking', icon: Truck },
-      { id: 'Boardroom', label: 'Boardroom Hub', icon: Video },
-      { id: 'ERPSettings', label: 'ERP Settings', icon: Settings },
-    ],
-    MANAGEMENT: [
-      { id: 'CargoApproval', label: 'Port Cargo Approval', icon: Layers },
-      { id: 'CreditApproval', label: 'Credit Approvals', icon: ShieldCheck },
-      { id: 'Ledger', label: 'Global Audit Ledger', icon: Clipboard },
-      { id: 'SetPrices', label: 'Set Prices', icon: Tag },
-      { id: 'MgmtHistory', label: 'Decision History', icon: History },
-    ],
-    HR: [
-      { id: 'Employees', label: 'Employee Database', icon: Users },
-      { id: 'Attendance', label: 'Attendance Records', icon: Clipboard },
-      { id: 'Performance', label: 'Staff Performance', icon: TrendingUp },
-    ],
-    MARKETING: [
-      { id: 'CreateOrder', label: 'Create Sales Order', icon: Plus },
-      { id: 'RegisterCustomer', label: 'Register Customer', icon: Users },
-      { id: 'SalesHistory', label: 'Sales & Customers', icon: Clipboard },
-    ],
-    OPERATIONS: [
-      { id: 'PortIngestion', label: 'Log Port Cargo', icon: Plus },
-      { id: 'Releases', label: 'Fulfillment Releases', icon: TicketCheck },
-      { id: 'LoggedCargo', label: 'Intake Records Log', icon: Clipboard },
-      { id: 'OpsHistory', label: 'Operations History', icon: History },
+      { id: 'Overview',     label: 'Dashboard',            icon: LayoutDashboard },
+      { id: 'Analytics',    label: 'Analytics',             icon: BarChart2 },
+      { id: 'Transactions', label: 'Transactions',          icon: ArrowLeftRight },
+      { id: 'Invoices',     label: 'Invoices',              icon: FileText },
+      { id: 'Wallets',      label: 'Wallets',               icon: Wallet },
+      { id: 'Accounts',     label: 'Accounts',              icon: CreditCard },
+      { id: 'Approvals',    label: 'Approvals',             icon: ClipboardCheck },
+      { id: 'Tracking',     label: 'GPS Tracking',          icon: MapPin },
+      { id: 'Messages',     label: 'Messages & Boardroom',  icon: MessageCircle },
     ],
     FINANCE: [
-      { id: 'Evaluation', label: 'Payment Terms Queue', icon: DollarSign },
-      { id: 'Invoices', label: 'Invoice Portal', icon: FileText },
-      { id: 'RecordPayment', label: 'Record Inbound Payment', icon: Plus },
-      { id: 'Tickets', label: 'Receipts & Tickets', icon: TicketCheck },
-      { id: 'WarehouseHistory', label: 'Warehouse History', icon: Warehouse },
-      { id: 'IntakeForm', label: 'Finance Intake Form', icon: Clipboard },
+      { id: 'Evaluation',        label: 'Dashboard',             icon: LayoutDashboard },
+      { id: 'Analytics',         label: 'Analytics',              icon: BarChart2 },
+      { id: 'Wallets',           label: 'Wallets',                icon: Wallet },
+      { id: 'Transactions',      label: 'Transactions',           icon: ArrowLeftRight },
+      { id: 'Invoices',          label: 'Invoices',               icon: FileText },
+      { id: 'RecurringPayments', label: 'Recurring',              icon: RefreshCw },
+      { id: 'RecordPayment',     label: 'Payments',               icon: DollarSign },
+      { id: 'OrdersQueue',       label: 'Orders Queue',           icon: ClipboardList },
+      { id: 'Payroll',           label: 'Payroll',                icon: Banknote },
     ],
-    PRODUCTION: [
-      { id: 'Requisition', label: 'Raw Materials Request', icon: Activity },
-      { id: 'RawMaterials', label: 'Materials History', icon: PackageCheck },
-      { id: 'WIPStock', label: 'WIP & Stock Inventory', icon: Layers },
-      { id: 'OrdersHistory', label: 'Production History', icon: History },
+    MANAGEMENT: [
+      { id: 'CargoApproval',  label: 'Dashboard',          icon: LayoutDashboard },
+      { id: 'Analytics',      label: 'Analytics',           icon: BarChart2 },
+      { id: 'CreditApproval', label: 'Approvals',           icon: ClipboardCheck },
+      { id: 'Transactions',   label: 'Transactions',        icon: ArrowLeftRight },
+      { id: 'SetPrices',      label: 'Price Setting',       icon: Tag },
+      { id: 'Ledger',         label: 'Audit Log',           icon: History },
+      { id: 'Payroll',        label: 'Payroll Overview',    icon: Banknote },
     ],
-    RECEPTION: [
-      { id: 'VisitorLog', label: 'Visitor Badges Log', icon: Users },
-      { id: 'EmployeeCheckin', label: 'Employee Check-in', icon: ShieldCheck },
-      { id: 'Kiosk', label: 'Self-Service Kiosk', icon: Clipboard },
+    HR: [
+      { id: 'Employees',          label: 'Dashboard',            icon: LayoutDashboard },
+      { id: 'Analytics',          label: 'Analytics',             icon: BarChart2 },
+      { id: 'Staff',              label: 'Staff',                 icon: Users },
+      { id: 'Attendance',         label: 'Attendance',            icon: UserCheck },
+      { id: 'Registrations',      label: 'Registrations',         icon: UserPlus },
+      { id: 'LeaveManagement',    label: 'Leave Management',      icon: Calendar },
+      { id: 'Payroll',            label: 'Payroll',               icon: Banknote },
+      { id: 'DepartmentManager',  label: 'Department Manager',    icon: Building2 },
+      { id: 'PerformanceAlerts',  label: 'Performance Alerts',    icon: AlertCircle },
+    ],
+    MARKETING: [
+      { id: 'Overview',          label: 'Dashboard',        icon: LayoutDashboard },
+      { id: 'Analytics',         label: 'Analytics',         icon: BarChart2 },
+      { id: 'CreateOrder',       label: 'Orders',            icon: ShoppingCart },
+      { id: 'RegisterCustomer',  label: 'Customers',         icon: Users },
+      { id: 'Invoices',          label: 'Invoices',          icon: FileText },
+      { id: 'SalesHistory',      label: 'Sales History',     icon: TrendingUp },
+    ],
+    OPERATIONS: [
+      { id: 'Overview',       label: 'Dashboard',            icon: LayoutDashboard },
+      { id: 'Analytics',      label: 'Analytics',             icon: BarChart2 },
+      { id: 'PortIngestion',  label: 'Cargo Intake',          icon: Package },
+      { id: 'Stock',          label: 'Stock',                 icon: Layers },
+      { id: 'OpsHistory',     label: 'Discrepancy Reports',   icon: AlertTriangle },
+      { id: 'Releases',       label: 'Fulfillment',           icon: PackageCheck },
     ],
     DISPATCH: [
-      { id: 'Deliveries', label: 'Active Deliveries Map', icon: Truck },
-      { id: 'DispatchHistory', label: 'Delivery History', icon: History },
-      { id: 'DriverLogs', label: 'Driver Activities', icon: Users },
+      { id: 'Deliveries',       label: 'Dashboard',              icon: LayoutDashboard },
+      { id: 'Analytics',        label: 'Analytics',               icon: BarChart2 },
+      { id: 'ActiveDeliveries', label: 'Deliveries',              icon: Truck },
+      { id: 'Drivers',          label: 'Drivers',                 icon: UserCheck },
+      { id: 'Tracking',         label: 'GPS Tracking',            icon: MapPin },
+      { id: 'ProofOfDelivery',  label: 'Proof of Delivery',       icon: Camera },
+    ],
+    HR_LOGISTICS_VIEW: [
+      { id: 'FleetOverview',    label: 'Fleet Overview',        icon: Truck },
+      { id: 'FuelManagement',   label: 'Fuel Management',       icon: Gauge },
+      { id: 'Maintenance',      label: 'Maintenance Schedule',  icon: Wrench },
+      { id: 'FleetAnalytics',   label: 'Fleet Analytics',       icon: BarChart3 },
+    ],
+    RECEPTION: [
+      { id: 'VisitorLog',       label: 'Dashboard',             icon: LayoutDashboard },
+      { id: 'Analytics',        label: 'Analytics',              icon: BarChart2 },
+      { id: 'Visitors',         label: 'Visitors',               icon: UserPlus },
+      { id: 'EmployeeCheckin',  label: 'Attendance',             icon: UserCheck },
+      { id: 'DailyReports',     label: 'Daily Reports',          icon: FileBarChart },
+    ],
+    PRODUCTION: [
+      { id: 'Requisition',       label: 'Dashboard',             icon: LayoutDashboard },
+      { id: 'Analytics',         label: 'Analytics',              icon: BarChart2 },
+      { id: 'InternalOrders',    label: 'Internal Orders',        icon: ClipboardList },
+      { id: 'WIPStock',          label: 'WIP Stock',              icon: Layers },
+      { id: 'OutputRecording',   label: 'Output Recording',       icon: Factory },
     ],
     LOGISTICS: [
-      { id: 'Maintenance', label: 'Fleet Maintenance', icon: Settings },
-      { id: 'Fuel', label: 'Fuel Usage & Metrics', icon: TrendingUp },
-      { id: 'Dispatch', label: 'Active Dispatch Queue', icon: Truck },
+      { id: 'Overview',          label: 'Dashboard',              icon: LayoutDashboard },
+      { id: 'Analytics',         label: 'Analytics',               icon: BarChart2 },
+      { id: 'FleetOverview',     label: 'Fleet Overview',          icon: Truck },
+      { id: 'FuelManagement',    label: 'Fuel Management',         icon: Gauge },
+      { id: 'Maintenance',       label: 'Maintenance Schedule',    icon: Wrench },
     ],
     BOARDROOM: [
-      { id: 'VideoConf', label: 'Live Video Minutes', icon: Video },
-      { id: 'Announcements', label: 'Announcements', icon: Users },
-      { id: 'DirectMessages', label: 'Direct Messages', icon: MessagesSquare },
-      { id: 'Meetings', label: 'Meetings Organizer', icon: Clipboard },
+      { id: 'VideoConf',       label: 'Live Video Minutes',   icon: Video },
+      { id: 'Announcements',   label: 'Announcements',         icon: Users },
+      { id: 'DirectMessages',  label: 'Direct Messages',       icon: MessagesSquare },
+      { id: 'Meetings',        label: 'Meetings Organizer',    icon: Clipboard },
     ],
     SETTINGS: [
-      { id: 'Appearance', label: 'Display & Appearance', icon: Activity },
-      { id: 'Profile', label: 'Profile & Account', icon: Users },
-      { id: 'ChangePassword', label: 'Change Password', icon: ShieldCheck },
-      { id: 'DeleteAccount', label: 'Delete Account', icon: LogOut },
+      { id: 'Appearance',      label: 'Display & Appearance',  icon: Activity },
+      { id: 'Profile',         label: 'Profile & Account',     icon: Users },
+      { id: 'ChangePassword',  label: 'Change Password',       icon: ShieldCheck },
+      { id: 'DeleteAccount',   label: 'Delete Account',        icon: LogOut },
     ]
   };
 
-  // Build allowed departments list for the dropdown
   const allDepts = [
-    { value: 'CEO', label: 'CEO Command' },
+    { value: 'CEO',        label: 'CEO Command' },
     { value: 'MANAGEMENT', label: 'Management Office' },
-    { value: 'HR', label: 'Human Resources' },
-    { value: 'MARKETING', label: 'Marketing Pipeline' },
+    { value: 'HR',         label: 'Human Resources' },
+    { value: 'MARKETING',  label: 'Marketing Pipeline' },
     { value: 'OPERATIONS', label: 'Operations & Stock' },
-    { value: 'FINANCE', label: 'Finance Ledgers' },
+    { value: 'FINANCE',    label: 'Finance Ledgers' },
     { value: 'PRODUCTION', label: 'Production Line' },
-    { value: 'RECEPTION', label: 'Reception Terminal' },
-    { value: 'DISPATCH', label: 'Dispatch Fleet' },
-    { value: 'LOGISTICS', label: 'Logistics Fleet' },
-    { value: 'BOARDROOM', label: 'Executive Boardroom' },
-    { value: 'SETTINGS', label: 'ERP Settings' },
+    { value: 'RECEPTION',  label: 'Reception Terminal' },
+    { value: 'DISPATCH',   label: 'Dispatch Fleet' },
+    { value: 'LOGISTICS',  label: 'Logistics Fleet' },
+    { value: 'SETTINGS',   label: 'ERP Settings' },
   ];
 
-  // Access control filter
   const availableDepts = allDepts.filter(d => {
     const isUserCeo = currentUser?.isCeo || currentUser?.department?.toUpperCase() === 'CEO';
-    if (isUserCeo) return true; // CEO sees all departments
-    
-    // Normalize user department to match dropdown values
+    if (isUserCeo) return true;
     const rawDept = currentUser?.department || '';
     const normalizedUserDept = rawDept.toUpperCase() === 'HUMAN RESOURCES' ? 'HR' : rawDept.toUpperCase();
-    
-    if (d.value === 'BOARDROOM' || d.value === 'SETTINGS') return true;
-    
-    if (normalizedUserDept === 'HR') {
-      return d.value === 'HR';
-    }
-    
+    if (d.value === 'SETTINGS') return true;
+    if (normalizedUserDept === 'HR') return d.value === 'HR';
     return d.value === normalizedUserDept;
   });
 
+  const getIconForDept = (val: string) => {
+    if (val === 'CEO') return ShieldCheck;
+    if (val === 'MANAGEMENT') return Layers;
+    if (val === 'HR') return Users;
+    if (val === 'MARKETING') return TrendingUp;
+    if (val === 'OPERATIONS') return Warehouse;
+    if (val === 'FINANCE') return DollarSign;
+    if (val === 'PRODUCTION') return Activity;
+    if (val === 'RECEPTION') return Users;
+    if (val === 'DISPATCH') return Truck;
+    if (val === 'LOGISTICS') return Truck;
+    return Settings;
+  };
+
   const handleBoardroomClick = () => {
-    if (openBoardroom) {
-      openBoardroom();
-    } else {
-      setActiveDepartment('BOARDROOM');
-      setActiveSubTab('VideoConf');
-    }
+    if (openBoardroom) openBoardroom();
+    else { setActiveDepartment('BOARDROOM'); setActiveSubTab('VideoConf'); }
     addNotification('Opening Executive Boardroom hub.');
   };
 
+  const showLogisticsSection = isCeo || isManagement || currentUser?.department === 'HR';
+
+  // Render nav button for a tab
+  const renderNavBtn = (tab: { id: string; label: string; icon: any }, badge = 0) => {
+    const Icon = tab.icon;
+    const isActive = activeSubTab === tab.id;
+
+    if (isLiamFinance) {
+      return (
+        <button
+          key={tab.id}
+          onClick={() => setActiveSubTab(tab.id)}
+          className={`lf-nav-item w-full flex items-center ${lfCollapsed ? 'justify-center' : 'gap-3 px-3'} py-1 transition-all duration-200 cursor-pointer`}
+          style={{ background: 'transparent', border: 'none' }}
+          title={tab.label}
+        >
+          <span className="lf-nav-icon flex-shrink-0 relative" style={{
+            width: 40, height: 40, borderRadius: '50%',
+            background: isActive ? 'var(--accent)' : 'var(--lf-icon-bg, #eef0f3)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <Icon style={{ width: 18, height: 18, color: isActive ? '#fff' : 'var(--text-secondary)' }} />
+            {badge > 0 && <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-500 text-white text-[8px] font-bold flex items-center justify-center">{badge > 9 ? '9+' : badge}</span>}
+          </span>
+          {!lfCollapsed && (
+            <span className="nav-label truncate text-xs font-semibold" style={{ color: isActive ? 'var(--accent)' : 'var(--text-secondary)' }}>
+              {tab.label}
+            </span>
+          )}
+        </button>
+      );
+    }
+
+    return (
+      <button
+        key={tab.id}
+        onClick={() => setActiveSubTab(tab.id)}
+        className={`nav-item ${isActive ? 'nav-item--active' : ''} w-full flex items-center ${isActualCollapsed ? 'justify-center px-0' : 'gap-3 px-4'} py-2 rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer relative`}
+        style={isActive ? { background: 'var(--accent)', color: '#ffffff' } : { color: 'var(--text-sidebar, var(--text-secondary))' }}
+        title={tab.label}
+      >
+        <span className="nav-icon flex-shrink-0 relative">
+          <Icon className="w-4 h-4" style={{ color: isActive ? '#ffffff' : undefined }} />
+          {badge > 0 && <span className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 rounded-full bg-rose-500 text-white text-[8px] font-bold flex items-center justify-center">{badge > 9 ? '9+' : badge}</span>}
+        </span>
+        <span className={`nav-label truncate transition-all duration-300 ${isActualCollapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100'}`}>{tab.label}</span>
+        {badge > 0 && !isActualCollapsed && !isActive && (
+          <span className="ml-auto text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-rose-500 text-white">{badge > 9 ? '9+' : badge}</span>
+        )}
+      </button>
+    );
+  };
+
+  const sectionLabel = (label: string) => (
+    <div className={`text-[9px] uppercase text-[var(--text-muted)] tracking-widest font-bold px-4 mb-1.5 mt-3 transition-all duration-300 ${isActualCollapsed ? 'opacity-0 h-0 overflow-hidden' : ''}`}>
+      {label}
+    </div>
+  );
+
+  const currentTabs = departmentTabs[activeDepartment] || [];
+
   return (
-    <aside 
+    <aside
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className={`sidebar-shell fixed inset-y-0 left-0 z-50 w-[80vw] max-w-[320px] rounded-r-3xl flex flex-col justify-between shadow-2xl select-none transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full'} lg:rounded-none lg:border-r lg:border-[var(--border)] lg:static lg:translate-x-0 lg:shadow-none transition-all duration-300 ${isActualCollapsed ? 'lg:w-[var(--sidebar-collapsed-width,68px)]' : 'lg:w-[var(--sidebar-width,260px)]'}`}
+      className={`sidebar-shell fixed top-0 bottom-0 left-0 z-50 flex flex-col shadow-2xl select-none transform transition-all duration-300 ease-in-out
+        w-[80vw] max-w-[320px] rounded-r-3xl
+        ${isOpen ? 'translate-x-0' : '-translate-x-full'}
+        lg:top-6 lg:bottom-6 lg:left-6 lg:rounded-2xl lg:border lg:border-[var(--border)] lg:translate-x-0 lg:shadow-[var(--box-shadow)]
+        ${isActualCollapsed ? 'lg:w-[var(--sidebar-collapsed-width,68px)]' : 'lg:w-[var(--sidebar-width,260px)]'}
+      `}
     >
-      {/* 1. MOBILE STYLE VIEW */}
+      {/* ── MOBILE DRAWER VIEW ── */}
       <div className="lg:hidden flex flex-col h-full justify-between py-6 px-4" style={{ color: 'var(--text-sidebar, var(--text-primary))' }}>
         <div className="flex flex-col h-full overflow-hidden">
-          {/* Top Header Section */}
+          {/* Header */}
           <div className="flex items-center justify-between pb-4 border-b border-[var(--border)]">
             <div className="flex items-center gap-2">
-              <img 
-                src="/logo.png" 
-                className="w-8 h-8 object-contain rounded bg-bg-card/20 p-0.5" 
-                alt="REBMA GHANA Logo" 
-              />
+              <img src="/logo.png" className="w-8 h-8 object-contain rounded bg-bg-card/20 p-0.5" alt="REBMA IMPEX Logo" />
               <div>
                 <h2 className="font-extrabold text-xs tracking-wider leading-tight text-[var(--text-primary)]">REBMA IMPEX</h2>
                 <span className="text-[9px] uppercase text-[var(--accent,#068d5c)] font-mono tracking-widest leading-none">GHANA</span>
               </div>
             </div>
             {onClose && (
-              <button 
-                onClick={onClose}
-                className="p-1.5 rounded-full hover:bg-[var(--accent-light)] text-text-muted hover:text-text-secondary transition-colors cursor-pointer shrink-0"
-                title="Close"
-              >
+              <button onClick={onClose} className="p-1.5 rounded-full hover:bg-[var(--accent-light)] text-text-muted cursor-pointer shrink-0">
                 <X className="w-5 h-5" />
               </button>
             )}
           </div>
-
-          {/* User Profile Section */}
+          {/* User */}
           <div className="py-4 flex items-center gap-2.5 border-b border-[var(--border)] shrink-0">
             <div className="w-10 h-10 rounded-full bg-[var(--accent,#068d5c)] text-white flex items-center justify-center font-bold text-sm shrink-0 relative">
               {currentUser?.fullName?.[0] || 'U'}
-              <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-white dark:border-slate-900" />
+              <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-white" />
             </div>
             <div className="truncate flex-1">
               <p className="text-xs font-bold leading-none truncate text-[var(--text-primary)]">{currentUser?.fullName}</p>
               <p className="text-[10px] text-text-secondary leading-none mt-1 truncate">{currentUser?.department}</p>
             </div>
           </div>
-
-          {/* Middle Channels Section */}
+          {/* Channels */}
           <div className="flex-1 overflow-y-auto pt-4 space-y-4">
             <div>
               <p className="text-[9px] font-bold text-text-muted uppercase tracking-widest px-2 mb-1.5">Channels</p>
               <div className="space-y-1">
                 {availableDepts.map(dept => {
                   const isSelected = dept.value === activeDepartment;
-                  const channelName = getChannelName(dept.value);
                   return (
-                    <button
-                      key={dept.value}
-                      type="button"
-                      onClick={() => {
-                        setActiveDepartment(dept.value);
-                        // Reset sub-tab based on department defaults
-                        const defaultSubTabs: Record<string, string> = {
-                          CEO: 'Overview', MANAGEMENT: 'CargoApproval', HR: 'Employees',
-                          MARKETING: 'CreateOrder', OPERATIONS: 'PortIngestion', FINANCE: 'Evaluation',
-                          PRODUCTION: 'Requisition', RECEPTION: 'VisitorLog', DISPATCH: 'Deliveries',
-                          LOGISTICS: 'Maintenance', BOARDROOM: 'VideoConf', SETTINGS: 'Appearance'
-                        };
-                        setActiveSubTab(defaultSubTabs[dept.value] || 'Overview');
-                        onClose?.();
-                      }}
-                      className={`w-full flex items-center px-3 py-2 rounded-xl text-xs font-semibold transition-all text-left truncate ${
-                        isSelected 
-                          ? 'bg-[var(--accent,#068d5c)] text-white font-extrabold shadow-card' 
-                          : 'text-text-secondary hover:bg-[var(--accent-light)]'
-                      }`}
-                    >
+                    <button key={dept.value} type="button" onClick={() => { setActiveDepartment(dept.value); onClose?.(); }}
+                      className={`w-full flex items-center px-3 py-2 rounded-xl text-xs font-semibold transition-all text-left truncate ${isSelected ? 'bg-[var(--accent,#068d5c)] text-white font-extrabold' : 'text-text-secondary hover:bg-[var(--accent-light)]'}`}>
                       <span className="opacity-50 mr-1.5">#</span>
-                      <span className="truncate">{channelName}</span>
+                      <span className="truncate">{dept.label}</span>
                     </button>
                   );
                 })}
@@ -314,39 +343,24 @@ export default function Sidebar({
             </div>
           </div>
         </div>
-
-        {/* Bottom Section */}
         <div className="pt-4 border-t border-[var(--border)] flex flex-col gap-1.5 shrink-0">
-          <button
-            onClick={() => { setActiveDepartment('SETTINGS'); setActiveSubTab('Appearance'); onClose?.(); }}
-            className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition-colors ${
-              activeDepartment === 'SETTINGS' ? 'bg-bg-input dark:bg-slate-800 text-[var(--accent,#068d5c)] font-bold' : 'text-text-secondary hover:bg-[var(--accent-light)]'
-            }`}
-          >
-            <Settings className="w-4 h-4 text-text-secondary" />
-            <span>Settings</span>
+          <button onClick={() => { setActiveDepartment('SETTINGS'); setActiveSubTab('Appearance'); onClose?.(); }}
+            className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-text-secondary hover:bg-[var(--accent-light)] transition-colors">
+            <Settings className="w-4 h-4" /><span>Settings</span>
           </button>
-          <button
-            onClick={onLogout}
-            className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-colors"
-          >
-            <LogOut className="w-4 h-4" />
-            <span>Sign Out</span>
+          <button onClick={onLogout} className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-rose-600 hover:bg-rose-50 transition-colors">
+            <LogOut className="w-4 h-4" /><span>Sign Out</span>
           </button>
         </div>
       </div>
 
-      {/* 2. DESKTOP VIEW */}
-      <div className={`hidden lg:flex flex-col h-full justify-between py-6 ${isActualCollapsed ? 'px-1' : 'px-4'} transition-all duration-300`}>
-        <div className="flex flex-col h-full overflow-hidden">
-          {/* Logo Header */}
-          <div className={`flex items-center justify-between ${isActualCollapsed ? 'px-1' : 'px-3'} mb-6 transition-all duration-300`}>
+      {/* ── DESKTOP VIEW ── */}
+      <div className={`hidden lg:flex flex-col h-full overflow-hidden justify-between py-4 ${isActualCollapsed ? 'px-1' : 'px-3'} transition-all duration-300`}>
+        <div className="flex flex-col min-h-0 flex-1 overflow-hidden">
+          {/* Logo */}
+          <div className={`flex items-center justify-between ${isActualCollapsed ? 'px-1' : 'px-2'} mb-4 shrink-0`}>
             <div className="flex items-center gap-3">
-              <img 
-                src="/logo.png" 
-                className="w-9 h-9 object-contain rounded-lg bg-bg-card p-0.5 shrink-0 select-none pointer-events-none shadow-card" 
-                alt="REBMA GHANA Logo" 
-              />
+              <img src="/logo.png" className="w-9 h-9 object-contain rounded-lg bg-bg-card p-0.5 shrink-0 shadow-card" alt="REBMA IMPEX Logo" />
               <div className={`transition-all duration-300 ${isActualCollapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100'}`}>
                 <h2 className="font-bold text-sm tracking-wide leading-none text-[var(--text-primary)]">REBMA IMPEX</h2>
                 <span className="text-[10px] uppercase text-[var(--accent)] tracking-widest font-bold font-mono">GHANA</span>
@@ -354,9 +368,9 @@ export default function Sidebar({
             </div>
           </div>
 
-          {/* User Profile Section */}
-          <div className={`mb-5 ${isActualCollapsed ? 'px-1 py-1 justify-center' : 'px-3 py-3'} bg-[var(--accent-light)] rounded-2xl flex items-center gap-3 border border-[var(--border)] relative transition-all duration-300`}>
-            <div className="w-10 h-10 rounded-full bg-[var(--accent)] text-white flex items-center justify-center font-bold text-sm shrink-0 relative shadow-card">
+          {/* User Profile */}
+          <div className={`mb-3 shrink-0 ${isActualCollapsed ? 'px-1 py-1 justify-center' : 'px-2 py-2'} bg-[var(--accent-light)] rounded-2xl flex items-center gap-3 border border-[var(--border)] transition-all duration-300`}>
+            <div className="w-9 h-9 rounded-full bg-[var(--accent)] text-white flex items-center justify-center font-bold text-sm shrink-0 relative shadow-card">
               {currentUser?.fullName?.[0] || 'U'}
               <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-white" />
             </div>
@@ -366,326 +380,135 @@ export default function Sidebar({
             </div>
           </div>
 
-          {/* Boardroom Quick Launch Button */}
-          <div className="mb-4 px-1">
-            <button 
-              onClick={handleBoardroomClick}
-              className={`w-full flex items-center justify-center gap-2 py-2.5 bg-[var(--bg-card)] hover:bg-[var(--accent-light)] text-[var(--accent)] rounded-full font-semibold shadow-card border border-[var(--border)] hover:scale-[1.02] transition-all duration-200 cursor-pointer text-xs ${isActualCollapsed ? 'px-0' : ''}`}
-              title="Executive Boardroom"
-            >
+          {/* Boardroom Button */}
+          <div className="mb-3 px-1 shrink-0">
+            <button onClick={handleBoardroomClick}
+              className={`w-full flex items-center justify-center gap-2 py-2 bg-[var(--bg-card)] hover:bg-[var(--accent-light)] text-[var(--accent)] rounded-full font-semibold shadow-card border border-[var(--border)] hover:scale-[1.02] transition-all cursor-pointer text-xs ${isActualCollapsed ? 'px-0' : ''}`}
+              title="Messages & Boardroom">
               <MessagesSquare className="w-4 h-4 text-[var(--accent)] shrink-0" />
               <span className={`transition-all duration-300 ${isActualCollapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100'}`}>Executive Boardroom</span>
             </button>
           </div>
 
-          {/* Department Switcher Dropdown */}
-          <div className="mb-5 px-1 relative">
-            <label className={`block text-[9px] font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-1.5 transition-all duration-300 ${isActualCollapsed ? 'opacity-0 h-0 overflow-hidden' : ''}`}>Switch Department</label>
-            <button
-              type="button"
-              onClick={() => setIsSwitcherOpen(prev => !prev)}
-              className={`w-full flex items-center ${isActualCollapsed ? 'justify-center py-2.5 px-0' : 'justify-between py-2.5 px-3'} bg-[var(--bg)] hover:bg-[var(--accent-light)] border border-[var(--border)] text-[var(--text-primary)] rounded-xl text-xs focus:outline-none transition-all cursor-pointer font-semibold shadow-card`}
-              title="Switch Department"
-            >
-              <div className="flex items-center gap-2 justify-center">
-                {(() => {
-                  const getIconComponent = (val: string) => {
-                    if (val === 'CEO') return ShieldCheck;
-                    if (val === 'MANAGEMENT') return Layers;
-                    if (val === 'HR') return Users;
-                    if (val === 'MARKETING') return TrendingUp;
-                    if (val === 'OPERATIONS') return Warehouse;
-                    if (val === 'FINANCE') return DollarSign;
-                    if (val === 'PRODUCTION') return Activity;
-                    if (val === 'RECEPTION') return Users;
-                    if (val === 'DISPATCH') return Truck;
-                    if (val === 'LOGISTICS') return Truck;
-                    if (val === 'BOARDROOM') return Video;
-                    return Settings;
-                  };
-                  const SelectedIcon = getIconComponent(activeDepartment);
-                  return <SelectedIcon className="w-4 h-4 text-[var(--accent)] shrink-0" />;
-                })()}
+          {/* Department Switcher */}
+          <div className="mb-3 px-1 relative shrink-0">
+            <label className={`block text-[9px] font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-1 transition-all duration-300 ${isActualCollapsed ? 'opacity-0 h-0 overflow-hidden' : ''}`}>Switch Department</label>
+            <button type="button" onClick={() => setIsSwitcherOpen(prev => !prev)}
+              className={`w-full flex items-center ${isActualCollapsed ? 'justify-center py-2 px-0' : 'justify-between py-2 px-3'} bg-[var(--bg)] hover:bg-[var(--accent-light)] border border-[var(--border)] text-[var(--text-primary)] rounded-xl text-xs focus:outline-none transition-all cursor-pointer font-semibold shadow-card`}
+              title="Switch Department">
+              <div className="flex items-center gap-2">
+                {(() => { const I = getIconForDept(activeDepartment); return <I className="w-4 h-4 text-[var(--accent)] shrink-0" />; })()}
                 <span className={`transition-all duration-300 ${isActualCollapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100'}`}>
                   {allDepts.find(d => d.value === activeDepartment)?.label || activeDepartment}
                 </span>
               </div>
               <span className={`text-[9px] text-[var(--text-secondary)] opacity-75 transition-all duration-300 ${isActualCollapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100'}`}>▼</span>
             </button>
-            
-            {/* Switcher Popover / Sheet */}
             {isSwitcherOpen && (
               <>
-                {/* Backdrop */}
-                <div 
-                  className="fixed inset-0 bg-black/60 z-[250] lg:hidden"
-                  onClick={() => setIsSwitcherOpen(false)}
-                />
-                <div 
-                  className="fixed inset-0 z-[250] hidden lg:block"
-                  onClick={() => setIsSwitcherOpen(false)}
-                />
-                
-                <div className={`fixed inset-x-0 bottom-0 lg:absolute lg:top-full lg:bottom-auto max-h-[80vh] lg:max-h-80 bg-[var(--bg-card)] border-t lg:border border-[var(--border)] rounded-t-3xl lg:rounded-xl p-5 lg:p-1.5 z-[260] overflow-y-auto shadow-xl flex flex-col gap-1 animate-fade-in-up transition-all duration-300 ${isActualCollapsed ? 'lg:w-[200px] lg:left-0' : 'lg:inset-x-0'}`}>
-                  {/* Mobile Grab Handle */}
-                  <div className="lg:hidden w-12 h-1 bg-bg-card/20 rounded-full mx-auto mb-1 shrink-0" />
-                  
-                  <div className="flex justify-between items-center lg:hidden mb-1">
-                    <h3 className="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider">Switch Department</h3>
-                    <button onClick={() => setIsSwitcherOpen(false)} className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] text-xs">Close</button>
-                  </div>
-
-                  <div className="space-y-0.5">
-                    {availableDepts.map(dept => {
-                      const isSelected = dept.value === activeDepartment;
-                      const getIconComponent = (val: string) => {
-                        if (val === 'CEO') return ShieldCheck;
-                        if (val === 'MANAGEMENT') return Layers;
-                        if (val === 'HR') return Users;
-                        if (val === 'MARKETING') return TrendingUp;
-                        if (val === 'OPERATIONS') return Warehouse;
-                        if (val === 'FINANCE') return DollarSign;
-                        if (val === 'PRODUCTION') return Activity;
-                        if (val === 'RECEPTION') return Users;
-                        if (val === 'DISPATCH') return Truck;
-                        if (val === 'LOGISTICS') return Truck;
-                        if (val === 'BOARDROOM') return Video;
-                        return Settings;
-                      };
-                      const DeptIcon = getIconComponent(dept.value);
-                      return (
-                        <button
-                          key={dept.value}
-                          type="button"
-                          onClick={() => {
-                            setActiveDepartment(dept.value);
-                            // Reset sub-tab based on department defaults
-                            const defaultSubTabs: Record<string, string> = {
-                              CEO: 'Overview', MANAGEMENT: 'CargoApproval', HR: 'Employees',
-                              MARKETING: 'CreateOrder', OPERATIONS: 'PortIngestion', FINANCE: 'Evaluation',
-                              PRODUCTION: 'Requisition', RECEPTION: 'VisitorLog', DISPATCH: 'Deliveries',
-                              LOGISTICS: 'Maintenance', BOARDROOM: 'VideoConf', SETTINGS: 'Appearance'
-                            };
-                            setActiveSubTab(defaultSubTabs[dept.value] || 'Overview');
-                            setIsSwitcherOpen(false);
-                          }}
-                          className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                            isSelected 
-                              ? 'bg-[var(--accent)] text-white shadow-card font-bold' 
-                              : 'text-[var(--text-primary)] hover:bg-[var(--accent-light)]'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2">
-                            <DeptIcon className={`w-3.5 h-3.5 ${isSelected ? 'text-white' : 'text-[var(--accent)]'} shrink-0`} />
-                            <span>{dept.label}</span>
-                          </div>
-                          {isSelected && <span className="text-white font-extrabold text-xs">✓</span>}
-                        </button>
-                      );
-                    })}
-                  </div>
+                <div className="fixed inset-0 bg-black/60 z-[250] lg:hidden" onClick={() => setIsSwitcherOpen(false)} />
+                <div className="fixed inset-0 z-[250] hidden lg:block" onClick={() => setIsSwitcherOpen(false)} />
+                <div className={`fixed inset-x-0 bottom-0 lg:absolute lg:top-full lg:bottom-auto max-h-[80vh] lg:max-h-72 bg-[var(--bg-card)] border-t lg:border border-[var(--border)] rounded-t-3xl lg:rounded-xl p-4 lg:p-1.5 z-[260] overflow-y-auto shadow-xl flex flex-col gap-0.5 ${isActualCollapsed ? 'lg:w-[200px] lg:left-0' : 'lg:inset-x-0'}`}>
+                  <div className="lg:hidden w-12 h-1 bg-bg-card/20 rounded-full mx-auto mb-2 shrink-0" />
+                  {availableDepts.map(dept => {
+                    const isSelected = dept.value === activeDepartment;
+                    const DI = getIconForDept(dept.value);
+                    return (
+                      <button key={dept.value} type="button" onClick={() => { setActiveDepartment(dept.value); setIsSwitcherOpen(false); }}
+                        className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${isSelected ? 'bg-[var(--accent)] text-white shadow-card' : 'text-[var(--text-primary)] hover:bg-[var(--accent-light)]'}`}>
+                        <div className="flex items-center gap-2">
+                          <DI className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-white' : 'text-[var(--accent)]'}`} />
+                          <span>{dept.label}</span>
+                        </div>
+                        {isSelected && <span className="text-white font-extrabold">✓</span>}
+                      </button>
+                    );
+                  })}
                 </div>
               </>
             )}
-
-            {/* View-only badge for CEO/Management viewing other depts */}
-            {(isCeo || isManagement) && activeDepartment !== userDept && activeDepartment !== 'BOARDROOM' && activeDepartment !== 'SETTINGS' && (
-              <div className={`mt-1.5 px-2 py-1 bg-amber-500/15 border border-amber-500/35 rounded-lg text-[9px] text-amber-700 dark:text-amber-300 font-semibold text-center transition-all duration-300 ${isActualCollapsed ? 'opacity-0 h-0 py-0 border-none overflow-hidden' : ''}`}>
+            {(isCeo || isManagement) && activeDepartment !== userDept && activeDepartment !== 'SETTINGS' && (
+              <div className={`mt-1 px-2 py-0.5 bg-amber-500/15 border border-amber-500/35 rounded-lg text-[9px] text-amber-700 font-semibold text-center transition-all duration-300 ${isActualCollapsed ? 'opacity-0 h-0 py-0 border-none overflow-hidden' : ''}`}>
                 👁 VIEW ONLY — {isCeo ? 'CEO' : 'MANAGEMENT'} ACCESS
               </div>
             )}
           </div>
 
-          {/* Department Sub-Menu */}
-          <nav
-            className="space-y-1 flex-1 overflow-y-auto pr-0.5"
-            data-lf-collapsed={isLiamFinance ? String(lfCollapsed) : undefined}
-          >
-            <div className={`text-[9px] uppercase text-[var(--text-muted)] tracking-widest font-bold px-4 mb-2 transition-all duration-300 ${isActualCollapsed ? 'opacity-0 h-0 overflow-hidden' : ''}`}>
-              Menu
+          {/* ── SCROLLABLE NAV AREA ── */}
+          <div className="flex-1 overflow-y-auto min-h-0">
+            {/* MENU section */}
+            {sectionLabel('Menu')}
+            <div className="space-y-0.5">
+              {currentTabs.map(tab => renderNavBtn(tab))}
             </div>
-            {departmentTabs[activeDepartment]?.map(tab => {
-              const Icon = tab.icon;
-              const isActive = activeSubTab === tab.id;
 
-              if (isLiamFinance) {
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveSubTab(tab.id)}
-                    className={`lf-nav-item w-full flex items-center ${lfCollapsed ? 'justify-center' : 'gap-3 px-3'} py-1 transition-all duration-200 cursor-pointer`}
-                    style={{ background: 'transparent', border: 'none' }}
-                    title={tab.label}
-                  >
-                    <span
-                      className="lf-nav-icon flex-shrink-0 transition-all duration-200"
-                      style={{
-                        width: 40, height: 40, borderRadius: '50%',
-                        background: isActive ? 'var(--accent)' : 'var(--lf-icon-bg, #eef0f3)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      }}
-                    >
-                      <Icon style={{ width: 18, height: 18, color: isActive ? '#fff' : 'var(--text-secondary)' }} />
-                    </span>
-                    {!lfCollapsed && (
-                      <span
-                        className="nav-label truncate text-xs font-semibold"
-                        style={{ color: isActive ? 'var(--accent)' : 'var(--text-secondary)' }}
-                      >
-                        {tab.label}
-                      </span>
-                    )}
-                  </button>
-                );
-              }
+            {/* LOGISTICS section (CEO / Management / HR only) */}
+            {showLogisticsSection && (
+              <>
+                {sectionLabel('Logistics & Fleet')}
+                <div className="space-y-0.5">
+                  {departmentTabs['HR_LOGISTICS_VIEW'].map(tab => renderNavBtn(tab))}
+                </div>
+              </>
+            )}
 
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveSubTab(tab.id)}
-                  className={`nav-item ${isActive ? 'nav-item--active' : ''} w-full flex items-center ${isActualCollapsed ? 'justify-center px-0' : 'gap-3 px-4'} py-2.5 rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer`}
-                  style={isActive ? {
-                    background: 'var(--accent)',
-                    color: '#ffffff'
-                  } : {
-                    color: 'var(--text-sidebar, var(--text-secondary))'
-                  }}
-                  title={tab.label}
-                >
-                  <span className="nav-icon flex-shrink-0">
-                    <Icon className="w-4 h-4" style={{ color: isActive ? '#ffffff' : undefined }} />
-                  </span>
-                  <span className={`nav-label truncate transition-all duration-300 ${isActualCollapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100'}`}>{tab.label}</span>
-                </button>
-              );
-            })}
-          </nav>
+            {/* PERSONAL section */}
+            {sectionLabel('Personal')}
+            <div className="space-y-0.5">
+              {[
+                { id: 'Notes',         label: 'Notes',    icon: StickyNote,   badge: 0 },
+                { id: 'Tasks',         label: 'Tasks',    icon: CheckSquare,  badge: 0 },
+                { id: 'Emails',        label: 'Emails',   icon: Mail,         badge: unreadEmailCount },
+                { id: 'Notifications', label: 'Activity', icon: Bell,         badge: 0 },
+              ].map(t => renderNavBtn(t, t.badge))}
+            </div>
 
-          {/* PERSONAL section */}
-          <div className="mt-3">
-            <div className={`text-[9px] uppercase text-[var(--text-muted)] tracking-widest font-bold px-4 mb-1.5 transition-all duration-300 ${isActualCollapsed ? 'opacity-0 h-0 overflow-hidden' : ''}`}>Personal</div>
-            {([
-              { id: 'Notes',    label: 'Notes',    Icon: StickyNote,       badge: 0 },
-              { id: 'Tasks',    label: 'Tasks',    Icon: CheckSquare,      badge: 0 },
-              { id: 'Emails',   label: 'Emails',   Icon: Mail,             badge: unreadEmailCount },
-              { id: 'Notifications', label: 'Activity', Icon: Bell,        badge: 0 },
-            ]).map(({ id, label, Icon, badge }) => {
-              const isActive = activeSubTab === id;
-              if (isLiamFinance) {
-                return (
-                  <button key={id} onClick={() => setActiveSubTab(id)}
-                    className="lf-nav-item w-full flex items-center justify-center py-1 transition-all duration-200 cursor-pointer"
-                    style={{ background: 'transparent', border: 'none' }} title={label}>
-                    <span className="lf-nav-icon flex-shrink-0 relative"
-                      style={{ width: 40, height: 40, borderRadius: '50%', background: isActive ? 'var(--accent)' : 'var(--lf-icon-bg, #eef0f3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <Icon style={{ width: 18, height: 18, color: isActive ? '#fff' : 'var(--text-secondary)' }} />
-                      {badge > 0 && <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-500 text-white text-[8px] font-bold flex items-center justify-center">{badge > 9 ? '9+' : badge}</span>}
-                    </span>
-                  </button>
-                );
-              }
-              return (
-                <button key={id} onClick={() => setActiveSubTab(id)}
-                  className={`nav-item ${isActive ? 'nav-item--active' : ''} w-full flex items-center ${isActualCollapsed ? 'justify-center px-0' : 'gap-3 px-4'} py-2 rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer relative`}
-                  style={isActive ? { background: 'var(--accent)', color: '#ffffff' } : { color: 'var(--text-sidebar, var(--text-secondary))' }}
-                  title={label}>
-                  <span className="nav-icon flex-shrink-0 relative">
-                    <Icon className="w-4 h-4" style={{ color: isActive ? '#ffffff' : undefined }} />
-                    {badge > 0 && <span className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 rounded-full bg-rose-500 text-white text-[8px] font-bold flex items-center justify-center">{badge > 9 ? '9+' : badge}</span>}
-                  </span>
-                  <span className={`nav-label truncate transition-all duration-300 ${isActualCollapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100'}`}>{label}</span>
-                  {badge > 0 && !isActualCollapsed && !isActive && (
-                    <span className="ml-auto text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-rose-500 text-white">{badge > 9 ? '9+' : badge}</span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* SUPPORT section */}
-          <div className="mt-3">
-            <div className={`text-[9px] uppercase text-[var(--text-muted)] tracking-widest font-bold px-4 mb-1.5 transition-all duration-300 ${isActualCollapsed ? 'opacity-0 h-0 overflow-hidden' : ''}`}>Support</div>
-            {([
-              { id: 'HelpDesk', label: 'Help & News',  Icon: HelpCircle },
-              { id: 'Feedback', label: 'Feedback',      Icon: MessageSquarePlus },
-            ]).map(({ id, label, Icon }) => {
-              const isActive = activeSubTab === id;
-              if (isLiamFinance) {
-                return (
-                  <button key={id} onClick={() => setActiveSubTab(id)}
-                    className="lf-nav-item w-full flex items-center justify-center py-1 transition-all duration-200 cursor-pointer"
-                    style={{ background: 'transparent', border: 'none' }} title={label}>
-                    <span className="lf-nav-icon flex-shrink-0"
-                      style={{ width: 40, height: 40, borderRadius: '50%', background: isActive ? 'var(--accent)' : 'var(--lf-icon-bg, #eef0f3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <Icon style={{ width: 18, height: 18, color: isActive ? '#fff' : 'var(--text-secondary)' }} />
-                    </span>
-                  </button>
-                );
-              }
-              return (
-                <button key={id} onClick={() => setActiveSubTab(id)}
-                  className={`nav-item ${isActive ? 'nav-item--active' : ''} w-full flex items-center ${isActualCollapsed ? 'justify-center px-0' : 'gap-3 px-4'} py-2 rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer`}
-                  style={isActive ? { background: 'var(--accent)', color: '#ffffff' } : { color: 'var(--text-sidebar, var(--text-secondary))' }}
-                  title={label}>
-                  <span className="nav-icon flex-shrink-0"><Icon className="w-4 h-4" style={{ color: isActive ? '#ffffff' : undefined }} /></span>
-                  <span className={`nav-label truncate transition-all duration-300 ${isActualCollapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100'}`}>{label}</span>
-                </button>
-              );
-            })}
+            {/* SUPPORT section */}
+            {sectionLabel('Support')}
+            <div className="space-y-0.5">
+              {[
+                { id: 'HelpDesk', label: 'Help & News', icon: HelpCircle },
+                { id: 'Feedback', label: 'Feedback',    icon: MessageSquarePlus },
+              ].map(t => renderNavBtn(t))}
+            </div>
           </div>
         </div>
 
-        {/* AC Zone: Good cargo Great deals card */}
+        {/* ── PROMO CARDS (theme-specific) ── */}
         {theme === 'aczone' && !isActualCollapsed && (
-          <div className="aczone-sidebar-promo mb-3">
+          <div className="aczone-sidebar-promo mb-2 shrink-0">
             <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center mb-2">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
             </div>
             <p className="text-[11px] font-extrabold text-white leading-snug">Good cargo<br />Great deals</p>
-            <p className="text-[9px] text-white/65 mt-1">Smart trade for your business.</p>
           </div>
         )}
-
-        {/* Finova: Save more Grow more card */}
         {theme === 'finova' && !isActualCollapsed && (
-          <div className="finova-sidebar-promo mb-3">
+          <div className="finova-sidebar-promo mb-2 shrink-0">
             <p className="text-[10px] font-extrabold text-white leading-snug">Save more<br />Grow more</p>
-            <p className="text-[9px] text-white/65 mt-1 mb-2 leading-relaxed">Smart banking for your business future.</p>
-            <button className="flex items-center justify-center w-7 h-7 rounded-full bg-white/20 hover:bg-white/30 transition-colors cursor-pointer">
+            <button className="flex items-center justify-center w-7 h-7 rounded-full bg-white/20 hover:bg-white/30 transition-colors cursor-pointer mt-2">
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 6h8M6 2l4 4-4 4" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
             </button>
           </div>
         )}
-
-        {/* Foodie: Upgrade to Pro card */}
         {theme === 'foodie' && !isActualCollapsed && (
-          <div className="foodie-upgrade-card mx-2 mb-3">
+          <div className="foodie-upgrade-card mx-2 mb-2 shrink-0">
             <p className="text-[10px] text-white/60 font-semibold uppercase tracking-widest mb-1">Pro Plan</p>
             <p className="text-xs font-bold text-white leading-snug mb-2">Unlock advanced analytics & multi-port tracking</p>
-            <button className="w-full bg-white text-[#7c3aed] text-[10px] font-bold py-1.5 rounded-lg hover:bg-white/90 transition-colors cursor-pointer">
-              Upgrade to Pro
-            </button>
+            <button className="w-full bg-white text-[#7c3aed] text-[10px] font-bold py-1.5 rounded-lg hover:bg-white/90 transition-colors cursor-pointer">Upgrade to Pro</button>
           </div>
         )}
 
-        {/* Bottom section: Settings + User Card + Logout + Collapse Toggle */}
-        <div className="space-y-3 pt-4 border-t border-[var(--border)] pb-6">
-          {/* Settings shortcut */}
-          <button
-            onClick={() => { setActiveDepartment('SETTINGS'); setActiveSubTab('Appearance'); }}
-            className={`w-full flex items-center ${isActualCollapsed ? 'justify-center px-0' : 'gap-3 px-4'} py-2.5 rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer ${
-              activeDepartment === 'SETTINGS'
-                ? 'bg-[var(--accent-light)] text-[var(--accent)] font-bold shadow-card'
-                : 'text-[var(--text-secondary)] hover:bg-[var(--accent-light)] hover:text-[var(--text-primary)]'
-            }`}
-            title="Settings"
-          >
+        {/* ── BOTTOM SECTION ── */}
+        <div className="space-y-2 pt-3 border-t border-[var(--border)] shrink-0">
+          <button onClick={() => { setActiveDepartment('SETTINGS'); setActiveSubTab('Appearance'); }}
+            className={`w-full flex items-center ${isActualCollapsed ? 'justify-center px-0' : 'gap-3 px-4'} py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${activeDepartment === 'SETTINGS' ? 'bg-[var(--accent-light)] text-[var(--accent)] font-bold' : 'text-[var(--text-secondary)] hover:bg-[var(--accent-light)]'}`}
+            title="Settings">
             <Settings className="w-4 h-4 shrink-0 text-[var(--text-secondary)]" />
             <span className={`transition-all duration-300 ${isActualCollapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100'}`}>Settings</span>
           </button>
 
-          {/* User profile + logout */}
-          <div className={`px-2 flex items-center ${isActualCollapsed ? 'flex-col gap-3 justify-center' : 'justify-between'}`}>
+          <div className={`px-2 flex items-center ${isActualCollapsed ? 'flex-col gap-2 justify-center' : 'justify-between'}`}>
             <div className={`flex items-center ${isActualCollapsed ? 'justify-center' : 'gap-2'} truncate`}>
               <div className="w-8 h-8 rounded-full bg-[var(--accent)] text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-card">
                 {currentUser?.fullName?.[0] || 'U'}
@@ -695,11 +518,7 @@ export default function Sidebar({
                 <p className="text-[10px] text-[var(--text-secondary)] leading-none mt-1 truncate">{currentUser?.department}</p>
               </div>
             </div>
-            <button 
-              onClick={onLogout}
-              className="p-1.5 hover:bg-[var(--accent-light)] rounded-lg text-rose-500 hover:text-rose-750 cursor-pointer shrink-0 transition-colors"
-              title="Log out of Terminal"
-            >
+            <button onClick={onLogout} className="p-1.5 hover:bg-[var(--accent-light)] rounded-lg text-rose-500 cursor-pointer shrink-0 transition-colors" title="Sign out">
               <LogOut className="w-4 h-4" />
             </button>
           </div>
@@ -708,9 +527,8 @@ export default function Sidebar({
           {(isLiamFinance || setSidebarCollapsed) && (
             <button
               onClick={() => isLiamFinance ? handleLfCollapseToggle() : setSidebarCollapsed?.(!sidebarCollapsed)}
-              className={`hidden lg:flex items-center justify-center w-full py-2.5 border-t border-[var(--border)] hover:bg-[var(--accent-light)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors duration-200 cursor-pointer rounded-xl ${isActualCollapsed ? 'px-0' : 'gap-2 px-4'}`}
-              title={isActualCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
-            >
+              className={`hidden lg:flex items-center justify-center w-full py-2 border-t border-[var(--border)] hover:bg-[var(--accent-light)] text-[var(--text-secondary)] transition-colors cursor-pointer rounded-xl ${isActualCollapsed ? 'px-0' : 'gap-2 px-4'}`}
+              title={isActualCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}>
               {isActualCollapsed ? (
                 <ChevronRight className="w-4 h-4 text-[var(--accent)]" />
               ) : (
