@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import type { Order, Customer } from '../types/erp';
 import { FileSpreadsheet, FileText, UserPlus, Users, DollarSign, Clipboard, ShieldCheck, X, Camera, ChevronRight, History, MoreVertical, TrendingUp, TrendingDown } from 'lucide-react';
 import MiniSparkline from '../components/MiniSparkline';
+import KpiDetailView from '../components/KpiDetailView';
 import { exportToCSV, exportToPDF } from '../utils/export';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 
@@ -39,6 +40,8 @@ export default function MarketingDashboard({
 }: MarketingDashboardProps) {
 
   // Local state copies of lists to allow full client-side actions
+  const [kpiDetail, setKpiDetail] = useState<number | null>(null);
+  const [cardMenuOpen, setCardMenuOpen] = useState<number | null>(null);
   const [localCustomers, setLocalCustomers] = useState<Customer[]>(customersList);
   const [localOrders, setLocalOrders] = useState<Order[]>(ordersList);
 
@@ -129,6 +132,14 @@ export default function MarketingDashboard({
     { title: 'Pipeline Net Value', value: `GHS ${pipelineValue.toLocaleString()}`, sub: 'Estimated bookings value', icon: DollarSign, color: 'text-emerald-500' },
     { title: 'Completed Deliveries', value: `${completedDealsCount} Closed`, sub: 'Successfully delivered deals', icon: ShieldCheck, color: 'text-indigo-500' },
   ];
+
+  const kpiDetails = [
+    { title: 'Registered Customers', metric: 'Accounts', trendData: [{name:'Jan',value:42},{name:'Feb',value:58},{name:'Mar',value:51},{name:'Apr',value:73},{name:'May',value:65},{name:'Jun',value:80}], breakdownData: [{name:'Active',value:42}, {name:'Inactive',value:8}, {name:'New',value:6}], tableData: [{name:'Accra Traders', type:'Corporate', since:'Jan 2025'}, {name:'Gulf Imports', type:'Wholesale', since:'Mar 2025'}], columns: [{key:'name',label:'Customer'}, {key:'type',label:'Type'}, {key:'since',label:'Since'}] },
+    { title: 'Total Sales Booked', metric: 'Orders', trendData: [{name:'Jan',value:42},{name:'Feb',value:58},{name:'Mar',value:51},{name:'Apr',value:73},{name:'May',value:65},{name:'Jun',value:80}], breakdownData: [{name:'Delivered',value:34}, {name:'Processing',value:12}, {name:'Pending',value:8}], tableData: [{ticket:'RBM-001', client:'Prime Suppliers', amount:'GHS 45,000'}, {ticket:'RBM-002', client:'Kama Industries', amount:'GHS 62,000'}], columns: [{key:'ticket',label:'Ticket'}, {key:'client',label:'Client'}, {key:'amount',label:'Amount'}] },
+    { title: 'Pipeline Net Value', metric: 'GHS', trendData: [{name:'Jan',value:42},{name:'Feb',value:58},{name:'Mar',value:51},{name:'Apr',value:73},{name:'May',value:65},{name:'Jun',value:80}], breakdownData: [{name:'Confirmed',value:650000}, {name:'Provisional',value:210000}, {name:'Quoted',value:80000}], tableData: [{month:'Apr', value:'GHS 180,000', orders:12}, {month:'May', value:'GHS 220,000', orders:15}], columns: [{key:'month',label:'Month'}, {key:'value',label:'Value'}, {key:'orders',label:'Orders'}] },
+    { title: 'Completed Deliveries', metric: 'Closed Deals', trendData: [{name:'Jan',value:42},{name:'Feb',value:58},{name:'Mar',value:51},{name:'Apr',value:73},{name:'May',value:65},{name:'Jun',value:80}], breakdownData: [{name:'Delivered',value:28}, {name:'Returned',value:2}, {name:'Partial',value:5}], tableData: [{id:'DEL-01', client:'Accra Traders', date:'Jun 1'}, {id:'DEL-02', client:'Gulf Imports', date:'Jun 3'}], columns: [{key:'id',label:'Delivery'}, {key:'client',label:'Client'}, {key:'date',label:'Date'}] }
+  ];
+
 
   const handleSubmitOrder = (e: React.FormEvent) => {
     e.preventDefault();
@@ -430,6 +441,11 @@ export default function MarketingDashboard({
     );
   }
 
+
+  if (kpiDetail !== null) {
+    const d = kpiDetails[kpiDetail];
+    return <KpiDetailView title={d.title} metric={d.metric} trendData={d.trendData} breakdownData={d.breakdownData} tableData={d.tableData} columns={d.columns} onBack={() => setKpiDetail(null)} />;
+  }
   return (
     <>
       {/* ══ MOBILE LAYOUT (< lg) ══ */}
@@ -830,8 +846,32 @@ export default function MarketingDashboard({
         {stats.map((card, idx) => {
           const Icon = card.icon;
           return (
-            <div key={idx} className="kpi-card group">
-              <div className="flex items-start justify-between gap-2"><span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wide font-semibold leading-tight">{card.title}</span><MoreVertical className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" /></div><div className="flex items-end justify-between mt-2 gap-2"><div><h3 className="text-2xl sm:text-3xl font-bold text-[var(--text-primary)] leading-none">{card.value}</h3><p className="text-[10px] text-[var(--text-muted)] mt-1.5">{card.sub}</p></div><MiniSparkline width={60} height={36} /></div></div>
+            <div key={idx} onClick={() => setKpiDetail(idx)} className="kpi-card group cursor-pointer hover:shadow-lg transition-shadow">
+              <div className="flex items-start justify-between gap-2">
+                <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wide font-semibold leading-tight">{card.title}</span>
+                <div className="relative shrink-0" onClick={e => e.stopPropagation()}>
+                  <button onClick={() => setCardMenuOpen(cardMenuOpen === idx ? null : idx)}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer p-0.5 rounded hover:bg-[var(--accent-light)]">
+                    <MoreVertical className="w-3.5 h-3.5 text-[var(--text-muted)]" />
+                  </button>
+                  {cardMenuOpen === idx && (
+                    <div className="absolute right-0 top-full mt-1 w-40 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl z-30 p-1 flex flex-col">
+                      <button onClick={() => { setKpiDetail(idx); setCardMenuOpen(null); }} className="px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg text-left">View Details</button>
+                      <button onClick={() => { const d = kpiDetails[idx]; exportToCSV(d.tableData, d.columns.map(c => c.key), d.title.replace(/\s/g,'_').toLowerCase()); setCardMenuOpen(null); }} className="px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg text-left">Export CSV</button>
+                      <button onClick={() => { const d = kpiDetails[idx]; exportToPDF(d.title, d.tableData, d.columns.map(c => c.label)); setCardMenuOpen(null); }} className="px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg text-left">Export PDF</button>
+                      <button onClick={() => { setCardMenuOpen(null); addNotification(`${stats[idx].title} refreshed.`); }} className="px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg text-left">Refresh</button>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-end justify-between mt-2 gap-2">
+                <div>
+                  <h3 className="text-2xl sm:text-3xl font-bold text-[var(--text-primary)] leading-none">{card.value}</h3>
+                  <p className="text-[10px] text-[var(--text-muted)] mt-1.5">{card.sub}</p>
+                </div>
+                <MiniSparkline width={60} height={36} />
+              </div>
+            </div>
           );
         })}
       </div>

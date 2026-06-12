@@ -11,11 +11,15 @@ import {
   LineChart,
   Line
 } from 'recharts';
+import { useState } from 'react';
 import { FileSpreadsheet, FileText, Truck, Settings, Activity, ShieldCheck, MoreVertical, TrendingUp, TrendingDown } from 'lucide-react';
 import MiniSparkline from '../components/MiniSparkline';
+import KpiDetailView from '../components/KpiDetailView';
 import { exportToCSV, exportToPDF } from '../utils/export';
 
 export default function LogisticsDashboard() {
+  const [kpiDetail, setKpiDetail] = useState<number | null>(null);
+  const [cardMenuOpen, setCardMenuOpen] = useState<number | null>(null);
   const chartData = [
     { name: 'TRK-201', Fuel: 8.2, Maintenance: 120 },
     { name: 'TRK-202', Fuel: 7.9, Maintenance: 350 },
@@ -45,6 +49,13 @@ export default function LogisticsDashboard() {
     { title: 'Completed Shipments', value: '142 Logs', sub: '98.6% on-time delivery rate', icon: ShieldCheck, color: 'text-indigo-500', iconBg: '#eef2ff', iconColor: '#6366f1' }
   ];
 
+  const kpiDetails = [
+    { title: 'Total Fleet Vehicles', metric: '12 Trucks', trendData: [{name:'Jan',value:12},{name:'Feb',value:12},{name:'Mar',value:11},{name:'Apr',value:13},{name:'May',value:12},{name:'Jun',value:12}], breakdownData: [{name:'Operational',value:10},{name:'In Service',value:2},{name:'Idle',value:0}], tableData: [{id:'TRK-201',model:'Mercedes Actros',status:'Operational'},{id:'TRK-202',model:'Volvo FH16',status:'In Service'},{id:'TRK-203',model:'MAN TGX',status:'Operational'}], columns: [{key:'id',label:'Truck ID'},{key:'model',label:'Model'},{key:'status',label:'Status'}] },
+    { title: 'Monthly Fuel Efficiency', metric: '8.5 km/L', trendData: [{name:'Jan',value:8.1},{name:'Feb',value:8.3},{name:'Mar',value:8.0},{name:'Apr',value:8.5},{name:'May',value:8.4},{name:'Jun',value:8.5}], breakdownData: [{name:'Excellent',value:5},{name:'Good',value:4},{name:'Poor',value:3}], tableData: [{id:'TRK-201',efficiency:'8.2 km/L',month:'Jun'},{id:'TRK-202',efficiency:'7.9 km/L',month:'Jun'},{id:'TRK-203',efficiency:'9.1 km/L',month:'Jun'}], columns: [{key:'id',label:'Truck'},{key:'efficiency',label:'Efficiency'},{key:'month',label:'Month'}] },
+    { title: 'Maintenance Pending', metric: '2 Actions', trendData: [{name:'Jan',value:3},{name:'Feb',value:2},{name:'Mar',value:4},{name:'Apr',value:2},{name:'May',value:3},{name:'Jun',value:2}], breakdownData: [{name:'Oil Change',value:1},{name:'Brake Service',value:1},{name:'Tire',value:0}], tableData: [{id:'TRK-202',type:'Brake Pad Replacement',due:'Jun 20'},{id:'TRK-205',type:'Tire Rotation',due:'Jun 22'}], columns: [{key:'id',label:'Truck'},{key:'type',label:'Service Type'},{key:'due',label:'Due Date'}] },
+    { title: 'Completed Shipments', metric: '142 Logs', trendData: [{name:'Jan',value:22},{name:'Feb',value:28},{name:'Mar',value:24},{name:'Apr',value:30},{name:'May',value:20},{name:'Jun',value:18}], breakdownData: [{name:'On Time',value:138},{name:'Late',value:4},{name:'Cancelled',value:0}], tableData: [{id:'SHP-01',client:'Kama Industries',date:'Jun 10',status:'On Time'},{id:'SHP-02',client:'Accra Traders',date:'Jun 9',status:'On Time'}], columns: [{key:'id',label:'Shipment'},{key:'client',label:'Client'},{key:'date',label:'Date'},{key:'status',label:'Status'}] },
+  ];
+
   const handleExportCSV = () => {
     exportToCSV(maintenanceSchedule, ['id', 'type', 'status', 'date', 'cost'], 'logistics_maintenance_schedule');
   };
@@ -52,6 +63,11 @@ export default function LogisticsDashboard() {
   const handleExportPDF = () => {
     exportToPDF('Logistics Fleet Maintenance Schedule', maintenanceSchedule, ['id', 'type', 'status', 'date', 'cost']);
   };
+
+  if (kpiDetail !== null) {
+    const d = kpiDetails[kpiDetail];
+    return <KpiDetailView title={d.title} metric={d.metric} trendData={d.trendData} breakdownData={d.breakdownData} tableData={d.tableData} columns={d.columns} onBack={() => setKpiDetail(null)} />;
+  }
 
   return (
     <>
@@ -207,10 +223,23 @@ export default function LogisticsDashboard() {
             {stats.map((card, idx) => {
               const sparkData = [[30,45,35,60,40,70,55],[25,38,28,50,33,55,42],[40,52,38,62,44,68,50],[15,25,20,35,25,40,30]][idx] || [40,50,45,60,55,65,50];
               return (
-                <div key={idx} className="kpi-card group">
+                <div key={idx} onClick={() => setKpiDetail(idx)} className="kpi-card group cursor-pointer hover:shadow-lg transition-shadow">
                   <div className="flex items-start justify-between gap-2">
                     <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wide font-semibold leading-tight">{card.title}</span>
-                    <MoreVertical className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" />
+                    <div className="relative shrink-0" onClick={e => e.stopPropagation()}>
+                      <button onClick={() => setCardMenuOpen(cardMenuOpen === idx ? null : idx)}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer p-0.5 rounded hover:bg-[var(--accent-light)]">
+                        <MoreVertical className="w-3.5 h-3.5 text-[var(--text-muted)]" />
+                      </button>
+                      {cardMenuOpen === idx && (
+                        <div className="absolute right-0 top-full mt-1 w-40 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl z-30 p-1 flex flex-col">
+                          <button onClick={() => { setKpiDetail(idx); setCardMenuOpen(null); }} className="px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg text-left">View Details</button>
+                          <button onClick={() => { const d = kpiDetails[idx]; exportToCSV(d.tableData, d.columns.map(c => c.key), d.title.replace(/\s/g,'_').toLowerCase()); setCardMenuOpen(null); }} className="px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg text-left">Export CSV</button>
+                          <button onClick={() => { const d = kpiDetails[idx]; exportToPDF(d.title, d.tableData, d.columns.map(c => c.label)); setCardMenuOpen(null); }} className="px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg text-left">Export PDF</button>
+                          <button onClick={() => setCardMenuOpen(null)} className="px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg text-left">Refresh</button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <div className="flex items-end justify-between mt-2 gap-2">
                     <div>

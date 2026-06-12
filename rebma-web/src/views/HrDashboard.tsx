@@ -5,6 +5,7 @@ import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianG
 import type { Attendance, PendingRegistration, StaffMember } from '../types/erp';
 import { FileSpreadsheet, FileText, Users, Clipboard, ShieldCheck, Activity, UserCheck, UserX, X, Copy, ChevronRight, User, MoreVertical, TrendingUp, TrendingDown } from 'lucide-react';
 import MiniSparkline from '../components/MiniSparkline';
+import KpiDetailView from '../components/KpiDetailView';
 import { exportToCSV, exportToPDF } from '../utils/export';
 
 interface HrDashboardProps {
@@ -50,6 +51,8 @@ export default function HrDashboard({
 }: HrDashboardProps) {
 
   // Local state initialized from props for full interactivity
+  const [kpiDetail, setKpiDetail] = useState<number | null>(null);
+  const [cardMenuOpen, setCardMenuOpen] = useState<number | null>(null);
   const [localStaff, setLocalStaff] = useState<StaffMember[]>(staffList);
   const [localAttendance, setLocalAttendance] = useState<Attendance[]>(attendanceList);
   const [approvalLog, setApprovalLog] = useState<Array<{ id: string; name: string; action: 'APPROVED' | 'REJECTED'; password?: string; at: string }>>([]);
@@ -124,6 +127,14 @@ export default function HrDashboard({
     { title: 'Late Today', value: `${lateToday} Late`, sub: 'Incidents recorded after 8:00 AM', icon: Activity, color: 'text-rose-500' },
     { title: 'Pending Profiles', value: `${pendingApprovals} Approvals`, sub: 'Registration approval queue', icon: Clipboard, color: 'text-amber-500' },
   ];
+
+  const kpiDetails = [
+    { title: 'Total Staff Force', metric: 'Active', trendData: [{name:'Jan',value:42},{name:'Feb',value:58},{name:'Mar',value:51},{name:'Apr',value:73},{name:'May',value:65},{name:'Jun',value:80}], breakdownData: [{name:'Management',value:8}, {name:'Operations',value:15}, {name:'Admin',value:7}], tableData: [{dept:'Management', count:8, active:7}, {dept:'Operations', count:15, active:14}], columns: [{key:'dept',label:'Department'}, {key:'count',label:'Total'}, {key:'active',label:'Active'}] },
+    { title: 'Present Today', metric: 'Present', trendData: [{name:'Jan',value:42},{name:'Feb',value:58},{name:'Mar',value:51},{name:'Apr',value:73},{name:'May',value:65},{name:'Jun',value:80}], breakdownData: [{name:'Present',value:18}, {name:'Absent',value:4}, {name:'Leave',value:3}], tableData: [{name:'Felicia Asante', dept:'Finance', time:'07:52 AM'}, {name:'Daniel Tetteh', dept:'HR', time:'08:01 AM'}], columns: [{key:'name',label:'Employee'}, {key:'dept',label:'Department'}, {key:'time',label:'Check-in'}] },
+    { title: 'Late Today', metric: 'Late', trendData: [{name:'Jan',value:42},{name:'Feb',value:58},{name:'Mar',value:51},{name:'Apr',value:73},{name:'May',value:65},{name:'Jun',value:80}], breakdownData: [{name:'On Time',value:21}, {name:'Late',value:4}, {name:'Absent',value:2}], tableData: [{name:'Sandra Opoku', dept:'Operations', mins:15}, {name:'Eric Mensah', dept:'Dispatch', mins:22}], columns: [{key:'name',label:'Employee'}, {key:'dept',label:'Department'}, {key:'mins',label:'Minutes Late'}] },
+    { title: 'Pending Profiles', metric: 'Pending', trendData: [{name:'Jan',value:42},{name:'Feb',value:58},{name:'Mar',value:51},{name:'Apr',value:73},{name:'May',value:65},{name:'Jun',value:80}], breakdownData: [{name:'Approved',value:12}, {name:'Pending',value:5}, {name:'Rejected',value:2}], tableData: [{name:'James Owusu', role:'Accountant', date:'Jun 10'}, {name:'Abena Frimpong', role:'Dispatcher', date:'Jun 11'}], columns: [{key:'name',label:'Name'}, {key:'role',label:'Role'}, {key:'date',label:'Applied'}] }
+  ];
+
 
   const handleApprove = (reg: PendingRegistration) => {
     const pw = generatePassword();
@@ -445,6 +456,11 @@ export default function HrDashboard({
     );
   }
 
+
+  if (kpiDetail !== null) {
+    const d = kpiDetails[kpiDetail];
+    return <KpiDetailView title={d.title} metric={d.metric} trendData={d.trendData} breakdownData={d.breakdownData} tableData={d.tableData} columns={d.columns} onBack={() => setKpiDetail(null)} />;
+  }
   return (
     <>
       {/* ══ MOBILE LAYOUT (< lg) ══ */}
@@ -561,8 +577,32 @@ export default function HrDashboard({
           const Icon = card.icon;
           const isProminent = idx < 2;
           return (
-            <div key={idx} className="kpi-card group">
-              <div className="flex items-start justify-between gap-2"><span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wide font-semibold leading-tight">{card.title}</span><MoreVertical className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" /></div><div className="flex items-end justify-between mt-2 gap-2"><div><h3 className="text-2xl sm:text-3xl font-bold text-[var(--text-primary)] leading-none">{card.value}</h3><p className="text-[10px] text-[var(--text-muted)] mt-1.5">{card.sub}</p></div><MiniSparkline width={60} height={36} /></div></div>
+            <div key={idx} onClick={() => setKpiDetail(idx)} className="kpi-card group cursor-pointer hover:shadow-lg transition-shadow">
+              <div className="flex items-start justify-between gap-2">
+                <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wide font-semibold leading-tight">{card.title}</span>
+                <div className="relative shrink-0" onClick={e => e.stopPropagation()}>
+                  <button onClick={() => setCardMenuOpen(cardMenuOpen === idx ? null : idx)}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer p-0.5 rounded hover:bg-[var(--accent-light)]">
+                    <MoreVertical className="w-3.5 h-3.5 text-[var(--text-muted)]" />
+                  </button>
+                  {cardMenuOpen === idx && (
+                    <div className="absolute right-0 top-full mt-1 w-40 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl z-30 p-1 flex flex-col">
+                      <button onClick={() => { setKpiDetail(idx); setCardMenuOpen(null); }} className="px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg text-left">View Details</button>
+                      <button onClick={() => { const d = kpiDetails[idx]; exportToCSV(d.tableData, d.columns.map(c => c.key), d.title.replace(/\s/g,'_').toLowerCase()); setCardMenuOpen(null); }} className="px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg text-left">Export CSV</button>
+                      <button onClick={() => { const d = kpiDetails[idx]; exportToPDF(d.title, d.tableData, d.columns.map(c => c.label)); setCardMenuOpen(null); }} className="px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg text-left">Export PDF</button>
+                      <button onClick={() => { setCardMenuOpen(null); addNotification(`${stats[idx].title} refreshed.`); }} className="px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg text-left">Refresh</button>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-end justify-between mt-2 gap-2">
+                <div>
+                  <h3 className="text-2xl sm:text-3xl font-bold text-[var(--text-primary)] leading-none">{card.value}</h3>
+                  <p className="text-[10px] text-[var(--text-muted)] mt-1.5">{card.sub}</p>
+                </div>
+                <MiniSparkline width={60} height={36} />
+              </div>
+            </div>
           );
         })}
       </div>

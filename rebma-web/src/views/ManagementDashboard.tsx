@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import type { IncomingGoods, Order, Customer, GoodsPrice, AuditEntry } from '../types/erp';
 import { FileSpreadsheet, FileText, Clipboard, Activity, ShieldCheck, DollarSign, History, Tag, User, ChevronDown, ChevronUp, MoreVertical, TrendingUp, TrendingDown } from 'lucide-react';
 import MiniSparkline from '../components/MiniSparkline';
+import KpiDetailView from '../components/KpiDetailView';
 import { exportToCSV, exportToPDF } from '../utils/export';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 
@@ -49,6 +50,8 @@ export default function ManagementDashboard({
 }: ManagementDashboardProps) {
 
   // Local state copy of incomingGoods, orders, audit log to enable row-specific client-side actions
+  const [kpiDetail, setKpiDetail] = useState<number | null>(null);
+  const [cardMenuOpen, setCardMenuOpen] = useState<number | null>(null);
   const [localGoods, setLocalGoods] = useState<IncomingGoods[]>(incomingGoodsList);
   const [localOrders, setLocalOrders] = useState<Order[]>(ordersList);
   const [localLedger, setLocalLedger] = useState<AuditEntry[]>(auditLog);
@@ -122,6 +125,14 @@ export default function ManagementDashboard({
     { title: 'Authorized Orders', value: `${approvedOrdersCount} Cleared`, sub: 'Sales orders verified', icon: ShieldCheck, color: 'text-emerald-500' },
     { title: 'Net Authorized Value', value: `GHS ${totalApprovedValue.toLocaleString()}`, sub: 'Approved credit limit funds', icon: DollarSign, color: 'text-indigo-500' }
   ];
+
+  const kpiDetails = [
+    { title: 'Cargo Awaiting Price', metric: 'Pending', trendData: [{name:'Jan',value:42},{name:'Feb',value:58},{name:'Mar',value:51},{name:'Apr',value:73},{name:'May',value:65},{name:'Jun',value:80}], breakdownData: [{name:'Priced',value:18}, {name:'Unpriced',value:7}, {name:'Queued',value:4}], tableData: [{ref:'RBM-001', item:'Steel Rods', status:'Pending'}, {ref:'RBM-002', item:'Cement Bags', status:'Pending'}, {ref:'RBM-003', item:'PVC Pipes', status:'Priced'}], columns: [{key:'ref',label:'Ref #'}, {key:'item',label:'Item'}, {key:'status',label:'Status'}] },
+    { title: 'Credit Audits Pending', metric: 'Audits', trendData: [{name:'Jan',value:42},{name:'Feb',value:58},{name:'Mar',value:51},{name:'Apr',value:73},{name:'May',value:65},{name:'Jun',value:80}], breakdownData: [{name:'Approved',value:12}, {name:'Pending',value:5}, {name:'Rejected',value:2}], tableData: [{id:'CA-01', client:'Accra Traders', amount:'GHS 45,000'}, {id:'CA-02', client:'Kama Industries', amount:'GHS 72,000'}], columns: [{key:'id',label:'Audit ID'}, {key:'client',label:'Client'}, {key:'amount',label:'Amount'}] },
+    { title: 'Authorized Orders', metric: 'Orders', trendData: [{name:'Jan',value:42},{name:'Feb',value:58},{name:'Mar',value:51},{name:'Apr',value:73},{name:'May',value:65},{name:'Jun',value:80}], breakdownData: [{name:'Authorized',value:24}, {name:'Pending',value:8}, {name:'Rejected',value:3}], tableData: [{order:'ORD-101', client:'Gulf Imports', value:'GHS 90,000'}, {order:'ORD-102', client:'Delta Logistics', value:'GHS 55,000'}], columns: [{key:'order',label:'Order'}, {key:'client',label:'Client'}, {key:'value',label:'Value'}] },
+    { title: 'Net Authorized Value', metric: 'GHS', trendData: [{name:'Jan',value:42},{name:'Feb',value:58},{name:'Mar',value:51},{name:'Apr',value:73},{name:'May',value:65},{name:'Jun',value:80}], breakdownData: [{name:'Cleared',value:450000}, {name:'Pending',value:120000}, {name:'Held',value:30000}], tableData: [{week:'Week 1', auth:'GHS 120,000', rej:'GHS 15,000'}, {week:'Week 2', auth:'GHS 145,000', rej:'GHS 10,000'}], columns: [{key:'week',label:'Week'}, {key:'auth',label:'Authorized'}, {key:'rej',label:'Rejected'}] }
+  ];
+
 
   const getCustomerForOrder = (order: Order): Customer | undefined =>
     customersList.find(c => c.name === order.clientName);
@@ -345,6 +356,11 @@ export default function ManagementDashboard({
     return historySortDir === 'asc' ? comp : -comp;
   });
 
+
+  if (kpiDetail !== null) {
+    const d = kpiDetails[kpiDetail];
+    return <KpiDetailView title={d.title} metric={d.metric} trendData={d.trendData} breakdownData={d.breakdownData} tableData={d.tableData} columns={d.columns} onBack={() => setKpiDetail(null)} />;
+  }
   return (
     <>
       {/* ══ MOBILE LAYOUT (< lg) ══ */}
@@ -439,8 +455,32 @@ export default function ManagementDashboard({
         {stats.map((card, idx) => {
           const Icon = card.icon;
           return (
-            <div key={idx} className="kpi-card group">
-              <div className="flex items-start justify-between gap-2"><span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wide font-semibold leading-tight">{card.title}</span><MoreVertical className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" /></div><div className="flex items-end justify-between mt-2 gap-2"><div><h3 className="text-2xl sm:text-3xl font-bold text-[var(--text-primary)] leading-none">{card.value}</h3><p className="text-[10px] text-[var(--text-muted)] mt-1.5">{card.sub}</p></div><MiniSparkline width={60} height={36} /></div></div>
+            <div key={idx} onClick={() => setKpiDetail(idx)} className="kpi-card group cursor-pointer hover:shadow-lg transition-shadow">
+              <div className="flex items-start justify-between gap-2">
+                <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wide font-semibold leading-tight">{card.title}</span>
+                <div className="relative shrink-0" onClick={e => e.stopPropagation()}>
+                  <button onClick={() => setCardMenuOpen(cardMenuOpen === idx ? null : idx)}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer p-0.5 rounded hover:bg-[var(--accent-light)]">
+                    <MoreVertical className="w-3.5 h-3.5 text-[var(--text-muted)]" />
+                  </button>
+                  {cardMenuOpen === idx && (
+                    <div className="absolute right-0 top-full mt-1 w-40 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl z-30 p-1 flex flex-col">
+                      <button onClick={() => { setKpiDetail(idx); setCardMenuOpen(null); }} className="px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg text-left">View Details</button>
+                      <button onClick={() => { const d = kpiDetails[idx]; exportToCSV(d.tableData, d.columns.map(c => c.key), d.title.replace(/\s/g,'_').toLowerCase()); setCardMenuOpen(null); }} className="px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg text-left">Export CSV</button>
+                      <button onClick={() => { const d = kpiDetails[idx]; exportToPDF(d.title, d.tableData, d.columns.map(c => c.label)); setCardMenuOpen(null); }} className="px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg text-left">Export PDF</button>
+                      <button onClick={() => setCardMenuOpen(null)} className="px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg text-left">Refresh</button>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-end justify-between mt-2 gap-2">
+                <div>
+                  <h3 className="text-2xl sm:text-3xl font-bold text-[var(--text-primary)] leading-none">{card.value}</h3>
+                  <p className="text-[10px] text-[var(--text-muted)] mt-1.5">{card.sub}</p>
+                </div>
+                <MiniSparkline width={60} height={36} />
+              </div>
+            </div>
           );
         })}
       </div>

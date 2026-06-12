@@ -7,6 +7,7 @@ import {
   MoreVertical, TrendingUp, TrendingDown
 } from 'lucide-react';
 import MiniSparkline from '../components/MiniSparkline';
+import KpiDetailView from '../components/KpiDetailView';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import type { Order, IncomingGoods } from '../types/erp';
 import { exportToCSV, exportToPDF } from '../utils/export';
@@ -45,6 +46,8 @@ export default function OperationsDashboard({
 }: OperationsDashboardProps) {
 
   // Local state copies of lists to support edit, delete, duplicate actions locally
+  const [kpiDetail, setKpiDetail] = useState<number | null>(null);
+  const [cardMenuOpen, setCardMenuOpen] = useState<number | null>(null);
   const [localOrders, setLocalOrders] = useState<Order[]>(ordersList);
   const [localCargo, setLocalCargo] = useState<IncomingGoods[]>(incomingGoodsList);
   const [activeMobileDetail, setActiveMobileDetail] = useState<{
@@ -133,6 +136,14 @@ export default function OperationsDashboard({
     { title: 'Awaiting Pricing', value: `${pendingMgmtApprovalCount} Batches`, sub: 'Pending manager approval', icon: CheckCircle, color: 'text-amber-500' },
     { title: 'Discrepancy Notes', value: `${discrepancyCount} Flagged`, sub: 'Faults or damaged boxes', icon: AlertTriangle, color: 'text-rose-500' }
   ];
+
+  const kpiDetails = [
+    { title: 'Total Cargo Weight', metric: 'Tons', trendData: [{name:'Jan',value:42},{name:'Feb',value:58},{name:'Mar',value:51},{name:'Apr',value:73},{name:'May',value:65},{name:'Jun',value:80}], breakdownData: [{name:'Steel',value:120}, {name:'Cement',value:85}, {name:'Other',value:45}], tableData: [{ref:'ING-01', product:'Steel Rods', weight:'25t', status:'Cleared'}, {ref:'ING-02', product:'Cement', weight:'18t', status:'Pending'}], columns: [{key:'ref',label:'Ref'}, {key:'product',label:'Product'}, {key:'weight',label:'Weight'}, {key:'status',label:'Status'}] },
+    { title: 'Awaiting Release', metric: 'Items', trendData: [{name:'Jan',value:42},{name:'Feb',value:58},{name:'Mar',value:51},{name:'Apr',value:73},{name:'May',value:65},{name:'Jun',value:80}], breakdownData: [{name:'Ready',value:14}, {name:'Pending',value:7}, {name:'Held',value:3}], tableData: [{id:'STK-01', item:'Shea Butter', qty:200, status:'Pending Release'}, {id:'STK-02', item:'Palm Oil', qty:150, status:'Ready'}], columns: [{key:'id',label:'ID'}, {key:'item',label:'Item'}, {key:'qty',label:'Qty'}, {key:'status',label:'Status'}] },
+    { title: 'Awaiting Pricing', metric: 'Items', trendData: [{name:'Jan',value:42},{name:'Feb',value:58},{name:'Mar',value:51},{name:'Apr',value:73},{name:'May',value:65},{name:'Jun',value:80}], breakdownData: [{name:'Priced',value:22}, {name:'Unpriced',value:9}, {name:'Reviewed',value:5}], tableData: [{code:'GDS-01', name:'Groundnut Oil', unit:'50L'}, {code:'GDS-02', name:'Cocoa Butter', unit:'25kg'}], columns: [{key:'code',label:'Code'}, {key:'name',label:'Product'}, {key:'unit',label:'Unit'}] },
+    { title: 'Discrepancy Notes', metric: 'Flags', trendData: [{name:'Jan',value:42},{name:'Feb',value:58},{name:'Mar',value:51},{name:'Apr',value:73},{name:'May',value:65},{name:'Jun',value:80}], breakdownData: [{name:'Resolved',value:18}, {name:'Open',value:4}, {name:'Escalated',value:2}], tableData: [{id:'DIS-01', item:'Steel Rods', issue:'Short weight', status:'Open'}, {id:'DIS-02', item:'PVC Pipes', issue:'Damaged batch', status:'Resolved'}], columns: [{key:'id',label:'ID'}, {key:'item',label:'Item'}, {key:'issue',label:'Issue'}, {key:'status',label:'Status'}] }
+  ];
+
 
   const handleExportReleasesCSV = () => {
     const processingOrders = localOrders.filter(o => o.status === 'PROCESSING');
@@ -517,6 +528,11 @@ export default function OperationsDashboard({
     );
   }
 
+
+  if (kpiDetail !== null) {
+    const d = kpiDetails[kpiDetail];
+    return <KpiDetailView title={d.title} metric={d.metric} trendData={d.trendData} breakdownData={d.breakdownData} tableData={d.tableData} columns={d.columns} onBack={() => setKpiDetail(null)} />;
+  }
   return (
     <>
       {/* ══ MOBILE LAYOUT (< lg) ══ */}
@@ -665,8 +681,32 @@ export default function OperationsDashboard({
         {stats.map((card, idx) => {
           const Icon = card.icon;
           return (
-            <div key={idx} className="kpi-card group">
-              <div className="flex items-start justify-between gap-2"><span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wide font-semibold leading-tight">{card.title}</span><MoreVertical className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" /></div><div className="flex items-end justify-between mt-2 gap-2"><div><h3 className="text-2xl sm:text-3xl font-bold text-[var(--text-primary)] leading-none">{card.value}</h3><p className="text-[10px] text-[var(--text-muted)] mt-1.5">{card.sub}</p></div><MiniSparkline width={60} height={36} /></div></div>
+            <div key={idx} onClick={() => setKpiDetail(idx)} className="kpi-card group cursor-pointer hover:shadow-lg transition-shadow">
+              <div className="flex items-start justify-between gap-2">
+                <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wide font-semibold leading-tight">{card.title}</span>
+                <div className="relative shrink-0" onClick={e => e.stopPropagation()}>
+                  <button onClick={() => setCardMenuOpen(cardMenuOpen === idx ? null : idx)}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer p-0.5 rounded hover:bg-[var(--accent-light)]">
+                    <MoreVertical className="w-3.5 h-3.5 text-[var(--text-muted)]" />
+                  </button>
+                  {cardMenuOpen === idx && (
+                    <div className="absolute right-0 top-full mt-1 w-40 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl z-30 p-1 flex flex-col">
+                      <button onClick={() => { setKpiDetail(idx); setCardMenuOpen(null); }} className="px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg text-left">View Details</button>
+                      <button onClick={() => { const d = kpiDetails[idx]; exportToCSV(d.tableData, d.columns.map(c => c.key), d.title.replace(/\s/g,'_').toLowerCase()); setCardMenuOpen(null); }} className="px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg text-left">Export CSV</button>
+                      <button onClick={() => { const d = kpiDetails[idx]; exportToPDF(d.title, d.tableData, d.columns.map(c => c.label)); setCardMenuOpen(null); }} className="px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg text-left">Export PDF</button>
+                      <button onClick={() => { setCardMenuOpen(null); addNotification(`${stats[idx].title} refreshed.`); }} className="px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg text-left">Refresh</button>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-end justify-between mt-2 gap-2">
+                <div>
+                  <h3 className="text-2xl sm:text-3xl font-bold text-[var(--text-primary)] leading-none">{card.value}</h3>
+                  <p className="text-[10px] text-[var(--text-muted)] mt-1.5">{card.sub}</p>
+                </div>
+                <MiniSparkline width={60} height={36} />
+              </div>
+            </div>
           );
         })}
       </div>

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import { FileSpreadsheet, FileText, Factory, Layers, ShieldCheck, Activity, History, Package, BarChart2, ChevronRight, Settings, MoreVertical, TrendingUp, TrendingDown } from 'lucide-react';
 import MiniSparkline from '../components/MiniSparkline';
+import KpiDetailView from '../components/KpiDetailView';
 import { exportToCSV, exportToPDF } from '../utils/export';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import type { ProductionRequest } from '../types/erp';
@@ -46,6 +47,8 @@ export default function ProductionDashboard({
 }: ProductionDashboardProps) {
 
   // Local state for WIP stock and syncing for requests
+  const [kpiDetail, setKpiDetail] = useState<number | null>(null);
+  const [cardMenuOpen, setCardMenuOpen] = useState<number | null>(null);
   const [localWip, setLocalWip] = useState(initialWipStock);
   const [activeMobileDetail, setActiveMobileDetail] = useState<{ type: 'requisition' | 'wip' | 'history'; data: any } | null>(null);
   const [materialsSearch, setMaterialsSearch] = useState('');
@@ -111,6 +114,14 @@ export default function ProductionDashboard({
     { title: 'Production Completed', value: `${completedCount} Batches`, sub: 'Issued to warehouse stock', icon: Factory, color: 'text-indigo-500' },
     { title: 'Total Units Processed', value: `${totalUnits.toLocaleString()} u`, sub: 'All time raw material units', icon: Activity, color: 'text-amber-500' },
   ];
+
+  const kpiDetails = [
+    { title: 'Requisition Orders', metric: 'Requests', trendData: [{name:'Jan',value:42},{name:'Feb',value:58},{name:'Mar',value:51},{name:'Apr',value:73},{name:'May',value:65},{name:'Jun',value:80}], breakdownData: [{name:'Pending',value:8}, {name:'Approved',value:12}, {name:'Completed',value:6}], tableData: [{id:'PRD-001', material:'Shea Butter', qty:500, status:'Pending'}, {id:'PRD-002', material:'Palm Oil', qty:300, status:'Approved'}], columns: [{key:'id',label:'ID'}, {key:'material',label:'Material'}, {key:'qty',label:'Qty'}, {key:'status',label:'Status'}] },
+    { title: 'Approved Orders', metric: 'Cleared', trendData: [{name:'Jan',value:42},{name:'Feb',value:58},{name:'Mar',value:51},{name:'Apr',value:73},{name:'May',value:65},{name:'Jun',value:80}], breakdownData: [{name:'In Production',value:6}, {name:'Queued',value:4}, {name:'Dispatched',value:2}], tableData: [{id:'PRD-003', item:'Shea Butter Sachet', qty:4000, approved:'Jun 10'}, {id:'PRD-004', item:'Palm Oil Pouch', qty:3000, approved:'Jun 9'}], columns: [{key:'id',label:'ID'}, {key:'item',label:'Item'}, {key:'qty',label:'Qty'}, {key:'approved',label:'Approved'}] },
+    { title: 'Production Completed', metric: 'Batches', trendData: [{name:'Jan',value:42},{name:'Feb',value:58},{name:'Mar',value:51},{name:'Apr',value:73},{name:'May',value:65},{name:'Jun',value:80}], breakdownData: [{name:'Completed',value:6}, {name:'QC Pass',value:5}, {name:'QC Fail',value:1}], tableData: [{batch:'BCH-01', product:'Shea Butter Sachet', boxes:40, quality:'Pass'}, {batch:'BCH-02', product:'Palm Oil Pouch', boxes:30, quality:'Pass'}], columns: [{key:'batch',label:'Batch'}, {key:'product',label:'Product'}, {key:'boxes',label:'Boxes'}, {key:'quality',label:'Quality'}] },
+    { title: 'Total Units Processed', metric: 'Units', trendData: [{name:'Jan',value:42},{name:'Feb',value:58},{name:'Mar',value:51},{name:'Apr',value:73},{name:'May',value:65},{name:'Jun',value:80}], breakdownData: [{name:'Sachets',value:18000}, {name:'Pouches',value:12000}, {name:'Boxes',value:1500}], tableData: [{month:'Apr', sachets:5500, boxes:420}, {month:'May', sachets:6200, boxes:480}], columns: [{key:'month',label:'Month'}, {key:'sachets',label:'Sachets'}, {key:'boxes',label:'Boxes'}] }
+  ];
+
 
   const handleCreateRequisition = (e: React.FormEvent) => {
     e.preventDefault();
@@ -608,6 +619,11 @@ export default function ProductionDashboard({
     );
   }
 
+
+  if (kpiDetail !== null) {
+    const d = kpiDetails[kpiDetail];
+    return <KpiDetailView title={d.title} metric={d.metric} trendData={d.trendData} breakdownData={d.breakdownData} tableData={d.tableData} columns={d.columns} onBack={() => setKpiDetail(null)} />;
+  }
   return (
     <>
       {/* ══ MOBILE LAYOUT (< lg) ══ */}
@@ -722,8 +738,32 @@ export default function ProductionDashboard({
           const Icon = card.icon;
           const isProminent = idx < 2;
           return (
-            <div key={idx} className="kpi-card group">
-              <div className="flex items-start justify-between gap-2"><span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wide font-semibold leading-tight">{card.title}</span><MoreVertical className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" /></div><div className="flex items-end justify-between mt-2 gap-2"><div><h3 className="text-2xl sm:text-3xl font-bold text-[var(--text-primary)] leading-none">{card.value}</h3><p className="text-[10px] text-[var(--text-muted)] mt-1.5">{card.sub}</p></div><MiniSparkline width={60} height={36} /></div></div>
+            <div key={idx} onClick={() => setKpiDetail(idx)} className="kpi-card group cursor-pointer hover:shadow-lg transition-shadow">
+              <div className="flex items-start justify-between gap-2">
+                <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wide font-semibold leading-tight">{card.title}</span>
+                <div className="relative shrink-0" onClick={e => e.stopPropagation()}>
+                  <button onClick={() => setCardMenuOpen(cardMenuOpen === idx ? null : idx)}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer p-0.5 rounded hover:bg-[var(--accent-light)]">
+                    <MoreVertical className="w-3.5 h-3.5 text-[var(--text-muted)]" />
+                  </button>
+                  {cardMenuOpen === idx && (
+                    <div className="absolute right-0 top-full mt-1 w-40 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl z-30 p-1 flex flex-col">
+                      <button onClick={() => { setKpiDetail(idx); setCardMenuOpen(null); }} className="px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg text-left">View Details</button>
+                      <button onClick={() => { const d = kpiDetails[idx]; exportToCSV(d.tableData, d.columns.map(c => c.key), d.title.replace(/\s/g,'_').toLowerCase()); setCardMenuOpen(null); }} className="px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg text-left">Export CSV</button>
+                      <button onClick={() => { const d = kpiDetails[idx]; exportToPDF(d.title, d.tableData, d.columns.map(c => c.label)); setCardMenuOpen(null); }} className="px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg text-left">Export PDF</button>
+                      <button onClick={() => { setCardMenuOpen(null); addNotification(`${stats[idx].title} refreshed.`); }} className="px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg text-left">Refresh</button>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-end justify-between mt-2 gap-2">
+                <div>
+                  <h3 className="text-2xl sm:text-3xl font-bold text-[var(--text-primary)] leading-none">{card.value}</h3>
+                  <p className="text-[10px] text-[var(--text-muted)] mt-1.5">{card.sub}</p>
+                </div>
+                <MiniSparkline width={60} height={36} />
+              </div>
+            </div>
           );
         })}
       </div>

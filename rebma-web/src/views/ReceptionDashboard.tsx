@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { Visitor } from '../types/erp';
 import { FileSpreadsheet, FileText, Users, ShieldCheck, Activity, Clock, ChevronRight, MoreVertical, TrendingUp, TrendingDown } from 'lucide-react';
 import MiniSparkline from '../components/MiniSparkline';
+import KpiDetailView from '../components/KpiDetailView';
 import { exportToCSV, exportToPDF } from '../utils/export';
 import { 
   ResponsiveContainer, 
@@ -27,6 +28,8 @@ export default function ReceptionDashboard({
   onCheckInAttendance
 }: ReceptionDashboardProps) {
 
+  const [kpiDetail, setKpiDetail] = useState<number | null>(null);
+  const [cardMenuOpen, setCardMenuOpen] = useState<number | null>(null);
   const [activeMobileDetail, setActiveMobileDetail] = useState<Visitor | null>(null);
 
   const lineChartData = [
@@ -47,6 +50,14 @@ export default function ReceptionDashboard({
     { title: 'Completed Visits', value: `${completedVisitsCount} Checked Out`, sub: 'Visits concluded successfully', icon: ShieldCheck, color: 'text-indigo-500' },
     { title: 'Visitor Safety Audits', value: '100% Passed', sub: 'ID credentials confirmed', icon: Activity, color: 'text-rose-500' }
   ];
+
+  const kpiDetails = [
+    { title: 'Total Daily Visitors', metric: 'Logged', trendData: [{name:'Jan',value:42},{name:'Feb',value:58},{name:'Mar',value:51},{name:'Apr',value:73},{name:'May',value:65},{name:'Jun',value:80}], breakdownData: [{name:'Business',value:18}, {name:'Personal',value:6}, {name:'Delivery',value:4}], tableData: [{name:'John Mensah', purpose:'Meeting', host:'Mr. Asante'}, {name:'Ama Boafo', purpose:'Delivery', host:'Reception'}], columns: [{key:'name',label:'Visitor'}, {key:'purpose',label:'Purpose'}, {key:'host',label:'Host'}] },
+    { title: 'Active Visitors', metric: 'On-Site', trendData: [{name:'Jan',value:42},{name:'Feb',value:58},{name:'Mar',value:51},{name:'Apr',value:73},{name:'May',value:65},{name:'Jun',value:80}], breakdownData: [{name:'Active',value:8}, {name:'Checked Out',value:14}, {name:'Expected',value:3}], tableData: [{name:'David Larbi', in:'09:30 AM', location:'Floor 2'}, {name:'Grace Oti', in:'10:15 AM', location:'Boardroom'}], columns: [{key:'name',label:'Visitor'}, {key:'in',label:'Check-In'}, {key:'location',label:'Location'}] },
+    { title: 'Completed Visits', metric: 'Checked Out', trendData: [{name:'Jan',value:42},{name:'Feb',value:58},{name:'Mar',value:51},{name:'Apr',value:73},{name:'May',value:65},{name:'Jun',value:80}], breakdownData: [{name:'Completed',value:14}, {name:'Overstay',value:1}, {name:'No-Show',value:2}], tableData: [{name:'John Mensah', in:'09:00 AM', out:'10:30 AM', duration:'1h 30m'}, {name:'Kofi Atta', in:'08:30 AM', out:'09:45 AM', duration:'1h 15m'}], columns: [{key:'name',label:'Visitor'}, {key:'in',label:'In'}, {key:'out',label:'Out'}, {key:'duration',label:'Duration'}] },
+    { title: 'Visitor Safety Audits', metric: 'Passed', trendData: [{name:'Jan',value:42},{name:'Feb',value:58},{name:'Mar',value:51},{name:'Apr',value:73},{name:'May',value:65},{name:'Jun',value:80}], breakdownData: [{name:'Cleared',value:24}, {name:'Flagged',value:0}, {name:'Pending',value:1}], tableData: [{id:'AUD-01', visitor:'John Mensah', result:'Cleared', date:'Jun 12'}, {id:'AUD-02', visitor:'Ama Boafo', result:'Cleared', date:'Jun 12'}], columns: [{key:'id',label:'Audit'}, {key:'visitor',label:'Visitor'}, {key:'result',label:'Result'}, {key:'date',label:'Date'}] }
+  ];
+
 
   const handleExportCSV = () => {
     exportToCSV(visitorsList, ['id', 'fullName', 'purpose', 'hostName', 'checkInTime', 'checkOutTime'], 'reception_visitors_log');
@@ -117,6 +128,11 @@ export default function ReceptionDashboard({
     );
   }
 
+
+  if (kpiDetail !== null) {
+    const d = kpiDetails[kpiDetail];
+    return <KpiDetailView title={d.title} metric={d.metric} trendData={d.trendData} breakdownData={d.breakdownData} tableData={d.tableData} columns={d.columns} onBack={() => setKpiDetail(null)} />;
+  }
   return (
     <>
       {/* ══════════════ MOBILE LAYOUT (< lg) ══════════════ */}
@@ -269,8 +285,32 @@ export default function ReceptionDashboard({
         {stats.map((card, idx) => {
           const Icon = card.icon;
           return (
-            <div key={idx} className="kpi-card group">
-              <div className="flex items-start justify-between gap-2"><span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wide font-semibold leading-tight">{card.title}</span><MoreVertical className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" /></div><div className="flex items-end justify-between mt-2 gap-2"><div><h3 className="text-2xl sm:text-3xl font-bold text-[var(--text-primary)] leading-none">{card.value}</h3><p className="text-[10px] text-[var(--text-muted)] mt-1.5">{card.sub}</p></div><MiniSparkline width={60} height={36} /></div></div>
+            <div key={idx} onClick={() => setKpiDetail(idx)} className="kpi-card group cursor-pointer hover:shadow-lg transition-shadow">
+              <div className="flex items-start justify-between gap-2">
+                <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wide font-semibold leading-tight">{card.title}</span>
+                <div className="relative shrink-0" onClick={e => e.stopPropagation()}>
+                  <button onClick={() => setCardMenuOpen(cardMenuOpen === idx ? null : idx)}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer p-0.5 rounded hover:bg-[var(--accent-light)]">
+                    <MoreVertical className="w-3.5 h-3.5 text-[var(--text-muted)]" />
+                  </button>
+                  {cardMenuOpen === idx && (
+                    <div className="absolute right-0 top-full mt-1 w-40 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl z-30 p-1 flex flex-col">
+                      <button onClick={() => { setKpiDetail(idx); setCardMenuOpen(null); }} className="px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg text-left">View Details</button>
+                      <button onClick={() => { const d = kpiDetails[idx]; exportToCSV(d.tableData, d.columns.map(c => c.key), d.title.replace(/\s/g,'_').toLowerCase()); setCardMenuOpen(null); }} className="px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg text-left">Export CSV</button>
+                      <button onClick={() => { const d = kpiDetails[idx]; exportToPDF(d.title, d.tableData, d.columns.map(c => c.label)); setCardMenuOpen(null); }} className="px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg text-left">Export PDF</button>
+                      <button onClick={() => setCardMenuOpen(null)} className="px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg text-left">Refresh</button>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-end justify-between mt-2 gap-2">
+                <div>
+                  <h3 className="text-2xl sm:text-3xl font-bold text-[var(--text-primary)] leading-none">{card.value}</h3>
+                  <p className="text-[10px] text-[var(--text-muted)] mt-1.5">{card.sub}</p>
+                </div>
+                <MiniSparkline width={60} height={36} />
+              </div>
+            </div>
           );
         })}
       </div>

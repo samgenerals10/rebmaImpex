@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { FileSpreadsheet, FileText, Truck, ShieldCheck, Activity, Users, MapPin, History, UserCheck, ChevronRight, MoreVertical, TrendingUp, TrendingDown } from 'lucide-react';
 import MiniSparkline from '../components/MiniSparkline';
+import KpiDetailView from '../components/KpiDetailView';
 import { exportToCSV, exportToPDF } from '../utils/export';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { motion } from 'framer-motion';
@@ -53,6 +54,8 @@ export default function DispatchDashboard({
 }: DispatchDashboardProps) {
 
   // Local deliveries state to support adding/duplicating/deleting rows
+  const [kpiDetail, setKpiDetail] = useState<number | null>(null);
+  const [cardMenuOpen, setCardMenuOpen] = useState<number | null>(null);
   const [localDeliveries, setLocalDeliveries] = useState<DeliveryRecord[]>(seedDeliveries);
   const [activeMobileDetail, setActiveMobileDetail] = useState<DeliveryRecord | null>(null);
 
@@ -94,6 +97,14 @@ export default function DispatchDashboard({
     { title: 'On-Time Dispatch Rate', value: '96.8%', sub: 'Target threshold met', icon: Activity, color: 'text-indigo-500' },
     { title: 'Drivers Active', value: `${activeDrivers} Online`, sub: 'Active terminal sessions', icon: Users, color: 'text-amber-500' }
   ];
+
+  const kpiDetails = [
+    { title: 'Active Routes', metric: 'Live', trendData: [{name:'Jan',value:42},{name:'Feb',value:58},{name:'Mar',value:51},{name:'Apr',value:73},{name:'May',value:65},{name:'Jun',value:80}], breakdownData: [{name:'In Transit',value:8}, {name:'Loading',value:3}, {name:'Idle',value:1}], tableData: [{id:'RT-01', driver:'Kwame Asante', dest:'Kumasi', eta:'2h'}, {id:'RT-02', driver:'Ama Boateng', dest:'Accra', eta:'45m'}], columns: [{key:'id',label:'Route'}, {key:'driver',label:'Driver'}, {key:'dest',label:'Destination'}, {key:'eta',label:'ETA'}] },
+    { title: 'Completed Shipments', metric: 'Done', trendData: [{name:'Jan',value:42},{name:'Feb',value:58},{name:'Mar',value:51},{name:'Apr',value:73},{name:'May',value:65},{name:'Jun',value:80}], breakdownData: [{name:'On Time',value:38}, {name:'Late',value:4}, {name:'Partial',value:2}], tableData: [{id:'SHP-01', client:'Kama Industries', date:'Jun 10', status:'On Time'}, {id:'SHP-02', client:'Prime Suppliers', date:'Jun 9', status:'Late'}], columns: [{key:'id',label:'Shipment'}, {key:'client',label:'Client'}, {key:'date',label:'Date'}, {key:'status',label:'Status'}] },
+    { title: 'On-Time Dispatch Rate', metric: '%', trendData: [{name:'Jan',value:42},{name:'Feb',value:58},{name:'Mar',value:51},{name:'Apr',value:73},{name:'May',value:65},{name:'Jun',value:80}], breakdownData: [{name:'On Time',value:94}, {name:'Delayed',value:4}, {name:'Cancelled',value:2}], tableData: [{week:'Week 1', rate:'97%', delayed:1}, {week:'Week 2', rate:'95%', delayed:2}], columns: [{key:'week',label:'Week'}, {key:'rate',label:'Rate'}, {key:'delayed',label:'Delayed'}] },
+    { title: 'Drivers Active', metric: 'Online', trendData: [{name:'Jan',value:42},{name:'Feb',value:58},{name:'Mar',value:51},{name:'Apr',value:73},{name:'May',value:65},{name:'Jun',value:80}], breakdownData: [{name:'On Delivery',value:8}, {name:'Active',value:4}, {name:'Offline',value:3}], tableData: [{name:'Kwame Asante', truck:'TRK-201', status:'On Delivery'}, {name:'Ama Boateng', truck:'TRK-202', status:'Active'}], columns: [{key:'name',label:'Driver'}, {key:'truck',label:'Truck'}, {key:'status',label:'Status'}] }
+  ];
+
 
   const driverStatusColor = (status: Driver['status']) => {
     if (status === 'ON_DELIVERY') return 'bg-blue-500/10 text-blue-400';
@@ -271,6 +282,11 @@ export default function DispatchDashboard({
     );
   }
 
+
+  if (kpiDetail !== null) {
+    const d = kpiDetails[kpiDetail];
+    return <KpiDetailView title={d.title} metric={d.metric} trendData={d.trendData} breakdownData={d.breakdownData} tableData={d.tableData} columns={d.columns} onBack={() => setKpiDetail(null)} />;
+  }
   return (
     <>
       {/* ══════════════ MOBILE LAYOUT (< lg) ══════════════ */}
@@ -411,8 +427,32 @@ export default function DispatchDashboard({
         {stats.map((card, idx) => {
           const Icon = card.icon;
           return (
-            <div key={idx} className="kpi-card group">
-              <div className="flex items-start justify-between gap-2"><span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wide font-semibold leading-tight">{card.title}</span><MoreVertical className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" /></div><div className="flex items-end justify-between mt-2 gap-2"><div><h3 className="text-2xl sm:text-3xl font-bold text-[var(--text-primary)] leading-none">{card.value}</h3><p className="text-[10px] text-[var(--text-muted)] mt-1.5">{card.sub}</p></div><MiniSparkline width={60} height={36} /></div></div>
+            <div key={idx} onClick={() => setKpiDetail(idx)} className="kpi-card group cursor-pointer hover:shadow-lg transition-shadow">
+              <div className="flex items-start justify-between gap-2">
+                <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wide font-semibold leading-tight">{card.title}</span>
+                <div className="relative shrink-0" onClick={e => e.stopPropagation()}>
+                  <button onClick={() => setCardMenuOpen(cardMenuOpen === idx ? null : idx)}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer p-0.5 rounded hover:bg-[var(--accent-light)]">
+                    <MoreVertical className="w-3.5 h-3.5 text-[var(--text-muted)]" />
+                  </button>
+                  {cardMenuOpen === idx && (
+                    <div className="absolute right-0 top-full mt-1 w-40 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl z-30 p-1 flex flex-col">
+                      <button onClick={() => { setKpiDetail(idx); setCardMenuOpen(null); }} className="px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg text-left">View Details</button>
+                      <button onClick={() => { const d = kpiDetails[idx]; exportToCSV(d.tableData, d.columns.map(c => c.key), d.title.replace(/\s/g,'_').toLowerCase()); setCardMenuOpen(null); }} className="px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg text-left">Export CSV</button>
+                      <button onClick={() => { const d = kpiDetails[idx]; exportToPDF(d.title, d.tableData, d.columns.map(c => c.label)); setCardMenuOpen(null); }} className="px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg text-left">Export PDF</button>
+                      <button onClick={() => setCardMenuOpen(null)} className="px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg text-left">Refresh</button>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-end justify-between mt-2 gap-2">
+                <div>
+                  <h3 className="text-2xl sm:text-3xl font-bold text-[var(--text-primary)] leading-none">{card.value}</h3>
+                  <p className="text-[10px] text-[var(--text-muted)] mt-1.5">{card.sub}</p>
+                </div>
+                <MiniSparkline width={60} height={36} />
+              </div>
+            </div>
           );
         })}
       </div>

@@ -59,9 +59,37 @@ import ManagementTransactionsView from './views/management/TransactionsView';
 
 // Marketing dedicated pages
 import MarketingInvoicesView from './views/marketing/InvoicesView';
+import MarketingOrdersView from './views/marketing/OrdersView';
+import MarketingCustomersView from './views/marketing/CustomersView';
+import MarketingSalesHistoryView from './views/marketing/SalesHistoryView';
 
 // Dispatch dedicated pages
 import DispatchProofOfDeliveryView from './views/dispatch/ProofOfDeliveryView';
+import DispatchDeliveriesView from './views/dispatch/DeliveriesView';
+import DispatchDriversView from './views/dispatch/DriversView';
+import DispatchTrackingView from './views/dispatch/TrackingView';
+
+// HR dedicated pages
+import HrStaffView from './views/hr/StaffView';
+import HrLeaveManagementView from './views/hr/LeaveManagementView';
+
+// Reception dedicated pages
+import ReceptionVisitorsView from './views/reception/VisitorsView';
+import ReceptionAttendanceView from './views/reception/AttendanceView';
+import ReceptionDailyReportsView from './views/reception/DailyReportsView';
+
+// Operations dedicated pages
+import OperationsStockView from './views/operations/StockView';
+
+// Production dedicated pages
+import ProductionInternalOrdersView from './views/production/InternalOrdersView';
+import ProductionOutputRecordingView from './views/production/OutputRecordingView';
+
+// Logistics dedicated pages
+import LogisticsFleetOverviewView from './views/logistics/FleetOverviewView';
+import LogisticsFuelManagementView from './views/logistics/FuelManagementView';
+import LogisticsMaintenanceView from './views/logistics/MaintenanceView';
+import LogisticsFleetAnalyticsView from './views/logistics/FleetAnalyticsView';
 
 export default function App() {
   // Helper to map UI dropdown values to database role values
@@ -2673,11 +2701,49 @@ export default function App() {
     // Marketing dedicated sub-tab pages
     if (activeDepartment === 'MARKETING') {
       if (activeSubTab === 'Invoices') return <MarketingInvoicesView addNotification={addNotification} />;
+      if (activeSubTab === 'CreateOrder') return <MarketingOrdersView ordersList={ordersList} onCreateOrder={handleCreateOrder} addNotification={addNotification} />;
+      if (activeSubTab === 'RegisterCustomer') return <MarketingCustomersView customersList={customersList} onRegisterCustomer={handleRegisterCustomer} addNotification={addNotification} />;
+      if (activeSubTab === 'SalesHistory') return <MarketingSalesHistoryView ordersList={ordersList} addNotification={addNotification} />;
     }
 
     // Dispatch dedicated sub-tab pages
     if (activeDepartment === 'DISPATCH') {
       if (activeSubTab === 'ProofOfDelivery') return <DispatchProofOfDeliveryView currentUser={currentUser} addNotification={addNotification} />;
+      if (activeSubTab === 'ActiveDeliveries') return <DispatchDeliveriesView addNotification={addNotification} />;
+      if (activeSubTab === 'Drivers')          return <DispatchDriversView addNotification={addNotification} />;
+      if (activeSubTab === 'Tracking')         return <DispatchTrackingView addNotification={addNotification} />;
+    }
+
+    // HR dedicated sub-tab pages
+    if (activeDepartment === 'HR') {
+      if (activeSubTab === 'Staff')           return <HrStaffView staffList={staffList} addNotification={addNotification} />;
+      if (activeSubTab === 'LeaveManagement') return <HrLeaveManagementView currentUser={currentUser} addNotification={addNotification} />;
+    }
+
+    // Reception dedicated sub-tab pages
+    if (activeDepartment === 'RECEPTION') {
+      if (activeSubTab === 'Visitors')        return <ReceptionVisitorsView addNotification={addNotification} />;
+      if (activeSubTab === 'EmployeeCheckin') return <ReceptionAttendanceView addNotification={addNotification} />;
+      if (activeSubTab === 'DailyReports')    return <ReceptionDailyReportsView addNotification={addNotification} />;
+    }
+
+    // Operations dedicated sub-tab pages
+    if (activeDepartment === 'OPERATIONS') {
+      if (activeSubTab === 'Stock') return <OperationsStockView incomingGoodsList={incomingGoodsList} addNotification={addNotification} />;
+    }
+
+    // Production dedicated sub-tab pages
+    if (activeDepartment === 'PRODUCTION') {
+      if (activeSubTab === 'InternalOrders')  return <ProductionInternalOrdersView productionRequests={productionRequests} addNotification={addNotification} />;
+      if (activeSubTab === 'OutputRecording') return <ProductionOutputRecordingView addNotification={addNotification} />;
+    }
+
+    // Logistics dedicated sub-tab pages
+    if (activeDepartment === 'LOGISTICS') {
+      if (activeSubTab === 'FleetOverview')  return <LogisticsFleetOverviewView addNotification={addNotification} />;
+      if (activeSubTab === 'FuelManagement') return <LogisticsFuelManagementView addNotification={addNotification} />;
+      if (activeSubTab === 'Maintenance')    return <LogisticsMaintenanceView addNotification={addNotification} />;
+      if (activeSubTab === 'FleetAnalytics') return <LogisticsFleetAnalyticsView addNotification={addNotification} />;
     }
 
     switch (activeDepartment) {

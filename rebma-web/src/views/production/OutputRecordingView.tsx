@@ -1,0 +1,207 @@
+import React, { useState, useEffect } from 'react';
+import { Download, Trash2, Package } from 'lucide-react';
+import { supabase } from '../../lib/supabaseClient';
+import { exportToCSV } from '../../utils/export';
+
+interface OutputRecord {
+  id: string;
+  date: string;
+  product: string;
+  received: number;
+  boxes: number;
+  sachets: number;
+  quality: 'Pass' | 'Fail';
+  notes: string;
+}
+
+const MOCK_RECORDS: OutputRecord[] = [
+  { id: '1', date: '2026-06-01', product: 'Shea Butter Sachet', received: 200, boxes: 40, sachets: 4000, quality: 'Pass', notes: 'Smooth run' },
+  { id: '2', date: '2026-06-02', product: 'Palm Oil Pouch', received: 150, boxes: 30, sachets: 3000, quality: 'Pass', notes: '' },
+  { id: '3', date: '2026-06-03', product: 'Coconut Oil Sachet', received: 180, boxes: 35, sachets: 3500, quality: 'Fail', notes: 'Sealing machine issue' },
+  { id: '4', date: '2026-06-04', product: 'Groundnut Oil Pouch', received: 220, boxes: 44, sachets: 4400, quality: 'Pass', notes: '' },
+  { id: '5', date: '2026-06-05', product: 'Shea Butter Sachet', received: 190, boxes: 38, sachets: 3800, quality: 'Pass', notes: 'Minor spillage noted' },
+  { id: '6', date: '2026-06-08', product: 'Cocoa Butter Pouch', received: 160, boxes: 32, sachets: 3200, quality: 'Pass', notes: '' },
+];
+
+interface Props {
+  addNotification: (msg: string) => void;
+}
+
+export default function OutputRecordingView({ addNotification }: Props) {
+  const [records, setRecords] = useState<OutputRecord[]>([]);
+  const [form, setForm] = useState({ date: new Date().toISOString().split('T')[0], product: '', received: '', boxes: '', sachets: '', quality: 'Pass' as 'Pass' | 'Fail', notes: '' });
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const { data, error } = await supabase.from('production_output').select('*').order('date', { ascending: false });
+        if (error || !data || data.length === 0) setRecords(MOCK_RECORDS);
+        else setRecords(data);
+      } catch {
+        setRecords(MOCK_RECORDS);
+      }
+    };
+    load();
+  }, []);
+
+  const today = new Date().toISOString().split('T')[0];
+  const todayRecords = records.filter(r => r.date === today);
+  const todayBoxes = todayRecords.reduce((s, r) => s + r.boxes, 0);
+  const todaySachets = todayRecords.reduce((s, r) => s + r.sachets, 0);
+  const totalPass = records.filter(r => r.quality === 'Pass').length;
+  const passRate = records.length ? Math.round((totalPass / records.length) * 100) : 0;
+  const totalBoxes = records.reduce((s, r) => s + r.boxes, 0);
+  const totalSachets = records.reduce((s, r) => s + r.sachets, 0);
+
+  const handleSubmit = async () => {
+    if (!form.product || !form.boxes || !form.sachets) return;
+    const newRecord: OutputRecord = {
+      id: String(Date.now()),
+      date: form.date,
+      product: form.product,
+      received: Number(form.received),
+      boxes: Number(form.boxes),
+      sachets: Number(form.sachets),
+      quality: form.quality,
+      notes: form.notes,
+    };
+    try {
+      await supabase.from('production_output').insert([newRecord]);
+    } catch {}
+    setRecords(prev => [newRecord, ...prev]);
+    addNotification(`Output recorded for ${form.product}`);
+    setForm({ date: new Date().toISOString().split('T')[0], product: '', received: '', boxes: '', sachets: '', quality: 'Pass', notes: '' });
+  };
+
+  const handleDelete = (id: string) => {
+    setRecords(prev => prev.filter(r => r.id !== id));
+    addNotification('Record deleted');
+  };
+
+  const handleExport = () => {
+    exportToCSV(records, ['date','product','received','boxes','sachets','quality','notes'], 'production_output');
+  };
+
+  const inputStyle: React.CSSProperties = { background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'var(--text-primary)', fontSize: 14, width: '100%', boxSizing: 'border-box' };
+
+  return (
+    <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: 24 }}>
+      <div>
+        <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 4px' }}>Production Output Recording</h1>
+        <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: 14 }}>Log and track daily production output</p>
+      </div>
+
+      <div style={{ background: 'var(--bg-card)', borderRadius: 16, padding: '20px', border: '1px solid var(--border)', boxShadow: 'var(--box-shadow)', display: 'flex', gap: 24, flexWrap: 'wrap', alignItems: 'center' }}>
+        <div>
+          <p style={{ color: 'var(--text-muted)', fontSize: 12, margin: '0 0 4px' }}>Today</p>
+          <p style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: 15, margin: 0 }}>{new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
+        </div>
+        <div style={{ borderLeft: '1px solid var(--border)', paddingLeft: 24 }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: 12, margin: '0 0 4px' }}>Boxes Today</p>
+          <p style={{ fontWeight: 700, color: 'var(--accent)', fontSize: 22, margin: 0 }}>{todayBoxes}</p>
+        </div>
+        <div style={{ borderLeft: '1px solid var(--border)', paddingLeft: 24 }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: 12, margin: '0 0 4px' }}>Sachets Today</p>
+          <p style={{ fontWeight: 700, color: '#7c3aed', fontSize: 22, margin: 0 }}>{todaySachets.toLocaleString()}</p>
+        </div>
+        <div style={{ borderLeft: '1px solid var(--border)', paddingLeft: 24 }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: 12, margin: '0 0 4px' }}>Quality Pass Rate</p>
+          <p style={{ fontWeight: 700, color: '#059669', fontSize: 22, margin: 0 }}>{passRate}%</p>
+        </div>
+      </div>
+
+      <div style={{ background: 'var(--bg-card)', borderRadius: 20, padding: 24, border: '1px solid var(--border)', boxShadow: 'var(--box-shadow)' }}>
+        <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 20px' }}>Record New Output</h2>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14 }}>
+          <div>
+            <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Date</label>
+            <input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} style={inputStyle} />
+          </div>
+          <div>
+            <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Product</label>
+            <input value={form.product} onChange={e => setForm(f => ({ ...f, product: e.target.value }))} placeholder="Product name" style={inputStyle} />
+          </div>
+          <div>
+            <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Goods Received</label>
+            <input type="number" value={form.received} onChange={e => setForm(f => ({ ...f, received: e.target.value }))} placeholder="From operations" style={inputStyle} />
+          </div>
+          <div>
+            <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Boxes Produced</label>
+            <input type="number" value={form.boxes} onChange={e => setForm(f => ({ ...f, boxes: e.target.value }))} placeholder="0" style={inputStyle} />
+          </div>
+          <div>
+            <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Sachets Produced</label>
+            <input type="number" value={form.sachets} onChange={e => setForm(f => ({ ...f, sachets: e.target.value }))} placeholder="0" style={inputStyle} />
+          </div>
+          <div>
+            <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Quality Check</label>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {(['Pass', 'Fail'] as const).map(q => (
+                <button key={q} onClick={() => setForm(f => ({ ...f, quality: q }))} style={{ flex: 1, padding: '10px', borderRadius: 10, border: '1px solid var(--border)', cursor: 'pointer', fontWeight: 600, fontSize: 13, background: form.quality === q ? (q === 'Pass' ? '#059669' : '#dc2626') : 'var(--bg-input)', color: form.quality === q ? '#fff' : 'var(--text-secondary)' }}>
+                  {q}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div style={{ marginTop: 14 }}>
+          <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Notes (optional)</label>
+          <textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="Any observations..." rows={2} style={{ ...inputStyle, resize: 'vertical' }} />
+        </div>
+        <button onClick={handleSubmit} style={{ marginTop: 16, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 12, padding: '12px 28px', fontWeight: 700, cursor: 'pointer', fontSize: 15 }}>Submit Record</button>
+      </div>
+
+      <div style={{ background: 'var(--bg-card)', borderRadius: 20, padding: 24, border: '1px solid var(--border)', boxShadow: 'var(--box-shadow)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
+          <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Output History</h2>
+          <button onClick={handleExport} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '8px 14px', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
+            <Download size={14} /> Export CSV
+          </button>
+        </div>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                {['Date', 'Product', 'Received', 'Boxes', 'Sachets', 'Quality', 'Notes', ''].map(h => (
+                  <th key={h} style={{ textAlign: 'left', padding: '10px 12px', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {records.map(r => (
+                <tr key={r.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                  <td style={{ padding: '12px', color: 'var(--text-primary)', fontSize: 13, whiteSpace: 'nowrap' }}>{r.date}</td>
+                  <td style={{ padding: '12px', color: 'var(--text-primary)', fontSize: 13 }}>{r.product}</td>
+                  <td style={{ padding: '12px', color: 'var(--text-secondary)', fontSize: 13, textAlign: 'center' }}>{r.received}</td>
+                  <td style={{ padding: '12px', color: 'var(--text-secondary)', fontSize: 13, textAlign: 'center' }}>{r.boxes}</td>
+                  <td style={{ padding: '12px', color: 'var(--text-secondary)', fontSize: 13, textAlign: 'center' }}>{r.sachets.toLocaleString()}</td>
+                  <td style={{ padding: '12px' }}>
+                    <span style={{ padding: '3px 10px', borderRadius: 9999, fontSize: 12, fontWeight: 600, background: r.quality === 'Pass' ? 'rgba(16,185,129,0.15)' : 'rgba(220,38,38,0.15)', color: r.quality === 'Pass' ? '#059669' : '#dc2626' }}>{r.quality}</span>
+                  </td>
+                  <td style={{ padding: '12px', color: 'var(--text-muted)', fontSize: 12, maxWidth: 160 }}>{r.notes || '—'}</td>
+                  <td style={{ padding: '12px' }}>
+                    <button onClick={() => handleDelete(r.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', padding: 4 }}><Trash2 size={14} /></button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16 }}>
+        {[
+          { label: 'Total Boxes', value: totalBoxes.toLocaleString(), color: 'var(--accent)' },
+          { label: 'Total Sachets', value: totalSachets.toLocaleString(), color: '#7c3aed' },
+          { label: 'Quality Pass Rate', value: `${passRate}%`, color: '#059669' },
+          { label: 'Total Records', value: records.length, color: '#d97706' },
+        ].map(c => (
+          <div key={c.label} style={{ background: 'var(--bg-card)', borderRadius: 16, padding: '20px', border: '1px solid var(--border)', boxShadow: 'var(--box-shadow)' }}>
+            <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: '0 0 8px' }}>{c.label}</p>
+            <p style={{ color: c.color, fontSize: 26, fontWeight: 700, margin: 0 }}>{c.value}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
