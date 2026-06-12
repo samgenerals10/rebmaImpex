@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import {
   ShoppingBag, Plus, FileSpreadsheet, FileText, X, ChevronDown,
   MoreVertical, Bell, CheckCircle, Trash2, Search, Filter,
-  Package, DollarSign, Truck, Clock, AlertCircle
+  Package, DollarSign, Truck, Clock, AlertCircle, Mail, MessageCircle
 } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { exportToCSV, exportToPDF } from '../../utils/export';
@@ -461,6 +461,9 @@ function NewOrderForm({ orders, currentUser, onClose, onSave }: {
   const [paymentMethod, setPaymentMethod] = useState('Wire Transfer');
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
+  const [sendChannel, setSendChannel] = useState<'email' | 'whatsapp' | null>(null);
+  const [sendEmail, setSendEmail] = useState('');
+  const [sendWhatsapp, setSendWhatsapp] = useState('');
 
   const knownSuppliers = [...new Set(orders.map(o => o.supplier_name))];
 
@@ -475,6 +478,11 @@ function NewOrderForm({ orders, currentUser, onClose, onSave }: {
       setIsNewSupplier(false);
     }
   }, [supplierName]);
+
+  // Pre-fill send email when supplier email is known
+  useEffect(() => {
+    if (supplierEmail && !sendEmail) setSendEmail(supplierEmail);
+  }, [supplierEmail]);
 
   const updateProduct = (i: number, field: keyof ProductItem, value: string | number) => {
     setProducts(prev => {
@@ -526,6 +534,81 @@ function NewOrderForm({ orders, currentUser, onClose, onSave }: {
       ...order, id: undefined,
     }]).then(() => {}, () => {});
 
+    setSaving(false);
+    onSave(order);
+  };
+
+  const buildWhatsAppMessage = (order: SupplierOrder) => {
+    const lines = [
+      `*New Purchase Order — REBMA IMPEX Ghana Limited*`,
+      `Order #: ${order.order_number}`,
+      `Date: ${new Date(order.created_at).toLocaleDateString()}`,
+      ``,
+      `*Products:*`,
+      ...order.products.map(p => `• ${p.product_name} — ${p.quantity} ${p.unit} @ ${p.currency} ${p.unit_price}/unit = ${p.currency} ${p.total_price.toLocaleString()}`),
+      ``,
+      `Total: ${order.currency} ${order.total_amount.toLocaleString()} (approx GHS ${(order.total_amount_ghs || 0).toLocaleString()})`,
+      `Port of Entry: ${order.port_of_entry}`,
+      `Expected Delivery: ${order.expected_delivery_date || 'TBD'}`,
+      ``,
+      `Please confirm receipt and proceed as agreed.`,
+      `Regards, ${currentUser?.fullName || 'CEO'} | REBMA IMPEX`,
+    ];
+    return encodeURIComponent(lines.join('\n'));
+  };
+
+  const buildOrder = (): SupplierOrder | null => {
+    if (!supplierName || products.some(p => !p.product_name)) return null;
+    return {
+      id: String(Date.now()),
+      order_number: generateOrderNumber(orders),
+      supplier_name: supplierName,
+      supplier_country: supplierCountry,
+      supplier_email: supplierEmail,
+      products,
+      total_amount: totalAmount,
+      currency,
+      exchange_rate: exchangeRate,
+      total_amount_ghs: totalGhs,
+      expected_delivery_date: expectedDate,
+      shipping_method: shippingMethod,
+      shipping_details: shippingDetails,
+      port_of_entry: portOfEntry,
+      status: 'pending',
+      payment_authorised: false,
+      notes,
+      created_at: new Date().toISOString(),
+    };
+  };
+
+  const saveToSupabase = (order: SupplierOrder) => {
+    if (isNewSupplier && supplierName) {
+      supabase.from('suppliers').insert([{
+        name: supplierName, country: supplierCountry,
+        contact_name: supplierContact, contact_email: supplierEmail, currency,
+      }]).then(() => {}, () => {});
+    }
+    supabase.from('supplier_orders').insert([{ ...order, id: undefined }]).then(() => {}, () => {});
+  };
+
+  const handleSendNow = async () => {
+    const order = buildOrder();
+    if (!order) return;
+    setSaving(true);
+    saveToSupabase(order);
+    if (sendChannel === 'whatsapp') {
+      const num = sendWhatsapp.replace(/\D/g, '');
+      if (num) window.open(`https://wa.me/${num}?text=${buildWhatsAppMessage(order)}`, '_blank');
+    }
+    setSaving(false);
+    onSave(order);
+  };
+
+  const handleSaveDraft = async () => {
+    const order = buildOrder();
+    if (!order) return;
+    setSaving(true);
+    saveToSupabase(order);
     setSaving(false);
     onSave(order);
   };
@@ -706,16 +789,105 @@ function NewOrderForm({ orders, currentUser, onClose, onSave }: {
           </section>
         </div>
 
-        {/* Footer */}
-        <div className="flex gap-3 p-5 border-t border-[var(--border)] sticky bottom-0 bg-[var(--bg-card)]">
-          <button onClick={() => handleSubmit(true)} disabled={saving}
-            className="flex-1 px-4 py-2.5 border border-[var(--border)] rounded-xl text-sm font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-input)]">
-            Save as Draft
+        {/* ── Send Channel Selection ── */}
+        <div className="px-5 pb-2 space-y-4">
+          <h4 className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">Send Order Via</h4>
+
+          <div className="grid grid-cols-2 gap-3">
+            {/* Email card */}
+            <button
+              type="button"
+              onClick={() => setSendChannel(sendChannel === 'email' ? null : 'email')}
+              className={`flex flex-col items-center gap-2 p-4 rounded-2xl border-2 transition-all text-center ${
+                sendChannel === 'email'
+                  ? 'border-[var(--accent)] bg-[var(--accent-light)]'
+                  : 'border-[var(--border)] bg-[var(--bg-input)] hover:border-[var(--accent)]'
+              }`}
+            >
+              <Mail className={`w-6 h-6 ${sendChannel === 'email' ? 'text-[var(--accent)]' : 'text-[var(--text-muted)]'}`} />
+              <span className={`text-sm font-semibold ${sendChannel === 'email' ? 'text-[var(--accent)]' : 'text-[var(--text-secondary)]'}`}>
+                Send via Email
+              </span>
+            </button>
+
+            {/* WhatsApp card */}
+            <button
+              type="button"
+              onClick={() => setSendChannel(sendChannel === 'whatsapp' ? null : 'whatsapp')}
+              className={`flex flex-col items-center gap-2 p-4 rounded-2xl border-2 transition-all text-center ${
+                sendChannel === 'whatsapp'
+                  ? 'border-green-500 bg-green-50 dark:bg-green-950/30'
+                  : 'border-[var(--border)] bg-[var(--bg-input)] hover:border-green-400'
+              }`}
+            >
+              <MessageCircle className={`w-6 h-6 ${sendChannel === 'whatsapp' ? 'text-green-600' : 'text-[var(--text-muted)]'}`} />
+              <span className={`text-sm font-semibold ${sendChannel === 'whatsapp' ? 'text-green-700 dark:text-green-400' : 'text-[var(--text-secondary)]'}`}>
+                Send via WhatsApp
+              </span>
+            </button>
+          </div>
+
+          {/* Email input when email selected */}
+          {sendChannel === 'email' && (
+            <div className="space-y-3 animate-in fade-in duration-150">
+              <div>
+                <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Supplier Email Address</label>
+                <input
+                  type="email"
+                  value={sendEmail}
+                  onChange={e => setSendEmail(e.target.value)}
+                  placeholder="supplier@example.com"
+                  className={inputCls}
+                />
+              </div>
+              <div className="flex gap-2">
+                <button onClick={handleSendNow} disabled={saving || !sendEmail}
+                  className="flex-1 px-4 py-2.5 bg-[var(--accent)] text-white rounded-xl text-sm font-bold hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed">
+                  {saving ? 'Sending…' : 'Send Now'}
+                </button>
+                <button onClick={handleSaveDraft} disabled={saving}
+                  className="flex-1 px-4 py-2.5 border border-[var(--border)] rounded-xl text-sm font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-input)]">
+                  Save Draft
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* WhatsApp input when whatsapp selected */}
+          {sendChannel === 'whatsapp' && (
+            <div className="space-y-3 animate-in fade-in duration-150">
+              <div>
+                <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">WhatsApp Number (with country code)</label>
+                <input
+                  type="tel"
+                  value={sendWhatsapp}
+                  onChange={e => setSendWhatsapp(e.target.value)}
+                  placeholder="+48123456789"
+                  className={inputCls}
+                />
+                <p className="text-[11px] text-[var(--text-muted)] mt-1">Include country code, e.g. +48 for Poland, +90 for Turkey</p>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={handleSendNow} disabled={saving || !sendWhatsapp}
+                  className="flex-1 px-4 py-2.5 bg-green-600 text-white rounded-xl text-sm font-bold hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed">
+                  {saving ? 'Opening…' : 'Send Now'}
+                </button>
+                <button onClick={handleSaveDraft} disabled={saving}
+                  className="flex-1 px-4 py-2.5 border border-[var(--border)] rounded-xl text-sm font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-input)]">
+                  Save Draft
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Always-visible Save as Draft */}
+        <div className="px-5 pb-5 border-t border-[var(--border)] pt-4 sticky bottom-0 bg-[var(--bg-card)]">
+          <button onClick={handleSaveDraft} disabled={saving}
+            className="w-full px-4 py-2.5 border border-[var(--border)] rounded-xl text-sm font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-input)] transition-colors">
+            {saving ? 'Saving…' : 'Save as Draft'}
           </button>
-          <button onClick={() => handleSubmit(false)} disabled={saving}
-            className="flex-1 px-4 py-2.5 bg-[var(--accent)] text-white rounded-xl text-sm font-bold hover:opacity-90">
-            {saving ? 'Submitting…' : 'Submit Order'}
-          </button>
+          <p className="text-[11px] text-[var(--text-muted)] text-center mt-2">Saves without sending. Status set to Pending.</p>
         </div>
       </div>
     </div>

@@ -2685,6 +2685,10 @@ export default function App() {
       if (activeSubTab === 'Accounts')        return <CeoAccountsView />;
       if (activeSubTab === 'Approvals')       return <CeoApprovalsView currentUser={currentUser} addNotification={addNotification} />;
       if (activeSubTab === 'SupplierOrders')  return <CeoSupplierOrdersView currentUser={currentUser} addNotification={addNotification} />;
+      if (activeSubTab === 'FleetOverview')  return <LogisticsFleetOverviewView addNotification={addNotification} />;
+      if (activeSubTab === 'FuelManagement') return <LogisticsFuelManagementView addNotification={addNotification} />;
+      if (activeSubTab === 'Maintenance')    return <LogisticsMaintenanceView addNotification={addNotification} />;
+      if (activeSubTab === 'FleetAnalytics') return <LogisticsFleetAnalyticsView addNotification={addNotification} />;
     }
 
     // Finance dedicated sub-tab pages
@@ -2697,7 +2701,11 @@ export default function App() {
 
     // Management dedicated sub-tab pages
     if (activeDepartment === 'MANAGEMENT') {
-      if (activeSubTab === 'Transactions') return <ManagementTransactionsView addNotification={addNotification} />;
+      if (activeSubTab === 'Transactions')  return <ManagementTransactionsView addNotification={addNotification} />;
+      if (activeSubTab === 'FleetOverview')  return <LogisticsFleetOverviewView addNotification={addNotification} />;
+      if (activeSubTab === 'FuelManagement') return <LogisticsFuelManagementView addNotification={addNotification} />;
+      if (activeSubTab === 'Maintenance')    return <LogisticsMaintenanceView addNotification={addNotification} />;
+      if (activeSubTab === 'FleetAnalytics') return <LogisticsFleetAnalyticsView addNotification={addNotification} />;
     }
 
     // Marketing dedicated sub-tab pages
@@ -2720,6 +2728,10 @@ export default function App() {
     if (activeDepartment === 'HR') {
       if (activeSubTab === 'Staff')           return <HrStaffView staffList={staffList} addNotification={addNotification} />;
       if (activeSubTab === 'LeaveManagement') return <HrLeaveManagementView currentUser={currentUser} addNotification={addNotification} />;
+      if (activeSubTab === 'FleetOverview')  return <LogisticsFleetOverviewView addNotification={addNotification} />;
+      if (activeSubTab === 'FuelManagement') return <LogisticsFuelManagementView addNotification={addNotification} />;
+      if (activeSubTab === 'Maintenance')    return <LogisticsMaintenanceView addNotification={addNotification} />;
+      if (activeSubTab === 'FleetAnalytics') return <LogisticsFleetAnalyticsView addNotification={addNotification} />;
     }
 
     // Reception dedicated sub-tab pages
