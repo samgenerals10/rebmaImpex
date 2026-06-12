@@ -11,6 +11,7 @@ import KpiDetailView from '../components/KpiDetailView';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import type { Order, IncomingGoods } from '../types/erp';
 import { exportToCSV, exportToPDF } from '../utils/export';
+import { supabase } from '../lib/supabaseClient';
 
 interface OperationsDashboardProps {
   ordersList: Order[];
@@ -191,6 +192,34 @@ export default function OperationsDashboard({
     setDestination('');
     (e.target as HTMLFormElement).reset();
   };
+
+  // ── Incoming goods from CEO supplier orders (via notifications) ──
+  const [incomingSupplierOrders, setIncomingSupplierOrders] = useState<any[]>([]);
+  useEffect(() => {
+    const loadIncoming = async () => {
+      try {
+        const { data: notifs, error } = await supabase
+          .from('supplier_order_notifications')
+          .select('order_id, message, created_at')
+          .eq('notified_department', 'OPERATIONS')
+          .eq('read', false);
+        if (!error && notifs && notifs.length > 0) {
+          const orderIds = [...new Set(notifs.map((n: any) => n.order_id))];
+          const { data: sOrders } = await supabase
+            .from('supplier_orders')
+            .select('id,order_number,supplier_name,supplier_country,products,expected_delivery_date,status,total_amount,currency')
+            .in('id', orderIds);
+          if (sOrders) {
+            setIncomingSupplierOrders(sOrders.map((o: any) => ({
+              ...o,
+              message: notifs.find((n: any) => n.order_id === o.id)?.message || '',
+            })));
+          }
+        }
+      } catch { /* table may not exist yet — silently ignore */ }
+    };
+    loadIncoming();
+  }, []);
 
   const statusBadge = (status: string) => {
     const map: Record<string, string> = {
@@ -960,6 +989,41 @@ export default function OperationsDashboard({
 
       {/* Tab-based views */}
       <div className="border-t border-[var(--border)] pt-6">
+
+        {/* INCOMING GOODS FROM CEO SUPPLIER ORDERS */}
+        {incomingSupplierOrders.length > 0 && (
+          <div className="mb-6 p-5 bg-[var(--bg-card)] rounded-2xl border border-indigo-200 dark:border-indigo-800 shadow-[var(--box-shadow)]">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
+              <h3 className="text-sm font-bold text-[var(--text-primary)]">Incoming Goods Notifications</h3>
+              <span className="ml-auto px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 text-[11px] font-bold">{incomingSupplierOrders.length} pending</span>
+            </div>
+            <div className="space-y-3">
+              {incomingSupplierOrders.map((o: any) => (
+                <div key={o.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl border border-[var(--border)] bg-[var(--bg)] hover:border-indigo-400 transition-colors">
+                  <div className="min-w-0 space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-mono text-xs font-semibold text-indigo-600 dark:text-indigo-400">{o.order_number}</span>
+                      <span className="text-xs text-[var(--text-secondary)] font-semibold">{o.supplier_name}</span>
+                    </div>
+                    <p className="text-xs text-[var(--text-muted)]">
+                      {Array.isArray(o.products) ? o.products.map((p: any) => `${p.product_name} (${p.quantity} ${p.unit})`).join(', ') : '—'}
+                    </p>
+                    {o.message && <p className="text-[11px] text-indigo-600 dark:text-indigo-400 italic">{o.message}</p>}
+                  </div>
+                  <div className="flex items-center gap-3 flex-shrink-0">
+                    {o.expected_delivery_date && <span className="text-xs text-[var(--text-muted)] whitespace-nowrap">ETA: {o.expected_delivery_date}</span>}
+                    <button
+                      onClick={() => addNotification(`Log Receipt opened for ${o.order_number}.`)}
+                      className="px-3 py-1.5 bg-indigo-600 text-white text-xs font-bold rounded-xl hover:bg-indigo-700 whitespace-nowrap">
+                      Log Receipt
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* PORT INGESTION FORM */}
         {activeSubTab === 'PortIngestion' && (

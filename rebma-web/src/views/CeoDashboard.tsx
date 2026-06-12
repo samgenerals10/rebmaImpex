@@ -1,6 +1,8 @@
 // rebma-web/src/views/CeoDashboard.tsx
 
-import { Layers, DollarSign, Truck, Users, FileSpreadsheet, FileText, MoreVertical, TrendingUp, TrendingDown } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Layers, DollarSign, Truck, Users, FileSpreadsheet, FileText, MoreVertical, TrendingUp, TrendingDown, ShoppingBag, Clock, ChevronRight, CheckCircle, AlertCircle } from 'lucide-react';
+import { supabase } from '../lib/supabaseClient';
 import MiniSparkline from '../components/MiniSparkline';
 import { 
   ResponsiveContainer, 
@@ -14,18 +16,74 @@ import {
 import { motion } from 'framer-motion';
 import { exportToCSV, exportToPDF } from '../utils/export';
 
+interface SupplierOrderSummary {
+  id: string;
+  order_number: string;
+  supplier_name: string;
+  supplier_country: string;
+  total_amount: number;
+  currency: string;
+  total_amount_ghs: number;
+  status: string;
+  created_at: string;
+}
+
+const STATUS_COLORS: Record<string, { color: string; bg: string }> = {
+  pending:            { color: '#b45309', bg: '#fef3c7' },
+  payment_authorised: { color: '#1d4ed8', bg: '#dbeafe' },
+  shipped:            { color: '#7c3aed', bg: '#ede9fe' },
+  arrived:            { color: '#c2410c', bg: '#fff7ed' },
+  received:           { color: '#15803d', bg: '#dcfce7' },
+  completed:          { color: '#166534', bg: '#bbf7d0' },
+};
+const STATUS_LABELS: Record<string, string> = {
+  pending: 'Pending', payment_authorised: 'Authorised', shipped: 'Shipped',
+  arrived: 'Arrived', received: 'Received', completed: 'Completed',
+};
+
 interface CeoDashboardProps {
   activeCoordinates: { lat: number; lng: number };
   deliveryStatus: string;
   gpsInterval: number;
+  onNavigateToSupplierOrders?: () => void;
 }
+
+const COUNTRY_FLAGS: Record<string, string> = { Poland: '🇵🇱', Turkey: '🇹🇷', Germany: '🇩🇪', UK: '🇬🇧', USA: '🇺🇸', Other: '🌍' };
+
+const MOCK_RECENT: SupplierOrderSummary[] = [
+  { id: '1', order_number: 'SUP-2026-001', supplier_name: 'Gdansk Food Exports', supplier_country: 'Poland', total_amount: 64000, currency: 'USD', total_amount_ghs: 985600, status: 'payment_authorised', created_at: '2026-06-08T10:00:00Z' },
+  { id: '2', order_number: 'SUP-2026-002', supplier_name: 'Istanbul Grain Co.', supplier_country: 'Turkey', total_amount: 20110, currency: 'EUR', total_amount_ghs: 337848, status: 'pending', created_at: '2026-06-10T14:00:00Z' },
+  { id: '3', order_number: 'SUP-2026-003', supplier_name: 'Warsaw Margarine Ltd.', supplier_country: 'Poland', total_amount: 84000, currency: 'USD', total_amount_ghs: 1293600, status: 'shipped', created_at: '2026-06-02T09:00:00Z' },
+];
 
 export default function CeoDashboard({
   activeCoordinates,
   deliveryStatus,
-  gpsInterval
+  gpsInterval,
+  onNavigateToSupplierOrders,
 }: CeoDashboardProps) {
-  
+  const [recentOrders, setRecentOrders] = useState<SupplierOrderSummary[]>([]);
+  const [pendingOrders, setPendingOrders] = useState<SupplierOrderSummary[]>([]);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('supplier_orders')
+          .select('id,order_number,supplier_name,supplier_country,total_amount,currency,total_amount_ghs,status,created_at')
+          .order('created_at', { ascending: false })
+          .limit(5);
+        const rows: SupplierOrderSummary[] = (!error && data && data.length > 0) ? data : MOCK_RECENT;
+        setRecentOrders(rows);
+        setPendingOrders(rows.filter(o => o.status === 'pending'));
+      } catch {
+        setRecentOrders(MOCK_RECENT);
+        setPendingOrders(MOCK_RECENT.filter(o => o.status === 'pending'));
+      }
+    };
+    load();
+  }, []);
+
   const lineChartData = [
     { name: 'Mon', Inflow: 4000, Orders: 2400 },
     { name: 'Tue', Inflow: 3000, Orders: 1398 },
@@ -247,6 +305,75 @@ export default function CeoDashboard({
             ))}
           </div>
  
+          {/* Supplier Order Cards */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+
+            {/* Recent Supplier Orders */}
+            <div className="bg-[var(--bg-card)] rounded-2xl border border-[var(--border)] shadow-[var(--box-shadow)] p-5">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <ShoppingBag className="w-4 h-4 text-[var(--accent)]" />
+                  <h3 className="text-sm font-bold text-[var(--text-primary)]">Recent Supplier Orders</h3>
+                </div>
+                <button onClick={onNavigateToSupplierOrders}
+                  className="flex items-center gap-1 text-xs text-[var(--accent)] font-semibold hover:opacity-80">
+                  View All <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+              {recentOrders.length === 0 ? (
+                <p className="text-sm text-[var(--text-muted)] text-center py-6">No supplier orders yet.</p>
+              ) : (
+                <div className="space-y-2">
+                  {recentOrders.slice(0, 5).map(o => {
+                    const sc = STATUS_COLORS[o.status] || { color: '#6b7280', bg: '#f3f4f6' };
+                    return (
+                      <div key={o.id} className="flex items-center justify-between gap-3 py-2 border-b border-[var(--border)] last:border-0">
+                        <div className="min-w-0">
+                          <p className="text-xs font-mono font-semibold text-[var(--accent)]">{o.order_number}</p>
+                          <p className="text-xs text-[var(--text-secondary)] truncate">{COUNTRY_FLAGS[o.supplier_country] || '🌍'} {o.supplier_name}</p>
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <span className="text-xs font-semibold text-[var(--text-secondary)] whitespace-nowrap">{o.currency} {o.total_amount.toLocaleString()}</span>
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap" style={{ background: sc.bg, color: sc.color }}>{STATUS_LABELS[o.status] || o.status}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Pending Payment Authorisations */}
+            <div className="bg-[var(--bg-card)] rounded-2xl border border-[var(--border)] shadow-[var(--box-shadow)] p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <AlertCircle className="w-4 h-4 text-amber-500" />
+                <h3 className="text-sm font-bold text-[var(--text-primary)]">Pending Payment Authorisations</h3>
+              </div>
+              {pendingOrders.length === 0 ? (
+                <div className="flex flex-col items-center gap-2 py-6">
+                  <CheckCircle className="w-8 h-8 text-emerald-500" />
+                  <p className="text-sm text-emerald-600 font-semibold">All payments authorised</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {pendingOrders.map(o => (
+                    <div key={o.id} className="flex items-center justify-between gap-3 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl">
+                      <div className="min-w-0">
+                        <p className="text-xs font-mono font-semibold text-[var(--text-primary)]">{o.order_number}</p>
+                        <p className="text-xs text-[var(--text-muted)] truncate">{o.supplier_name}</p>
+                        <p className="text-xs font-bold text-emerald-600">GHS {(o.total_amount_ghs || 0).toLocaleString()}</p>
+                      </div>
+                      <button onClick={onNavigateToSupplierOrders}
+                        className="flex-shrink-0 px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-xl hover:bg-blue-700">
+                        Authorise
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* Map and Chart */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             

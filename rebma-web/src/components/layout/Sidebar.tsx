@@ -8,7 +8,7 @@ import {
   HelpCircle, MessageSquarePlus, LayoutDashboard, BarChart2, ArrowLeftRight, Wallet,
   CreditCard, ClipboardCheck, MapPin, MessageCircle, RefreshCw, Banknote, ShoppingCart,
   Package, AlertTriangle, UserCheck, Camera, UserPlus, Calendar, Building2, AlertCircle,
-  FileBarChart, ClipboardList, Factory, Wrench, BarChart3, Gauge, Plus
+  FileBarChart, ClipboardList, Factory, Wrench, BarChart3, Gauge, Plus, ShoppingBag
 } from 'lucide-react';
 import type { CurrentUser } from '../../types/erp';
 
@@ -73,14 +73,15 @@ export default function Sidebar({
 
   const departmentTabs: Record<string, Array<{ id: string; label: string; icon: any }>> = {
     CEO: [
-      { id: 'Overview',     label: 'Dashboard',            icon: LayoutDashboard },
-      { id: 'Transactions', label: 'Transactions',          icon: ArrowLeftRight },
-      { id: 'Invoices',     label: 'Invoices',              icon: FileText },
-      { id: 'Wallets',      label: 'Wallets',               icon: Wallet },
-      { id: 'Accounts',     label: 'Accounts',              icon: CreditCard },
-      { id: 'Approvals',    label: 'Approvals',             icon: ClipboardCheck },
-      { id: 'Tracking',     label: 'GPS Tracking',          icon: MapPin },
-      { id: 'Messages',     label: 'Messages & Boardroom',  icon: MessageCircle },
+      { id: 'Overview',        label: 'Dashboard',            icon: LayoutDashboard },
+      { id: 'SupplierOrders',  label: 'Supplier Orders',       icon: ShoppingBag },
+      { id: 'Transactions',    label: 'Transactions',          icon: ArrowLeftRight },
+      { id: 'Invoices',        label: 'Invoices',              icon: FileText },
+      { id: 'Wallets',         label: 'Wallets',               icon: Wallet },
+      { id: 'Accounts',        label: 'Accounts',              icon: CreditCard },
+      { id: 'Approvals',       label: 'Approvals',             icon: ClipboardCheck },
+      { id: 'Tracking',        label: 'GPS Tracking',          icon: MapPin },
+      { id: 'Messages',        label: 'Messages & Boardroom',  icon: MessageCircle },
     ],
     FINANCE: [
       { id: 'Evaluation',        label: 'Dashboard',             icon: LayoutDashboard },

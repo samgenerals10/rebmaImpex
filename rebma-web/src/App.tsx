@@ -48,6 +48,7 @@ import CeoInvoicesView from './views/ceo/InvoicesView';
 import CeoWalletsView from './views/ceo/WalletsView';
 import CeoAccountsView from './views/ceo/AccountsView';
 import CeoApprovalsView from './views/ceo/ApprovalsView';
+import CeoSupplierOrdersView from './views/ceo/SupplierOrdersView';
 
 // Finance dedicated pages
 import FinanceWalletsView from './views/finance/WalletsView';
@@ -2678,11 +2679,12 @@ export default function App() {
 
     // CEO dedicated sub-tab pages
     if (activeDepartment === 'CEO') {
-      if (activeSubTab === 'Transactions') return <CeoTransactionsView addNotification={addNotification} />;
-      if (activeSubTab === 'Invoices')     return <CeoInvoicesView addNotification={addNotification} />;
-      if (activeSubTab === 'Wallets')      return <CeoWalletsView />;
-      if (activeSubTab === 'Accounts')     return <CeoAccountsView />;
-      if (activeSubTab === 'Approvals')    return <CeoApprovalsView currentUser={currentUser} addNotification={addNotification} />;
+      if (activeSubTab === 'Transactions')    return <CeoTransactionsView addNotification={addNotification} />;
+      if (activeSubTab === 'Invoices')        return <CeoInvoicesView addNotification={addNotification} />;
+      if (activeSubTab === 'Wallets')         return <CeoWalletsView />;
+      if (activeSubTab === 'Accounts')        return <CeoAccountsView />;
+      if (activeSubTab === 'Approvals')       return <CeoApprovalsView currentUser={currentUser} addNotification={addNotification} />;
+      if (activeSubTab === 'SupplierOrders')  return <CeoSupplierOrdersView currentUser={currentUser} addNotification={addNotification} />;
     }
 
     // Finance dedicated sub-tab pages
@@ -2753,6 +2755,7 @@ export default function App() {
             activeCoordinates={activeCoordinates}
             deliveryStatus={deliveryStatus}
             gpsInterval={gpsInterval}
+            onNavigateToSupplierOrders={() => setActiveSubTab('SupplierOrders')}
           />
         );
       case 'MANAGEMENT':
