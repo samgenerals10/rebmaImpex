@@ -74,7 +74,6 @@ export default function Sidebar({
   const departmentTabs: Record<string, Array<{ id: string; label: string; icon: any }>> = {
     CEO: [
       { id: 'Overview',     label: 'Dashboard',            icon: LayoutDashboard },
-      { id: 'Analytics',    label: 'Analytics',             icon: BarChart2 },
       { id: 'Transactions', label: 'Transactions',          icon: ArrowLeftRight },
       { id: 'Invoices',     label: 'Invoices',              icon: FileText },
       { id: 'Wallets',      label: 'Wallets',               icon: Wallet },
@@ -85,7 +84,6 @@ export default function Sidebar({
     ],
     FINANCE: [
       { id: 'Evaluation',        label: 'Dashboard',             icon: LayoutDashboard },
-      { id: 'Analytics',         label: 'Analytics',              icon: BarChart2 },
       { id: 'Wallets',           label: 'Wallets',                icon: Wallet },
       { id: 'Transactions',      label: 'Transactions',           icon: ArrowLeftRight },
       { id: 'Invoices',          label: 'Invoices',               icon: FileText },
@@ -96,7 +94,6 @@ export default function Sidebar({
     ],
     MANAGEMENT: [
       { id: 'CargoApproval',  label: 'Dashboard',          icon: LayoutDashboard },
-      { id: 'Analytics',      label: 'Analytics',           icon: BarChart2 },
       { id: 'CreditApproval', label: 'Approvals',           icon: ClipboardCheck },
       { id: 'Transactions',   label: 'Transactions',        icon: ArrowLeftRight },
       { id: 'SetPrices',      label: 'Price Setting',       icon: Tag },
@@ -105,7 +102,6 @@ export default function Sidebar({
     ],
     HR: [
       { id: 'Employees',          label: 'Dashboard',            icon: LayoutDashboard },
-      { id: 'Analytics',          label: 'Analytics',             icon: BarChart2 },
       { id: 'Staff',              label: 'Staff',                 icon: Users },
       { id: 'Attendance',         label: 'Attendance',            icon: UserCheck },
       { id: 'Registrations',      label: 'Registrations',         icon: UserPlus },
@@ -116,7 +112,6 @@ export default function Sidebar({
     ],
     MARKETING: [
       { id: 'Overview',          label: 'Dashboard',        icon: LayoutDashboard },
-      { id: 'Analytics',         label: 'Analytics',         icon: BarChart2 },
       { id: 'CreateOrder',       label: 'Orders',            icon: ShoppingCart },
       { id: 'RegisterCustomer',  label: 'Customers',         icon: Users },
       { id: 'Invoices',          label: 'Invoices',          icon: FileText },
@@ -124,7 +119,6 @@ export default function Sidebar({
     ],
     OPERATIONS: [
       { id: 'Overview',       label: 'Dashboard',            icon: LayoutDashboard },
-      { id: 'Analytics',      label: 'Analytics',             icon: BarChart2 },
       { id: 'PortIngestion',  label: 'Cargo Intake',          icon: Package },
       { id: 'Stock',          label: 'Stock',                 icon: Layers },
       { id: 'OpsHistory',     label: 'Discrepancy Reports',   icon: AlertTriangle },
@@ -132,7 +126,6 @@ export default function Sidebar({
     ],
     DISPATCH: [
       { id: 'Deliveries',       label: 'Dashboard',              icon: LayoutDashboard },
-      { id: 'Analytics',        label: 'Analytics',               icon: BarChart2 },
       { id: 'ActiveDeliveries', label: 'Deliveries',              icon: Truck },
       { id: 'Drivers',          label: 'Drivers',                 icon: UserCheck },
       { id: 'Tracking',         label: 'GPS Tracking',            icon: MapPin },
@@ -146,24 +139,22 @@ export default function Sidebar({
     ],
     RECEPTION: [
       { id: 'VisitorLog',       label: 'Dashboard',             icon: LayoutDashboard },
-      { id: 'Analytics',        label: 'Analytics',              icon: BarChart2 },
       { id: 'Visitors',         label: 'Visitors',               icon: UserPlus },
       { id: 'EmployeeCheckin',  label: 'Attendance',             icon: UserCheck },
       { id: 'DailyReports',     label: 'Daily Reports',          icon: FileBarChart },
     ],
     PRODUCTION: [
       { id: 'Requisition',       label: 'Dashboard',             icon: LayoutDashboard },
-      { id: 'Analytics',         label: 'Analytics',              icon: BarChart2 },
       { id: 'InternalOrders',    label: 'Internal Orders',        icon: ClipboardList },
       { id: 'WIPStock',          label: 'WIP Stock',              icon: Layers },
       { id: 'OutputRecording',   label: 'Output Recording',       icon: Factory },
     ],
     LOGISTICS: [
       { id: 'Overview',          label: 'Dashboard',              icon: LayoutDashboard },
-      { id: 'Analytics',         label: 'Analytics',               icon: BarChart2 },
       { id: 'FleetOverview',     label: 'Fleet Overview',          icon: Truck },
       { id: 'FuelManagement',    label: 'Fuel Management',         icon: Gauge },
       { id: 'Maintenance',       label: 'Maintenance Schedule',    icon: Wrench },
+      { id: 'FleetAnalytics',    label: 'Fleet Analytics',         icon: BarChart3 },
     ],
     BOARDROOM: [
       { id: 'VideoConf',       label: 'Live Video Minutes',   icon: Video },

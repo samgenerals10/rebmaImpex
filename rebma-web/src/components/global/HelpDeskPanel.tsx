@@ -41,6 +41,22 @@ const SEED_NEWS: Omit<NewsItem, 'id' | 'created_at'>[] = [
   { title: 'Q2 Targets Review', body: 'All department heads are requested to submit Q2 performance data by end of month. Reports should be submitted via the Boardroom section.', author: 'Finance', pinned: false },
 ];
 
+const FALLBACK_ARTICLES: HelpArticle[] = [
+  { id: 'fallback-1', title: 'How to create a new sales order', category: 'Marketing',   body: 'Go to Marketing. Click Orders. Click + New Order. Search for customer. Select products. Choose payment mode. Submit to Finance.',    department: null, created_by: 'system', created_at: new Date().toISOString() },
+  { id: 'fallback-2', title: 'How to approve a payment',        category: 'Finance',    body: 'Go to Finance. Click Orders Queue. Review pending orders. Check payment details. Click Approve or Reject with reason.',              department: null, created_by: 'system', created_at: new Date().toISOString() },
+  { id: 'fallback-3', title: 'How to receive goods at port',    category: 'Operations', body: 'Go to Operations. Click Cargo Intake. Click + Log Intake. Fill supplier, product, quantity. Upload photo. Submit for review.',       department: null, created_by: 'system', created_at: new Date().toISOString() },
+  { id: 'fallback-4', title: 'How to approve staff registration',category: 'HR',        body: 'Go to HR. Click Registrations. Review staff details. Click Approve to generate password and token. Click Deny to reject.',          department: null, created_by: 'system', created_at: new Date().toISOString() },
+  { id: 'fallback-5', title: 'How to set product prices',       category: 'Management', body: 'Go to Management. Click Price Setting. Enter new selling price per product. Click Save. Finance and Marketing are notified.',       department: null, created_by: 'system', created_at: new Date().toISOString() },
+  { id: 'fallback-6', title: 'How to track a delivery',         category: 'Dispatch',   body: 'Go to Dispatch. Click Deliveries. Find delivery by order ID. Click Track for GPS location. Click Mark Delivered when done.',        department: null, created_by: 'system', created_at: new Date().toISOString() },
+  { id: 'fallback-7', title: 'How to use Messages and Boardroom',category: 'General',   body: 'Click the Messages icon in the header or Messages & Boardroom in the sidebar. Use Global Chat for company-wide messages.',          department: null, created_by: 'system', created_at: new Date().toISOString() },
+];
+
+const FALLBACK_NEWS: NewsItem[] = [
+  { id: 'news-fallback-1', title: 'Welcome to REBMA IMPEX Management System', body: 'We are pleased to announce the launch of our new operational management system covering all departments.', author: 'REBMA Management', pinned: true,  created_at: new Date().toISOString() },
+  { id: 'news-fallback-2', title: 'New Payment Methods Now Available',         body: 'Finance can now process Cheque and Mobile Money payments in addition to Cash. Credit orders require Manager approval.',             author: 'Finance Department', pinned: false, created_at: new Date().toISOString() },
+  { id: 'news-fallback-3', title: 'GPS Tracking Now Live',                     body: 'All delivery vehicles are now equipped with GPS tracking. Dispatch can monitor all active deliveries in real time.',                author: 'Dispatch Department', pinned: false, created_at: new Date().toISOString() },
+];
+
 const blankArticle = { title: '', body: '', category: 'General' };
 const blankNews    = { title: '', body: '', pinned: false };
 
@@ -61,22 +77,30 @@ export default function HelpDeskPanel({ currentUser, addNotification }: HelpDesk
     setLoading(true);
     try {
       const { data: arts, error: aErr } = await supabase.from('help_articles').select('*').order('created_at', { ascending: false });
-      if (!aErr && arts) {
-        if (arts.length === 0) {
-          await supabase.from('help_articles').insert(SEED_ARTICLES);
-          const { data: seeded } = await supabase.from('help_articles').select('*').order('created_at', { ascending: false });
-          if (seeded) setArticles(seeded);
-        } else setArticles(arts);
+      if (aErr || !arts || arts.length === 0) {
+        // Fallback: show hardcoded articles, try to seed in background
+        setArticles(FALLBACK_ARTICLES);
+        if (!aErr) {
+          supabase.from('help_articles').insert(SEED_ARTICLES).then(() => {});
+        }
+      } else {
+        setArticles(arts);
       }
+
       const { data: newsData, error: nErr } = await supabase.from('company_news').select('*').order('pinned', { ascending: false }).order('created_at', { ascending: false });
-      if (!nErr && newsData) {
-        if (newsData.length === 0) {
-          await supabase.from('company_news').insert(SEED_NEWS);
-          const { data: seededN } = await supabase.from('company_news').select('*').order('pinned', { ascending: false }).order('created_at', { ascending: false });
-          if (seededN) setNews(seededN);
-        } else setNews(newsData);
+      if (nErr || !newsData || newsData.length === 0) {
+        setNews(FALLBACK_NEWS);
+        if (!nErr) {
+          supabase.from('company_news').insert(SEED_NEWS).then(() => {});
+        }
+      } else {
+        setNews(newsData);
       }
-    } catch { /* tables may not exist */ }
+    } catch {
+      // Tables may not exist — always show fallback so panel is never empty
+      setArticles(FALLBACK_ARTICLES);
+      setNews(FALLBACK_NEWS);
+    }
     setLoading(false);
   }, []);
 

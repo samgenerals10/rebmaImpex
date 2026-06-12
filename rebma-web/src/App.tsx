@@ -40,6 +40,28 @@ import AnalyticsDashboard from './views/AnalyticsDashboard';
 import DepartmentManager from './views/DepartmentManager';
 import PayrollPanel from './views/PayrollPanel';
 import PerformanceAlertsPanel from './views/PerformanceAlertsPanel';
+import BreadcrumbBar from './components/layout/BreadcrumbBar';
+
+// CEO dedicated pages
+import CeoTransactionsView from './views/ceo/TransactionsView';
+import CeoInvoicesView from './views/ceo/InvoicesView';
+import CeoWalletsView from './views/ceo/WalletsView';
+import CeoAccountsView from './views/ceo/AccountsView';
+import CeoApprovalsView from './views/ceo/ApprovalsView';
+
+// Finance dedicated pages
+import FinanceWalletsView from './views/finance/WalletsView';
+import FinanceTransactionsView from './views/finance/TransactionsView';
+import FinanceRecurringView from './views/finance/RecurringView';
+
+// Management dedicated pages
+import ManagementTransactionsView from './views/management/TransactionsView';
+
+// Marketing dedicated pages
+import MarketingInvoicesView from './views/marketing/InvoicesView';
+
+// Dispatch dedicated pages
+import DispatchProofOfDeliveryView from './views/dispatch/ProofOfDeliveryView';
 
 export default function App() {
   // Helper to map UI dropdown values to database role values
@@ -2626,6 +2648,38 @@ export default function App() {
     if (activeSubTab === 'PerformanceAlerts') return <PerformanceAlertsPanel currentUser={currentUser} addNotification={addNotification} />;
     if (activeSubTab === 'Messages') { setActiveDepartment('BOARDROOM'); setActiveSubTab('VideoConf'); return null; }
 
+    // CEO dedicated sub-tab pages
+    if (activeDepartment === 'CEO') {
+      if (activeSubTab === 'Transactions') return <CeoTransactionsView addNotification={addNotification} />;
+      if (activeSubTab === 'Invoices')     return <CeoInvoicesView addNotification={addNotification} />;
+      if (activeSubTab === 'Wallets')      return <CeoWalletsView />;
+      if (activeSubTab === 'Accounts')     return <CeoAccountsView />;
+      if (activeSubTab === 'Approvals')    return <CeoApprovalsView currentUser={currentUser} addNotification={addNotification} />;
+    }
+
+    // Finance dedicated sub-tab pages
+    if (activeDepartment === 'FINANCE') {
+      if (activeSubTab === 'Wallets')           return <FinanceWalletsView />;
+      if (activeSubTab === 'Transactions')      return <FinanceTransactionsView addNotification={addNotification} />;
+      if (activeSubTab === 'Invoices')          return <CeoInvoicesView addNotification={addNotification} />;
+      if (activeSubTab === 'RecurringPayments') return <FinanceRecurringView currentUser={currentUser} addNotification={addNotification} />;
+    }
+
+    // Management dedicated sub-tab pages
+    if (activeDepartment === 'MANAGEMENT') {
+      if (activeSubTab === 'Transactions') return <ManagementTransactionsView addNotification={addNotification} />;
+    }
+
+    // Marketing dedicated sub-tab pages
+    if (activeDepartment === 'MARKETING') {
+      if (activeSubTab === 'Invoices') return <MarketingInvoicesView addNotification={addNotification} />;
+    }
+
+    // Dispatch dedicated sub-tab pages
+    if (activeDepartment === 'DISPATCH') {
+      if (activeSubTab === 'ProofOfDelivery') return <DispatchProofOfDeliveryView currentUser={currentUser} addNotification={addNotification} />;
+    }
+
     switch (activeDepartment) {
       case 'CEO':
         return (
@@ -3336,7 +3390,12 @@ export default function App() {
             <Header
               searchQuery={searchQuery}
               setSearchQuery={setSearchQuery}
-              onOpenChat={() => setActiveMobileView('chat')}
+              onOpenChat={() => {
+                setActiveDepartment('BOARDROOM');
+                sessionStorage.setItem('rebma-last-dept', 'BOARDROOM');
+                setActiveSubTab('VideoConf');
+                setActiveMobileView('dashboard');
+              }}
               notifications={notifications}
               onClearNotifications={() => setNotifications([])}
               onToggleSidebar={() => setIsSidebarOpen(prev => !prev)}
@@ -3363,8 +3422,23 @@ export default function App() {
             />
           </div>
 
+          {/* BREADCRUMB */}
+          <BreadcrumbBar
+            activeDepartment={currentUser?.requiresPasswordReset ? 'SETTINGS' : activeDepartment}
+            activeSubTab={currentUser?.requiresPasswordReset ? 'ChangePassword' : activeSubTab}
+            onDeptClick={() => {
+              const defaultMap: Record<string, string> = {
+                CEO: 'Overview', MANAGEMENT: 'CargoApproval', HR: 'Employees',
+                MARKETING: 'Overview', OPERATIONS: 'Overview', FINANCE: 'Evaluation',
+                PRODUCTION: 'Requisition', RECEPTION: 'VisitorLog', DISPATCH: 'Deliveries',
+                LOGISTICS: 'Overview', BOARDROOM: 'VideoConf', SETTINGS: 'Appearance',
+              };
+              setActiveSubTab(defaultMap[activeDepartment] || 'Overview');
+            }}
+          />
+
           {/* 3. DYNAMIC PAGES VIEW SELECTOR CONTAINER — fills remaining height, scrollable */}
-          <div className="flex-1 overflow-y-auto px-4 lg:px-6 pb-20 lg:pb-6 pt-4">
+          <div className="flex-1 overflow-y-auto px-4 lg:px-6 pb-20 lg:pb-6 pt-2">
             <AnimatePresence mode="wait">
               <motion.div
                 key={activeMobileView === 'dashboard' ? `${activeDepartment}-${activeSubTab}` : activeMobileView}
