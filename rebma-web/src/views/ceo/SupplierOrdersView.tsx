@@ -479,9 +479,9 @@ function NewOrderForm({ orders, currentUser, onClose, onSave }: {
     }
   }, [supplierName]);
 
-  // Pre-fill send email when supplier email is known
+  // Keep send email in sync with the supplier's contact email (never from CEO/user)
   useEffect(() => {
-    if (supplierEmail && !sendEmail) setSendEmail(supplierEmail);
+    setSendEmail(supplierEmail || '');
   }, [supplierEmail]);
 
   const updateProduct = (i: number, field: keyof ProductItem, value: string | number) => {
@@ -613,16 +613,16 @@ function NewOrderForm({ orders, currentUser, onClose, onSave }: {
     onSave(order);
   };
 
-  const inputCls = "w-full px-3 py-2 rounded-xl border border-[var(--border)] bg-[var(--bg-input)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]";
+  const inputCls = "w-full px-3 py-[7px] rounded-xl border border-[var(--border)] bg-[var(--bg-input)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-end" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
 
       {/* Panel */}
       <div
-        className="relative h-full w-full sm:w-[600px] bg-[var(--bg-card)] shadow-2xl overflow-y-auto flex flex-col"
+        className="relative w-full max-w-[580px] max-h-[90vh] overflow-y-auto bg-[var(--bg-card)] rounded-2xl shadow-2xl flex flex-col"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
@@ -648,7 +648,13 @@ function NewOrderForm({ orders, currentUser, onClose, onSave }: {
                 {showSuggestions && (
                   <div className="absolute top-full mt-1 left-0 right-0 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-lg z-20 overflow-hidden">
                     {supplierSuggestions.map((s, i) => (
-                      <button key={i} onClick={() => { setSupplierName(s); setShowSuggestions(false); setIsNewSupplier(false); }}
+                      <button key={i} onClick={() => {
+                        setSupplierName(s);
+                        setShowSuggestions(false);
+                        setIsNewSupplier(false);
+                        const knownEmail = orders.find(o => o.supplier_name === s)?.supplier_email || '';
+                        setSupplierEmail(knownEmail);
+                      }}
                         className="w-full text-left px-4 py-2.5 text-sm hover:bg-[var(--accent-light)] text-[var(--text-primary)]">{s}</button>
                     ))}
                   </div>
@@ -794,33 +800,33 @@ function NewOrderForm({ orders, currentUser, onClose, onSave }: {
           <h4 className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">Send Order Via</h4>
 
           <div className="grid grid-cols-2 gap-3">
-            {/* Email card */}
+            {/* Email button */}
             <button
               type="button"
               onClick={() => setSendChannel(sendChannel === 'email' ? null : 'email')}
-              className={`flex flex-col items-center gap-2 p-4 rounded-2xl border-2 transition-all text-center ${
+              className={`flex flex-row items-center gap-2 h-12 px-4 rounded-full border-2 transition-all ${
                 sendChannel === 'email'
                   ? 'border-[var(--accent)] bg-[var(--accent-light)]'
                   : 'border-[var(--border)] bg-[var(--bg-input)] hover:border-[var(--accent)]'
               }`}
             >
-              <Mail className={`w-6 h-6 ${sendChannel === 'email' ? 'text-[var(--accent)]' : 'text-[var(--text-muted)]'}`} />
+              <Mail className={`w-[18px] h-[18px] flex-none ${sendChannel === 'email' ? 'text-[var(--accent)]' : 'text-[var(--text-muted)]'}`} />
               <span className={`text-sm font-semibold ${sendChannel === 'email' ? 'text-[var(--accent)]' : 'text-[var(--text-secondary)]'}`}>
                 Send via Email
               </span>
             </button>
 
-            {/* WhatsApp card */}
+            {/* WhatsApp button */}
             <button
               type="button"
               onClick={() => setSendChannel(sendChannel === 'whatsapp' ? null : 'whatsapp')}
-              className={`flex flex-col items-center gap-2 p-4 rounded-2xl border-2 transition-all text-center ${
+              className={`flex flex-row items-center gap-2 h-12 px-4 rounded-full border-2 transition-all ${
                 sendChannel === 'whatsapp'
                   ? 'border-green-500 bg-green-50 dark:bg-green-950/30'
                   : 'border-[var(--border)] bg-[var(--bg-input)] hover:border-green-400'
               }`}
             >
-              <MessageCircle className={`w-6 h-6 ${sendChannel === 'whatsapp' ? 'text-green-600' : 'text-[var(--text-muted)]'}`} />
+              <MessageCircle className={`w-[18px] h-[18px] flex-none ${sendChannel === 'whatsapp' ? 'text-green-600' : 'text-[var(--text-muted)]'}`} />
               <span className={`text-sm font-semibold ${sendChannel === 'whatsapp' ? 'text-green-700 dark:text-green-400' : 'text-[var(--text-secondary)]'}`}>
                 Send via WhatsApp
               </span>
