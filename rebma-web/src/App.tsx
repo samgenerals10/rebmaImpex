@@ -54,6 +54,15 @@ import CeoSupplierOrdersView from './views/ceo/SupplierOrdersView';
 import FinanceWalletsView from './views/finance/WalletsView';
 import FinanceTransactionsView from './views/finance/TransactionsView';
 import FinanceRecurringView from './views/finance/RecurringView';
+import FinanceOverviewView from './views/finance/OverviewView';
+import FinanceOrdersQueueView from './views/finance/OrdersQueueView';
+import FinanceCreditMgmtView from './views/finance/CreditMgmtView';
+import FinanceExpensesView from './views/finance/ExpensesView';
+import FinanceTaxVATView from './views/finance/TaxVATView';
+import FinanceChequesView from './views/finance/ChequesView';
+import FinanceMobileMoneyView from './views/finance/MobileMoneyView';
+import FinancePettyCashView from './views/finance/PettyCashView';
+import FinanceReportsView from './views/finance/ReportsView';
 
 // Management dedicated pages
 import ManagementTransactionsView from './views/management/TransactionsView';
@@ -2702,10 +2711,19 @@ export default function App() {
 
     // Finance dedicated sub-tab pages
     if (activeDepartment === 'FINANCE') {
+      if (activeSubTab === 'Evaluation')        return <FinanceOverviewView addNotification={addNotification} setActiveSubTab={setActiveSubTab} currentUser={currentUser} ordersList={ordersList} onEvaluateOrder={handleEvaluateOrder} />;
+      if (activeSubTab === 'OrdersQueue')       return <FinanceOrdersQueueView addNotification={addNotification} ordersList={ordersList} setOrdersList={setOrdersList} onEvaluateOrder={handleEvaluateOrder} currentUser={currentUser} />;
       if (activeSubTab === 'Wallets')           return <FinanceWalletsView />;
       if (activeSubTab === 'Transactions')      return <FinanceTransactionsView addNotification={addNotification} />;
       if (activeSubTab === 'Invoices')          return <CeoInvoicesView addNotification={addNotification} />;
       if (activeSubTab === 'RecurringPayments') return <FinanceRecurringView currentUser={currentUser} addNotification={addNotification} />;
+      if (activeSubTab === 'CreditMgmt')        return <FinanceCreditMgmtView addNotification={addNotification} currentUser={currentUser} />;
+      if (activeSubTab === 'Expenses')          return <FinanceExpensesView addNotification={addNotification} currentUser={currentUser} />;
+      if (activeSubTab === 'TaxVAT')            return <FinanceTaxVATView addNotification={addNotification} currentUser={currentUser} />;
+      if (activeSubTab === 'Cheques')           return <FinanceChequesView addNotification={addNotification} currentUser={currentUser} />;
+      if (activeSubTab === 'MobileMoney')       return <FinanceMobileMoneyView addNotification={addNotification} currentUser={currentUser} />;
+      if (activeSubTab === 'PettyCash')         return <FinancePettyCashView addNotification={addNotification} currentUser={currentUser} />;
+      if (activeSubTab === 'FinReports')        return <FinanceReportsView addNotification={addNotification} currentUser={currentUser} />;
     }
 
     // Management dedicated sub-tab pages

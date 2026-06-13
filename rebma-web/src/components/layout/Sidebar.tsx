@@ -8,7 +8,8 @@ import {
   HelpCircle, MessageSquarePlus, LayoutDashboard, BarChart2, ArrowLeftRight, Wallet,
   CreditCard, ClipboardCheck, MapPin, MessageCircle, RefreshCw, Banknote, ShoppingCart,
   Package, AlertTriangle, UserCheck, Camera, UserPlus, Calendar, Building2, AlertCircle,
-  FileBarChart, ClipboardList, Factory, Wrench, BarChart3, Gauge, Plus, ShoppingBag
+  FileBarChart, ClipboardList, Factory, Wrench, BarChart3, Gauge, Plus, ShoppingBag,
+  Smartphone, Receipt, Calculator, PiggyBank
 } from 'lucide-react';
 import type { CurrentUser } from '../../types/erp';
 
@@ -85,13 +86,20 @@ export default function Sidebar({
       { id: 'Messages',        label: 'Messages & Boardroom',  icon: MessageCircle },
     ],
     FINANCE: [
-      { id: 'Evaluation',        label: 'Dashboard',             icon: LayoutDashboard },
+      { id: 'Evaluation',        label: 'Dashboard',              icon: LayoutDashboard },
+      { id: 'OrdersQueue',       label: 'Orders Queue',           icon: ClipboardList },
+      { id: 'RecordPayment',     label: 'Payments',               icon: DollarSign },
+      { id: 'Invoices',          label: 'Invoices',               icon: FileText },
       { id: 'Wallets',           label: 'Wallets',                icon: Wallet },
       { id: 'Transactions',      label: 'Transactions',           icon: ArrowLeftRight },
-      { id: 'Invoices',          label: 'Invoices',               icon: FileText },
       { id: 'RecurringPayments', label: 'Recurring',              icon: RefreshCw },
-      { id: 'RecordPayment',     label: 'Payments',               icon: DollarSign },
-      { id: 'OrdersQueue',       label: 'Orders Queue',           icon: ClipboardList },
+      { id: 'CreditMgmt',        label: 'Credit Management',      icon: CreditCard },
+      { id: 'Expenses',          label: 'Expenses',               icon: Receipt },
+      { id: 'TaxVAT',            label: 'Tax & VAT',              icon: Calculator },
+      { id: 'Cheques',           label: 'Cheques',                icon: FileText },
+      { id: 'MobileMoney',       label: 'Mobile Money',           icon: Smartphone },
+      { id: 'PettyCash',         label: 'Petty Cash',             icon: PiggyBank },
+      { id: 'FinReports',        label: 'Reports',                icon: BarChart2 },
       { id: 'Payroll',           label: 'Payroll',                icon: Banknote },
     ],
     MANAGEMENT: [
