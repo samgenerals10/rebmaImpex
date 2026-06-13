@@ -68,6 +68,7 @@ export interface CurrentUser {
   email: string;
   department: string;
   isCeo: boolean;
+  isSuperAdmin?: boolean;
   photo?: string;
   requiresPasswordReset?: boolean;
   tempAuthSecret?: string | null;

@@ -65,7 +65,8 @@ export default function Header({
   const [showPanel, setShowPanel] = useState(false);
 
   const isCeo = currentUser?.isCeo || currentUser?.department?.toUpperCase() === 'CEO';
-  
+  const isSuperAdmin = currentUser?.isSuperAdmin ?? false;
+
   const allDepts = [
     { value: 'CEO', label: 'CEO Command', icon: ShieldCheck },
     { value: 'MANAGEMENT', label: 'Management Office', icon: Layers },
@@ -82,7 +83,7 @@ export default function Header({
   ];
 
   const availableDepts = allDepts.filter(d => {
-    if (isCeo) return true;
+    if (isSuperAdmin || isCeo) return true;
     const rawDept = currentUser?.department || '';
     const normalizedUserDept = rawDept.toUpperCase() === 'HUMAN RESOURCES' ? 'HR' : rawDept.toUpperCase();
     if (d.value === 'BOARDROOM' || d.value === 'SETTINGS') return true;
@@ -112,7 +113,14 @@ export default function Header({
                 <div className="fixed inset-0 z-[490]" onClick={() => setShowAvatarDropdown(false)} />
                 <div className="absolute left-0 mt-2 w-64 bg-bg-card dark:bg-slate-900 border border-[var(--border)] dark:border-slate-800 rounded-2xl shadow-2xl z-[500] py-3 animate-fade-in-up text-text-primary dark:text-slate-200">
                   <div className="px-4 pb-3 border-b border-[var(--border)] dark:border-slate-800">
-                    <p className="text-xs font-extrabold text-text-primary">{currentUser?.fullName}</p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-xs font-extrabold text-text-primary">{currentUser?.fullName}</p>
+                      {isSuperAdmin && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-700 border border-amber-300 uppercase tracking-wide">
+                          SUPER ADMIN
+                        </span>
+                      )}
+                    </div>
                     <p className="text-[10px] text-text-secondary mt-0.5">{currentUser?.department}</p>
                   </div>
                   
@@ -452,6 +460,11 @@ export default function Header({
               <span className="text-xs font-semibold text-[var(--text-primary)] hidden xl:block max-w-[120px] truncate">
                 {currentUser?.fullName || 'User'}
               </span>
+              {isSuperAdmin && (
+                <span className="hidden xl:inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-700 border border-amber-300 uppercase tracking-wide whitespace-nowrap">
+                  SUPER ADMIN
+                </span>
+              )}
               <User className="w-3.5 h-3.5 text-[var(--text-muted)] hidden xl:block" />
             </button>
 
@@ -468,7 +481,14 @@ export default function Header({
                     className="absolute right-0 top-full mt-2 w-64 bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-xl z-[200] py-3 text-[var(--text-primary)] overflow-hidden"
                   >
                     <div className="px-4 pb-3 border-b border-[var(--border)]">
-                      <p className="text-xs font-bold text-[var(--text-primary)]">{currentUser?.fullName}</p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-xs font-bold text-[var(--text-primary)]">{currentUser?.fullName}</p>
+                        {isSuperAdmin && (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-700 border border-amber-300 uppercase tracking-wide">
+                            SUPER ADMIN
+                          </span>
+                        )}
+                      </div>
                       <p className="text-[10px] text-[var(--text-secondary)] mt-0.5">{currentUser?.department}</p>
                     </div>
 

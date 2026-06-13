@@ -353,7 +353,21 @@ export default function SettingsDashboard({
 
       {/* PROFILE SETTINGS */}
       {activeSubTab === 'Profile' && (
-        <div className="max-w-xl">
+        <div className="max-w-xl space-y-4">
+          {/* Super Admin Test Mode info card */}
+          {currentUser?.isSuperAdmin && (
+            <div className="p-4 bg-amber-50 border border-amber-300 rounded-2xl flex gap-3">
+              <ShieldCheck className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <p className="text-sm font-bold text-amber-800">Super Admin Test Mode</p>
+                <p className="text-xs text-amber-700 leading-relaxed">
+                  You are logged in as Super Admin. You can switch to any department using the department
+                  switcher in the sidebar to test all features. All actions are real and will be saved to
+                  the database. Use with care.
+                </p>
+              </div>
+            </div>
+          )}
           <div className="p-4 md:p-6 bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-[var(--box-shadow)] space-y-6">
             <div className="flex items-center gap-2">
               <User className="w-5 h-5 text-[var(--accent)]" />

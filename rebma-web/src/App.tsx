@@ -892,6 +892,7 @@ export default function App() {
             email: profile.email,
             department: profile.department,
             isCeo: profile.isCeo,
+            isSuperAdmin: profile.isSuperAdmin ?? false,
             requiresPasswordReset: profile.requiresPasswordReset,
             photo: profile.photo
           });

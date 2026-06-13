@@ -41,6 +41,7 @@ const mapProfileToFrontend = (db: any): any => {
     phone: db.phone,
     status: db.status,
     isCeo: db.is_ceo ?? db.isCeo ?? ((db.role || '').toUpperCase() === 'CEO'),
+    isSuperAdmin: db.is_super_admin ?? false,
     photo: db.photo,
     passwordHash: db.password_hash || db.passwordHash,
     createdAt: db.created_at || db.createdAt,

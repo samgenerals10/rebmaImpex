@@ -69,6 +69,7 @@ export default function Sidebar({
 
   const isCeo = currentUser?.isCeo || currentUser?.department === 'CEO';
   const isManagement = currentUser?.department === 'MANAGEMENT';
+  const isSuperAdmin = currentUser?.isSuperAdmin ?? false;
   const userDept = currentUser?.department || 'CEO';
 
   const departmentTabs: Record<string, Array<{ id: string; label: string; icon: any }>> = {
@@ -186,6 +187,7 @@ export default function Sidebar({
   ];
 
   const availableDepts = allDepts.filter(d => {
+    if (isSuperAdmin) return true;
     const isUserCeo = currentUser?.isCeo || currentUser?.department?.toUpperCase() === 'CEO';
     if (isUserCeo) return true;
     const rawDept = currentUser?.department || '';
@@ -361,7 +363,7 @@ export default function Sidebar({
           </div>
 
           {/* User Profile */}
-          <div className={`mb-3 shrink-0 ${isActualCollapsed ? 'px-1 py-1 justify-center' : 'px-2 py-2'} bg-[var(--accent-light)] rounded-2xl flex items-center gap-3 border border-[var(--border)] transition-all duration-300`}>
+          <div className={`mb-1 shrink-0 ${isActualCollapsed ? 'px-1 py-1 justify-center' : 'px-2 py-2'} bg-[var(--accent-light)] rounded-2xl flex items-center gap-3 border border-[var(--border)] transition-all duration-300`}>
             <div className="w-9 h-9 rounded-full bg-[var(--accent)] text-white flex items-center justify-center font-bold text-sm shrink-0 relative shadow-card">
               {currentUser?.fullName?.[0] || 'U'}
               <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-white" />
@@ -371,6 +373,15 @@ export default function Sidebar({
               <p className="text-[10px] text-[var(--text-secondary)] leading-none mt-1 truncate">{currentUser?.department}</p>
             </div>
           </div>
+          {/* Super Admin indicator */}
+          {isSuperAdmin && (
+            <div className={`mb-3 shrink-0 transition-all duration-300 ${isActualCollapsed ? 'opacity-0 h-0 overflow-hidden' : 'opacity-100'}`}>
+              <div className="mx-2 px-3 py-1 bg-amber-50 border border-amber-300 rounded-xl flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse shrink-0" />
+                <span className="text-[10px] font-bold text-amber-700 uppercase tracking-wide">Full Access Mode</span>
+              </div>
+            </div>
+          )}
 
           {/* Boardroom Button */}
           <div className="mb-3 px-1 shrink-0">
@@ -419,7 +430,7 @@ export default function Sidebar({
                 </div>
               </>
             )}
-            {(isCeo || isManagement) && activeDepartment !== userDept && activeDepartment !== 'SETTINGS' && (
+            {!isSuperAdmin && (isCeo || isManagement) && activeDepartment !== userDept && activeDepartment !== 'SETTINGS' && (
               <div className={`mt-1 px-2 py-0.5 bg-amber-500/15 border border-amber-500/35 rounded-lg text-[9px] text-amber-700 font-semibold text-center transition-all duration-300 ${isActualCollapsed ? 'opacity-0 h-0 py-0 border-none overflow-hidden' : ''}`}>
                 👁 VIEW ONLY — {isCeo ? 'CEO' : 'MANAGEMENT'} ACCESS
               </div>
