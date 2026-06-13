@@ -86,6 +86,9 @@ import OperationsAnalyticsView from './views/operations/AnalyticsView';
 // Management dedicated pages
 import MgmtAnalyticsView from './views/management/MgmtAnalyticsView';
 import DeptActivityView from './views/management/DeptActivityView';
+import MgmtOverviewView from './views/management/MgmtOverviewView';
+import MgmtApprovalsView from './views/management/MgmtApprovalsView';
+import MgmtPriceSettingView from './views/management/MgmtPriceSettingView';
 
 // Production dedicated pages
 import ProductionInternalOrdersView from './views/production/InternalOrdersView';
@@ -2707,6 +2710,9 @@ export default function App() {
 
     // Management dedicated sub-tab pages
     if (activeDepartment === 'MANAGEMENT') {
+      if (activeSubTab === 'CargoApproval')   return <MgmtOverviewView addNotification={addNotification} setActiveSubTab={setActiveSubTab} currentUser={currentUser} />;
+      if (activeSubTab === 'CreditApproval')  return <MgmtApprovalsView addNotification={addNotification} currentUser={currentUser} />;
+      if (activeSubTab === 'SetPrices')       return <MgmtPriceSettingView addNotification={addNotification} currentUser={currentUser} />;
       if (activeSubTab === 'Transactions')    return <ManagementTransactionsView addNotification={addNotification} />;
       if (activeSubTab === 'MgmtAnalytics')   return <MgmtAnalyticsView addNotification={addNotification} />;
       if (activeSubTab === 'DeptActivity')    return <DeptActivityView addNotification={addNotification} />;
