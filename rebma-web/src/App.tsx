@@ -81,6 +81,7 @@ import ReceptionDailyReportsView from './views/reception/DailyReportsView';
 
 // Operations dedicated pages
 import OperationsStockView from './views/operations/StockView';
+import OperationsAnalyticsView from './views/operations/AnalyticsView';
 
 // Production dedicated pages
 import ProductionInternalOrdersView from './views/production/InternalOrdersView';
@@ -2745,6 +2746,7 @@ export default function App() {
     // Operations dedicated sub-tab pages
     if (activeDepartment === 'OPERATIONS') {
       if (activeSubTab === 'Stock') return <OperationsStockView incomingGoodsList={incomingGoodsList} addNotification={addNotification} />;
+      if (activeSubTab === 'OpsAnalytics') return <OperationsAnalyticsView addNotification={addNotification} />;
     }
 
     // Production dedicated sub-tab pages
@@ -2818,6 +2820,7 @@ export default function App() {
             onReleaseToDispatch={handleReleaseToDispatch}
             activeSubTab={activeSubTab}
             addNotification={addNotification}
+            setActiveSubTab={setActiveSubTab}
           />
         );
       case 'FINANCE':

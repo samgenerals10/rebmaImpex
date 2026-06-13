@@ -20,6 +20,7 @@ interface OperationsDashboardProps {
   onReleaseToDispatch: (id: string) => void;
   activeSubTab: string;
   addNotification: (msg: string) => void;
+  setActiveSubTab?: (tab: string) => void;
 }
 
 const handleSort = (
@@ -43,7 +44,8 @@ export default function OperationsDashboard({
   onLogIntake,
   onReleaseToDispatch,
   activeSubTab = 'PortIngestion',
-  addNotification
+  addNotification,
+  setActiveSubTab
 }: OperationsDashboardProps) {
 
   // Local state copies of lists to support edit, delete, duplicate actions locally
@@ -757,6 +759,74 @@ export default function OperationsDashboard({
               <Line type="monotone" dataKey="Released" stroke="#10b981" strokeWidth={2} />
             </LineChart>
           </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Quick Actions + Low Stock Alerts */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+        {/* Quick Actions */}
+        <div className="p-5 bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] border border-[var(--border)]">
+          <h3 className="text-sm font-bold text-[var(--text-primary)] mb-4">Quick Actions</h3>
+          <div className="grid grid-cols-2 gap-3">
+            {[
+              { label: 'Log Cargo Intake', tab: 'PortIngestion', icon: PackageCheck, color: 'var(--accent)' },
+              { label: 'View Stock', tab: 'Stock', icon: Layers, color: '#8b5cf6' },
+              { label: 'Discrepancy Reports', tab: 'OpsHistory', icon: AlertTriangle, color: '#f59e0b' },
+              { label: 'Fulfillment Queue', tab: 'Releases', icon: Truck, color: '#10b981' },
+            ].map(action => {
+              const Icon = action.icon;
+              return (
+                <button
+                  key={action.tab}
+                  onClick={() => setActiveSubTab?.(action.tab)}
+                  className="flex flex-col items-center gap-2 p-4 rounded-2xl border border-[var(--border)] hover:border-[var(--accent)] hover:bg-[var(--accent-light)] transition-all cursor-pointer text-center"
+                >
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${action.color}18` }}>
+                    <Icon className="w-5 h-5" style={{ color: action.color }} />
+                  </div>
+                  <span className="text-xs font-semibold text-[var(--text-secondary)] leading-tight">{action.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Low Stock Alerts */}
+        <div className="p-5 bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] border border-[var(--border)]">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-amber-500" />
+              <h3 className="text-sm font-bold text-[var(--text-primary)]">Low Stock Alerts</h3>
+            </div>
+            <button onClick={() => setActiveSubTab?.('Stock')} className="text-xs text-[var(--accent)] hover:underline font-semibold cursor-pointer">View All →</button>
+          </div>
+          <div className="space-y-3">
+            {[
+              { name: 'Hydraulic Hose Fittings', sku: 'HHF-200', current: 12, capacity: 300 },
+              { name: 'Chemical Drums (20L)', sku: 'CHD-300', current: 0, capacity: 100 },
+              { name: 'Electrical Cables (Roll)', sku: 'ELC-600', current: 15, capacity: 200 },
+              { name: 'Lubricant Oil (5L)', sku: 'LBO-800', current: 8, capacity: 80 },
+            ].map(item => {
+              const pct = item.capacity > 0 ? Math.round((item.current / item.capacity) * 100) : 0;
+              const isOut = item.current === 0;
+              return (
+                <div key={item.sku}>
+                  <div className="flex items-center justify-between mb-1">
+                    <div>
+                      <p className="text-xs font-semibold text-[var(--text-primary)]">{item.name}</p>
+                      <p className="text-[10px] text-[var(--text-muted)] font-mono">{item.sku}</p>
+                    </div>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${isOut ? 'bg-rose-500/10 text-rose-600' : 'bg-amber-500/10 text-amber-600'}`}>
+                      {isOut ? 'OUT OF STOCK' : `${pct}%`}
+                    </span>
+                  </div>
+                  <div className="h-1.5 bg-[var(--bg)] rounded-full overflow-hidden">
+                    <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: isOut ? '#f43f5e' : '#f59e0b' }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
 

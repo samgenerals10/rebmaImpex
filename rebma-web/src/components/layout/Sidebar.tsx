@@ -125,6 +125,7 @@ export default function Sidebar({
       { id: 'Stock',          label: 'Stock',                 icon: Layers },
       { id: 'OpsHistory',     label: 'Discrepancy Reports',   icon: AlertTriangle },
       { id: 'Releases',       label: 'Fulfillment',           icon: PackageCheck },
+      { id: 'OpsAnalytics',   label: 'Analytics',             icon: BarChart2 },
     ],
     DISPATCH: [
       { id: 'Deliveries',       label: 'Dashboard',              icon: LayoutDashboard },
