@@ -129,6 +129,8 @@ export default function Sidebar({
       { id: 'RegisterCustomer',  label: 'Customers',         icon: Users },
       { id: 'Invoices',          label: 'Invoices',          icon: FileText },
       { id: 'SalesHistory',      label: 'Sales History',     icon: TrendingUp },
+      { id: 'CreditRequests',    label: 'Credit Requests',   icon: CreditCard },
+      { id: 'MktAnalytics',      label: 'Analytics',         icon: BarChart2 },
     ],
     OPERATIONS: [
       { id: 'Overview',       label: 'Dashboard',            icon: LayoutDashboard },

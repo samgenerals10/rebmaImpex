@@ -72,6 +72,9 @@ import MarketingInvoicesView from './views/marketing/InvoicesView';
 import MarketingOrdersView from './views/marketing/OrdersView';
 import MarketingCustomersView from './views/marketing/CustomersView';
 import MarketingSalesHistoryView from './views/marketing/SalesHistoryView';
+import MarketingOverviewView from './views/marketing/OverviewView';
+import MarketingCreditRequestsView from './views/marketing/CreditRequestsView';
+import MarketingAnalyticsView from './views/marketing/AnalyticsView';
 
 // Dispatch dedicated pages
 import DispatchProofOfDeliveryView from './views/dispatch/ProofOfDeliveryView';
@@ -2742,10 +2745,13 @@ export default function App() {
 
     // Marketing dedicated sub-tab pages
     if (activeDepartment === 'MARKETING') {
-      if (activeSubTab === 'Invoices') return <MarketingInvoicesView addNotification={addNotification} />;
-      if (activeSubTab === 'CreateOrder') return <MarketingOrdersView ordersList={ordersList} onCreateOrder={handleCreateOrder} addNotification={addNotification} />;
-      if (activeSubTab === 'RegisterCustomer') return <MarketingCustomersView customersList={customersList} onRegisterCustomer={handleRegisterCustomer} addNotification={addNotification} />;
-      if (activeSubTab === 'SalesHistory') return <MarketingSalesHistoryView ordersList={ordersList} addNotification={addNotification} />;
+      if (activeSubTab === 'Overview')          return <MarketingOverviewView addNotification={addNotification} setActiveSubTab={setActiveSubTab} currentUser={currentUser} ordersList={ordersList} customersList={customersList} />;
+      if (activeSubTab === 'Invoices')          return <MarketingInvoicesView addNotification={addNotification} />;
+      if (activeSubTab === 'CreateOrder')       return <MarketingOrdersView ordersList={ordersList} onCreateOrder={handleCreateOrder} addNotification={addNotification} />;
+      if (activeSubTab === 'RegisterCustomer')  return <MarketingCustomersView customersList={customersList} onRegisterCustomer={handleRegisterCustomer} addNotification={addNotification} />;
+      if (activeSubTab === 'SalesHistory')      return <MarketingSalesHistoryView ordersList={ordersList} addNotification={addNotification} />;
+      if (activeSubTab === 'CreditRequests')    return <MarketingCreditRequestsView addNotification={addNotification} currentUser={currentUser} />;
+      if (activeSubTab === 'MktAnalytics')      return <MarketingAnalyticsView addNotification={addNotification} currentUser={currentUser} />;
     }
 
     // Dispatch dedicated sub-tab pages
