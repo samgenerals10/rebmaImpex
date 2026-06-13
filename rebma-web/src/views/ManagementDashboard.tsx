@@ -19,6 +19,8 @@ interface ManagementDashboardProps {
   onSetPrice: (price: Omit<GoodsPrice, 'id'>) => void;
   activeSubTab: string;
   currentUser: { fullName: string; department: string } | null;
+  addNotification?: (msg: string) => void;
+  setActiveSubTab?: (tab: string) => void;
 }
 
 const handleSort = (
@@ -46,7 +48,9 @@ export default function ManagementDashboard({
   onApproveCredit,
   onSetPrice,
   activeSubTab = 'CargoApproval',
-  currentUser
+  currentUser,
+  addNotification,
+  setActiveSubTab
 }: ManagementDashboardProps) {
 
   // Local state copy of incomingGoods, orders, audit log to enable row-specific client-side actions
@@ -434,6 +438,41 @@ export default function ManagementDashboard({
       {/* ══ DESKTOP LAYOUT (lg+) — UNCHANGED ══ */}
       <div className="hidden lg:block">
       <div className="space-y-6">
+
+      {/* Greeting */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <div>
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight text-[var(--text-primary)]">
+            Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 17 ? 'afternoon' : 'evening'}, {currentUser?.fullName?.split(' ')[0] || 'Manager'} 👋
+          </h1>
+          <p className="text-xs sm:text-sm text-[var(--text-muted)] mt-1">Here's what needs your attention today.</p>
+        </div>
+        <div className="text-xs text-[var(--text-muted)] font-mono hidden xl:block">
+          {new Date().toLocaleDateString('en-GB', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}
+        </div>
+      </div>
+
+      {/* Quick Actions Pill Row */}
+      <div className="flex flex-wrap gap-2">
+        {[
+          { label: 'Approve Intake', tab: 'CargoApproval', icon: '📦' },
+          { label: 'Set Price', tab: 'SetPrices', icon: '🏷️' },
+          { label: 'Review Credit', tab: 'CreditApproval', icon: '💳' },
+          { label: 'View Audit Log', tab: 'Ledger', icon: '📋' },
+          { label: 'Dept Activity', tab: 'DeptActivity', icon: '🏢' },
+          { label: 'Performance Alerts', tab: 'PerformanceAlerts', icon: '⚠️' },
+        ].map(qa => (
+          <button
+            key={qa.tab}
+            onClick={() => setActiveSubTab?.(qa.tab)}
+            className="flex items-center gap-1.5 px-4 py-2 bg-[var(--bg-card)] hover:bg-[var(--accent-light)] border border-[var(--border)] hover:border-[var(--accent)] rounded-full text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--accent)] transition-all cursor-pointer"
+          >
+            <span>{qa.icon}</span>
+            <span>{qa.label}</span>
+          </button>
+        ))}
+      </div>
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
@@ -500,6 +539,87 @@ export default function ManagementDashboard({
               <Line type="monotone" dataKey="Rejected" stroke="#f43f5e" strokeWidth={2} />
             </LineChart>
           </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Dashboard Widgets Row: Pending Approvals + Low Stock Alerts */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+        {/* Pending Approvals List */}
+        <div className="p-5 bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-[var(--box-shadow)] space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-bold text-[var(--text-primary)]">Pending Approvals</h3>
+            <button onClick={() => setActiveSubTab?.('CargoApproval')} className="text-xs text-[var(--accent)] font-semibold hover:underline cursor-pointer">View All →</button>
+          </div>
+          {localGoods.filter(g => g.status === 'PENDING_MANAGEMENT_APPROVAL').length === 0 && localOrders.filter(o => o.status === 'PENDING_MANAGEMENT').length === 0 ? (
+            <p className="text-xs text-emerald-600 font-semibold py-4 text-center">No pending approvals 🎉</p>
+          ) : (
+            <div className="space-y-2">
+              {[
+                ...localGoods.filter(g => g.status === 'PENDING_MANAGEMENT_APPROVAL').slice(0, 3).map(g => ({
+                  id: g.id, icon: '📦', title: `Cargo: ${g.productName || g.company || 'Unknown'}`,
+                  sub: `Operations · ${g.createdAt || 'Just now'}`, type: 'Cargo', amount: g.unitPrice ? `GHS ${g.unitPrice}` : undefined,
+                  onApprove: () => { setActiveSubTab?.('CargoApproval'); addNotification?.(`Opening cargo approval for ${g.goodsCode || g.id}. Set a price to approve.`); },
+                  onReject: () => { onApproveIntake(g.id, false); addNotification?.(`Cargo ${g.id} rejected.`); }
+                })),
+                ...localOrders.filter(o => o.status === 'PENDING_MANAGEMENT').slice(0, 3).map(o => ({
+                  id: o.id, icon: '💳', title: `Credit: ${o.clientName}`,
+                  sub: `Marketing · ${o.createdAt}`, type: 'Credit', amount: `GHS ${o.totalAmount.toLocaleString()}`,
+                  onApprove: () => { onApproveCredit(o.id, true); addNotification?.(`Credit order ${o.id} approved.`); },
+                  onReject:  () => { onApproveCredit(o.id, false); addNotification?.(`Credit order ${o.id} rejected.`); }
+                })),
+              ].slice(0, 5).map(item => (
+                <div key={item.id} className="flex items-center justify-between gap-3 p-3 bg-[var(--bg)] rounded-xl border border-[var(--border)]">
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <span className="text-base shrink-0">{item.icon}</span>
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-[var(--text-primary)] truncate">{item.title}</p>
+                      <p className="text-[10px] text-[var(--text-muted)]">{item.sub}</p>
+                    </div>
+                  </div>
+                  {item.amount && <span className="text-xs font-mono text-[var(--text-muted)] shrink-0">{item.amount}</span>}
+                  <div className="flex gap-1.5 shrink-0">
+                    <button onClick={item.onApprove} className="px-2.5 py-1 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-[10px] font-bold cursor-pointer transition-colors">✓</button>
+                    <button onClick={item.onReject} className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg text-[10px] font-bold cursor-pointer transition-colors">✗</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Low Stock Alerts */}
+        <div className="p-5 bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-[var(--box-shadow)] space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-bold text-[var(--text-primary)]">Stock Alerts</h3>
+            <button onClick={() => setActiveSubTab?.('DeptActivity')} className="text-xs text-[var(--accent)] font-semibold hover:underline cursor-pointer">View Activity →</button>
+          </div>
+          <div className="space-y-3">
+            {[
+              { name: 'Hydraulic Hose Fittings', sku: 'HHF-200', current: 12, capacity: 300 },
+              { name: 'Chemical Drums (20L)',     sku: 'CHD-300', current: 0,  capacity: 100 },
+              { name: 'Electrical Cables (Roll)', sku: 'ELC-600', current: 15, capacity: 200 },
+              { name: 'Lubricant Oil (5L)',        sku: 'LBO-800', current: 8,  capacity: 80  },
+            ].map(item => {
+              const pct = item.capacity > 0 ? Math.round((item.current / item.capacity) * 100) : 0;
+              const isOut = item.current === 0;
+              return (
+                <div key={item.sku}>
+                  <div className="flex items-center justify-between mb-1">
+                    <div>
+                      <p className="text-xs font-semibold text-[var(--text-primary)]">{item.name}</p>
+                      <p className="text-[10px] text-[var(--text-muted)] font-mono">{item.sku} · {item.current} / {item.capacity} units</p>
+                    </div>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${isOut ? 'bg-rose-500/10 text-rose-600' : 'bg-amber-500/10 text-amber-600'}`}>
+                      {isOut ? 'OUT OF STOCK' : `${pct}% left`}
+                    </span>
+                  </div>
+                  <div className="h-1.5 bg-[var(--bg)] rounded-full overflow-hidden">
+                    <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: isOut ? '#f43f5e' : '#f59e0b' }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
 

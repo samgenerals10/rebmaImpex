@@ -83,6 +83,10 @@ import ReceptionDailyReportsView from './views/reception/DailyReportsView';
 import OperationsStockView from './views/operations/StockView';
 import OperationsAnalyticsView from './views/operations/AnalyticsView';
 
+// Management dedicated pages
+import MgmtAnalyticsView from './views/management/MgmtAnalyticsView';
+import DeptActivityView from './views/management/DeptActivityView';
+
 // Production dedicated pages
 import ProductionInternalOrdersView from './views/production/InternalOrdersView';
 import ProductionOutputRecordingView from './views/production/OutputRecordingView';
@@ -2703,11 +2707,13 @@ export default function App() {
 
     // Management dedicated sub-tab pages
     if (activeDepartment === 'MANAGEMENT') {
-      if (activeSubTab === 'Transactions')  return <ManagementTransactionsView addNotification={addNotification} />;
-      if (activeSubTab === 'FleetOverview')  return <LogisticsFleetOverviewView addNotification={addNotification} />;
-      if (activeSubTab === 'FuelManagement') return <LogisticsFuelManagementView addNotification={addNotification} />;
-      if (activeSubTab === 'Maintenance')    return <LogisticsMaintenanceView addNotification={addNotification} />;
-      if (activeSubTab === 'FleetAnalytics') return <LogisticsFleetAnalyticsView addNotification={addNotification} />;
+      if (activeSubTab === 'Transactions')    return <ManagementTransactionsView addNotification={addNotification} />;
+      if (activeSubTab === 'MgmtAnalytics')   return <MgmtAnalyticsView addNotification={addNotification} />;
+      if (activeSubTab === 'DeptActivity')    return <DeptActivityView addNotification={addNotification} />;
+      if (activeSubTab === 'FleetOverview')   return <LogisticsFleetOverviewView addNotification={addNotification} />;
+      if (activeSubTab === 'FuelManagement')  return <LogisticsFuelManagementView addNotification={addNotification} />;
+      if (activeSubTab === 'Maintenance')     return <LogisticsMaintenanceView addNotification={addNotification} />;
+      if (activeSubTab === 'FleetAnalytics')  return <LogisticsFleetAnalyticsView addNotification={addNotification} />;
     }
 
     // Marketing dedicated sub-tab pages
@@ -2786,6 +2792,8 @@ export default function App() {
             onSetPrice={handleSetPrice}
             activeSubTab={activeSubTab}
             currentUser={currentUser}
+            addNotification={addNotification}
+            setActiveSubTab={setActiveSubTab}
           />
         );
       case 'HR':
