@@ -81,6 +81,7 @@ import DispatchProofOfDeliveryView from './views/dispatch/ProofOfDeliveryView';
 import DispatchDeliveriesView from './views/dispatch/DeliveriesView';
 import DispatchDriversView from './views/dispatch/DriversView';
 import DispatchTrackingView from './views/dispatch/TrackingView';
+import DispatchOverviewView from './views/dispatch/OverviewView';
 
 // HR dedicated pages
 import HrStaffView from './views/hr/StaffView';
@@ -2756,8 +2757,9 @@ export default function App() {
 
     // Dispatch dedicated sub-tab pages
     if (activeDepartment === 'DISPATCH') {
+      if (activeSubTab === 'Deliveries')       return <DispatchOverviewView addNotification={addNotification} setActiveSubTab={setActiveSubTab} currentUser={currentUser} />;
       if (activeSubTab === 'ProofOfDelivery') return <DispatchProofOfDeliveryView currentUser={currentUser} addNotification={addNotification} />;
-      if (activeSubTab === 'ActiveDeliveries') return <DispatchDeliveriesView addNotification={addNotification} />;
+      if (activeSubTab === 'ActiveDeliveries') return <DispatchDeliveriesView addNotification={addNotification} currentUser={currentUser} />;
       if (activeSubTab === 'Drivers')          return <DispatchDriversView addNotification={addNotification} />;
       if (activeSubTab === 'Tracking')         return <DispatchTrackingView addNotification={addNotification} />;
     }

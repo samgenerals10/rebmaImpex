@@ -172,7 +172,11 @@ export interface DeliveryRecord {
   driverId: string;
   dispatchedAt: string;
   deliveredAt?: string;
-  status: 'IN_TRANSIT' | 'DELIVERED' | 'FAILED';
+  status: 'PENDING_ASSIGNMENT' | 'ASSIGNED' | 'IN_TRANSIT' | 'DELIVERED' | 'FAILED';
+  vehicleId?: string;
+  proofUrl?: string;
+  recipientName?: string;
+  deliveryNotes?: string;
 }
 
 export interface Notification {

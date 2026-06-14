@@ -1,58 +1,347 @@
-import { useState, useEffect } from 'react';
-import { Truck, CheckCircle, XCircle, Plus, Search, Eye, X, Clock } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabaseClient';
+import {
+  Truck, CheckCircle, XCircle, Plus, Search, Eye, X, Clock,
+  Download, MoreVertical, ChevronLeft, MapPin, Camera, AlertCircle,
+  Calendar, User, Package, UserCheck
+} from 'lucide-react';
+import { exportToCSV, exportToPDF } from '../../utils/export';
 import type { DeliveryRecord, Driver } from '../../types/erp';
 
+// ── seed data ─────────────────────────────────────────────────────────────────
 const MOCK_DRIVERS: Driver[] = [
-  { id: 'DRV-001', fullName: 'Kwesi Asante', phone: '0244123456', ghanaCard: 'GHA-00001-1', licenseNumber: 'LIC-001', truckId: 'GR-1234-22', status: 'ACTIVE' },
-  { id: 'DRV-002', fullName: 'Kofi Mensah', phone: '0277654321', ghanaCard: 'GHA-00002-2', licenseNumber: 'LIC-002', truckId: 'GR-5678-22', status: 'ON_DELIVERY' },
-  { id: 'DRV-003', fullName: 'Ama Serwaa', phone: '0200987654', ghanaCard: 'GHA-00003-3', licenseNumber: 'LIC-003', truckId: 'GR-9012-23', status: 'ACTIVE' },
-  { id: 'DRV-004', fullName: 'Kojo Boateng', phone: '0541234567', ghanaCard: 'GHA-00004-4', licenseNumber: 'LIC-004', truckId: 'AS-3456-21', status: 'ON_DELIVERY' },
+  { id: 'DRV-001', fullName: 'Kwesi Asante',  phone: '0244 123 456', ghanaCard: 'GHA-00001-1', licenseNumber: 'LIC-001', truckId: 'GR-1234-22', status: 'ACTIVE',      totalDeliveries: 87 },
+  { id: 'DRV-002', fullName: 'Kofi Mensah',   phone: '0277 654 321', ghanaCard: 'GHA-00002-2', licenseNumber: 'LIC-002', truckId: 'GR-5678-22', status: 'ON_DELIVERY', totalDeliveries: 62 },
+  { id: 'DRV-003', fullName: 'Ama Serwaa',    phone: '0200 987 654', ghanaCard: 'GHA-00003-3', licenseNumber: 'LIC-003', truckId: 'GR-9012-23', status: 'ACTIVE',      totalDeliveries: 45 },
+  { id: 'DRV-004', fullName: 'Kojo Boateng',  phone: '0541 234 567', ghanaCard: 'GHA-00004-4', licenseNumber: 'LIC-004', truckId: 'AS-3456-21', status: 'ON_DELIVERY', totalDeliveries: 31 },
+  { id: 'DRV-005', fullName: 'Yaw Darko',     phone: '0208 876 543', ghanaCard: 'GHA-00005-5', licenseNumber: 'LIC-005', truckId: 'GR-7890-24', status: 'OFFLINE',     totalDeliveries: 19 },
 ];
 
 const MOCK_DELIVERIES: DeliveryRecord[] = [
-  { id: 'DEL-001', orderId: 'ORD-1001', clientName: 'Accra Traders Ltd', destination: '123 High Street, Accra', driverName: 'Kwesi Asante', driverId: 'DRV-001', dispatchedAt: new Date(Date.now() - 3600000 * 2).toISOString(), status: 'IN_TRANSIT' },
-  { id: 'DEL-002', orderId: 'ORD-1002', clientName: 'Gulf Imports Co.', destination: '45 Liberation Rd, Accra', driverName: 'Kofi Mensah', driverId: 'DRV-002', dispatchedAt: new Date(Date.now() - 3600000 * 5).toISOString(), deliveredAt: new Date(Date.now() - 3600000 * 2).toISOString(), status: 'DELIVERED' },
-  { id: 'DEL-003', orderId: 'ORD-1003', clientName: 'Kama Industries', destination: 'Plot 7, Spintex Road', driverName: 'Ama Serwaa', driverId: 'DRV-003', dispatchedAt: new Date(Date.now() - 3600000 * 4).toISOString(), status: 'IN_TRANSIT' },
-  { id: 'DEL-004', orderId: 'ORD-1004', clientName: 'Prime Suppliers', destination: 'Ring Road East, Accra', driverName: 'Kojo Boateng', driverId: 'DRV-004', dispatchedAt: new Date(Date.now() - 3600000 * 7).toISOString(), status: 'FAILED' },
-  { id: 'DEL-005', orderId: 'ORD-1005', clientName: 'Delta Logistics', destination: 'Tema Community 1', driverName: 'Kwesi Asante', driverId: 'DRV-001', dispatchedAt: new Date(Date.now() - 3600000 * 1).toISOString(), status: 'IN_TRANSIT' },
-  { id: 'DEL-006', orderId: 'ORD-1006', clientName: 'Sunrise Exports', destination: 'Adabraka, Accra', driverName: 'Kofi Mensah', driverId: 'DRV-002', dispatchedAt: new Date(Date.now() - 86400000).toISOString(), deliveredAt: new Date(Date.now() - 82800000).toISOString(), status: 'DELIVERED' },
-  { id: 'DEL-007', orderId: 'ORD-1007', clientName: 'Horizon Trading', destination: 'Lashibi, Tema', driverName: 'Ama Serwaa', driverId: 'DRV-003', dispatchedAt: new Date(Date.now() - 3600000 * 6).toISOString(), deliveredAt: new Date(Date.now() - 3600000 * 3).toISOString(), status: 'DELIVERED' },
-  { id: 'DEL-008', orderId: 'ORD-1008', clientName: 'Gold Coast Merchants', destination: 'OSU, Accra', driverName: 'Kojo Boateng', driverId: 'DRV-004', dispatchedAt: new Date(Date.now() - 3600000 * 9).toISOString(), status: 'FAILED' },
-  { id: 'DEL-009', orderId: 'ORD-1009', clientName: 'Atlantic Ventures', destination: 'Haatso, Accra', driverName: 'Kwesi Asante', driverId: 'DRV-001', dispatchedAt: new Date(Date.now() - 1800000).toISOString(), status: 'IN_TRANSIT' },
-  { id: 'DEL-010', orderId: 'ORD-1010', clientName: 'Pacific Imports', destination: 'East Legon, Accra', driverName: 'Ama Serwaa', driverId: 'DRV-003', dispatchedAt: new Date(Date.now() - 3600000 * 3).toISOString(), deliveredAt: new Date(Date.now() - 3600000).toISOString(), status: 'DELIVERED' },
+  { id: 'DEL-001', orderId: 'ORD-1001', clientName: 'Accra Traders Ltd',    destination: '123 High Street, Accra',   driverName: 'Kwesi Asante', driverId: 'DRV-001', dispatchedAt: new Date(Date.now() - 3.6e6 * 2).toISOString(), status: 'IN_TRANSIT',         vehicleId: 'GR-1234-22' },
+  { id: 'DEL-002', orderId: 'ORD-1002', clientName: 'Gulf Imports Co.',      destination: '45 Liberation Rd, Accra', driverName: 'Kofi Mensah',  driverId: 'DRV-002', dispatchedAt: new Date(Date.now() - 3.6e6 * 5).toISOString(), deliveredAt: new Date(Date.now() - 3.6e6 * 2).toISOString(), status: 'DELIVERED', vehicleId: 'GR-5678-22' },
+  { id: 'DEL-003', orderId: 'ORD-1003', clientName: 'Kama Industries',       destination: 'Plot 7, Spintex Road',    driverName: 'Ama Serwaa',   driverId: 'DRV-003', dispatchedAt: new Date(Date.now() - 3.6e6 * 4).toISOString(), status: 'IN_TRANSIT',         vehicleId: 'GR-9012-23' },
+  { id: 'DEL-004', orderId: 'ORD-1004', clientName: 'Prime Suppliers',       destination: 'Ring Road East, Accra',   driverName: '',             driverId: '',         dispatchedAt: new Date(Date.now() - 3.6e6 * 1).toISOString(), status: 'PENDING_ASSIGNMENT' },
+  { id: 'DEL-005', orderId: 'ORD-1005', clientName: 'Delta Logistics',       destination: 'Tema Community 1',         driverName: 'Kwesi Asante', driverId: 'DRV-001', dispatchedAt: new Date(Date.now() - 3.6e6 * 1).toISOString(), status: 'ASSIGNED',           vehicleId: 'GR-1234-22' },
+  { id: 'DEL-006', orderId: 'ORD-1006', clientName: 'Sunrise Exports',       destination: 'Adabraka, Accra',          driverName: 'Kofi Mensah',  driverId: 'DRV-002', dispatchedAt: new Date(Date.now() - 86400000).toISOString(), deliveredAt: new Date(Date.now() - 82800000).toISOString(), status: 'DELIVERED', vehicleId: 'GR-5678-22' },
+  { id: 'DEL-007', orderId: 'ORD-1007', clientName: 'Horizon Trading',       destination: 'Lashibi, Tema',            driverName: 'Ama Serwaa',   driverId: 'DRV-003', dispatchedAt: new Date(Date.now() - 3.6e6 * 6).toISOString(), deliveredAt: new Date(Date.now() - 3.6e6 * 3).toISOString(), status: 'DELIVERED', vehicleId: 'GR-9012-23' },
+  { id: 'DEL-008', orderId: 'ORD-1008', clientName: 'Gold Coast Merchants',  destination: 'OSU, Accra',               driverName: '',             driverId: '',         dispatchedAt: new Date(Date.now() - 3.6e6 * 0.5).toISOString(), status: 'PENDING_ASSIGNMENT' },
+  { id: 'DEL-009', orderId: 'ORD-1009', clientName: 'Atlantic Ventures',     destination: 'Haatso, Accra',            driverName: 'Kojo Boateng', driverId: 'DRV-004', dispatchedAt: new Date(Date.now() - 1800000).toISOString(), status: 'IN_TRANSIT',         vehicleId: 'AS-3456-21' },
+  { id: 'DEL-010', orderId: 'ORD-1010', clientName: 'Pacific Imports',       destination: 'East Legon, Accra',        driverName: 'Ama Serwaa',   driverId: 'DRV-003', dispatchedAt: new Date(Date.now() - 3.6e6 * 3).toISOString(), deliveredAt: new Date(Date.now() - 3.6e6).toISOString(), status: 'DELIVERED', vehicleId: 'GR-9012-23' },
+  { id: 'DEL-011', orderId: 'ORD-1011', clientName: 'Tema Steel Ltd',        destination: 'Community 5, Tema',        driverName: '',             driverId: '',         dispatchedAt: new Date(Date.now() - 3.6e6 * 0.2).toISOString(), status: 'PENDING_ASSIGNMENT' },
+  { id: 'DEL-012', orderId: 'ORD-1012', clientName: 'Volta River Co.',       destination: 'Akosombo Town',            driverName: 'Yaw Darko',    driverId: 'DRV-005', dispatchedAt: new Date(Date.now() - 3.6e6 * 8).toISOString(), status: 'FAILED',             vehicleId: 'GR-7890-24' },
 ];
 
-const fmt = (iso: string) => new Date(iso).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+// ── types ─────────────────────────────────────────────────────────────────────
+type StatusFilter = 'ALL' | 'PENDING_ASSIGNMENT' | 'ASSIGNED' | 'IN_TRANSIT' | 'DELIVERED' | 'FAILED';
 
-interface Props { addNotification: (msg: string) => void }
+const STATUS_META: Record<string, { bg: string; color: string; label: string }> = {
+  PENDING_ASSIGNMENT: { bg: 'bg-gray-100',   color: 'text-gray-600',   label: 'Pending Assignment' },
+  ASSIGNED:           { bg: 'bg-yellow-100', color: 'text-yellow-700', label: 'Assigned' },
+  IN_TRANSIT:         { bg: 'bg-blue-100',   color: 'text-blue-700',   label: 'In Transit' },
+  DELIVERED:          { bg: 'bg-green-100',  color: 'text-green-700',  label: 'Delivered' },
+  FAILED:             { bg: 'bg-red-100',    color: 'text-red-700',    label: 'Failed' },
+};
 
-export default function DeliveriesView({ addNotification }: Props) {
+const fmt = (iso?: string) =>
+  iso ? new Date(iso).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—';
+
+function initials(name: string) {
+  return name.split(' ').slice(0, 2).map(w => w[0] || '').join('').toUpperCase() || '?';
+}
+
+interface Props {
+  addNotification: (msg: string) => void;
+  currentUser?: { fullName: string; department: string } | null;
+}
+
+// ── Assign Driver Modal ────────────────────────────────────────────────────────
+function AssignDriverModal({
+  delivery, drivers, onAssign, onClose,
+}: {
+  delivery: DeliveryRecord;
+  drivers: Driver[];
+  onAssign: (driverId: string, notes: string) => void;
+  onClose: () => void;
+}) {
+  const [driverId, setDriverId] = useState('');
+  const [notes, setNotes] = useState('');
+  const availableDrivers = drivers.filter(d => d.status !== 'OFFLINE');
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+      <div className="relative bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-6 w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <h3 className="text-base font-semibold text-[var(--text-primary)]">Assign Driver</h3>
+            <p className="text-xs text-[var(--text-muted)]">{delivery.id} · {delivery.orderId}</p>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-[var(--bg-input)]"><X size={16} className="text-[var(--text-muted)]" /></button>
+        </div>
+
+        <div className="p-3 bg-[var(--bg-input)] rounded-xl mb-4 space-y-1">
+          <p className="text-xs font-medium text-[var(--text-primary)]">{delivery.clientName}</p>
+          <p className="text-xs text-[var(--text-muted)]">{delivery.destination}</p>
+        </div>
+
+        <div className="space-y-4">
+          <div>
+            <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Select Driver</label>
+            <select value={driverId} onChange={e => setDriverId(e.target.value)}
+              className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm focus:outline-none focus:border-[var(--accent)] text-[var(--text-primary)]">
+              <option value="">Choose a driver...</option>
+              {availableDrivers.map(d => (
+                <option key={d.id} value={d.id}>{d.fullName} — {d.truckId} ({d.status === 'ACTIVE' ? 'Available' : 'On Delivery'})</option>
+              ))}
+            </select>
+            {driverId && (
+              <div className="mt-2 p-2 bg-[var(--bg-input)] rounded-lg text-xs text-[var(--text-muted)]">
+                Vehicle: <strong className="text-[var(--text-primary)]">{availableDrivers.find(d => d.id === driverId)?.truckId}</strong>
+                {' · '}{(availableDrivers.find(d => d.id === driverId)?.totalDeliveries || 0)} total deliveries
+              </div>
+            )}
+          </div>
+          <div>
+            <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Notes (optional)</label>
+            <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} placeholder="Any special instructions..."
+              className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm focus:outline-none focus:border-[var(--accent)] text-[var(--text-primary)] placeholder-[var(--text-muted)] resize-none" />
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 mt-5">
+          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-input)]">Cancel</button>
+          <button onClick={() => driverId && onAssign(driverId, notes)} disabled={!driverId}
+            className="flex-1 py-2.5 rounded-xl text-white text-sm font-semibold disabled:opacity-50" style={{ background: 'var(--accent)' }}>
+            Assign Driver
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Delivery Detail View ───────────────────────────────────────────────────────
+function DeliveryDetail({
+  delivery, drivers, onBack, onMarkDelivered, onAssign, addNotification,
+}: {
+  delivery: DeliveryRecord;
+  drivers: Driver[];
+  onBack: () => void;
+  onMarkDelivered: (id: string) => void;
+  onAssign: (delivery: DeliveryRecord) => void;
+  addNotification: (msg: string) => void;
+}) {
+  const badge = STATUS_META[delivery.status];
+  const driver = drivers.find(d => d.id === delivery.driverId);
+  const timeline = [
+    { event: 'Order Ready for Dispatch', time: delivery.dispatchedAt, done: true, color: '#3b82f6' },
+    { event: 'Driver Assigned', time: delivery.status !== 'PENDING_ASSIGNMENT' ? delivery.dispatchedAt : null, done: delivery.status !== 'PENDING_ASSIGNMENT', color: '#f59e0b' },
+    { event: 'In Transit', time: delivery.status === 'IN_TRANSIT' || delivery.status === 'DELIVERED' ? delivery.dispatchedAt : null, done: delivery.status === 'IN_TRANSIT' || delivery.status === 'DELIVERED', color: '#6366f1' },
+    { event: 'Delivered', time: delivery.deliveredAt || null, done: delivery.status === 'DELIVERED', color: '#10b981' },
+  ];
+
+  return (
+    <div className="p-4 md:p-6 space-y-5 max-w-screen-xl mx-auto">
+      <div className="flex items-center gap-3 flex-wrap">
+        <button onClick={onBack} className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[var(--border)] text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-card)]">
+          <ChevronLeft size={14} /> Back
+        </button>
+        <div>
+          <h1 className="text-xl font-bold text-[var(--text-primary)]">{delivery.id}</h1>
+          <p className="text-sm text-[var(--text-muted)]">Delivery Detail · {delivery.orderId}</p>
+        </div>
+        <span className={`ml-auto px-3 py-1.5 rounded-full text-xs font-semibold ${badge.bg} ${badge.color}`}>{badge.label}</span>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        {/* Left column */}
+        <div className="space-y-4">
+          {/* Order summary */}
+          <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5 space-y-3">
+            <h3 className="font-semibold text-[var(--text-primary)]">Order Summary</h3>
+            {[
+              { label: 'Order ID',   val: delivery.orderId, icon: Package },
+              { label: 'Customer',   val: delivery.clientName, icon: User },
+              { label: 'Destination',val: delivery.destination, icon: MapPin },
+              { label: 'Dispatched', val: fmt(delivery.dispatchedAt), icon: Calendar },
+            ].map(({ label, val, icon: Icon }) => (
+              <div key={label} className="flex items-start gap-2.5">
+                <Icon size={14} className="text-[var(--text-muted)] mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-xs text-[var(--text-muted)]">{label}</p>
+                  <p className="text-sm font-medium text-[var(--text-primary)]">{val}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Driver assignment */}
+          <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5 space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-[var(--text-primary)]">Driver</h3>
+              {delivery.status !== 'DELIVERED' && (
+                <button onClick={() => onAssign(delivery)} className="text-xs font-medium hover:underline" style={{ color: 'var(--accent)' }}>
+                  {delivery.driverId ? 'Reassign' : 'Assign'} Driver
+                </button>
+              )}
+            </div>
+            {driver ? (
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold text-white flex-shrink-0" style={{ background: 'var(--accent)' }}>
+                  {initials(driver.fullName)}
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-[var(--text-primary)]">{driver.fullName}</p>
+                  <p className="text-xs text-[var(--text-muted)]">{driver.phone} · {driver.truckId}</p>
+                  <p className="text-xs text-[var(--text-muted)]">{driver.totalDeliveries} total deliveries</p>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center py-4 text-[var(--text-muted)]">
+                <AlertCircle size={20} className="opacity-40 mb-1" />
+                <p className="text-xs">No driver assigned yet</p>
+              </div>
+            )}
+            {delivery.vehicleId && (
+              <div className="flex items-center gap-2 p-2 bg-[var(--bg-input)] rounded-lg">
+                <Truck size={13} style={{ color: 'var(--accent)' }} />
+                <span className="text-xs text-[var(--text-secondary)]">Vehicle: <strong className="text-[var(--text-primary)]">{delivery.vehicleId}</strong></span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Right column */}
+        <div className="lg:col-span-2 space-y-4">
+          {/* Timeline */}
+          <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
+            <h3 className="font-semibold text-[var(--text-primary)] mb-4">Delivery Timeline</h3>
+            <div className="space-y-4">
+              {timeline.map((t, i) => (
+                <div key={i} className="flex gap-3">
+                  <div className="relative flex-shrink-0">
+                    <div className={`w-4 h-4 rounded-full border-2 mt-0.5 flex items-center justify-center ${t.done ? 'border-transparent' : 'border-[var(--border)] bg-[var(--bg-input)]'}`}
+                      style={t.done ? { background: t.color } : {}}>
+                      {t.done && <CheckCircle size={10} color="white" />}
+                    </div>
+                    {i < timeline.length - 1 && (
+                      <div className={`absolute left-1.5 top-5 bottom-0 w-px -translate-x-1/2 ${t.done ? '' : 'opacity-30'}`}
+                        style={{ background: t.done ? t.color : 'var(--border)', height: '28px' }} />
+                    )}
+                  </div>
+                  <div className="pb-1">
+                    <p className={`text-sm font-medium ${t.done ? 'text-[var(--text-primary)]' : 'text-[var(--text-muted)]'}`}>{t.event}</p>
+                    {t.time && <p className="text-xs text-[var(--text-muted)]">{fmt(t.time)}</p>}
+                    {!t.done && <p className="text-xs text-[var(--text-muted)] opacity-60">Pending...</p>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* GPS tracking placeholder */}
+          <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold text-[var(--text-primary)]">GPS Tracking</h3>
+              <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-medium">{delivery.status === 'IN_TRANSIT' ? 'Live' : 'Static'}</span>
+            </div>
+            <div className="h-32 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] flex flex-col items-center justify-center gap-2">
+              <MapPin size={24} className="text-[var(--text-muted)] opacity-40" />
+              <p className="text-xs text-[var(--text-muted)]">Last known: Accra, Greater Accra Region</p>
+              <p className="text-xs text-[var(--text-muted)] opacity-60">Updated: just now</p>
+            </div>
+          </div>
+
+          {/* Proof of Delivery */}
+          <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold text-[var(--text-primary)]">Proof of Delivery</h3>
+              {!delivery.proofUrl && delivery.status !== 'DELIVERED' && (
+                <button onClick={() => addNotification('Proof of delivery camera opened')}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-white text-xs font-medium" style={{ background: 'var(--accent)' }}>
+                  <Camera size={12} /> Upload Proof
+                </button>
+              )}
+            </div>
+            {delivery.proofUrl ? (
+              <img src={delivery.proofUrl} alt="Proof of delivery" className="w-full aspect-video object-cover rounded-xl border border-[var(--border)]" />
+            ) : (
+              <div className="flex flex-col items-center py-6 text-[var(--text-muted)] border-2 border-dashed border-[var(--border)] rounded-xl">
+                <Camera size={24} className="opacity-30 mb-2" />
+                <p className="text-xs">No proof uploaded yet</p>
+                {delivery.status === 'DELIVERED' && <p className="text-xs mt-1 opacity-60">Proof was not captured for this delivery</p>}
+              </div>
+            )}
+            {delivery.recipientName && (
+              <div className="mt-3 p-3 bg-[var(--bg-input)] rounded-xl">
+                <p className="text-xs text-[var(--text-muted)]">Signed by</p>
+                <p className="text-sm font-medium text-[var(--text-primary)]">{delivery.recipientName}</p>
+              </div>
+            )}
+            {delivery.deliveryNotes && (
+              <div className="mt-3 p-3 bg-[var(--bg-input)] rounded-xl">
+                <p className="text-xs text-[var(--text-muted)] mb-1">Delivery Notes</p>
+                <p className="text-sm text-[var(--text-primary)]">{delivery.deliveryNotes}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Actions */}
+      {delivery.status === 'IN_TRANSIT' && (
+        <div className="flex flex-wrap gap-3">
+          <button onClick={() => onMarkDelivered(delivery.id)}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-sm font-semibold" style={{ background: '#10b981' }}>
+            <CheckCircle size={15} /> Mark as Delivered
+          </button>
+          <button onClick={() => addNotification(`Delivery note PDF exported for ${delivery.id}`)}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-card)]">
+            <Download size={14} /> Export Delivery Note PDF
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Main Component ─────────────────────────────────────────────────────────────
+export default function DeliveriesView({ addNotification, currentUser }: Props) {
   const [deliveries, setDeliveries] = useState<DeliveryRecord[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>(MOCK_DRIVERS);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'ALL' | 'IN_TRANSIT' | 'DELIVERED' | 'FAILED'>('ALL');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
   const [driverFilter, setDriverFilter] = useState('');
   const [dateFilter, setDateFilter] = useState('');
   const [showNew, setShowNew] = useState(false);
   const [detailRecord, setDetailRecord] = useState<DeliveryRecord | null>(null);
+  const [assignTarget, setAssignTarget] = useState<DeliveryRecord | null>(null);
   const [form, setForm] = useState({ clientName: '', orderId: '', destination: '', driverId: '' });
+  const [menuOpen, setMenuOpen] = useState<string | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const load = async () => {
       setLoading(true);
       try {
         const { data } = await supabase.from('deliveries').select('*').order('dispatchedAt', { ascending: false }).limit(100);
-        setDeliveries(data && data.length > 0 ? data : MOCK_DELIVERIES);
+        setDeliveries(data && data.length > 0 ? data as DeliveryRecord[] : MOCK_DELIVERIES);
       } catch { setDeliveries(MOCK_DELIVERIES); }
       try {
         const { data } = await supabase.from('drivers').select('*');
-        if (data && data.length > 0) setDrivers(data);
+        if (data && data.length > 0) setDrivers(data as Driver[]);
       } catch {}
       setLoading(false);
     };
     load();
+  }, []);
+
+  useEffect(() => {
+    const handler = () => setMenuOpen(null);
+    window.addEventListener('click', handler);
+    return () => window.removeEventListener('click', handler);
   }, []);
 
   const todayStr = new Date().toDateString();
@@ -60,10 +349,11 @@ export default function DeliveriesView({ addNotification }: Props) {
   const inTransit = deliveries.filter(d => d.status === 'IN_TRANSIT').length;
   const deliveredToday = deliveries.filter(d => d.status === 'DELIVERED' && d.deliveredAt && new Date(d.deliveredAt).toDateString() === todayStr).length;
   const failed = deliveries.filter(d => d.status === 'FAILED').length;
+  const pendingAssign = deliveries.filter(d => d.status === 'PENDING_ASSIGNMENT').length;
 
   const filtered = deliveries.filter(d => {
     const q = search.toLowerCase();
-    const matchSearch = !search || d.clientName.toLowerCase().includes(q) || d.orderId.toLowerCase().includes(q);
+    const matchSearch = !search || d.clientName.toLowerCase().includes(q) || d.orderId.toLowerCase().includes(q) || d.id.toLowerCase().includes(q) || d.driverName?.toLowerCase().includes(q);
     const matchStatus = statusFilter === 'ALL' || d.status === statusFilter;
     const matchDriver = !driverFilter || d.driverId === driverFilter;
     const matchDate = !dateFilter || d.dispatchedAt.startsWith(dateFilter);
@@ -73,219 +363,279 @@ export default function DeliveriesView({ addNotification }: Props) {
   const markDelivered = async (id: string) => {
     const now = new Date().toISOString();
     setDeliveries(prev => prev.map(d => d.id === id ? { ...d, status: 'DELIVERED', deliveredAt: now } : d));
-    try { await supabase.from('deliveries').update({ status: 'DELIVERED', deliveredAt: now }).eq('id', id); } catch {}
+    supabase.from('deliveries').update({ status: 'DELIVERED', deliveredAt: now }).eq('id', id).then(() => {}, () => {});
+    supabase.from('global_audit_history').insert({ department: 'DISPATCH', action: `Delivery ${id} marked as delivered`, performed_by: currentUser?.fullName || 'Dispatch', created_at: now }).then(() => {}, () => {});
     addNotification(`Delivery ${id} marked as delivered.`);
     if (detailRecord?.id === id) setDetailRecord(prev => prev ? { ...prev, status: 'DELIVERED', deliveredAt: now } : prev);
+    setMenuOpen(null);
+  };
+
+  const markFailed = async (id: string) => {
+    setDeliveries(prev => prev.map(d => d.id === id ? { ...d, status: 'FAILED' } : d));
+    supabase.from('deliveries').update({ status: 'FAILED' }).eq('id', id).then(() => {}, () => {});
+    addNotification(`Delivery ${id} marked as failed.`);
+    setMenuOpen(null);
   };
 
   const createDelivery = () => {
-    if (!form.clientName || !form.orderId || !form.destination || !form.driverId) return;
+    if (!form.clientName || !form.orderId || !form.destination) return;
     const driver = drivers.find(d => d.id === form.driverId);
     const rec: DeliveryRecord = {
       id: `DEL-${String(deliveries.length + 1).padStart(3, '0')}`,
-      orderId: form.orderId,
-      clientName: form.clientName,
-      destination: form.destination,
-      driverName: driver?.fullName ?? '',
-      driverId: form.driverId,
-      dispatchedAt: new Date().toISOString(),
-      status: 'IN_TRANSIT',
+      orderId: form.orderId, clientName: form.clientName,
+      destination: form.destination, driverName: driver?.fullName ?? '',
+      driverId: form.driverId, dispatchedAt: new Date().toISOString(),
+      status: form.driverId ? 'ASSIGNED' : 'PENDING_ASSIGNMENT',
+      vehicleId: driver?.truckId,
     };
     setDeliveries(prev => [rec, ...prev]);
     supabase.from('deliveries').insert(rec).then(() => {}, () => {});
+    supabase.from('supplier_order_notifications').insert({ order_id: rec.orderId, message: `New delivery ${rec.id} created`, notified_department: 'OPERATIONS', read: false, created_at: rec.dispatchedAt }).then(() => {}, () => {});
     addNotification(`New delivery ${rec.id} dispatched.`);
     setShowNew(false);
     setForm({ clientName: '', orderId: '', destination: '', driverId: '' });
   };
 
-  const StatusIcon = ({ status }: { status: DeliveryRecord['status'] }) => {
-    if (status === 'IN_TRANSIT') return <Truck size={22} style={{ color: '#3b82f6' }} />;
-    if (status === 'DELIVERED') return <CheckCircle size={22} style={{ color: '#10b981' }} />;
-    return <XCircle size={22} style={{ color: '#f43f5e' }} />;
+  const handleAssignDriver = (delivery: DeliveryRecord, driverId: string, notes: string) => {
+    const driver = drivers.find(d => d.id === driverId);
+    if (!driver) return;
+    const now = new Date().toISOString();
+    setDeliveries(prev => prev.map(d => d.id === delivery.id
+      ? { ...d, driverId, driverName: driver.fullName, vehicleId: driver.truckId, status: 'ASSIGNED', deliveryNotes: notes || d.deliveryNotes }
+      : d
+    ));
+    supabase.from('deliveries').update({ driverId, driverName: driver.fullName, vehicleId: driver.truckId, status: 'ASSIGNED' }).eq('id', delivery.id).then(() => {}, () => {});
+    supabase.from('supplier_order_notifications').insert({ order_id: delivery.orderId, message: `Driver ${driver.fullName} assigned to ${delivery.orderId}`, notified_department: 'OPERATIONS', read: false, created_at: now }).then(() => {}, () => {});
+    supabase.from('global_audit_history').insert({ department: 'DISPATCH', action: `Driver ${driver.fullName} assigned to ${delivery.id}`, performed_by: currentUser?.fullName || 'Dispatch', created_at: now }).then(() => {}, () => {});
+    addNotification(`Driver ${driver.fullName} assigned to ${delivery.id}`);
+    setAssignTarget(null);
+    if (detailRecord?.id === delivery.id) setDetailRecord(prev => prev ? { ...prev, driverId, driverName: driver.fullName, vehicleId: driver.truckId, status: 'ASSIGNED' } : prev);
   };
 
-  const StatusBadge = ({ status }: { status: DeliveryRecord['status'] }) => {
-    const map = { IN_TRANSIT: { bg: '#dbeafe', color: '#1d4ed8', label: 'In Transit' }, DELIVERED: { bg: '#d1fae5', color: '#065f46', label: 'Delivered' }, FAILED: { bg: '#ffe4e6', color: '#9f1239', label: 'Failed' } };
-    const s = map[status];
-    return <span style={{ background: s.bg, color: s.color, borderRadius: 99, padding: '2px 10px', fontSize: 12, fontWeight: 600 }}>{s.label}</span>;
-  };
+  if (detailRecord) {
+    return (
+      <DeliveryDetail
+        delivery={detailRecord}
+        drivers={drivers}
+        onBack={() => setDetailRecord(null)}
+        onMarkDelivered={markDelivered}
+        onAssign={del => { setAssignTarget(del); }}
+        addNotification={addNotification}
+      />
+    );
+  }
 
   return (
-    <div style={{ padding: '24px 16px', maxWidth: 1200, margin: '0 auto' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
+    <div className="p-4 md:p-6 space-y-5 max-w-screen-2xl mx-auto" onClick={() => setMenuOpen(null)}>
+
+      {/* Header */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Delivery Job Board</h1>
-          <p style={{ color: 'var(--text-muted)', margin: '4px 0 0', fontSize: 14 }}>Track and manage all delivery jobs</p>
+          <h1 className="text-2xl font-bold text-[var(--text-primary)]">Delivery Job Board</h1>
+          <p className="text-sm text-[var(--text-secondary)]">Track and manage all delivery jobs</p>
         </div>
-        <button onClick={() => setShowNew(true)} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 12, padding: '10px 20px', fontWeight: 600, cursor: 'pointer', fontSize: 14 }}>
-          <Plus size={16} /> New Delivery
-        </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <button onClick={() => exportToCSV(filtered, ['id', 'orderId', 'clientName', 'destination', 'driverName', 'vehicleId', 'dispatchedAt', 'deliveredAt', 'status'], 'deliveries')}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[var(--border)] text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-card)]">
+            <Download size={14} /> CSV
+          </button>
+          <button onClick={() => exportToPDF('Delivery Job Board', filtered, ['id', 'orderId', 'clientName', 'driverName', 'status'])}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[var(--border)] text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-card)]">
+            <Download size={14} /> PDF
+          </button>
+          <button onClick={() => setShowNew(true)}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-white text-sm font-semibold" style={{ background: 'var(--accent)' }}>
+            <Plus size={15} /> New Delivery
+          </button>
+        </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 24 }}>
+      {/* KPI summary cards */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         {[
-          { label: 'Total Deliveries', value: total, color: 'var(--accent)' },
-          { label: 'In Transit', value: inTransit, color: '#3b82f6' },
-          { label: 'Delivered Today', value: deliveredToday, color: '#10b981' },
-          { label: 'Failed', value: failed, color: '#f43f5e' },
-        ].map(c => (
-          <div key={c.label} style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, padding: '20px', boxShadow: 'var(--box-shadow)' }}>
-            <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: '0 0 8px' }}>{c.label}</p>
-            <p style={{ fontSize: 28, fontWeight: 700, color: c.color, margin: 0 }}>{c.value}</p>
+          { label: 'Total Deliveries',   value: total,        color: 'var(--accent)', filter: 'ALL' as StatusFilter },
+          { label: 'Pending Assignment', value: pendingAssign,color: '#f59e0b',       filter: 'PENDING_ASSIGNMENT' as StatusFilter },
+          { label: 'In Transit',         value: inTransit,    color: '#3b82f6',       filter: 'IN_TRANSIT' as StatusFilter },
+          { label: 'Delivered Today',    value: deliveredToday,color:'#10b981',       filter: 'DELIVERED' as StatusFilter },
+          { label: 'Failed',             value: failed,       color: '#ef4444',       filter: 'FAILED' as StatusFilter },
+        ].map(({ label, value, color, filter }) => (
+          <div key={label} onClick={() => setStatusFilter(filter)}
+            className={`bg-[var(--bg-card)] border rounded-2xl p-4 cursor-pointer transition-all hover:shadow-md ${statusFilter === filter ? 'border-[var(--accent)] shadow-sm' : 'border-[var(--border)]'}`}>
+            <p className="text-xs text-[var(--text-muted)] mb-1">{label}</p>
+            <p className="text-2xl font-bold" style={{ color }}>{value}</p>
           </div>
         ))}
       </div>
 
-      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, padding: '16px', marginBottom: 20, display: 'flex', flexWrap: 'wrap', gap: 12, boxShadow: 'var(--box-shadow)' }}>
-        <div style={{ flex: '1 1 200px', display: 'flex', alignItems: 'center', gap: 8, background: 'var(--bg-input)', borderRadius: 10, padding: '8px 12px', border: '1px solid var(--border)' }}>
-          <Search size={16} style={{ color: 'var(--text-muted)' }} />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search client or order ID..." style={{ border: 'none', background: 'transparent', outline: 'none', color: 'var(--text-primary)', fontSize: 14, width: '100%' }} />
-        </div>
-        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value as typeof statusFilter)} style={{ flex: '0 0 140px', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '8px 12px', color: 'var(--text-primary)', fontSize: 14, cursor: 'pointer' }}>
-          <option value="ALL">All Status</option>
-          <option value="IN_TRANSIT">In Transit</option>
-          <option value="DELIVERED">Delivered</option>
-          <option value="FAILED">Failed</option>
-        </select>
-        <select value={driverFilter} onChange={e => setDriverFilter(e.target.value)} style={{ flex: '0 0 160px', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '8px 12px', color: 'var(--text-primary)', fontSize: 14, cursor: 'pointer' }}>
-          <option value="">All Drivers</option>
-          {drivers.map(d => <option key={d.id} value={d.id}>{d.fullName}</option>)}
-        </select>
-        <input type="date" value={dateFilter} onChange={e => setDateFilter(e.target.value)} style={{ flex: '0 0 160px', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '8px 12px', color: 'var(--text-primary)', fontSize: 14 }} />
-      </div>
-
-      {loading ? (
-        <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-muted)' }}>Loading deliveries...</div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {filtered.length === 0 && <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-muted)' }}>No deliveries found.</div>}
-          {filtered.map(d => (
-            <div key={d.id} style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap', boxShadow: 'var(--box-shadow)' }}>
-              <div style={{ flexShrink: 0 }}>
-                <StatusIcon status={d.status} />
-              </div>
-              <div style={{ flex: '1 1 200px', minWidth: 0 }}>
-                <p style={{ margin: 0, fontWeight: 700, color: 'var(--text-primary)', fontSize: 15 }}>{d.clientName}</p>
-                <p style={{ margin: '2px 0', color: 'var(--text-secondary)', fontSize: 13 }}>{d.orderId} · {d.destination}</p>
-                <p style={{ margin: '2px 0', color: 'var(--text-muted)', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}><Clock size={12} /> {d.driverName} · Dispatched {fmt(d.dispatchedAt)}</p>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                <StatusBadge status={d.status} />
-                {d.status === 'IN_TRANSIT' && (
-                  <button onClick={() => markDelivered(d.id)} style={{ background: '#d1fae5', color: '#065f46', border: 'none', borderRadius: 8, padding: '6px 14px', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>Mark Delivered</button>
-                )}
-                <button onClick={() => setDetailRecord(d)} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--bg-input)', color: 'var(--text-secondary)', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 14px', fontWeight: 500, fontSize: 13, cursor: 'pointer' }}>
-                  <Eye size={14} /> Details
-                </button>
-              </div>
-            </div>
+      {/* Filter tabs + search bar */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-1 bg-[var(--bg-input)] rounded-xl p-1 overflow-x-auto scrollbar-none">
+          {([
+            { label: 'All', value: 'ALL' },
+            { label: 'Pending Assignment', value: 'PENDING_ASSIGNMENT' },
+            { label: 'In Transit', value: 'IN_TRANSIT' },
+            { label: 'Delivered', value: 'DELIVERED' },
+            { label: 'Failed', value: 'FAILED' },
+          ] as { label: string; value: StatusFilter }[]).map(tab => (
+            <button key={tab.value} onClick={() => setStatusFilter(tab.value)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap ${statusFilter === tab.value ? 'bg-[var(--bg-card)] text-[var(--text-primary)] shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'}`}>
+              {tab.label}
+            </button>
           ))}
         </div>
-      )}
-
-      {showNew && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-          <div style={{ background: 'var(--bg-card)', borderRadius: 20, padding: 32, width: '100%', maxWidth: 480, boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-              <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: 'var(--text-primary)' }}>New Delivery</h2>
-              <button onClick={() => setShowNew(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={20} /></button>
-            </div>
-            {[
-              { label: 'Client Name', key: 'clientName', placeholder: 'e.g. Accra Traders Ltd' },
-              { label: 'Order ID', key: 'orderId', placeholder: 'e.g. ORD-1011' },
-              { label: 'Destination', key: 'destination', placeholder: 'Full delivery address' },
-            ].map(f => (
-              <div key={f.key} style={{ marginBottom: 16 }}>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>{f.label}</label>
-                <input value={(form as Record<string, string>)[f.key]} onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))} placeholder={f.placeholder} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'var(--text-primary)', fontSize: 14, boxSizing: 'border-box' }} />
-              </div>
-            ))}
-            <div style={{ marginBottom: 24 }}>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>Driver</label>
-              <select value={form.driverId} onChange={e => setForm(p => ({ ...p, driverId: e.target.value }))} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'var(--text-primary)', fontSize: 14 }}>
-                <option value="">Select a driver...</option>
-                {drivers.filter(d => d.status !== 'OFFLINE').map(d => <option key={d.id} value={d.id}>{d.fullName} ({d.truckId})</option>)}
-              </select>
-            </div>
-            <div style={{ display: 'flex', gap: 12 }}>
-              <button onClick={() => setShowNew(false)} style={{ flex: 1, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 12, padding: '12px', fontWeight: 600, color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 14 }}>Cancel</button>
-              <button onClick={createDelivery} style={{ flex: 1, background: 'var(--accent)', border: 'none', borderRadius: 12, padding: '12px', fontWeight: 600, color: '#fff', cursor: 'pointer', fontSize: 14 }}>Dispatch</button>
-            </div>
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="relative flex-1 min-w-[180px]">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search client, driver, order ID…"
+              className="w-full pl-8 pr-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm focus:outline-none focus:border-[var(--accent)] text-[var(--text-primary)] placeholder-[var(--text-muted)]" />
           </div>
+          <select value={driverFilter} onChange={e => setDriverFilter(e.target.value)}
+            className="px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-secondary)] focus:outline-none">
+            <option value="">All Drivers</option>
+            {drivers.map(d => <option key={d.id} value={d.id}>{d.fullName}</option>)}
+          </select>
+          <input type="date" value={dateFilter} onChange={e => setDateFilter(e.target.value)}
+            className="px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-secondary)] focus:outline-none" />
         </div>
-      )}
+      </div>
 
-      {detailRecord && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-          <div style={{ background: 'var(--bg-card)', borderRadius: 20, padding: 32, width: '100%', maxWidth: 520, boxShadow: '0 20px 60px rgba(0,0,0,0.3)', maxHeight: '90vh', overflowY: 'auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-              <div>
-                <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: 'var(--text-primary)' }}>{detailRecord.orderId}</h2>
-                <p style={{ margin: '4px 0 0', color: 'var(--text-muted)', fontSize: 13 }}>Delivery Details</p>
-              </div>
-              <button onClick={() => setDetailRecord(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={20} /></button>
+      {/* Table */}
+      <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--border)]">
+          <p className="text-sm font-medium text-[var(--text-primary)]">Deliveries <span className="text-xs text-[var(--text-muted)] ml-1">({filtered.length})</span></p>
+        </div>
+
+        {loading ? (
+          <div className="text-center py-16 text-[var(--text-muted)]">Loading deliveries...</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-[var(--border)]">
+                  {['Delivery ID', 'Order ID', 'Customer', 'Destination', 'Driver / Vehicle', 'Dispatched', 'Status', 'Actions'].map(h => (
+                    <th key={h} className="px-4 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wide whitespace-nowrap">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--border)]">
+                {filtered.length === 0 && (
+                  <tr><td colSpan={8} className="text-center py-16 text-[var(--text-muted)]">No deliveries found</td></tr>
+                )}
+                {filtered.map(d => {
+                  const badge = STATUS_META[d.status];
+                  return (
+                    <tr key={d.id} className="hover:bg-[var(--bg-input)] cursor-pointer" onClick={() => setDetailRecord(d)}>
+                      <td className="px-4 py-3 font-mono text-xs font-bold" style={{ color: 'var(--accent)' }}>{d.id}</td>
+                      <td className="px-4 py-3 font-mono text-xs text-[var(--text-secondary)]">{d.orderId}</td>
+                      <td className="px-4 py-3 font-semibold text-[var(--text-primary)] whitespace-nowrap">{d.clientName}</td>
+                      <td className="px-4 py-3 text-[var(--text-secondary)] max-w-[180px] truncate">{d.destination}</td>
+                      <td className="px-4 py-3">
+                        {d.driverName ? (
+                          <div>
+                            <p className="text-xs font-medium text-[var(--text-primary)] whitespace-nowrap">{d.driverName}</p>
+                            {d.vehicleId && <p className="text-xs text-[var(--text-muted)] font-mono">{d.vehicleId}</p>}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-red-500 font-medium flex items-center gap-1"><AlertCircle size={11} /> Unassigned</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-xs text-[var(--text-muted)] whitespace-nowrap">{fmt(d.dispatchedAt)}</td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-medium whitespace-nowrap ${badge.bg} ${badge.color}`}>
+                          {d.status === 'IN_TRANSIT' && <Truck size={10} />}
+                          {d.status === 'DELIVERED' && <CheckCircle size={10} />}
+                          {d.status === 'FAILED' && <XCircle size={10} />}
+                          {d.status === 'PENDING_ASSIGNMENT' && <Clock size={10} />}
+                          {badge.label}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 relative" onClick={e => e.stopPropagation()}>
+                        <button onClick={() => setMenuOpen(menuOpen === d.id ? null : d.id)}
+                          className="p-1.5 rounded-lg hover:bg-[var(--bg-input)] border border-transparent hover:border-[var(--border)]">
+                          <MoreVertical size={14} className="text-[var(--text-muted)]" />
+                        </button>
+                        {menuOpen === d.id && (
+                          <div ref={menuRef} className="absolute right-4 top-10 z-20 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl py-1 min-w-[180px]"
+                            onClick={e => e.stopPropagation()}>
+                            <button onClick={() => { setDetailRecord(d); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--bg-input)] flex items-center gap-2"><Eye size={11} /> View Details</button>
+                            <button onClick={() => { setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--bg-input)] flex items-center gap-2"><MapPin size={11} /> Track on GPS Map</button>
+                            <button onClick={() => { setAssignTarget(d); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--bg-input)] flex items-center gap-2"><UserCheck size={11} /> {d.driverId ? 'Reassign Driver' : 'Assign Driver'}</button>
+                            {d.status === 'IN_TRANSIT' && (
+                              <button onClick={() => markDelivered(d.id)} className="w-full text-left px-3 py-2 text-xs text-green-600 hover:bg-[var(--bg-input)] flex items-center gap-2"><CheckCircle size={11} /> Mark as Delivered</button>
+                            )}
+                            <button onClick={() => { setMenuOpen(null); addNotification(`Proof of delivery camera opened for ${d.id}`); }} className="w-full text-left px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--bg-input)] flex items-center gap-2"><Camera size={11} /> Proof of Delivery</button>
+                            {d.status !== 'DELIVERED' && d.status !== 'FAILED' && (
+                              <button onClick={() => markFailed(d.id)} className="w-full text-left px-3 py-2 text-xs text-red-500 hover:bg-[var(--bg-input)] flex items-center gap-2"><XCircle size={11} /> Mark as Failed</button>
+                            )}
+                            <div className="h-px bg-[var(--border)] mx-2 my-1" />
+                            <button onClick={() => { exportToPDF(`Delivery Note — ${d.id}`, [d], ['id', 'orderId', 'clientName', 'destination', 'driverName', 'status']); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--bg-input)] flex items-center gap-2"><Download size={11} /> Export Delivery Note PDF</button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Footer */}
+        <div className="px-5 py-3 border-t border-[var(--border)] flex items-center justify-between">
+          <p className="text-xs text-[var(--text-muted)]">Showing {filtered.length} of {deliveries.length} deliveries</p>
+        </div>
+      </div>
+
+      {/* New Delivery Modal */}
+      {showNew && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setShowNew(false)}>
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div className="relative bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-6 w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-lg font-bold text-[var(--text-primary)]">New Delivery</h2>
+              <button onClick={() => setShowNew(false)} className="p-1.5 rounded-lg hover:bg-[var(--bg-input)]"><X size={16} className="text-[var(--text-muted)]" /></button>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
+            <div className="space-y-4">
               {[
-                { label: 'Client', value: detailRecord.clientName },
-                { label: 'Destination', value: detailRecord.destination },
-                { label: 'Driver', value: detailRecord.driverName },
-                { label: 'Driver ID', value: detailRecord.driverId },
-                { label: 'Status', value: detailRecord.status.replace('_', ' ') },
-                { label: 'Delivery ID', value: detailRecord.id },
+                { label: 'Client Name', key: 'clientName', placeholder: 'e.g. Accra Traders Ltd' },
+                { label: 'Order ID',    key: 'orderId',    placeholder: 'e.g. ORD-1011' },
+                { label: 'Destination', key: 'destination',placeholder: 'Full delivery address' },
               ].map(f => (
-                <div key={f.label} style={{ background: 'var(--bg)', borderRadius: 10, padding: '12px 14px' }}>
-                  <p style={{ margin: '0 0 4px', fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{f.label}</p>
-                  <p style={{ margin: 0, fontSize: 14, color: 'var(--text-primary)', fontWeight: 600 }}>{f.value}</p>
+                <div key={f.key}>
+                  <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">{f.label}</label>
+                  <input value={(form as Record<string, string>)[f.key]} onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))} placeholder={f.placeholder}
+                    className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm focus:outline-none focus:border-[var(--accent)] text-[var(--text-primary)] placeholder-[var(--text-muted)]" />
                 </div>
               ))}
-            </div>
-            <div style={{ borderTop: '1px solid var(--border)', paddingTop: 20, marginBottom: 24 }}>
-              <h3 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>Delivery Timeline</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#3b82f6', flexShrink: 0 }} />
-                  <div>
-                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>Dispatched</p>
-                    <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)' }}>{fmt(detailRecord.dispatchedAt)}</p>
-                  </div>
-                </div>
-                {detailRecord.deliveredAt && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#10b981', flexShrink: 0 }} />
-                    <div>
-                      <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>Delivered</p>
-                      <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)' }}>{fmt(detailRecord.deliveredAt)}</p>
-                    </div>
-                  </div>
-                )}
-                {detailRecord.status === 'FAILED' && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#f43f5e', flexShrink: 0 }} />
-                    <div>
-                      <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#f43f5e' }}>Delivery Failed</p>
-                    </div>
-                  </div>
-                )}
-                {detailRecord.status === 'IN_TRANSIT' && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#f59e0b', flexShrink: 0, animation: 'pulse 2s infinite' }} />
-                    <div>
-                      <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#f59e0b' }}>In Transit...</p>
-                    </div>
-                  </div>
-                )}
+              <div>
+                <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Driver (optional)</label>
+                <select value={form.driverId} onChange={e => setForm(p => ({ ...p, driverId: e.target.value }))}
+                  className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm focus:outline-none focus:border-[var(--accent)] text-[var(--text-primary)]">
+                  <option value="">Assign later (Pending Assignment)</option>
+                  {drivers.filter(d => d.status !== 'OFFLINE').map(d => (
+                    <option key={d.id} value={d.id}>{d.fullName} ({d.truckId})</option>
+                  ))}
+                </select>
               </div>
             </div>
-            <div style={{ display: 'flex', gap: 12 }}>
-              {detailRecord.status === 'IN_TRANSIT' && (
-                <button onClick={() => markDelivered(detailRecord.id)} style={{ flex: 1, background: '#10b981', border: 'none', borderRadius: 12, padding: '12px', fontWeight: 600, color: '#fff', cursor: 'pointer', fontSize: 14 }}>Mark Delivered</button>
-              )}
-              <button onClick={() => setDetailRecord(null)} style={{ flex: 1, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 12, padding: '12px', fontWeight: 600, color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 14 }}>Close</button>
+            <div className="flex items-center gap-3 mt-5">
+              <button onClick={() => setShowNew(false)} className="flex-1 py-2.5 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-input)]">Cancel</button>
+              <button onClick={createDelivery} className="flex-1 py-2.5 rounded-xl text-white text-sm font-semibold" style={{ background: 'var(--accent)' }}>Dispatch</button>
             </div>
           </div>
         </div>
+      )}
+
+      {/* Assign Driver Modal */}
+      {assignTarget && (
+        <AssignDriverModal
+          delivery={assignTarget}
+          drivers={drivers}
+          onAssign={(driverId, notes) => handleAssignDriver(assignTarget, driverId, notes)}
+          onClose={() => setAssignTarget(null)}
+        />
       )}
     </div>
   );
 }
+
