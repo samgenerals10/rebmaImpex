@@ -158,6 +158,7 @@ export default function Sidebar({
       { id: 'Visitors',         label: 'Visitors',               icon: UserPlus },
       { id: 'EmployeeCheckin',  label: 'Attendance',             icon: UserCheck },
       { id: 'DailyReports',     label: 'Daily Reports',          icon: FileBarChart },
+      { id: 'Analytics',        label: 'Analytics',              icon: BarChart2 },
     ],
     PRODUCTION: [
       { id: 'Requisition',       label: 'Dashboard',             icon: LayoutDashboard },

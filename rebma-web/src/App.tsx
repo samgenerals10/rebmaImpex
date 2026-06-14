@@ -94,9 +94,11 @@ import HrDeptManagerView from './views/hr/DeptManagerView';
 import HrPerformanceAlertsView from './views/hr/PerformanceAlertsView';
 
 // Reception dedicated pages
+import ReceptionOverviewView from './views/reception/OverviewView';
 import ReceptionVisitorsView from './views/reception/VisitorsView';
 import ReceptionAttendanceView from './views/reception/AttendanceView';
 import ReceptionDailyReportsView from './views/reception/DailyReportsView';
+import ReceptionAnalyticsView from './views/reception/AnalyticsView';
 
 // Operations dedicated pages
 import OperationsStockView from './views/operations/StockView';
@@ -2788,9 +2790,11 @@ export default function App() {
 
     // Reception dedicated sub-tab pages
     if (activeDepartment === 'RECEPTION') {
+      if (activeSubTab === 'VisitorLog')      return <ReceptionOverviewView currentUser={currentUser} addNotification={addNotification} setActiveSubTab={setActiveSubTab} visitorsList={visitorsList} onAddVisitor={handleAddVisitor} onCheckoutVisitor={handleCheckoutVisitor} onCheckInAttendance={handleCheckInAttendance} />;
       if (activeSubTab === 'Visitors')        return <ReceptionVisitorsView addNotification={addNotification} />;
       if (activeSubTab === 'EmployeeCheckin') return <ReceptionAttendanceView addNotification={addNotification} />;
       if (activeSubTab === 'DailyReports')    return <ReceptionDailyReportsView addNotification={addNotification} />;
+      if (activeSubTab === 'Analytics')       return <ReceptionAnalyticsView addNotification={addNotification} />;
     }
 
     // Operations dedicated sub-tab pages
