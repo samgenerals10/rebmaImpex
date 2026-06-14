@@ -165,6 +165,7 @@ export default function Sidebar({
       { id: 'InternalOrders',    label: 'Internal Orders',        icon: ClipboardList },
       { id: 'WIPStock',          label: 'WIP Stock',              icon: Layers },
       { id: 'OutputRecording',   label: 'Output Recording',       icon: Factory },
+      { id: 'ProdAnalytics',     label: 'Analytics',              icon: BarChart2 },
     ],
     LOGISTICS: [
       { id: 'Overview',          label: 'Dashboard',              icon: LayoutDashboard },

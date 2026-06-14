@@ -112,8 +112,11 @@ import MgmtApprovalsView from './views/management/MgmtApprovalsView';
 import MgmtPriceSettingView from './views/management/MgmtPriceSettingView';
 
 // Production dedicated pages
+import ProductionOverviewView from './views/production/OverviewView';
 import ProductionInternalOrdersView from './views/production/InternalOrdersView';
 import ProductionOutputRecordingView from './views/production/OutputRecordingView';
+import ProductionWipStockView from './views/production/WipStockView';
+import ProductionAnalyticsView from './views/production/AnalyticsView';
 
 // Logistics dedicated pages
 import LogisticsFleetOverviewView from './views/logistics/FleetOverviewView';
@@ -2805,8 +2808,11 @@ export default function App() {
 
     // Production dedicated sub-tab pages
     if (activeDepartment === 'PRODUCTION') {
+      if (activeSubTab === 'Requisition')     return <ProductionOverviewView currentUser={currentUser} productionRequests={productionRequests} addNotification={addNotification} setActiveSubTab={setActiveSubTab} />;
       if (activeSubTab === 'InternalOrders')  return <ProductionInternalOrdersView productionRequests={productionRequests} addNotification={addNotification} />;
       if (activeSubTab === 'OutputRecording') return <ProductionOutputRecordingView addNotification={addNotification} />;
+      if (activeSubTab === 'WIPStock')        return <ProductionWipStockView addNotification={addNotification} />;
+      if (activeSubTab === 'ProdAnalytics')   return <ProductionAnalyticsView addNotification={addNotification} />;
     }
 
     // Logistics dedicated sub-tab pages
