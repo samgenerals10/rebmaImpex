@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, X, CheckCircle, XCircle, Clock, Calendar, Users, Filter } from 'lucide-react';
+import { Plus, X, CheckCircle, XCircle, Clock, Calendar, Users, Filter, LayoutList, CalendarDays, Wallet } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import type { CurrentUser } from '../../types/erp';
 
@@ -52,7 +52,81 @@ interface Props {
   addNotification: (msg: string) => void;
 }
 
+const LEAVE_BALANCES = [
+  { name: 'Kwame Mensah', dept: 'Operations', annual: 21, used: 5, sick: 10, usedSick: 2 },
+  { name: 'Abena Owusu', dept: 'Finance', annual: 21, used: 7, sick: 10, usedSick: 4 },
+  { name: 'Kofi Asante', dept: 'Logistics', annual: 21, used: 1, sick: 10, usedSick: 0 },
+  { name: 'Ama Boateng', dept: 'HR', annual: 21, used: 3, sick: 10, usedSick: 1 },
+  { name: 'Yaw Darko', dept: 'Marketing', annual: 21, used: 8, sick: 10, usedSick: 3 },
+  { name: 'Nana Agyei', dept: 'Production', annual: 21, used: 4, sick: 10, usedSick: 5 },
+  { name: 'Kojo Amponsah', dept: 'Logistics', annual: 21, used: 2, sick: 10, usedSick: 1 },
+  { name: 'Adwoa Sarpong', dept: 'Operations', annual: 21, used: 0, sick: 10, usedSick: 0 },
+];
+
+function CalendarView({ leaves }: { leaves: LeaveRequest[] }) {
+  const today = new Date('2026-06-14');
+  const year = today.getFullYear();
+  const month = today.getMonth();
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const monthName = today.toLocaleString('default', { month: 'long', year: 'numeric' });
+
+  const leavesThisMonth = leaves.filter(l => {
+    const start = new Date(l.startDate);
+    const end = new Date(l.endDate);
+    return l.status === 'Approved' && (start.getMonth() === month || end.getMonth() === month);
+  });
+
+  const getLeaveForDay = (day: number) => {
+    const date = new Date(year, month, day);
+    return leavesThisMonth.filter(l => {
+      const start = new Date(l.startDate);
+      const end = new Date(l.endDate);
+      return date >= start && date <= end;
+    });
+  };
+
+  const typeColor: Record<string, string> = { Annual: '#6366f1', Sick: '#ef4444', Personal: '#f59e0b', Emergency: '#dc2626' };
+
+  return (
+    <div>
+      <h3 className="font-bold text-[var(--text-primary)] mb-4">{monthName}</h3>
+      <div className="grid grid-cols-7 gap-1 mb-2">
+        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
+          <div key={d} className="text-center text-[10px] font-bold text-[var(--text-muted)] py-1">{d}</div>
+        ))}
+      </div>
+      <div className="grid grid-cols-7 gap-1">
+        {Array.from({ length: firstDay }, (_, i) => <div key={`empty-${i}`} />)}
+        {Array.from({ length: daysInMonth }, (_, i) => {
+          const day = i + 1;
+          const dayLeaves = getLeaveForDay(day);
+          const isToday = day === today.getDate();
+          return (
+            <div key={day}
+              className={`min-h-14 rounded-xl p-1 border text-xs ${isToday ? 'border-[var(--accent)] bg-[var(--accent-light)]' : 'border-[var(--border)] bg-[var(--bg)]'}`}>
+              <div className={`text-right font-bold mb-0.5 ${isToday ? 'text-[var(--accent)]' : 'text-[var(--text-muted)]'}`}>{day}</div>
+              <div className="space-y-0.5">
+                {dayLeaves.slice(0, 2).map((l, li) => (
+                  <div key={li} className="text-[9px] font-semibold px-1 py-0.5 rounded truncate"
+                    style={{ background: `${typeColor[l.leaveType] || 'var(--accent)'}20`, color: typeColor[l.leaveType] || 'var(--accent)' }}>
+                    {l.employeeName.split(' ')[0]}
+                  </div>
+                ))}
+                {dayLeaves.length > 2 && (
+                  <div className="text-[9px] text-[var(--text-muted)] px-1">+{dayLeaves.length - 2}</div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function LeaveManagementView({ currentUser, addNotification }: Props) {
+  const [activeTab, setActiveTab] = useState<'requests' | 'calendar' | 'balances'>('requests');
   const [leaves, setLeaves] = useState<LeaveRequest[]>(MOCK_LEAVES);
   const [deptFilter, setDeptFilter] = useState('All');
   const [typeFilter, setTypeFilter] = useState('All');
@@ -115,7 +189,7 @@ export default function LeaveManagementView({ currentUser, addNotification }: Pr
 
   return (
     <div style={{ padding: '1.5rem', maxWidth: 1100, margin: '0 auto' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.75rem' }}>
         <div>
           <h1 style={{ margin: 0, color: 'var(--text-primary)', fontWeight: 700, fontSize: 22 }}>Leave Management</h1>
           <p style={{ margin: '4px 0 0', color: 'var(--text-muted)', fontSize: 13 }}>Manage employee leave requests</p>
@@ -126,6 +200,23 @@ export default function LeaveManagementView({ currentUser, addNotification }: Pr
         </button>
       </div>
 
+      {/* Tab bar */}
+      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.75rem' }}>
+        {[
+          { id: 'requests' as const, label: 'Requests', icon: <LayoutList size={14} /> },
+          { id: 'calendar' as const, label: 'Calendar', icon: <CalendarDays size={14} /> },
+          { id: 'balances' as const, label: 'Leave Balances', icon: <Wallet size={14} /> },
+        ].map(tab => (
+          <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0.4rem 1rem', borderRadius: 8, border: 'none', cursor: 'pointer', fontWeight: 500, fontSize: 13,
+              background: activeTab === tab.id ? 'var(--accent)' : 'transparent',
+              color: activeTab === tab.id ? '#fff' : 'var(--text-secondary)' }}>
+            {tab.icon}{tab.label}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === 'requests' && <>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem', marginBottom: '1.5rem' }}>
         {[
           { label: 'Total Requests', value: leaves.length, color: 'var(--accent)', icon: <Calendar size={18} /> },
@@ -230,6 +321,46 @@ export default function LeaveManagementView({ currentUser, addNotification }: Pr
           </div>
         )}
       </div>
+      </>}
+
+      {activeTab === 'calendar' && (
+        <div style={{ background: 'var(--bg-card)', borderRadius: 12, padding: '1.5rem', border: '1px solid var(--border)' }}>
+          <CalendarView leaves={leaves} />
+        </div>
+      )}
+
+      {activeTab === 'balances' && (
+        <div style={{ background: 'var(--bg-card)', borderRadius: 12, border: '1px solid var(--border)', overflow: 'hidden' }}>
+          <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--border)' }}>
+            <h3 style={{ margin: 0, color: 'var(--text-primary)', fontWeight: 700, fontSize: 15 }}>Leave Balances — {new Date().getFullYear()}</h3>
+          </div>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ background: 'var(--bg)', borderBottom: '1px solid var(--border)' }}>
+                  {['Employee', 'Department', 'Annual (Total)', 'Annual (Used)', 'Annual (Remaining)', 'Sick (Total)', 'Sick (Used)', 'Sick (Remaining)'].map(h => (
+                    <th key={h} style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, whiteSpace: 'nowrap' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {LEAVE_BALANCES.map((row, i) => (
+                  <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
+                    <td style={{ padding: '0.75rem 1rem', fontWeight: 600, color: 'var(--text-primary)', fontSize: 13 }}>{row.name}</td>
+                    <td style={{ padding: '0.75rem 1rem', color: 'var(--text-secondary)', fontSize: 13 }}>{row.dept}</td>
+                    <td style={{ padding: '0.75rem 1rem', color: 'var(--text-secondary)', fontSize: 13 }}>{row.annual}</td>
+                    <td style={{ padding: '0.75rem 1rem', color: '#f59e0b', fontSize: 13, fontWeight: 600 }}>{row.used}</td>
+                    <td style={{ padding: '0.75rem 1rem', color: '#10b981', fontSize: 13, fontWeight: 700 }}>{row.annual - row.used}</td>
+                    <td style={{ padding: '0.75rem 1rem', color: 'var(--text-secondary)', fontSize: 13 }}>{row.sick}</td>
+                    <td style={{ padding: '0.75rem 1rem', color: '#ef4444', fontSize: 13, fontWeight: 600 }}>{row.usedSick}</td>
+                    <td style={{ padding: '0.75rem 1rem', color: '#10b981', fontSize: 13, fontWeight: 700 }}>{row.sick - row.usedSick}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {showAdd && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>

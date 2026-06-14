@@ -1,0 +1,244 @@
+import React, { useState } from 'react';
+import {
+  Building2, Users, TrendingUp, Edit2, X, Plus, CheckCircle,
+  BarChart2, AlertCircle, UserCheck
+} from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import type { StaffMember } from '../../types/erp';
+
+interface Department {
+  id: string;
+  name: string;
+  headName: string;
+  headRole: string;
+  budget: number;
+  headcount: number;
+  activeProjects: number;
+  performanceScore: number;
+}
+
+const MOCK_DEPTS: Department[] = [
+  { id: '1', name: 'Operations', headName: 'Kwame Mensah', headRole: 'Operations Manager', budget: 120000, headcount: 8, activeProjects: 3, performanceScore: 88 },
+  { id: '2', name: 'Finance', headName: 'Abena Owusu', headRole: 'Finance Officer', budget: 95000, headcount: 6, activeProjects: 2, performanceScore: 92 },
+  { id: '3', name: 'Logistics', headName: 'Kofi Asante', headRole: 'Logistics Coordinator', budget: 80000, headcount: 7, activeProjects: 4, performanceScore: 79 },
+  { id: '4', name: 'HR', headName: 'Ama Boateng', headRole: 'HR Specialist', budget: 70000, headcount: 4, activeProjects: 2, performanceScore: 91 },
+  { id: '5', name: 'Marketing', headName: 'Kwesi Ofori', headRole: 'Sales Representative', budget: 85000, headcount: 5, activeProjects: 3, performanceScore: 74 },
+  { id: '6', name: 'Production', headName: 'Nana Agyei', headRole: 'Production Supervisor', budget: 110000, headcount: 9, activeProjects: 5, performanceScore: 85 },
+  { id: '7', name: 'Dispatch', headName: 'Kojo Amponsah', headRole: 'Dispatch Coordinator', budget: 65000, headcount: 5, activeProjects: 2, performanceScore: 82 },
+  { id: '8', name: 'Reception', headName: 'Akosua Frimpong', headRole: 'Receptionist', budget: 40000, headcount: 3, activeProjects: 1, performanceScore: 90 },
+];
+
+interface Props {
+  staffList: StaffMember[];
+  addNotification: (msg: string) => void;
+}
+
+export default function DeptManagerView({ staffList, addNotification }: Props) {
+  const [depts, setDepts] = useState<Department[]>(MOCK_DEPTS);
+  const [selected, setSelected] = useState<Department | null>(null);
+  const [editDept, setEditDept] = useState<Department | null>(null);
+  const [editForm, setEditForm] = useState({ headName: '', headRole: '', budget: 0, activeProjects: 0 });
+
+  const totalHeadcount = depts.reduce((s, d) => s + d.headcount, 0);
+  const avgPerformance = Math.round(depts.reduce((s, d) => s + d.performanceScore, 0) / depts.length);
+  const totalBudget = depts.reduce((s, d) => s + d.budget, 0);
+
+  const chartData = depts.map(d => ({ name: d.name.slice(0, 4), headcount: d.headcount, score: d.performanceScore }));
+
+  const openEdit = (dept: Department) => {
+    setEditDept(dept);
+    setEditForm({ headName: dept.headName, headRole: dept.headRole, budget: dept.budget, activeProjects: dept.activeProjects });
+  };
+
+  const handleSaveEdit = () => {
+    if (!editDept) return;
+    const updated = { ...editDept, ...editForm };
+    setDepts(prev => prev.map(d => d.id === editDept.id ? updated : d));
+    if (selected?.id === editDept.id) setSelected(updated);
+    addNotification(`${editDept.name} department updated`);
+    setEditDept(null);
+  };
+
+  const perfColor = (score: number) => score >= 90 ? '#10b981' : score >= 80 ? 'var(--accent)' : score >= 70 ? '#f59e0b' : '#ef4444';
+
+  return (
+    <div className="p-4 lg:p-6 space-y-5 max-w-screen-xl mx-auto">
+      {/* Header */}
+      <div>
+        <h1 className="text-xl font-bold text-[var(--text-primary)] flex items-center gap-2">
+          <Building2 className="w-5 h-5 text-[var(--accent)]" />
+          Department Manager
+        </h1>
+        <p className="text-xs text-[var(--text-muted)] mt-0.5">Overview and management of all departments</p>
+      </div>
+
+      {/* Summary KPIs */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {[
+          { label: 'Departments', value: depts.length, color: 'var(--accent)', icon: Building2 },
+          { label: 'Total Headcount', value: totalHeadcount, color: '#10b981', icon: Users },
+          { label: 'Avg Performance', value: `${avgPerformance}%`, color: '#6366f1', icon: TrendingUp },
+          { label: 'Total Budget', value: `GHS ${(totalBudget / 1000).toFixed(0)}K`, color: '#f59e0b', icon: BarChart2 },
+        ].map(card => (
+          <div key={card.label} className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-3.5">
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-[10px] text-[var(--text-muted)] font-semibold uppercase">{card.label}</p>
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: `${card.color}20`, color: card.color }}>
+                <card.icon className="w-3.5 h-3.5" />
+              </div>
+            </div>
+            <p className="text-2xl font-bold text-[var(--text-primary)]">{card.value}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4">
+          <h3 className="font-bold text-[var(--text-primary)] text-sm mb-3">Headcount by Department</h3>
+          <div className="h-40">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData} barSize={16}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" opacity={0.5} />
+                <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={10} />
+                <YAxis stroke="var(--text-muted)" fontSize={10} />
+                <Tooltip contentStyle={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)', color: 'var(--text-primary)', fontSize: 12 }} />
+                <Bar dataKey="headcount" fill="var(--accent)" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+        <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4">
+          <h3 className="font-bold text-[var(--text-primary)] text-sm mb-3">Performance Scores</h3>
+          <div className="h-40">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData} barSize={16}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" opacity={0.5} />
+                <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={10} />
+                <YAxis domain={[0, 100]} stroke="var(--text-muted)" fontSize={10} />
+                <Tooltip contentStyle={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)', color: 'var(--text-primary)', fontSize: 12 }} />
+                <Bar dataKey="score" fill="#6366f1" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+
+      {/* Department Cards Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+        {depts.map(dept => {
+          const pc = perfColor(dept.performanceScore);
+          return (
+            <div key={dept.id} onClick={() => setSelected(dept)}
+              className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4 cursor-pointer hover:shadow-md transition-shadow">
+              <div className="flex items-start justify-between mb-3">
+                <div>
+                  <h4 className="font-bold text-[var(--text-primary)] text-sm">{dept.name}</h4>
+                  <p className="text-[11px] text-[var(--text-muted)] mt-0.5">{dept.headName}</p>
+                </div>
+                <button onClick={e => { e.stopPropagation(); openEdit(dept); }}
+                  className="w-7 h-7 rounded-lg bg-[var(--bg)] border border-[var(--border)] flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--accent-light)] cursor-pointer transition-colors">
+                  <Edit2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+              <div className="grid grid-cols-2 gap-2 mb-3">
+                <div className="bg-[var(--bg)] rounded-lg p-2 border border-[var(--border)]">
+                  <p className="text-[10px] text-[var(--text-muted)]">Staff</p>
+                  <p className="text-sm font-bold text-[var(--text-primary)]">{dept.headcount}</p>
+                </div>
+                <div className="bg-[var(--bg)] rounded-lg p-2 border border-[var(--border)]">
+                  <p className="text-[10px] text-[var(--text-muted)]">Projects</p>
+                  <p className="text-sm font-bold text-[var(--text-primary)]">{dept.activeProjects}</p>
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-[var(--text-muted)]">Performance</span>
+                <span className="text-xs font-bold" style={{ color: pc }}>{dept.performanceScore}%</span>
+              </div>
+              <div className="mt-1.5 h-1.5 bg-[var(--bg)] rounded-full overflow-hidden">
+                <div className="h-full rounded-full" style={{ width: `${dept.performanceScore}%`, background: pc }} />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Detail panel */}
+      {selected && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5 w-full max-w-md">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-[var(--text-primary)] text-lg">{selected.name} Department</h3>
+              <button onClick={() => setSelected(null)} className="text-[var(--text-muted)] cursor-pointer"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="space-y-3">
+              <div className="flex items-center gap-3 p-3 bg-[var(--bg)] rounded-xl border border-[var(--border)]">
+                <div className="w-10 h-10 rounded-full bg-[var(--accent)] text-white flex items-center justify-center font-bold text-sm">
+                  {selected.headName.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-[var(--text-primary)]">{selected.headName}</p>
+                  <p className="text-xs text-[var(--text-muted)]">{selected.headRole}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { label: 'Headcount', value: selected.headcount },
+                  { label: 'Active Projects', value: selected.activeProjects },
+                  { label: 'Budget', value: `GHS ${selected.budget.toLocaleString()}` },
+                  { label: 'Performance', value: `${selected.performanceScore}%` },
+                ].map(item => (
+                  <div key={item.label} className="bg-[var(--bg)] rounded-xl p-3 border border-[var(--border)]">
+                    <p className="text-[10px] text-[var(--text-muted)] mb-1">{item.label}</p>
+                    <p className="font-bold text-[var(--text-primary)]">{item.value}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="flex gap-2 mt-3">
+                <button onClick={() => { openEdit(selected); setSelected(null); }}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-[var(--accent)] text-white rounded-xl text-sm font-semibold cursor-pointer">
+                  <Edit2 className="w-3.5 h-3.5" /> Edit
+                </button>
+                <button onClick={() => setSelected(null)}
+                  className="px-4 py-2 border border-[var(--border)] rounded-xl text-sm text-[var(--text-secondary)] cursor-pointer">
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit modal */}
+      {editDept && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5 w-full max-w-sm">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-[var(--text-primary)]">Edit {editDept.name}</h3>
+              <button onClick={() => setEditDept(null)} className="text-[var(--text-muted)] cursor-pointer"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="space-y-3">
+              {[
+                { label: 'Department Head', key: 'headName' as const, type: 'text' },
+                { label: 'Head Role', key: 'headRole' as const, type: 'text' },
+                { label: 'Budget (GHS)', key: 'budget' as const, type: 'number' },
+                { label: 'Active Projects', key: 'activeProjects' as const, type: 'number' },
+              ].map(field => (
+                <div key={field.key}>
+                  <label className="block text-xs text-[var(--text-secondary)] mb-1">{field.label}</label>
+                  <input type={field.type} value={editForm[field.key]}
+                    onChange={e => setEditForm(p => ({ ...p, [field.key]: field.type === 'number' ? parseInt(e.target.value) || 0 : e.target.value }))}
+                    className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-[var(--text-primary)] text-sm outline-none" />
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-2 mt-4 justify-end">
+              <button onClick={() => setEditDept(null)} className="px-4 py-2 text-xs border border-[var(--border)] rounded-xl text-[var(--text-secondary)] cursor-pointer">Cancel</button>
+              <button onClick={handleSaveEdit} className="px-4 py-2 text-xs bg-[var(--accent)] text-white rounded-xl font-semibold cursor-pointer">Save</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

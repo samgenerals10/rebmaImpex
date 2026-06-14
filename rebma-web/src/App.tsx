@@ -84,8 +84,14 @@ import DispatchTrackingView from './views/dispatch/TrackingView';
 import DispatchOverviewView from './views/dispatch/OverviewView';
 
 // HR dedicated pages
+import HrOverviewView from './views/hr/OverviewView';
 import HrStaffView from './views/hr/StaffView';
 import HrLeaveManagementView from './views/hr/LeaveManagementView';
+import HrRegistrationsView from './views/hr/RegistrationsView';
+import HrAttendanceView from './views/hr/AttendanceView';
+import HrPayrollView from './views/hr/PayrollView';
+import HrDeptManagerView from './views/hr/DeptManagerView';
+import HrPerformanceAlertsView from './views/hr/PerformanceAlertsView';
 
 // Reception dedicated pages
 import ReceptionVisitorsView from './views/reception/VisitorsView';
@@ -2766,12 +2772,18 @@ export default function App() {
 
     // HR dedicated sub-tab pages
     if (activeDepartment === 'HR') {
-      if (activeSubTab === 'Staff')           return <HrStaffView staffList={staffList} addNotification={addNotification} />;
-      if (activeSubTab === 'LeaveManagement') return <HrLeaveManagementView currentUser={currentUser} addNotification={addNotification} />;
-      if (activeSubTab === 'FleetOverview')  return <LogisticsFleetOverviewView addNotification={addNotification} />;
-      if (activeSubTab === 'FuelManagement') return <LogisticsFuelManagementView addNotification={addNotification} />;
-      if (activeSubTab === 'Maintenance')    return <LogisticsMaintenanceView addNotification={addNotification} />;
-      if (activeSubTab === 'FleetAnalytics') return <LogisticsFleetAnalyticsView addNotification={addNotification} />;
+      if (activeSubTab === 'Employees')         return <HrOverviewView currentUser={currentUser} addNotification={addNotification} setActiveSubTab={setActiveSubTab} staffList={staffList} pendingRegistrations={pendingRegistrations} attendanceList={attendanceList} onApprove={handleApproveUser} onDeny={handleDenyUser} />;
+      if (activeSubTab === 'Staff')             return <HrStaffView staffList={staffList} addNotification={addNotification} />;
+      if (activeSubTab === 'Registrations')     return <HrRegistrationsView pendingRegistrations={pendingRegistrations} addNotification={addNotification} onApprove={handleApproveUser} onDeny={handleDenyUser} />;
+      if (activeSubTab === 'Attendance')        return <HrAttendanceView attendanceList={attendanceList} addNotification={addNotification} />;
+      if (activeSubTab === 'LeaveManagement')   return <HrLeaveManagementView currentUser={currentUser} addNotification={addNotification} />;
+      if (activeSubTab === 'Payroll')           return <HrPayrollView currentUser={currentUser} staffList={staffList} addNotification={addNotification} />;
+      if (activeSubTab === 'DepartmentManager') return <HrDeptManagerView staffList={staffList} addNotification={addNotification} />;
+      if (activeSubTab === 'PerformanceAlerts') return <HrPerformanceAlertsView currentUser={currentUser} addNotification={addNotification} />;
+      if (activeSubTab === 'FleetOverview')     return <LogisticsFleetOverviewView addNotification={addNotification} />;
+      if (activeSubTab === 'FuelManagement')    return <LogisticsFuelManagementView addNotification={addNotification} />;
+      if (activeSubTab === 'Maintenance')       return <LogisticsMaintenanceView addNotification={addNotification} />;
+      if (activeSubTab === 'FleetAnalytics')    return <LogisticsFleetAnalyticsView addNotification={addNotification} />;
     }
 
     // Reception dedicated sub-tab pages
