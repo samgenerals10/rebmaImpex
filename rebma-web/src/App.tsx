@@ -3534,6 +3534,28 @@ export default function App() {
         sidebarCollapsed={sidebarCollapsed}
         setSidebarCollapsed={setSidebarCollapsed}
         unreadEmailCount={unreadEmailCount}
+        setIsAuthenticated={setIsAuthenticated}
+        setCurrentUser={setCurrentUser}
+        isSidebarOpen={isSidebarOpen}
+        setIsSidebarOpen={setIsSidebarOpen}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        setActiveMobileView={setActiveMobileView}
+        setIsMobileNotificationsActive={setIsMobileNotificationsActive}
+        darkMode={darkMode}
+        setDarkMode={setDarkMode}
+        setIsMobileSearchActive={setIsMobileSearchActive}
+        activeMobileView={activeMobileView}
+        renderMobileProfilePage={renderMobileProfilePage}
+        renderMobileChatPage={renderMobileChatPage}
+        renderWithShell={renderWithShell}
+        accentColor={accentColor}
+        isMobileSearchActive={isMobileSearchActive}
+        isMobileNotificationsActive={isMobileNotificationsActive}
+        navStyle={navStyle}
+        setIsQuickActionOpen={setIsQuickActionOpen}
+        isQuickActionOpen={isQuickActionOpen}
+        handleQuickAction={handleQuickAction}
       />
     </CeoSettingsProvider>
   );
@@ -3548,6 +3570,12 @@ function AppInner({
   renderConfirmModal, isChatOpen, setIsChatOpen, chatMessages, sendChatMessage,
   boardroomMinutes, setBoardroomMinutes, onLogout, openBoardroom,
   sidebarCollapsed, setSidebarCollapsed, unreadEmailCount,
+  setIsAuthenticated, setCurrentUser, isSidebarOpen, setIsSidebarOpen,
+  searchQuery, setSearchQuery, setActiveMobileView, setIsMobileNotificationsActive,
+  darkMode, setDarkMode, setIsMobileSearchActive, activeMobileView,
+  renderMobileProfilePage, renderMobileChatPage, renderWithShell,
+  accentColor, isMobileSearchActive, isMobileNotificationsActive, navStyle,
+  setIsQuickActionOpen, isQuickActionOpen, handleQuickAction,
 }: any) {
   const { getSetting } = useCeoSettings();
   const isCeo = currentUser?.isCeo || currentUser?.department === 'CEO';
@@ -3611,7 +3639,7 @@ function AppInner({
               }}
               notifications={notifications}
               onClearNotifications={() => setNotifications([])}
-              onToggleSidebar={() => setIsSidebarOpen(prev => !prev)}
+              onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
               currentUser={currentUser}
               onOpenNotifications={() => setIsMobileNotificationsActive(true)}
               darkMode={darkMode}
@@ -4143,7 +4171,7 @@ function AppInner({
               </div>
             ) : (
               <div className="space-y-3">
-                {notifications.map(n => (
+                {notifications.map((n: { id: string; msg: string; time: string }) => (
                   <div key={n.id} className="p-4 bg-bg-card dark:bg-slate-800 rounded-2xl border border-custom shadow-card flex items-start gap-3">
                     <div className="w-2 h-2 rounded-full bg-blue-500 mt-1.5 shrink-0" />
                     <div className="flex-1">
@@ -4170,7 +4198,7 @@ function AppInner({
         {/* 9. GLOBAL TOAST NOTIFICATION OVERLAY */}
         <div className="fixed bottom-6 right-6 z-[300] flex flex-col gap-2 max-w-sm pointer-events-none">
           <AnimatePresence mode="sync">
-            {notifications.slice(0, 3).map(n => (
+            {notifications.slice(0, 3).map((n: { id: string; msg: string; time: string }) => (
               <motion.div
                 key={n.id}
                 initial={{ opacity: 0, x: 40, scale: 0.9 }}
@@ -4187,7 +4215,7 @@ function AppInner({
                   </div>
                   <button
                     type="button"
-                    onClick={() => setNotifications(prev => prev.filter(x => x.id !== n.id))}
+                    onClick={() => setNotifications((prev: Array<{ id: string; msg: string; time: string }>) => prev.filter((x: { id: string; msg: string; time: string }) => x.id !== n.id))}
                     className="ml-auto shrink-0 text-text-secondary hover:text-text-muted cursor-pointer"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>

@@ -11,6 +11,8 @@ export interface Order {
   totalAmount: number;
   status: 'PENDING_FINANCE' | 'PENDING_MANAGEMENT' | 'APPROVED' | 'PROCESSING' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | 'REJECTED';
   createdAt: string;
+  products?: string;
+  submittedBy?: string;
 }
 
 export interface IncomingGoods {

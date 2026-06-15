@@ -21,6 +21,7 @@ const MOCK_VAT: VATEntry[] = [
 ];
 
 interface TaxRates {
+  [key: string]: number | boolean;
   vat: number;
   nhil: number;
   getfund: number;

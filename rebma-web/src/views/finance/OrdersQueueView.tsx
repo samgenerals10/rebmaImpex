@@ -6,17 +6,7 @@ import {
   FileText, Camera, Upload, RefreshCw
 } from 'lucide-react';
 import { exportToCSV } from '../../utils/export';
-
-interface Order {
-  id: string;
-  clientName: string;
-  products?: string;
-  totalAmount: number;
-  paymentMode: string;
-  status: string;
-  createdAt?: string;
-  submittedBy?: string;
-}
+import type { Order } from '../../types/erp';
 
 interface Props {
   addNotification?: (msg: string) => void;
@@ -53,6 +43,7 @@ const STATUS_COLORS: Record<string, string> = {
 type PaymentMode = 'CASH' | 'CHEQUE' | 'MOBILE_MONEY' | 'CREDIT';
 
 interface PaymentForm {
+  [key: string]: string;
   // cash
   amountReceived: string;
   dateReceived: string;
@@ -112,7 +103,7 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
   const pendingValue = pending.reduce((s, o) => s + o.totalAmount, 0);
 
   function approveOrder(order: Order) {
-    const updatedStatus = 'APPROVED';
+    const updatedStatus = 'APPROVED' as const;
     const updateLocal = (prev: Order[]) => prev.map(o => o.id === order.id ? { ...o, status: updatedStatus } : o);
     setAllOrders(updateLocal);
     setOrdersList?.(prev => prev.map(o => o.id === order.id ? { ...o, status: updatedStatus } : o));
@@ -130,9 +121,9 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
   }
 
   function rejectOrder(id: string) {
-    const updateLocal = (prev: Order[]) => prev.map(o => o.id === id ? { ...o, status: 'REJECTED' } : o);
+    const updateLocal = (prev: Order[]) => prev.map(o => o.id === id ? { ...o, status: 'REJECTED' as const } : o);
     setAllOrders(updateLocal);
-    setOrdersList?.(prev => prev.map(o => o.id === id ? { ...o, status: 'REJECTED' } : o));
+    setOrdersList?.(prev => prev.map(o => o.id === id ? { ...o, status: 'REJECTED' as const } : o));
     onEvaluateOrder?.(id, false);
 
     supabase.from('orders').update({ status: 'REJECTED', reject_reason: rejectReason }).eq('id', id).then(() => {}, () => {});

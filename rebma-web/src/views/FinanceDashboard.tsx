@@ -56,7 +56,7 @@ export default function FinanceDashboard({
   const [payType, setPayType] = useState<'DIRECT' | 'CREDIT_SETTLEMENT'>('DIRECT');
   const [clientName, setClientName] = useState('');
   const [amount, setAmount] = useState('');
-  const [payMode, setPayMode] = useState<'CASH' | 'CHEQUE' | 'MOBILE_MONEY' | 'BANK_TRANSFER'>('CASH');
+  const [payMode, setPayMode] = useState<'CASH' | 'CHEQUE' | 'MOBILE_MONEY' | 'CREDIT'>('CASH');
   const [selectedOrderId, setSelectedOrderId] = useState('');
   const [selectedTicket, setSelectedTicket] = useState<FinancePayment | null>(null);
   const [activeMobileDetail, setActiveMobileDetail] = useState<{ type: 'payment' | 'requisition'; data: any } | null>(null);
@@ -366,7 +366,7 @@ export default function FinanceDashboard({
       breakdownData: [
         { name: 'Cash',   value: ordersList.filter(o => o.paymentMode === 'CASH').length },
         { name: 'Credit', value: ordersList.filter(o => o.paymentMode === 'CREDIT').length },
-        { name: 'Online', value: ordersList.filter(o => o.paymentMode === 'ONLINE').length },
+        { name: 'Mobile Money', value: ordersList.filter(o => o.paymentMode === 'MOBILE_MONEY').length },
       ],
       tableData: ordersList.filter(o => o.status === 'PENDING_FINANCE').map(o => ({
         order: o.id, customer: o.clientName, amount: `GHS ${o.totalAmount.toLocaleString()}`,
@@ -407,7 +407,7 @@ export default function FinanceDashboard({
         { name: 'Cash',     value: localPayments.filter(p => p.paymentMode === 'CASH').length },
         { name: 'Cheque',   value: localPayments.filter(p => p.paymentMode === 'CHEQUE').length },
         { name: 'Mobile',   value: localPayments.filter(p => p.paymentMode === 'MOBILE_MONEY').length },
-        { name: 'Transfer', value: localPayments.filter(p => p.paymentMode === 'BANK_TRANSFER').length },
+        { name: 'Credit',   value: localPayments.filter(p => p.paymentMode === 'CREDIT').length },
       ],
       tableData: ordersList.filter(o => o.paymentMode === 'CREDIT').map(o => ({
         customer: o.clientName, amount: `GHS ${o.totalAmount.toLocaleString()}`,
@@ -947,7 +947,7 @@ export default function FinanceDashboard({
                       <option value="CASH" className="bg-[var(--bg-card)]">Cash</option>
                       <option value="CHEQUE" className="bg-[var(--bg-card)]">Cheque</option>
                       <option value="MOBILE_MONEY" className="bg-[var(--bg-card)]">Mobile Money (MTN/Telecel)</option>
-                      <option value="BANK_TRANSFER" className="bg-[var(--bg-card)]">Bank Transfer</option>
+                      <option value="CREDIT" className="bg-[var(--bg-card)]">Credit</option>
                     </select>
                   </div>
 
