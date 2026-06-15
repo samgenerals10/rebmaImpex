@@ -49,6 +49,9 @@ import CeoWalletsView from './views/ceo/WalletsView';
 import CeoAccountsView from './views/ceo/AccountsView';
 import CeoApprovalsView from './views/ceo/ApprovalsView';
 import CeoSupplierOrdersView from './views/ceo/SupplierOrdersView';
+import CeoControlCenter from './views/ceo/CeoControlCenter';
+import MaintenancePage from './components/MaintenancePage';
+import { CeoSettingsProvider, useCeoSettings } from './contexts/CeoSettingsContext';
 
 // Finance dedicated pages
 import FinanceWalletsView from './views/finance/WalletsView';
@@ -2718,6 +2721,7 @@ export default function App() {
       if (activeSubTab === 'Accounts')        return <CeoAccountsView />;
       if (activeSubTab === 'Approvals')       return <CeoApprovalsView currentUser={currentUser} addNotification={addNotification} />;
       if (activeSubTab === 'SupplierOrders')  return <CeoSupplierOrdersView currentUser={currentUser} addNotification={addNotification} />;
+      if (activeSubTab === 'ControlCenter')   return <CeoControlCenter currentUser={currentUser} addNotification={addNotification} />;
       if (activeSubTab === 'FleetOverview')  return <LogisticsFleetOverviewView addNotification={addNotification} />;
       if (activeSubTab === 'FuelManagement') return <LogisticsFuelManagementView addNotification={addNotification} />;
       if (activeSubTab === 'Maintenance')    return <LogisticsMaintenanceView addNotification={addNotification} />;
@@ -3494,9 +3498,62 @@ export default function App() {
   };
 
   return (
+    <CeoSettingsProvider>
+      <AppInner
+        currentUser={currentUser}
+        reducedMotion={reducedMotion}
+        activeDepartment={activeDepartment}
+        setActiveDepartment={setActiveDepartment}
+        activeSubTab={activeSubTab}
+        setActiveSubTab={setActiveSubTab}
+        theme={theme}
+        notifications={notifications}
+        setNotifications={setNotifications}
+        addNotification={addNotification}
+        renderDashboard={renderDashboard}
+        renderAlertModal={renderAlertModal}
+        renderPromptModal={renderPromptModal}
+        renderConfirmModal={renderConfirmModal}
+        isChatOpen={isChatOpen}
+        setIsChatOpen={setIsChatOpen}
+        chatMessages={chatMessages}
+        sendChatMessage={sendChatMessage}
+        boardroomMinutes={boardroomMinutes}
+        setBoardroomMinutes={setBoardroomMinutes}
+        onLogout={async () => { await auth.signOut(); setIsAuthenticated(false); setCurrentUser(null); }}
+        openBoardroom={() => { setActiveDepartment('BOARDROOM'); setActiveSubTab('VideoConf'); }}
+        sidebarCollapsed={sidebarCollapsed}
+        setSidebarCollapsed={setSidebarCollapsed}
+        unreadEmailCount={unreadEmailCount}
+      />
+    </CeoSettingsProvider>
+  );
+}
+
+// ── AppInner ─────────────────────────────────────────────────────────────────
+// Separated so useCeoSettings() can be called inside CeoSettingsProvider
+function AppInner({
+  currentUser, reducedMotion, activeDepartment, setActiveDepartment,
+  activeSubTab, setActiveSubTab, theme, notifications, setNotifications,
+  addNotification, renderDashboard, renderAlertModal, renderPromptModal,
+  renderConfirmModal, isChatOpen, setIsChatOpen, chatMessages, sendChatMessage,
+  boardroomMinutes, setBoardroomMinutes, onLogout, openBoardroom,
+  sidebarCollapsed, setSidebarCollapsed, unreadEmailCount,
+}: any) {
+  const { getSetting } = useCeoSettings();
+  const isCeo = currentUser?.isCeo || currentUser?.department === 'CEO';
+  const maintenanceMode = getSetting('maintenance_mode', false);
+  const appMasterSwitch = getSetting('app_master_switch', true);
+  const [maintenanceRestored, setMaintenanceRestored] = useState(false);
+
+  if (!isCeo && (maintenanceMode || !appMasterSwitch) && !maintenanceRestored) {
+    return <MaintenancePage onAccessRestored={() => setMaintenanceRestored(true)} />;
+  }
+
+  return (
     <MotionConfig reducedMotion={reducedMotion ? 'always' : 'user'}>
       <div className="min-h-screen w-full p-0 lg:p-6 transition-all duration-300 bg-[var(--bg-page)]">
-        
+
         {/* 1. LEFT SIDEBAR */}
         <Sidebar
           activeDepartment={currentUser?.requiresPasswordReset ? 'SETTINGS' : activeDepartment}
