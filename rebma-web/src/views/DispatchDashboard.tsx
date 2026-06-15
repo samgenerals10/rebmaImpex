@@ -693,7 +693,7 @@ export default function DispatchDashboard({
                 </thead>
                 <tbody className="divide-y divide-[var(--border)] text-[var(--text-primary)]">
                   {sortedDeliveries.map(del => (
-                    <tr key={del.id} className="theme-table-row border-b border-[var(--border)] hover:bg-[var(--accent-light)] transition-colors text-[var(--text-primary)]">
+                    <tr key={del.id} className="theme-table-row border-b border-[var(--border)] hover:bg-[var(--accent-light)] transition-colors text-[var(--text-primary)] cursor-pointer" onClick={() => setActiveMobileDetail(del)}>
                       <td className="py-3.5 px-5">
                         <input
                           type="checkbox"

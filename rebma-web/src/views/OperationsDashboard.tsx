@@ -972,7 +972,7 @@ export default function OperationsDashboard({
               </thead>
               <tbody className="divide-y divide-[var(--border)]">
                 {sortedOrders.map(order => (
-                  <tr key={order.id} className="theme-table-row hover:bg-[var(--accent-light)] transition-colors group cursor-pointer text-[var(--text-primary)]">
+                  <tr key={order.id} className="theme-table-row hover:bg-[var(--accent-light)] transition-colors group cursor-pointer text-[var(--text-primary)]" onClick={() => setActiveMobileDetail({ type: 'order', data: order })}>
                     <td className="py-3 px-5" onClick={e => e.stopPropagation()}>
                       <input
                         type="checkbox"

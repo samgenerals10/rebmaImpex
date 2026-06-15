@@ -857,7 +857,7 @@ export default function HrDashboard({
                   </thead>
                   <tbody className="divide-y divide-[var(--border)]">
                     {sortedStaff.map(staff => (
-                      <tr key={staff.id} className="hover:bg-[var(--accent-light)] text-[var(--text-primary)] transition-colors duration-150">
+                      <tr key={staff.id} className="hover:bg-[var(--accent-light)] text-[var(--text-primary)] transition-colors duration-150 cursor-pointer" onClick={() => setActiveMobileDetail({ type: 'staff', data: staff })}>
                         <td className="py-3.5 px-5">
                           <input
                             type="checkbox"

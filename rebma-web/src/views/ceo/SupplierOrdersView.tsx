@@ -333,7 +333,7 @@ export default function SupplierOrdersView({ currentUser, addNotification }: Pro
                             {order.status === 'pending' && <button onClick={() => handleMenuAction('authorise', order)} className="px-3 py-2 text-xs text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30 rounded-lg text-left font-semibold">Authorise Payment</button>}
                             {order.status === 'payment_authorised' && <button onClick={() => handleMenuAction('shipped', order)} className="px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg text-left">Mark as Shipped</button>}
                             {order.status === 'shipped' && <button onClick={() => handleMenuAction('arrived', order)} className="px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg text-left">Mark as Arrived</button>}
-                            <button onClick={() => handleMenuAction('notify', order)} className="px-3 py-2 text-xs text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 rounded-lg text-left">Notify Operations</button>
+                            <button onClick={() => handleMenuAction('notify', order)} className="px-3 py-2 text-xs text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 rounded-lg text-left">Notify Management</button>
                             <button onClick={() => handleMenuAction('pdf', order)} className="px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg text-left">Export PDF</button>
                           </div>
                         )}
@@ -416,13 +416,14 @@ export default function SupplierOrdersView({ currentUser, addNotification }: Pro
           onSend={(msg, dept, userId) => {
             supabase.from('supplier_order_notifications').insert([{
               order_id: selectedOrder.id,
-              notified_department: dept || 'OPERATIONS',
+              notified_department: 'MANAGEMENT',
               notified_user_id: userId || null,
               message: msg,
               sent_by: null,
               read: false,
             }]).then(() => {}, () => {});
-            addNotification(`Operations notified about ${selectedOrder.order_number}.`);
+            supabase.from('supplier_orders').update({ management_notified: true }).eq('id', selectedOrder.id).then(() => {}, () => {});
+            addNotification(`Management notified about ${selectedOrder.order_number}.`);
             setShowNotifyModal(false);
             setSelectedOrder(null);
           }}

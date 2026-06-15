@@ -327,7 +327,7 @@ export default function CeoDashboard({
                   {recentOrders.slice(0, 5).map(o => {
                     const sc = STATUS_COLORS[o.status] || { color: '#6b7280', bg: '#f3f4f6' };
                     return (
-                      <div key={o.id} className="flex items-center justify-between gap-3 py-2 border-b border-[var(--border)] last:border-0">
+                      <div key={o.id} className="flex items-center justify-between gap-3 py-2 border-b border-[var(--border)] last:border-0 cursor-pointer hover:bg-[var(--accent-light)] rounded-lg px-2 transition-colors" onClick={onNavigateToSupplierOrders}>
                         <div className="min-w-0">
                           <p className="text-xs font-mono font-semibold text-[var(--accent)]">{o.order_number}</p>
                           <p className="text-xs text-[var(--text-secondary)] truncate">{COUNTRY_FLAGS[o.supplier_country] || '🌍'} {o.supplier_name}</p>

@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import type { IncomingGoods, Order, Customer, GoodsPrice, AuditEntry } from '../types/erp';
-import { FileSpreadsheet, FileText, Clipboard, Activity, ShieldCheck, DollarSign, History, Tag, User, ChevronDown, ChevronUp, MoreVertical, TrendingUp, TrendingDown } from 'lucide-react';
+import { FileSpreadsheet, FileText, Clipboard, Activity, ShieldCheck, DollarSign, History, Tag, User, ChevronDown, ChevronUp, MoreVertical, TrendingUp, TrendingDown, Bell, Truck } from 'lucide-react';
+import { supabase } from '../lib/supabaseClient';
 import MiniSparkline from '../components/MiniSparkline';
 import KpiDetailView from '../components/KpiDetailView';
 import { exportToCSV, exportToPDF } from '../utils/export';
@@ -106,6 +107,19 @@ export default function ManagementDashboard({
     };
     window.addEventListener('click', handleOutsideClick);
     return () => window.removeEventListener('click', handleOutsideClick);
+  }, []);
+
+  // CEO → Management incoming shipment notifications
+  const [ceoNotifications, setCeoNotifications] = useState<any[]>([]);
+  const [forwardedIds, setForwardedIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    supabase
+      .from('supplier_order_notifications')
+      .select('*')
+      .eq('notified_department', 'MANAGEMENT')
+      .order('created_at', { ascending: false })
+      .then(({ data }) => { if (data) setCeoNotifications(data); }, () => {});
   }, []);
 
   const lineChartData = [
@@ -628,6 +642,47 @@ export default function ManagementDashboard({
 
         {/* PORT CARGO APPROVAL */}
         {activeSubTab === 'CargoApproval' && (
+          <>
+          {/* Incoming CEO shipment notifications */}
+          {ceoNotifications.length > 0 && (
+            <div className="p-6 bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] border border-[var(--accent)] space-y-4">
+              <h3 className="text-base font-bold text-[var(--text-primary)] flex items-center gap-2">
+                <Bell className="w-4 h-4 text-[var(--accent)]" />
+                Incoming Shipments from CEO
+                <span className="ml-auto px-2 py-0.5 bg-[var(--accent)] text-white text-[10px] font-bold rounded-full">{ceoNotifications.length}</span>
+              </h3>
+              <div className="space-y-3">
+                {ceoNotifications.map(n => (
+                  <div key={n.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-[var(--bg)] border border-[var(--border)] rounded-xl">
+                    <div>
+                      <p className="text-xs font-semibold text-[var(--text-primary)]">Order: <span className="font-mono text-[var(--accent)]">{n.order_id}</span></p>
+                      <p className="text-xs text-[var(--text-muted)] mt-0.5">{n.message}</p>
+                      <p className="text-[10px] text-[var(--text-muted)] mt-0.5">{n.created_at ? new Date(n.created_at).toLocaleString() : ''}</p>
+                    </div>
+                    <button
+                      disabled={forwardedIds.has(n.id)}
+                      onClick={() => {
+                        supabase.from('supplier_order_notifications').insert([{
+                          order_id: n.order_id,
+                          notified_department: 'OPERATIONS',
+                          message: `Management forwarded: ${n.message}`,
+                          sent_by: currentUser?.fullName || 'MANAGEMENT',
+                          read: false,
+                        }]).then(() => {}, () => {});
+                        setForwardedIds(prev => new Set([...prev, n.id]));
+                        addNotification?.(`Operations notified about order ${n.order_id}.`);
+                      }}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--accent)] text-white text-xs font-bold rounded-xl hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap shrink-0"
+                    >
+                      <Truck className="w-3.5 h-3.5" />
+                      {forwardedIds.has(n.id) ? 'Forwarded' : 'Notify Operations'}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="p-6 bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] border border-[var(--border)] space-y-4">
             <h3 className="text-lg font-bold text-[var(--text-primary)]">Workflow A: Port Cargo Approval Queue</h3>
             <p className="text-xs text-[var(--text-muted)]">Inspect logged intakes, set unit prices, and approve or reject cargo batches.</p>
@@ -692,6 +747,7 @@ export default function ManagementDashboard({
               )}
             </div>
           </div>
+          </>
         )}
 
         {/* CREDIT APPROVAL */}

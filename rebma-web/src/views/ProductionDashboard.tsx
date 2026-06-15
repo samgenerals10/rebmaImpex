@@ -989,7 +989,7 @@ export default function ProductionDashboard({
                 </thead>
                 <tbody className="divide-y divide-[var(--border)] text-[var(--text-primary)]">
                   {filteredMaterials.map(m => (
-                    <tr key={m.flatId} className="theme-table-row border-b border-[var(--border)] hover:bg-[var(--accent-light)] transition-colors text-[var(--text-primary)]">
+                    <tr key={m.flatId} className="theme-table-row border-b border-[var(--border)] hover:bg-[var(--accent-light)] transition-colors text-[var(--text-primary)] cursor-pointer" onClick={() => setActiveMobileDetail({ type: 'requisition', data: m })}>
                       <td className="py-3.5 px-5">
                         <input
                           type="checkbox"
@@ -1148,7 +1148,7 @@ export default function ProductionDashboard({
                 </thead>
                 <tbody className="divide-y divide-[var(--border)] text-[var(--text-primary)]">
                   {sortedWip.map(item => (
-                    <tr key={item.id} className="theme-table-row border-b border-[var(--border)] hover:bg-[var(--accent-light)] transition-colors text-[var(--text-primary)]">
+                    <tr key={item.id} className="theme-table-row border-b border-[var(--border)] hover:bg-[var(--accent-light)] transition-colors text-[var(--text-primary)] cursor-pointer" onClick={() => setActiveMobileDetail({ type: 'wip', data: item })}>
                       <td className="py-3.5 px-5">
                         <input
                           type="checkbox"
@@ -1333,7 +1333,7 @@ export default function ProductionDashboard({
                 </thead>
                 <tbody className="divide-y divide-[var(--border)] text-[var(--text-primary)]">
                   {sortedHistory.map(req => (
-                    <tr key={req.id} className="theme-table-row border-b border-[var(--border)] hover:bg-[var(--accent-light)] transition-colors text-[var(--text-primary)]">
+                    <tr key={req.id} className="theme-table-row border-b border-[var(--border)] hover:bg-[var(--accent-light)] transition-colors text-[var(--text-primary)] cursor-pointer" onClick={() => setActiveMobileDetail({ type: 'history', data: req })}>
                       <td className="py-3.5 px-5">
                         <input
                           type="checkbox"
