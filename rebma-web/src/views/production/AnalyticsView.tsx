@@ -196,7 +196,7 @@ export default function ProductionAnalyticsView({ addNotification }: Props) {
                 <Pie data={QUALITY_DATA} cx="50%" cy="50%" innerRadius={36} outerRadius={58} paddingAngle={3} dataKey="value">
                   {QUALITY_DATA.map((e, i) => <Cell key={i} fill={e.color} />)}
                 </Pie>
-                <Tooltip contentStyle={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)', color: 'var(--text-primary)', fontSize: 11 }} formatter={(v) => `${v}%`} />
+                <Tooltip contentStyle={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)', color: 'var(--text-primary)', fontSize: 11 }} formatter={(v: any) => `${v}%`} />
               </PieChart>
             </ResponsiveContainer>
           </div>
