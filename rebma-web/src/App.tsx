@@ -1129,7 +1129,7 @@ export default function App() {
             };
             setChatMessagesState((prev: any) => {
               const tempIndex = prev.findIndex(
-                (m) =>
+                (m: any) =>
                   !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(m.id) &&
                   m.sender === formattedMsg.sender &&
                   m.content === formattedMsg.content &&
@@ -1140,7 +1140,7 @@ export default function App() {
                 next[tempIndex] = formattedMsg;
                 return next;
               }
-              if (prev.some((msg) => msg.id === formattedMsg.id)) return prev;
+              if (prev.some((msg: any) => msg.id === formattedMsg.id)) return prev;
               return [...prev, formattedMsg];
             });
           }
@@ -1202,7 +1202,7 @@ export default function App() {
   ) => {
     setChatMessagesState((prev: any) => {
       const next = typeof val === 'function' ? val(prev) : val;
-      const added = next.filter((m) => !prev.some((p) => p.id === m.id));
+      const added = next.filter((m) => !prev.some((p: any) => p.id === m.id));
       for (const msg of added) {
         if (msg.sender === 'System Terminal') continue;
         const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(msg.id);
