@@ -1,9 +1,11 @@
 import { useState, useRef } from 'react';
-import { Settings, User, Lock, Trash2, Camera, ShieldCheck, Eye, EyeOff } from 'lucide-react';
+import { Settings, User, Lock, Trash2, Camera, ShieldCheck, Eye, EyeOff, Volume2, VolumeX, Play } from 'lucide-react';
 import type { CurrentUser } from '../types/erp';
 import { auth } from '../services/apiClient';
 import { supabase } from '../lib/supabaseClient';
 import { applyAccentOverride, clearAccentOverride } from '../utils/accentOverride';
+import { playNotificationSound, getSavedSound, saveSound } from '../utils/notificationSound';
+import type { NotificationSoundType } from '../utils/notificationSound';
 
 interface SettingsDashboardProps {
   theme: string;
@@ -84,6 +86,29 @@ export default function SettingsDashboard({
   sidebarCollapsed = false,
   setSidebarCollapsed
 }: SettingsDashboardProps) {
+
+  // Notification sound
+  const [selectedSound, setSelectedSound] = useState<NotificationSoundType>(getSavedSound);
+
+  const handleSelectSound = (s: NotificationSoundType) => {
+    setSelectedSound(s);
+    saveSound(s);
+    // Persist to profile metadata
+    if (currentUser?.id) {
+      supabase.from('profiles')
+        .update({ metadata: { ...(currentUser as any).metadata, notification_sound: s } })
+        .eq('id', currentUser.id)
+        .then(() => {}, () => {});
+    }
+  };
+
+  const SOUND_OPTIONS: Array<{ id: NotificationSoundType; label: string; desc: string }> = [
+    { id: 'default', label: 'Default',  desc: 'Soft chime' },
+    { id: 'ping',    label: 'Ping',     desc: 'Short sharp ping' },
+    { id: 'bell',    label: 'Bell',     desc: 'Classic bell ring' },
+    { id: 'soft',    label: 'Soft',     desc: 'Gentle soft tone' },
+    { id: 'silent',  label: 'Silent',   desc: 'No sound' },
+  ];
 
   // Profile editable fields
   const [displayName, setDisplayName] = useState(currentUser?.fullName || '');
@@ -820,6 +845,61 @@ export default function SettingsDashboard({
                     style={{ background: `linear-gradient(${draftGradDir}, ${draftGradC1}, ${draftGradC2})` }} />
                 </div>
               )}
+            </div>
+
+            {/* ── Notification Sound ── */}
+            <div className="p-5 bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-card space-y-4">
+              <div>
+                <h3 className="text-base font-semibold text-[var(--text-primary)] flex items-center gap-2">
+                  <Volume2 className="w-4 h-4 text-[var(--accent)]" /> Notification Sound
+                </h3>
+                <p className="text-xs text-[var(--text-muted)] mt-0.5">Choose the sound played when you receive a notification.</p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {SOUND_OPTIONS.map(opt => {
+                  const active = selectedSound === opt.id;
+                  return (
+                    <div
+                      key={opt.id}
+                      onClick={() => handleSelectSound(opt.id)}
+                      className={`relative flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${
+                        active
+                          ? 'border-[var(--accent)] bg-[var(--accent-light)]'
+                          : 'border-[var(--border)] bg-[var(--bg)] hover:border-[var(--accent)]/50'
+                      }`}
+                    >
+                      {/* Radio dot */}
+                      <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-colors ${
+                        active ? 'border-[var(--accent)] bg-[var(--accent)]' : 'border-[var(--border)]'
+                      }`}>
+                        {active && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                      </div>
+
+                      {/* Label */}
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-xs font-bold leading-tight ${active ? 'text-[var(--accent)]' : 'text-[var(--text-primary)]'}`}>
+                          {opt.label}
+                        </p>
+                        <p className="text-[10px] text-[var(--text-muted)] leading-tight mt-0.5">{opt.desc}</p>
+                      </div>
+
+                      {/* Preview play button */}
+                      {opt.id === 'silent' ? (
+                        <VolumeX className="w-4 h-4 text-[var(--text-muted)] flex-shrink-0" />
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={e => { e.stopPropagation(); playNotificationSound(opt.id); }}
+                          title="Preview sound"
+                          className="flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-lg bg-[var(--bg-card)] border border-[var(--border)] hover:bg-[var(--accent)] hover:text-white hover:border-[var(--accent)] text-[var(--text-muted)] transition-colors cursor-pointer"
+                        >
+                          <Play className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
 
             {/* ── Apply + Reset ── */}

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { supabase } from '../../lib/supabase';
+import { supabase } from '../../lib/supabaseClient';
 import { Search, Download, Plus, MoreVertical, CheckCircle, XCircle, Clock, Upload, Camera } from 'lucide-react';
 import { exportToCSV } from '../../utils/export';
 

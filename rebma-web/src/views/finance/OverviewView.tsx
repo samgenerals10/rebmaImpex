@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../../lib/supabase';
+import { supabase } from '../../lib/supabaseClient';
 import {
   DollarSign, FileText, ClipboardCheck, BarChart2, CreditCard, Receipt,
   TrendingUp, TrendingDown, ArrowRight, RefreshCw, MoreVertical,

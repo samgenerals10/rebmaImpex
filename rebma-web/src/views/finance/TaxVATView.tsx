@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { supabase } from '../../lib/supabase';
+import { supabase } from '../../lib/supabaseClient';
 import { Download, Save, FileText, Calculator } from 'lucide-react';
 import { exportToCSV, exportToPDF } from '../../utils/export';
 

@@ -52,6 +52,7 @@ import CeoSupplierOrdersView from './views/ceo/SupplierOrdersView';
 import CeoControlCenter from './views/ceo/CeoControlCenter';
 import MaintenancePage from './components/MaintenancePage';
 import { CeoSettingsProvider, useCeoSettings } from './contexts/CeoSettingsContext';
+import { playNotificationSound, getSavedSound } from './utils/notificationSound';
 
 // Finance dedicated pages
 import FinanceWalletsView from './views/finance/WalletsView';
@@ -934,6 +935,12 @@ export default function App() {
           
           setIsAuthenticated(true);
 
+          // Load notification sound preference from profile metadata
+          const soundPref = (profile as any)?.metadata?.notification_sound;
+          if (soundPref && ['default','ping','bell','soft','silent'].includes(soundPref)) {
+            try { localStorage.setItem('rebma-notification-sound', soundPref); } catch {}
+          }
+
           const lastDept = sessionStorage.getItem('rebma-last-dept');
           const lastTab = sessionStorage.getItem('rebma-last-tab');
           if (lastDept) {
@@ -1226,6 +1233,8 @@ export default function App() {
     const id = Date.now().toString();
     const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     setNotifications(prev => [{ id, msg, time }, ...prev.slice(0, 49)]); // keep max 50
+    // Play notification sound
+    playNotificationSound(getSavedSound());
     // Auto-dismiss toast after 6 seconds
     setTimeout(() => {
       setNotifications(prev => prev.filter(n => n.id !== id));

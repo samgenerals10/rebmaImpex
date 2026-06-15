@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { supabase } from '../../lib/supabase';
+import { supabase } from '../../lib/supabaseClient';
 import { Search, Download, MoreVertical, Eye, CheckCircle, Clock, XCircle, Smartphone } from 'lucide-react';
 import { exportToCSV } from '../../utils/export';
 import { ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';

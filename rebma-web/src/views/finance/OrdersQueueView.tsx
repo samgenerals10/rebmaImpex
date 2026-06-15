@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { supabase } from '../../lib/supabase';
+import { supabase } from '../../lib/supabaseClient';
 import {
   Search, Download, CheckCircle, XCircle, Eye, MoreVertical,
   ArrowLeft, Package, Clock, DollarSign, CreditCard, Smartphone,
