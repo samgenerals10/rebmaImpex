@@ -7,7 +7,7 @@ export interface Order {
   productName?: string;
   destination?: string;
   ghanaCard?: string;
-  paymentMode: 'CASH' | 'CREDIT' | 'ONLINE';
+  paymentMode: 'CASH' | 'CREDIT' | 'MOBILE_MONEY' | 'CHEQUE';
   totalAmount: number;
   status: 'PENDING_FINANCE' | 'PENDING_MANAGEMENT' | 'APPROVED' | 'PROCESSING' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | 'REJECTED';
   createdAt: string;
@@ -87,7 +87,7 @@ export interface FinancePayment {
   id: string;
   clientName: string;
   amount: number;
-  paymentMode: 'CASH' | 'CHEQUE' | 'MOBILE_MONEY' | 'BANK_TRANSFER';
+  paymentMode: 'CASH' | 'CHEQUE' | 'MOBILE_MONEY' | 'CREDIT';
   paymentType: 'DIRECT' | 'CREDIT_SETTLEMENT';
   orderId?: string;
   createdAt: string;

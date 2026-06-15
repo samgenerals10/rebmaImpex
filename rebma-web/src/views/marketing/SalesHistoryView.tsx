@@ -6,7 +6,7 @@ import type { Order } from '../../types/erp';
 
 const MOCK_ORDERS: Order[] = Array.from({ length: 20 }, (_, i) => {
   const statuses: Order['status'][] = ['DELIVERED', 'DELIVERED', 'APPROVED', 'PROCESSING', 'PENDING_FINANCE', 'REJECTED', 'DELIVERED'];
-  const modes: Order['paymentMode'][] = ['CASH', 'CREDIT', 'ONLINE', 'CREDIT', 'CASH'];
+  const modes: Order['paymentMode'][] = ['CASH', 'MOBILE_MONEY', 'CHEQUE', 'CREDIT', 'CASH'];
   const clients = ['Accra Traders Ltd', 'Gulf Imports Co.', 'Kama Industries', 'Prime Suppliers', 'Delta Logistics'];
   const products = ['Steel Rods 12mm', 'Cement Bags (50kg)', 'Roofing Sheets', 'PVC Pipes', 'Electrical Cables'];
   const d = new Date(Date.now() - i * 86400000 * 9);

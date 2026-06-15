@@ -130,7 +130,7 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
   const [cashflowTab, setCashflowTab] = useState<'income' | 'expense' | 'savings'>('income');
   const [earnPeriod, setEarnPeriod] = useState('6M');
   const [activities, setActivities] = useState(ACTIVITY_FEED_MOCK);
-  const feedRef = useRef<NodeJS.Timeout | null>(null);
+  const feedRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const firstName = currentUser?.fullName?.split(' ')[0] || 'Manager';
 

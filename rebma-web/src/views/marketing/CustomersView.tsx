@@ -31,7 +31,7 @@ const MOCK_ORDERS: Order[] = Array.from({ length: 15 }, (_, i) => {
     clientName: MOCK_CUSTOMERS[i % 12].name,
     productName: ['Steel Rods 12mm', 'Cement Bags', 'Roofing Sheets', 'PVC Pipes', 'Electrical Cables'][i % 5],
     totalAmount: Math.round(5000 + i * 3200),
-    paymentMode: (['CASH', 'CREDIT', 'ONLINE'] as Order['paymentMode'][])[i % 3],
+    paymentMode: (['CASH', 'MOBILE_MONEY', 'CHEQUE'] as Order['paymentMode'][])[i % 3],
     status: statuses[i % 5],
     createdAt: d.toISOString(),
   };

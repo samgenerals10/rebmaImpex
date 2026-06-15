@@ -5,7 +5,7 @@ import type { Order } from '../../types/erp';
 
 const MOCK_ORDERS: Order[] = Array.from({ length: 15 }, (_, i) => {
   const statuses: Order['status'][] = ['PENDING_FINANCE', 'PENDING_MANAGEMENT', 'APPROVED', 'PROCESSING', 'OUT_FOR_DELIVERY', 'DELIVERED', 'REJECTED'];
-  const modes: Order['paymentMode'][] = ['CASH', 'CREDIT', 'ONLINE'];
+  const modes: Order['paymentMode'][] = ['CASH', 'MOBILE_MONEY', 'CHEQUE', 'CREDIT'];
   const clients = ['Accra Traders Ltd', 'Gulf Imports Co.', 'Kama Industries', 'Prime Suppliers', 'Delta Logistics'];
   const products = ['Steel Rods 12mm', 'Cement Bags (50kg)', 'Roofing Sheets', 'PVC Pipes', 'Electrical Cables'];
   const d = new Date(Date.now() - i * 86400000 * 2);
@@ -288,8 +288,9 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
               <select value={form.paymentMode} onChange={e => setForm(prev => ({ ...prev, paymentMode: e.target.value as Order['paymentMode'] }))}
                 className="w-full px-3 py-2 text-sm rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]">
                 <option value="CASH">Cash</option>
+                <option value="MOBILE_MONEY">Mobile Money</option>
+                <option value="CHEQUE">Cheque</option>
                 <option value="CREDIT">Credit</option>
-                <option value="ONLINE">Online</option>
               </select>
             </div>
             <div className="flex gap-3 pt-2">

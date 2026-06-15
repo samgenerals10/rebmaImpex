@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import {
   Tag, TrendingUp, TrendingDown, Search, Plus, MoreVertical,
-  Download, RefreshCw, CheckCircle, History, Broadcast, Save,
+  Download, RefreshCw, CheckCircle, History, Save,
   ArrowLeft, Edit2, Trash2, Bell
 } from 'lucide-react';
 import { exportToCSV } from '../../utils/export';
