@@ -5,7 +5,8 @@
       "name": "rebma-web (Vite dev)",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev", "-w", "rebma-web"],
-      "port": 5173
+      "port": 5173,
+      "autoPort": true
     },
     {
       "name": "rebma-web (Vite preview)",

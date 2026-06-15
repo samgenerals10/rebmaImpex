@@ -386,7 +386,7 @@ body.btn-style-sharp   { --radius-btn: 2px; }
 /* ─── CARD STYLE VARIANTS ─── */
 body.card-style-float  { --shadow-card: 0 4px 16px rgba(0,0,0,0.10); }
 body.card-style-flat   { --shadow-card: none; }
-body.card-style-glass  { }
+/* body.card-style-glass  { } */
 
 /* ─── FONT FAMILY OVERRIDES (global — applies on all viewports) ─── */
 body { font-family: var(--font-base); }
@@ -1395,7 +1395,7 @@ body.glass-theme-rose {
    LIAM FINANCE TEMPLATE — Component classes
    ═══════════════════════════════════════════════ */
 
-body.theme-liamfinance .liam-shell {}
+/* body.theme-liamfinance .liam-shell {} */
 
 body.theme-liamfinance .liam-card {
   background: var(--bg-card);
@@ -1566,7 +1566,7 @@ body.theme-finova .finova-sidebar-promo::before {
    Applied globally when body.theme-foodie active
    ═══════════════════════════════════════════════ */
 
-body.theme-foodie .foodie-shell {}
+/* body.theme-foodie .foodie-shell {} */
 
 body.theme-foodie .foodie-kpi-card {
   background: var(--bg-card);
