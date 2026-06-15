@@ -1127,7 +1127,7 @@ export default function App() {
               time: newMsg.time,
               receiver: newMsg.receiver || undefined
             };
-            setChatMessagesState((prev) => {
+            setChatMessagesState((prev: any) => {
               const tempIndex = prev.findIndex(
                 (m) =>
                   !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(m.id) &&
@@ -1200,7 +1200,7 @@ export default function App() {
   const setChatMessages = (
     val: ChatMessage[] | ((prev: ChatMessage[]) => ChatMessage[])
   ) => {
-    setChatMessagesState((prev) => {
+    setChatMessagesState((prev: any) => {
       const next = typeof val === 'function' ? val(prev) : val;
       const added = next.filter((m) => !prev.some((p) => p.id === m.id));
       for (const msg of added) {

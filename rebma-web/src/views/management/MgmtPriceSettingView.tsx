@@ -58,9 +58,9 @@ export default function MgmtPriceSettingView({ addNotification, currentUser }: P
   const [showHistory, setShowHistory] = useState<PriceEntry | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ productName: '', category: 'INCOMING_GOODS', unitPrice: '', costPrice: '', currency: 'GHS' as 'GHS' | 'USD', effectiveDate: '', note: '' });
-  const [broadcastFinance, setBroadcastFinance] = useState(true);
-  const [broadcastMarketing, setBroadcastMarketing] = useState(true);
-  const [broadcastCeo, setBroadcastCeo] = useState(false);
+  const [broadcastFinance, setRadioFinance] = useState(true);
+  const [broadcastMarketing, setRadioMarketing] = useState(true);
+  const [broadcastCeo, setRadioCeo] = useState(false);
 
   useEffect(() => { loadPrices(); }, []);
 
@@ -360,7 +360,7 @@ export default function MgmtPriceSettingView({ addNotification, currentUser }: P
               <div>
                 <label className="text-xs font-medium text-[var(--text-secondary)] mb-2 block flex items-center gap-1"><Bell size={12} /> Notify Departments</label>
                 <div className="flex items-center gap-4 flex-wrap">
-                  {[{ label: 'Finance', state: broadcastFinance, set: setBroadcastFinance }, { label: 'Marketing', state: broadcastMarketing, set: setBroadcastMarketing }, { label: 'CEO', state: broadcastCeo, set: setBroadcastCeo }].map(({ label, state, set }) => (
+                  {[{ label: 'Finance', state: broadcastFinance, set: setRadioFinance }, { label: 'Marketing', state: broadcastMarketing, set: setRadioMarketing }, { label: 'CEO', state: broadcastCeo, set: setRadioCeo }].map(({ label, state, set }) => (
                     <label key={label} className="flex items-center gap-2 text-sm text-[var(--text-primary)] cursor-pointer">
                       <input type="checkbox" checked={state} onChange={e => set(e.target.checked)} className="rounded" /> {label}
                     </label>
@@ -376,7 +376,7 @@ export default function MgmtPriceSettingView({ addNotification, currentUser }: P
             <div className="flex items-center gap-3 justify-end mt-5">
               <button onClick={() => setShowForm(false)} className="px-4 py-2 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-input)]">Cancel</button>
               <button onClick={savePrice} className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-white text-sm font-medium" style={{ background: 'var(--accent)' }}>
-                <Save size={14} /> {editing ? 'Update Price' : 'Save & Broadcast'}
+                <Save size={14} /> {editing ? 'Update Price' : 'Save & Radio'}
               </button>
             </div>
           </div>
