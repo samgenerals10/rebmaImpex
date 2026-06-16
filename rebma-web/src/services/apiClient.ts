@@ -450,12 +450,7 @@ export const operations = {
         is_fault_or_damaged: !!data.isFaulty,
         status: 'PENDING_MANAGEMENT_APPROVAL',
         created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        metadata: {
-          discrepancies: data.discrepancies || null,
-          isFaulty: !!data.isFaulty,
-          productImage: data.productImage || null
-        }
+        updated_at: new Date().toISOString()
       }).select();
 
     if (error) throw new Error(error.message);
@@ -479,7 +474,7 @@ export const operations = {
   getFulfillmentTickets: async () => {
     const { data, error } = await supabase
       .from('fulfillment_tickets')
-      .select('*, order:sales_orders(client_name, total_amount), productionRequest:material_requisitions(*)')
+      .select('*, order:orders(client_name, total_amount), productionRequest:production_requests(*)')
       .order('created_at', { ascending: false });
     if (error) throw new Error(error.message);
     
@@ -501,7 +496,7 @@ export const operations = {
   },
 
   releaseToDispatch: async (orderId: string, vehicleId: string, driverName?: string) => {
-    const { data: orders, error: orderErr } = await supabase.from('sales_orders').select('*').eq('id', orderId).limit(1);
+    const { data: orders, error: orderErr } = await supabase.from('orders').select('*').eq('id', orderId).limit(1);
     if (orderErr || !orders || orders.length === 0) throw new Error('Order not found');
 
     const { data: delivery, error: delErr } = await supabase
@@ -517,7 +512,7 @@ export const operations = {
     if (delErr) throw new Error(delErr.message);
 
     const { data: updatedOrder, error: updateErr } = await supabase
-      .from('sales_orders')
+      .from('orders')
       .update({ status: 'OUT_FOR_DELIVERY', updated_at: new Date().toISOString() })
       .eq('id', orderId)
       .select();
@@ -620,12 +615,12 @@ export const management = {
     const { data: performers } = await supabase.from('profiles').select('full_name').eq('id', performerId).limit(1);
     const performedBy = performers?.[0]?.full_name || 'Management';
 
-    const { data: orders } = await supabase.from('sales_orders').select('*').eq('id', orderId).limit(1);
+    const { data: orders } = await supabase.from('orders').select('*').eq('id', orderId).limit(1);
     const order = orders?.[0];
 
     const status = approve ? 'APPROVED' : 'REJECTED';
     const { data: updatedOrder, error } = await supabase
-      .from('sales_orders')
+      .from('orders')
       .update({ status, updated_at: new Date().toISOString() })
       .eq('id', orderId)
       .select();
@@ -652,7 +647,7 @@ export const management = {
   approveProductionRequest: async (requestId: string, approve: boolean) => {
     const status = approve ? 'APPROVED' : 'REJECTED';
     const { data, error } = await supabase
-      .from('material_requisitions')
+      .from('production_requests')
       .update({ status, updated_at: new Date().toISOString() })
       .eq('id', requestId)
       .select();
@@ -665,7 +660,7 @@ export const management = {
 export const marketing = {
   getOrders: async () => {
     const { data, error } = await supabase
-      .from('sales_orders')
+      .from('orders')
       .select('*, createdBy:profiles(full_name)')
       .order('created_at', { ascending: false });
     if (error) throw new Error(error.message);
@@ -683,7 +678,7 @@ export const marketing = {
 
     const ticketNumber = `TKT-${Math.floor(10000 + Math.random() * 90000)}`;
     const { data: order, error } = await supabase
-      .from('sales_orders')
+      .from('orders')
       .insert({
         ticket_number: ticketNumber,
         client_name: data.clientName,
@@ -759,7 +754,7 @@ export const finance = {
   getPayments: async () => {
     const { data, error } = await supabase
       .from('finance_ledger')
-      .select('*, order:sales_orders(client_name, payment_mode)')
+      .select('*, order:orders(client_name, payment_mode)')
       .order('issued_at', { ascending: false });
     if (error) throw new Error(error.message);
     
@@ -777,7 +772,7 @@ export const finance = {
   getInvoices: async () => {
     const { data, error } = await supabase
       .from('finance_ledger')
-      .select('*, order:sales_orders(client_name, total_amount, ticket_number)')
+      .select('*, order:orders(client_name, total_amount, ticket_number)')
       .order('issued_at', { ascending: false });
     if (error) throw new Error(error.message);
     return (data || []).map((inv: any) => ({
@@ -797,13 +792,13 @@ export const finance = {
   },
 
   evaluateOrder: async (orderId: string, approve: boolean) => {
-    const { data: orders } = await supabase.from('sales_orders').select('*').eq('id', orderId).limit(1);
+    const { data: orders } = await supabase.from('orders').select('*').eq('id', orderId).limit(1);
     const order = orders?.[0];
     if (!order) throw new Error('Order not found');
 
     if (!approve) {
       const { data: rejectedOrder, error } = await supabase
-        .from('sales_orders')
+        .from('orders')
         .update({ status: 'REJECTED', updated_at: new Date().toISOString() })
         .eq('id', orderId)
         .select();
@@ -813,7 +808,7 @@ export const finance = {
 
     if (order.payment_mode === 'CREDIT' || order.paymentMode === 'CREDIT') {
       const { data: updatedOrder, error } = await supabase
-        .from('sales_orders')
+        .from('orders')
         .update({ status: 'PENDING_MANAGEMENT', updated_at: new Date().toISOString() })
         .eq('id', orderId)
         .select();
@@ -821,7 +816,7 @@ export const finance = {
       return { message: 'Credit order sent to Management.', order: updatedOrder ? mapOrderToFrontend(updatedOrder[0]) : null };
     } else {
       const { data: updatedOrder, error } = await supabase
-        .from('sales_orders')
+        .from('orders')
         .update({ status: 'APPROVED', updated_at: new Date().toISOString() })
         .eq('id', orderId)
         .select();
@@ -831,7 +826,7 @@ export const finance = {
   },
 
   finalizeOrder: async (orderId: string) => {
-    const { data: orders } = await supabase.from('sales_orders').select('*').eq('id', orderId).limit(1);
+    const { data: orders } = await supabase.from('orders').select('*').eq('id', orderId).limit(1);
     const order = orders?.[0];
     if (!order) throw new Error('Order not found');
 
@@ -870,7 +865,7 @@ export const finance = {
     if (ticketErr) throw new Error(ticketErr.message);
 
     const { data: updatedOrder, error: orderErr } = await supabase
-      .from('sales_orders')
+      .from('orders')
       .update({ status: 'PROCESSING', updated_at: new Date().toISOString() })
       .eq('id', orderId)
       .select();
@@ -884,12 +879,12 @@ export const finance = {
   },
 
   releaseProductionMaterials: async (requestId: string) => {
-    const { data: reqs } = await supabase.from('material_requisitions').select('*').eq('id', requestId).limit(1);
+    const { data: reqs } = await supabase.from('production_requests').select('*').eq('id', requestId).limit(1);
     const request = reqs?.[0];
     if (!request) throw new Error('Production request not found');
 
     const { data: updatedRequest, error } = await supabase
-      .from('material_requisitions')
+      .from('production_requests')
       .update({ status: 'TICKETS_ISSUED', updated_at: new Date().toISOString() })
       .eq('id', requestId)
       .select();
@@ -916,7 +911,7 @@ export const finance = {
 export const production = {
   getRequests: async () => {
     const { data, error } = await supabase
-      .from('material_requisitions')
+      .from('production_requests')
       .select('*')
       .order('created_at', { ascending: false });
     if (error) throw new Error(error.message);
@@ -947,7 +942,7 @@ export const dispatch = {
   getDeliveries: async () => {
     const { data, error } = await supabase
       .from('delivery_logs')
-      .select('*, order:sales_orders(client_name, total_amount)')
+      .select('*, order:orders(client_name, total_amount)')
       .order('created_at', { ascending: false });
     if (error) throw new Error(error.message);
     return (data || []).map((del: any) => ({
@@ -985,7 +980,7 @@ export const dispatch = {
 
     if (status === 'DELIVERED') {
       await supabase
-        .from('sales_orders')
+        .from('orders')
         .update({ status: 'DELIVERED', updated_at: new Date().toISOString() })
         .eq('id', orderId);
     }

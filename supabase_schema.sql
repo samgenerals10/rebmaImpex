@@ -382,6 +382,42 @@ CREATE TABLE IF NOT EXISTS public.supplier_order_notifications (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Missing Production Requests definition
+CREATE TABLE IF NOT EXISTS public.production_requests (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    items JSONB NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('PENDING_MANAGEMENT', 'APPROVED', 'TICKETS_ISSUED', 'COMPLETED', 'REJECTED')),
+    notes TEXT,
+    extended_data JSONB,
+    produced_goods TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Missing Finance Ledger definition
+CREATE TABLE IF NOT EXISTS public.finance_ledger (
+    id TEXT PRIMARY KEY DEFAULT 'LED-' || substring(md5(random()::text) from 1 for 8),
+    order_id TEXT REFERENCES public.orders(id) ON DELETE SET NULL,
+    invoice_no TEXT UNIQUE NOT NULL,
+    amount NUMERIC NOT NULL,
+    tax_amount NUMERIC NOT NULL,
+    grand_total NUMERIC NOT NULL,
+    issued_at TIMESTAMPTZ DEFAULT NOW(),
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Missing Fulfillment Tickets definition
+CREATE TABLE IF NOT EXISTS public.fulfillment_tickets (
+    id TEXT PRIMARY KEY DEFAULT 'TKT-' || substring(md5(random()::text) from 1 for 8),
+    order_id TEXT REFERENCES public.orders(id) ON DELETE SET NULL,
+    production_request_id UUID REFERENCES public.production_requests(id) ON DELETE SET NULL,
+    type TEXT NOT NULL,
+    details JSONB,
+    status TEXT NOT NULL CHECK (status IN ('PENDING', 'APPROVED', 'REJECTED', 'COMPLETED', 'PROCESSING')),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- Enable RLS on new tables
 ALTER TABLE public.invoices ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.transactions ENABLE ROW LEVEL SECURITY;
@@ -389,6 +425,9 @@ ALTER TABLE public.recurring_payments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.departments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.finance_vat_periods ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.supplier_order_notifications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.production_requests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.finance_ledger ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.fulfillment_tickets ENABLE ROW LEVEL SECURITY;
 
 -- Setup full RLS access for authenticated users on new tables
 CREATE POLICY "Allow authenticated users full access to invoices" ON public.invoices FOR ALL TO authenticated USING (true) WITH CHECK (true);
@@ -397,6 +436,9 @@ CREATE POLICY "Allow authenticated users full access to recurring_payments" ON p
 CREATE POLICY "Allow authenticated users full access to departments" ON public.departments FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "Allow authenticated users full access to finance_vat_periods" ON public.finance_vat_periods FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "Allow authenticated users full access to supplier_order_notifications" ON public.supplier_order_notifications FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Allow authenticated users full access to production_requests" ON public.production_requests FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Allow authenticated users full access to finance_ledger" ON public.finance_ledger FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Allow authenticated users full access to fulfillment_tickets" ON public.fulfillment_tickets FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
 -- Enable Realtime for new tables
 ALTER PUBLICATION supabase_realtime ADD TABLE public.invoices;
@@ -405,5 +447,8 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.recurring_payments;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.departments;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.finance_vat_periods;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.supplier_order_notifications;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.production_requests;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.finance_ledger;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.fulfillment_tickets;
 
 
