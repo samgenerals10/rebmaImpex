@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   AlertTriangle, AlertCircle, CheckCircle, Clock, X, Bell,
   TrendingDown, UserX, Calendar, MessageSquare, Filter, Search
@@ -52,12 +52,46 @@ interface Props {
 }
 
 export default function PerformanceAlertsView({ currentUser, addNotification }: Props) {
-  const [alerts, setAlerts] = useState<PerformanceAlert[]>(MOCK_ALERTS);
+  const [alerts, setAlerts] = useState<PerformanceAlert[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [levelFilter, setLevelFilter] = useState<'All' | AlertLevel>('All');
   const [statusFilter, setStatusFilter] = useState<'All' | AlertStatus>('All');
   const [selected, setSelected] = useState<PerformanceAlert | null>(null);
   const [notes, setNotes] = useState('');
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('performance_alerts')
+          .select('*')
+          .order('created_at', { ascending: false });
+        if (error) throw error;
+        if (data) {
+          const mapped: PerformanceAlert[] = data.map((p: any) => ({
+            id: p.id,
+            staffName: p.title || 'System Alert',
+            department: p.department || 'General',
+            role: p.alert_type || 'alert',
+            issue: p.alert_type ? p.alert_type.replace('_', ' ').toUpperCase() : 'ALERT',
+            details: p.description || '',
+            level: (p.severity || 'medium') as AlertLevel,
+            status: p.resolved ? 'RESOLVED' : 'OPEN',
+            createdAt: p.created_at ? p.created_at.split('T')[0] : '',
+            notes: p.notes || ''
+          }));
+          setAlerts(mapped);
+        }
+      } catch (err: any) {
+        addNotification(`Error loading performance alerts: ${err.message}`);
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, []);
 
   const filtered = alerts.filter(a => {
     const matchSearch = a.staffName.toLowerCase().includes(search.toLowerCase()) ||
@@ -75,25 +109,40 @@ export default function PerformanceAlertsView({ currentUser, addNotification }: 
     resolved: alerts.filter(a => a.status === 'RESOLVED').length,
   };
 
-  const handleUpdateStatus = (alert: PerformanceAlert, status: AlertStatus) => {
-    const updated: PerformanceAlert = {
-      ...alert,
-      status,
-      notes: notes || alert.notes,
-      resolvedAt: status === 'RESOLVED' ? new Date().toISOString().split('T')[0] : alert.resolvedAt,
-      resolvedBy: status === 'RESOLVED' ? (currentUser?.fullName || 'HR Admin') : alert.resolvedBy,
-    };
-    supabase.from('performance_alerts').update({ status, notes: updated.notes }).eq('id', alert.id).then(() => {}, () => {});
-    supabase.from('global_audit_history').insert([{
-      department: 'HR',
-      action: `Performance alert ${status === 'RESOLVED' ? 'resolved' : 'updated'}: ${alert.staffName}`,
-      performed_by: currentUser?.fullName || 'HR Admin',
-      created_at: new Date().toISOString(),
-    }]).then(() => {}, () => {});
-    setAlerts(prev => prev.map(a => a.id === alert.id ? updated : a));
-    if (selected?.id === alert.id) setSelected(updated);
-    addNotification(`Alert for ${alert.staffName} marked as ${status}`);
-    setNotes('');
+  const handleUpdateStatus = async (alert: PerformanceAlert, status: AlertStatus) => {
+    const isResolved = status === 'RESOLVED';
+    try {
+      const { error } = await supabase
+        .from('performance_alerts')
+        .update({ 
+          resolved: isResolved,
+          notes: notes || alert.notes
+        })
+        .eq('id', alert.id);
+      if (error) throw error;
+
+      await supabase.from('global_audit_history').insert([{
+        department: 'HR',
+        action: `Performance alert ${isResolved ? 'resolved' : 'updated'}: ${alert.staffName}`,
+        performed_by: currentUser?.fullName || 'HR Admin',
+        created_at: new Date().toISOString(),
+      }]);
+
+      const updated: PerformanceAlert = {
+        ...alert,
+        status,
+        notes: notes || alert.notes,
+        resolvedAt: isResolved ? new Date().toISOString().split('T')[0] : alert.resolvedAt,
+        resolvedBy: isResolved ? (currentUser?.fullName || 'HR Admin') : alert.resolvedBy,
+      };
+
+      setAlerts(prev => prev.map(a => a.id === alert.id ? updated : a));
+      if (selected?.id === alert.id) setSelected(updated);
+      addNotification(`Alert for ${alert.staffName} marked as ${status}`);
+      setNotes('');
+    } catch (err: any) {
+      addNotification(`Error updating alert status: ${err.message}`);
+    }
   };
 
   return (
@@ -141,65 +190,77 @@ export default function PerformanceAlertsView({ currentUser, addNotification }: 
 
       {/* Alerts List */}
       <div className="space-y-3">
-        {filtered.map(alert => {
-          const lc = LEVEL_CONFIG[alert.level];
-          const sc = STATUS_CONFIG[alert.status];
-          return (
-            <div key={alert.id}
-              className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4 cursor-pointer hover:shadow-md transition-shadow"
-              onClick={() => setSelected(alert)}>
-              <div className="flex items-start gap-3">
-                <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: lc.bg, color: lc.color }}>
-                  {lc.icon}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap mb-1">
-                    <span className="font-bold text-sm text-[var(--text-primary)]">{alert.staffName}</span>
-                    <span className="text-xs text-[var(--text-muted)]">· {alert.department}</span>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: lc.bg, color: lc.color }}>
-                      {lc.label}
-                    </span>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: sc.bg, color: sc.color }}>
-                      {sc.label}
-                    </span>
-                  </div>
-                  <p className="text-sm text-[var(--text-primary)] font-medium">{alert.issue}</p>
-                  <p className="text-xs text-[var(--text-muted)] mt-0.5 line-clamp-1">{alert.details}</p>
-                  <div className="flex items-center gap-3 mt-2">
-                    <span className="text-[10px] text-[var(--text-muted)] flex items-center gap-1">
-                      <Calendar className="w-3 h-3" /> {alert.createdAt}
-                    </span>
-                    {alert.resolvedAt && (
-                      <span className="text-[10px] text-emerald-500 flex items-center gap-1">
-                        <CheckCircle className="w-3 h-3" /> Resolved {alert.resolvedAt} by {alert.resolvedBy}
-                      </span>
-                    )}
-                  </div>
-                </div>
-                {alert.status !== 'RESOLVED' && (
-                  <div className="flex gap-1 shrink-0" onClick={e => e.stopPropagation()}>
-                    {alert.status === 'OPEN' && (
-                      <button onClick={() => handleUpdateStatus(alert, 'IN_REVIEW')}
-                        className="text-xs px-2 py-1 bg-[var(--accent-light)] text-[var(--accent)] rounded-lg font-semibold cursor-pointer hover:opacity-80">
-                        Review
-                      </button>
-                    )}
-                    <button onClick={() => handleUpdateStatus(alert, 'RESOLVED')}
-                      className="text-xs px-2 py-1 bg-emerald-500/10 text-emerald-500 rounded-lg font-semibold cursor-pointer hover:bg-emerald-500/20">
-                      Resolve
-                    </button>
-                  </div>
-                )}
+        {loading ? (
+          [1, 2, 3].map(i => (
+            <div key={i} className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4 animate-pulse h-24 flex items-start gap-3">
+              <div className="w-9 h-9 rounded-xl bg-slate-200 dark:bg-slate-700 shrink-0" />
+              <div className="flex-1 space-y-2">
+                <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-1/3" />
+                <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-2/3" />
+                <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-1/4" />
               </div>
             </div>
-          );
-        })}
-        {filtered.length === 0 && (
+          ))
+        ) : filtered.length === 0 ? (
           <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-12 text-center">
             <CheckCircle className="w-10 h-10 text-emerald-500 mx-auto mb-3 opacity-60" />
             <p className="text-sm font-semibold text-[var(--text-primary)]">No alerts found</p>
             <p className="text-xs text-[var(--text-muted)] mt-1">All clear — no performance issues match your filters</p>
           </div>
+        ) : (
+          filtered.map(alert => {
+            const lc = LEVEL_CONFIG[alert.level];
+            const sc = STATUS_CONFIG[alert.status];
+            return (
+              <div key={alert.id}
+                className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4 cursor-pointer hover:shadow-md transition-shadow"
+                onClick={() => setSelected(alert)}>
+                <div className="flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: lc.bg, color: lc.color }}>
+                    {lc.icon}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap mb-1">
+                      <span className="font-bold text-sm text-[var(--text-primary)]">{alert.staffName}</span>
+                      <span className="text-xs text-[var(--text-muted)]">· {alert.department}</span>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: lc.bg, color: lc.color }}>
+                        {lc.label}
+                      </span>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: sc.bg, color: sc.color }}>
+                        {sc.label}
+                      </span>
+                    </div>
+                    <p className="text-sm text-[var(--text-primary)] font-medium">{alert.issue}</p>
+                    <p className="text-xs text-[var(--text-muted)] mt-0.5 line-clamp-1">{alert.details}</p>
+                    <div className="flex items-center gap-3 mt-2">
+                      <span className="text-[10px] text-[var(--text-muted)] flex items-center gap-1">
+                        <Calendar className="w-3 h-3" /> {alert.createdAt}
+                      </span>
+                      {alert.resolvedAt && (
+                        <span className="text-[10px] text-emerald-500 flex items-center gap-1">
+                          <CheckCircle className="w-3 h-3" /> Resolved {alert.resolvedAt} by {alert.resolvedBy}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  {alert.status !== 'RESOLVED' && (
+                    <div className="flex gap-1 shrink-0" onClick={e => e.stopPropagation()}>
+                      {alert.status === 'OPEN' && (
+                        <button onClick={() => handleUpdateStatus(alert, 'IN_REVIEW')}
+                          className="text-xs px-2 py-1 bg-[var(--accent-light)] text-[var(--accent)] rounded-lg font-semibold cursor-pointer hover:opacity-80">
+                          Review
+                        </button>
+                      )}
+                      <button onClick={() => handleUpdateStatus(alert, 'RESOLVED')}
+                        className="text-xs px-2 py-1 bg-emerald-500/10 text-emerald-500 rounded-lg font-semibold cursor-pointer hover:bg-emerald-500/20">
+                        Resolve
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })
         )}
       </div>
 

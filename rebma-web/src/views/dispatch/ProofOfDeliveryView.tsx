@@ -15,17 +15,6 @@ interface Delivery {
   delivered_at?: string;
 }
 
-const MOCK: Delivery[] = Array.from({ length: 8 }, (_, i) => ({
-  id: `DEL-${String(i+1).padStart(3,'0')}`,
-  order_id: `ORD-${String(i+100).padStart(4,'0')}`,
-  customer: ['Accra Traders','Gulf Imports','Kama Industries','Prime Suppliers','Delta Logistics'][i % 5],
-  address: ['123 High Street, Accra','45 Liberation Rd','Plot 7, Spintex','Ring Rd East','Tema Community 1'][i % 5],
-  driver: ['Kwesi Asante','Kofi Mensah','Ama Serwaa','Kojo Boateng'][i % 4],
-  proof_url: i < 3 ? '/logo.png' : undefined,
-  status: i < 3 ? 'confirmed' : i < 6 ? 'pending_proof' : 'disputed',
-  delivered_at: i < 3 ? new Date(Date.now() - i * 86400000).toISOString() : undefined,
-}));
-
 const STATUS_STYLES = {
   pending_proof: 'bg-amber-100 text-amber-700',
   confirmed:     'bg-emerald-100 text-emerald-700',
@@ -34,31 +23,77 @@ const STATUS_STYLES = {
 
 interface Props { currentUser: CurrentUser | null; addNotification: (msg: string) => void }
 
-export default function ProofOfDeliveryView({ currentUser, addNotification }: Props) {
+export default function ProofOfDeliveryView({ addNotification }: Props) {
   const [rows, setRows]       = useState<Delivery[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewProof, setViewProof] = useState<Delivery | null>(null);
 
-  useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      try {
-        const { data } = await supabase.from('deliveries').select('*').in('status', ['pending_proof','confirmed','disputed']).order('id', { ascending: false }).limit(50);
-        setRows(data && data.length > 0 ? data : MOCK);
-      } catch { setRows(MOCK); }
+  const load = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('delivery_logs')
+        .select('*, orders:order_id(client_name, destination)')
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      if (error) {
+        console.error('Error fetching delivery logs:', error);
+      }
+
+      const mapped: Delivery[] = (data || []).map((row: any) => {
+        // Map database status to UI states
+        let uiStatus: Delivery['status'] = 'pending_proof';
+        if (row.status === 'DELIVERED') {
+          uiStatus = 'confirmed';
+        } else if (row.status === 'FAILED') {
+          uiStatus = 'disputed';
+        }
+
+        return {
+          id: row.id,
+          order_id: row.order_id || 'N/A',
+          customer: row.orders?.client_name || 'Generic Client',
+          address: row.orders?.destination || 'N/A',
+          driver: row.driver_name || 'Unassigned Driver',
+          proof_url: row.active_coordinates?.proof_url || undefined, // fallback storage path in jsonb if needed
+          status: uiStatus,
+          delivered_at: row.delivered_at || undefined,
+        };
+      });
+
+      setRows(mapped);
+    } catch (e) {
+      console.error(e);
+      setRows([]);
+    } finally {
       setLoading(false);
-    };
+    }
+  };
+
+  useEffect(() => {
     load();
   }, []);
 
   const markConfirmed = async (id: string) => {
     setRows(prev => prev.map(r => r.id === id ? { ...r, status: 'confirmed', delivered_at: new Date().toISOString() } : r));
-    try { await supabase.from('deliveries').update({ status: 'confirmed', delivered_at: new Date().toISOString() }).eq('id', id); } catch {}
-    addNotification(`Delivery ${id} confirmed.`);
+    try {
+      await supabase
+        .from('delivery_logs')
+        .update({
+          status: 'DELIVERED',
+          delivered_at: new Date().toISOString()
+        })
+        .eq('id', id);
+      addNotification(`Delivery ${id} confirmed.`);
+      load();
+    } catch (e) {
+      console.error(e);
+      addNotification(`Failed to confirm delivery ${id}.`);
+    }
   };
 
   const handleUpload = (id: string) => {
-    // In a real app this would open a file picker and upload to Supabase Storage
     addNotification('Photo upload feature requires Supabase Storage configuration.');
   };
 
@@ -90,6 +125,11 @@ export default function ProofOfDeliveryView({ currentUser, addNotification }: Pr
       {/* List */}
       {loading ? (
         <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-16 rounded-2xl bg-[var(--bg-input)] animate-pulse" />)}</div>
+      ) : rows.length === 0 ? (
+        <div className="flex flex-col items-center justify-center p-12 bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl text-[var(--text-muted)] gap-2">
+          <CheckCircle size={32} className="opacity-30" />
+          <p className="text-sm">No delivery logs found. Create cargo orders to see items here.</p>
+        </div>
       ) : (
         <div className="space-y-3">
           {rows.map(row => (
@@ -101,7 +141,7 @@ export default function ProofOfDeliveryView({ currentUser, addNotification }: Pr
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <p className="text-sm font-bold text-[var(--text-primary)]">{row.customer}</p>
-                    <span className="text-[9px] font-bold text-[var(--text-muted)]">{row.order_id}</span>
+                    <span className="text-[9px] font-bold text-[var(--text-muted)]">{row.id} ({row.order_id})</span>
                     <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${STATUS_STYLES[row.status]}`}>{row.status.replace('_',' ')}</span>
                   </div>
                   <p className="text-[10px] text-[var(--text-muted)] truncate">{row.address} · Driver: {row.driver}</p>

@@ -33,6 +33,12 @@ export default function FinanceTaxVATView({ addNotification, currentUser }: Prop
   const [rates, setRates] = useState<TaxRates>({ vat: 15, nhil: 2.5, getfund: 2.5, covid: 1, autoCalculate: true });
   const [selectedPeriod, setSelectedPeriod] = useState('');
   const [showRates, setShowRates] = useState(false);
+  const [agingData, setAgingData] = useState([
+    { label: '0–30 days', invoices: 0, amount: 0, color: 'text-green-500' },
+    { label: '31–60 days', invoices: 0, amount: 0, color: 'text-yellow-500' },
+    { label: '61–90 days', invoices: 0, amount: 0, color: 'text-orange-500' },
+    { label: '90+ days', invoices: 0, amount: 0, color: 'text-red-500' },
+  ]);
 
   useEffect(() => {
     const load = async () => {
@@ -45,6 +51,48 @@ export default function FinanceTaxVATView({ addNotification, currentUser }: Prop
         const rows = (data ?? []) as VATEntry[];
         setVatData(rows);
         if (rows.length > 0) setSelectedPeriod(rows[0].period);
+
+        // Fetch orders to compute Invoice Aging Report
+        const { data: ordersData } = await supabase
+          .from('orders')
+          .select('id, total_amount, amount_paid, created_at, due_date');
+        
+        const orders = ordersData || [];
+        const now = new Date();
+        
+        const aging = [
+          { label: '0–30 days', invoices: 0, amount: 0, color: 'text-green-500' },
+          { label: '31–60 days', invoices: 0, amount: 0, color: 'text-yellow-500' },
+          { label: '61–90 days', invoices: 0, amount: 0, color: 'text-orange-500' },
+          { label: '90+ days', invoices: 0, amount: 0, color: 'text-red-500' },
+        ];
+        
+        orders.forEach(o => {
+          const totalAmt = Number(o.total_amount || 0);
+          const paidAmt = Number(o.amount_paid || 0);
+          const dueAmount = totalAmt - paidAmt;
+          if (dueAmount <= 0) return; // fully paid
+          
+          const orderDate = o.created_at ? new Date(o.created_at) : now;
+          const diffTime = Math.abs(now.getTime() - orderDate.getTime());
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+          
+          if (diffDays <= 30) {
+            aging[0].invoices += 1;
+            aging[0].amount += dueAmount;
+          } else if (diffDays <= 60) {
+            aging[1].invoices += 1;
+            aging[1].amount += dueAmount;
+          } else if (diffDays <= 90) {
+            aging[2].invoices += 1;
+            aging[2].amount += dueAmount;
+          } else {
+            aging[3].invoices += 1;
+            aging[3].amount += dueAmount;
+          }
+        });
+        
+        setAgingData(aging);
       } catch {
         setVatData([]);
       }
@@ -179,16 +227,11 @@ export default function FinanceTaxVATView({ addNotification, currentUser }: Prop
       <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
         <h3 className="font-semibold text-[var(--text-primary)] mb-4">Invoice Aging Report</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[
-            { label: '0–30 days', invoices: 12, amount: 280000, color: 'text-green-500' },
-            { label: '31–60 days', invoices: 7, amount: 145000, color: 'text-yellow-500' },
-            { label: '61–90 days', invoices: 3, amount: 68000, color: 'text-orange-500' },
-            { label: '90+ days', invoices: 1, amount: 12000, color: 'text-red-500' },
-          ].map(({ label, invoices, amount, color }) => (
+          {agingData.map(({ label, invoices, amount, color }) => (
             <div key={label} className="bg-[var(--bg-input)] rounded-xl p-4">
               <p className="text-xs text-[var(--text-muted)] mb-1">{label}</p>
               <p className={`text-xl font-bold ${color}`}>{invoices} invoices</p>
-              <p className="text-sm text-[var(--text-secondary)]">GHS {(amount / 1000).toFixed(0)}K</p>
+              <p className="text-sm text-[var(--text-secondary)]">GHS {amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
             </div>
           ))}
         </div>

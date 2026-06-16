@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import {
   CheckCircle, XCircle, Clock, AlertTriangle, Search, Filter,
-  ChevronDown, MoreVertical, ArrowLeft, Package, CreditCard,
+  MoreVertical, ArrowLeft, Package, CreditCard,
   UserPlus, FileText, Tag, RefreshCw, Download, Eye
 } from 'lucide-react';
 import { exportToCSV } from '../../utils/export';
@@ -56,7 +56,6 @@ const TYPE_ICONS: Record<string, React.ElementType> = {
   'Price Review': Tag,
 };
 
-
 const TABS = ['All', 'Cargo Intake', 'Credit Order', 'Staff Registration', 'Discrepancy', 'Price Review'] as const;
 
 export default function MgmtApprovalsView({ addNotification, currentUser }: Props) {
@@ -80,32 +79,83 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
   async function loadApprovals() {
     setLoading(true);
     try {
-      const { data } = await supabase
-        .from('cargo_intake')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(50);
+      const [
+        { data: cargoData },
+        { data: ordersData },
+        { data: profilesData },
+      ] = await Promise.all([
+        supabase.from('cargo_intake').select('*').order('created_at', { ascending: false }).limit(50),
+        supabase.from('orders').select('*').eq('payment_mode', 'CREDIT').order('created_at', { ascending: false }).limit(50),
+        supabase.from('profiles').select('*').order('created_at', { ascending: false }).limit(50),
+      ]);
 
-      if (data && data.length > 0) {
-        const mapped: ApprovalItem[] = data.map((row: Record<string, unknown>) => ({
-          id: String(row.id),
-          requestId: `REQ-${String(row.id).slice(0, 8).toUpperCase()}`,
-          type: 'Cargo Intake' as const,
-          description: `${String(row.product_name || 'Unknown')} — ${String(row.quantity || 0)} units`,
+      const mappedCargo: ApprovalItem[] = (cargoData || []).map((row: any) => ({
+        id: row.id,
+        requestId: `CARGO-${row.id.slice(-6).toUpperCase()}`,
+        type: 'Cargo Intake' as const,
+        description: `${row.product_name || 'Goods'} — ${row.quantity || 0} units`,
+        department: 'OPERATIONS',
+        amount: row.unit_price ? Number(row.unit_price) * (row.quantity || 0) : null,
+        date: row.created_at?.slice(0, 10) || '',
+        priority: 'High' as const,
+        status: (row.status === 'APPROVED' ? 'Approved' : row.status === 'REJECTED' ? 'Rejected' : 'Pending') as ApprovalItem['status'],
+        submittedBy: row.company || 'Operations',
+        raw: row,
+      }));
+
+      const mappedDiscrepancies: ApprovalItem[] = (cargoData || [])
+        .filter((row: any) => row.discrepancies && row.discrepancies.trim() !== '')
+        .map((row: any) => ({
+          id: row.id + '-disc',
+          requestId: `DISC-${row.id.slice(-6).toUpperCase()}`,
+          type: 'Discrepancy' as const,
+          description: `Discrepancy: ${row.discrepancies}`,
           department: 'OPERATIONS',
-          amount: typeof row.total_value === 'number' ? row.total_value : null,
-          date: String(row.created_at || '').slice(0, 10),
-          priority: 'High' as const,
-          status: (String(row.status || '') === 'PENDING_MANAGEMENT_APPROVAL' ? 'Pending' : String(row.status || '') === 'APPROVED' ? 'Approved' : 'Pending') as ApprovalItem['status'],
-          submittedBy: String(row.submitted_by || 'Operations'),
+          amount: null,
+          date: row.created_at?.slice(0, 10) || '',
+          priority: 'Medium' as const,
+          status: (row.status === 'APPROVED' ? 'Approved' : row.status === 'REJECTED' ? 'Rejected' : 'Pending') as ApprovalItem['status'],
+          submittedBy: row.company || 'Operations',
           raw: row,
         }));
-        setItems(mapped);
-      }
-    } catch (_) {
-      // fallback to mock
+
+      const mappedOrders: ApprovalItem[] = (ordersData || []).map((row: any) => ({
+        id: row.id,
+        requestId: `CREDIT-${row.id.slice(-6).toUpperCase()}`,
+        type: 'Credit Order' as const,
+        description: `Credit terms request for ${row.client_name}`,
+        department: 'MARKETING',
+        amount: Number(row.total_amount || 0),
+        date: row.created_at?.slice(0, 10) || '',
+        priority: 'High' as const,
+        status: (row.status === 'APPROVED' ? 'Approved' : row.status === 'REJECTED' ? 'Rejected' : 'Pending') as ApprovalItem['status'],
+        submittedBy: row.client_name || 'Marketing',
+        raw: row,
+      }));
+
+      const mappedProfiles: ApprovalItem[] = (profilesData || [])
+        .filter((row: any) => row.status === 'PENDING_APPROVAL' || row.status === 'ACTIVE' || row.status === 'REJECTED')
+        .map((row: any) => ({
+          id: row.id,
+          requestId: `REG-${row.id.slice(-6).toUpperCase()}`,
+          type: 'Staff Registration' as const,
+          description: `Teammate signup: ${row.full_name || 'Employee'} (${row.role})`,
+          department: 'HR',
+          amount: null,
+          date: row.created_at?.slice(0, 10) || '',
+          priority: 'Medium' as const,
+          status: (row.status === 'ACTIVE' ? 'Approved' : row.status === 'REJECTED' ? 'Rejected' : 'Pending') as ApprovalItem['status'],
+          submittedBy: row.full_name || 'HR Department',
+          raw: row,
+        }));
+
+      setItems([...mappedCargo, ...mappedDiscrepancies, ...mappedOrders, ...mappedProfiles]);
+    } catch (e) {
+      console.error(e);
+      setItems([]);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
 
   const filtered = items.filter(item => {
@@ -136,46 +186,58 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
     const action = showModal;
     const newStatus: ApprovalItem['status'] = action === 'approve' ? 'Approved' : action === 'reject' ? 'Rejected' : 'Info Requested';
 
-    setItems(prev => prev.map(i => i.id === selectedItem.id ? { ...i, status: newStatus } : i));
+    try {
+      if ((selectedItem.type === 'Cargo Intake' || selectedItem.type === 'Discrepancy') && selectedItem.raw) {
+        const newDbStatus = action === 'approve' ? 'APPROVED' : action === 'reject' ? 'REJECTED' : 'INFO_REQUESTED';
+        await supabase.from('cargo_intake').update({ status: newDbStatus }).eq('id', selectedItem.raw.id);
 
-    if (selectedItem.type === 'Cargo Intake' && selectedItem.raw) {
-      const newDbStatus = action === 'approve' ? 'APPROVED' : action === 'reject' ? 'REJECTED' : 'INFO_REQUESTED';
-      supabase.from('cargo_intake').update({ status: newDbStatus }).eq('id', selectedItem.raw.id).then(() => {}, () => {});
-
-      if (action === 'approve') {
-        if (notifyOps) {
-          supabase.from('supplier_order_notifications').insert([{ order_id: selectedItem.raw.id, message: `Cargo intake APPROVED by Management: ${selectedItem.description}`, notified_department: 'OPERATIONS', read: false }]).then(() => {}, () => {});
-        }
-        if (notifyCeo) {
-          supabase.from('supplier_order_notifications').insert([{ order_id: selectedItem.raw.id, message: `Cargo intake APPROVED by Management: ${selectedItem.description}`, notified_department: 'CEO', read: false }]).then(() => {}, () => {});
-        }
-        if (sellingPrice) {
-          supabase.from('goods_prices').upsert([{ product_name: String(selectedItem.raw.product_name || ''), unit_price: parseFloat(sellingPrice), currency: 'GHS', category: 'INCOMING_GOODS' }]).then(() => {}, () => {});
+        if (action === 'approve') {
+          if (notifyOps) {
+            await supabase.from('supplier_order_notifications').insert([{ order_id: selectedItem.raw.id, message: `Cargo intake APPROVED by Management: ${selectedItem.description}`, notified_department: 'OPERATIONS', read: false }]);
+          }
+          if (notifyCeo) {
+            await supabase.from('supplier_order_notifications').insert([{ order_id: selectedItem.raw.id, message: `Cargo intake APPROVED by Management: ${selectedItem.description}`, notified_department: 'CEO', read: false }]);
+          }
+          if (sellingPrice) {
+            await supabase.from('goods_prices').upsert([{ product_name: String(selectedItem.raw.product_name || ''), unit_price: parseFloat(sellingPrice), currency: 'GHS', category: 'INCOMING_GOODS' }]);
+          }
         }
       }
-    }
 
-    if (selectedItem.type === 'Credit Order') {
-      if (action === 'approve') {
-        supabase.from('supplier_order_notifications').insert([{ order_id: selectedItem.id, message: `Credit order APPROVED: ${selectedItem.description}`, notified_department: 'FINANCE', read: false }]).then(() => {}, () => {});
-        supabase.from('supplier_order_notifications').insert([{ order_id: selectedItem.id, message: `Credit order APPROVED: ${selectedItem.description}`, notified_department: 'MARKETING', read: false }]).then(() => {}, () => {});
+      if (selectedItem.type === 'Credit Order') {
+        const newDbStatus = action === 'approve' ? 'APPROVED' : action === 'reject' ? 'REJECTED' : 'PENDING_MANAGEMENT';
+        await supabase.from('orders').update({ status: newDbStatus }).eq('id', selectedItem.id);
+
+        if (action === 'approve') {
+          await supabase.from('supplier_order_notifications').insert([{ order_id: selectedItem.id, message: `Credit order APPROVED: ${selectedItem.description}`, notified_department: 'FINANCE', read: false }]);
+          await supabase.from('supplier_order_notifications').insert([{ order_id: selectedItem.id, message: `Credit order APPROVED: ${selectedItem.description}`, notified_department: 'MARKETING', read: false }]);
+        }
       }
+
+      if (selectedItem.type === 'Staff Registration') {
+        const newDbStatus = action === 'approve' ? 'ACTIVE' : action === 'reject' ? 'REJECTED' : 'PENDING_APPROVAL';
+        await supabase.from('profiles').update({ status: newDbStatus }).eq('id', selectedItem.id);
+
+        if (action === 'approve') {
+          await supabase.from('supplier_order_notifications').insert([{ order_id: selectedItem.id, message: `Staff registration APPROVED: ${selectedItem.description}`, notified_department: 'HR', read: false }]);
+        }
+      }
+
+      await supabase.from('global_audit_history').insert([{
+        department: 'MANAGEMENT',
+        action: `${action.toUpperCase()}: ${selectedItem.requestId} — ${selectedItem.description}${modalNote ? ` | Note: ${modalNote}` : ''}`,
+        performed_by: currentUser?.fullName || 'Management',
+      }]);
+
+      addNotification?.(`${selectedItem.requestId} ${newStatus}${modalNote ? ` — "${modalNote}"` : ''}`);
+    } catch (e) {
+      console.error(e);
+      addNotification?.('Action execution failed.');
     }
 
-    if (selectedItem.type === 'Staff Registration' && action === 'approve') {
-      supabase.from('supplier_order_notifications').insert([{ order_id: selectedItem.id, message: `Staff registration APPROVED: ${selectedItem.description}`, notified_department: 'HR', read: false }]).then(() => {}, () => {});
-    }
-
-    supabase.from('global_audit_history').insert([{
-      department: 'MANAGEMENT',
-      action: `${action.toUpperCase()}: ${selectedItem.requestId} — ${selectedItem.description}${modalNote ? ` | Note: ${modalNote}` : ''}`,
-      performed_by: currentUser?.fullName || 'Management',
-      created_at: new Date().toISOString(),
-    }]).then(() => {}, () => {});
-
-    addNotification?.(`${selectedItem.requestId} ${newStatus}${modalNote ? ` — "${modalNote}"` : ''}`);
     setShowModal(null);
     setSelected(null);
+    loadApprovals();
   }
 
   const handleExport = () => {
@@ -325,7 +387,7 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
             <select
               value={statusFilter}
               onChange={e => setStatusFilter(e.target.value)}
-              className="bg-transparent text-[var(--text-secondary)] text-sm focus:outline-none"
+              className="bg-transparent text-[var(--text-secondary)] text-sm focus:outline-none cursor-pointer"
             >
               {['All', 'Pending', 'Approved', 'Rejected', 'Info Requested'].map(s => (
                 <option key={s} value={s}>{s}</option>
@@ -336,19 +398,23 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
       </div>
 
       {/* Table */}
-      <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl overflow-hidden">
+      <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl overflow-hidden shadow-[var(--box-shadow)]">
         {loading ? (
-          <div className="flex items-center justify-center h-40 text-[var(--text-muted)] text-sm">Loading approvals...</div>
+          <div className="p-10 space-y-4">
+            {[1, 2, 3, 4, 5].map(i => (
+              <div key={i} className="h-6 bg-[var(--bg-input)] rounded animate-pulse" />
+            ))}
+          </div>
         ) : filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-40 gap-2 text-[var(--text-muted)]">
+          <div className="flex flex-col items-center justify-center p-12 gap-2 text-[var(--text-muted)]">
             <CheckCircle size={32} className="opacity-30" />
-            <p className="text-sm">No requests found</p>
+            <p className="text-sm">No pending approvals found matching the criteria.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-[var(--border)] text-[var(--text-muted)]">
+                <tr className="border-b border-[var(--border)] text-[var(--text-muted)] bg-[var(--bg-input)]">
                   {['Request ID', 'Type', 'Description', 'Department', 'Amount', 'Date', 'Priority', 'Status', ''].map(h => (
                     <th key={h} className="px-4 py-3 text-left font-medium text-xs uppercase tracking-wide whitespace-nowrap">{h}</th>
                   ))}
@@ -360,7 +426,7 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
                   return (
                     <tr
                       key={item.id}
-                      className="hover:bg-[var(--bg-input)] transition-colors cursor-pointer group"
+                      className="hover:bg-[var(--accent-light)] transition-colors cursor-pointer group"
                       onClick={() => setSelected(item.id)}
                     >
                       <td className="px-4 py-3 font-mono text-xs text-[var(--text-secondary)] whitespace-nowrap">{item.requestId}</td>
@@ -370,10 +436,10 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
                         </span>
                       </td>
                       <td className="px-4 py-3 text-[var(--text-primary)] max-w-[200px]">
-                        <p className="truncate">{item.description}</p>
+                        <p className="truncate font-medium">{item.description}</p>
                       </td>
                       <td className="px-4 py-3 text-[var(--text-secondary)] whitespace-nowrap">{item.department}</td>
-                      <td className="px-4 py-3 font-medium text-[var(--text-primary)] whitespace-nowrap">
+                      <td className="px-4 py-3 font-bold text-[var(--text-primary)] whitespace-nowrap">
                         {item.amount !== null ? `GHS ${item.amount.toLocaleString()}` : '—'}
                       </td>
                       <td className="px-4 py-3 text-[var(--text-muted)] whitespace-nowrap">{item.date}</td>

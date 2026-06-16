@@ -32,30 +32,15 @@ interface Props {
   currentUser?: { fullName: string; department: string } | null;
 }
 
-const MOCK_PRICES: PriceEntry[] = [
-  { id: '1', productName: 'Hydraulic Hose Fittings', category: 'INCOMING_GOODS', unitPrice: 95, costPrice: 62, margin: 53.2, currency: 'GHS', lastUpdated: '2024-12-08', updatedBy: 'Management', changeDir: 'up' },
-  { id: '2', productName: 'PVC Pipe Fittings', category: 'INCOMING_GOODS', unitPrice: 34, costPrice: 22, margin: 54.5, currency: 'GHS', lastUpdated: '2024-12-07', updatedBy: 'Management', changeDir: 'down' },
-  { id: '3', productName: 'Steel Pipe 3/4"', category: 'INCOMING_GOODS', unitPrice: 120, costPrice: 78, margin: 53.8, currency: 'GHS', lastUpdated: '2024-12-06', updatedBy: 'Management', changeDir: 'same' },
-  { id: '4', productName: 'Copper Wire 2.5mm', category: 'INCOMING_GOODS', unitPrice: 52, costPrice: 35, margin: 48.6, currency: 'GHS', lastUpdated: '2024-12-05', updatedBy: 'Management', changeDir: 'up' },
-  { id: '5', productName: 'Rubber Gaskets Set', category: 'INCOMING_GOODS', unitPrice: 28, costPrice: 18, margin: 55.6, currency: 'GHS', lastUpdated: '2024-12-04', updatedBy: 'Management', changeDir: 'same' },
-  { id: '6', productName: 'Valve Gate 2"', category: 'INCOMING_GOODS', unitPrice: 210, costPrice: 145, margin: 44.8, currency: 'GHS', lastUpdated: '2024-12-03', updatedBy: 'CEO', changeDir: 'up' },
-  { id: '7', productName: 'Elbow Fitting 90°', category: 'INCOMING_GOODS', unitPrice: 18, costPrice: 11, margin: 63.6, currency: 'GHS', lastUpdated: '2024-12-02', updatedBy: 'Management', changeDir: 'down' },
-  { id: '8', productName: 'Thread Seal Tape', category: 'INCOMING_GOODS', unitPrice: 8, costPrice: 4.5, margin: 77.8, currency: 'GHS', lastUpdated: '2024-12-01', updatedBy: 'Management', changeDir: 'same' },
-];
-
-const MOCK_HISTORY: PriceHistoryEntry[] = [
-  { date: '2024-12-08', price: 95, updatedBy: 'Management', note: 'Import cost increase' },
-  { date: '2024-11-15', price: 85, updatedBy: 'CEO', note: 'Quarterly review' },
-  { date: '2024-10-01', price: 80, updatedBy: 'Management', note: 'Initial pricing' },
-];
-
 export default function MgmtPriceSettingView({ addNotification, currentUser }: Props) {
-  const [prices, setPrices] = useState<PriceEntry[]>(MOCK_PRICES);
+  const [prices, setPrices] = useState<PriceEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const [editing, setEditing] = useState<PriceEntry | null>(null);
   const [showHistory, setShowHistory] = useState<PriceEntry | null>(null);
+  const [history, setHistory] = useState<PriceHistoryEntry[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ productName: '', category: 'INCOMING_GOODS', unitPrice: '', costPrice: '', currency: 'GHS' as 'GHS' | 'USD', effectiveDate: '', note: '' });
   const [broadcastFinance, setRadioFinance] = useState(true);
@@ -64,31 +49,81 @@ export default function MgmtPriceSettingView({ addNotification, currentUser }: P
 
   useEffect(() => { loadPrices(); }, []);
 
+  useEffect(() => {
+    if (showHistory) {
+      loadPriceHistory(showHistory.productName);
+    }
+  }, [showHistory]);
+
   async function loadPrices() {
     setLoading(true);
     try {
-      const { data } = await supabase.from('goods_prices').select('*').order('updated_at', { ascending: false });
-      if (data && data.length > 0) {
-        const mapped: PriceEntry[] = data.map((row: Record<string, unknown>) => {
-          const unitPrice = typeof row.unit_price === 'number' ? row.unit_price : 0;
-          const costPrice = typeof row.cost_price === 'number' ? row.cost_price : unitPrice * 0.65;
-          return {
-            id: String(row.id),
-            productName: String(row.product_name || ''),
-            category: String(row.category || 'INCOMING_GOODS'),
-            unitPrice,
-            costPrice,
-            margin: costPrice > 0 ? ((unitPrice - costPrice) / costPrice) * 100 : 0,
-            currency: (row.currency as 'GHS' | 'USD') || 'GHS',
-            lastUpdated: String(row.updated_at || row.created_at || '').slice(0, 10),
-            updatedBy: String(row.updated_by || 'Management'),
-            changeDir: 'same' as const,
-          };
-        });
-        setPrices(mapped);
+      const { data, error } = await supabase
+        .from('goods_prices')
+        .select('*')
+        .order('updated_at', { ascending: false });
+
+      if (error) {
+        console.error('Error loading goods prices:', error);
       }
-    } catch (_) {}
-    setLoading(false);
+
+      const mapped: PriceEntry[] = (data || []).map((row: any) => {
+        const unitPrice = typeof row.unit_price === 'number' ? row.unit_price : 0;
+        const costPrice = typeof row.cost_price === 'number' ? row.cost_price : unitPrice * 0.65;
+        return {
+          id: String(row.id),
+          productName: String(row.product_name || ''),
+          category: String(row.category || 'INCOMING_GOODS'),
+          unitPrice,
+          costPrice,
+          margin: costPrice > 0 ? ((unitPrice - costPrice) / costPrice) * 100 : 0,
+          currency: (row.currency as 'GHS' | 'USD') || 'GHS',
+          lastUpdated: String(row.updated_at || row.created_at || '').slice(0, 10),
+          updatedBy: String(row.updated_by || 'Management'),
+          changeDir: 'same' as const,
+        };
+      });
+      setPrices(mapped);
+    } catch (e) {
+      console.error(e);
+      setPrices([]);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function loadPriceHistory(productName: string) {
+    setLoadingHistory(true);
+    try {
+      const { data, error } = await supabase
+        .from('global_audit_history')
+        .select('*')
+        .or(`action.ilike.%${productName}%,details.ilike.%${productName}%`)
+        .order('timestamp', { ascending: false })
+        .limit(20);
+
+      if (error) {
+        console.error('Error loading price history:', error);
+      }
+
+      const mappedHistory: PriceHistoryEntry[] = (data || []).map((h: any) => {
+        const priceRegex = /(?:GHS|USD)\s*(\d+(?:\.\d+)?)/i;
+        const match = (h.action || '').match(priceRegex) || (h.details || '').match(priceRegex);
+        const price = match ? parseFloat(match[1]) : 0;
+        return {
+          date: h.timestamp ? h.timestamp.split('T')[0] : '',
+          price: price || showHistory?.unitPrice || 0,
+          updatedBy: h.performed_by || 'System',
+          note: h.action || 'Price Update Logged',
+        };
+      });
+      setHistory(mappedHistory);
+    } catch (e) {
+      console.error(e);
+      setHistory([]);
+    } finally {
+      setLoadingHistory(false);
+    }
   }
 
   const filtered = prices.filter(p =>
@@ -106,8 +141,9 @@ export default function MgmtPriceSettingView({ addNotification, currentUser }: P
     const costPrice = form.costPrice ? parseFloat(form.costPrice) : unitPrice * 0.65;
     const margin = costPrice > 0 ? ((unitPrice - costPrice) / costPrice) * 100 : 0;
 
+    const newId = editing?.id || 'PRC-' + Math.random().toString(36).substring(2, 9);
     const newEntry: PriceEntry = {
-      id: editing?.id || Date.now().toString(),
+      id: newId,
       productName: form.productName,
       category: form.category,
       unitPrice,
@@ -119,41 +155,42 @@ export default function MgmtPriceSettingView({ addNotification, currentUser }: P
       changeDir: editing ? (unitPrice > editing.unitPrice ? 'up' : unitPrice < editing.unitPrice ? 'down' : 'same') : 'same',
     };
 
-    supabase.from('goods_prices').upsert([{
-      id: editing?.id || undefined,
-      product_name: form.productName,
-      category: form.category,
-      unit_price: unitPrice,
-      cost_price: costPrice,
-      currency: form.currency,
-      updated_by: currentUser?.fullName || 'Management',
-      updated_at: new Date().toISOString(),
-    }]).then(() => {}, () => {});
+    try {
+      await supabase.from('goods_prices').upsert([{
+        id: editing?.id || undefined,
+        product_name: form.productName,
+        category: form.category,
+        unit_price: unitPrice,
+        cost_price: costPrice,
+        currency: form.currency,
+        updated_by: currentUser?.fullName || 'Management',
+        updated_at: new Date().toISOString(),
+      }]);
 
-    if (broadcastFinance) {
-      supabase.from('supplier_order_notifications').insert([{ order_id: newEntry.id, message: `Price update: ${form.productName} → ${form.currency} ${unitPrice}`, notified_department: 'FINANCE', read: false }]).then(() => {}, () => {});
-    }
-    if (broadcastMarketing) {
-      supabase.from('supplier_order_notifications').insert([{ order_id: newEntry.id, message: `Price update: ${form.productName} → ${form.currency} ${unitPrice}`, notified_department: 'MARKETING', read: false }]).then(() => {}, () => {});
-    }
-    if (broadcastCeo) {
-      supabase.from('supplier_order_notifications').insert([{ order_id: newEntry.id, message: `Price update: ${form.productName} → ${form.currency} ${unitPrice}`, notified_department: 'CEO', read: false }]).then(() => {}, () => {});
+      if (broadcastFinance) {
+        await supabase.from('supplier_order_notifications').insert([{ message: `Price update: ${form.productName} → ${form.currency} ${unitPrice}`, notified_department: 'FINANCE', read: false }]);
+      }
+      if (broadcastMarketing) {
+        await supabase.from('supplier_order_notifications').insert([{ message: `Price update: ${form.productName} → ${form.currency} ${unitPrice}`, notified_department: 'MARKETING', read: false }]);
+      }
+      if (broadcastCeo) {
+        await supabase.from('supplier_order_notifications').insert([{ message: `Price update: ${form.productName} → ${form.currency} ${unitPrice}`, notified_department: 'CEO', read: false }]);
+      }
+
+      await supabase.from('global_audit_history').insert([{
+        department: 'MANAGEMENT',
+        action: `Price ${editing ? 'updated' : 'set'}: ${form.productName} → ${form.currency} ${unitPrice}/unit`,
+        performed_by: currentUser?.fullName || 'Management',
+        timestamp: new Date().toISOString(),
+      }]);
+
+      addNotification?.(`Price ${editing ? 'updated' : 'set'}: ${form.productName} → ${form.currency} ${unitPrice}`);
+      loadPrices();
+    } catch (e) {
+      console.error(e);
+      addNotification?.('Failed to save price catalog updates.');
     }
 
-    supabase.from('global_audit_history').insert([{
-      department: 'MANAGEMENT',
-      action: `Price ${editing ? 'updated' : 'set'}: ${form.productName} → ${form.currency} ${unitPrice}/unit`,
-      performed_by: currentUser?.fullName || 'Management',
-      created_at: new Date().toISOString(),
-    }]).then(() => {}, () => {});
-
-    if (editing) {
-      setPrices(prev => prev.map(p => p.id === editing.id ? newEntry : p));
-    } else {
-      setPrices(prev => [newEntry, ...prev]);
-    }
-
-    addNotification?.(`Price ${editing ? 'updated' : 'set'}: ${form.productName} → ${form.currency} ${unitPrice}`);
     setShowForm(false);
     setEditing(null);
     setForm({ productName: '', category: 'INCOMING_GOODS', unitPrice: '', costPrice: '', currency: 'GHS', effectiveDate: '', note: '' });
@@ -166,11 +203,16 @@ export default function MgmtPriceSettingView({ addNotification, currentUser }: P
     setMenuOpen(null);
   }
 
-  function handleDelete(id: string) {
-    supabase.from('goods_prices').delete().eq('id', id).then(() => {}, () => {});
-    setPrices(prev => prev.filter(p => p.id !== id));
+  async function handleDelete(id: string) {
+    try {
+      await supabase.from('goods_prices').delete().eq('id', id);
+      setPrices(prev => prev.filter(p => p.id !== id));
+      addNotification?.('Price entry removed');
+    } catch (e) {
+      console.error(e);
+      addNotification?.('Failed to delete price entry.');
+    }
     setMenuOpen(null);
-    addNotification?.('Price entry removed');
   }
 
   if (showHistory) {
@@ -183,18 +225,24 @@ export default function MgmtPriceSettingView({ addNotification, currentUser }: P
           <h2 className="text-lg font-bold text-[var(--text-primary)] mb-1">{showHistory.productName} — Price History</h2>
           <p className="text-sm text-[var(--text-secondary)] mb-5">Current price: {showHistory.currency} {showHistory.unitPrice}</p>
           <div className="space-y-3">
-            {MOCK_HISTORY.map((h, i) => (
-              <div key={i} className="flex items-center gap-4 p-4 bg-[var(--bg-input)] rounded-xl">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'var(--accent-light)' }}>
-                  <Tag size={16} style={{ color: 'var(--accent)' }} />
+            {loadingHistory ? (
+              <div className="text-center py-6 text-xs text-[var(--text-muted)]">Loading price logs...</div>
+            ) : history.length === 0 ? (
+              <div className="text-center py-6 text-xs text-[var(--text-muted)]">No price history logged for this product.</div>
+            ) : (
+              history.map((h, i) => (
+                <div key={i} className="flex items-center gap-4 p-4 bg-[var(--bg-input)] rounded-xl">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'var(--accent-light)' }}>
+                    <Tag size={16} style={{ color: 'var(--accent)' }} />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-[var(--text-primary)]">{showHistory.currency} {h.price} / unit</p>
+                    <p className="text-xs text-[var(--text-muted)]">{h.note} · by {h.updatedBy}</p>
+                  </div>
+                  <p className="text-xs text-[var(--text-muted)]">{h.date}</p>
                 </div>
-                <div className="flex-1">
-                  <p className="text-sm font-semibold text-[var(--text-primary)]">{showHistory.currency} {h.price} / unit</p>
-                  <p className="text-xs text-[var(--text-muted)]">{h.note} · by {h.updatedBy}</p>
-                </div>
-                <p className="text-xs text-[var(--text-muted)]">{h.date}</p>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
       </div>
@@ -250,62 +298,70 @@ export default function MgmtPriceSettingView({ addNotification, currentUser }: P
       </div>
 
       {/* Price Table */}
-      <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl overflow-hidden">
-        {loading ? (
-          <div className="flex items-center justify-center h-40 text-[var(--text-muted)] text-sm">Loading prices...</div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-[var(--border)]">
-                  {['Product', 'Category', 'Cost Price', 'Selling Price', 'Margin', 'Currency', 'Last Updated', 'By', ''].map(h => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wide whitespace-nowrap">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[var(--border)]">
-                {filtered.map(item => (
-                  <tr key={item.id} className="hover:bg-[var(--bg-input)] transition-colors group">
-                    <td className="px-4 py-3 font-medium text-[var(--text-primary)] whitespace-nowrap">
-                      <div className="flex items-center gap-2">
-                        {item.changeDir === 'up' && <TrendingUp size={12} className="text-green-500 flex-shrink-0" />}
-                        {item.changeDir === 'down' && <TrendingDown size={12} className="text-red-500 flex-shrink-0" />}
-                        {item.productName}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--accent-light)] text-[var(--accent)] font-medium">{item.category}</span>
-                    </td>
-                    <td className="px-4 py-3 text-[var(--text-secondary)] whitespace-nowrap">{item.currency} {item.costPrice.toFixed(2)}</td>
-                    <td className="px-4 py-3 font-semibold text-[var(--text-primary)] whitespace-nowrap">{item.currency} {item.unitPrice.toFixed(2)}</td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <span className={`font-semibold text-sm ${item.margin >= 50 ? 'text-green-500' : item.margin >= 40 ? 'text-yellow-500' : 'text-red-500'}`}>
-                        {item.margin.toFixed(1)}%
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-[var(--text-muted)]">{item.currency}</td>
-                    <td className="px-4 py-3 text-[var(--text-muted)] whitespace-nowrap">{item.lastUpdated}</td>
-                    <td className="px-4 py-3 text-[var(--text-muted)] whitespace-nowrap">{item.updatedBy}</td>
-                    <td className="px-4 py-3">
-                      <div className="relative">
-                        <button onClick={() => setMenuOpen(menuOpen === item.id ? null : item.id)} className="p-1.5 rounded-lg hover:bg-[var(--bg-input)] opacity-0 group-hover:opacity-100 transition-opacity">
-                          <MoreVertical size={14} className="text-[var(--text-muted)]" />
-                        </button>
-                        {menuOpen === item.id && (
-                          <div className="absolute right-0 top-8 z-20 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-lg py-1 min-w-[150px]">
-                            <button onClick={() => openEdit(item)} className="w-full text-left px-3 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-input)] flex items-center gap-2"><Edit2 size={13} /> Edit Price</button>
-                            <button onClick={() => { setShowHistory(item); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-input)] flex items-center gap-2"><History size={13} /> Price History</button>
-                            <button onClick={() => handleDelete(item.id)} className="w-full text-left px-3 py-2 text-sm text-red-500 hover:bg-[var(--bg-input)] flex items-center gap-2"><Trash2 size={13} /> Remove</button>
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
+      <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl overflow-hidden shadow-[var(--box-shadow)]">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-[var(--border)] bg-[var(--bg-input)]">
+                {['Product', 'Category', 'Cost Price', 'Selling Price', 'Margin', 'Currency', 'Last Updated', 'By', ''].map(h => (
+                  <th key={h} className="px-4 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wide whitespace-nowrap">{h}</th>
                 ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[var(--border)]">
+              {loading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <tr key={i}>
+                    <td colSpan={9} className="px-4 py-4"><div className="h-4 bg-[var(--bg-input)] rounded animate-pulse" /></td>
+                  </tr>
+                ))
+              ) : filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={9} className="px-4 py-10 text-center text-[var(--text-muted)]">
+                    No price settings found in catalog. Use "Set Price" to add one.
+                  </td>
+                </tr>
+              ) : filtered.map(item => (
+                <tr key={item.id} className="hover:bg-[var(--accent-light)] transition-colors group">
+                  <td className="px-4 py-3 font-semibold text-[var(--text-primary)] whitespace-nowrap">
+                    <div className="flex items-center gap-2">
+                      {item.changeDir === 'up' && <TrendingUp size={12} className="text-green-500 flex-shrink-0" />}
+                      {item.changeDir === 'down' && <TrendingDown size={12} className="text-red-500 flex-shrink-0" />}
+                      {item.productName}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--accent-light)] text-[var(--accent)] font-semibold">{item.category}</span>
+                  </td>
+                  <td className="px-4 py-3 text-[var(--text-secondary)] whitespace-nowrap">{item.currency} {item.costPrice.toFixed(2)}</td>
+                  <td className="px-4 py-3 font-bold text-[var(--text-primary)] whitespace-nowrap">{item.currency} {item.unitPrice.toFixed(2)}</td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <span className={`font-semibold text-sm ${item.margin >= 50 ? 'text-green-500' : item.margin >= 40 ? 'text-yellow-500' : 'text-red-500'}`}>
+                      {item.margin.toFixed(1)}%
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-[var(--text-muted)]">{item.currency}</td>
+                  <td className="px-4 py-3 text-[var(--text-muted)] whitespace-nowrap">{item.lastUpdated}</td>
+                  <td className="px-4 py-3 text-[var(--text-muted)] whitespace-nowrap">{item.updatedBy}</td>
+                  <td className="px-4 py-3">
+                    <div className="relative">
+                      <button onClick={() => setMenuOpen(menuOpen === item.id ? null : item.id)} className="p-1.5 rounded-lg hover:bg-[var(--bg-input)] opacity-0 group-hover:opacity-100 transition-opacity">
+                        <MoreVertical size={14} className="text-[var(--text-muted)]" />
+                      </button>
+                      {menuOpen === item.id && (
+                        <div className="absolute right-0 top-8 z-20 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-lg py-1 min-w-[150px]">
+                          <button onClick={() => openEdit(item)} className="w-full text-left px-3 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-input)] flex items-center gap-2"><Edit2 size={13} /> Edit Price</button>
+                          <button onClick={() => { setShowHistory(item); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-input)] flex items-center gap-2"><History size={13} /> Price History</button>
+                          <button onClick={() => handleDelete(item.id)} className="w-full text-left px-3 py-2 text-sm text-red-500 hover:bg-[var(--bg-input)] flex items-center gap-2"><Trash2 size={13} /> Remove</button>
+                        </div>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Price Form Modal */}

@@ -297,3 +297,113 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.delivery_logs;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.goods_prices;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.chat_messages;
 
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 7. INCREMENTAL MIGRATIONS & ALTERATIONS
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- Safe alterations to public.orders table
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS payment_mode TEXT;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS amount_paid NUMERIC DEFAULT 0;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS due_date DATE;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS phone TEXT;
+
+-- Safe alterations to public.finance_payments table
+ALTER TABLE public.finance_payments ADD COLUMN IF NOT EXISTS order_ref TEXT;
+ALTER TABLE public.finance_payments ADD COLUMN IF NOT EXISTS recorded_by TEXT;
+ALTER TABLE public.finance_payments ADD COLUMN IF NOT EXISTS transaction_id TEXT;
+ALTER TABLE public.finance_payments ADD COLUMN IF NOT EXISTS network TEXT;
+ALTER TABLE public.finance_payments ADD COLUMN IF NOT EXISTS momo_number TEXT;
+ALTER TABLE public.finance_payments ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'Verified';
+
+-- Missing tables creation
+CREATE TABLE IF NOT EXISTS public.invoices (
+    id TEXT PRIMARY KEY DEFAULT 'INV-' || substring(md5(random()::text) from 1 for 8),
+    invoice_no TEXT UNIQUE NOT NULL,
+    customer TEXT NOT NULL,
+    department TEXT NOT NULL,
+    amount NUMERIC NOT NULL,
+    date DATE NOT NULL DEFAULT CURRENT_DATE,
+    due_date DATE NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('paid', 'pending', 'overdue')),
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.transactions (
+    id TEXT PRIMARY KEY DEFAULT 'TRX-' || substring(md5(random()::text) from 1 for 8),
+    date DATE NOT NULL DEFAULT CURRENT_DATE,
+    description TEXT NOT NULL,
+    department TEXT NOT NULL,
+    amount NUMERIC NOT NULL,
+    type TEXT NOT NULL CHECK (type IN ('in', 'out')),
+    account TEXT NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('completed', 'pending', 'failed')),
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.recurring_payments (
+    id TEXT PRIMARY KEY DEFAULT 'REC-' || substring(md5(random()::text) from 1 for 8),
+    name TEXT NOT NULL,
+    amount NUMERIC NOT NULL,
+    frequency TEXT NOT NULL CHECK (frequency IN ('weekly', 'monthly', 'quarterly', 'annually')),
+    next_date DATE NOT NULL,
+    account TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'paused')),
+    category TEXT NOT NULL DEFAULT 'General',
+    created_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.departments (
+    id TEXT PRIMARY KEY DEFAULT 'DEPT-' || substring(md5(random()::text) from 1 for 8),
+    name TEXT UNIQUE NOT NULL,
+    head_name TEXT,
+    head_role TEXT,
+    budget NUMERIC DEFAULT 0,
+    headcount INTEGER DEFAULT 0,
+    active_projects INTEGER DEFAULT 0,
+    performance_score INTEGER DEFAULT 80
+);
+
+CREATE TABLE IF NOT EXISTS public.finance_vat_periods (
+    period TEXT PRIMARY KEY,
+    invoice_count INTEGER NOT NULL DEFAULT 0,
+    gross_sales NUMERIC NOT NULL DEFAULT 0,
+    vat_amount NUMERIC NOT NULL DEFAULT 0,
+    net_sales NUMERIC NOT NULL DEFAULT 0,
+    status TEXT NOT NULL CHECK (status IN ('Filed', 'Pending', 'Draft'))
+);
+
+CREATE TABLE IF NOT EXISTS public.supplier_order_notifications (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    order_id TEXT,
+    message TEXT NOT NULL,
+    notified_department TEXT NOT NULL,
+    read BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Enable RLS on new tables
+ALTER TABLE public.invoices ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.recurring_payments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.departments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.finance_vat_periods ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.supplier_order_notifications ENABLE ROW LEVEL SECURITY;
+
+-- Setup full RLS access for authenticated users on new tables
+CREATE POLICY "Allow authenticated users full access to invoices" ON public.invoices FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Allow authenticated users full access to transactions" ON public.transactions FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Allow authenticated users full access to recurring_payments" ON public.recurring_payments FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Allow authenticated users full access to departments" ON public.departments FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Allow authenticated users full access to finance_vat_periods" ON public.finance_vat_periods FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Allow authenticated users full access to supplier_order_notifications" ON public.supplier_order_notifications FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
+-- Enable Realtime for new tables
+ALTER PUBLICATION supabase_realtime ADD TABLE public.invoices;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.transactions;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.recurring_payments;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.departments;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.finance_vat_periods;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.supplier_order_notifications;
+
+

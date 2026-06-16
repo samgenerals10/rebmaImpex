@@ -104,13 +104,65 @@ export default function FinanceDashboard({
     return () => window.removeEventListener('click', handleOutsideClick);
   }, []);
 
-  const lineChartData = [
-    { name: 'Mon', Revenue: 12000, Payments: 8000 },
-    { name: 'Tue', Revenue: 19000, Payments: 12000 },
-    { name: 'Wed', Revenue: 15000, Payments: 10000 },
-    { name: 'Thu', Revenue: 27000, Payments: 21000 },
-    { name: 'Fri', Revenue: 34000, Payments: 15000 },
-  ];
+  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const last5Days = Array.from({ length: 5 }).map((_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (4 - i));
+    return {
+      dateStr: d.toDateString(),
+      dayName: dayNames[d.getDay()],
+      Revenue: 0,
+      Payments: 0
+    };
+  });
+
+  ordersList.forEach(o => {
+    if (['DELIVERED', 'APPROVED', 'PROCESSING', 'OUT_FOR_DELIVERY'].includes(o.status)) {
+      const dStr = new Date(o.createdAt).toDateString();
+      const dayItem = last5Days.find(item => item.dateStr === dStr);
+      if (dayItem) {
+        dayItem.Revenue += o.totalAmount;
+      }
+    }
+  });
+
+  localPayments.forEach(p => {
+    const dStr = new Date(p.createdAt).toDateString();
+    const dayItem = last5Days.find(item => item.dateStr === dStr);
+    if (dayItem) {
+      dayItem.Payments += p.amount;
+    }
+  });
+
+  const lineChartData = last5Days.map(item => ({
+    name: item.dayName,
+    Revenue: item.Revenue,
+    Payments: item.Payments
+  }));
+
+  const last7DaysArr = Array.from({ length: 7 }).map((_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (6 - i));
+    return d.toDateString();
+  });
+
+  const sparkTotalRevenue = last7DaysArr.map(dStr => {
+    return ordersList
+      .filter(o => new Date(o.createdAt).toDateString() === dStr && ['DELIVERED', 'APPROVED', 'PROCESSING', 'OUT_FOR_DELIVERY'].includes(o.status))
+      .reduce((sum, o) => sum + o.totalAmount, 0);
+  });
+
+  const sparkPendingOrders = last7DaysArr.map(dStr => {
+    return ordersList.filter(o => new Date(o.createdAt).toDateString() === dStr && o.status === 'PENDING_FINANCE').length;
+  });
+
+  const sparkInvoicesGenerated = last7DaysArr.map(dStr => {
+    return localPayments.filter(p => new Date(p.createdAt).toDateString() === dStr).length;
+  });
+
+  const sparkCreditOutstanding = last7DaysArr.map(dStr => {
+    return localPayments.filter(p => new Date(p.createdAt).toDateString() === dStr).reduce((sum, p) => sum + p.amount, 0);
+  });
 
   const totalRevenueVal = ordersList.reduce((acc, o) =>
     acc + (['DELIVERED', 'APPROVED', 'PROCESSING', 'OUT_FOR_DELIVERY'].includes(o.status) ? o.totalAmount : 0), 0
@@ -749,7 +801,12 @@ export default function FinanceDashboard({
           {/* Stats */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
             {stats.map((card, idx) => {
-              const sparkData = [[30,45,35,60,40,70,55],[20,35,25,50,30,55,45],[40,55,38,62,44,68,52],[15,25,20,35,25,40,30]][idx] || [40,50,45,60,55,65,50];
+              const sparkData = [
+                sparkTotalRevenue,
+                sparkPendingOrders,
+                sparkInvoicesGenerated,
+                sparkCreditOutstanding
+              ][idx] || [0,0,0,0,0,0,0];
               const isUp = idx % 3 !== 0;
               return (
                 <div key={idx} onClick={() => setKpiDetail(idx)} className="kpi-card group cursor-pointer hover:shadow-lg transition-shadow">

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import {
   CreditCard, Search, Download, Eye, ChevronLeft, Clock, CheckCircle,
@@ -25,64 +25,6 @@ interface CreditRequest {
   financeNote?: string;
   timeline?: { event: string; by: string; date: string; note?: string }[];
 }
-
-const MOCK: CreditRequest[] = [
-  {
-    id: 'CR-2024-001', orderId: 'ORD-2024-012', customerId: 'CUST-001',
-    customerName: 'Accra Builders Ltd', phone: '0244123456', address: '15 Industrial Ave, Tema',
-    amount: 45000, date: '2024-12-08', dueDate: '2025-01-08',
-    ghanaCardNumber: 'GHA-123456789-0', status: 'Pending Management',
-    timeline: [
-      { event: 'Credit request submitted', by: 'Sales Rep', date: '2024-12-08 10:30', note: 'Customer requested 30-day credit' },
-    ],
-  },
-  {
-    id: 'CR-2024-002', orderId: 'ORD-2024-009', customerId: 'CUST-002',
-    customerName: 'Kumasi Traders Co.', phone: '0551987654', address: '7 Main St, Kumasi',
-    amount: 28000, date: '2024-12-07', dueDate: '2025-01-06',
-    ghanaCardNumber: 'GHA-987654321-1', status: 'Management Approved',
-    managementNote: 'Approved. Customer has good payment history.',
-    timeline: [
-      { event: 'Credit request submitted', by: 'Sales Rep', date: '2024-12-07 09:00' },
-      { event: 'Management approved', by: 'Manager', date: '2024-12-07 14:00', note: 'Good payment history' },
-    ],
-  },
-  {
-    id: 'CR-2024-003', orderId: 'ORD-2024-007', customerId: 'CUST-003',
-    customerName: 'Takoradi Ventures', phone: '0302445566', address: '22 Harbour Rd, Takoradi',
-    amount: 62000, date: '2024-12-06', dueDate: '2025-01-05',
-    ghanaCardNumber: 'GHA-555333111-2', status: 'Finance Processing',
-    managementNote: 'Approved with collateral.',
-    timeline: [
-      { event: 'Credit request submitted', by: 'Sales Rep', date: '2024-12-06 08:00' },
-      { event: 'Management approved', by: 'Manager', date: '2024-12-06 11:00' },
-      { event: 'Sent to Finance', by: 'System', date: '2024-12-06 11:01' },
-    ],
-  },
-  {
-    id: 'CR-2024-004', orderId: 'ORD-2024-005', customerId: 'CUST-004',
-    customerName: 'Cape Coast Ventures', phone: '0244778899', address: '5 Beach Rd, Cape Coast',
-    amount: 15000, date: '2024-12-04', dueDate: '2025-01-04',
-    ghanaCardNumber: 'GHA-222444666-3', status: 'Completed',
-    managementNote: 'Approved.', financeNote: 'Credit terms agreed, terms sheet signed.',
-    timeline: [
-      { event: 'Credit request submitted', by: 'Sales Rep', date: '2024-12-04 10:00' },
-      { event: 'Management approved', by: 'Manager', date: '2024-12-04 12:00' },
-      { event: 'Finance completed', by: 'Finance Team', date: '2024-12-04 16:00' },
-    ],
-  },
-  {
-    id: 'CR-2024-005', orderId: 'ORD-2024-003', customerId: 'CUST-005',
-    customerName: 'Ho Supplies Ltd', phone: '0557112233', address: '3 Volta Rd, Ho',
-    amount: 8000, date: '2024-12-02', dueDate: '2025-01-02',
-    ghanaCardNumber: 'GHA-777888999-4', status: 'Rejected',
-    managementNote: 'Rejected — insufficient business history.',
-    timeline: [
-      { event: 'Credit request submitted', by: 'Sales Rep', date: '2024-12-02 09:00' },
-      { event: 'Management rejected', by: 'Manager', date: '2024-12-02 15:00', note: 'Insufficient business history' },
-    ],
-  },
-];
 
 const STATUS_TABS = ['All', 'Pending Management', 'Management Approved', 'Finance Processing', 'Completed', 'Rejected'] as const;
 
@@ -118,10 +60,62 @@ function GhanaCardPlaceholder({ label }: { label: string }) {
 }
 
 export default function MarketingCreditRequestsView({ addNotification, currentUser }: Props) {
-  const [requests] = useState<CreditRequest[]>(MOCK);
+  const [requests, setRequests] = useState<CreditRequest[]>([]);
+  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<typeof STATUS_TABS[number]>('All');
   const [search, setSearch] = useState('');
   const [detail, setDetail] = useState<CreditRequest | null>(null);
+
+  useEffect(() => {
+    const fetchRequests = async () => {
+      setLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('orders')
+          .select('*')
+          .eq('payment_mode', 'CREDIT')
+          .order('created_at', { ascending: false });
+        if (error) throw error;
+        
+        const mapped: CreditRequest[] = (data || []).map((o: any) => {
+          const reqStatus = o.status === 'COMPLETED' ? 'Completed' 
+            : o.status === 'REJECTED' ? 'Rejected' 
+            : o.status === 'APPROVED' ? 'Management Approved' 
+            : 'Pending Management';
+          
+          return {
+            id: `CR-${o.id.toString().slice(-6).toUpperCase()}`,
+            orderId: o.ticket_number || `ORD-${o.id}`,
+            customerId: `CUST-${o.client_name?.slice(0, 3).toUpperCase()}`,
+            customerName: o.client_name || 'Walk-in Customer',
+            phone: o.phone || '',
+            address: o.destination || '',
+            amount: Number(o.total_amount || 0),
+            date: o.created_at ? o.created_at.split('T')[0] : '',
+            dueDate: o.due_date || '',
+            ghanaCardNumber: o.metadata?.ghana_card_number || '',
+            ghanaCardFrontUrl: o.metadata?.ghana_card_front || '',
+            ghanaCardBackUrl: o.metadata?.ghana_card_back || '',
+            customerPhotoUrl: o.metadata?.customer_photo || '',
+            status: reqStatus as any,
+            managementNote: o.metadata?.management_notes || '',
+            financeNote: o.metadata?.finance_notes || '',
+            timeline: [
+              { event: 'Credit request submitted', by: 'Sales Rep', date: o.created_at ? new Date(o.created_at).toLocaleString() : '' },
+              (o.status === 'APPROVED' || o.status === 'COMPLETED') ? { event: 'Management approved', by: 'Manager', date: o.updated_at ? new Date(o.updated_at).toLocaleString() : '' } : null,
+              o.status === 'COMPLETED' ? { event: 'Finance completed', by: 'Finance Team', date: o.updated_at ? new Date(o.updated_at).toLocaleString() : '' } : null,
+            ].filter(Boolean) as any[]
+          };
+        });
+        setRequests(mapped);
+      } catch (err: any) {
+        if (addNotification) addNotification(`Error loading credit requests: ${err.message}`);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchRequests();
+  }, []);
 
   const filtered = requests.filter(r => {
     const matchTab = activeTab === 'All' || r.status === activeTab;
@@ -320,18 +314,35 @@ export default function MarketingCreditRequestsView({ addNotification, currentUs
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--border)]">
-              {filtered.length === 0 && (
-                <tr><td colSpan={9} className="text-center py-12 text-[var(--text-muted)]">No credit requests found</td></tr>
-              )}
-              {filtered.map(r => {
-                const Icon = STATUS_ICONS[r.status] || Clock;
-                return (
-                  <tr key={r.id} className="hover:bg-[var(--bg-input)] cursor-pointer" onClick={() => setDetail(r)}>
-                    <td className="px-4 py-3 font-mono text-xs font-medium text-[var(--accent)]">{r.id}</td>
+              {loading ? (
+                [1, 2, 3, 4].map(i => (
+                  <tr key={i} className="animate-pulse">
+                    <td className="px-4 py-3"><div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-16" /></td>
                     <td className="px-4 py-3">
-                      <p className="font-medium text-[var(--text-primary)] whitespace-nowrap">{r.customerName}</p>
-                      <p className="text-xs text-[var(--text-muted)]">{r.phone}</p>
+                      <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-28 mb-1" />
+                      <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-16" />
                     </td>
+                    <td className="px-4 py-3"><div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-20" /></td>
+                    <td className="px-4 py-3"><div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-16" /></td>
+                    <td className="px-4 py-3"><div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-20" /></td>
+                    <td className="px-4 py-3"><div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-20" /></td>
+                    <td className="px-4 py-3"><div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-16" /></td>
+                    <td className="px-4 py-3"><div className="h-5 bg-slate-200 dark:bg-slate-700 rounded w-24" /></td>
+                    <td className="px-4 py-3"><div className="h-8 bg-slate-200 dark:bg-slate-700 rounded w-16" /></td>
+                  </tr>
+                ))
+              ) : filtered.length === 0 ? (
+                <tr><td colSpan={9} className="text-center py-12 text-[var(--text-muted)]">No credit requests found</td></tr>
+              ) : (
+                filtered.map(r => {
+                  const Icon = STATUS_ICONS[r.status] || Clock;
+                  return (
+                    <tr key={r.id} className="hover:bg-[var(--bg-input)] cursor-pointer" onClick={() => setDetail(r)}>
+                      <td className="px-4 py-3 font-mono text-xs font-medium text-[var(--accent)]">{r.id}</td>
+                      <td className="px-4 py-3">
+                        <p className="font-medium text-[var(--text-primary)] whitespace-nowrap">{r.customerName}</p>
+                        <p className="text-xs text-[var(--text-muted)]">{r.phone}</p>
+                      </td>
                     <td className="px-4 py-3 text-[var(--text-secondary)] font-mono text-xs whitespace-nowrap">{r.orderId}</td>
                     <td className="px-4 py-3 font-semibold text-[var(--text-primary)] whitespace-nowrap">GHS {r.amount.toLocaleString()}</td>
                     <td className="px-4 py-3 text-[var(--text-secondary)] whitespace-nowrap">{r.date}</td>
@@ -353,7 +364,7 @@ export default function MarketingCreditRequestsView({ addNotification, currentUs
                     </td>
                   </tr>
                 );
-              })}
+              }))}
             </tbody>
           </table>
         </div>

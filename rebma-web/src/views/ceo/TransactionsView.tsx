@@ -15,17 +15,6 @@ interface Transaction {
   status: 'completed' | 'pending' | 'failed';
 }
 
-const MOCK: Transaction[] = Array.from({ length: 20 }, (_, i) => ({
-  id: `TRX-${String(i + 1).padStart(3, '0')}`,
-  date: new Date(Date.now() - i * 86400000 * 2).toISOString().split('T')[0],
-  description: ['Cargo Payment', 'Staff Payroll', 'Invoice Settlement', 'Supplier Payment', 'Customer Receipt'][i % 5],
-  department: ['FINANCE', 'HR', 'MARKETING', 'OPERATIONS', 'LOGISTICS'][i % 5],
-  amount: Math.round(5000 + Math.random() * 45000),
-  type: i % 3 === 0 ? 'out' : 'in',
-  account: i % 2 === 0 ? 'GHS Main Account' : 'USD Account',
-  status: ['completed', 'completed', 'completed', 'pending', 'completed'][i % 5] as Transaction['status'],
-}));
-
 const STATUS_STYLES = {
   completed: 'bg-emerald-100 text-emerald-700',
   pending:   'bg-amber-100 text-amber-700',
@@ -45,15 +34,28 @@ export default function TransactionsView({ addNotification }: Props) {
   const [page, setPage]           = useState(0);
   const PAGE_SIZE = 15;
 
-  useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      try {
-        const { data } = await supabase.from('transactions').select('*').order('date', { ascending: false }).limit(200);
-        setRows(data && data.length > 0 ? data : MOCK);
-      } catch { setRows(MOCK); }
+  const load = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('transactions')
+        .select('*')
+        .order('date', { ascending: false })
+        .limit(200);
+
+      if (error) {
+        console.error('Error loading transactions:', error);
+      }
+      setRows(data || []);
+    } catch (e) {
+      console.error(e);
+      setRows([]);
+    } finally {
       setLoading(false);
-    };
+    }
+  };
+
+  useEffect(() => {
     load();
   }, []);
 
@@ -155,6 +157,12 @@ export default function TransactionsView({ addNotification }: Props) {
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i}><td colSpan={8} className="px-4 py-3"><div className="h-4 bg-[var(--bg-input)] rounded animate-pulse" /></td></tr>
                 ))
+              ) : paginated.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="px-4 py-10 text-center text-[var(--text-muted)]">
+                    No transactions recorded. Create a transaction to test this view.
+                  </td>
+                </tr>
               ) : paginated.map(row => (
                 <tr key={row.id} className="border-b border-[var(--border)] hover:bg-[var(--accent-light)] transition-colors">
                   <td className="px-4 py-2.5 font-mono font-semibold text-[var(--accent)]">{row.id}</td>

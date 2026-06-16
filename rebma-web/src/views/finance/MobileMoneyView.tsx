@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { Search, Download, MoreVertical, Eye, CheckCircle, Clock, XCircle, Smartphone } from 'lucide-react';
 import { exportToCSV } from '../../utils/export';
@@ -16,14 +16,6 @@ interface MomoTxn {
   orderRef?: string;
 }
 
-const MOCK: MomoTxn[] = [
-  { id: '1', transactionId: 'MTN-2024120801', network: 'MTN', customerName: 'Kwame Adjei', momoNumber: '0244123456', amount: 28000, date: '2024-12-08', status: 'Verified', orderRef: 'ORD-2024-003' },
-  { id: '2', transactionId: 'VOD-2024120702', network: 'Vodafone', customerName: 'Abena Mensah', momoNumber: '0207654321', amount: 15500, date: '2024-12-07', status: 'Verified', orderRef: 'ORD-2024-007' },
-  { id: '3', transactionId: 'ATG-2024120603', network: 'AirtelTigo', customerName: 'Yaw Darko', momoNumber: '0277112233', amount: 9800, date: '2024-12-06', status: 'Pending', orderRef: 'ORD-2024-011' },
-  { id: '4', transactionId: 'MTN-2024120504', network: 'MTN', customerName: 'Ama Sarpong', momoNumber: '0244987654', amount: 42000, date: '2024-12-05', status: 'Verified', orderRef: 'ORD-2024-014' },
-  { id: '5', transactionId: 'VOD-2024120405', network: 'Vodafone', customerName: 'Kofi Owusu', momoNumber: '0201234567', amount: 7200, date: '2024-12-04', status: 'Failed', orderRef: 'ORD-2024-016' },
-];
-
 const NETWORK_COLORS: Record<string, string> = { MTN: '#f59e0b', Vodafone: '#ef4444', AirtelTigo: '#3b82f6' };
 const STATUS_COLORS: Record<string, string> = { Verified: 'bg-green-100 text-green-700', Pending: 'bg-yellow-100 text-yellow-700', Failed: 'bg-red-100 text-red-700' };
 
@@ -33,11 +25,42 @@ interface Props {
 }
 
 export default function FinanceMobileMoneyView({ addNotification, currentUser }: Props) {
-  const [txns, setTxns] = useState<MomoTxn[]>(MOCK);
+  const [txns, setTxns] = useState<MomoTxn[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [networkFilter, setNetworkFilter] = useState('All');
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const [viewing, setViewing] = useState<MomoTxn | null>(null);
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      try {
+        const { data } = await supabase
+          .from('finance_payments')
+          .select('*')
+          .ilike('payment_mode', 'mobile_money')
+          .order('created_at', { ascending: false });
+        if (data) {
+          setTxns(data.map((p: any) => ({
+            id: p.id,
+            transactionId: p.transaction_id || p.id,
+            network: (p.network || 'MTN') as any,
+            customerName: p.client_name,
+            momoNumber: p.momo_number || 'N/A',
+            amount: Number(p.amount) || 0,
+            date: p.created_at?.split('T')[0] || '',
+            status: (p.status || 'Verified') as any,
+            orderRef: p.order_id || undefined
+          })));
+        }
+      } catch {
+        setTxns([]);
+      }
+      setLoading(false);
+    };
+    load();
+  }, []);
 
   const filtered = txns.filter(t => {
     const matchSearch = !search || t.customerName.toLowerCase().includes(search.toLowerCase()) || t.transactionId.toLowerCase().includes(search.toLowerCase());
@@ -48,13 +71,15 @@ export default function FinanceMobileMoneyView({ addNotification, currentUser }:
   const byNetwork = ['MTN', 'Vodafone', 'AirtelTigo'].map(n => ({ name: n, value: txns.filter(t => t.network === n).reduce((s, t) => s + t.amount, 0), color: NETWORK_COLORS[n] }));
   const totalMoMo = txns.reduce((s, t) => s + t.amount, 0);
 
-  function verify(id: string) {
+  async function verify(id: string) {
     setTxns(prev => prev.map(t => t.id === id ? { ...t, status: 'Verified' } : t));
     const txn = txns.find(t => t.id === id);
+    await supabase.from('finance_payments').update({ status: 'Verified' }).eq('id', id);
     supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `MoMo transaction ${id} verified — ${txn?.transactionId}`, performed_by: currentUser?.fullName || 'Finance', created_at: new Date().toISOString() }]).then(() => {}, () => {});
     addNotification?.(`MoMo transaction verified: ${txn?.transactionId}`);
     setMenuOpen(null);
   }
+
 
   return (
     <div className="p-4 md:p-6 space-y-6">

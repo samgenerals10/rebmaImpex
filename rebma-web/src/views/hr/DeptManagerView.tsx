@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { supabase } from '../../lib/supabaseClient';
 import {
   Building2, Users, TrendingUp, Edit2, X, Plus, CheckCircle,
   BarChart2, AlertCircle, UserCheck
@@ -17,30 +18,50 @@ interface Department {
   performanceScore: number;
 }
 
-const MOCK_DEPTS: Department[] = [
-  { id: '1', name: 'Operations', headName: 'Kwame Mensah', headRole: 'Operations Manager', budget: 120000, headcount: 8, activeProjects: 3, performanceScore: 88 },
-  { id: '2', name: 'Finance', headName: 'Abena Owusu', headRole: 'Finance Officer', budget: 95000, headcount: 6, activeProjects: 2, performanceScore: 92 },
-  { id: '3', name: 'Logistics', headName: 'Kofi Asante', headRole: 'Logistics Coordinator', budget: 80000, headcount: 7, activeProjects: 4, performanceScore: 79 },
-  { id: '4', name: 'HR', headName: 'Ama Boateng', headRole: 'HR Specialist', budget: 70000, headcount: 4, activeProjects: 2, performanceScore: 91 },
-  { id: '5', name: 'Marketing', headName: 'Kwesi Ofori', headRole: 'Sales Representative', budget: 85000, headcount: 5, activeProjects: 3, performanceScore: 74 },
-  { id: '6', name: 'Production', headName: 'Nana Agyei', headRole: 'Production Supervisor', budget: 110000, headcount: 9, activeProjects: 5, performanceScore: 85 },
-  { id: '7', name: 'Dispatch', headName: 'Kojo Amponsah', headRole: 'Dispatch Coordinator', budget: 65000, headcount: 5, activeProjects: 2, performanceScore: 82 },
-  { id: '8', name: 'Reception', headName: 'Akosua Frimpong', headRole: 'Receptionist', budget: 40000, headcount: 3, activeProjects: 1, performanceScore: 90 },
-];
-
 interface Props {
   staffList: StaffMember[];
   addNotification: (msg: string) => void;
 }
 
 export default function DeptManagerView({ staffList, addNotification }: Props) {
-  const [depts, setDepts] = useState<Department[]>(MOCK_DEPTS);
+  const [depts, setDepts] = useState<Department[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Department | null>(null);
   const [editDept, setEditDept] = useState<Department | null>(null);
   const [editForm, setEditForm] = useState({ headName: '', headRole: '', budget: 0, activeProjects: 0 });
 
+  useEffect(() => {
+    const fetchDepts = async () => {
+      setLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('departments')
+          .select('*')
+          .order('name', { ascending: true });
+        if (error) throw error;
+        
+        const mapped: Department[] = (data || []).map(d => ({
+          id: d.id,
+          name: d.name,
+          headName: d.head_name || '',
+          headRole: d.head_role || '',
+          budget: Number(d.budget || 0),
+          headcount: Number(d.headcount || 0),
+          activeProjects: Number(d.active_projects || 0),
+          performanceScore: Number(d.performance_score || 80)
+        }));
+        setDepts(mapped);
+      } catch (err: any) {
+        addNotification(`Error loading departments: ${err.message}`);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchDepts();
+  }, []);
+
   const totalHeadcount = depts.reduce((s, d) => s + d.headcount, 0);
-  const avgPerformance = Math.round(depts.reduce((s, d) => s + d.performanceScore, 0) / depts.length);
+  const avgPerformance = depts.length ? Math.round(depts.reduce((s, d) => s + d.performanceScore, 0) / depts.length) : 0;
   const totalBudget = depts.reduce((s, d) => s + d.budget, 0);
 
   const chartData = depts.map(d => ({ name: d.name.slice(0, 4), headcount: d.headcount, score: d.performanceScore }));
@@ -50,13 +71,29 @@ export default function DeptManagerView({ staffList, addNotification }: Props) {
     setEditForm({ headName: dept.headName, headRole: dept.headRole, budget: dept.budget, activeProjects: dept.activeProjects });
   };
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (!editDept) return;
-    const updated = { ...editDept, ...editForm };
-    setDepts(prev => prev.map(d => d.id === editDept.id ? updated : d));
-    if (selected?.id === editDept.id) setSelected(updated);
-    addNotification(`${editDept.name} department updated`);
-    setEditDept(null);
+    try {
+      const { error } = await supabase
+        .from('departments')
+        .update({
+          head_name: editForm.headName,
+          head_role: editForm.headRole,
+          budget: editForm.budget,
+          active_projects: editForm.activeProjects
+        })
+        .eq('id', editDept.id);
+      
+      if (error) throw error;
+
+      const updated = { ...editDept, ...editForm };
+      setDepts(prev => prev.map(d => d.id === editDept.id ? updated : d));
+      if (selected?.id === editDept.id) setSelected(updated);
+      addNotification(`${editDept.name} department updated`);
+      setEditDept(null);
+    } catch (err: any) {
+      addNotification(`Error saving department changes: ${err.message}`);
+    }
   };
 
   const perfColor = (score: number) => score >= 90 ? '#10b981' : score >= 80 ? 'var(--accent)' : score >= 70 ? '#f59e0b' : '#ef4444';
@@ -126,41 +163,62 @@ export default function DeptManagerView({ staffList, addNotification }: Props) {
 
       {/* Department Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-        {depts.map(dept => {
-          const pc = perfColor(dept.performanceScore);
-          return (
-            <div key={dept.id} onClick={() => setSelected(dept)}
-              className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4 cursor-pointer hover:shadow-md transition-shadow">
-              <div className="flex items-start justify-between mb-3">
-                <div>
-                  <h4 className="font-bold text-[var(--text-primary)] text-sm">{dept.name}</h4>
-                  <p className="text-[11px] text-[var(--text-muted)] mt-0.5">{dept.headName}</p>
-                </div>
-                <button onClick={e => { e.stopPropagation(); openEdit(dept); }}
-                  className="w-7 h-7 rounded-lg bg-[var(--bg)] border border-[var(--border)] flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--accent-light)] cursor-pointer transition-colors">
-                  <Edit2 className="w-3.5 h-3.5" />
-                </button>
+        {loading ? (
+          [1, 2, 3, 4].map(i => (
+            <div key={i} className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4 animate-pulse h-36 flex flex-col justify-between">
+              <div>
+                <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-2/3 mb-2" />
+                <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-1/2" />
               </div>
-              <div className="grid grid-cols-2 gap-2 mb-3">
-                <div className="bg-[var(--bg)] rounded-lg p-2 border border-[var(--border)]">
-                  <p className="text-[10px] text-[var(--text-muted)]">Staff</p>
-                  <p className="text-sm font-bold text-[var(--text-primary)]">{dept.headcount}</p>
-                </div>
-                <div className="bg-[var(--bg)] rounded-lg p-2 border border-[var(--border)]">
-                  <p className="text-[10px] text-[var(--text-muted)]">Projects</p>
-                  <p className="text-sm font-bold text-[var(--text-primary)]">{dept.activeProjects}</p>
-                </div>
+              <div className="grid grid-cols-2 gap-2 my-2">
+                <div className="h-10 bg-slate-200 dark:bg-slate-700 rounded" />
+                <div className="h-10 bg-slate-200 dark:bg-slate-700 rounded" />
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-[var(--text-muted)]">Performance</span>
-                <span className="text-xs font-bold" style={{ color: pc }}>{dept.performanceScore}%</span>
-              </div>
-              <div className="mt-1.5 h-1.5 bg-[var(--bg)] rounded-full overflow-hidden">
-                <div className="h-full rounded-full" style={{ width: `${dept.performanceScore}%`, background: pc }} />
-              </div>
+              <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded w-full" />
             </div>
-          );
-        })}
+          ))
+        ) : depts.length === 0 ? (
+          <div className="col-span-full flex flex-col items-center py-10 text-[var(--text-muted)] bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl">
+            <Building2 className="w-8 h-8 opacity-30 mb-2" />
+            <p className="text-sm">No departments found</p>
+          </div>
+        ) : (
+          depts.map(dept => {
+            const pc = perfColor(dept.performanceScore);
+            return (
+              <div key={dept.id} onClick={() => setSelected(dept)}
+                className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4 cursor-pointer hover:shadow-md transition-shadow">
+                <div className="flex items-start justify-between mb-3">
+                  <div>
+                    <h4 className="font-bold text-[var(--text-primary)] text-sm">{dept.name}</h4>
+                    <p className="text-[11px] text-[var(--text-muted)] mt-0.5">{dept.headName}</p>
+                  </div>
+                  <button onClick={e => { e.stopPropagation(); openEdit(dept); }}
+                    className="w-7 h-7 rounded-lg bg-[var(--bg)] border border-[var(--border)] flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--accent-light)] cursor-pointer transition-colors">
+                    <Edit2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 gap-2 mb-3">
+                  <div className="bg-[var(--bg)] rounded-lg p-2 border border-[var(--border)]">
+                    <p className="text-[10px] text-[var(--text-muted)]">Staff</p>
+                    <p className="text-sm font-bold text-[var(--text-primary)]">{dept.headcount}</p>
+                  </div>
+                  <div className="bg-[var(--bg)] rounded-lg p-2 border border-[var(--border)]">
+                    <p className="text-[10px] text-[var(--text-muted)]">Projects</p>
+                    <p className="text-sm font-bold text-[var(--text-primary)]">{dept.activeProjects}</p>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-[var(--text-muted)]">Performance</span>
+                  <span className="text-xs font-bold" style={{ color: pc }}>{dept.performanceScore}%</span>
+                </div>
+                <div className="mt-1.5 h-1.5 bg-[var(--bg)] rounded-full overflow-hidden">
+                  <div className="h-full rounded-full" style={{ width: `${dept.performanceScore}%`, background: pc }} />
+                </div>
+              </div>
+            );
+          })
+        )}
       </div>
 
       {/* Detail panel */}

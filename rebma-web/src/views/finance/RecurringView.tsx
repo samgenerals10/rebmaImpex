@@ -15,14 +15,6 @@ interface RecurringPayment {
   category: string;
 }
 
-const MOCK: RecurringPayment[] = [
-  { id: '1', name: 'Staff Payroll',        amount: 85000, frequency: 'monthly',  next_date: '2026-07-01', account: 'GHS Main', status: 'active',  category: 'Payroll'   },
-  { id: '2', name: 'Office Rent',           amount: 12000, frequency: 'monthly',  next_date: '2026-07-05', account: 'GHS Main', status: 'active',  category: 'Overheads' },
-  { id: '3', name: 'Software Subscriptions',amount: 2400,  frequency: 'monthly',  next_date: '2026-07-10', account: 'USD Ops',  status: 'active',  category: 'Tech'      },
-  { id: '4', name: 'Insurance Premium',     amount: 8500,  frequency: 'quarterly',next_date: '2026-09-01', account: 'GHS Main', status: 'active',  category: 'Insurance' },
-  { id: '5', name: 'Annual Audit Fee',      amount: 25000, frequency: 'annually', next_date: '2027-01-15', account: 'GHS Main', status: 'paused',  category: 'Legal'     },
-];
-
 const FREQ_LABELS = { weekly: 'Weekly', monthly: 'Monthly', quarterly: 'Quarterly', annually: 'Annually' };
 const blank = { name: '', amount: '', frequency: 'monthly' as RecurringPayment['frequency'], next_date: '', account: 'GHS Main', category: 'General' };
 
@@ -39,8 +31,8 @@ export default function RecurringView({ currentUser, addNotification }: Props) {
       setLoading(true);
       try {
         const { data } = await supabase.from('recurring_payments').select('*').order('next_date');
-        setRows(data && data.length > 0 ? data : MOCK);
-      } catch { setRows(MOCK); }
+        setRows(data ?? []);
+      } catch { setRows([]); }
       setLoading(false);
     };
     load();
@@ -98,9 +90,15 @@ export default function RecurringView({ currentUser, addNotification }: Props) {
 
       {loading ? (
         <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-14 rounded-2xl bg-[var(--bg-input)] animate-pulse" />)}</div>
+      ) : rows.length === 0 ? (
+        <div className="text-center py-12 text-[var(--text-muted)] bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl">
+          <RefreshCw className="w-8 h-8 mx-auto mb-2 opacity-40" />
+          <p className="text-sm font-medium">No recurring payments found</p>
+        </div>
       ) : (
         <div className="space-y-3">
           {rows.map(row => (
+
             <div key={row.id} className={`bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4 flex items-center gap-4 shadow-[var(--box-shadow)] transition-opacity ${row.status === 'paused' ? 'opacity-55' : ''}`}>
               <div className="w-10 h-10 rounded-xl bg-[var(--accent-light)] flex items-center justify-center shrink-0">
                 <RefreshCw className={`w-5 h-5 text-[var(--accent)] ${row.status === 'active' ? 'animate-spin' : ''}`} style={{ animationDuration: '3s' }} />

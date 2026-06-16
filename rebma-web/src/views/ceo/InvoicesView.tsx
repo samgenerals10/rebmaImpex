@@ -15,22 +15,6 @@ interface InvoiceRow {
   status: 'paid' | 'pending' | 'overdue';
 }
 
-const MOCK: InvoiceRow[] = Array.from({ length: 18 }, (_, i) => {
-  const date = new Date(Date.now() - i * 86400000 * 3);
-  const due  = new Date(date.getTime() + 30 * 86400000);
-  const statuses: InvoiceRow['status'][] = ['paid', 'paid', 'pending', 'overdue', 'paid'];
-  return {
-    id: `inv-${i}`,
-    invoice_no: `INV-2026-${String(i + 1).padStart(4, '0')}`,
-    customer: ['Accra Traders Ltd', 'Gulf Imports Co.', 'Kama Industries', 'Prime Suppliers', 'Delta Logistics'][i % 5],
-    department: ['MARKETING', 'FINANCE', 'OPERATIONS', 'DISPATCH', 'PRODUCTION'][i % 5],
-    amount: Math.round(3000 + Math.random() * 50000),
-    date: date.toISOString().split('T')[0],
-    due_date: due.toISOString().split('T')[0],
-    status: statuses[i % 5],
-  };
-});
-
 const STATUS_STYLES = {
   paid:    'bg-emerald-100 text-emerald-700',
   pending: 'bg-amber-100 text-amber-700',
@@ -48,15 +32,28 @@ export default function InvoicesView({ addNotification }: Props) {
   const [page, setPage]           = useState(0);
   const PAGE_SIZE = 15;
 
-  useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      try {
-        const { data } = await supabase.from('invoices').select('*').order('date', { ascending: false }).limit(200);
-        setRows(data && data.length > 0 ? data : MOCK);
-      } catch { setRows(MOCK); }
+  const load = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('invoices')
+        .select('*')
+        .order('date', { ascending: false })
+        .limit(200);
+
+      if (error) {
+        console.error('Error loading invoices:', error);
+      }
+      setRows(data || []);
+    } catch (e) {
+      console.error(e);
+      setRows([]);
+    } finally {
       setLoading(false);
-    };
+    }
+  };
+
+  useEffect(() => {
     load();
   }, []);
 
@@ -139,23 +136,35 @@ export default function InvoicesView({ addNotification }: Props) {
             </tr></thead>
             <tbody>
               {loading
-                ? Array.from({ length: 5 }).map((_, i) => <tr key={i}><td colSpan={8} className="px-4 py-3"><div className="h-4 bg-[var(--bg-input)] rounded animate-pulse" /></td></tr>)
-                : paginated.map(row => (
-                  <tr key={row.id} className="border-b border-[var(--border)] hover:bg-[var(--accent-light)] transition-colors">
-                    <td className="px-4 py-2.5 font-mono font-semibold text-[var(--accent)]">{row.invoice_no}</td>
-                    <td className="px-4 py-2.5 text-[var(--text-primary)] font-medium whitespace-nowrap">{row.customer}</td>
-                    <td className="px-4 py-2.5 text-[var(--text-secondary)]">{row.department}</td>
-                    <td className="px-4 py-2.5 font-bold text-[var(--text-primary)] whitespace-nowrap">GHS {row.amount.toLocaleString()}</td>
-                    <td className="px-4 py-2.5 text-[var(--text-secondary)] whitespace-nowrap">{row.date}</td>
-                    <td className="px-4 py-2.5 text-[var(--text-secondary)] whitespace-nowrap">{row.due_date}</td>
-                    <td className="px-4 py-2.5">
-                      <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold capitalize ${STATUS_STYLES[row.status]}`}>{row.status}</span>
-                    </td>
-                    <td className="px-4 py-2.5">
-                      <button className="p-1 hover:bg-[var(--accent-light)] rounded-lg cursor-pointer text-[var(--accent)]" title="View"><Eye className="w-3.5 h-3.5" /></button>
-                    </td>
-                  </tr>
-                ))
+                ? Array.from({ length: 5 }).map((_, i) => (
+                    <tr key={i}>
+                      <td colSpan={8} className="px-4 py-4">
+                        <div className="h-4 bg-[var(--bg-input)] rounded animate-pulse" />
+                      </td>
+                    </tr>
+                  ))
+                : paginated.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="px-4 py-10 text-center text-[var(--text-muted)]">
+                        No invoices found. Use client-side controls or connect to a live data source.
+                      </td>
+                    </tr>
+                  ) : paginated.map(row => (
+                    <tr key={row.id} className="border-b border-[var(--border)] hover:bg-[var(--accent-light)] transition-colors">
+                      <td className="px-4 py-2.5 font-mono font-semibold text-[var(--accent)]">{row.invoice_no}</td>
+                      <td className="px-4 py-2.5 text-[var(--text-primary)] font-medium whitespace-nowrap">{row.customer}</td>
+                      <td className="px-4 py-2.5 text-[var(--text-secondary)]">{row.department}</td>
+                      <td className="px-4 py-2.5 font-bold text-[var(--text-primary)] whitespace-nowrap">GHS {row.amount.toLocaleString()}</td>
+                      <td className="px-4 py-2.5 text-[var(--text-secondary)] whitespace-nowrap">{row.date}</td>
+                      <td className="px-4 py-2.5 text-[var(--text-secondary)] whitespace-nowrap">{row.due_date}</td>
+                      <td className="px-4 py-2.5">
+                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold capitalize ${STATUS_STYLES[row.status]}`}>{row.status}</span>
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <button className="p-1 hover:bg-[var(--accent-light)] rounded-lg cursor-pointer text-[var(--accent)]" title="View"><Eye className="w-3.5 h-3.5" /></button>
+                      </td>
+                    </tr>
+                  ))
               }
             </tbody>
           </table>

@@ -1,6 +1,6 @@
 // src/views/ceo/ApprovalsView.tsx
 import { useState, useEffect } from 'react';
-import { CheckCircle, XCircle, Clock, Download } from 'lucide-react';
+import { CheckCircle, XCircle, Download } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import type { CurrentUser } from '../../types/erp';
 import { exportToCSV } from '../../utils/export';
@@ -15,23 +15,6 @@ interface Approval {
   date_submitted: string;
   status: 'pending' | 'approved' | 'rejected';
 }
-
-const MOCK: Approval[] = Array.from({ length: 12 }, (_, i) => ({
-  id: `APR-${String(i+1).padStart(3,'0')}`,
-  type: (['credit','cargo','payment','registration','price'] as const)[i % 5],
-  requester: ['Kofi Mensah','Ama Serwaa','Kwame Asante','Abena Owusu','Kojo Boateng'][i % 5],
-  department: ['MARKETING','OPERATIONS','FINANCE','HR','MANAGEMENT'][i % 5],
-  description: [
-    'Credit order for Accra Traders Ltd — GHS 45,000',
-    'Cargo intake from Tema Port — 200 tons',
-    'Payment disbursement for supplier invoice',
-    'New staff account registration',
-    'Price update for Category A products',
-  ][i % 5],
-  amount: [45000, 0, 12500, 0, 0][i % 5],
-  date_submitted: new Date(Date.now() - i * 86400000).toISOString().split('T')[0],
-  status: i < 4 ? 'pending' : i < 8 ? 'approved' : 'rejected',
-}));
 
 const TYPE_STYLES: Record<string, string> = {
   credit:       'bg-blue-100 text-blue-700',
@@ -49,60 +32,153 @@ export default function ApprovalsView({ currentUser, addNotification }: Props) {
   const [tab, setTab]             = useState<'all'|'credit'|'cargo'|'payment'|'registration'|'price'>('all');
   const [history, setHistory]     = useState<Approval[]>([]);
 
-  useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      try {
-        // Try to get pending approvals from multiple sources
-        const [{ data: orders }, { data: cargo }, { data: regs }] = await Promise.all([
-          supabase.from('orders').select('id,customer_name,department,total_amount,created_at,status').eq('payment_mode','Credit').eq('status','pending').limit(50),
-          supabase.from('incoming_goods').select('id,supplier,department,quantity,created_at,status').eq('status','pending').limit(50),
-          supabase.from('pending_registrations').select('*').limit(50),
-        ]);
+  const load = async () => {
+    setLoading(true);
+    try {
+      // Query pending credit orders
+      const { data: orders } = await supabase
+        .from('orders')
+        .select('id,client_name,total_amount,created_at,status')
+        .eq('payment_mode', 'CREDIT')
+        .eq('status', 'PENDING_MANAGEMENT')
+        .limit(50);
 
-        const approvals: Approval[] = [
-          ...(orders || []).map((o: any) => ({
-            id: o.id, type: 'credit' as const,
-            requester: o.customer_name || 'Unknown',
-            department: o.department || 'MARKETING',
-            description: `Credit order — GHS ${Number(o.total_amount || 0).toLocaleString()}`,
-            amount: o.total_amount, date_submitted: o.created_at?.split('T')[0] || '', status: 'pending' as const,
-          })),
-          ...(cargo || []).map((c: any) => ({
-            id: c.id, type: 'cargo' as const,
-            requester: c.supplier || 'Unknown',
-            department: c.department || 'OPERATIONS',
-            description: `Cargo intake — ${c.quantity} units`,
-            date_submitted: c.created_at?.split('T')[0] || '', status: 'pending' as const,
-          })),
-          ...(regs || []).map((r: any) => ({
-            id: r.id, type: 'registration' as const,
-            requester: r.full_name || r.name || 'Unknown',
-            department: r.department || 'HR',
-            description: `Staff registration — ${r.department}`,
-            date_submitted: r.created_at?.split('T')[0] || '', status: 'pending' as const,
-          })),
-        ];
-        setRows(approvals.length > 0 ? approvals : MOCK.filter(m => m.status === 'pending'));
-        setHistory(MOCK.filter(m => m.status !== 'pending'));
-      } catch {
-        setRows(MOCK.filter(m => m.status === 'pending'));
-        setHistory(MOCK.filter(m => m.status !== 'pending'));
-      }
+      // Query pending cargo intakes
+      const { data: cargo } = await supabase
+        .from('cargo_intake')
+        .select('id,product_name,company,quantity,created_at,status')
+        .eq('status', 'PENDING_APPROVAL')
+        .limit(50);
+
+      // Query pending registrations from profiles
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id,full_name,role,created_at,status')
+        .eq('status', 'PENDING_APPROVAL')
+        .limit(50);
+
+      const approvals: Approval[] = [
+        ...(orders || []).map((o: any) => ({
+          id: o.id,
+          type: 'credit' as const,
+          requester: o.client_name || 'Unknown Client',
+          department: 'MARKETING',
+          description: `Credit terms request for ${o.client_name}`,
+          amount: Number(o.total_amount || 0),
+          date_submitted: o.created_at?.split('T')[0] || '',
+          status: 'pending' as const,
+        })),
+        ...(cargo || []).map((c: any) => ({
+          id: c.id,
+          type: 'cargo' as const,
+          requester: c.company || 'Unknown Supplier',
+          department: 'OPERATIONS',
+          description: `Intake of ${c.product_name || 'Goods'} - Qty: ${c.quantity || 0}`,
+          date_submitted: c.created_at?.split('T')[0] || '',
+          status: 'pending' as const,
+        })),
+        ...(profiles || []).map((p: any) => ({
+          id: p.id,
+          type: 'registration' as const,
+          requester: p.full_name || 'New Employee',
+          department: 'HR',
+          description: `Sign-up approval for role: ${p.role}`,
+          date_submitted: p.created_at?.split('T')[0] || '',
+          status: 'pending' as const,
+        })),
+      ];
+
+      setRows(approvals);
+
+      // Load history from global audit logs
+      const { data: auditLogs } = await supabase
+        .from('global_audit_history')
+        .select('*')
+        .order('timestamp', { ascending: false })
+        .limit(50);
+
+      const historyLogs: Approval[] = (auditLogs || []).map((log: any) => ({
+        id: log.id,
+        type: log.action.toLowerCase().includes('price') ? 'price'
+              : log.action.toLowerCase().includes('cargo') ? 'cargo'
+              : log.action.toLowerCase().includes('payment') ? 'payment'
+              : log.action.toLowerCase().includes('credit') ? 'credit'
+              : 'registration',
+        requester: log.performed_by || 'System',
+        department: log.department || 'GENERAL',
+        description: log.details || log.action,
+        date_submitted: log.timestamp ? log.timestamp.split('T')[0] : '',
+        status: log.action.toLowerCase().includes('reject') ? 'rejected' : 'approved',
+      }));
+
+      setHistory(historyLogs);
+    } catch (e) {
+      console.error('Error loading approvals queue:', e);
+    } finally {
       setLoading(false);
-    };
+    }
+  };
+
+  useEffect(() => {
     load();
   }, []);
 
   const visible = rows.filter(r => tab === 'all' || r.type === tab);
 
   const handleApprove = async (id: string) => {
-    setRows(prev => prev.filter(r => r.id !== id));
-    addNotification(`Approval ${id} approved.`);
+    const item = rows.find(r => r.id === id);
+    if (!item) return;
+    try {
+      if (item.type === 'credit') {
+        await supabase.from('orders').update({ status: 'APPROVED' }).eq('id', id);
+      } else if (item.type === 'cargo') {
+        await supabase.from('cargo_intake').update({ status: 'APPROVED' }).eq('id', id);
+      } else if (item.type === 'registration') {
+        await supabase.from('profiles').update({ status: 'ACTIVE' }).eq('id', id);
+      }
+
+      await supabase.from('global_audit_history').insert({
+        action: `Approved ${item.type} request`,
+        department: item.department,
+        performed_by: currentUser?.fullName || 'CEO',
+        details: item.description,
+      });
+
+      addNotification(`Approved ${item.type} request successfully.`);
+      setRows(prev => prev.filter(r => r.id !== id));
+      load(); // Refresh queue and history
+    } catch (e) {
+      console.error(e);
+      addNotification('Approval action failed.');
+    }
   };
+
   const handleReject = async (id: string) => {
-    setRows(prev => prev.filter(r => r.id !== id));
-    addNotification(`Approval ${id} rejected.`);
+    const item = rows.find(r => r.id === id);
+    if (!item) return;
+    try {
+      if (item.type === 'credit') {
+        await supabase.from('orders').update({ status: 'REJECTED' }).eq('id', id);
+      } else if (item.type === 'cargo') {
+        await supabase.from('cargo_intake').update({ status: 'REJECTED' }).eq('id', id);
+      } else if (item.type === 'registration') {
+        await supabase.from('profiles').update({ status: 'REJECTED' }).eq('id', id);
+      }
+
+      await supabase.from('global_audit_history').insert({
+        action: `Rejected ${item.type} request`,
+        department: item.department,
+        performed_by: currentUser?.fullName || 'CEO',
+        details: item.description,
+      });
+
+      addNotification(`Rejected ${item.type} request.`);
+      setRows(prev => prev.filter(r => r.id !== id));
+      load(); // Refresh queue and history
+    } catch (e) {
+      console.error(e);
+      addNotification('Rejection action failed.');
+    }
   };
 
   const TABS = ['all','credit','cargo','payment','registration','price'] as const;
@@ -134,7 +210,7 @@ export default function ApprovalsView({ currentUser, addNotification }: Props) {
       {loading ? (
         <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-16 rounded-2xl bg-[var(--bg-input)] animate-pulse" />)}</div>
       ) : visible.length === 0 ? (
-        <div className="flex flex-col items-center py-16 text-center">
+        <div className="flex flex-col items-center py-16 text-center bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl">
           <CheckCircle className="w-10 h-10 text-emerald-500 mb-3" />
           <p className="text-sm font-semibold text-[var(--text-primary)] mb-1">All clear!</p>
           <p className="text-xs text-[var(--text-muted)]">No pending approvals in this category.</p>
@@ -145,7 +221,7 @@ export default function ApprovalsView({ currentUser, addNotification }: Props) {
             <div key={item.id} className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4 flex items-center gap-4 shadow-[var(--box-shadow)]">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap mb-1">
-                  <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full capitalize ${TYPE_STYLES[item.type]}`}>{item.type}</span>
+                  <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full capitalize ${TYPE_STYLES[item.type] || 'bg-slate-100 text-slate-700'}`}>{item.type}</span>
                   <span className="text-[9px] font-semibold text-[var(--text-muted)]">{item.department}</span>
                   <span className="text-[9px] text-[var(--text-muted)]">{item.date_submitted}</span>
                 </div>
@@ -171,7 +247,11 @@ export default function ApprovalsView({ currentUser, addNotification }: Props) {
       )}
 
       {/* History */}
-      {history.length > 0 && (
+      {history.length === 0 ? (
+        <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-6 text-center text-xs text-[var(--text-muted)]">
+          No approval history logged in audit logs.
+        </div>
+      ) : (
         <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl overflow-hidden shadow-[var(--box-shadow)]">
           <div className="px-4 py-3 border-b border-[var(--border)]">
             <h3 className="text-sm font-bold text-[var(--text-secondary)]">Recent History</h3>

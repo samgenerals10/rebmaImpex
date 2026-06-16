@@ -24,22 +24,6 @@ interface Props {
 
 const DEPT_COLORS = ['var(--accent)', '#10b981', '#6366f1', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6'];
 
-
-const GROWTH_DATA = [
-  { month: 'Jan', '2025': 38, '2026': 44 },
-  { month: 'Feb', '2025': 39, '2026': 46 },
-  { month: 'Mar', '2025': 41, '2026': 47 },
-  { month: 'Apr', '2025': 40, '2026': 49 },
-  { month: 'May', '2025': 42, '2026': 51 },
-  { month: 'Jun', '2025': 43, '2026': 54 },
-];
-
-const PERF_ALERTS = [
-  { name: 'Yaw Darko', dept: 'Marketing', issue: 'Excessive absences (4 this month)', level: 'high' },
-  { name: 'Efua Tetteh', dept: 'Finance', issue: 'Suspended — pending review', level: 'critical' },
-  { name: 'Kojo Amponsah', dept: 'Logistics', issue: 'Late check-ins 3× this week', level: 'medium' },
-];
-
 function generatePassword(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#';
   return Array.from({ length: 10 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
@@ -49,16 +33,169 @@ export default function HrOverviewView({ currentUser, addNotification, setActive
   const [auditLog, setAuditLog] = useState<{ action: string; dept: string; by: string; time: string }[]>([]);
   const [onLeaveToday, setOnLeaveToday] = useState(0);
 
+  // Database-driven states
+  const [alerts, setAlerts] = useState<any[]>([]);
+  const [upcomingLeaves, setUpcomingLeaves] = useState<any[]>([]);
+  const [payrollOverview, setPayrollOverview] = useState<any[]>([]);
+  const [weeklyAttendanceTrend, setWeeklyAttendanceTrend] = useState<any[]>([]);
+  const [yoyGrowth, setYoyGrowth] = useState<any[]>([]);
+
   useEffect(() => {
-    const today = new Date().toISOString().split('T')[0];
-    Promise.all([
-      supabase.from('global_audit_history').select('*').eq('department', 'HR').order('created_at', { ascending: false }).limit(6),
-      supabase.from('leave_requests').select('*').eq('status', 'Approved').lte('startDate', today).gte('endDate', today),
-    ]).then(([{ data: aData }, { data: lData }]) => {
-      if (aData) setAuditLog(aData.map((e: any) => ({ action: e.action, dept: e.department, by: e.performed_by, time: new Date(e.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) })));
-      if (lData) setOnLeaveToday(lData.length);
-    }).catch(() => {});
-  }, []);
+    const loadData = async () => {
+      const todayStr = new Date().toISOString().split('T')[0];
+      const today = new Date();
+      const next7DaysStr = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+      try {
+        // 1. Audit logs
+        const { data: auditData } = await supabase
+          .from('global_audit_history')
+          .select('*')
+          .eq('department', 'HR')
+          .order('created_at', { ascending: false })
+          .limit(6);
+        if (auditData) {
+          setAuditLog(auditData.map((e: any) => ({
+            action: e.action,
+            dept: e.department,
+            by: e.performed_by,
+            time: new Date(e.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          })));
+        }
+
+        // 2. Leave requests
+        const { data: leaveData } = await supabase
+          .from('leave_requests')
+          .select('*');
+        
+        if (leaveData) {
+          const onLeave = leaveData.filter(l => 
+            l.status === 'Approved' && 
+            l.start_date <= todayStr && 
+            l.end_date >= todayStr
+          ).length;
+          setOnLeaveToday(onLeave);
+
+          const upcoming = leaveData
+            .filter(l => 
+              l.status === 'Approved' && 
+              l.start_date >= todayStr && 
+              l.start_date <= next7DaysStr
+            )
+            .slice(0, 5)
+            .map(l => ({
+              name: l.staff_name || 'Staff Member',
+              date: l.start_date,
+              type: l.leave_type || 'Annual',
+              days: l.days_count || 1
+            }));
+          setUpcomingLeaves(upcoming);
+        }
+
+        // 3. Performance alerts
+        const { data: alertData } = await supabase
+          .from('performance_alerts')
+          .select('*')
+          .eq('resolved', false)
+          .limit(3);
+        if (alertData) {
+          setAlerts(alertData.map(a => ({
+            name: a.title || 'Performance Alert',
+            dept: a.department || 'General',
+            issue: a.description || '',
+            level: a.severity || 'medium'
+          })));
+        }
+
+        // 4. Payroll items (aggregate by department)
+        const { data: payrollData } = await supabase
+          .from('payroll_items')
+          .select('department, net_salary');
+        if (payrollData) {
+          const deptPayroll: Record<string, number> = {};
+          payrollData.forEach((p: any) => {
+            const d = p.department || 'Operations';
+            deptPayroll[d] = (deptPayroll[d] || 0) + Number(p.net_salary || 0);
+          });
+          const summary = Object.entries(deptPayroll).map(([dept, amount]) => ({ dept, amount }));
+          setPayrollOverview(summary.slice(0, 5));
+        }
+
+        // 5. Weekly attendance trend
+        const { data: attData } = await supabase
+          .from('attendance')
+          .select('date, status');
+        if (attData) {
+          const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+          const countsByDay: Record<string, { present: number; late: number; label: string }> = {};
+          
+          for (let i = 5; i >= 0; i--) {
+            const d = new Date();
+            d.setDate(today.getDate() - i);
+            const dStr = d.toISOString().split('T')[0];
+            const label = i === 0 ? 'Today' : daysOfWeek[d.getDay()];
+            countsByDay[dStr] = { present: 0, late: 0, label };
+          }
+
+          attData.forEach((a: any) => {
+            if (countsByDay[a.date]) {
+              if (a.status === 'PRESENT' || a.status === 'present') {
+                countsByDay[a.date].present += 1;
+              } else if (a.status === 'LATE' || a.status === 'late') {
+                countsByDay[a.date].late += 1;
+              }
+            }
+          });
+
+          const trend = Object.entries(countsByDay).map(([date, val]: any) => ({
+            day: val.label,
+            present: val.present,
+            late: val.late
+          }));
+          setWeeklyAttendanceTrend(trend);
+        } else {
+          // Fallback to local attendanceList from props if DB is empty
+          const presentTodayCount = attendanceList.filter(a => a.status === 'PRESENT').length;
+          const lateTodayCount = attendanceList.filter(a => a.status === 'LATE').length;
+          setWeeklyAttendanceTrend([
+            { day: 'Mon', present: 2, late: 0 },
+            { day: 'Tue', present: 3, late: 1 },
+            { day: 'Wed', present: 2, late: 0 },
+            { day: 'Thu', present: 4, late: 0 },
+            { day: 'Fri', present: 3, late: 1 },
+            { day: 'Today', present: presentTodayCount, late: lateTodayCount }
+          ]);
+        }
+
+        // 6. YoY Staff Growth (headcount by month for 2025 vs 2026)
+        const { data: profilesData } = await supabase
+          .from('profiles')
+          .select('created_at');
+        if (profilesData) {
+          const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+          const currentMonth = today.getMonth();
+          
+          const growth = months.slice(0, currentMonth + 1).map((m, idx) => {
+            const date2025 = new Date(2025, idx + 1, 0, 23, 59, 59);
+            const date2026 = new Date(2026, idx + 1, 0, 23, 59, 59);
+
+            const count2025 = profilesData.filter((p: any) => p.created_at && new Date(p.created_at) <= date2025).length;
+            const count2026 = profilesData.filter((p: any) => p.created_at && new Date(p.created_at) <= date2026).length;
+
+            return {
+              month: m,
+              '2025': count2025 || 3, 
+              '2026': count2026 || 4
+            };
+          });
+          setYoyGrowth(growth);
+        }
+      } catch (err) {
+        console.error('Error loading HR Overview statistics:', err);
+      }
+    };
+    loadData();
+  }, [staffList, pendingRegistrations, attendanceList]);
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
@@ -88,24 +225,6 @@ export default function HrOverviewView({ currentUser, addNotification, setActive
     { name: 'Inactive', value: statusCounts.INACTIVE, color: '#f59e0b' },
     { name: 'Suspended', value: statusCounts.SUSPENDED, color: '#ef4444' },
   ];
-
-  // Attendance trend (mock)
-  const attendanceTrend = [
-    { day: 'Mon', present: 45, late: 5 },
-    { day: 'Tue', present: 47, late: 3 },
-    { day: 'Wed', present: 44, late: 7 },
-    { day: 'Thu', present: 48, late: 2 },
-    { day: 'Fri', present: 46, late: 4 },
-    { day: 'Today', present: presentToday, late: attendanceList.filter(a => a.status === 'LATE').length },
-  ];
-
-  // Leave calendar (next 7 days)
-  const today = new Date();
-  const next7 = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(today);
-    d.setDate(today.getDate() + i);
-    return d.toISOString().split('T')[0];
-  });
 
   const handleQuickApprove = (reg: PendingRegistration) => {
     const pw = generatePassword();
@@ -184,7 +303,7 @@ export default function HrOverviewView({ currentUser, addNotification, setActive
           </div>
           <div className="h-48">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={attendanceTrend} barSize={18}>
+              <BarChart data={weeklyAttendanceTrend} barSize={18}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" opacity={0.5} />
                 <XAxis dataKey="day" stroke="var(--text-muted)" fontSize={10} />
                 <YAxis stroke="var(--text-muted)" fontSize={10} />
@@ -291,29 +410,27 @@ export default function HrOverviewView({ currentUser, addNotification, setActive
         {/* Payroll Overview */}
         <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="font-bold text-[var(--text-primary)] text-sm">Payroll Overview — June 2026</h3>
+            <h3 className="font-bold text-[var(--text-primary)] text-sm">Payroll Overview</h3>
             <button onClick={() => setActiveSubTab('Payroll')} className="text-xs text-[var(--accent)] font-semibold hover:opacity-80 cursor-pointer flex items-center gap-1">
               Full Payroll <ChevronRight className="w-3 h-3" />
             </button>
           </div>
           <div className="space-y-2">
-            {[
-              { dept: 'Operations', amount: 24500 },
-              { dept: 'Finance', amount: 31200 },
-              { dept: 'Logistics', amount: 18700 },
-              { dept: 'Marketing', amount: 22100 },
-              { dept: 'HR', amount: 19400 },
-            ].map(row => {
-              const canSeeAmount = currentUser?.isCeo || currentUser?.department === 'HR';
-              return (
-                <div key={row.dept} className="flex items-center justify-between py-1.5 border-b border-[var(--border)] last:border-0">
-                  <span className="text-xs text-[var(--text-secondary)] font-medium">{row.dept}</span>
-                  <span className="text-xs font-bold text-[var(--text-primary)] font-mono">
-                    {canSeeAmount ? `GHS ${row.amount.toLocaleString()}` : '••••••'}
-                  </span>
-                </div>
-              );
-            })}
+            {payrollOverview.length === 0 ? (
+              <p className="text-xs text-[var(--text-muted)] py-4 text-center">No payroll records in database</p>
+            ) : (
+              payrollOverview.map(row => {
+                const canSeeAmount = currentUser?.isCeo || currentUser?.department === 'HR';
+                return (
+                  <div key={row.dept} className="flex items-center justify-between py-1.5 border-b border-[var(--border)] last:border-0">
+                    <span className="text-xs text-[var(--text-secondary)] font-medium">{row.dept}</span>
+                    <span className="text-xs font-bold text-[var(--text-primary)] font-mono">
+                      {canSeeAmount ? `GHS ${row.amount.toLocaleString()}` : '••••••'}
+                    </span>
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
 
@@ -326,27 +443,26 @@ export default function HrOverviewView({ currentUser, addNotification, setActive
             </button>
           </div>
           <div className="space-y-2">
-            {[
-              { name: 'Kwame Mensah', date: '2026-06-20', type: 'Annual', days: 5 },
-              { name: 'Nana Agyei', date: '2026-06-15', type: 'Sick', days: 3 },
-              { name: 'Ama Boateng', date: '2026-06-18', type: 'Personal', days: 1 },
-              { name: 'Adwoa Sarpong', date: '2026-06-21', type: 'Annual', days: 5 },
-            ].map((leave, i) => {
-              const typeColor: Record<string, string> = { Annual: '#6366f1', Sick: '#ef4444', Personal: '#f59e0b' };
-              const color = typeColor[leave.type] || 'var(--accent)';
-              return (
-                <div key={i} className="flex items-center gap-3 py-1.5 border-b border-[var(--border)] last:border-0">
-                  <div className="w-1 h-8 rounded-full shrink-0" style={{ background: color }} />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold text-[var(--text-primary)] truncate">{leave.name}</p>
-                    <p className="text-[10px] text-[var(--text-muted)]">{leave.date} · {leave.days}d</p>
+            {upcomingLeaves.length === 0 ? (
+              <p className="text-xs text-[var(--text-muted)] py-4 text-center">No upcoming leaves scheduled</p>
+            ) : (
+              upcomingLeaves.map((leave, i) => {
+                const typeColor: Record<string, string> = { Annual: '#6366f1', Sick: '#ef4444', Personal: '#f59e0b' };
+                const color = typeColor[leave.type] || 'var(--accent)';
+                return (
+                  <div key={i} className="flex items-center gap-3 py-1.5 border-b border-[var(--border)] last:border-0">
+                    <div className="w-1 h-8 rounded-full shrink-0" style={{ background: color }} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-[var(--text-primary)] truncate">{leave.name}</p>
+                      <p className="text-[10px] text-[var(--text-muted)]">{leave.date} · {leave.days}d</p>
+                    </div>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: `${color}20`, color }}>
+                      {leave.type}
+                    </span>
                   </div>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: `${color}20`, color }}>
-                    {leave.type}
-                  </span>
-                </div>
-              );
-            })}
+                );
+              })
+            )}
           </div>
         </div>
       </div>
@@ -365,21 +481,25 @@ export default function HrOverviewView({ currentUser, addNotification, setActive
             </button>
           </div>
           <div className="space-y-2">
-            {PERF_ALERTS.map((alert, i) => {
-              const levelColor = alert.level === 'critical' ? '#ef4444' : alert.level === 'high' ? '#f59e0b' : '#6366f1';
-              return (
-                <div key={i} className="flex items-start gap-3 p-2.5 rounded-xl border border-[var(--border)] bg-[var(--bg)]">
-                  <div className="w-2 h-2 rounded-full mt-1.5 shrink-0" style={{ background: levelColor }} />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold text-[var(--text-primary)]">{alert.name} <span className="font-normal text-[var(--text-muted)]">· {alert.dept}</span></p>
-                    <p className="text-[11px] text-[var(--text-muted)] mt-0.5">{alert.issue}</p>
+            {alerts.length === 0 ? (
+              <p className="text-xs text-[var(--text-muted)] py-4 text-center">No active performance alerts</p>
+            ) : (
+              alerts.map((alert, i) => {
+                const levelColor = alert.level === 'critical' ? '#ef4444' : alert.level === 'high' ? '#f59e0b' : '#6366f1';
+                return (
+                  <div key={i} className="flex items-start gap-3 p-2.5 rounded-xl border border-[var(--border)] bg-[var(--bg)]">
+                    <div className="w-2 h-2 rounded-full mt-1.5 shrink-0" style={{ background: levelColor }} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-[var(--text-primary)]">{alert.name} <span className="font-normal text-[var(--text-muted)]">· {alert.dept}</span></p>
+                      <p className="text-[11px] text-[var(--text-muted)] mt-0.5">{alert.issue}</p>
+                    </div>
+                    <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded shrink-0" style={{ background: `${levelColor}20`, color: levelColor }}>
+                      {alert.level}
+                    </span>
                   </div>
-                  <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded shrink-0" style={{ background: `${levelColor}20`, color: levelColor }}>
-                    {alert.level}
-                  </span>
-                </div>
-              );
-            })}
+                );
+              })
+            )}
           </div>
         </div>
 
@@ -388,7 +508,7 @@ export default function HrOverviewView({ currentUser, addNotification, setActive
           <h3 className="font-bold text-[var(--text-primary)] text-sm mb-4">YoY Staff Growth</h3>
           <div className="h-44">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={GROWTH_DATA}>
+              <LineChart data={yoyGrowth}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" opacity={0.5} />
                 <XAxis dataKey="month" stroke="var(--text-muted)" fontSize={10} />
                 <YAxis stroke="var(--text-muted)" fontSize={10} />

@@ -9,25 +9,6 @@ import type { StaffMember } from '../../types/erp';
 
 const DEPARTMENTS = ['All', 'Operations', 'Finance', 'Logistics', 'HR', 'Marketing', 'Reception', 'Production', 'Management'];
 
-const MOCK_ATTENDANCE = [
-  { date: '2026-06-12', checkInTime: '08:05', status: 'PRESENT' },
-  { date: '2026-06-11', checkInTime: '08:22', status: 'PRESENT' },
-  { date: '2026-06-10', checkInTime: '09:01', status: 'LATE' },
-  { date: '2026-06-09', checkInTime: '07:58', status: 'PRESENT' },
-  { date: '2026-06-06', checkInTime: '08:45', status: 'LATE' },
-  { date: '2026-06-05', checkInTime: '08:10', status: 'PRESENT' },
-  { date: '2026-06-04', checkInTime: '07:55', status: 'PRESENT' },
-  { date: '2026-06-03', checkInTime: '08:30', status: 'PRESENT' },
-  { date: '2026-06-02', checkInTime: '09:15', status: 'LATE' },
-  { date: '2026-05-30', checkInTime: '08:00', status: 'PRESENT' },
-];
-
-const MOCK_LEAVES = [
-  { type: 'Annual', start: '2026-04-01', end: '2026-04-05', days: 5, status: 'Approved' },
-  { type: 'Sick', start: '2026-02-14', end: '2026-02-15', days: 2, status: 'Approved' },
-  { type: 'Personal', start: '2026-01-10', end: '2026-01-10', days: 1, status: 'Rejected' },
-];
-
 const statusColor = (s: string) => {
   if (s === 'ACTIVE') return { bg: 'rgba(16,185,129,0.12)', color: '#10b981' };
   if (s === 'SUSPENDED') return { bg: 'rgba(239,68,68,0.12)', color: '#ef4444' };
@@ -42,7 +23,7 @@ interface Props {
 }
 
 export default function StaffView({ staffList: propStaff, addNotification }: Props) {
-  const [staff, setStaff] = useState<StaffMember[]>(propStaff.length ? propStaff : []);
+  const [staff, setStaff] = useState<StaffMember[]>([]);
   const [loadingStaff, setLoadingStaff] = useState(true);
   const [search, setSearch] = useState('');
   const [deptFilter, setDeptFilter] = useState('All');
@@ -55,19 +36,75 @@ export default function StaffView({ staffList: propStaff, addNotification }: Pro
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const [form, setForm] = useState({ fullName: '', email: '', department: 'Operations', role: '', phone: '', ghanaCard: '' });
 
+  // Detail loading state
+  const [attendance, setAttendance] = useState<any[]>([]);
+  const [leaves, setLeaves] = useState<any[]>([]);
+  const [loadingDetails, setLoadingDetails] = useState(false);
+
   useEffect(() => {
     const load = async () => {
       setLoadingStaff(true);
       try {
-        const { data } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
-        if (data) setStaff(data as StaffMember[]);
-      } catch {
-        // show empty state
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .order('created_at', { ascending: false });
+        if (error) throw error;
+        if (data) {
+          const mapped: StaffMember[] = data.map((p: any) => ({
+            id: p.id,
+            fullName: p.full_name || 'Employee',
+            email: p.email || '',
+            department: p.role || 'Operations', // role column holds department!
+            role: p.is_ceo ? 'CEO' : (p.metadata?.role || 'Staff'),
+            phone: p.phone || '',
+            ghanaCard: p.ghana_card_id || '',
+            joinedAt: p.created_at ? p.created_at.split('T')[0] : '',
+            status: p.status || 'ACTIVE'
+          }));
+          setStaff(mapped);
+        }
+      } catch (err: any) {
+        addNotification(`Error loading staff: ${err.message}`);
       }
       setLoadingStaff(false);
     };
     load();
   }, []);
+
+  // Fetch attendance and leaves when a staff is selected
+  useEffect(() => {
+    if (!selected) {
+      setAttendance([]);
+      setLeaves([]);
+      return;
+    }
+    const loadDetails = async () => {
+      setLoadingDetails(true);
+      try {
+        const { data: attData } = await supabase
+          .from('attendance')
+          .select('*')
+          .eq('user_id', selected.id)
+          .order('date', { ascending: false });
+        
+        setAttendance(attData || []);
+
+        const { data: leaveData } = await supabase
+          .from('leave_requests')
+          .select('*')
+          .eq('staff_id', selected.id)
+          .order('start_date', { ascending: false });
+        
+        setLeaves(leaveData || []);
+      } catch (err: any) {
+        console.error('Error loading details:', err);
+      } finally {
+        setLoadingDetails(false);
+      }
+    };
+    loadDetails();
+  }, [selected]);
 
   const filtered = staff.filter(s => {
     const matchSearch = s.fullName.toLowerCase().includes(search.toLowerCase()) || s.email.toLowerCase().includes(search.toLowerCase());
@@ -87,32 +124,82 @@ export default function StaffView({ staffList: propStaff, addNotification }: Pro
   };
 
   const handleSaveAdd = async () => {
-    const newStaff: StaffMember = { ...form, id: Date.now().toString(), joinedAt: new Date().toISOString().split('T')[0], status: 'ACTIVE' };
-    const { error } = await supabase.from('staff').insert([newStaff]);
-    setStaff(prev => [newStaff, ...prev]);
-    addNotification(`Staff member ${form.fullName} added`);
-    setShowAdd(false);
-    setForm({ fullName: '', email: '', department: 'Operations', role: '', phone: '', ghanaCard: '' });
-    if (error) console.error(error);
+    const tempUuid = '00000000-0000-0000-0000-' + Math.floor(Math.random() * 1000000000000).toString().padStart(12, '0');
+    try {
+      const { error } = await supabase.from('profiles').insert({
+        id: tempUuid,
+        email: form.email,
+        full_name: form.fullName,
+        role: form.department, // department stored in role column
+        phone: form.phone,
+        ghana_card_id: form.ghanaCard,
+        status: 'ACTIVE',
+        created_at: new Date().toISOString()
+      });
+      if (error) throw error;
+
+      const newStaff: StaffMember = {
+        id: tempUuid,
+        fullName: form.fullName,
+        email: form.email,
+        department: form.department,
+        role: form.role,
+        phone: form.phone,
+        ghanaCard: form.ghanaCard,
+        joinedAt: new Date().toISOString().split('T')[0],
+        status: 'ACTIVE'
+      };
+      setStaff(prev => [newStaff, ...prev]);
+      addNotification(`Staff member ${form.fullName} added`);
+      setShowAdd(false);
+      setForm({ fullName: '', email: '', department: 'Operations', role: '', phone: '', ghanaCard: '' });
+    } catch (err: any) {
+      addNotification(`Error adding staff member: ${err.message}`);
+    }
   };
 
   const handleSaveEdit = async () => {
     if (!editTarget) return;
-    const updated = { ...editTarget, ...form };
-    await supabase.from('staff').update(form).eq('id', editTarget.id);
-    setStaff(prev => prev.map(s => s.id === editTarget.id ? updated : s));
-    if (selected?.id === editTarget.id) setSelected(updated);
-    addNotification(`${form.fullName} updated`);
-    setEditTarget(null);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          full_name: form.fullName,
+          email: form.email,
+          role: form.department, // department stored in role
+          phone: form.phone,
+          ghana_card_id: form.ghanaCard
+        })
+        .eq('id', editTarget.id);
+      
+      if (error) throw error;
+
+      const updated = { ...editTarget, ...form };
+      setStaff(prev => prev.map(s => s.id === editTarget.id ? updated : s));
+      if (selected?.id === editTarget.id) setSelected(updated);
+      addNotification(`${form.fullName} updated`);
+      setEditTarget(null);
+    } catch (err: any) {
+      addNotification(`Error updating staff member: ${err.message}`);
+    }
   };
 
   const handleSuspend = async (s: StaffMember) => {
     const newStatus = s.status === 'SUSPENDED' ? 'ACTIVE' : 'SUSPENDED';
-    await supabase.from('staff').update({ status: newStatus }).eq('id', s.id);
-    setStaff(prev => prev.map(m => m.id === s.id ? { ...m, status: newStatus } : m));
-    if (selected?.id === s.id) setSelected(prev => prev ? { ...prev, status: newStatus } : null);
-    addNotification(`${s.fullName} ${newStatus === 'SUSPENDED' ? 'suspended' : 'reactivated'}`);
-    setMenuOpen(null);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ status: newStatus })
+        .eq('id', s.id);
+      if (error) throw error;
+
+      setStaff(prev => prev.map(m => m.id === s.id ? { ...m, status: newStatus } : m));
+      if (selected?.id === s.id) setSelected(prev => prev ? { ...prev, status: newStatus } : null);
+      addNotification(`${s.fullName} ${newStatus === 'SUSPENDED' ? 'suspended' : 'reactivated'}`);
+      setMenuOpen(null);
+    } catch (err: any) {
+      addNotification(`Error updating status: ${err.message}`);
+    }
   };
 
   const FormModal = ({ title, onClose, onSave }: { title: string; onClose: () => void; onSave: () => void }) => (
@@ -202,16 +289,31 @@ export default function StaffView({ staffList: propStaff, addNotification }: Pro
                 </tr>
               </thead>
               <tbody>
-                {MOCK_ATTENDANCE.map((a, i) => {
-                  const ac = a.status === 'PRESENT' ? { bg: 'rgba(16,185,129,0.12)', color: '#10b981' } : { bg: 'rgba(245,158,11,0.12)', color: '#f59e0b' };
-                  return (
-                    <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
-                      <td style={{ padding: '0.75rem 1rem', color: 'var(--text-primary)', fontSize: 13 }}>{a.date}</td>
-                      <td style={{ padding: '0.75rem 1rem', color: 'var(--text-secondary)', fontSize: 13 }}>{a.checkInTime}</td>
-                      <td style={{ padding: '0.75rem 1rem' }}><span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 600, background: ac.bg, color: ac.color }}>{a.status}</span></td>
-                    </tr>
-                  );
-                })}
+                {loadingDetails ? (
+                  <tr>
+                    <td colSpan={3} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }} className="animate-pulse">
+                      Loading attendance records...
+                    </td>
+                  </tr>
+                ) : attendance.length === 0 ? (
+                  <tr>
+                    <td colSpan={3} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                      No attendance records found for this staff member
+                    </td>
+                  </tr>
+                ) : (
+                  attendance.map((a, i) => {
+                    const isPresent = a.status === 'PRESENT' || a.status === 'present' || a.status === 'LATE' || a.status === 'late';
+                    const ac = isPresent ? { bg: 'rgba(16,185,129,0.12)', color: '#10b981' } : { bg: 'rgba(245,158,11,0.12)', color: '#f59e0b' };
+                    return (
+                      <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
+                        <td style={{ padding: '0.75rem 1rem', color: 'var(--text-primary)', fontSize: 13 }}>{a.date}</td>
+                        <td style={{ padding: '0.75rem 1rem', color: 'var(--text-secondary)', fontSize: 13 }}>{a.check_in_time || '--'}</td>
+                        <td style={{ padding: '0.75rem 1rem' }}><span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 600, background: ac.bg, color: ac.color }}>{a.status}</span></td>
+                      </tr>
+                    );
+                  })
+                )}
               </tbody>
             </table>
           )}
@@ -223,18 +325,33 @@ export default function StaffView({ staffList: propStaff, addNotification }: Pro
                 </tr>
               </thead>
               <tbody>
-                {MOCK_LEAVES.map((l, i) => {
-                  const lc = l.status === 'Approved' ? { bg: 'rgba(16,185,129,0.12)', color: '#10b981' } : { bg: 'rgba(239,68,68,0.12)', color: '#ef4444' };
-                  return (
-                    <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
-                      <td style={{ padding: '0.75rem 1rem', color: 'var(--text-primary)', fontSize: 13 }}>{l.type}</td>
-                      <td style={{ padding: '0.75rem 1rem', color: 'var(--text-secondary)', fontSize: 13 }}>{l.start}</td>
-                      <td style={{ padding: '0.75rem 1rem', color: 'var(--text-secondary)', fontSize: 13 }}>{l.end}</td>
-                      <td style={{ padding: '0.75rem 1rem', color: 'var(--text-secondary)', fontSize: 13 }}>{l.days}</td>
-                      <td style={{ padding: '0.75rem 1rem' }}><span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 600, background: lc.bg, color: lc.color }}>{l.status}</span></td>
-                    </tr>
-                  );
-                })}
+                {loadingDetails ? (
+                  <tr>
+                    <td colSpan={5} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }} className="animate-pulse">
+                      Loading leave requests...
+                    </td>
+                  </tr>
+                ) : leaves.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                      No leave requests found for this staff member
+                    </td>
+                  </tr>
+                ) : (
+                  leaves.map((l, i) => {
+                    const isApproved = l.status === 'Approved' || l.status === 'APPROVED' || l.status === 'approved';
+                    const lc = isApproved ? { bg: 'rgba(16,185,129,0.12)', color: '#10b981' } : { bg: 'rgba(239,68,68,0.12)', color: '#ef4444' };
+                    return (
+                      <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
+                        <td style={{ padding: '0.75rem 1rem', color: 'var(--text-primary)', fontSize: 13 }}>{l.leave_type}</td>
+                        <td style={{ padding: '0.75rem 1rem', color: 'var(--text-secondary)', fontSize: 13 }}>{l.start_date}</td>
+                        <td style={{ padding: '0.75rem 1rem', color: 'var(--text-secondary)', fontSize: 13 }}>{l.end_date}</td>
+                        <td style={{ padding: '0.75rem 1rem', color: 'var(--text-secondary)', fontSize: 13 }}>{l.days_count}</td>
+                        <td style={{ padding: '0.75rem 1rem' }}><span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 600, background: lc.bg, color: lc.color }}>{l.status}</span></td>
+                      </tr>
+                    );
+                  })
+                )}
               </tbody>
             </table>
           )}
