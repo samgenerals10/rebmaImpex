@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { Search, Download, MoreVertical, Plus, CheckCircle, XCircle, Clock, AlertTriangle } from 'lucide-react';
 import { exportToCSV } from '../../utils/export';
@@ -16,12 +16,6 @@ interface Cheque {
   orderRef: string;
 }
 
-const MOCK_CHEQUES: Cheque[] = [
-  { id: '1', chequeNumber: 'CHQ-001234', bankName: 'GCB Bank', accountName: 'Tema Industrial Ltd', amount: 120000, chequeDate: '2024-12-08', expectedClearing: '2024-12-12', status: 'Deposited', customerRef: 'Tema Industrial Ltd', orderRef: 'ORD-2024-001' },
-  { id: '2', chequeNumber: 'CHQ-005678', bankName: 'Ecobank', accountName: 'Accra Builders Co.', amount: 45000, chequeDate: '2024-12-07', expectedClearing: '2024-12-11', status: 'Cleared', customerRef: 'Accra Builders Co.', orderRef: 'ORD-2024-002' },
-  { id: '3', chequeNumber: 'CHQ-009012', bankName: 'Stanbic Bank', accountName: 'Ho City Supplies', amount: 28000, chequeDate: '2024-12-05', expectedClearing: '2024-12-09', status: 'Bounced', customerRef: 'Ho City Supplies', orderRef: 'ORD-2024-006' },
-  { id: '4', chequeNumber: 'CHQ-003456', bankName: 'Absa Bank', accountName: 'Kumasi Contractors', amount: 62000, chequeDate: '2024-12-10', expectedClearing: '2024-12-14', status: 'Received', customerRef: 'Kumasi Contractors', orderRef: 'ORD-2024-009' },
-];
 
 const STATUS_COLORS: Record<string, string> = {
   Received: 'bg-blue-100 text-blue-700',
@@ -36,7 +30,25 @@ interface Props {
 }
 
 export default function FinanceChequesView({ addNotification, currentUser }: Props) {
-  const [cheques, setCheques] = useState<Cheque[]>(MOCK_CHEQUES);
+  const [cheques, setCheques] = useState<Cheque[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      try {
+        const { data } = await supabase
+          .from('finance_cheques')
+          .select('*')
+          .order('created_at', { ascending: false });
+        setCheques((data ?? []) as Cheque[]);
+      } catch {
+        setCheques([]);
+      }
+      setLoading(false);
+    };
+    load();
+  }, []);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
@@ -114,6 +126,14 @@ export default function FinanceChequesView({ addNotification, currentUser }: Pro
       </div>
 
       <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl overflow-hidden">
+        {loading ? (
+          <div className="p-6">{[0,1,2,3,4].map(i => <div key={i} className="animate-pulse h-10 bg-slate-200 dark:bg-slate-700 rounded mb-2" />)}</div>
+        ) : filtered.length === 0 ? (
+          <div className="flex flex-col items-center py-10 text-[var(--text-muted)]">
+            <CheckCircle size={32} className="opacity-30 mb-2" />
+            <p className="text-sm">No cheques found</p>
+          </div>
+        ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead><tr className="border-b border-[var(--border)]">{['Cheque #', 'Bank', 'Account Name', 'Amount', 'Date', 'Expected Clearing', 'Status', ''].map(h => <th key={h} className="px-4 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wide whitespace-nowrap">{h}</th>)}</tr></thead>
@@ -145,6 +165,7 @@ export default function FinanceChequesView({ addNotification, currentUser }: Pro
             </tbody>
           </table>
         </div>
+        )}
       </div>
 
       {showForm && (

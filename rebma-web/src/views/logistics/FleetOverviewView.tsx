@@ -12,27 +12,6 @@ interface Vehicle {
   totalDeliveries: number;
 }
 
-const MOCK_VEHICLES: Vehicle[] = [
-  { id: '1', vehicleId: 'GR-1234-22', type: 'Pickup', driver: 'Kwame Asante', status: 'Operational', lastMaintenance: '2026-05-10', totalDeliveries: 142 },
-  { id: '2', vehicleId: 'GR-5678-21', type: 'Container', driver: 'Ama Boateng', status: 'Operational', lastMaintenance: '2026-05-22', totalDeliveries: 98 },
-  { id: '3', vehicleId: 'GR-9012-20', type: 'Tanker', driver: 'Unassigned', status: 'In Maintenance', lastMaintenance: '2026-06-01', totalDeliveries: 75 },
-  { id: '4', vehicleId: 'GR-3456-22', type: 'Pickup', driver: 'Kojo Mensah', status: 'Operational', lastMaintenance: '2026-04-30', totalDeliveries: 201 },
-  { id: '5', vehicleId: 'GR-7890-19', type: 'Container', driver: 'Efua Darko', status: 'In Maintenance', lastMaintenance: '2026-06-05', totalDeliveries: 56 },
-  { id: '6', vehicleId: 'GR-2345-23', type: 'Pickup', driver: 'Yaw Osei', status: 'Operational', lastMaintenance: '2026-05-15', totalDeliveries: 88 },
-  { id: '7', vehicleId: 'GR-6789-18', type: 'Tanker', driver: 'Unassigned', status: 'Retired', lastMaintenance: '2025-11-20', totalDeliveries: 310 },
-  { id: '8', vehicleId: 'GR-0123-24', type: 'Pickup', driver: 'Akosua Frimpong', status: 'Operational', lastMaintenance: '2026-06-08', totalDeliveries: 34 },
-];
-
-const MOCK_DELIVERIES = [
-  { date: '2026-06-10', destination: 'Tema Port', status: 'Delivered', amount: 'GHS 450' },
-  { date: '2026-06-08', destination: 'Kumasi Depot', status: 'Delivered', amount: 'GHS 620' },
-  { date: '2026-06-05', destination: 'Takoradi Warehouse', status: 'Delivered', amount: 'GHS 380' },
-  { date: '2026-06-03', destination: 'Accra Central', status: 'Delivered', amount: 'GHS 290' },
-  { date: '2026-05-30', destination: 'Tema Port', status: 'Delivered', amount: 'GHS 510' },
-  { date: '2026-05-28', destination: 'Ho Distribution', status: 'Delivered', amount: 'GHS 440' },
-  { date: '2026-05-25', destination: 'Tamale Hub', status: 'Delivered', amount: 'GHS 680' },
-  { date: '2026-05-20', destination: 'Cape Coast', status: 'Delivered', amount: 'GHS 350' },
-];
 
 const STATUS_COLORS = { Operational: '#059669', 'In Maintenance': '#d97706', Retired: '#6b7280' };
 
@@ -44,6 +23,7 @@ interface Props {
 
 export default function FleetOverviewView({ addNotification }: Props) {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editVehicle, setEditVehicle] = useState<Vehicle | null>(null);
@@ -51,13 +31,15 @@ export default function FleetOverviewView({ addNotification }: Props) {
 
   useEffect(() => {
     const load = async () => {
+      setLoading(true);
       try {
-        const { data, error } = await supabase.from('fleet_vehicles').select('*');
-        if (error || !data || data.length === 0) setVehicles(MOCK_VEHICLES);
-        else setVehicles(data);
+        const { data, error } = await supabase.from('fleet_vehicles').select('*').order('created_at', { ascending: false });
+        if (!error && data) setVehicles(data);
+        else setVehicles([]);
       } catch {
-        setVehicles(MOCK_VEHICLES);
+        setVehicles([]);
       }
+      setLoading(false);
     };
     load();
   }, []);
@@ -174,7 +156,7 @@ export default function FleetOverviewView({ addNotification }: Props) {
                 </tr>
               </thead>
               <tbody>
-                {MOCK_DELIVERIES.map((d, i) => (
+                {[].map((d: { date: string; destination: string; status: string; amount: string }, i) => (
                   <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
                     <td style={{ padding: '12px', color: 'var(--text-primary)', fontSize: 13 }}>{d.date}</td>
                     <td style={{ padding: '12px', color: 'var(--text-secondary)', fontSize: 13 }}>{d.destination}</td>
@@ -219,7 +201,15 @@ export default function FleetOverviewView({ addNotification }: Props) {
         ))}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
+      {loading && <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>{Array.from({ length: 5 }).map((_, i) => <div key={i} className="animate-pulse h-40 bg-slate-200 dark:bg-slate-700 rounded-2xl" />)}</div>}
+      {!loading && vehicles.length === 0 && (
+        <div className="text-center py-12 text-[var(--text-muted)]">
+          <Truck className="w-10 h-10 mx-auto mb-3 opacity-40" />
+          <p className="font-semibold text-sm">No vehicles yet</p>
+          <p className="text-xs mt-1">They will appear here once added</p>
+        </div>
+      )}
+      {!loading && <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
         {vehicles.map(v => (
           <div key={v.id} style={{ background: 'var(--bg-card)', borderRadius: 20, padding: 20, border: '1px solid var(--border)', boxShadow: 'var(--box-shadow)', cursor: 'pointer' }} onClick={() => setSelectedVehicle(v)}>
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 14 }}>
@@ -256,7 +246,7 @@ export default function FleetOverviewView({ addNotification }: Props) {
             </div>
           </div>
         ))}
-      </div>
+      </div>}
 
       {(showAddModal || editVehicle) && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}>

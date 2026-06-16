@@ -8,29 +8,6 @@ import {
 import { exportToCSV, exportToPDF } from '../../utils/export';
 import type { DeliveryRecord, Driver } from '../../types/erp';
 
-// ── seed data ─────────────────────────────────────────────────────────────────
-const MOCK_DRIVERS: Driver[] = [
-  { id: 'DRV-001', fullName: 'Kwesi Asante',  phone: '0244 123 456', ghanaCard: 'GHA-00001-1', licenseNumber: 'LIC-001', truckId: 'GR-1234-22', status: 'ACTIVE',      totalDeliveries: 87 },
-  { id: 'DRV-002', fullName: 'Kofi Mensah',   phone: '0277 654 321', ghanaCard: 'GHA-00002-2', licenseNumber: 'LIC-002', truckId: 'GR-5678-22', status: 'ON_DELIVERY', totalDeliveries: 62 },
-  { id: 'DRV-003', fullName: 'Ama Serwaa',    phone: '0200 987 654', ghanaCard: 'GHA-00003-3', licenseNumber: 'LIC-003', truckId: 'GR-9012-23', status: 'ACTIVE',      totalDeliveries: 45 },
-  { id: 'DRV-004', fullName: 'Kojo Boateng',  phone: '0541 234 567', ghanaCard: 'GHA-00004-4', licenseNumber: 'LIC-004', truckId: 'AS-3456-21', status: 'ON_DELIVERY', totalDeliveries: 31 },
-  { id: 'DRV-005', fullName: 'Yaw Darko',     phone: '0208 876 543', ghanaCard: 'GHA-00005-5', licenseNumber: 'LIC-005', truckId: 'GR-7890-24', status: 'OFFLINE',     totalDeliveries: 19 },
-];
-
-const MOCK_DELIVERIES: DeliveryRecord[] = [
-  { id: 'DEL-001', orderId: 'ORD-1001', clientName: 'Accra Traders Ltd',    destination: '123 High Street, Accra',   driverName: 'Kwesi Asante', driverId: 'DRV-001', dispatchedAt: new Date(Date.now() - 3.6e6 * 2).toISOString(), status: 'IN_TRANSIT',         vehicleId: 'GR-1234-22' },
-  { id: 'DEL-002', orderId: 'ORD-1002', clientName: 'Gulf Imports Co.',      destination: '45 Liberation Rd, Accra', driverName: 'Kofi Mensah',  driverId: 'DRV-002', dispatchedAt: new Date(Date.now() - 3.6e6 * 5).toISOString(), deliveredAt: new Date(Date.now() - 3.6e6 * 2).toISOString(), status: 'DELIVERED', vehicleId: 'GR-5678-22' },
-  { id: 'DEL-003', orderId: 'ORD-1003', clientName: 'Kama Industries',       destination: 'Plot 7, Spintex Road',    driverName: 'Ama Serwaa',   driverId: 'DRV-003', dispatchedAt: new Date(Date.now() - 3.6e6 * 4).toISOString(), status: 'IN_TRANSIT',         vehicleId: 'GR-9012-23' },
-  { id: 'DEL-004', orderId: 'ORD-1004', clientName: 'Prime Suppliers',       destination: 'Ring Road East, Accra',   driverName: '',             driverId: '',         dispatchedAt: new Date(Date.now() - 3.6e6 * 1).toISOString(), status: 'PENDING_ASSIGNMENT' },
-  { id: 'DEL-005', orderId: 'ORD-1005', clientName: 'Delta Logistics',       destination: 'Tema Community 1',         driverName: 'Kwesi Asante', driverId: 'DRV-001', dispatchedAt: new Date(Date.now() - 3.6e6 * 1).toISOString(), status: 'ASSIGNED',           vehicleId: 'GR-1234-22' },
-  { id: 'DEL-006', orderId: 'ORD-1006', clientName: 'Sunrise Exports',       destination: 'Adabraka, Accra',          driverName: 'Kofi Mensah',  driverId: 'DRV-002', dispatchedAt: new Date(Date.now() - 86400000).toISOString(), deliveredAt: new Date(Date.now() - 82800000).toISOString(), status: 'DELIVERED', vehicleId: 'GR-5678-22' },
-  { id: 'DEL-007', orderId: 'ORD-1007', clientName: 'Horizon Trading',       destination: 'Lashibi, Tema',            driverName: 'Ama Serwaa',   driverId: 'DRV-003', dispatchedAt: new Date(Date.now() - 3.6e6 * 6).toISOString(), deliveredAt: new Date(Date.now() - 3.6e6 * 3).toISOString(), status: 'DELIVERED', vehicleId: 'GR-9012-23' },
-  { id: 'DEL-008', orderId: 'ORD-1008', clientName: 'Gold Coast Merchants',  destination: 'OSU, Accra',               driverName: '',             driverId: '',         dispatchedAt: new Date(Date.now() - 3.6e6 * 0.5).toISOString(), status: 'PENDING_ASSIGNMENT' },
-  { id: 'DEL-009', orderId: 'ORD-1009', clientName: 'Atlantic Ventures',     destination: 'Haatso, Accra',            driverName: 'Kojo Boateng', driverId: 'DRV-004', dispatchedAt: new Date(Date.now() - 1800000).toISOString(), status: 'IN_TRANSIT',         vehicleId: 'AS-3456-21' },
-  { id: 'DEL-010', orderId: 'ORD-1010', clientName: 'Pacific Imports',       destination: 'East Legon, Accra',        driverName: 'Ama Serwaa',   driverId: 'DRV-003', dispatchedAt: new Date(Date.now() - 3.6e6 * 3).toISOString(), deliveredAt: new Date(Date.now() - 3.6e6).toISOString(), status: 'DELIVERED', vehicleId: 'GR-9012-23' },
-  { id: 'DEL-011', orderId: 'ORD-1011', clientName: 'Tema Steel Ltd',        destination: 'Community 5, Tema',        driverName: '',             driverId: '',         dispatchedAt: new Date(Date.now() - 3.6e6 * 0.2).toISOString(), status: 'PENDING_ASSIGNMENT' },
-  { id: 'DEL-012', orderId: 'ORD-1012', clientName: 'Volta River Co.',       destination: 'Akosombo Town',            driverName: 'Yaw Darko',    driverId: 'DRV-005', dispatchedAt: new Date(Date.now() - 3.6e6 * 8).toISOString(), status: 'FAILED',             vehicleId: 'GR-7890-24' },
-];
 
 // ── types ─────────────────────────────────────────────────────────────────────
 type StatusFilter = 'ALL' | 'PENDING_ASSIGNMENT' | 'ASSIGNED' | 'IN_TRANSIT' | 'DELIVERED' | 'FAILED';
@@ -309,7 +286,7 @@ function DeliveryDetail({
 // ── Main Component ─────────────────────────────────────────────────────────────
 export default function DeliveriesView({ addNotification, currentUser }: Props) {
   const [deliveries, setDeliveries] = useState<DeliveryRecord[]>([]);
-  const [drivers, setDrivers] = useState<Driver[]>(MOCK_DRIVERS);
+  const [drivers, setDrivers] = useState<Driver[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
@@ -327,8 +304,8 @@ export default function DeliveriesView({ addNotification, currentUser }: Props) 
       setLoading(true);
       try {
         const { data } = await supabase.from('deliveries').select('*').order('dispatchedAt', { ascending: false }).limit(100);
-        setDeliveries(data && data.length > 0 ? data as DeliveryRecord[] : MOCK_DELIVERIES);
-      } catch { setDeliveries(MOCK_DELIVERIES); }
+        setDeliveries((data ?? []) as DeliveryRecord[]);
+      } catch { setDeliveries([]); }
       try {
         const { data } = await supabase.from('drivers').select('*');
         if (data && data.length > 0) setDrivers(data as Driver[]);

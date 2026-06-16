@@ -1,4 +1,6 @@
-import { MapPin, Wifi, WifiOff, Truck, Clock, Info } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { MapPin, WifiOff, Truck, Clock, Info } from 'lucide-react';
+import { supabase } from '../../lib/supabaseClient';
 
 interface VehicleRecord {
   id: string;
@@ -8,13 +10,6 @@ interface VehicleRecord {
   lastKnownLocation: string;
   lastUpdated: string;
 }
-
-const MOCK_VEHICLES: VehicleRecord[] = [
-  { id: 'V-001', driverName: 'Kwesi Asante', truckId: 'GR-1234-22', status: 'IN_TRANSIT', lastKnownLocation: 'Accra-Tema Motorway, near Tetteh Quarshie', lastUpdated: new Date(Date.now() - 5 * 60000).toISOString() },
-  { id: 'V-002', driverName: 'Kofi Mensah', truckId: 'GR-5678-22', status: 'IN_TRANSIT', lastKnownLocation: 'Liberation Road, near Kwame Nkrumah Circle', lastUpdated: new Date(Date.now() - 12 * 60000).toISOString() },
-  { id: 'V-003', driverName: 'Ama Serwaa', truckId: 'GR-9012-23', status: 'ACTIVE', lastKnownLocation: 'REBMA Impex Warehouse, Spintex Road', lastUpdated: new Date(Date.now() - 2 * 60000).toISOString() },
-  { id: 'V-004', driverName: 'Efua Turkson', truckId: 'GR-2345-20', status: 'OFFLINE', lastKnownLocation: 'Depot, Tema Community 2', lastUpdated: new Date(Date.now() - 3600000 * 4).toISOString() },
-];
 
 const fmtAgo = (iso: string) => {
   const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
@@ -28,9 +23,40 @@ const statusConfig = { IN_TRANSIT: { color: '#3b82f6', bg: '#dbeafe', label: 'In
 interface Props { addNotification: (msg: string) => void }
 
 export default function TrackingView({ addNotification: _addNotification }: Props) {
-  const active = MOCK_VEHICLES.filter(v => v.status !== 'OFFLINE').length;
-  const inTransit = MOCK_VEHICLES.filter(v => v.status === 'IN_TRANSIT').length;
-  const lastUpdate = MOCK_VEHICLES.filter(v => v.status !== 'OFFLINE').sort((a, b) => new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime())[0];
+  const [vehicles, setVehicles] = useState<VehicleRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      try {
+        const { data } = await supabase
+          .from('drivers')
+          .select('id, fullName, truckId, status')
+          .neq('status', 'OFFLINE');
+        if (data && data.length > 0) {
+          setVehicles(data.map((d: { id: string; fullName: string; truckId: string; status: string }) => ({
+            id: d.id,
+            driverName: d.fullName,
+            truckId: d.truckId,
+            status: d.status === 'ON_DELIVERY' ? 'IN_TRANSIT' : (d.status as VehicleRecord['status']),
+            lastKnownLocation: 'Location data unavailable — GPS not yet connected',
+            lastUpdated: new Date().toISOString(),
+          })));
+        } else {
+          setVehicles([]);
+        }
+      } catch {
+        setVehicles([]);
+      }
+      setLoading(false);
+    };
+    load();
+  }, []);
+
+  const active = vehicles.filter(v => v.status !== 'OFFLINE').length;
+  const inTransit = vehicles.filter(v => v.status === 'IN_TRANSIT').length;
+  const lastUpdate = vehicles.filter(v => v.status !== 'OFFLINE').sort((a, b) => new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime())[0];
 
   return (
     <div style={{ padding: '24px 16px', maxWidth: 1100, margin: '0 auto' }}>
@@ -80,8 +106,18 @@ export default function TrackingView({ addNotification: _addNotification }: Prop
 
       <div style={{ marginBottom: 20 }}>
         <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 16px' }}>Active Vehicles</h2>
+        {loading ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {[0,1,2,3,4].map(i => <div key={i} className="animate-pulse h-10 bg-slate-200 dark:bg-slate-700 rounded mb-2" />)}
+          </div>
+        ) : vehicles.length === 0 ? (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>
+            <Truck size={36} style={{ opacity: 0.3, marginBottom: 12 }} />
+            <p style={{ fontSize: 14 }}>No active vehicles found</p>
+          </div>
+        ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {MOCK_VEHICLES.map(v => {
+          {vehicles.map(v => {
             const cfg = statusConfig[v.status];
             return (
               <div key={v.id} style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap', boxShadow: 'var(--box-shadow)' }}>
@@ -112,6 +148,7 @@ export default function TrackingView({ addNotification: _addNotification }: Prop
             );
           })}
         </div>
+        )}
       </div>
 
       <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, padding: '16px 20px', boxShadow: 'var(--box-shadow)' }}>

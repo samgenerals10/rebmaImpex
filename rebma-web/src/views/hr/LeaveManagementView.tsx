@@ -16,16 +16,6 @@ interface LeaveRequest {
   rejectionReason?: string;
 }
 
-const MOCK_LEAVES: LeaveRequest[] = [
-  { id: '1', employeeName: 'Kwame Mensah', department: 'Operations', leaveType: 'Annual', startDate: '2026-06-20', endDate: '2026-06-26', days: 5, reason: 'Family vacation', status: 'Pending' },
-  { id: '2', employeeName: 'Abena Owusu', department: 'Finance', leaveType: 'Sick', startDate: '2026-06-13', endDate: '2026-06-14', days: 2, reason: 'Medical appointment and recovery', status: 'Approved' },
-  { id: '3', employeeName: 'Kofi Asante', department: 'Logistics', leaveType: 'Emergency', startDate: '2026-06-12', endDate: '2026-06-12', days: 1, reason: 'Family emergency', status: 'Approved' },
-  { id: '4', employeeName: 'Ama Boateng', department: 'HR', leaveType: 'Personal', startDate: '2026-06-18', endDate: '2026-06-18', days: 1, reason: 'Personal errand', status: 'Pending' },
-  { id: '5', employeeName: 'Yaw Darko', department: 'Marketing', leaveType: 'Annual', startDate: '2026-07-01', endDate: '2026-07-10', days: 8, reason: 'Annual vacation', status: 'Rejected', rejectionReason: 'Critical project deadline' },
-  { id: '6', employeeName: 'Nana Agyei', department: 'Production', leaveType: 'Sick', startDate: '2026-06-15', endDate: '2026-06-17', days: 3, reason: 'Flu and recovery', status: 'Pending' },
-  { id: '7', employeeName: 'Kojo Amponsah', department: 'Logistics', leaveType: 'Personal', startDate: '2026-06-25', endDate: '2026-06-25', days: 1, reason: 'School event for child', status: 'Approved' },
-  { id: '8', employeeName: 'Adwoa Sarpong', department: 'Operations', leaveType: 'Annual', startDate: '2026-08-04', endDate: '2026-08-08', days: 5, reason: 'Travel plans', status: 'Pending' },
-];
 
 const DEPARTMENTS = ['All', 'Operations', 'Finance', 'Logistics', 'HR', 'Marketing', 'Reception', 'Production', 'Management'];
 const LEAVE_TYPES = ['All', 'Annual', 'Sick', 'Personal', 'Emergency'];
@@ -127,7 +117,8 @@ function CalendarView({ leaves }: { leaves: LeaveRequest[] }) {
 
 export default function LeaveManagementView({ currentUser, addNotification }: Props) {
   const [activeTab, setActiveTab] = useState<'requests' | 'calendar' | 'balances'>('requests');
-  const [leaves, setLeaves] = useState<LeaveRequest[]>(MOCK_LEAVES);
+  const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
+  const [loadingLeaves, setLoadingLeaves] = useState(true);
   const [deptFilter, setDeptFilter] = useState('All');
   const [typeFilter, setTypeFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
@@ -139,9 +130,17 @@ export default function LeaveManagementView({ currentUser, addNotification }: Pr
   const canApprove = currentUser?.isCeo || currentUser?.department === 'HR';
 
   useEffect(() => {
-    supabase.from('leave_requests').select('*').then(({ data, error }) => {
-      if (!error && data && data.length > 0) setLeaves(data as LeaveRequest[]);
-    });
+    const load = async () => {
+      setLoadingLeaves(true);
+      try {
+        const { data } = await supabase.from('leave_requests').select('*').order('created_at', { ascending: false });
+        if (data) setLeaves(data as LeaveRequest[]);
+      } catch {
+        // show empty state
+      }
+      setLoadingLeaves(false);
+    };
+    load();
   }, []);
 
   const filtered = leaves.filter(l => {
@@ -253,7 +252,10 @@ export default function LeaveManagementView({ currentUser, addNotification }: Pr
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-        {filtered.map(leave => {
+        {loadingLeaves ? (
+          Array.from({ length: 5 }).map((_, i) => <div key={i} className="animate-pulse h-10 bg-slate-200 dark:bg-slate-700 rounded mb-2" />)
+        ) : null}
+        {!loadingLeaves && filtered.map(leave => {
           const ltc = leaveTypeBadge(leave.leaveType);
           const sc = statusBadge(leave.status);
           return (
@@ -315,9 +317,9 @@ export default function LeaveManagementView({ currentUser, addNotification }: Pr
             </div>
           );
         })}
-        {filtered.length === 0 && (
+        {!loadingLeaves && filtered.length === 0 && (
           <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)', background: 'var(--bg-card)', borderRadius: 12, border: '1px solid var(--border)' }}>
-            No leave requests found
+            {leaves.length === 0 ? 'No leave requests yet — they will appear here once submitted' : 'No leave requests found'}
           </div>
         )}
       </div>

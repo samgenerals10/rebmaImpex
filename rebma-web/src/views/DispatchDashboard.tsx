@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { FileSpreadsheet, FileText, Truck, ShieldCheck, Activity, Users, MapPin, History, UserCheck, ChevronRight, MoreVertical, TrendingUp, TrendingDown } from 'lucide-react';
+import { supabase } from '../lib/supabaseClient';
 import MiniSparkline from '../components/MiniSparkline';
 import KpiDetailView from '../components/KpiDetailView';
 import { exportToCSV, exportToPDF } from '../utils/export';
@@ -16,20 +17,6 @@ interface DispatchDashboardProps {
   activeSubTab: string;
 }
 
-// Seed Drivers
-const seedDrivers: Driver[] = [
-  { id: 'DRV-404', fullName: 'Kofi Acheampong', phone: '+233 24 111 2233', ghanaCard: 'GHA-4040404-4', licenseNumber: 'GH-DL-2024-0404', truckId: 'GR-1234-22', status: 'ON_DELIVERY', totalDeliveries: 87, joinedAt: 'Jan 2023' },
-  { id: 'DRV-405', fullName: 'Yaw Darko', phone: '+233 20 555 6677', ghanaCard: 'GHA-5050505-5', licenseNumber: 'GH-DL-2024-0405', truckId: 'GR-5678-22', status: 'ACTIVE', totalDeliveries: 62, joinedAt: 'Mar 2023' },
-  { id: 'DRV-406', fullName: 'Kwame Asare', phone: '+233 27 888 9900', ghanaCard: 'GHA-6060606-6', licenseNumber: 'GH-DL-2024-0406', truckId: 'GR-9012-21', status: 'OFFLINE', totalDeliveries: 45, joinedAt: 'Jul 2023' },
-  { id: 'DRV-407', fullName: 'Emmanuel Tetteh', phone: '+233 23 222 3344', ghanaCard: 'GHA-7070707-7', licenseNumber: 'GH-DL-2024-0407', truckId: 'GR-3456-23', status: 'ACTIVE', totalDeliveries: 31, joinedAt: 'Dec 2023' },
-];
-
-// Seed Delivery History
-const seedDeliveries: DeliveryRecord[] = [
-  { id: 'DEL-001', orderId: 'ORD-102', clientName: 'Accra Retail Hub', destination: 'Accra Central Depot', driverName: 'Kofi Acheampong', driverId: 'DRV-404', dispatchedAt: '2026-05-24 08:00', deliveredAt: '2026-05-24 11:30', status: 'DELIVERED' },
-  { id: 'DEL-002', orderId: 'ORD-098', clientName: 'Kumasi Foods Ltd', destination: 'Kumasi Warehouse', driverName: 'Yaw Darko', driverId: 'DRV-405', dispatchedAt: '2026-05-23 09:15', deliveredAt: '2026-05-23 14:00', status: 'DELIVERED' },
-  { id: 'DEL-003', orderId: 'ORD-101', clientName: 'Inter-Ghana Foods Ltd', destination: 'Tema Port Depot', driverName: 'Kofi Acheampong', driverId: 'DRV-404', dispatchedAt: '2026-05-25 07:30', status: 'IN_TRANSIT' },
-];
 
 const handleSort = (
   field: string,
@@ -56,7 +43,10 @@ export default function DispatchDashboard({
   // Local deliveries state to support adding/duplicating/deleting rows
   const [kpiDetail, setKpiDetail] = useState<number | null>(null);
   const [cardMenuOpen, setCardMenuOpen] = useState<number | null>(null);
-  const [localDeliveries, setLocalDeliveries] = useState<DeliveryRecord[]>(seedDeliveries);
+  const [localDeliveries, setLocalDeliveries] = useState<DeliveryRecord[]>([]);
+  const [localDrivers, setLocalDrivers] = useState<Driver[]>([]);
+  const [loadingDeliveries, setLoadingDeliveries] = useState(true);
+  const [loadingDrivers, setLoadingDrivers] = useState(true);
   const [activeMobileDetail, setActiveMobileDetail] = useState<DeliveryRecord | null>(null);
 
   // Sorting states
@@ -79,6 +69,16 @@ export default function DispatchDashboard({
     return () => window.removeEventListener('click', handleOutsideClick);
   }, []);
 
+  // Load deliveries and drivers from Supabase
+  useEffect(() => {
+    (async () => {
+      try { const { data } = await supabase.from('deliveries').select('*').order('created_at', { ascending: false }); setLocalDeliveries(data ?? []); } catch { setLocalDeliveries([]); } finally { setLoadingDeliveries(false); }
+    })();
+    (async () => {
+      try { const { data } = await supabase.from('drivers').select('*').order('created_at', { ascending: false }); setLocalDrivers(data ?? []); } catch { setLocalDrivers([]); } finally { setLoadingDrivers(false); }
+    })();
+  }, []);
+
   const lineChartData = [
     { name: 'Mon', Shipments: 12, Delays: 0 },
     { name: 'Tue', Shipments: 18, Delays: 1 },
@@ -87,7 +87,7 @@ export default function DispatchDashboard({
     { name: 'Fri', Shipments: 30, Delays: 0 },
   ];
 
-  const activeDrivers = seedDrivers.filter(d => d.status !== 'OFFLINE').length;
+  const activeDrivers = localDrivers.filter(d => d.status !== 'OFFLINE').length;
   const completedDeliveries = localDeliveries.filter(d => d.status === 'DELIVERED').length;
   const inTransit = localDeliveries.filter(d => d.status === 'IN_TRANSIT').length;
 
@@ -356,7 +356,7 @@ export default function DispatchDashboard({
         <div>
           <p className="mobile-section-label">Drivers</p>
           <div className="space-y-2">
-            {seedDrivers.map(d => (
+            {localDrivers.map(d => (
               <div key={d.id} className="mobile-data-row">
                 <div className="mobile-data-row-icon" style={{ background: d.status === 'ON_DELIVERY' ? '#eff6ff' : d.status === 'ACTIVE' ? '#f0fdf4' : '#f8fafc', color: d.status === 'ON_DELIVERY' ? '#3b82f6' : d.status === 'ACTIVE' ? '#16a34a' : '#94a3b8' }}>
                   {d.fullName[0]}
@@ -692,7 +692,24 @@ export default function DispatchDashboard({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--border)] text-[var(--text-primary)]">
-                  {sortedDeliveries.map(del => (
+                  {loadingDeliveries && Array.from({ length: 5 }).map((_, i) => (
+                    <tr key={`skel-${i}`}>
+                      <td colSpan={10} className="py-3 px-5">
+                        <div className="animate-pulse h-4 bg-slate-200 dark:bg-slate-700 rounded" />
+                      </td>
+                    </tr>
+                  ))}
+                  {!loadingDeliveries && sortedDeliveries.length === 0 && (
+                    <tr>
+                      <td colSpan={10} className="py-12 text-center">
+                        <div className="flex flex-col items-center gap-2 text-[var(--text-muted)]">
+                          <Truck className="w-8 h-8 opacity-30" />
+                          <p className="text-xs">No delivery logs found.</p>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                  {!loadingDeliveries && sortedDeliveries.map(del => (
                     <tr key={del.id} className="theme-table-row border-b border-[var(--border)] hover:bg-[var(--accent-light)] transition-colors text-[var(--text-primary)] cursor-pointer" onClick={() => setActiveMobileDetail(del)}>
                       <td className="py-3.5 px-5">
                         <input
@@ -758,8 +775,21 @@ export default function DispatchDashboard({
               <UserCheck className="w-5 h-5 text-[var(--accent)]" />
               <h3 className="text-lg font-bold text-[var(--text-primary)]">Driver Activities & Details</h3>
             </div>
+            {loadingDrivers && (
+              <div className="space-y-3">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className="animate-pulse h-4 bg-slate-200 dark:bg-slate-700 rounded" />
+                ))}
+              </div>
+            )}
+            {!loadingDrivers && localDrivers.length === 0 && (
+              <div className="flex flex-col items-center gap-2 py-10 text-[var(--text-muted)]">
+                <UserCheck className="w-8 h-8 opacity-30" />
+                <p className="text-sm">No drivers registered yet.</p>
+              </div>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {seedDrivers.map(driver => (
+              {!loadingDrivers && localDrivers.map(driver => (
                 <div key={driver.id} className="p-4 bg-[var(--bg)] border border-[var(--border)] rounded-xl space-y-3">
                   <div className="flex justify-between items-start">
                     <div>
@@ -779,7 +809,7 @@ export default function DispatchDashboard({
                 </div>
               ))}
             </div>
-            <button onClick={() => exportToCSV(seedDrivers, ['id', 'fullName', 'phone', 'ghanaCard', 'licenseNumber', 'truckId', 'status', 'totalDeliveries', 'joinedAt'], 'drivers_roster')} className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--bg)] hover:bg-[var(--accent-light)] text-[var(--text-primary)] rounded-lg text-xs font-semibold cursor-pointer border border-[var(--border)] transition-colors w-full sm:w-auto justify-center">
+            <button onClick={() => exportToCSV(localDrivers, ['id', 'fullName', 'phone', 'ghanaCard', 'licenseNumber', 'truckId', 'status', 'totalDeliveries', 'joinedAt'], 'drivers_roster')} className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--bg)] hover:bg-[var(--accent-light)] text-[var(--text-primary)] rounded-lg text-xs font-semibold cursor-pointer border border-[var(--border)] transition-colors w-full sm:w-auto justify-center">
               <FileSpreadsheet className="w-3.5 h-3.5" /> Export Drivers Roster (CSV)
             </button>
           </div>

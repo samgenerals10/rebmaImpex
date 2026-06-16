@@ -14,18 +14,6 @@ interface MaintenanceRecord {
   mechanic: string;
 }
 
-const MOCK_RECORDS: MaintenanceRecord[] = [
-  { id: '1', date: '2026-06-15', vehicleId: 'GR-1234-22', type: 'Service', description: 'Oil change and filter replacement', cost: 350, status: 'Scheduled', mechanic: 'Joe Mechanics' },
-  { id: '2', date: '2026-06-14', vehicleId: 'GR-5678-21', type: 'Repair', description: 'Brake pad replacement — front axle', cost: 820, status: 'In Progress', mechanic: 'Kwadwo Auto' },
-  { id: '3', date: '2026-06-13', vehicleId: 'GR-9012-20', type: 'Inspection', description: 'Annual roadworthiness inspection', cost: 200, status: 'Scheduled', mechanic: 'DVLA Accra' },
-  { id: '4', date: '2026-06-10', vehicleId: 'GR-3456-22', type: 'Service', description: 'Full service — 50,000 km milestone', cost: 1200, status: 'Completed', mechanic: 'Joe Mechanics' },
-  { id: '5', date: '2026-06-08', vehicleId: 'GR-7890-19', type: 'Repair', description: 'Transmission fluid leak fix', cost: 950, status: 'Completed', mechanic: 'Ato Gearbox Specialist' },
-  { id: '6', date: '2026-06-06', vehicleId: 'GR-2345-23', type: 'Inspection', description: 'Pre-trip safety inspection', cost: 150, status: 'Completed', mechanic: 'Kwadwo Auto' },
-  { id: '7', date: '2026-06-18', vehicleId: 'GR-0123-24', type: 'Service', description: 'Tyre rotation and alignment', cost: 280, status: 'Scheduled', mechanic: 'Akoto Tyres' },
-  { id: '8', date: '2026-05-28', vehicleId: 'GR-6789-18', type: 'Repair', description: 'Engine mount replacement', cost: 1500, status: 'Completed', mechanic: 'Joe Mechanics' },
-  { id: '9', date: '2026-06-05', vehicleId: 'GR-1234-22', type: 'Inspection', description: 'Lights and electrical check', cost: 180, status: 'Completed', mechanic: 'Kwadwo Auto' },
-  { id: '10', date: '2026-06-16', vehicleId: 'GR-5678-21', type: 'Service', description: 'Air filter and spark plug service', cost: 420, status: 'Scheduled', mechanic: 'Joe Mechanics' },
-];
 
 const COST_TREND = [
   { month: 'Jan', cost: 3200 }, { month: 'Feb', cost: 2800 }, { month: 'Mar', cost: 4100 },
@@ -41,6 +29,7 @@ interface Props {
 
 export default function MaintenanceView({ addNotification }: Props) {
   const [records, setRecords] = useState<MaintenanceRecord[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editRecord, setEditRecord] = useState<MaintenanceRecord | null>(null);
   const [filterVehicle, setFilterVehicle] = useState('All');
@@ -50,13 +39,15 @@ export default function MaintenanceView({ addNotification }: Props) {
 
   useEffect(() => {
     const load = async () => {
+      setLoading(true);
       try {
         const { data, error } = await supabase.from('maintenance_schedule').select('*').order('date', { ascending: false });
-        if (error || !data || data.length === 0) setRecords(MOCK_RECORDS);
-        else setRecords(data);
+        if (!error && data) setRecords(data);
+        else setRecords([]);
       } catch {
-        setRecords(MOCK_RECORDS);
+        setRecords([]);
       }
+      setLoading(false);
     };
     load();
   }, []);
@@ -163,7 +154,8 @@ export default function MaintenanceView({ addNotification }: Props) {
       </div>
 
       <div style={{ background: 'var(--bg-card)', borderRadius: 20, padding: 24, border: '1px solid var(--border)', boxShadow: 'var(--box-shadow)' }}>
-        <div style={{ overflowX: 'auto' }}>
+        {loading && Array.from({ length: 5 }).map((_, i) => <div key={i} className="animate-pulse h-10 bg-slate-200 dark:bg-slate-700 rounded mb-2" />)}
+        {!loading && <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--border)' }}>
@@ -197,7 +189,14 @@ export default function MaintenanceView({ addNotification }: Props) {
               ))}
             </tbody>
           </table>
-        </div>
+          {filtered.length === 0 && (
+            <div className="text-center py-12 text-[var(--text-muted)]">
+              <AlertTriangle className="w-10 h-10 mx-auto mb-3 opacity-40" />
+              <p className="font-semibold text-sm">No maintenance records yet</p>
+              <p className="text-xs mt-1">They will appear here once added</p>
+            </div>
+          )}
+        </div>}
       </div>
 
       <div style={{ background: 'var(--bg-card)', borderRadius: 20, padding: 24, border: '1px solid var(--border)', boxShadow: 'var(--box-shadow)' }}>

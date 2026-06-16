@@ -3,22 +3,6 @@ import { Search, Plus, ArrowLeft, X, Edit2, UserMinus, Truck } from 'lucide-reac
 import { supabase } from '../../lib/supabaseClient';
 import type { Driver, DeliveryRecord } from '../../types/erp';
 
-const MOCK_DRIVERS: Driver[] = [
-  { id: 'DRV-001', fullName: 'Kwesi Asante', phone: '0244123456', ghanaCard: 'GHA-00001-1', licenseNumber: 'LIC-GH-001', truckId: 'GR-1234-22', status: 'ACTIVE', totalDeliveries: 142, joinedAt: '2022-03-15' },
-  { id: 'DRV-002', fullName: 'Kofi Mensah', phone: '0277654321', ghanaCard: 'GHA-00002-2', licenseNumber: 'LIC-GH-002', truckId: 'GR-5678-22', status: 'ON_DELIVERY', totalDeliveries: 98, joinedAt: '2022-07-20' },
-  { id: 'DRV-003', fullName: 'Ama Serwaa', phone: '0200987654', ghanaCard: 'GHA-00003-3', licenseNumber: 'LIC-GH-003', truckId: 'GR-9012-23', status: 'ACTIVE', totalDeliveries: 205, joinedAt: '2021-11-10' },
-  { id: 'DRV-004', fullName: 'Kojo Boateng', phone: '0541234567', ghanaCard: 'GHA-00004-4', licenseNumber: 'LIC-GH-004', truckId: 'AS-3456-21', status: 'ON_DELIVERY', totalDeliveries: 77, joinedAt: '2023-01-05' },
-  { id: 'DRV-005', fullName: 'Efua Turkson', phone: '0302456789', ghanaCard: 'GHA-00005-5', licenseNumber: 'LIC-GH-005', truckId: 'GR-2345-20', status: 'OFFLINE', totalDeliveries: 310, joinedAt: '2020-06-01' },
-  { id: 'DRV-006', fullName: 'Yaw Darko', phone: '0501876543', ghanaCard: 'GHA-00006-6', licenseNumber: 'LIC-GH-006', truckId: 'BA-7890-22', status: 'ACTIVE', totalDeliveries: 61, joinedAt: '2023-08-18' },
-];
-
-const MOCK_HISTORY: Record<string, DeliveryRecord[]> = {
-  'DRV-001': [
-    { id: 'DEL-001', orderId: 'ORD-1001', clientName: 'Accra Traders Ltd', destination: '123 High St, Accra', driverName: 'Kwesi Asante', driverId: 'DRV-001', dispatchedAt: new Date(Date.now() - 3600000 * 2).toISOString(), status: 'IN_TRANSIT' },
-    { id: 'DEL-009', orderId: 'ORD-1009', clientName: 'Atlantic Ventures', destination: 'Haatso, Accra', driverName: 'Kwesi Asante', driverId: 'DRV-001', dispatchedAt: new Date(Date.now() - 3600000 * 26).toISOString(), deliveredAt: new Date(Date.now() - 3600000 * 23).toISOString(), status: 'DELIVERED' },
-    { id: 'DEL-015', orderId: 'ORD-1015', clientName: 'Nova Imports', destination: 'Tema Port', driverName: 'Kwesi Asante', driverId: 'DRV-001', dispatchedAt: new Date(Date.now() - 3600000 * 50).toISOString(), deliveredAt: new Date(Date.now() - 3600000 * 47).toISOString(), status: 'DELIVERED' },
-  ],
-};
 
 const statusColors: Record<Driver['status'], { bg: string; color: string; label: string }> = {
   ACTIVE:      { bg: '#d1fae5', color: '#065f46', label: 'Active' },
@@ -52,8 +36,8 @@ export default function DriversView({ addNotification }: Props) {
       setLoading(true);
       try {
         const { data } = await supabase.from('drivers').select('*').order('fullName');
-        setDrivers(data && data.length > 0 ? data : MOCK_DRIVERS);
-      } catch { setDrivers(MOCK_DRIVERS); }
+        setDrivers(data ?? []);
+      } catch { setDrivers([]); }
       setLoading(false);
     };
     load();
@@ -127,7 +111,7 @@ export default function DriversView({ addNotification }: Props) {
   );
 
   if (profileDriver) {
-    const history = MOCK_HISTORY[profileDriver.id] ?? [];
+    const history: DeliveryRecord[] = [];
     const onTime = history.length > 0 ? Math.round((history.filter(h => h.status === 'DELIVERED').length / history.length) * 100) : 0;
     return (
       <div style={{ padding: '24px 16px', maxWidth: 900, margin: '0 auto' }}>
@@ -248,7 +232,14 @@ export default function DriversView({ addNotification }: Props) {
       </div>
 
       {loading ? (
-        <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-muted)' }}>Loading drivers...</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
+          {[0,1,2,3,4].map(i => <div key={i} className="animate-pulse h-10 bg-slate-200 dark:bg-slate-700 rounded mb-2" />)}
+        </div>
+      ) : filtered.length === 0 ? (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 0', color: 'var(--text-muted)' }}>
+          <Truck size={40} style={{ opacity: 0.3, marginBottom: 12 }} />
+          <p style={{ fontSize: 15 }}>No drivers found</p>
+        </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
           {filtered.map(d => (

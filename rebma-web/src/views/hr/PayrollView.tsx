@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   DollarSign, Download, Plus, Eye, EyeOff, CheckCircle, Clock,
   AlertCircle, X, FileText, Users, Search
@@ -28,23 +28,6 @@ interface PayrollEntry {
   netPay: number;
 }
 
-const MOCK_BATCHES: PayrollBatch[] = [
-  { id: 'PAY-2026-06', period: 'June 2026', status: 'DRAFT', totalAmount: 135900, staffCount: 12, createdAt: '2026-06-01' },
-  { id: 'PAY-2026-05', period: 'May 2026', status: 'PAID', totalAmount: 131200, staffCount: 12, processedAt: '2026-05-31', createdAt: '2026-05-01' },
-  { id: 'PAY-2026-04', period: 'April 2026', status: 'PAID', totalAmount: 128700, staffCount: 11, processedAt: '2026-04-30', createdAt: '2026-04-01' },
-  { id: 'PAY-2026-03', period: 'March 2026', status: 'PAID', totalAmount: 130100, staffCount: 11, processedAt: '2026-03-31', createdAt: '2026-03-01' },
-];
-
-const MOCK_ENTRIES: PayrollEntry[] = [
-  { staffId: '1', staffName: 'Kwame Mensah', department: 'Operations', role: 'Operations Manager', baseSalary: 8500, allowances: 1200, deductions: 850, netPay: 8850 },
-  { staffId: '2', staffName: 'Abena Owusu', department: 'Finance', role: 'Finance Officer', baseSalary: 7200, allowances: 900, deductions: 720, netPay: 7380 },
-  { staffId: '3', staffName: 'Kofi Asante', department: 'Logistics', role: 'Logistics Coordinator', baseSalary: 6100, allowances: 700, deductions: 610, netPay: 6190 },
-  { staffId: '4', staffName: 'Ama Boateng', department: 'HR', role: 'HR Specialist', baseSalary: 6500, allowances: 800, deductions: 650, netPay: 6650 },
-  { staffId: '5', staffName: 'Yaw Darko', department: 'Marketing', role: 'Marketing Lead', baseSalary: 7000, allowances: 950, deductions: 700, netPay: 7250 },
-  { staffId: '6', staffName: 'Nana Agyei', department: 'Production', role: 'Production Supervisor', baseSalary: 6800, allowances: 750, deductions: 680, netPay: 6870 },
-  { staffId: '7', staffName: 'Kojo Amponsah', department: 'Logistics', role: 'Driver', baseSalary: 4200, allowances: 500, deductions: 420, netPay: 4280 },
-  { staffId: '8', staffName: 'Adwoa Sarpong', department: 'Operations', role: 'Operations Officer', baseSalary: 5800, allowances: 650, deductions: 580, netPay: 5870 },
-];
 
 interface Props {
   currentUser: CurrentUser | null;
@@ -53,13 +36,33 @@ interface Props {
 }
 
 export default function PayrollView({ currentUser, staffList, addNotification }: Props) {
-  const [batches, setBatches] = useState<PayrollBatch[]>(MOCK_BATCHES);
+  const [batches, setBatches] = useState<PayrollBatch[]>([]);
+  const [entries, setEntries] = useState<PayrollEntry[]>([]);
+  const [loading, setLoading] = useState(true);
   const [activeBatch, setActiveBatch] = useState<PayrollBatch | null>(null);
   const [showAmounts, setShowAmounts] = useState(false);
   const [search, setSearch] = useState('');
   const [deptFilter, setDeptFilter] = useState('All');
   const [showNewBatch, setShowNewBatch] = useState(false);
   const [newPeriod, setNewPeriod] = useState('');
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      try {
+        const [{ data: bData }, { data: eData }] = await Promise.all([
+          supabase.from('payroll_batches').select('*').order('created_at', { ascending: false }),
+          supabase.from('payroll_entries').select('*').order('created_at', { ascending: false }),
+        ]);
+        if (bData) setBatches(bData as PayrollBatch[]);
+        if (eData) setEntries(eData as PayrollEntry[]);
+      } catch {
+        // leave empty — show empty state
+      }
+      setLoading(false);
+    };
+    load();
+  }, []);
 
   const isHR = currentUser?.department === 'HR' || currentUser?.isCeo;
   const isFinance = currentUser?.department === 'Finance';
@@ -75,9 +78,9 @@ export default function PayrollView({ currentUser, staffList, addNotification }:
     return `GHS ${amount.toLocaleString()}`;
   };
 
-  const depts = ['All', ...Array.from(new Set(MOCK_ENTRIES.map(e => e.department)))];
+  const depts = ['All', ...Array.from(new Set(entries.map(e => e.department)))];
 
-  const filteredEntries = MOCK_ENTRIES.filter(e => {
+  const filteredEntries = entries.filter(e => {
     const matchSearch = e.staffName.toLowerCase().includes(search.toLowerCase()) || e.role.toLowerCase().includes(search.toLowerCase());
     const matchDept = deptFilter === 'All' || e.department === deptFilter;
     if (canSeeOwnSalary) return e.staffId === currentUser?.id && matchSearch;
@@ -85,7 +88,7 @@ export default function PayrollView({ currentUser, staffList, addNotification }:
   });
 
   // Dept totals for Finance view
-  const deptTotals = MOCK_ENTRIES.reduce<Record<string, number>>((acc, e) => {
+  const deptTotals = entries.reduce<Record<string, number>>((acc, e) => {
     acc[e.department] = (acc[e.department] || 0) + e.netPay;
     return acc;
   }, {});
@@ -103,8 +106,8 @@ export default function PayrollView({ currentUser, staffList, addNotification }:
     if (!newPeriod) return;
     const batch: PayrollBatch = {
       id: `PAY-${Date.now()}`, period: newPeriod, status: 'DRAFT',
-      totalAmount: MOCK_ENTRIES.reduce((s, e) => s + e.netPay, 0),
-      staffCount: MOCK_ENTRIES.length, createdAt: new Date().toISOString().split('T')[0],
+      totalAmount: entries.reduce((s, e) => s + e.netPay, 0),
+      staffCount: entries.length, createdAt: new Date().toISOString().split('T')[0],
     };
     supabase.from('payroll_batches').insert([batch]).then(() => {}, () => {});
     setBatches(prev => [batch, ...prev]);
@@ -156,7 +159,7 @@ export default function PayrollView({ currentUser, staffList, addNotification }:
             { label: 'Total Batches', value: batches.length, color: 'var(--accent)', icon: FileText },
             { label: 'Draft', value: batches.filter(b => b.status === 'DRAFT').length, color: '#f59e0b', icon: Clock },
             { label: 'Paid', value: batches.filter(b => b.status === 'PAID').length, color: '#10b981', icon: CheckCircle },
-            { label: 'Staff on Payroll', value: MOCK_ENTRIES.length, color: '#6366f1', icon: Users },
+            { label: 'Staff on Payroll', value: entries.length, color: '#6366f1', icon: Users },
           ].map(card => (
             <div key={card.label} className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-3.5">
               <div className="flex items-center justify-between mb-1">
@@ -196,6 +199,17 @@ export default function PayrollView({ currentUser, staffList, addNotification }:
           <div className="px-4 py-3 border-b border-[var(--border)] flex items-center justify-between">
             <h3 className="font-bold text-[var(--text-primary)] text-sm">Payroll Batches</h3>
           </div>
+          {loading ? (
+            <div className="p-4 space-y-2">
+              {Array.from({ length: 5 }).map((_, i) => <div key={i} className="animate-pulse h-10 bg-slate-200 dark:bg-slate-700 rounded mb-2" />)}
+            </div>
+          ) : batches.length === 0 ? (
+            <div className="text-center py-12 text-slate-400">
+              <FileText className="w-10 h-10 mx-auto mb-3 opacity-40" />
+              <p className="font-medium">No payroll batches yet</p>
+              <p className="text-sm mt-1">They will appear here once added</p>
+            </div>
+          ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
@@ -230,7 +244,7 @@ export default function PayrollView({ currentUser, staffList, addNotification }:
                           </button>
                         )}
                         {batch.status === 'PAID' && (
-                          <button onClick={() => exportToCSV(MOCK_ENTRIES, ['staffName', 'department', 'role', 'baseSalary', 'allowances', 'deductions', 'netPay'], `payroll_${batch.id}`)}
+                          <button onClick={() => exportToCSV(entries, ['staffName', 'department', 'role', 'baseSalary', 'allowances', 'deductions', 'netPay'], `payroll_${batch.id}`)}
                             className="text-xs px-3 py-1.5 bg-[var(--accent-light)] text-[var(--accent)] rounded-lg font-semibold hover:opacity-80 cursor-pointer">
                             Export
                           </button>
@@ -242,6 +256,7 @@ export default function PayrollView({ currentUser, staffList, addNotification }:
               </tbody>
             </table>
           </div>
+          )}
         </div>
       )}
 
@@ -261,7 +276,7 @@ export default function PayrollView({ currentUser, staffList, addNotification }:
                   Process Batch
                 </button>
               )}
-              <button onClick={() => exportToCSV(MOCK_ENTRIES, ['staffName', 'department', 'role', 'baseSalary', 'allowances', 'deductions', 'netPay'], `payroll_${activeBatch.id}`)}
+              <button onClick={() => exportToCSV(entries, ['staffName', 'department', 'role', 'baseSalary', 'allowances', 'deductions', 'netPay'], `payroll_${activeBatch.id}`)}
                 className="flex items-center gap-1.5 text-xs px-3 py-1.5 bg-[var(--accent-light)] text-[var(--accent)] border border-[var(--border)] rounded-lg font-semibold cursor-pointer">
                 <Download className="w-3.5 h-3.5" /> Export CSV
               </button>

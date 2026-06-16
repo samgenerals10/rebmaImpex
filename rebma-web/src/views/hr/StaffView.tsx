@@ -6,20 +6,6 @@ import {
 import { supabase } from '../../lib/supabaseClient';
 import type { StaffMember } from '../../types/erp';
 
-const MOCK_STAFF: StaffMember[] = [
-  { id: '1', fullName: 'Kwame Mensah', email: 'kwame.mensah@rebma.com', department: 'Operations', role: 'Operations Manager', ghanaCard: 'GHA-001234567-8', phone: '+233 24 123 4567', joinedAt: '2021-03-15', status: 'ACTIVE' },
-  { id: '2', fullName: 'Abena Owusu', email: 'abena.owusu@rebma.com', department: 'Finance', role: 'Finance Officer', ghanaCard: 'GHA-002345678-9', phone: '+233 20 234 5678', joinedAt: '2020-07-01', status: 'ACTIVE' },
-  { id: '3', fullName: 'Kofi Asante', email: 'kofi.asante@rebma.com', department: 'Logistics', role: 'Logistics Coordinator', ghanaCard: 'GHA-003456789-0', phone: '+233 27 345 6789', joinedAt: '2022-01-10', status: 'ACTIVE' },
-  { id: '4', fullName: 'Ama Boateng', email: 'ama.boateng@rebma.com', department: 'HR', role: 'HR Specialist', ghanaCard: 'GHA-004567890-1', phone: '+233 26 456 7890', joinedAt: '2021-09-20', status: 'ACTIVE' },
-  { id: '5', fullName: 'Yaw Darko', email: 'yaw.darko@rebma.com', department: 'Marketing', role: 'Marketing Lead', ghanaCard: 'GHA-005678901-2', phone: '+233 24 567 8901', joinedAt: '2022-05-05', status: 'INACTIVE' },
-  { id: '6', fullName: 'Akosua Frimpong', email: 'akosua.frimpong@rebma.com', department: 'Reception', role: 'Receptionist', ghanaCard: 'GHA-006789012-3', phone: '+233 20 678 9012', joinedAt: '2023-02-14', status: 'ACTIVE' },
-  { id: '7', fullName: 'Nana Agyei', email: 'nana.agyei@rebma.com', department: 'Production', role: 'Production Supervisor', ghanaCard: 'GHA-007890123-4', phone: '+233 27 789 0123', joinedAt: '2019-11-01', status: 'ACTIVE' },
-  { id: '8', fullName: 'Efua Tetteh', email: 'efua.tetteh@rebma.com', department: 'Finance', role: 'Accountant', ghanaCard: 'GHA-008901234-5', phone: '+233 26 890 1234', joinedAt: '2021-06-30', status: 'SUSPENDED' },
-  { id: '9', fullName: 'Kojo Amponsah', email: 'kojo.amponsah@rebma.com', department: 'Logistics', role: 'Driver', ghanaCard: 'GHA-009012345-6', phone: '+233 24 901 2345', joinedAt: '2020-04-22', status: 'ACTIVE' },
-  { id: '10', fullName: 'Adwoa Sarpong', email: 'adwoa.sarpong@rebma.com', department: 'Operations', role: 'Operations Officer', ghanaCard: 'GHA-010123456-7', phone: '+233 20 012 3456', joinedAt: '2022-08-17', status: 'ACTIVE' },
-  { id: '11', fullName: 'Kwesi Ofori', email: 'kwesi.ofori@rebma.com', department: 'Marketing', role: 'Sales Representative', ghanaCard: 'GHA-011234567-8', phone: '+233 27 123 4560', joinedAt: '2023-01-03', status: 'ACTIVE' },
-  { id: '12', fullName: 'Maame Asare', email: 'maame.asare@rebma.com', department: 'Management', role: 'Executive Assistant', ghanaCard: 'GHA-012345678-9', phone: '+233 26 234 5601', joinedAt: '2020-12-11', status: 'ACTIVE' },
-];
 
 const DEPARTMENTS = ['All', 'Operations', 'Finance', 'Logistics', 'HR', 'Marketing', 'Reception', 'Production', 'Management'];
 
@@ -56,7 +42,8 @@ interface Props {
 }
 
 export default function StaffView({ staffList: propStaff, addNotification }: Props) {
-  const [staff, setStaff] = useState<StaffMember[]>(propStaff.length ? propStaff : MOCK_STAFF);
+  const [staff, setStaff] = useState<StaffMember[]>(propStaff.length ? propStaff : []);
+  const [loadingStaff, setLoadingStaff] = useState(true);
   const [search, setSearch] = useState('');
   const [deptFilter, setDeptFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
@@ -69,9 +56,17 @@ export default function StaffView({ staffList: propStaff, addNotification }: Pro
   const [form, setForm] = useState({ fullName: '', email: '', department: 'Operations', role: '', phone: '', ghanaCard: '' });
 
   useEffect(() => {
-    supabase.from('staff').select('*').then(({ data, error }) => {
-      if (!error && data && data.length > 0) setStaff(data as StaffMember[]);
-    });
+    const load = async () => {
+      setLoadingStaff(true);
+      try {
+        const { data } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
+        if (data) setStaff(data as StaffMember[]);
+      } catch {
+        // show empty state
+      }
+      setLoadingStaff(false);
+    };
+    load();
   }, []);
 
   const filtered = staff.filter(s => {
@@ -328,6 +323,12 @@ export default function StaffView({ staffList: propStaff, addNotification }: Pro
       </div>
 
       <div style={{ background: 'var(--bg-card)', borderRadius: 12, border: '1px solid var(--border)', overflow: 'hidden' }}>
+        {loadingStaff ? (
+          <div style={{ padding: '1rem' }}>
+            {Array.from({ length: 5 }).map((_, i) => <div key={i} className="animate-pulse h-10 bg-slate-200 dark:bg-slate-700 rounded mb-2" />)}
+          </div>
+        ) : (
+        <>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 700 }}>
             <thead>
@@ -394,8 +395,12 @@ export default function StaffView({ staffList: propStaff, addNotification }: Pro
             </tbody>
           </table>
         </div>
-        {filtered.length === 0 && (
-          <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>No staff members found</div>
+        {filtered.length === 0 && !loadingStaff && (
+          <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+            {staff.length === 0 ? 'No staff members yet — they will appear here once added' : 'No staff members found'}
+          </div>
+        )}
+        </>
         )}
       </div>
 

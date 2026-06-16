@@ -14,14 +14,6 @@ interface OutputRecord {
   notes: string;
 }
 
-const MOCK_RECORDS: OutputRecord[] = [
-  { id: '1', date: '2026-06-01', product: 'Shea Butter Sachet', received: 200, boxes: 40, sachets: 4000, quality: 'Pass', notes: 'Smooth run' },
-  { id: '2', date: '2026-06-02', product: 'Palm Oil Pouch', received: 150, boxes: 30, sachets: 3000, quality: 'Pass', notes: '' },
-  { id: '3', date: '2026-06-03', product: 'Coconut Oil Sachet', received: 180, boxes: 35, sachets: 3500, quality: 'Fail', notes: 'Sealing machine issue' },
-  { id: '4', date: '2026-06-04', product: 'Groundnut Oil Pouch', received: 220, boxes: 44, sachets: 4400, quality: 'Pass', notes: '' },
-  { id: '5', date: '2026-06-05', product: 'Shea Butter Sachet', received: 190, boxes: 38, sachets: 3800, quality: 'Pass', notes: 'Minor spillage noted' },
-  { id: '6', date: '2026-06-08', product: 'Cocoa Butter Pouch', received: 160, boxes: 32, sachets: 3200, quality: 'Pass', notes: '' },
-];
 
 interface Props {
   addNotification: (msg: string) => void;
@@ -29,17 +21,20 @@ interface Props {
 
 export default function OutputRecordingView({ addNotification }: Props) {
   const [records, setRecords] = useState<OutputRecord[]>([]);
+  const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ date: new Date().toISOString().split('T')[0], product: '', received: '', boxes: '', sachets: '', quality: 'Pass' as 'Pass' | 'Fail', notes: '' });
 
   useEffect(() => {
     const load = async () => {
+      setLoading(true);
       try {
         const { data, error } = await supabase.from('production_output').select('*').order('date', { ascending: false });
-        if (error || !data || data.length === 0) setRecords(MOCK_RECORDS);
-        else setRecords(data);
+        if (!error && data) setRecords(data);
+        else setRecords([]);
       } catch {
-        setRecords(MOCK_RECORDS);
+        setRecords([]);
       }
+      setLoading(false);
     };
     load();
   }, []);
@@ -158,7 +153,8 @@ export default function OutputRecordingView({ addNotification }: Props) {
             <Download size={14} /> Export CSV
           </button>
         </div>
-        <div style={{ overflowX: 'auto' }}>
+        {loading && Array.from({ length: 5 }).map((_, i) => <div key={i} className="animate-pulse h-10 bg-slate-200 dark:bg-slate-700 rounded mb-2" />)}
+        {!loading && <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--border)' }}>
@@ -186,7 +182,14 @@ export default function OutputRecordingView({ addNotification }: Props) {
               ))}
             </tbody>
           </table>
-        </div>
+          {records.length === 0 && (
+            <div className="text-center py-12 text-[var(--text-muted)]">
+              <Package className="w-10 h-10 mx-auto mb-3 opacity-40" />
+              <p className="font-semibold text-sm">No output records yet</p>
+              <p className="text-xs mt-1">They will appear here once added</p>
+            </div>
+          )}
+        </div>}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16 }}>

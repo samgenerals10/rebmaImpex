@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { Search, Download, Plus, MoreVertical, CheckCircle, XCircle, Clock, Upload, Camera } from 'lucide-react';
 import { exportToCSV } from '../../utils/export';
@@ -14,14 +14,6 @@ interface Expense {
   status: 'Pending' | 'Approved' | 'Rejected';
 }
 
-const MOCK_EXPENSES: Expense[] = [
-  { id: '1', category: 'Rent', description: 'December Office Rent', amount: 12000, date: '2024-12-01', receipt: true, submittedBy: 'Finance Admin', status: 'Approved' },
-  { id: '2', category: 'Utilities', description: 'Electricity Bill — November', amount: 3500, date: '2024-12-03', receipt: true, submittedBy: 'Finance Admin', status: 'Approved' },
-  { id: '3', category: 'Transport', description: 'Staff shuttle — December 1-7', amount: 2800, date: '2024-12-07', receipt: false, submittedBy: 'HR Dept', status: 'Pending' },
-  { id: '4', category: 'Maintenance', description: 'Generator servicing', amount: 5500, date: '2024-12-05', receipt: true, submittedBy: 'Operations', status: 'Pending' },
-  { id: '5', category: 'Admin', description: 'Office supplies — stationery', amount: 850, date: '2024-12-08', receipt: false, submittedBy: 'Reception', status: 'Approved' },
-  { id: '6', category: 'Other', description: 'Refreshments — Staff meeting', amount: 1200, date: '2024-12-06', receipt: true, submittedBy: 'Management', status: 'Rejected' },
-];
 
 const CATEGORY_COLORS: Record<string, string> = {
   Rent: 'bg-blue-100 text-blue-700',
@@ -46,7 +38,33 @@ interface Props {
 const CATEGORIES = ['Rent', 'Utilities', 'Transport', 'Maintenance', 'Admin', 'Other'];
 
 export default function FinanceExpensesView({ addNotification, currentUser }: Props) {
-  const [expenses, setExpenses] = useState<Expense[]>(MOCK_EXPENSES);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [loadingExpenses, setLoadingExpenses] = useState(true);
+
+  useEffect(() => {
+    const load = async () => {
+      setLoadingExpenses(true);
+      try {
+        const { data } = await supabase.from('finance_expenses').select('*').order('created_at', { ascending: false });
+        if (data) {
+          setExpenses(data.map((e: any) => ({
+            id: e.id,
+            category: e.category || 'Other',
+            description: e.description || '',
+            amount: e.amount || 0,
+            date: e.date || e.created_at?.split('T')[0] || '',
+            receipt: e.receipt || false,
+            submittedBy: e.submitted_by || e.submittedBy || '',
+            status: e.status || 'Pending',
+          } as Expense)));
+        }
+      } catch {
+        // show empty state
+      }
+      setLoadingExpenses(false);
+    };
+    load();
+  }, []);
   const [search, setSearch] = useState('');
   const [catFilter, setCatFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
@@ -125,6 +143,17 @@ export default function FinanceExpensesView({ addNotification, currentUser }: Pr
       </div>
 
       <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl overflow-hidden">
+        {loadingExpenses ? (
+          <div className="p-4 space-y-2">
+            {Array.from({ length: 5 }).map((_, i) => <div key={i} className="animate-pulse h-10 bg-slate-200 dark:bg-slate-700 rounded mb-2" />)}
+          </div>
+        ) : expenses.length === 0 ? (
+          <div className="text-center py-12 text-slate-400">
+            <CheckCircle className="w-10 h-10 mx-auto mb-3 opacity-40" />
+            <p className="font-medium">No expenses yet</p>
+            <p className="text-sm mt-1">They will appear here once added</p>
+          </div>
+        ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead><tr className="border-b border-[var(--border)]">{['Category', 'Description', 'Amount', 'Date', 'Receipt', 'By', 'Status', ''].map(h => <th key={h} className="px-4 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wide whitespace-nowrap">{h}</th>)}</tr></thead>
@@ -163,6 +192,7 @@ export default function FinanceExpensesView({ addNotification, currentUser }: Pr
             </tbody>
           </table>
         </div>
+        )}
       </div>
 
       {showForm && (

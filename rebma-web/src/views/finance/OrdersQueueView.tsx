@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import {
   Search, Download, CheckCircle, XCircle, Eye, MoreVertical,
@@ -16,14 +16,6 @@ interface Props {
   currentUser?: { fullName: string; department: string } | null;
 }
 
-const MOCK_ORDERS: Order[] = [
-  { id: 'ORD-2024-001', clientName: 'Tema Industrial Ltd', products: 'Steel Pipes, Fittings (×150)', totalAmount: 120000, paymentMode: 'CASH', status: 'PENDING_FINANCE', createdAt: '2024-12-10', submittedBy: 'Ama Boateng' },
-  { id: 'ORD-2024-002', clientName: 'Accra Builders Co.', products: 'PVC Pipes (×500), Elbow Fittings', totalAmount: 45000, paymentMode: 'CHEQUE', status: 'PENDING_FINANCE', createdAt: '2024-12-09', submittedBy: 'Kofi Mensah' },
-  { id: 'ORD-2024-003', clientName: 'Kumasi Contractors', products: 'Hydraulic Hose Fittings (×200)', totalAmount: 28000, paymentMode: 'MOBILE_MONEY', status: 'PENDING_FINANCE', createdAt: '2024-12-09', submittedBy: 'Yaw Darko' },
-  { id: 'ORD-2024-004', clientName: 'Cape Coast Ventures', products: 'Copper Wire 2.5mm (×1000m)', totalAmount: 52000, paymentMode: 'CREDIT', status: 'PENDING_FINANCE', createdAt: '2024-12-08', submittedBy: 'Akua Sarpong' },
-  { id: 'ORD-2024-005', clientName: 'Takoradi Dredging', products: 'Valve Gate 2" (×50)', totalAmount: 10500, paymentMode: 'CASH', status: 'APPROVED', createdAt: '2024-12-07', submittedBy: 'Emmanuel Asante' },
-  { id: 'ORD-2024-006', clientName: 'Ho City Supplies', products: 'Thread Seal Tape (×200)', totalAmount: 1600, paymentMode: 'MOBILE_MONEY', status: 'REJECTED', createdAt: '2024-12-06', submittedBy: 'Abena Owusu' },
-];
 
 const MODE_COLORS: Record<string, string> = {
   CASH: 'bg-green-100 text-green-700',
@@ -77,7 +69,8 @@ const EMPTY_FORM: PaymentForm = {
 };
 
 export default function FinanceOrdersQueueView({ addNotification, ordersList: propOrders, setOrdersList, onEvaluateOrder, currentUser }: Props) {
-  const [orders, setOrders] = useState<Order[]>(propOrders && propOrders.length > 0 ? propOrders.filter(o => o.status === 'PENDING_FINANCE') : MOCK_ORDERS);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loadingOrders, setLoadingOrders] = useState(!propOrders || propOrders.length === 0);
   const [search, setSearch] = useState('');
   const [modeFilter, setModeFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
@@ -86,7 +79,29 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
   const [rejectModal, setRejectModal] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [payForm, setPayForm] = useState<PaymentForm>({ ...EMPTY_FORM });
-  const [allOrders, setAllOrders] = useState<Order[]>(MOCK_ORDERS);
+  const [allOrders, setAllOrders] = useState<Order[]>([]);
+
+  useEffect(() => {
+    if (propOrders && propOrders.length > 0) {
+      setAllOrders(propOrders);
+      setOrders(propOrders.filter(o => o.status === 'PENDING_FINANCE'));
+      return;
+    }
+    const load = async () => {
+      setLoadingOrders(true);
+      try {
+        const { data } = await supabase.from('orders').select('*').order('createdAt', { ascending: false }).limit(200);
+        const rows = (data ?? []) as Order[];
+        setAllOrders(rows);
+        setOrders(rows);
+      } catch {
+        setAllOrders([]);
+        setOrders([]);
+      }
+      setLoadingOrders(false);
+    };
+    load();
+  }, [propOrders]);
 
   const displayOrders = (propOrders && propOrders.length > 0 ? propOrders : allOrders);
 
@@ -341,6 +356,10 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
       </div>
 
       <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl overflow-hidden">
+        {loadingOrders ? (
+          <div className="p-6">{[0,1,2,3,4].map(i => <div key={i} className="animate-pulse h-10 bg-slate-200 dark:bg-slate-700 rounded mb-2" />)}</div>
+        ) : (
+        <>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -394,6 +413,8 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
             <Package size={32} className="opacity-30 mb-2" />
             <p className="text-sm">No orders found</p>
           </div>
+        )}
+        </>
         )}
       </div>
 

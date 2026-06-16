@@ -22,24 +22,6 @@ interface StockMovement {
   date: string;
 }
 
-const MOCK_STOCK: StockItem[] = [
-  { id: 'STK-001', name: 'Industrial Steel Pipes', sku: 'ISP-100', category: 'Raw Materials', current: 450, capacity: 600, updatedAt: new Date(Date.now() - 3600000).toISOString() },
-  { id: 'STK-002', name: 'Hydraulic Hose Fittings', sku: 'HHF-200', category: 'Components', current: 12, capacity: 300, updatedAt: new Date(Date.now() - 7200000).toISOString() },
-  { id: 'STK-003', name: 'Chemical Drums (20L)', sku: 'CHD-300', category: 'Chemicals', current: 0, capacity: 100, updatedAt: new Date(Date.now() - 86400000).toISOString() },
-  { id: 'STK-004', name: 'Generator Parts Kit', sku: 'GPK-400', category: 'Equipment', current: 80, capacity: 120, updatedAt: new Date(Date.now() - 1800000).toISOString() },
-  { id: 'STK-005', name: 'PVC Pipes (3m)', sku: 'PVC-500', category: 'Raw Materials', current: 220, capacity: 400, updatedAt: new Date(Date.now() - 5400000).toISOString() },
-  { id: 'STK-006', name: 'Electrical Cables (Roll)', sku: 'ELC-600', category: 'Electrical', current: 15, capacity: 200, updatedAt: new Date(Date.now() - 10800000).toISOString() },
-  { id: 'STK-007', name: 'Safety Helmets', sku: 'SFH-700', category: 'Safety', current: 95, capacity: 150, updatedAt: new Date(Date.now() - 3000000).toISOString() },
-  { id: 'STK-008', name: 'Lubricant Oil (5L)', sku: 'LBO-800', category: 'Chemicals', current: 8, capacity: 80, updatedAt: new Date(Date.now() - 14400000).toISOString() },
-];
-
-const MOCK_MOVEMENTS: StockMovement[] = [
-  { id: 'MOV-001', productName: 'Industrial Steel Pipes', change: 50, reason: 'Received shipment', updatedBy: 'Kwame Ofori', date: new Date(Date.now() - 3600000).toISOString() },
-  { id: 'MOV-002', productName: 'Hydraulic Hose Fittings', change: -30, reason: 'Sales order fulfillment', updatedBy: 'Ama Serwaa', date: new Date(Date.now() - 7200000).toISOString() },
-  { id: 'MOV-003', productName: 'Chemical Drums (20L)', change: -100, reason: 'Complete stock out — sold', updatedBy: 'Kofi Mensah', date: new Date(Date.now() - 86400000).toISOString() },
-  { id: 'MOV-004', productName: 'Generator Parts Kit', change: 20, reason: 'Restocking from supplier', updatedBy: 'Kwame Ofori', date: new Date(Date.now() - 1800000).toISOString() },
-  { id: 'MOV-005', productName: 'Electrical Cables (Roll)', change: -85, reason: 'Project deployment', updatedBy: 'Ama Serwaa', date: new Date(Date.now() - 10800000).toISOString() },
-];
 
 const stockStatus = (current: number, capacity: number): { label: string; bg: string; color: string } => {
   if (current === 0) return { label: 'Out of Stock', bg: '#ffe4e6', color: '#9f1239' };
@@ -60,7 +42,7 @@ interface Props { incomingGoodsList: IncomingGoods[]; addNotification: (msg: str
 
 export default function StockView({ incomingGoodsList: _incomingGoodsList, addNotification }: Props) {
   const [stock, setStock] = useState<StockItem[]>([]);
-  const [movements, setMovements] = useState<StockMovement[]>(MOCK_MOVEMENTS);
+  const [movements, setMovements] = useState<StockMovement[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
@@ -73,9 +55,11 @@ export default function StockView({ incomingGoodsList: _incomingGoodsList, addNo
     const load = async () => {
       setLoading(true);
       try {
-        const { data } = await supabase.from('stock_items').select('*');
-        setStock(data && data.length > 0 ? data : MOCK_STOCK);
-      } catch { setStock(MOCK_STOCK); }
+        const { data } = await supabase.from('stock_items').select('*').order('updatedAt', { ascending: false });
+        setStock(data ?? []);
+        const { data: movData } = await supabase.from('stock_movements').select('*').order('date', { ascending: false });
+        setMovements(movData ?? []);
+      } catch { setStock([]); setMovements([]); }
       setLoading(false);
     };
     load();
@@ -222,7 +206,13 @@ export default function StockView({ incomingGoodsList: _incomingGoodsList, addNo
                 })}
               </tbody>
             </table>
-            {filtered.length === 0 && <p style={{ textAlign: 'center', padding: '32px 0', color: 'var(--text-muted)' }}>No stock items match your filters.</p>}
+            {filtered.length === 0 && (
+              <div className="text-center py-12 text-[var(--text-muted)]">
+                <Package className="w-10 h-10 mx-auto mb-3 opacity-40" />
+                <p className="font-semibold text-sm">No stock items yet</p>
+                <p className="text-xs mt-1">They will appear here once added</p>
+              </div>
+            )}
           </div>
         )}
       </div>

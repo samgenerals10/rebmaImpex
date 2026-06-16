@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { Search, Download, Plus, Upload, Camera, AlertTriangle } from 'lucide-react';
 import { exportToCSV } from '../../utils/export';
@@ -16,13 +16,6 @@ interface PettyCashEntry {
 }
 
 const INITIAL_FLOAT = 15000;
-const MOCK_ENTRIES: PettyCashEntry[] = [
-  { id: '1', date: '2024-12-01', description: 'Petty cash replenishment', amount: 5000, disbursedTo: 'Finance Admin', category: 'Replenishment', receipt: false, balanceAfter: 15000, type: 'replenishment' },
-  { id: '2', date: '2024-12-03', description: 'Office stationery', amount: 450, disbursedTo: 'Reception', category: 'Admin', receipt: true, balanceAfter: 14550, type: 'disbursement' },
-  { id: '3', date: '2024-12-05', description: 'Courier fees', amount: 120, disbursedTo: 'Dispatch', category: 'Transport', receipt: true, balanceAfter: 14430, type: 'disbursement' },
-  { id: '4', date: '2024-12-07', description: 'Meeting refreshments', amount: 800, disbursedTo: 'Management', category: 'Admin', receipt: false, balanceAfter: 13630, type: 'disbursement' },
-  { id: '5', date: '2024-12-08', description: 'Printing cartridges', amount: 680, disbursedTo: 'Operations', category: 'Admin', receipt: true, balanceAfter: 12950, type: 'disbursement' },
-];
 
 const CATEGORIES = ['Admin', 'Transport', 'Maintenance', 'Utilities', 'Other'];
 
@@ -32,7 +25,25 @@ interface Props {
 }
 
 export default function FinancePettyCashView({ addNotification, currentUser }: Props) {
-  const [entries, setEntries] = useState<PettyCashEntry[]>(MOCK_ENTRIES);
+  const [entries, setEntries] = useState<PettyCashEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      try {
+        const { data } = await supabase
+          .from('finance_petty_cash')
+          .select('*')
+          .order('created_at', { ascending: false });
+        setEntries((data ?? []) as PettyCashEntry[]);
+      } catch {
+        setEntries([]);
+      }
+      setLoading(false);
+    };
+    load();
+  }, []);
   const [search, setSearch] = useState('');
   const [showDisbForm, setShowDisbForm] = useState(false);
   const [showReplenForm, setShowReplenForm] = useState(false);
@@ -109,6 +120,14 @@ export default function FinancePettyCashView({ addNotification, currentUser }: P
       </div>
 
       <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl overflow-hidden">
+        {loading ? (
+          <div className="p-6">{[0,1,2,3,4].map(i => <div key={i} className="animate-pulse h-10 bg-slate-200 dark:bg-slate-700 rounded mb-2" />)}</div>
+        ) : filtered.length === 0 ? (
+          <div className="flex flex-col items-center py-10 text-[var(--text-muted)]">
+            <AlertTriangle size={32} className="opacity-30 mb-2" />
+            <p className="text-sm">No petty cash entries found</p>
+          </div>
+        ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead><tr className="border-b border-[var(--border)]">{['Date', 'Description', 'Amount', 'Disbursed To', 'Category', 'Receipt', 'Balance After', 'Type'].map(h => <th key={h} className="px-4 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wide whitespace-nowrap">{h}</th>)}</tr></thead>
@@ -128,6 +147,7 @@ export default function FinancePettyCashView({ addNotification, currentUser }: P
             </tbody>
           </table>
         </div>
+        )}
       </div>
 
       {showDisbForm && (

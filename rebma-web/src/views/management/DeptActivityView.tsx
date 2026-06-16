@@ -36,23 +36,6 @@ const DEPT_ICONS: Record<string, React.ComponentType<{ className?: string }>> = 
   LOGISTICS:  Truck,
 };
 
-const MOCK_ACTIVITIES: ActivityItem[] = [
-  { id: 'ACT-001', department: 'OPERATIONS', user: 'Kwame Ofori', action: 'Cargo Intake Logged', details: 'Logged 350 units of Steel Pipes from Maersk (Germany)', timestamp: new Date(Date.now() - 2 * 60000).toISOString(), refId: 'CARGO-001' },
-  { id: 'ACT-002', department: 'FINANCE', user: 'Ama Serwaa', action: 'Invoice Generated', details: 'Invoice INV-2026-041 issued for GHS 45,000', timestamp: new Date(Date.now() - 15 * 60000).toISOString(), refId: 'INV-2026-041' },
-  { id: 'ACT-003', department: 'MARKETING', user: 'Kofi Mensah', action: 'Order Created', details: 'New credit order ORD-2091 for Accra Traders Ltd', timestamp: new Date(Date.now() - 30 * 60000).toISOString(), refId: 'ORD-2091' },
-  { id: 'ACT-004', department: 'DISPATCH', user: 'Yaw Boateng', action: 'Delivery Started', details: 'Truck VH-1234-GH departed for Kumasi depot', timestamp: new Date(Date.now() - 45 * 60000).toISOString(), refId: 'DEL-0091' },
-  { id: 'ACT-005', department: 'HR', user: 'Abena Asante', action: 'Staff Registration', details: 'New staff member Kweku Nkrumah registered for DISPATCH', timestamp: new Date(Date.now() - 60 * 60000).toISOString(), refId: 'EMP-0210' },
-  { id: 'ACT-006', department: 'RECEPTION', user: 'Nana Adu', action: 'Visitor Logged', details: 'Guest Mr. Osei Acheampong checked in for meeting', timestamp: new Date(Date.now() - 90 * 60000).toISOString(), refId: 'VIS-0045' },
-  { id: 'ACT-007', department: 'PRODUCTION', user: 'Fiifi Mensah', action: 'Production Output', details: 'Batch B-2026-03 completed: 1200 units packaged', timestamp: new Date(Date.now() - 120 * 60000).toISOString(), refId: 'BATCH-B03' },
-  { id: 'ACT-008', department: 'OPERATIONS', user: 'Kwame Ofori', action: 'Discrepancy Reported', details: '2 damaged cartons found in Cargo-002 — flagged for review', timestamp: new Date(Date.now() - 3 * 3600000).toISOString(), refId: 'CARGO-002' },
-  { id: 'ACT-009', department: 'FINANCE', user: 'Ama Serwaa', action: 'Payment Recorded', details: 'Cash payment GHS 12,500 received from Delta Supplies', timestamp: new Date(Date.now() - 4 * 3600000).toISOString(), refId: 'PAY-0081' },
-  { id: 'ACT-010', department: 'MARKETING', user: 'Adjoa Boateng', action: 'Customer Registered', details: 'New customer Tema Industries Ltd added to directory', timestamp: new Date(Date.now() - 5 * 3600000).toISOString(), refId: 'CUST-0019' },
-  { id: 'ACT-011', department: 'DISPATCH', user: 'Kojo Antwi', action: 'Delivery Completed', details: 'Order ORD-2088 delivered to Takoradi. Signed by K. Asante', timestamp: new Date(Date.now() - 6 * 3600000).toISOString(), refId: 'DEL-0089' },
-  { id: 'ACT-012', department: 'HR', user: 'Abena Asante', action: 'Leave Approved', details: 'Annual leave approved for Esi Mensah (Operations) — 5 days', timestamp: new Date(Date.now() - 7 * 3600000).toISOString(), refId: 'LEAVE-041' },
-  { id: 'ACT-013', department: 'LOGISTICS', user: 'Kwabena Frimpong', action: 'Fuel Logged', details: 'Vehicle VH-5678-GH: 85L diesel logged at Kumasi depot', timestamp: new Date(Date.now() - 8 * 3600000).toISOString(), refId: 'FUEL-0102' },
-  { id: 'ACT-014', department: 'PRODUCTION', user: 'Fiifi Mensah', action: 'WIP Update', details: 'Work-in-progress: 450 units at packaging stage', timestamp: new Date(Date.now() - 9 * 3600000).toISOString(), refId: 'WIP-2026' },
-  { id: 'ACT-015', department: 'RECEPTION', user: 'Nana Adu', action: 'Attendance Marked', details: '28 employees checked in this morning', timestamp: new Date(Date.now() - 24 * 3600000).toISOString(), refId: 'ATT-2026' },
-];
 
 const DEPT_STATS: Array<{ dept: string; todayCount: number; lastActivity: string; status: 'Active' | 'Quiet' | 'Alert' }> = [
   { dept: 'OPERATIONS', todayCount: 12, lastActivity: '2 min ago', status: 'Active' },
@@ -80,7 +63,8 @@ const ALL_DEPTS = ['All', 'OPERATIONS', 'FINANCE', 'MARKETING', 'DISPATCH', 'HR'
 interface Props { addNotification: (msg: string) => void }
 
 export default function DeptActivityView({ addNotification }: Props) {
-  const [activities, setActivities] = useState<ActivityItem[]>(MOCK_ACTIVITIES);
+  const [activities, setActivities] = useState<ActivityItem[]>([]);
+  const [loadingActivities, setLoadingActivities] = useState(true);
   const [filter, setFilter] = useState('All');
   const [search, setSearch] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -95,20 +79,20 @@ export default function DeptActivityView({ addNotification }: Props) {
         .not('department', 'eq', 'CEO')
         .order('timestamp', { ascending: false })
         .limit(50);
-      if (data && data.length > 0) {
-        const mapped: ActivityItem[] = data.map((d: any) => ({
-          id: d.id,
-          department: d.department,
-          user: d.performed_by || d.performedBy || 'System',
-          action: d.action,
-          details: d.details,
-          timestamp: d.timestamp || d.created_at,
-          refId: d.reference_id,
-        }));
-        setActivities(mapped);
-      }
+      const mapped: ActivityItem[] = (data ?? []).map((d: any) => ({
+        id: d.id,
+        department: d.department,
+        user: d.performed_by || d.performedBy || 'System',
+        action: d.action,
+        details: d.details,
+        timestamp: d.timestamp || d.created_at,
+        refId: d.reference_id,
+      }));
+      setActivities(mapped);
     } catch {
-      // keep mock data
+      setActivities([]);
+    } finally {
+      setLoadingActivities(false);
     }
   };
 
@@ -228,8 +212,18 @@ export default function DeptActivityView({ addNotification }: Props) {
         </div>
 
         <div className="divide-y divide-[var(--border)]">
-          {visible.length === 0 && (
-            <p className="py-12 text-center text-xs text-[var(--text-muted)]">No activities found.</p>
+          {loadingActivities && (
+            <div className="p-5 space-y-3">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="animate-pulse h-4 bg-slate-200 dark:bg-slate-700 rounded" />
+              ))}
+            </div>
+          )}
+          {!loadingActivities && visible.length === 0 && (
+            <div className="flex flex-col items-center gap-2 py-12 text-[var(--text-muted)]">
+              <Activity className="w-8 h-8 opacity-30" />
+              <p className="text-xs">No activities found.</p>
+            </div>
           )}
           {visible.map(item => {
             const Icon = DEPT_ICONS[item.department] || Building2;

@@ -86,38 +86,6 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }
   completed:           { label: 'Completed',           color: '#166534', bg: '#bbf7d0' },
 };
 
-const MOCK_ORDERS: SupplierOrder[] = [
-  {
-    id: '1', order_number: 'SUP-2026-001', supplier_name: 'Gdansk Food Exports', supplier_country: 'Poland',
-    supplier_email: 'orders@gdanskfood.pl', currency: 'USD', exchange_rate: 15.4,
-    products: [{ product_name: 'Milk Powder 500g', product_code: 'MP-500', quantity: 20, unit: 'Tons', unit_price: 3200, currency: 'USD', total_price: 64000 }],
-    total_amount: 64000, total_amount_ghs: 985600, expected_delivery_date: '2026-07-15',
-    shipping_method: 'Sea Freight', shipping_details: 'Vessel: MV Atlantic Star', port_of_entry: 'Tema Port',
-    status: 'payment_authorised', payment_authorised: true, payment_authorised_at: '2026-06-10T09:30:00Z',
-    payment_reference: 'REF-GHC-2026-001', created_at: '2026-06-08T10:00:00Z', notes: 'Priority shipment'
-  },
-  {
-    id: '2', order_number: 'SUP-2026-002', supplier_name: 'Istanbul Grain Co.', supplier_country: 'Turkey',
-    supplier_email: 'exports@istgrains.com.tr', currency: 'EUR', exchange_rate: 16.8,
-    products: [
-      { product_name: 'Bread Flour 10kg', product_code: 'BF-10', quantity: 15, unit: 'Tons', unit_price: 850, currency: 'EUR', total_price: 12750 },
-      { product_name: 'Semolina 25kg', product_code: 'SEM-25', quantity: 8, unit: 'Tons', unit_price: 920, currency: 'EUR', total_price: 7360 },
-    ],
-    total_amount: 20110, total_amount_ghs: 337848, expected_delivery_date: '2026-07-28',
-    shipping_method: 'Sea Freight', port_of_entry: 'Tema Port',
-    status: 'pending', payment_authorised: false, created_at: '2026-06-10T14:00:00Z',
-  },
-  {
-    id: '3', order_number: 'SUP-2026-003', supplier_name: 'Warsaw Margarine Ltd.', supplier_country: 'Poland',
-    supplier_email: 'trade@warsawmarg.pl', currency: 'USD', exchange_rate: 15.4,
-    products: [{ product_name: 'Margarine 250g', product_code: 'MRG-250', quantity: 30, unit: 'Tons', unit_price: 2800, currency: 'USD', total_price: 84000 }],
-    total_amount: 84000, total_amount_ghs: 1293600, expected_delivery_date: '2026-08-10',
-    shipping_method: 'Sea Freight', port_of_entry: 'Takoradi Port',
-    status: 'shipped', payment_authorised: true, payment_authorised_at: '2026-06-05T08:00:00Z',
-    payment_reference: 'REF-GHC-2026-003', shipping_details: 'Vessel: MV Baltic Pearl | ETA Aug 10',
-    created_at: '2026-06-02T09:00:00Z',
-  },
-];
 
 function generateOrderNumber(existing: SupplierOrder[]) {
   const year = new Date().getFullYear();
@@ -151,9 +119,9 @@ export default function SupplierOrdersView({ currentUser, addNotification }: Pro
           .from('supplier_orders')
           .select('*')
           .order('created_at', { ascending: false });
-        setOrders(!error && data && data.length > 0 ? data : MOCK_ORDERS);
+        setOrders(!error && data ? data : []);
       } catch {
-        setOrders(MOCK_ORDERS);
+        setOrders([]);
       }
       setLoading(false);
     };

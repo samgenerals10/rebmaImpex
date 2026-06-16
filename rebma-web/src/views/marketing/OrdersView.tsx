@@ -3,24 +3,6 @@ import { Plus, Download, Search, MoreVertical, X, ChevronLeft, ChevronRight, Fil
 import { supabase } from '../../lib/supabaseClient';
 import type { Order } from '../../types/erp';
 
-const MOCK_ORDERS: Order[] = Array.from({ length: 15 }, (_, i) => {
-  const statuses: Order['status'][] = ['PENDING_FINANCE', 'PENDING_MANAGEMENT', 'APPROVED', 'PROCESSING', 'OUT_FOR_DELIVERY', 'DELIVERED', 'REJECTED'];
-  const modes: Order['paymentMode'][] = ['CASH', 'MOBILE_MONEY', 'CHEQUE', 'CREDIT'];
-  const clients = ['Accra Traders Ltd', 'Gulf Imports Co.', 'Kama Industries', 'Prime Suppliers', 'Delta Logistics'];
-  const products = ['Steel Rods 12mm', 'Cement Bags (50kg)', 'Roofing Sheets', 'PVC Pipes', 'Electrical Cables'];
-  const d = new Date(Date.now() - i * 86400000 * 2);
-  return {
-    id: `ord-${i + 1}`,
-    ticketNumber: `RBM-${String(2001 + i).padStart(4, '0')}`,
-    clientName: clients[i % 5],
-    productName: products[i % 5],
-    destination: ['Accra', 'Kumasi', 'Takoradi', 'Tamale', 'Cape Coast'][i % 5],
-    paymentMode: modes[i % 3],
-    totalAmount: Math.round(5000 + (i + 1) * 3200),
-    status: statuses[i % 7],
-    createdAt: d.toISOString(),
-  };
-});
 
 const STATUS_STYLES: Record<Order['status'], string> = {
   PENDING_FINANCE: 'bg-amber-100 text-amber-700',
@@ -78,9 +60,9 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
       setLoading(true);
       try {
         const { data } = await supabase.from('orders').select('*').order('createdAt', { ascending: false }).limit(300);
-        setOrders(data && data.length > 0 ? data : ordersList.length > 0 ? ordersList : MOCK_ORDERS);
+        setOrders(data && data.length > 0 ? data : ordersList.length > 0 ? ordersList : []);
       } catch {
-        setOrders(ordersList.length > 0 ? ordersList : MOCK_ORDERS);
+        setOrders(ordersList.length > 0 ? ordersList : []);
       }
       setLoading(false);
     };

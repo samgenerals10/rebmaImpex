@@ -14,20 +14,6 @@ interface FuelLog {
   odometer: number;
 }
 
-const MOCK_FUEL: FuelLog[] = [
-  { id: '1', date: '2026-06-10', vehicleId: 'GR-1234-22', driver: 'Kwame Asante', liters: 45, cost: 405, station: 'Shell Tema', odometer: 54320 },
-  { id: '2', date: '2026-06-09', vehicleId: 'GR-5678-21', driver: 'Ama Boateng', liters: 80, cost: 720, station: 'Total Accra', odometer: 78100 },
-  { id: '3', date: '2026-06-08', vehicleId: 'GR-3456-22', driver: 'Kojo Mensah', liters: 40, cost: 360, station: 'Goil Kumasi', odometer: 32800 },
-  { id: '4', date: '2026-06-07', vehicleId: 'GR-2345-23', driver: 'Yaw Osei', liters: 35, cost: 315, station: 'Total Takoradi', odometer: 18200 },
-  { id: '5', date: '2026-06-06', vehicleId: 'GR-0123-24', driver: 'Akosua Frimpong', liters: 42, cost: 378, station: 'Shell Spintex', odometer: 9100 },
-  { id: '6', date: '2026-06-05', vehicleId: 'GR-1234-22', driver: 'Kwame Asante', liters: 50, cost: 450, station: 'Goil Tema', odometer: 53890 },
-  { id: '7', date: '2026-06-04', vehicleId: 'GR-5678-21', driver: 'Ama Boateng', liters: 75, cost: 675, station: 'Total Accra', odometer: 77620 },
-  { id: '8', date: '2026-06-03', vehicleId: 'GR-3456-22', driver: 'Kojo Mensah', liters: 38, cost: 342, station: 'Shell Kumasi', odometer: 32400 },
-  { id: '9', date: '2026-06-02', vehicleId: 'GR-6789-18', driver: 'Unassigned', liters: 120, cost: 1080, station: 'Total Tema', odometer: 91200 },
-  { id: '10', date: '2026-06-01', vehicleId: 'GR-9012-20', driver: 'Unassigned', liters: 95, cost: 855, station: 'Goil Accra', odometer: 62300 },
-  { id: '11', date: '2026-05-30', vehicleId: 'GR-2345-23', driver: 'Yaw Osei', liters: 33, cost: 297, station: 'Total Ho', odometer: 17800 },
-  { id: '12', date: '2026-05-28', vehicleId: 'GR-0123-24', driver: 'Akosua Frimpong', liters: 40, cost: 360, station: 'Shell Accra', odometer: 8700 },
-];
 
 const CHART_DATA = [
   { vehicle: 'GR-1234', Jan: 720, Feb: 810, Mar: 680, Apr: 750, May: 855, Jun: 855 },
@@ -46,6 +32,7 @@ interface Props {
 
 export default function FuelManagementView({ addNotification }: Props) {
   const [logs, setLogs] = useState<FuelLog[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [filterVehicle, setFilterVehicle] = useState('All');
   const [filterDriver, setFilterDriver] = useState('');
@@ -53,13 +40,15 @@ export default function FuelManagementView({ addNotification }: Props) {
 
   useEffect(() => {
     const load = async () => {
+      setLoading(true);
       try {
         const { data, error } = await supabase.from('fuel_logs').select('*').order('date', { ascending: false });
-        if (error || !data || data.length === 0) setLogs(MOCK_FUEL);
-        else setLogs(data);
+        if (!error && data) setLogs(data);
+        else setLogs([]);
       } catch {
-        setLogs(MOCK_FUEL);
+        setLogs([]);
       }
+      setLoading(false);
     };
     load();
   }, []);
@@ -143,7 +132,8 @@ export default function FuelManagementView({ addNotification }: Props) {
 
       <div style={{ background: 'var(--bg-card)', borderRadius: 20, padding: 24, border: '1px solid var(--border)', boxShadow: 'var(--box-shadow)' }}>
         <h2 style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: 16, marginBottom: 16 }}>Fuel Logs</h2>
-        <div style={{ overflowX: 'auto' }}>
+        {loading && Array.from({ length: 5 }).map((_, i) => <div key={i} className="animate-pulse h-10 bg-slate-200 dark:bg-slate-700 rounded mb-2" />)}
+        {!loading && <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--border)' }}>
@@ -166,7 +156,14 @@ export default function FuelManagementView({ addNotification }: Props) {
               ))}
             </tbody>
           </table>
-        </div>
+          {filtered.length === 0 && (
+            <div className="text-center py-12 text-[var(--text-muted)]">
+              <Fuel className="w-10 h-10 mx-auto mb-3 opacity-40" />
+              <p className="font-semibold text-sm">No fuel logs yet</p>
+              <p className="text-xs mt-1">They will appear here once added</p>
+            </div>
+          )}
+        </div>}
       </div>
 
       {showModal && (

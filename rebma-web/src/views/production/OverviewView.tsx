@@ -26,21 +26,6 @@ interface Props {
   setActiveSubTab: (tab: string) => void;
 }
 
-const INITIAL_WIP: WipItem[] = [
-  { id: 'WIP-001', productName: 'Refined Palm Oil', stage: 'Processing', qty: 250, updatedAt: '2026-05-25 09:00' },
-  { id: 'WIP-002', productName: 'Polymer Granules (Grade A)', stage: 'Quality Check', qty: 1200, updatedAt: '2026-05-25 10:30' },
-  { id: 'WIP-003', productName: 'Cocoa Butter Blocks', stage: 'Packaging', qty: 80, updatedAt: '2026-05-24 15:00' },
-  { id: 'WIP-004', productName: 'Shea Butter Cream', stage: 'Awaiting Dispatch', qty: 340, updatedAt: '2026-05-24 17:00' },
-];
-
-const MOCK_OUTPUT: OutputRecord[] = [
-  { id: '1', date: '2026-06-01', product: 'Shea Butter Sachet', received: 200, boxes: 40, sachets: 4000, quality: 'Pass', notes: '' },
-  { id: '2', date: '2026-06-02', product: 'Palm Oil Pouch', received: 150, boxes: 30, sachets: 3000, quality: 'Pass', notes: '' },
-  { id: '3', date: '2026-06-03', product: 'Coconut Oil', received: 180, boxes: 35, sachets: 3500, quality: 'Fail', notes: 'Sealing issue' },
-  { id: '4', date: '2026-06-04', product: 'Groundnut Oil', received: 220, boxes: 44, sachets: 4400, quality: 'Pass', notes: '' },
-  { id: '5', date: '2026-06-05', product: 'Shea Butter Sachet', received: 190, boxes: 38, sachets: 3800, quality: 'Pass', notes: '' },
-  { id: '6', date: '2026-06-08', product: 'Cocoa Butter Pouch', received: 160, boxes: 32, sachets: 3200, quality: 'Pass', notes: '' },
-];
 
 const OUTPUT_CHART_DATA = [
   { day: 'Mon', boxes: 40, sachets: 4000 },
@@ -116,8 +101,8 @@ export default function ProductionOverviewView({ currentUser, productionRequests
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
   const name = currentUser?.fullName?.split(' ')[0] || 'Supervisor';
 
-  const [output, setOutput] = useState<OutputRecord[]>(MOCK_OUTPUT);
-  const [wip] = useState<WipItem[]>(INITIAL_WIP);
+  const [output, setOutput] = useState<OutputRecord[]>([]);
+  const [wip, setWip] = useState<WipItem[]>([]);
   const [orderMenu, setOrderMenu] = useState<string | null>(null);
   const [kpiMenu, setKpiMenu] = useState<number | null>(null);
   const [outputTab, setOutputTab] = useState<'boxes' | 'sachets' | 'both'>('both');
@@ -125,7 +110,10 @@ export default function ProductionOverviewView({ currentUser, productionRequests
 
   useEffect(() => {
     supabase.from('production_output').select('*').order('date', { ascending: false }).then(({ data }) => {
-      if (data && data.length > 0) setOutput(data as OutputRecord[]);
+      if (data) setOutput(data as OutputRecord[]);
+    });
+    supabase.from('wip_stock').select('*').order('updatedAt', { ascending: false }).then(({ data }) => {
+      if (data && data.length > 0) setWip(data as WipItem[]);
     });
   }, []);
 

@@ -56,21 +56,11 @@ const TYPE_ICONS: Record<string, React.ElementType> = {
   'Price Review': Tag,
 };
 
-const MOCK_APPROVALS: ApprovalItem[] = [
-  { id: '1', requestId: 'REQ-2024-001', type: 'Cargo Intake', description: 'Hydraulic Hose Fittings — 500 units from Accra Port', department: 'OPERATIONS', amount: 45000, date: '2024-12-10', priority: 'High', status: 'Pending', submittedBy: 'Kofi Mensah' },
-  { id: '2', requestId: 'REQ-2024-002', type: 'Credit Order', description: 'Steel Pipe Fittings for Tema Industrial', department: 'MARKETING', amount: 120000, date: '2024-12-09', priority: 'High', status: 'Pending', submittedBy: 'Ama Boateng' },
-  { id: '3', requestId: 'REQ-2024-003', type: 'Staff Registration', description: 'New hire: Emmanuel Asante — Warehouse Associate', department: 'HR', amount: null, date: '2024-12-08', priority: 'Medium', status: 'Pending', submittedBy: 'HR Dept' },
-  { id: '4', requestId: 'REQ-2024-004', type: 'Discrepancy', description: 'Quantity mismatch: Rubber Gaskets — Expected 200, Received 185', department: 'OPERATIONS', amount: 3500, date: '2024-12-07', priority: 'Medium', status: 'Pending', submittedBy: 'Kwame Adjei' },
-  { id: '5', requestId: 'REQ-2024-005', type: 'Price Review', description: 'Price update request: Copper Wire — GHS 45 → GHS 52 per unit', department: 'MANAGEMENT', amount: null, date: '2024-12-06', priority: 'Low', status: 'Pending', submittedBy: 'Finance Dept' },
-  { id: '6', requestId: 'REQ-2024-006', type: 'Cargo Intake', description: 'PVC Pipes — 1200 units from Takoradi Port', department: 'OPERATIONS', amount: 78000, date: '2024-12-05', priority: 'High', status: 'Approved', submittedBy: 'Yaw Darko' },
-  { id: '7', requestId: 'REQ-2024-007', type: 'Credit Order', description: 'Aluminium Sheets for Cape Coast Project', department: 'MARKETING', amount: 95000, date: '2024-12-04', priority: 'Medium', status: 'Rejected', submittedBy: 'Akua Sarpong' },
-  { id: '8', requestId: 'REQ-2024-008', type: 'Staff Registration', description: 'New hire: Abena Owusu — Finance Analyst', department: 'HR', amount: null, date: '2024-12-03', priority: 'Low', status: 'Approved', submittedBy: 'HR Dept' },
-];
 
 const TABS = ['All', 'Cargo Intake', 'Credit Order', 'Staff Registration', 'Discrepancy', 'Price Review'] as const;
 
 export default function MgmtApprovalsView({ addNotification, currentUser }: Props) {
-  const [items, setItems] = useState<ApprovalItem[]>(MOCK_APPROVALS);
+  const [items, setItems] = useState<ApprovalItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<typeof TABS[number]>('All');
   const [search, setSearch] = useState('');
@@ -110,7 +100,7 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
           submittedBy: String(row.submitted_by || 'Operations'),
           raw: row,
         }));
-        setItems(mapped.length > 0 ? mapped : MOCK_APPROVALS);
+        setItems(mapped);
       }
     } catch (_) {
       // fallback to mock

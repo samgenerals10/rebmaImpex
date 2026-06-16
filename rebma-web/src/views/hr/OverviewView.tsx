@@ -24,13 +24,6 @@ interface Props {
 
 const DEPT_COLORS = ['var(--accent)', '#10b981', '#6366f1', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6'];
 
-const MOCK_AUDIT = [
-  { action: 'Staff registered: Kwame Mensah', dept: 'HR', by: 'HR Admin', time: '09:12 AM' },
-  { action: 'Leave approved: Abena Owusu (Sick)', dept: 'HR', by: 'HR Admin', time: '08:45 AM' },
-  { action: 'Payroll batch processed: June 2026', dept: 'HR', by: 'HR Admin', time: 'Yesterday' },
-  { action: 'Attendance synced: 47 records', dept: 'HR', by: 'System', time: 'Yesterday' },
-  { action: 'Department updated: Operations headcount', dept: 'HR', by: 'HR Admin', time: '2 days ago' },
-];
 
 const GROWTH_DATA = [
   { month: 'Jan', '2025': 38, '2026': 44 },
@@ -53,6 +46,20 @@ function generatePassword(): string {
 }
 
 export default function HrOverviewView({ currentUser, addNotification, setActiveSubTab, staffList, pendingRegistrations, attendanceList, onApprove, onDeny }: Props) {
+  const [auditLog, setAuditLog] = useState<{ action: string; dept: string; by: string; time: string }[]>([]);
+  const [onLeaveToday, setOnLeaveToday] = useState(0);
+
+  useEffect(() => {
+    const today = new Date().toISOString().split('T')[0];
+    Promise.all([
+      supabase.from('global_audit_history').select('*').eq('department', 'HR').order('created_at', { ascending: false }).limit(6),
+      supabase.from('leave_requests').select('*').eq('status', 'Approved').lte('startDate', today).gte('endDate', today),
+    ]).then(([{ data: aData }, { data: lData }]) => {
+      if (aData) setAuditLog(aData.map((e: any) => ({ action: e.action, dept: e.department, by: e.performed_by, time: new Date(e.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) })));
+      if (lData) setOnLeaveToday(lData.length);
+    }).catch(() => {});
+  }, []);
+
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
   const name = currentUser?.fullName?.split(' ')[0] || 'HR';
@@ -114,7 +121,7 @@ export default function HrOverviewView({ currentUser, addNotification, setActive
 
   const kpiCards = [
     { label: 'Total Staff', value: totalStaff, sub: `${activeStaff} active`, icon: Users, color: 'var(--accent)', tab: 'Staff' },
-    { label: 'On Leave Today', value: 3, sub: 'approved absences', icon: Calendar, color: '#6366f1', tab: 'LeaveManagement' },
+    { label: 'On Leave Today', value: onLeaveToday, sub: 'approved absences', icon: Calendar, color: '#6366f1', tab: 'LeaveManagement' },
     { label: 'Pending Registrations', value: pendingRegs, sub: 'awaiting approval', icon: UserPlus, color: '#f59e0b', tab: 'Registrations' },
     { label: 'Attendance Rate', value: `${attendanceRate}%`, sub: `${presentToday} present today`, icon: UserCheck, color: '#10b981', tab: 'Attendance' },
   ];
@@ -402,7 +409,7 @@ export default function HrOverviewView({ currentUser, addNotification, setActive
           <h3 className="font-bold text-[var(--text-primary)] text-sm">Department Activity Monitor</h3>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-          {MOCK_AUDIT.map((entry, i) => (
+          {(auditLog.length > 0 ? auditLog : []).map((entry, i) => (
             <div key={i} className="flex items-start gap-2 p-2.5 bg-[var(--bg)] rounded-xl border border-[var(--border)]">
               <div className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] mt-1.5 shrink-0" />
               <div className="flex-1 min-w-0">

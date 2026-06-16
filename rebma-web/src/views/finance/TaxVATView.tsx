@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { Download, Save, FileText, Calculator } from 'lucide-react';
 import { exportToCSV, exportToPDF } from '../../utils/export';
@@ -12,13 +12,6 @@ interface VATEntry {
   status: 'Filed' | 'Pending' | 'Draft';
 }
 
-const MOCK_VAT: VATEntry[] = [
-  { period: 'Dec 2024', invoiceCount: 23, grossSales: 580000, vatAmount: 87000, netSales: 493000, status: 'Pending' },
-  { period: 'Nov 2024', invoiceCount: 31, grossSales: 620000, vatAmount: 93000, netSales: 527000, status: 'Filed' },
-  { period: 'Oct 2024', invoiceCount: 28, grossSales: 470000, vatAmount: 70500, netSales: 399500, status: 'Filed' },
-  { period: 'Sep 2024', invoiceCount: 35, grossSales: 510000, vatAmount: 76500, netSales: 433500, status: 'Filed' },
-  { period: 'Aug 2024', invoiceCount: 22, grossSales: 380000, vatAmount: 57000, netSales: 323000, status: 'Filed' },
-];
 
 interface TaxRates {
   [key: string]: number | boolean;
@@ -35,10 +28,30 @@ interface Props {
 }
 
 export default function FinanceTaxVATView({ addNotification, currentUser }: Props) {
-  const [vatData] = useState<VATEntry[]>(MOCK_VAT);
+  const [vatData, setVatData] = useState<VATEntry[]>([]);
+  const [loading, setLoading] = useState(true);
   const [rates, setRates] = useState<TaxRates>({ vat: 15, nhil: 2.5, getfund: 2.5, covid: 1, autoCalculate: true });
-  const [selectedPeriod, setSelectedPeriod] = useState('Dec 2024');
+  const [selectedPeriod, setSelectedPeriod] = useState('');
   const [showRates, setShowRates] = useState(false);
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      try {
+        const { data } = await supabase
+          .from('finance_vat_periods')
+          .select('*')
+          .order('period', { ascending: false });
+        const rows = (data ?? []) as VATEntry[];
+        setVatData(rows);
+        if (rows.length > 0) setSelectedPeriod(rows[0].period);
+      } catch {
+        setVatData([]);
+      }
+      setLoading(false);
+    };
+    load();
+  }, []);
 
   const current = vatData[0];
   const totalVatCollected = vatData.filter(v => v.status === 'Filed').reduce((s, v) => s + v.vatAmount, 0);
@@ -135,6 +148,14 @@ export default function FinanceTaxVATView({ addNotification, currentUser }: Prop
       </div>
 
       <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl overflow-hidden">
+        {loading ? (
+          <div className="p-6">{[0,1,2,3,4].map(i => <div key={i} className="animate-pulse h-10 bg-slate-200 dark:bg-slate-700 rounded mb-2" />)}</div>
+        ) : vatData.length === 0 ? (
+          <div className="flex flex-col items-center py-10 text-[var(--text-muted)]">
+            <Calculator size={32} className="opacity-30 mb-2" />
+            <p className="text-sm">No VAT records found</p>
+          </div>
+        ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead><tr className="border-b border-[var(--border)]">{['Period', 'Invoice Count', 'Gross Sales', 'VAT Amount', 'Net Sales', 'Status'].map(h => <th key={h} className="px-4 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wide whitespace-nowrap">{h}</th>)}</tr></thead>
@@ -152,6 +173,7 @@ export default function FinanceTaxVATView({ addNotification, currentUser }: Prop
             </tbody>
           </table>
         </div>
+        )}
       </div>
 
       <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">

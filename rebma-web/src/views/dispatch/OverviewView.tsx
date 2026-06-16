@@ -18,26 +18,7 @@ interface Props {
 }
 
 // ── seed data ─────────────────────────────────────────────────────────────────
-const SEED_DRIVERS: Driver[] = [
-  { id: 'DRV-001', fullName: 'Kwesi Asante',   phone: '0244 123 456', ghanaCard: 'GHA-00001-1', licenseNumber: 'LIC-001', truckId: 'GR-1234-22', status: 'ACTIVE',       totalDeliveries: 87 },
-  { id: 'DRV-002', fullName: 'Kofi Mensah',    phone: '0277 654 321', ghanaCard: 'GHA-00002-2', licenseNumber: 'LIC-002', truckId: 'GR-5678-22', status: 'ON_DELIVERY',  totalDeliveries: 62 },
-  { id: 'DRV-003', fullName: 'Ama Serwaa',     phone: '0200 987 654', ghanaCard: 'GHA-00003-3', licenseNumber: 'LIC-003', truckId: 'GR-9012-23', status: 'ACTIVE',       totalDeliveries: 45 },
-  { id: 'DRV-004', fullName: 'Kojo Boateng',   phone: '0541 234 567', ghanaCard: 'GHA-00004-4', licenseNumber: 'LIC-004', truckId: 'AS-3456-21', status: 'ON_DELIVERY',  totalDeliveries: 31 },
-  { id: 'DRV-005', fullName: 'Yaw Darko',      phone: '0208 876 543', ghanaCard: 'GHA-00005-5', licenseNumber: 'LIC-005', truckId: 'GR-7890-24', status: 'OFFLINE',      totalDeliveries: 19 },
-];
-
-const SEED_DELIVERIES: DeliveryRecord[] = [
-  { id: 'DEL-001', orderId: 'ORD-1001', clientName: 'Accra Traders Ltd',     destination: '123 High Street, Accra',      driverName: 'Kwesi Asante',  driverId: 'DRV-001', dispatchedAt: new Date(Date.now() - 3.6e6 * 2).toISOString(), status: 'IN_TRANSIT' },
-  { id: 'DEL-002', orderId: 'ORD-1002', clientName: 'Gulf Imports Co.',       destination: '45 Liberation Rd, Accra',     driverName: 'Kofi Mensah',   driverId: 'DRV-002', dispatchedAt: new Date(Date.now() - 3.6e6 * 5).toISOString(), deliveredAt: new Date(Date.now() - 3.6e6 * 2).toISOString(), status: 'DELIVERED' },
-  { id: 'DEL-003', orderId: 'ORD-1003', clientName: 'Kama Industries',        destination: 'Plot 7, Spintex Road',        driverName: 'Ama Serwaa',    driverId: 'DRV-003', dispatchedAt: new Date(Date.now() - 3.6e6 * 4).toISOString(), status: 'IN_TRANSIT' },
-  { id: 'DEL-004', orderId: 'ORD-1004', clientName: 'Prime Suppliers',        destination: 'Ring Road East, Accra',       driverName: '', driverId: '', dispatchedAt: new Date(Date.now() - 3.6e6 * 1).toISOString(), status: 'PENDING_ASSIGNMENT' },
-  { id: 'DEL-005', orderId: 'ORD-1005', clientName: 'Delta Logistics',        destination: 'Tema Community 1',            driverName: 'Kwesi Asante',  driverId: 'DRV-001', dispatchedAt: new Date(Date.now() - 3.6e6 * 1).toISOString(), status: 'ASSIGNED' },
-  { id: 'DEL-006', orderId: 'ORD-1006', clientName: 'Sunrise Exports',        destination: 'Adabraka, Accra',             driverName: 'Kofi Mensah',   driverId: 'DRV-002', dispatchedAt: new Date(Date.now() - 86400000).toISOString(), deliveredAt: new Date(Date.now() - 82800000).toISOString(), status: 'DELIVERED' },
-  { id: 'DEL-007', orderId: 'ORD-1007', clientName: 'Horizon Trading',        destination: 'Lashibi, Tema',               driverName: 'Ama Serwaa',    driverId: 'DRV-003', dispatchedAt: new Date(Date.now() - 3.6e6 * 6).toISOString(), deliveredAt: new Date(Date.now() - 3.6e6 * 3).toISOString(), status: 'DELIVERED' },
-  { id: 'DEL-008', orderId: 'ORD-1008', clientName: 'Gold Coast Merchants',   destination: 'OSU, Accra',                  driverName: '', driverId: '', dispatchedAt: new Date(Date.now() - 3.6e6 * 0.5).toISOString(), status: 'PENDING_ASSIGNMENT' },
-  { id: 'DEL-009', orderId: 'ORD-1009', clientName: 'Atlantic Ventures',      destination: 'Haatso, Accra',               driverName: 'Kojo Boateng',  driverId: 'DRV-004', dispatchedAt: new Date(Date.now() - 1800000).toISOString(), status: 'IN_TRANSIT' },
-  { id: 'DEL-010', orderId: 'ORD-1010', clientName: 'Pacific Imports',        destination: 'East Legon, Accra',           driverName: 'Ama Serwaa',    driverId: 'DRV-003', dispatchedAt: new Date(Date.now() - 3.6e6 * 3).toISOString(), deliveredAt: new Date(Date.now() - 3.6e6).toISOString(), status: 'DELIVERED' },
-];
+// Seed arrays removed — data loaded from Supabase in component
 
 const VOL_DATA = [
   { day: 'Mon', assigned: 8, completed: 6 }, { day: 'Tue', assigned: 12, completed: 9 },
@@ -46,12 +27,7 @@ const VOL_DATA = [
   { day: 'Sun', assigned: 5,  completed: 4 },
 ];
 
-const UPCOMING = [
-  { id: 'DEL-011', client: 'Tema Steel Ltd',       dest: 'Community 5, Tema',     time: '10:30 AM', driver: 'Kwesi Asante',  orderId: 'ORD-1011' },
-  { id: 'DEL-012', client: 'Accra Builders Co.',   dest: 'Industrial Area, Accra',time: '11:00 AM', driver: 'Ama Serwaa',    orderId: 'ORD-1012' },
-  { id: 'DEL-013', client: 'Kumasi Contractors',   dest: 'Suame, Kumasi',          time: '01:00 PM', driver: 'Unassigned',    orderId: 'ORD-1013' },
-  { id: 'DEL-014', client: 'Cape Coast Ventures',  dest: 'Cape Coast Town',        time: '02:30 PM', driver: 'Kojo Boateng',  orderId: 'ORD-1014' },
-];
+// UPCOMING removed — scheduled deliveries derived from Supabase data in component
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 function timeGreeting() {
@@ -97,8 +73,10 @@ const ChartTt = ({ active, payload, label }: { active?: boolean; payload?: { val
 // ── component ─────────────────────────────────────────────────────────────────
 export default function DispatchOverviewView({ addNotification, setActiveSubTab, currentUser }: Props) {
   const firstName = currentUser?.fullName?.split(' ')[0] || 'Dispatch';
-  const [deliveries, setDeliveries] = useState<DeliveryRecord[]>(SEED_DELIVERIES);
-  const [drivers]                   = useState<Driver[]>(SEED_DRIVERS);
+  const [deliveries, setDeliveries] = useState<DeliveryRecord[]>([]);
+  const [drivers, setDrivers]       = useState<Driver[]>([]);
+  const [loadingDeliveries, setLoadingDeliveries] = useState(true);
+  const [loadingDrivers, setLoadingDrivers]       = useState(true);
   const [menuOpen, setMenuOpen]     = useState<string | null>(null);
   const [volPeriod, setVolPeriod]   = useState('This Week');
 
@@ -109,8 +87,8 @@ export default function DispatchOverviewView({ addNotification, setActiveSubTab,
 
   // Load from Supabase
   useEffect(() => {
-    supabase.from('deliveries').select('*').order('dispatchedAt', { ascending: false }).limit(50)
-      .then(({ data }) => { if (data && data.length > 0) setDeliveries(data as DeliveryRecord[]); }, () => {});
+    (async () => { try { const { data } = await supabase.from('deliveries').select('*').order('created_at', { ascending: false }).limit(50); setDeliveries((data as DeliveryRecord[]) ?? []); } catch { setDeliveries([]); } finally { setLoadingDeliveries(false); } })();
+    (async () => { try { const { data } = await supabase.from('drivers').select('*').order('created_at', { ascending: false }); setDrivers((data as Driver[]) ?? []); } catch { setDrivers([]); } finally { setLoadingDrivers(false); } })();
   }, []);
 
   // KPI counts
@@ -122,6 +100,7 @@ export default function DispatchOverviewView({ addNotification, setActiveSubTab,
 
   const activeDeliveries = deliveries.filter(d => ['ASSIGNED', 'IN_TRANSIT'].includes(d.status)).slice(0, 6);
   const availableDrivers = drivers.filter(d => d.status === 'ACTIVE');
+  const upcoming = deliveries.filter(d => ['PENDING_ASSIGNMENT', 'ASSIGNED'].includes(d.status)).slice(0, 4);
 
   // Assign driver handler
   const handleAssign = async () => {
@@ -224,10 +203,16 @@ export default function DispatchOverviewView({ addNotification, setActiveSubTab,
             </button>
           </div>
           <div className="space-y-2">
-            {activeDeliveries.length === 0 && (
-              <p className="text-sm text-[var(--text-muted)] text-center py-6">No active deliveries</p>
+            {loadingDeliveries && Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="animate-pulse h-4 bg-slate-200 dark:bg-slate-700 rounded" />
+            ))}
+            {!loadingDeliveries && activeDeliveries.length === 0 && (
+              <div className="flex flex-col items-center gap-2 py-6 text-[var(--text-muted)]">
+                <Truck size={28} className="opacity-30" />
+                <p className="text-sm">No active deliveries</p>
+              </div>
             )}
-            {activeDeliveries.map(del => {
+            {!loadingDeliveries && activeDeliveries.map(del => {
               const badge = STATUS_BADGE[del.status];
               return (
                 <div key={del.id} className="flex items-center gap-3 p-3 bg-[var(--bg-input)] rounded-xl group hover:bg-[var(--border)] transition-colors cursor-pointer"
@@ -497,32 +482,35 @@ export default function DispatchOverviewView({ addNotification, setActiveSubTab,
               View All <ChevronRight size={12} />
             </button>
           </div>
-          {UPCOMING.length === 0 ? (
+          {loadingDeliveries ? (
+            <div className="space-y-3">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="animate-pulse h-4 bg-slate-200 dark:bg-slate-700 rounded" />
+              ))}
+            </div>
+          ) : upcoming.length === 0 ? (
             <div className="flex flex-col items-center py-10 text-[var(--text-muted)]">
               <AlertCircle size={28} className="opacity-30 mb-2" />
               <p className="text-sm">No scheduled deliveries</p>
             </div>
           ) : (
             <div className="space-y-3">
-              {UPCOMING.map(u => (
+              {upcoming.map(u => (
                 <div key={u.id} className="flex items-center gap-3 p-3 bg-[var(--bg-input)] rounded-xl group hover:bg-[var(--border)] transition-colors cursor-pointer"
                   onClick={() => setActiveSubTab?.('ActiveDeliveries')}>
-                  <div className="w-9 h-9 rounded-xl flex items-center justify-center text-xs font-bold text-white flex-shrink-0" style={{ background: u.driver === 'Unassigned' ? '#ef4444' : 'var(--accent)' }}>
-                    {u.time.split(':')[0]}
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center text-xs font-bold text-white flex-shrink-0" style={{ background: !u.driverName ? '#ef4444' : 'var(--accent)' }}>
+                    <Truck size={14} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold text-[var(--text-primary)] truncate">{u.client}</p>
-                    <p className="text-xs text-[var(--text-muted)] truncate">{u.dest}</p>
+                    <p className="text-xs font-semibold text-[var(--text-primary)] truncate">{u.clientName}</p>
+                    <p className="text-xs text-[var(--text-muted)] truncate">{u.destination}</p>
                     <div className="flex items-center gap-2 mt-0.5">
-                      <span className={`text-xs ${u.driver === 'Unassigned' ? 'text-red-500 font-medium' : 'text-[var(--text-muted)]'}`}>{u.driver}</span>
+                      <span className={`text-xs ${!u.driverName ? 'text-red-500 font-medium' : 'text-[var(--text-muted)]'}`}>{u.driverName || 'Unassigned'}</span>
                       <span className="text-xs text-[var(--text-muted)]">·</span>
                       <span className="text-xs text-[var(--text-muted)] font-mono">{u.orderId}</span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <span className="text-xs font-medium text-[var(--text-secondary)]">{u.time}</span>
-                    <ChevronRight size={14} className="text-[var(--text-muted)] opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </div>
+                  <ChevronRight size={14} className="text-[var(--text-muted)] opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
                 </div>
               ))}
             </div>

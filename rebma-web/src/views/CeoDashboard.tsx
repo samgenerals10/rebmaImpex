@@ -50,11 +50,6 @@ interface CeoDashboardProps {
 
 const COUNTRY_FLAGS: Record<string, string> = { Poland: '🇵🇱', Turkey: '🇹🇷', Germany: '🇩🇪', UK: '🇬🇧', USA: '🇺🇸', Other: '🌍' };
 
-const MOCK_RECENT: SupplierOrderSummary[] = [
-  { id: '1', order_number: 'SUP-2026-001', supplier_name: 'Gdansk Food Exports', supplier_country: 'Poland', total_amount: 64000, currency: 'USD', total_amount_ghs: 985600, status: 'payment_authorised', created_at: '2026-06-08T10:00:00Z' },
-  { id: '2', order_number: 'SUP-2026-002', supplier_name: 'Istanbul Grain Co.', supplier_country: 'Turkey', total_amount: 20110, currency: 'EUR', total_amount_ghs: 337848, status: 'pending', created_at: '2026-06-10T14:00:00Z' },
-  { id: '3', order_number: 'SUP-2026-003', supplier_name: 'Warsaw Margarine Ltd.', supplier_country: 'Poland', total_amount: 84000, currency: 'USD', total_amount_ghs: 1293600, status: 'shipped', created_at: '2026-06-02T09:00:00Z' },
-];
 
 export default function CeoDashboard({
   activeCoordinates,
@@ -64,24 +59,40 @@ export default function CeoDashboard({
 }: CeoDashboardProps) {
   const [recentOrders, setRecentOrders] = useState<SupplierOrderSummary[]>([]);
   const [pendingOrders, setPendingOrders] = useState<SupplierOrderSummary[]>([]);
+  const [loadingRecent, setLoadingRecent] = useState(true);
+  const [loadingPending, setLoadingPending] = useState(true);
 
   useEffect(() => {
     const load = async () => {
       try {
-        const { data, error } = await supabase
+        const { data } = await supabase
           .from('supplier_orders')
           .select('id,order_number,supplier_name,supplier_country,total_amount,currency,total_amount_ghs,status,created_at')
           .order('created_at', { ascending: false })
           .limit(5);
-        const rows: SupplierOrderSummary[] = (!error && data && data.length > 0) ? data : MOCK_RECENT;
-        setRecentOrders(rows);
-        setPendingOrders(rows.filter(o => o.status === 'pending'));
+        setRecentOrders(data ?? []);
       } catch {
-        setRecentOrders(MOCK_RECENT);
-        setPendingOrders(MOCK_RECENT.filter(o => o.status === 'pending'));
+        setRecentOrders([]);
+      } finally {
+        setLoadingRecent(false);
+      }
+    };
+    const loadPending = async () => {
+      try {
+        const { data } = await supabase
+          .from('supplier_orders')
+          .select('id,order_number,supplier_name,supplier_country,total_amount,currency,total_amount_ghs,status,created_at')
+          .eq('payment_authorised', false)
+          .order('created_at', { ascending: false });
+        setPendingOrders(data ?? []);
+      } catch {
+        setPendingOrders([]);
+      } finally {
+        setLoadingPending(false);
       }
     };
     load();
+    loadPending();
   }, []);
 
   const lineChartData = [
@@ -320,8 +331,17 @@ export default function CeoDashboard({
                   View All <ChevronRight className="w-3.5 h-3.5" />
                 </button>
               </div>
-              {recentOrders.length === 0 ? (
-                <p className="text-sm text-[var(--text-muted)] text-center py-6">No supplier orders yet.</p>
+              {loadingRecent ? (
+                <div className="space-y-2 py-2">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <div key={i} className="animate-pulse h-4 bg-slate-200 dark:bg-slate-700 rounded" />
+                  ))}
+                </div>
+              ) : recentOrders.length === 0 ? (
+                <div className="flex flex-col items-center gap-2 py-6 text-[var(--text-muted)]">
+                  <ShoppingBag className="w-8 h-8 opacity-30" />
+                  <p className="text-sm">No supplier orders yet.</p>
+                </div>
               ) : (
                 <div className="space-y-2">
                   {recentOrders.slice(0, 5).map(o => {
@@ -349,7 +369,13 @@ export default function CeoDashboard({
                 <AlertCircle className="w-4 h-4 text-amber-500" />
                 <h3 className="text-sm font-bold text-[var(--text-primary)]">Pending Payment Authorisations</h3>
               </div>
-              {pendingOrders.length === 0 ? (
+              {loadingPending ? (
+                <div className="space-y-2 py-2">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <div key={i} className="animate-pulse h-4 bg-slate-200 dark:bg-slate-700 rounded" />
+                  ))}
+                </div>
+              ) : pendingOrders.length === 0 ? (
                 <div className="flex flex-col items-center gap-2 py-6">
                   <CheckCircle className="w-8 h-8 text-emerald-500" />
                   <p className="text-sm text-emerald-600 font-semibold">All payments authorised</p>

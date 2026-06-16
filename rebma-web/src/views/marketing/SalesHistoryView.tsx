@@ -4,24 +4,6 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { supabase } from '../../lib/supabaseClient';
 import type { Order } from '../../types/erp';
 
-const MOCK_ORDERS: Order[] = Array.from({ length: 20 }, (_, i) => {
-  const statuses: Order['status'][] = ['DELIVERED', 'DELIVERED', 'APPROVED', 'PROCESSING', 'PENDING_FINANCE', 'REJECTED', 'DELIVERED'];
-  const modes: Order['paymentMode'][] = ['CASH', 'MOBILE_MONEY', 'CHEQUE', 'CREDIT', 'CASH'];
-  const clients = ['Accra Traders Ltd', 'Gulf Imports Co.', 'Kama Industries', 'Prime Suppliers', 'Delta Logistics'];
-  const products = ['Steel Rods 12mm', 'Cement Bags (50kg)', 'Roofing Sheets', 'PVC Pipes', 'Electrical Cables'];
-  const d = new Date(Date.now() - i * 86400000 * 9);
-  return {
-    id: `ord-${i + 1}`,
-    ticketNumber: `RBM-${String(2001 + i).padStart(4, '0')}`,
-    clientName: clients[i % 5],
-    productName: products[i % 5],
-    destination: ['Accra', 'Kumasi', 'Takoradi'][i % 3],
-    paymentMode: modes[i % 5],
-    totalAmount: Math.round(6000 + i * 4100),
-    status: statuses[i % 7],
-    createdAt: d.toISOString(),
-  };
-});
 
 const STATUS_CREDIT_STYLES: Record<string, string> = {
   PENDING_FINANCE: 'bg-amber-100 text-amber-700',
@@ -75,10 +57,10 @@ export default function SalesHistoryView({ ordersList, addNotification }: Props)
     const load = async () => {
       setLoading(true);
       try {
-        const { data } = await supabase.from('orders').select('*').order('createdAt', { ascending: false }).limit(500);
-        setOrders(data && data.length > 0 ? data : ordersList.length > 0 ? ordersList : MOCK_ORDERS);
+        const { data } = await supabase.from('orders').select('*').order('created_at', { ascending: false }).limit(500);
+        setOrders(data && data.length > 0 ? data : ordersList.length > 0 ? ordersList : []);
       } catch {
-        setOrders(ordersList.length > 0 ? ordersList : MOCK_ORDERS);
+        setOrders(ordersList.length > 0 ? ordersList : []);
       }
       setLoading(false);
     };

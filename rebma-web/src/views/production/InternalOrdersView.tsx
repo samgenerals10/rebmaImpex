@@ -3,16 +3,6 @@ import { Plus, Search, Eye, Copy, X, ChevronRight, Package } from 'lucide-react'
 import { supabase } from '../../lib/supabaseClient';
 import type { ProductionRequest } from '../../types/erp';
 
-const MOCK_ORDERS: ProductionRequest[] = [
-  { id: 'PRO-001', items: [{ materialName: 'Shea Butter', quantity: 200 }, { materialName: 'Palm Oil', quantity: 50 }], status: 'PENDING_MANAGEMENT', createdAt: '2026-06-01T08:00:00Z' },
-  { id: 'PRO-002', items: [{ materialName: 'Coconut Oil', quantity: 100 }], status: 'APPROVED', producedGoods: 0, createdAt: '2026-06-02T09:30:00Z' },
-  { id: 'PRO-003', items: [{ materialName: 'Raw Cocoa', quantity: 300 }, { materialName: 'Sugar', quantity: 80 }], status: 'TICKETS_ISSUED', createdAt: '2026-06-03T10:00:00Z' },
-  { id: 'PRO-004', items: [{ materialName: 'Groundnut Oil', quantity: 150 }], status: 'COMPLETED', producedGoods: 148, createdAt: '2026-06-04T07:45:00Z' },
-  { id: 'PRO-005', items: [{ materialName: 'Shea Butter', quantity: 400 }, { materialName: 'Beeswax', quantity: 20 }], status: 'APPROVED', createdAt: '2026-06-05T11:00:00Z' },
-  { id: 'PRO-006', items: [{ materialName: 'Palm Kernel Oil', quantity: 250 }], status: 'PENDING_MANAGEMENT', createdAt: '2026-06-06T08:30:00Z' },
-  { id: 'PRO-007', items: [{ materialName: 'Cocoa Butter', quantity: 180 }, { materialName: 'Vanilla', quantity: 10 }], status: 'COMPLETED', producedGoods: 175, createdAt: '2026-06-07T09:00:00Z' },
-  { id: 'PRO-008', items: [{ materialName: 'Sesame Oil', quantity: 90 }], status: 'TICKETS_ISSUED', createdAt: '2026-06-08T10:15:00Z' },
-];
 
 const STATUS_COLORS: Record<string, string> = {
   PENDING_MANAGEMENT: 'amber',
@@ -71,6 +61,7 @@ interface Props {
 
 export default function InternalOrdersView({ productionRequests, addNotification }: Props) {
   const [orders, setOrders] = useState<ProductionRequest[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [selectedOrder, setSelectedOrder] = useState<ProductionRequest | null>(null);
@@ -80,13 +71,17 @@ export default function InternalOrdersView({ productionRequests, addNotification
 
   useEffect(() => {
     const load = async () => {
+      setLoading(true);
       try {
-        const { data, error } = await supabase.from('production_requests').select('*').order('createdAt', { ascending: false });
-        if (error || !data || data.length === 0) setOrders(productionRequests.length ? productionRequests : MOCK_ORDERS);
-        else setOrders(data);
+        const { data, error } = await supabase.from('production_requests').select('*').order('created_at', { ascending: false });
+        if (!error && data && data.length > 0) setOrders(data);
+        else if (productionRequests.length) setOrders(productionRequests);
+        else setOrders([]);
       } catch {
-        setOrders(productionRequests.length ? productionRequests : MOCK_ORDERS);
+        if (productionRequests.length) setOrders(productionRequests);
+        else setOrders([]);
       }
+      setLoading(false);
     };
     load();
   }, [productionRequests]);
@@ -172,7 +167,8 @@ export default function InternalOrdersView({ productionRequests, addNotification
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {filtered.map(order => (
+        {loading && Array.from({ length: 5 }).map((_, i) => <div key={i} className="animate-pulse h-10 bg-slate-200 dark:bg-slate-700 rounded mb-2" />)}
+        {!loading && filtered.map(order => (
           <div key={order.id} style={{ background: 'var(--bg-card)', borderRadius: 16, padding: '18px 20px', border: '1px solid var(--border)', boxShadow: 'var(--box-shadow)', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap', cursor: 'pointer' }} onClick={() => setSelectedOrder(order)}>
             <div style={{ width: 12, height: 12, borderRadius: '50%', background: { PENDING_MANAGEMENT: '#d97706', APPROVED: '#2563eb', TICKETS_ISSUED: '#4338ca', COMPLETED: '#059669' }[order.status] || '#888', flexShrink: 0 }} />
             <div style={{ minWidth: 90 }}>
@@ -196,10 +192,11 @@ export default function InternalOrdersView({ productionRequests, addNotification
             </div>
           </div>
         ))}
-        {filtered.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '48px', color: 'var(--text-muted)' }}>
-            <Package size={40} style={{ margin: '0 auto 12px', display: 'block', opacity: 0.4 }} />
-            <p>No orders found</p>
+        {!loading && filtered.length === 0 && (
+          <div className="text-center py-12 text-[var(--text-muted)]">
+            <Package className="w-10 h-10 mx-auto mb-3 opacity-40" />
+            <p className="font-semibold text-sm">No orders yet</p>
+            <p className="text-xs mt-1">They will appear here once added</p>
           </div>
         )}
       </div>

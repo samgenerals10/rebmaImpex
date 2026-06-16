@@ -7,20 +7,8 @@ import { supabase } from '../../lib/supabaseClient';
 import { exportToPDF } from '../../utils/export';
 import type { Visitor } from '../../types/erp';
 
-const MOCK_VISITORS: (Visitor & { company?: string; badgeNumber: string; expectedTime?: string; idType?: string; idNumber?: string; notes?: string })[] = [
-  { id: '1', fullName: 'Emmanuel Quaye', company: 'TechHub Ghana', purpose: 'Business Meeting', hostName: 'Kwame Mensah', checkInTime: '2026-06-12T08:30:00', badgeNumber: 'V-001' },
-  { id: '2', fullName: 'Serwa Asiedu', company: 'AfriBank Ltd', purpose: 'Finance Review', hostName: 'Abena Owusu', checkInTime: '2026-06-12T09:10:00', checkOutTime: '2026-06-12T10:45:00', badgeNumber: 'V-002' },
-  { id: '3', fullName: 'Bright Forson', company: 'Logistics Partners', purpose: 'Delivery', hostName: 'Kofi Asante', checkInTime: '2026-06-12T09:45:00', badgeNumber: 'V-003' },
-  { id: '4', fullName: 'Patricia Mensah', company: 'Independent', purpose: 'Interview', hostName: 'Ama Boateng', checkInTime: '2026-06-12T10:00:00', checkOutTime: '2026-06-12T11:00:00', badgeNumber: 'V-004' },
-  { id: '5', fullName: 'Daniel Appiah', company: 'Apex Supplies', purpose: 'Delivery', hostName: 'Nana Agyei', checkInTime: '2026-06-12T10:30:00', badgeNumber: 'V-005' },
-  { id: '6', fullName: 'Grace Ntow', company: 'Gov Regulatory Office', purpose: 'Business Meeting', hostName: 'Maame Asare', checkInTime: '2026-06-12T11:00:00', badgeNumber: 'V-006' },
-  { id: '7', fullName: 'Samuel Boadu', company: 'IT Solutions Ltd', purpose: 'Personal', hostName: 'Kwesi Ofori', checkInTime: '2026-06-12T11:30:00', checkOutTime: '2026-06-12T13:00:00', badgeNumber: 'V-007' },
-  { id: '8', fullName: 'Felicia Osei', company: 'Creative Agency', purpose: 'Business Meeting', hostName: 'Yaw Darko', checkInTime: '2026-06-12T13:15:00', badgeNumber: 'V-008' },
-  { id: '9', fullName: 'Kofi Bonsu', company: 'Construction Co.', purpose: 'Personal', hostName: 'Adwoa Sarpong', checkInTime: '2026-06-12T14:00:00', expectedTime: '2026-06-12T14:00:00', badgeNumber: 'V-009' },
-  { id: '10', fullName: 'Akua Nkansah', company: 'Legal Associates', purpose: 'Business Meeting', hostName: 'Maame Asare', checkInTime: '2026-06-12T14:30:00', badgeNumber: 'V-010' },
-];
 
-type VisitorRecord = (typeof MOCK_VISITORS)[0];
+type VisitorRecord = Visitor & { company?: string; badgeNumber: string; expectedTime?: string; idType?: string; idNumber?: string; notes?: string };
 
 const fmt = (iso: string) => {
   try { return new Date(iso).toLocaleTimeString('en-GH', { hour: '2-digit', minute: '2-digit' }); }
@@ -76,11 +64,12 @@ function printVisitorPass(v: VisitorRecord) {
 interface Props { addNotification: (msg: string) => void }
 
 export default function VisitorsView({ addNotification }: Props) {
-  const [visitors, setVisitors] = useState<VisitorRecord[]>(MOCK_VISITORS);
+  const [visitors, setVisitors] = useState<VisitorRecord[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [purposeFilter, setPurposeFilter] = useState('All');
-  const [dateFilter, setDateFilter] = useState('2026-06-12');
+  const [dateFilter, setDateFilter] = useState(new Date().toISOString().split('T')[0]);
   const [showAdd, setShowAdd] = useState(false);
   const [detailVisitor, setDetailVisitor] = useState<VisitorRecord | null>(null);
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
@@ -90,8 +79,11 @@ export default function VisitorsView({ addNotification }: Props) {
   });
 
   useEffect(() => {
-    supabase.from('visitors').select('*').then(({ data, error }) => {
-      if (!error && data && data.length > 0) setVisitors(data as VisitorRecord[]);
+    setLoading(true);
+    supabase.from('visitors').select('*').order('checkInTime', { ascending: false }).then(({ data, error }) => {
+      if (!error && data) setVisitors(data as VisitorRecord[]);
+      else setVisitors([]);
+      setLoading(false);
     });
   }, []);
 
@@ -203,7 +195,8 @@ export default function VisitorsView({ addNotification }: Props) {
       </div>
 
       {/* Table */}
-      <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl overflow-hidden">
+      {loading && <div className="space-y-2">{Array.from({ length: 5 }).map((_, i) => <div key={i} className="animate-pulse h-10 bg-slate-200 dark:bg-slate-700 rounded mb-2" />)}</div>}
+      {!loading && <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-xs" style={{ minWidth: 750 }}>
             <thead>
@@ -276,7 +269,7 @@ export default function VisitorsView({ addNotification }: Props) {
         <div className="px-4 py-3 border-t border-[var(--border)] bg-[var(--bg)]">
           <p className="text-[10px] text-[var(--text-muted)]">Showing {filtered.length} of {todayVisitors.length} visitors</p>
         </div>
-      </div>
+      </div>}
 
       {/* Add Visitor Modal */}
       {showAdd && (

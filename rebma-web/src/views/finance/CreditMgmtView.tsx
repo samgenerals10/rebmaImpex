@@ -19,13 +19,6 @@ interface CreditEntry {
   phone?: string;
 }
 
-const MOCK_CREDIT: CreditEntry[] = [
-  { id: '1', customerName: 'Cape Coast Ventures', orderRef: 'ORD-2024-004', creditAmount: 52000, amountPaid: 20000, outstanding: 32000, dueDate: '2024-12-05', daysOverdue: 5, status: 'Overdue', phone: '0244123456' },
-  { id: '2', customerName: 'Kumasi Contractors', orderRef: 'ORD-2024-008', creditAmount: 35000, amountPaid: 35000, outstanding: 0, dueDate: '2024-12-01', daysOverdue: 0, status: 'Paid', phone: '0201234567' },
-  { id: '3', customerName: 'Takoradi Ventures', orderRef: 'ORD-2024-010', creditAmount: 18000, amountPaid: 5000, outstanding: 13000, dueDate: '2024-12-18', daysOverdue: 0, status: 'Due Soon', phone: '0277654321' },
-  { id: '4', customerName: 'Accra Holdings Ltd', orderRef: 'ORD-2024-012', creditAmount: 77000, amountPaid: 30000, outstanding: 47000, dueDate: '2024-12-30', daysOverdue: 0, status: 'Current', phone: '0244987654' },
-  { id: '5', customerName: 'Ho Central Supplies', orderRef: 'ORD-2024-015', creditAmount: 12000, amountPaid: 0, outstanding: 12000, dueDate: '2024-11-28', daysOverdue: 12, status: 'Overdue', phone: '0268112233' },
-];
 
 const STATUS_COLORS: Record<string, string> = {
   Current: 'bg-green-100 text-green-700',
@@ -40,7 +33,45 @@ interface Props {
 }
 
 export default function FinanceCreditMgmtView({ addNotification, currentUser }: Props) {
-  const [items, setItems] = useState<CreditEntry[]>(MOCK_CREDIT);
+  const [items, setItems] = useState<CreditEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      try {
+        const { data } = await supabase.from('orders').select('*').eq('payment_mode', 'CREDIT').order('created_at', { ascending: false });
+        if (data) {
+          const today = new Date();
+          setItems(data.map((o: any) => {
+            const due = new Date(o.due_date || o.created_at);
+            const diffDays = Math.floor((today.getTime() - due.getTime()) / 86400000);
+            const outstanding = (o.total_amount || 0) - (o.amount_paid || 0);
+            let status: CreditEntry['status'] = 'Current';
+            if (o.amount_paid >= o.total_amount) status = 'Paid';
+            else if (diffDays > 0) status = 'Overdue';
+            else if (diffDays > -7) status = 'Due Soon';
+            return {
+              id: o.id,
+              customerName: o.client_name || o.clientName || '',
+              orderRef: o.ticket_number || o.ticketNumber || o.id,
+              creditAmount: o.total_amount || o.totalAmount || 0,
+              amountPaid: o.amount_paid || 0,
+              outstanding,
+              dueDate: o.due_date || o.created_at?.split('T')[0] || '',
+              daysOverdue: diffDays > 0 ? diffDays : 0,
+              status,
+              phone: o.phone || '',
+            } as CreditEntry;
+          }));
+        }
+      } catch {
+        // show empty state
+      }
+      setLoading(false);
+    };
+    load();
+  }, []);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
@@ -174,6 +205,17 @@ export default function FinanceCreditMgmtView({ addNotification, currentUser }: 
       </div>
 
       <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl overflow-hidden">
+        {loading ? (
+          <div className="p-4 space-y-2">
+            {Array.from({ length: 5 }).map((_, i) => <div key={i} className="animate-pulse h-10 bg-slate-200 dark:bg-slate-700 rounded mb-2" />)}
+          </div>
+        ) : items.length === 0 ? (
+          <div className="text-center py-12 text-slate-400">
+            <CreditCard className="w-10 h-10 mx-auto mb-3 opacity-40" />
+            <p className="font-medium">No credit records yet</p>
+            <p className="text-sm mt-1">They will appear here once added</p>
+          </div>
+        ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -216,6 +258,7 @@ export default function FinanceCreditMgmtView({ addNotification, currentUser }: 
             </tbody>
           </table>
         </div>
+        )}
       </div>
 
       {reminderModal && (

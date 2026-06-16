@@ -3,39 +3,6 @@ import { Plus, Search, ArrowLeft, X } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import type { Customer, Order } from '../../types/erp';
 
-const MOCK_CUSTOMERS: Customer[] = Array.from({ length: 12 }, (_, i) => {
-  const names = ['Kwame Asante', 'Abena Mensah', 'Kofi Boateng', 'Ama Owusu', 'Yaw Darko', 'Efua Adjei', 'Nana Appiah', 'Akosua Frimpong', 'Kwesi Danso', 'Adwoa Sarpong', 'Kojo Ntim', 'Akua Baah'];
-  const companies = ['Accra Traders Ltd', 'Gulf Imports Co.', 'Kama Industries', 'Prime Suppliers', 'Delta Logistics', 'Star Enterprises', 'Bright Ventures', 'Ocean Freight Ltd', 'Gold Coast Trade', 'Sunrise Merchants', 'Unity Commerce', 'Peak Distribution'];
-  const locations = ['Accra', 'Kumasi', 'Takoradi', 'Tamale', 'Cape Coast'];
-  const d = new Date(Date.now() - i * 86400000 * 7);
-  return {
-    id: `cust-${i + 1}`,
-    name: names[i],
-    phone: `0${['24','55','20','50','27'][i % 5]}${String(1000000 + i * 137).slice(0, 7)}`,
-    location: locations[i % 5],
-    companyName: companies[i],
-    ghanaCard: `GHA-${String(100000000 + i * 12345).slice(0, 9)}-${i}`,
-    email: `${names[i].split(' ')[0].toLowerCase()}@${companies[i].split(' ')[0].toLowerCase()}.com`,
-    registeredAt: d.toISOString(),
-    orderHistory: i % 3 === 0 ? [] : [`ord-${i + 1}`, `ord-${i + 3}`],
-    creditHistory: i % 2 === 0 ? [{ orderId: `ord-${i + 1}`, amount: 5000 + i * 800, date: d.toISOString().split('T')[0], status: 'PAID' }] : [],
-  };
-});
-
-const MOCK_ORDERS: Order[] = Array.from({ length: 15 }, (_, i) => {
-  const statuses: Order['status'][] = ['PENDING_FINANCE', 'APPROVED', 'PROCESSING', 'DELIVERED', 'REJECTED'];
-  const d = new Date(Date.now() - i * 86400000 * 3);
-  return {
-    id: `ord-${i + 1}`,
-    ticketNumber: `RBM-${String(2001 + i).padStart(4, '0')}`,
-    clientName: MOCK_CUSTOMERS[i % 12].name,
-    productName: ['Steel Rods 12mm', 'Cement Bags', 'Roofing Sheets', 'PVC Pipes', 'Electrical Cables'][i % 5],
-    totalAmount: Math.round(5000 + i * 3200),
-    paymentMode: (['CASH', 'MOBILE_MONEY', 'CHEQUE'] as Order['paymentMode'][])[i % 3],
-    status: statuses[i % 5],
-    createdAt: d.toISOString(),
-  };
-});
 
 function initials(name: string) {
   return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
@@ -65,11 +32,11 @@ export default function CustomersView({ customersList, onRegisterCustomer, addNo
           supabase.from('customers').select('*').order('registeredAt', { ascending: false }).limit(200),
           supabase.from('orders').select('*').order('createdAt', { ascending: false }).limit(300),
         ]);
-        setCustomers(cData && cData.length > 0 ? cData : customersList.length > 0 ? customersList : MOCK_CUSTOMERS);
-        setOrders(oData && oData.length > 0 ? oData : MOCK_ORDERS);
+        setCustomers(cData && cData.length > 0 ? cData : customersList.length > 0 ? customersList : []);
+        setOrders(oData && oData.length > 0 ? oData : []);
       } catch {
-        setCustomers(customersList.length > 0 ? customersList : MOCK_CUSTOMERS);
-        setOrders(MOCK_ORDERS);
+        setCustomers(customersList.length > 0 ? customersList : []);
+        setOrders([]);
       }
       setLoading(false);
     };
