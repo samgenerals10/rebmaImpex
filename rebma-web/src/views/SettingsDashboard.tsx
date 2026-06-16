@@ -204,14 +204,14 @@ export default function SettingsDashboard({
 
   // ── Template data for Appearance tab ──
   const APPEARANCE_TEMPLATES = [
-    { id: 'salespulse',  label: 'SalesPulse',   desc: 'Clean green growth',    sidebar: '#ffffff', page: '#f0fdf4', accent: '#22c55e' },
-    { id: 'foodie',      label: 'Foodie',        desc: 'Dark indigo sidebar',   sidebar: '#1e1b4b', page: '#faf5ff', accent: '#7c3aed' },
-    { id: 'finova',      label: 'Finova',        desc: 'Blue finance gradient', sidebar: '#ffffff', page: '#f0f9ff', accent: '#3b82f6' },
-    { id: 'aczone',      label: 'AC Zone',       desc: 'Purple violet energy',  sidebar: '#ffffff', page: '#fafafa', accent: '#7c3aed' },
-    { id: 'liamfinance', label: 'Liam Finance',  desc: 'Compact icon sidebar',  sidebar: '#f1f5f9', page: '#f8fafc', accent: '#6366f1' },
-    { id: 'finloflash',  label: 'Finlo Flash',   desc: 'Warm orange fire',      sidebar: '#ffffff', page: '#fff7ed', accent: '#f97316' },
-    { id: 'routines',    label: 'Routines',      desc: 'Clear sky blue focus',  sidebar: '#ffffff', page: '#eff6ff', accent: '#3b82f6' },
-    { id: 'multicolor',  label: 'Multicolor',    desc: 'Rainbow nav icons',     sidebar: '#ffffff', page: '#fafafa', accent: '#8b5cf6' },
+    { id: 'salespulse',  label: 'SalesPulse',   desc: 'Clean green growth',    sidebar: '#ffffff', page: '#f0fdf4', accent: '#22c55e', comingSoon: false },
+    { id: 'liamfinance', label: 'Liam Finance',  desc: 'Compact icon sidebar',  sidebar: '#f1f5f9', page: '#f8fafc', accent: '#6366f1', comingSoon: false },
+    { id: 'finloflash',  label: 'Finlo Flash',   desc: 'Warm orange fire',      sidebar: '#ffffff', page: '#fff7ed', accent: '#f97316', comingSoon: false },
+    { id: 'finova',      label: 'Finova',        desc: 'Blue finance gradient', sidebar: '#ffffff', page: '#f0f9ff', accent: '#3b82f6', comingSoon: false },
+    { id: 'foodie',      label: 'Foodie',        desc: 'Dark indigo sidebar',   sidebar: '#1e1b4b', page: '#faf5ff', accent: '#7c3aed', comingSoon: true },
+    { id: 'aczone',      label: 'AC Zone',       desc: 'Purple violet energy',  sidebar: '#ffffff', page: '#fafafa', accent: '#7c3aed', comingSoon: true },
+    { id: 'routines',    label: 'Routines',      desc: 'Clear sky blue focus',  sidebar: '#ffffff', page: '#eff6ff', accent: '#3b82f6', comingSoon: true },
+    { id: 'multicolor',  label: 'Multicolor',    desc: 'Rainbow nav icons',     sidebar: '#ffffff', page: '#fafafa', accent: '#8b5cf6', comingSoon: true },
   ];
 
   // ── Draft Appearance State (local — only applied on Apply click) ──
@@ -581,16 +581,25 @@ export default function SettingsDashboard({
               </div>
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                 {APPEARANCE_TEMPLATES.map(t => (
-                  <button
+                  <div
                     key={t.id}
-                    type="button"
-                    onClick={() => setDraftTemplate(t.id)}
-                    className={`rounded-xl overflow-hidden cursor-pointer border-2 transition-all hover:shadow-md hover:scale-[1.02] text-left ${
-                      draftTemplate === t.id
-                        ? 'border-[var(--accent)] ring-2 ring-offset-1 ring-[var(--accent-soft)]'
-                        : 'border-transparent hover:border-[var(--border)]'
+                    className={`relative rounded-xl overflow-hidden border-2 transition-all text-left ${
+                      t.comingSoon
+                        ? 'opacity-50 cursor-not-allowed border-transparent'
+                        : `cursor-pointer hover:shadow-md hover:scale-[1.02] ${
+                            draftTemplate === t.id
+                              ? 'border-[var(--accent)] ring-2 ring-offset-1 ring-[var(--accent-soft)]'
+                              : 'border-transparent hover:border-[var(--border)]'
+                          }`
                     }`}
+                    onClick={() => { if (!t.comingSoon) setDraftTemplate(t.id); }}
                   >
+                    {/* Coming Soon badge */}
+                    {t.comingSoon && (
+                      <span className="absolute top-1.5 right-1.5 z-10 text-[8px] font-extrabold px-1.5 py-0.5 rounded-full bg-amber-400/90 text-amber-900 leading-none">
+                        Coming Soon
+                      </span>
+                    )}
                     {/* 80px mini preview */}
                     <div className="flex overflow-hidden" style={{ height: '80px', background: t.page }}>
                       {/* Sidebar strip */}
@@ -618,14 +627,14 @@ export default function SettingsDashboard({
                         <span className="text-[11px] font-semibold text-[var(--text-primary)] leading-none">{t.label}</span>
                       </div>
                       <p className="text-[9px] text-[var(--text-muted)] leading-none">{t.desc}</p>
-                      {theme === t.id && (
+                      {!t.comingSoon && theme === t.id && (
                         <span className="mt-1 inline-flex items-center gap-1 text-[8px] font-extrabold px-1.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 w-fit">
                           <span className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
                           ACTIVE
                         </span>
                       )}
                     </div>
-                  </button>
+                  </div>
                 ))}
               </div>
             </div>
