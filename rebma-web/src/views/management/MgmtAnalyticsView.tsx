@@ -58,14 +58,7 @@ const heatColor = (v: number) =>
   v >= 70 ? 'bg-amber-400/50 text-amber-800' :
   'bg-rose-400/50 text-rose-800';
 
-const recentDecisions = [
-  { date: '2026-06-13', type: 'Cargo Approval', description: 'Steel Pipes from Maersk (Germany)', decision: 'Approved', outcome: 'Added to stock', ref: 'CARGO-044' },
-  { date: '2026-06-12', type: 'Credit Order',   description: 'Accra Traders Ltd — GHS 45,000',   decision: 'Approved', outcome: 'Finance notified', ref: 'ORD-2091' },
-  { date: '2026-06-12', type: 'Price Setting',  description: 'Palm Oil Barrel set at GHS 280',    decision: 'Broadcast', outcome: 'All depts notified', ref: 'PRC-081' },
-  { date: '2026-06-11', type: 'Staff Reg.',     description: 'Kweku Nkrumah — DISPATCH',          decision: 'Approved', outcome: 'HR notified', ref: 'EMP-0210' },
-  { date: '2026-06-11', type: 'Credit Order',   description: 'Gulf Imports Ltd — GHS 90,000',     decision: 'Rejected', outcome: 'Marketing notified', ref: 'ORD-2088' },
-  { date: '2026-06-10', type: 'Cargo Approval', description: 'Hydraulic Fittings from COSCO',      decision: 'Approved', outcome: 'Added to stock', ref: 'CARGO-043' },
-];
+// recentDecisions loaded from Supabase below
 
 const PERIODS = ['7D', '30D', '90D', '12M'] as const;
 type Period = typeof PERIODS[number];
@@ -84,12 +77,16 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   );
 };
 
+interface Decision { date: string; type: string; description: string; decision: string; outcome: string; ref: string; }
+
 export default function MgmtAnalyticsView({ addNotification }: Props) {
   const [period, setPeriod] = useState<Period>('30D');
-  const [totalApprovals, setTotalApprovals] = useState(222);
-  const [approvalRate, setApprovalRate] = useState(84);
-  const [revenueGrowth] = useState(12.4);
-  const [staffScore] = useState(86);
+  const [totalApprovals, setTotalApprovals] = useState(0);
+  const [approvalRate, setApprovalRate] = useState(0);
+  const [revenueGrowth] = useState(0);
+  const [staffScore] = useState(0);
+  const [recentDecisions, setRecentDecisions] = useState<Decision[]>([]);
+  const [loadingDecisions, setLoadingDecisions] = useState(true);
 
   useEffect(() => {
     const load = async () => {
@@ -98,14 +95,37 @@ export default function MgmtAnalyticsView({ addNotification }: Props) {
           supabase.from('cargo_intake').select('id', { count: 'exact', head: true }).eq('status', 'APPROVED'),
           supabase.from('cargo_intake').select('id', { count: 'exact', head: true }).eq('status', 'REJECTED'),
         ]);
-        const approved = appRes.count ?? 148;
-        const rejected = rejRes.count ?? 18;
+        const approved = appRes.count ?? 0;
+        const rejected = rejRes.count ?? 0;
         const total = approved + rejected;
-        if (total > 0) {
-          setTotalApprovals(total);
-          setApprovalRate(Math.round((approved / total) * 100));
-        }
+        setTotalApprovals(total);
+        setApprovalRate(total > 0 ? Math.round((approved / total) * 100) : 0);
       } catch {}
+
+      try {
+        const { data } = await supabase
+          .from('global_audit_history')
+          .select('*')
+          .eq('department', 'MANAGEMENT')
+          .order('timestamp', { ascending: false })
+          .limit(10);
+        if (data && data.length > 0) {
+          setRecentDecisions(data.map((r: any) => ({
+            date: r.timestamp ? r.timestamp.split('T')[0] : '',
+            type: r.action?.replace(/_/g, ' ') ?? '—',
+            description: r.details ?? '—',
+            decision: r.action?.includes('REJECT') ? 'Rejected' : r.action?.includes('APPROVE') ? 'Approved' : 'Actioned',
+            outcome: r.details ?? '—',
+            ref: r.id?.slice(0, 8) ?? '—',
+          })));
+        } else {
+          setRecentDecisions([]);
+        }
+      } catch {
+        setRecentDecisions([]);
+      } finally {
+        setLoadingDecisions(false);
+      }
     };
     load();
   }, []);
@@ -312,20 +332,19 @@ export default function MgmtAnalyticsView({ addNotification }: Props) {
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--border)]">
-              {recentDecisions.map((row, i) => (
+              {loadingDecisions ? (
+                <tr><td colSpan={6} className="py-6 px-5">{[0,1,2,3,4].map(i => <div key={i} className="animate-pulse h-7 bg-slate-200 dark:bg-slate-700 rounded mb-2" />)}</td></tr>
+              ) : recentDecisions.length === 0 ? (
+                <tr><td colSpan={6} className="py-12 text-center text-[var(--text-muted)] text-xs">No management decisions recorded yet</td></tr>
+              ) : recentDecisions.map((row, i) => (
                 <tr key={i} className="hover:bg-[var(--accent-light)] transition-colors">
                   <td className="py-3 px-5 text-[var(--text-muted)] whitespace-nowrap">{row.date}</td>
                   <td className="py-3 px-5">
-                    <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
-                      row.type === 'Cargo Approval' ? 'bg-blue-500/10 text-blue-600' :
-                      row.type === 'Credit Order'   ? 'bg-purple-500/10 text-purple-600' :
-                      row.type === 'Price Setting'  ? 'bg-orange-500/10 text-orange-600' :
-                      'bg-teal-500/10 text-teal-600'
-                    }`}>{row.type}</span>
+                    <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-blue-500/10 text-blue-600">{row.type}</span>
                   </td>
                   <td className="py-3 px-5 text-[var(--text-primary)] max-w-[200px] truncate">{row.description}</td>
                   <td className="py-3 px-5">
-                    <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${row.decision === 'Approved' || row.decision === 'Broadcast' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-rose-500/10 text-rose-600'}`}>{row.decision}</span>
+                    <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${row.decision === 'Approved' || row.decision === 'Broadcast' || row.decision === 'Actioned' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-rose-500/10 text-rose-600'}`}>{row.decision}</span>
                   </td>
                   <td className="py-3 px-5 text-[var(--text-muted)]">{row.outcome}</td>
                   <td className="py-3 px-5 font-mono text-[var(--accent)]">{row.ref}</td>

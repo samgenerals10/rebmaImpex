@@ -112,6 +112,7 @@ export default function ManagementDashboard({
   // CEO → Management incoming shipment notifications
   const [ceoNotifications, setCeoNotifications] = useState<any[]>([]);
   const [forwardedIds, setForwardedIds] = useState<Set<string>>(new Set());
+  const [stockAlerts, setStockAlerts] = useState<{ name: string; sku: string; current: number; capacity: number }[]>([]);
 
   useEffect(() => {
     supabase
@@ -120,6 +121,13 @@ export default function ManagementDashboard({
       .eq('notified_department', 'MANAGEMENT')
       .order('created_at', { ascending: false })
       .then(({ data }) => { if (data) setCeoNotifications(data); }, () => {});
+
+    (async () => {
+      try {
+        const { data } = await supabase.from('stock_items').select('name, sku, quantity, max_quantity').order('quantity', { ascending: true }).limit(4);
+        if (data) setStockAlerts(data.map((d: any) => ({ name: d.name, sku: d.sku || '—', current: d.quantity || 0, capacity: d.max_quantity || 100 })));
+      } catch { /* silent */ }
+    })();
   }, []);
 
   const lineChartData = [
@@ -145,10 +153,10 @@ export default function ManagementDashboard({
   ];
 
   const kpiDetails = [
-    { title: 'Cargo Awaiting Price', metric: 'Pending', trendData: [{name:'Jan',value:42},{name:'Feb',value:58},{name:'Mar',value:51},{name:'Apr',value:73},{name:'May',value:65},{name:'Jun',value:80}], breakdownData: [{name:'Priced',value:18}, {name:'Unpriced',value:7}, {name:'Queued',value:4}], tableData: [{ref:'RBM-001', item:'Steel Rods', status:'Pending'}, {ref:'RBM-002', item:'Cement Bags', status:'Pending'}, {ref:'RBM-003', item:'PVC Pipes', status:'Priced'}], columns: [{key:'ref',label:'Ref #'}, {key:'item',label:'Item'}, {key:'status',label:'Status'}] },
-    { title: 'Credit Audits Pending', metric: 'Audits', trendData: [{name:'Jan',value:42},{name:'Feb',value:58},{name:'Mar',value:51},{name:'Apr',value:73},{name:'May',value:65},{name:'Jun',value:80}], breakdownData: [{name:'Approved',value:12}, {name:'Pending',value:5}, {name:'Rejected',value:2}], tableData: [{id:'CA-01', client:'Accra Traders', amount:'GHS 45,000'}, {id:'CA-02', client:'Kama Industries', amount:'GHS 72,000'}], columns: [{key:'id',label:'Audit ID'}, {key:'client',label:'Client'}, {key:'amount',label:'Amount'}] },
-    { title: 'Authorized Orders', metric: 'Orders', trendData: [{name:'Jan',value:42},{name:'Feb',value:58},{name:'Mar',value:51},{name:'Apr',value:73},{name:'May',value:65},{name:'Jun',value:80}], breakdownData: [{name:'Authorized',value:24}, {name:'Pending',value:8}, {name:'Rejected',value:3}], tableData: [{order:'ORD-101', client:'Gulf Imports', value:'GHS 90,000'}, {order:'ORD-102', client:'Delta Logistics', value:'GHS 55,000'}], columns: [{key:'order',label:'Order'}, {key:'client',label:'Client'}, {key:'value',label:'Value'}] },
-    { title: 'Net Authorized Value', metric: 'GHS', trendData: [{name:'Jan',value:42},{name:'Feb',value:58},{name:'Mar',value:51},{name:'Apr',value:73},{name:'May',value:65},{name:'Jun',value:80}], breakdownData: [{name:'Cleared',value:450000}, {name:'Pending',value:120000}, {name:'Held',value:30000}], tableData: [{week:'Week 1', auth:'GHS 120,000', rej:'GHS 15,000'}, {week:'Week 2', auth:'GHS 145,000', rej:'GHS 10,000'}], columns: [{key:'week',label:'Week'}, {key:'auth',label:'Authorized'}, {key:'rej',label:'Rejected'}] }
+    { title: 'Cargo Awaiting Price', metric: 'Pending', trendData: [{name:'Now',value:pendingCargoCount}], breakdownData: [{name:'Pending',value:pendingCargoCount}, {name:'Approved',value:localGoods.filter(g=>g.status==='APPROVED').length}], tableData: localGoods.filter(g=>g.status==='PENDING_MANAGEMENT_APPROVAL').slice(0,5).map(g => ({ref: g.goodsCode || g.id, item: g.productName || g.company || '—', status: 'Pending'})), columns: [{key:'ref',label:'Ref #'}, {key:'item',label:'Item'}, {key:'status',label:'Status'}] },
+    { title: 'Credit Audits Pending', metric: 'Audits', trendData: [{name:'Now',value:pendingCreditCount}], breakdownData: [{name:'Approved',value:approvedOrdersCount}, {name:'Pending',value:pendingCreditCount}], tableData: localOrders.filter(o=>o.status==='PENDING_MANAGEMENT').slice(0,5).map(o => ({id: o.id, client: o.clientName, amount: `GHS ${o.totalAmount.toLocaleString()}`})), columns: [{key:'id',label:'Audit ID'}, {key:'client',label:'Client'}, {key:'amount',label:'Amount'}] },
+    { title: 'Authorized Orders', metric: 'Orders', trendData: [{name:'Now',value:approvedOrdersCount}], breakdownData: [{name:'Authorized',value:approvedOrdersCount}, {name:'Pending',value:pendingCreditCount+pendingCargoCount}], tableData: localOrders.filter(o=>['APPROVED','DELIVERED','PROCESSING'].includes(o.status)).slice(0,5).map(o => ({order: o.id, client: o.clientName, value: `GHS ${o.totalAmount.toLocaleString()}`})), columns: [{key:'order',label:'Order'}, {key:'client',label:'Client'}, {key:'value',label:'Value'}] },
+    { title: 'Net Authorized Value', metric: 'GHS', trendData: [{name:'Now',value:totalApprovedValue}], breakdownData: [{name:'Cleared',value:totalApprovedValue}, {name:'Pending',value:localOrders.filter(o=>o.status.startsWith('PENDING')).reduce((s,o)=>s+o.totalAmount,0)}], tableData: localOrders.filter(o=>['APPROVED','DELIVERED'].includes(o.status)).slice(0,5).map(o=>({order:o.id, client:o.clientName, value:`GHS ${o.totalAmount.toLocaleString()}`})), columns: [{key:'order',label:'Order'}, {key:'client',label:'Client'}, {key:'value',label:'Value'}] }
   ];
 
 
@@ -608,12 +616,8 @@ export default function ManagementDashboard({
             <button onClick={() => setActiveSubTab?.('DeptActivity')} className="text-xs text-[var(--accent)] font-semibold hover:underline cursor-pointer">View Activity →</button>
           </div>
           <div className="space-y-3">
-            {[
-              { name: 'Hydraulic Hose Fittings', sku: 'HHF-200', current: 12, capacity: 300 },
-              { name: 'Chemical Drums (20L)',     sku: 'CHD-300', current: 0,  capacity: 100 },
-              { name: 'Electrical Cables (Roll)', sku: 'ELC-600', current: 15, capacity: 200 },
-              { name: 'Lubricant Oil (5L)',        sku: 'LBO-800', current: 8,  capacity: 80  },
-            ].map(item => {
+            {stockAlerts.length === 0 && <p className="text-xs text-[var(--text-muted)] text-center py-4">No stock items found</p>}
+            {stockAlerts.map(item => {
               const pct = item.capacity > 0 ? Math.round((item.current / item.capacity) * 100) : 0;
               const isOut = item.current === 0;
               return (

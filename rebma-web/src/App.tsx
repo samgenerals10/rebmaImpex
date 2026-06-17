@@ -2715,7 +2715,7 @@ export default function App() {
     if (activeSubTab === 'Notes') return <NotesPanel currentUser={currentUser} addNotification={addNotification} />;
     if (activeSubTab === 'Tasks') return <TasksPanel currentUser={currentUser} addNotification={addNotification} />;
     if (activeSubTab === 'Emails') return <EmailsPanel currentUser={currentUser} addNotification={addNotification} onUnreadCountChange={setUnreadEmailCount} />;
-    if (activeSubTab === 'Notifications') return <NotificationsPanel notifications={notifications.map(n => n.msg)} onClear={() => setNotifications([])} />;
+    if (activeSubTab === 'Notifications') return <NotificationsPanel notifications={notifications.map(n => n.msg)} onClear={() => setNotifications([])} currentUser={currentUser ?? undefined} />;
     if (activeSubTab === 'HelpDesk') return <HelpDeskPanel currentUser={currentUser} addNotification={addNotification} />;
     if (activeSubTab === 'Feedback') return <FeedbackPanel currentUser={currentUser} addNotification={addNotification} />;
 

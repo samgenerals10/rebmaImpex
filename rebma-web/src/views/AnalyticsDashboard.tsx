@@ -91,6 +91,7 @@ export default function AnalyticsDashboard({ department, currentUser, addNotific
   const [activityData, setActivityData] = useState<any[]>([]);
   const [compareData, setCompareData] = useState<any[]>([]);
   const [pieData, setPieData] = useState<{ name: string; value: number }[]>([]);
+  const [liveStats, setLiveStats] = useState<{ label: string; value: string; sub?: string; trend: number; icon: any }[]>([]);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -99,6 +100,121 @@ export default function AnalyticsDashboard({ department, currentUser, addNotific
     setCompareData(genComparison(period));
     setLoading(false);
   }, [period]);
+
+  const loadLiveStats = useCallback(async () => {
+    try {
+      if (department === 'CEO' || department === 'MANAGEMENT') {
+        const [{ count: orderCount }, { data: revenueRows }, { count: driverCount }, { count: staffCount }] = await Promise.all([
+          supabase.from('orders').select('*', { count: 'exact', head: true }),
+          supabase.from('finance_payments').select('amount'),
+          supabase.from('drivers').select('*', { count: 'exact', head: true }).eq('status', 'ACTIVE'),
+          supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('status', 'ACTIVE'),
+        ]);
+        const totalRev = (revenueRows ?? []).reduce((s: number, r: any) => s + (r.amount || 0), 0);
+        setLiveStats([
+          { label: 'Total Revenue', value: `GHS ${(totalRev / 1000000).toFixed(1)}M`, sub: 'All payments', trend: 0, icon: DollarSign },
+          { label: 'Active Depts', value: '9', sub: 'All reporting', trend: 0, icon: Users },
+          { label: 'Active Drivers', value: `${driverCount ?? 0}`, sub: 'On roster', trend: 0, icon: Truck },
+          { label: 'Staff Headcount', value: `${staffCount ?? 0}`, sub: 'Total active', trend: 0, icon: Users },
+        ]);
+      } else if (department === 'FINANCE') {
+        const [{ data: orders }, { data: payments }] = await Promise.all([
+          supabase.from('orders').select('total_amount, status, payment_mode'),
+          supabase.from('finance_payments').select('amount'),
+        ]);
+        const invoiced = (orders ?? []).reduce((s: number, o: any) => s + (o.total_amount || 0), 0);
+        const collected = (payments ?? []).reduce((s: number, p: any) => s + (p.amount || 0), 0);
+        const credit = (orders ?? []).filter((o: any) => o.payment_mode === 'CREDIT').reduce((s: number, o: any) => s + (o.total_amount || 0), 0);
+        setLiveStats([
+          { label: 'Total Invoiced', value: `GHS ${(invoiced / 1000).toFixed(0)}K`, sub: 'All orders', trend: 0, icon: DollarSign },
+          { label: 'Collected', value: `GHS ${(collected / 1000).toFixed(0)}K`, sub: 'Payments in', trend: 0, icon: TrendingUp },
+          { label: 'Outstanding', value: `GHS ${(invoiced - collected).toLocaleString()}`, sub: 'Uncollected', trend: 0, icon: TrendingDown },
+          { label: 'Credit Extended', value: `GHS ${(credit / 1000).toFixed(0)}K`, sub: 'Credit terms', trend: 0, icon: DollarSign },
+        ]);
+      } else if (department === 'HR') {
+        const [{ count: total }, { count: onLeave }, { count: pending }] = await Promise.all([
+          supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('status', 'ACTIVE'),
+          supabase.from('leave_requests').select('*', { count: 'exact', head: true }).eq('status', 'APPROVED'),
+          supabase.from('leave_requests').select('*', { count: 'exact', head: true }).eq('status', 'PENDING'),
+        ]);
+        setLiveStats([
+          { label: 'Total Staff', value: `${total ?? 0}`, sub: 'Headcount', trend: 0, icon: Users },
+          { label: 'On Leave', value: `${onLeave ?? 0}`, sub: 'Approved leaves', trend: 0, icon: Users },
+          { label: 'Leave Requests', value: `${pending ?? 0}`, sub: 'Pending review', trend: 0, icon: Users },
+          { label: 'Active', value: `${Math.max(0, (total ?? 0) - (onLeave ?? 0))}`, sub: 'Working today', trend: 0, icon: Users },
+        ]);
+      } else if (department === 'MARKETING') {
+        const [{ count: ordersC }, { count: custsC }, { count: pendC }, { data: revRows }] = await Promise.all([
+          supabase.from('orders').select('*', { count: 'exact', head: true }),
+          supabase.from('customers').select('*', { count: 'exact', head: true }),
+          supabase.from('orders').select('*', { count: 'exact', head: true }).like('status', 'PENDING%'),
+          supabase.from('orders').select('total_amount'),
+        ]);
+        const rev = (revRows ?? []).reduce((s: number, o: any) => s + (o.total_amount || 0), 0);
+        setLiveStats([
+          { label: 'Orders Created', value: `${ordersC ?? 0}`, sub: 'Total bookings', trend: 0, icon: Package },
+          { label: 'Customers', value: `${custsC ?? 0}`, sub: 'Registered', trend: 0, icon: Users },
+          { label: 'Revenue', value: `GHS ${(rev / 1000).toFixed(0)}K`, sub: 'All orders', trend: 0, icon: DollarSign },
+          { label: 'Pending', value: `${pendC ?? 0}`, sub: 'Awaiting approval', trend: 0, icon: TrendingDown },
+        ]);
+      } else if (department === 'OPERATIONS') {
+        const [{ count: cargoC }, { count: stockC }, { count: discC }] = await Promise.all([
+          supabase.from('cargo_intake').select('*', { count: 'exact', head: true }),
+          supabase.from('stock_items').select('*', { count: 'exact', head: true }),
+          supabase.from('cargo_intake').select('*', { count: 'exact', head: true }).neq('discrepancies', 'None'),
+        ]);
+        setLiveStats([
+          { label: 'Cargo Intakes', value: `${cargoC ?? 0}`, sub: 'Total logged', trend: 0, icon: Package },
+          { label: 'Stock Items', value: `${stockC ?? 0}`, sub: 'In warehouse', trend: 0, icon: Package },
+          { label: 'Discrepancies', value: `${discC ?? 0}`, sub: 'Open issues', trend: 0, icon: TrendingDown },
+          { label: 'Fulfillments', value: '—', sub: 'Check deliveries', trend: 0, icon: Truck },
+        ]);
+      } else if (department === 'DISPATCH') {
+        const [{ count: total }, { count: inTransit }, { count: delivered }, { count: drivers }] = await Promise.all([
+          supabase.from('deliveries').select('*', { count: 'exact', head: true }),
+          supabase.from('deliveries').select('*', { count: 'exact', head: true }).eq('status', 'IN_TRANSIT'),
+          supabase.from('deliveries').select('*', { count: 'exact', head: true }).eq('status', 'DELIVERED'),
+          supabase.from('drivers').select('*', { count: 'exact', head: true }).eq('status', 'ACTIVE'),
+        ]);
+        setLiveStats([
+          { label: 'Deliveries', value: `${total ?? 0}`, sub: 'Total', trend: 0, icon: Truck },
+          { label: 'In Transit', value: `${inTransit ?? 0}`, sub: 'Currently active', trend: 0, icon: Truck },
+          { label: 'Delivered', value: `${delivered ?? 0}`, sub: 'Completed', trend: 0, icon: TrendingUp },
+          { label: 'Active Drivers', value: `${drivers ?? 0}`, sub: 'On roster', trend: 0, icon: Users },
+        ]);
+      } else if (department === 'PRODUCTION') {
+        const [{ count: reqC }, { data: outputRows }] = await Promise.all([
+          supabase.from('production_requests').select('*', { count: 'exact', head: true }),
+          supabase.from('production_output').select('boxes, sachets'),
+        ]);
+        const totalBoxes = (outputRows ?? []).reduce((s: number, r: any) => s + (r.boxes || 0), 0);
+        const totalSachets = (outputRows ?? []).reduce((s: number, r: any) => s + (r.sachets || 0), 0);
+        setLiveStats([
+          { label: 'Requests', value: `${reqC ?? 0}`, sub: 'Production orders', trend: 0, icon: Package },
+          { label: 'Boxes Produced', value: `${totalBoxes}`, sub: 'Total output', trend: 0, icon: Package },
+          { label: 'Sachets', value: `${totalSachets}`, sub: 'Total sachets', trend: 0, icon: Package },
+          { label: 'Efficiency', value: '—', sub: 'Quality rate', trend: 0, icon: TrendingUp },
+        ]);
+      } else if (department === 'RECEPTION') {
+        const today = new Date().toISOString().split('T')[0];
+        const [{ count: totalC }, { count: insideC }, { count: outC }] = await Promise.all([
+          supabase.from('visitors').select('*', { count: 'exact', head: true }).gte('check_in', today),
+          supabase.from('visitors').select('*', { count: 'exact', head: true }).gte('check_in', today).is('check_out', null),
+          supabase.from('visitors').select('*', { count: 'exact', head: true }).gte('check_in', today).not('check_out', 'is', null),
+        ]);
+        setLiveStats([
+          { label: 'Visitors Today', value: `${totalC ?? 0}`, sub: 'Checked in', trend: 0, icon: Users },
+          { label: 'Inside Now', value: `${insideC ?? 0}`, sub: 'Still on premises', trend: 0, icon: Users },
+          { label: 'Checked Out', value: `${outC ?? 0}`, sub: 'Departed today', trend: 0, icon: Users },
+          { label: 'Avg/Day', value: `${totalC ?? 0}`, sub: 'Today so far', trend: 0, icon: Users },
+        ]);
+      }
+    } catch { /* silent */ }
+  }, [department]);
+
+  useEffect(() => {
+    loadLiveStats();
+  }, [loadLiveStats]);
 
   useEffect(() => {
     load();
@@ -200,7 +316,7 @@ export default function AnalyticsDashboard({ department, currentUser, addNotific
     ],
   };
 
-  const stats = deptStats[department] || deptStats['CEO'];
+  const stats = liveStats.length > 0 ? liveStats : (deptStats[department] || deptStats['CEO']);
 
   const deptTitle: Record<string, string> = {
     CEO: 'Executive Analytics', FINANCE: 'Finance Analytics', HR: 'HR Analytics',

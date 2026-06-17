@@ -18,49 +18,10 @@ interface Props {
   onEvaluateOrder?: (id: string, approve: boolean) => void;
 }
 
-const EARNING_DATA = [
-  { month: 'Jul', value: 310000 },
-  { month: 'Aug', value: 280000 },
-  { month: 'Sep', value: 395000 },
-  { month: 'Oct', value: 350000 },
-  { month: 'Nov', value: 480000 },
-  { month: 'Dec', value: 440000 },
-];
-const SPENDING_DATA = [
-  { month: 'Aug', payroll: 85000, ops: 60000, logistics: 22000, admin: 15000 },
-  { month: 'Sep', payroll: 87000, ops: 72000, logistics: 28000, admin: 16000 },
-  { month: 'Oct', payroll: 87000, ops: 65000, logistics: 24000, admin: 14000 },
-  { month: 'Nov', payroll: 90000, ops: 80000, logistics: 30000, admin: 18000 },
-  { month: 'Dec', payroll: 90000, ops: 75000, logistics: 27000, admin: 17000 },
-];
-const CASHFLOW_DATA = [
-  { month: 'Aug', income: 280000, expense: 182000 },
-  { month: 'Sep', income: 395000, expense: 203000 },
-  { month: 'Oct', income: 350000, expense: 190000 },
-  { month: 'Nov', income: 480000, expense: 218000 },
-  { month: 'Dec', income: 440000, expense: 209000 },
-];
-const TXN_LINE_DATA = [
-  { d: '1', amt: 48000 }, { d: '5', amt: 62000 }, { d: '10', amt: 55000 },
-  { d: '15', amt: 78000 }, { d: '20', amt: 70000 }, { d: '25', amt: 90000 }, { d: '30', amt: 85000 },
-];
-const PAYMENT_PIE = [
-  { name: 'Cash', value: 42, color: '#10b981' },
-  { name: 'Cheque', value: 28, color: '#3b82f6' },
-  { name: 'Mobile Money', value: 22, color: '#f59e0b' },
-  { name: 'Credit', value: 8, color: '#ef4444' },
-];
-const INV_STATUS = [
-  { name: 'Paid', value: 58, color: '#10b981' },
-  { name: 'Pending', value: 32, color: '#f59e0b' },
-  { name: 'Overdue', value: 10, color: '#ef4444' },
-];
-const UPCOMING_BILLS = [
-  { desc: 'Office Rent', amount: 12000, due: '2024-12-15', status: 'Due Soon' },
-  { desc: 'Electricity Bill', amount: 3500, due: '2024-12-18', status: 'Scheduled' },
-  { desc: 'Supplier Payment — Kofi Ltd', amount: 45000, due: '2024-12-10', status: 'Overdue' },
-  { desc: 'Insurance Premium', amount: 8000, due: '2024-12-31', status: 'Scheduled' },
-];
+interface Bill { id: string; desc: string; amount: number; due: string; status: string; }
+interface MonthlyRevenue { month: string; value: number; }
+interface PaymentSlice { name: string; value: number; color: string; }
+interface CashflowPoint { month: string; income: number; expense: number; }
 
 function timeGreeting() {
   const h = new Date().getHours();
@@ -88,17 +49,74 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
   const [pendingCount, setPendingCount] = useState(0);
   const [invoiceCount, setInvoiceCount] = useState(0);
   const [creditOutstanding, setCreditOutstanding] = useState(0);
+  const [upcomingBills, setUpcomingBills] = useState<Bill[]>([]);
+  const [earningData, setEarningData] = useState<MonthlyRevenue[]>([]);
+  const [cashflowData, setCashflowData] = useState<CashflowPoint[]>([]);
+  const [paymentPie, setPaymentPie] = useState<PaymentSlice[]>([]);
 
   const firstName = currentUser?.fullName?.split(' ')[0] || 'Finance';
   const pendingOrders = ordersList.filter(o => o.status === 'PENDING_FINANCE');
 
   useEffect(() => {
     const rev = ordersList.reduce((s, o) => s + (['DELIVERED', 'APPROVED', 'PROCESSING'].includes(o.status) ? o.totalAmount : 0), 0);
-    setTotalRevenue(rev || 440000);
-    setPendingCount(ordersList.filter(o => o.status === 'PENDING_FINANCE').length || 5);
-    setInvoiceCount(ordersList.filter(o => ['APPROVED', 'DELIVERED'].includes(o.status)).length || 23);
-    setCreditOutstanding(ordersList.filter(o => o.paymentMode === 'CREDIT').reduce((s, o) => s + o.totalAmount, 0) || 182000);
+    setTotalRevenue(rev || 0);
+    setPendingCount(ordersList.filter(o => o.status === 'PENDING_FINANCE').length || 0);
+    setInvoiceCount(ordersList.filter(o => ['APPROVED', 'DELIVERED'].includes(o.status)).length || 0);
+    setCreditOutstanding(ordersList.filter(o => o.paymentMode === 'CREDIT').reduce((s, o) => s + o.totalAmount, 0) || 0);
+
+    // Build payment pie from real orders
+    const total = ordersList.length || 1;
+    const modeGroups: Record<string, number> = {};
+    for (const o of ordersList) { modeGroups[o.paymentMode || 'CASH'] = (modeGroups[o.paymentMode || 'CASH'] || 0) + 1; }
+    const modeColors: Record<string, string> = { CASH: '#10b981', CHEQUE: '#3b82f6', MOBILE_MONEY: '#f59e0b', CREDIT: '#ef4444' };
+    const modeLabels: Record<string, string> = { CASH: 'Cash', CHEQUE: 'Cheque', MOBILE_MONEY: 'Mobile Money', CREDIT: 'Credit' };
+    setPaymentPie(Object.entries(modeGroups).map(([k, v]) => ({ name: modeLabels[k] || k, value: Math.round((v / total) * 100), color: modeColors[k] || '#94a3b8' })));
   }, [ordersList]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        // Load upcoming bills from finance_expenses
+        const { data: bills } = await supabase.from('finance_expenses')
+          .select('id, description, amount, due_date, status')
+          .gte('due_date', new Date().toISOString().split('T')[0])
+          .order('due_date', { ascending: true })
+          .limit(5);
+        if (bills) {
+          setUpcomingBills(bills.map((b: any) => ({
+            id: b.id, desc: b.description, amount: b.amount, due: b.due_date,
+            status: new Date(b.due_date) < new Date() ? 'Overdue' : b.status === 'PENDING' ? 'Due Soon' : 'Scheduled',
+          })));
+        }
+
+        // Build earning trend from orders — last 6 months
+        const { data: orders } = await supabase.from('orders').select('total_amount, created_at').not('status', 'in', '(REJECTED,PENDING_FINANCE)');
+        if (orders) {
+          const monthMap: Record<string, number> = {};
+          for (const o of orders) {
+            const d = new Date(o.created_at);
+            const key = d.toLocaleDateString('en-GB', { month: 'short' });
+            monthMap[key] = (monthMap[key] || 0) + (o.total_amount || 0);
+          }
+          const last6 = Array.from({ length: 6 }, (_, i) => {
+            const d = new Date(); d.setMonth(d.getMonth() - (5 - i));
+            const k = d.toLocaleDateString('en-GB', { month: 'short' });
+            return { month: k, value: monthMap[k] || 0 };
+          });
+          setEarningData(last6);
+
+          const { data: expenses } = await supabase.from('finance_expenses').select('amount, created_at');
+          const expenseMap: Record<string, number> = {};
+          for (const e of (expenses || [])) {
+            const d = new Date(e.created_at);
+            const key = d.toLocaleDateString('en-GB', { month: 'short' });
+            expenseMap[key] = (expenseMap[key] || 0) + (e.amount || 0);
+          }
+          setCashflowData(last6.map(p => ({ month: p.month, income: p.value, expense: expenseMap[p.month] || 0 })));
+        }
+      } catch { /* silent */ }
+    })();
+  }, []);
 
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-screen-2xl mx-auto">
@@ -163,10 +181,10 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
               <option value="12M">12 Months</option>
             </select>
           </div>
-          <p className="text-2xl font-bold text-[var(--text-primary)] mb-4">GHS 440,000</p>
+          <p className="text-2xl font-bold text-[var(--text-primary)] mb-4">GHS {(totalRevenue / 1000).toFixed(0)}K</p>
           <div className="h-40">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={EARNING_DATA}>
+              <AreaChart data={earningData}>
                 <defs>
                   <linearGradient id="earnFin" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="var(--accent)" stopOpacity={0.3} />
@@ -196,14 +214,12 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
           </div>
           <div className="h-52">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={SPENDING_DATA}>
+              <BarChart data={cashflowData}>
                 <XAxis dataKey="month" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `${(v / 1000).toFixed(0)}K`} />
                 <Tooltip content={<CustomTooltip />} />
-                <Bar dataKey="payroll" name="Payroll" fill="var(--accent)" stackId="a" />
-                <Bar dataKey="ops" name="Operations" fill="#c084fc" stackId="a" />
-                <Bar dataKey="logistics" name="Logistics" fill="#60a5fa" stackId="a" />
-                <Bar dataKey="admin" name="Admin" fill="#94a3b8" stackId="a" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="income" name="Income" fill="var(--accent)" stackId="a" />
+                <Bar dataKey="expense" name="Expenses" fill="#c084fc" stackId="a" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -220,11 +236,15 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
             ))}
           </div>
           <p className="text-2xl font-bold text-[var(--text-primary)] mb-4">
-            {cashflowTab === 'income' ? 'GHS 440K' : cashflowTab === 'expense' ? 'GHS 209K' : 'GHS 231K'}
+            {cashflowTab === 'income'
+              ? `GHS ${((cashflowData.reduce((s, d) => s + d.income, 0)) / 1000).toFixed(0)}K`
+              : cashflowTab === 'expense'
+              ? `GHS ${((cashflowData.reduce((s, d) => s + d.expense, 0)) / 1000).toFixed(0)}K`
+              : `GHS ${((cashflowData.reduce((s, d) => s + d.income - d.expense, 0)) / 1000).toFixed(0)}K`}
           </p>
           <div className="h-36">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={CASHFLOW_DATA}>
+              <BarChart data={cashflowData}>
                 <XAxis dataKey="month" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} />
                 <Tooltip content={<CustomTooltip />} />
                 <Bar dataKey={cashflowTab === 'income' ? 'income' : 'expense'} name={cashflowTab} fill="var(--accent)" radius={[4, 4, 0, 0]} />
@@ -239,7 +259,8 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
             <button className="w-7 h-7 rounded-full flex items-center justify-center text-[var(--text-secondary)] hover:bg-[var(--bg-input)] text-xl leading-none">+</button>
           </div>
           <div className="space-y-2">
-            {UPCOMING_BILLS.map((bill, i) => (
+            {upcomingBills.length === 0 && <p className="text-xs text-[var(--text-muted)] text-center py-4">No upcoming bills scheduled</p>}
+            {upcomingBills.map((bill, i) => (
               <div key={i} className={`flex items-center gap-3 p-3 rounded-xl ${bill.status === 'Overdue' ? 'bg-red-50 border border-red-200' : 'bg-[var(--bg-input)]'}`}>
                 <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${bill.status === 'Overdue' ? 'bg-red-100' : bill.status === 'Due Soon' ? 'bg-yellow-100' : 'bg-[var(--accent-light)]'}`}>
                   <Receipt size={14} className={bill.status === 'Overdue' ? 'text-red-500' : bill.status === 'Due Soon' ? 'text-yellow-500' : ''} style={bill.status === 'Scheduled' ? { color: 'var(--accent)' } : {}} />
@@ -268,9 +289,9 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {[
-            { name: 'GHS Main Account', num: '···· ···· 4821', balance: 'GHS 1,240,500', trend: '+3.2%', color: 'var(--accent)' },
-            { name: 'USD Account', num: '···· ···· 7203', balance: 'USD 84,200', trend: '+1.8%', color: '#6366f1' },
-            { name: 'Petty Cash Float', num: 'Last: Dec 8', balance: 'GHS 8,400', trend: '-12%', color: '#f59e0b' },
+            { name: 'Total Revenue', num: 'Confirmed orders', balance: `GHS ${totalRevenue.toLocaleString()}`, trend: 'Approved & delivered', color: 'var(--accent)' },
+            { name: 'Credit Outstanding', num: 'Credit orders', balance: `GHS ${creditOutstanding.toLocaleString()}`, trend: 'On credit terms', color: '#6366f1' },
+            { name: 'Pending Review', num: `${pendingCount} orders`, balance: `${pendingCount} Pending`, trend: 'Awaiting finance', color: '#f59e0b' },
           ].map(acc => (
             <div key={acc.name} className="rounded-2xl p-4 text-white" style={{ background: `linear-gradient(135deg, ${acc.color}CC, ${acc.color})` }}>
               <p className="text-xs text-white/70 mb-1">{acc.name}</p>
@@ -292,15 +313,15 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
             <h3 className="font-semibold text-[var(--text-primary)]">Transaction Overview</h3>
             <span className="text-xs text-[var(--text-muted)]">This Month</span>
           </div>
-          <p className="text-2xl font-bold text-[var(--text-primary)] mb-1">GHS 440,000</p>
-          <p className="text-xs text-green-500 mb-4 flex items-center gap-1"><TrendingUp size={11} />+8.2% vs last month</p>
+          <p className="text-2xl font-bold text-[var(--text-primary)] mb-1">GHS {(totalRevenue / 1000).toFixed(0)}K</p>
+          <p className="text-xs text-green-500 mb-4 flex items-center gap-1"><TrendingUp size={11} />This period</p>
           <div className="h-40">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={TXN_LINE_DATA}>
+              <LineChart data={earningData}>
                 <XAxis dataKey="d" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `${(v / 1000).toFixed(0)}K`} />
                 <Tooltip content={<CustomTooltip />} />
-                <Line type="monotone" dataKey="amt" name="Amount" stroke="var(--accent)" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="value" name="Revenue" stroke="var(--accent)" strokeWidth={2} dot={false} />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -312,14 +333,14 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
             <div style={{ width: 130, height: 130 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={PAYMENT_PIE} dataKey="value" cx="50%" cy="50%" innerRadius={40} outerRadius={60} strokeWidth={0}>
-                    {PAYMENT_PIE.map((e, i) => <Cell key={i} fill={e.color} />)}
+                  <Pie data={paymentPie} dataKey="value" cx="50%" cy="50%" innerRadius={40} outerRadius={60} strokeWidth={0}>
+                    {paymentPie.map((e, i) => <Cell key={i} fill={e.color} />)}
                   </Pie>
                 </PieChart>
               </ResponsiveContainer>
             </div>
             <div className="flex-1 space-y-2">
-              {PAYMENT_PIE.map(item => (
+              {paymentPie.map(item => (
                 <div key={item.name} className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <div className="w-2 h-2 rounded-full" style={{ background: item.color }} />
@@ -370,28 +391,42 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
           <h3 className="font-semibold text-[var(--text-primary)] mb-4">Invoice Status</h3>
           <div className="flex items-center gap-6">
             <div className="relative" style={{ width: 130, height: 130 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={INV_STATUS} dataKey="value" cx="50%" cy="50%" innerRadius={40} outerRadius={60} strokeWidth={0}>
-                    {INV_STATUS.map((e, i) => <Cell key={i} fill={e.color} />)}
-                  </Pie>
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <p className="text-base font-bold text-[var(--text-primary)]">{invoiceCount}</p>
-                <p className="text-xs text-[var(--text-muted)]">Total</p>
-              </div>
-            </div>
-            <div className="flex-1 space-y-2">
-              {INV_STATUS.map(item => (
-                <div key={item.name} className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full" style={{ background: item.color }} />
-                    <span className="text-xs text-[var(--text-secondary)]">{item.name}</span>
-                  </div>
-                  <span className="text-xs font-semibold text-[var(--text-primary)]">{item.value}%</span>
-                </div>
-              ))}
+              {(() => {
+                const paid = ordersList.filter(o => ['DELIVERED', 'APPROVED'].includes(o.status)).length;
+                const pending = ordersList.filter(o => o.status.startsWith('PENDING')).length;
+                const total = ordersList.length || 1;
+                const invData = [
+                  { name: 'Paid', value: Math.round((paid / total) * 100), color: '#10b981' },
+                  { name: 'Pending', value: Math.round((pending / total) * 100), color: '#f59e0b' },
+                  { name: 'Rejected', value: Math.round(((total - paid - pending) / total) * 100), color: '#ef4444' },
+                ].filter(d => d.value > 0);
+                return (
+                  <>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie data={invData} dataKey="value" cx="50%" cy="50%" innerRadius={40} outerRadius={60} strokeWidth={0}>
+                          {invData.map((e, i) => <Cell key={i} fill={e.color} />)}
+                        </Pie>
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <p className="text-base font-bold text-[var(--text-primary)]">{invoiceCount}</p>
+                      <p className="text-xs text-[var(--text-muted)]">Total</p>
+                    </div>
+                    <div className="absolute left-36 top-0 flex-1 space-y-2">
+                      {invData.map(item => (
+                        <div key={item.name} className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full" style={{ background: item.color }} />
+                            <span className="text-xs text-[var(--text-secondary)]">{item.name}</span>
+                          </div>
+                          <span className="text-xs font-semibold text-[var(--text-primary)]">{item.value}%</span>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                );
+              })()}
             </div>
           </div>
         </div>
@@ -403,20 +438,31 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
               View All <ArrowRight size={12} />
             </button>
           </div>
-          {[
-            { label: 'Total Extended', value: 'GHS 182,000', color: 'text-[var(--text-primary)]' },
-            { label: 'Total Collected', value: 'GHS 124,500', color: 'text-green-500' },
-            { label: 'Outstanding', value: 'GHS 57,500', color: 'text-red-500' },
-          ].map(({ label, value, color }) => (
-            <div key={label} className="flex items-center justify-between py-2 border-b border-[var(--border)] last:border-0">
-              <span className="text-xs text-[var(--text-muted)]">{label}</span>
-              <span className={`text-sm font-semibold ${color}`}>{value}</span>
-            </div>
-          ))}
-          <div className="mt-3 h-2 bg-[var(--bg-input)] rounded-full overflow-hidden">
-            <div className="h-full rounded-full bg-green-500" style={{ width: '68%' }} />
-          </div>
-          <p className="text-xs text-[var(--text-muted)] mt-1">68% collected</p>
+          {(() => {
+            const creditOrders = ordersList.filter(o => o.paymentMode === 'CREDIT');
+            const totalExtended = creditOrders.reduce((s, o) => s + o.totalAmount, 0);
+            const collected = creditOrders.filter(o => o.status === 'DELIVERED').reduce((s, o) => s + o.totalAmount, 0);
+            const outstanding = totalExtended - collected;
+            const pct = totalExtended > 0 ? Math.round((collected / totalExtended) * 100) : 0;
+            return (
+              <>
+                {[
+                  { label: 'Total Extended', value: `GHS ${totalExtended.toLocaleString()}`, color: 'text-[var(--text-primary)]' },
+                  { label: 'Total Collected', value: `GHS ${collected.toLocaleString()}`, color: 'text-green-500' },
+                  { label: 'Outstanding', value: `GHS ${outstanding.toLocaleString()}`, color: 'text-red-500' },
+                ].map(({ label, value, color }) => (
+                  <div key={label} className="flex items-center justify-between py-2 border-b border-[var(--border)] last:border-0">
+                    <span className="text-xs text-[var(--text-muted)]">{label}</span>
+                    <span className={`text-sm font-semibold ${color}`}>{value}</span>
+                  </div>
+                ))}
+                <div className="mt-3 h-2 bg-[var(--bg-input)] rounded-full overflow-hidden">
+                  <div className="h-full rounded-full bg-green-500" style={{ width: `${pct}%` }} />
+                </div>
+                <p className="text-xs text-[var(--text-muted)] mt-1">{pct}% collected</p>
+              </>
+            );
+          })()}
         </div>
       </div>
     </div>
