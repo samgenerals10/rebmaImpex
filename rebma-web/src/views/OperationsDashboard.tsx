@@ -12,6 +12,7 @@ import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianG
 import type { Order, IncomingGoods } from '../types/erp';
 import { exportToCSV, exportToPDF } from '../utils/export';
 import { supabase } from '../lib/supabaseClient';
+import { stockApi } from '../services/apiClient';
 
 interface OperationsDashboardProps {
   ordersList: Order[];
@@ -53,6 +54,7 @@ export default function OperationsDashboard({
   const [cardMenuOpen, setCardMenuOpen] = useState<number | null>(null);
   const [localOrders, setLocalOrders] = useState<Order[]>(ordersList);
   const [localCargo, setLocalCargo] = useState<IncomingGoods[]>(incomingGoodsList);
+  const [lowStockItems, setLowStockItems] = useState<any[]>([]);
   const [activeMobileDetail, setActiveMobileDetail] = useState<{
     type: 'order' | 'cargo';
     data: Order | IncomingGoods;
@@ -110,6 +112,27 @@ export default function OperationsDashboard({
   useEffect(() => {
     setLocalCargo(incomingGoodsList);
   }, [incomingGoodsList]);
+
+  useEffect(() => {
+    let active = true;
+    const fetchLowStock = async () => {
+      try {
+        const stock = await stockApi.getStock();
+        if (active) {
+          const low = stock.filter(item => item.current === 0 || (item.capacity > 0 && item.current / item.capacity < 0.2));
+          setLowStockItems(low);
+        }
+      } catch (err) {
+        console.error('Failed to fetch low stock:', err);
+      }
+    };
+    fetchLowStock();
+    const interval = setInterval(fetchLowStock, 30000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, []);
 
   // Click outside to close menus
   useEffect(() => {
@@ -592,121 +615,22 @@ export default function OperationsDashboard({
 
   if (kpiDetail !== null) {
     const d = kpiDetails[kpiDetail];
-    return <KpiDetailView title={d.title} metric={d.metric} trendData={d.trendData} breakdownData={d.breakdownData} tableData={d.tableData} columns={d.columns} onBack={() => setKpiDetail(null)} />;
+    return (
+      <KpiDetailView
+        title={d.title}
+        metric={d.metric}
+        trendData={d.trendData}
+        breakdownData={d.breakdownData}
+        tableData={d.tableData}
+        columns={d.columns}
+        onBack={() => setKpiDetail(null)}
+      />
+    );
   }
+
   return (
     <>
-      {/* ══ MOBILE LAYOUT (< lg) ══ */}
-      <div className="lg:hidden mobile-only space-y-4 pb-4 mobile-animate-up">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-lg font-bold text-text-primary tracking-tight">Operations</h1>
-            <p className="text-[11px] text-text-muted mt-0.5">Port intakes & release queue</p>
-          </div>
-          <div className="flex gap-2">
-            <button onClick={() => exportToCSV(localCargo, ['id', 'productName', 'weight', 'status'], 'operations_cargo')} className="p-2 bg-bg-card rounded-xl border border-[var(--border)] shadow-card" title="Export CSV">
-              <FileSpreadsheet className="w-4 h-4 text-text-secondary" />
-            </button>
-            <button onClick={() => exportToPDF('Operations Report', localCargo, ['id', 'productName', 'weight', 'status'])} className="p-2 bg-bg-card rounded-xl border border-[var(--border)] shadow-card" title="Export PDF">
-              <FileText className="w-4 h-4 text-text-secondary" />
-            </button>
-          </div>
-        </div>
-
-        {/* Physical Gradient Card */}
-        <div className="mobile-physical-card" style={{ background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)' }}>
-          <div className="flex justify-between items-start relative z-10">
-            <div>
-              <p className="text-[10px] uppercase tracking-widest text-white/60 font-bold">Total Ingested Weight</p>
-              <h2 className="text-3xl font-extrabold text-white mt-1 tracking-tight">{totalTons.toFixed(1)} Tons</h2>
-              <p className="text-[10px] text-white/70 mt-1">{localCargo.length} Batches Logged</p>
-            </div>
-            <div className="mobile-card-chip mt-1" />
-          </div>
-          <div className="flex justify-between items-end mt-8 relative z-10">
-            <div>
-              <p className="text-[10px] font-mono tracking-widest text-white/60">•••• •••• •••• 9811</p>
-              <p className="text-[10px] font-bold text-white/80 mt-1 uppercase tracking-wider">Port Intakes & Releases</p>
-            </div>
-            <div className="mobile-card-circles">
-              <div className="mobile-card-circle-1" />
-              <div className="mobile-card-circle-2" />
-            </div>
-          </div>
-        </div>
-
-        {/* Stats Grid */}
-        <div className="grid grid-cols-2 gap-3">
-          {[
-            { label: 'Awaiting Release', value: `${pendingReleaseCount}`, sub: 'Shipments ready', bg: '#eff6ff', color: '#3b82f6', icon: Truck },
-            { label: 'Pricing Pending', value: `${pendingMgmtApprovalCount}`, sub: 'Batches pending', bg: '#fef3c7', color: '#d97706', icon: CheckCircle },
-          ].map((s, i) => {
-            const Icon = s.icon;
-            return (
-              <div key={i} className="mobile-stat-card">
-                <div className="mobile-stat-icon" style={{ background: s.bg }}>
-                  <Icon className="w-5 h-5" style={{ color: s.color }} />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-[9px] text-text-muted uppercase font-bold tracking-wider truncate">{s.label}</p>
-                  <p className="text-sm font-bold text-text-primary mt-0.5">{s.value}</p>
-                  <p className="text-[9px] text-text-muted truncate">{s.sub}</p>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Logged Cargo Section */}
-        <div>
-          <p className="mobile-section-label">Logged Cargo Intake</p>
-          <div className="space-y-2">
-            {localCargo.slice(0, 5).map(c => (
-              <div key={c.id} onClick={() => setActiveMobileDetail({ type: 'cargo', data: c })} className="mobile-data-row cursor-pointer">
-                <div className="mobile-data-row-icon bg-bg-page text-text-secondary">
-                  <Layers className="w-5 h-5 text-text-secondary" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-bold text-text-primary truncate">{c.productName}</p>
-                  <p className="text-[10px] text-text-muted truncate">{c.company} • {c.weight}T • {c.country}</p>
-                </div>
-                <span className={`mobile-status-pill ${
-                  c.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-700' :
-                  c.status === 'PENDING_MANAGEMENT_APPROVAL' ? 'bg-amber-50 text-amber-700' :
-                  'bg-bg-input text-text-secondary'
-                }`}>{c.status.replace(/_/g, ' ')}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Approved Orders List */}
-        <div>
-          <p className="mobile-section-label">Awaiting Release / Loading</p>
-          <div className="space-y-2">
-            {approvedOrders.slice(0, 5).map(o => (
-              <div key={o.id} onClick={() => setActiveMobileDetail({ type: 'order', data: o })} className="mobile-data-row cursor-pointer">
-                <div className="mobile-data-row-icon bg-blue-50 text-blue-600">
-                  <Truck className="w-5 h-5 text-blue-600" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-bold text-text-primary truncate">{o.clientName}</p>
-                  <p className="text-[10px] text-text-muted truncate">{o.productName} • GHS {o.totalAmount.toLocaleString()}</p>
-                </div>
-                <span className={`mobile-status-pill ${
-                  o.status === 'PROCESSING' ? 'bg-blue-50 text-blue-700' :
-                  o.status === 'DELIVERED' ? 'bg-emerald-50 text-emerald-700' :
-                  'bg-bg-input text-text-secondary'
-                }`}>{o.status.replace(/_/g, ' ')}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* ══ DESKTOP LAYOUT (lg+) ══ */}
-      <div className="hidden lg:block">
+      <div className="block">
       <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -717,19 +641,19 @@ export default function OperationsDashboard({
         <div className="flex gap-2 w-full sm:w-auto justify-end">
           {activeSubTab === 'LoggedCargo' ? (
             <>
-              <button onClick={handleExportCargoCSV} className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--accent-light)] hover:opacity-90 text-[var(--accent)] rounded-lg text-xs font-semibold cursor-pointer border border-[var(--border)] transition-opacity">
+              <button onClick={handleExportCargoCSV} className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--accent-light)] hover:opacity-90 text-[var(--accent)] rounded-lg text-xs font-semibold cursor-pointer border border-[var(--border)] transition-opacity bg-transparent">
                 <FileSpreadsheet className="w-3.5 h-3.5" /><span>Cargo (CSV)</span>
               </button>
-              <button onClick={handleExportCargoPDF} className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--accent-light)] hover:opacity-90 text-[var(--accent)] rounded-lg text-xs font-semibold cursor-pointer border border-[var(--border)] transition-opacity">
+              <button onClick={handleExportCargoPDF} className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--accent-light)] hover:opacity-90 text-[var(--accent)] rounded-lg text-xs font-semibold cursor-pointer border border-[var(--border)] transition-opacity bg-transparent">
                 <FileText className="w-3.5 h-3.5" /><span>Cargo (PDF)</span>
               </button>
             </>
           ) : (
             <>
-              <button onClick={handleExportReleasesCSV} className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--accent-light)] hover:opacity-90 text-[var(--accent)] rounded-lg text-xs font-semibold cursor-pointer border border-[var(--border)] transition-opacity">
+              <button onClick={handleExportReleasesCSV} className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--accent-light)] hover:opacity-90 text-[var(--accent)] rounded-lg text-xs font-semibold cursor-pointer border border-[var(--border)] transition-opacity bg-transparent">
                 <FileSpreadsheet className="w-3.5 h-3.5" /><span>Releases (CSV)</span>
               </button>
-              <button onClick={handleExportReleasesPDF} className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--accent-light)] hover:opacity-90 text-[var(--accent)] rounded-lg text-xs font-semibold cursor-pointer border border-[var(--border)] transition-opacity">
+              <button onClick={handleExportReleasesPDF} className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--accent-light)] hover:opacity-90 text-[var(--accent)] rounded-lg text-xs font-semibold cursor-pointer border border-[var(--border)] transition-opacity bg-transparent">
                 <FileText className="w-3.5 h-3.5" /><span>Releases (PDF)</span>
               </button>
             </>
@@ -737,63 +661,8 @@ export default function OperationsDashboard({
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-        {stats.map((card, idx) => {
-          const Icon = card.icon;
-          return (
-            <div key={idx} onClick={() => setKpiDetail(idx)} className="kpi-card group cursor-pointer hover:shadow-lg transition-shadow">
-              <div className="flex items-start justify-between gap-2">
-                <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wide font-semibold leading-tight">{card.title}</span>
-                <div className="relative shrink-0" onClick={e => e.stopPropagation()}>
-                  <button onClick={() => setCardMenuOpen(cardMenuOpen === idx ? null : idx)}
-                    className="opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer p-0.5 rounded hover:bg-[var(--accent-light)]">
-                    <MoreVertical className="w-3.5 h-3.5 text-[var(--text-muted)]" />
-                  </button>
-                  {cardMenuOpen === idx && (
-                    <div className="absolute right-0 top-full mt-1 w-40 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl z-30 p-1 flex flex-col">
-                      <button onClick={() => { setKpiDetail(idx); setCardMenuOpen(null); }} className="px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg text-left">View Details</button>
-                      <button onClick={() => { const d = kpiDetails[idx]; exportToCSV(d.tableData, d.columns.map(c => c.key), d.title.replace(/\s/g,'_').toLowerCase()); setCardMenuOpen(null); }} className="px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg text-left">Export CSV</button>
-                      <button onClick={() => { const d = kpiDetails[idx]; exportToPDF(d.title, d.tableData, d.columns.map(c => c.label)); setCardMenuOpen(null); }} className="px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg text-left">Export PDF</button>
-                      <button onClick={() => { setCardMenuOpen(null); addNotification(`${stats[idx].title} refreshed.`); }} className="px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg text-left">Refresh</button>
-                    </div>
-                  )}
-                </div>
-              </div>
-              <div className="flex items-end justify-between mt-2 gap-2">
-                <div>
-                  <h3 className="text-2xl sm:text-3xl font-bold text-[var(--text-primary)] leading-none">{card.value}</h3>
-                  <p className="text-[10px] text-[var(--text-muted)] mt-1.5">{card.sub}</p>
-                </div>
-                <MiniSparkline width={60} height={36} />
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Chart */}
-      <div className="p-6 bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] border border-[var(--border)]">
-        <div>
-          <h3 className="text-lg font-bold text-[var(--text-primary)]">Cargo Inflow vs Release Velocity</h3>
-          <p className="text-xs text-[var(--text-muted)]">Ingestion tonnage vs cargo shipments cleared weekly.</p>
-        </div>
-        <div className="h-48 md:h-60 mt-4">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={lineChartData}>
-              <CartesianGrid strokeDasharray="3 3" opacity={0.1} stroke="var(--border)" />
-              <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={10} />
-              <YAxis stroke="var(--text-muted)" fontSize={10} />
-              <Tooltip contentStyle={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)', color: 'var(--text-primary)' }} />
-              <Line type="monotone" dataKey="Ingested" stroke="var(--accent)" strokeWidth={2} activeDot={{ r: 8 }} />
-              <Line type="monotone" dataKey="Released" stroke="#10b981" strokeWidth={2} />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
       {/* Quick Actions + Low Stock Alerts */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Quick Actions */}
         <div className="p-5 bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] border border-[var(--border)]">
           <h3 className="text-sm font-bold text-[var(--text-primary)] mb-4">Quick Actions</h3>
@@ -809,7 +678,7 @@ export default function OperationsDashboard({
                 <button
                   key={action.tab}
                   onClick={() => setActiveSubTab?.(action.tab)}
-                  className="flex flex-col items-center gap-2 p-4 rounded-2xl border border-[var(--border)] hover:border-[var(--accent)] hover:bg-[var(--accent-light)] transition-all cursor-pointer text-center"
+                  className="flex flex-col items-center gap-2 p-4 rounded-2xl border border-[var(--border)] hover:border-[var(--accent)] hover:bg-[var(--accent-light)] transition-all cursor-pointer text-center bg-transparent"
                 >
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${action.color}18` }}>
                     <Icon className="w-5 h-5" style={{ color: action.color }} />
@@ -828,34 +697,36 @@ export default function OperationsDashboard({
               <AlertTriangle className="w-4 h-4 text-amber-500" />
               <h3 className="text-sm font-bold text-[var(--text-primary)]">Low Stock Alerts</h3>
             </div>
-            <button onClick={() => setActiveSubTab?.('Stock')} className="text-xs text-[var(--accent)] hover:underline font-semibold cursor-pointer">View All →</button>
+            <button onClick={() => setActiveSubTab?.('Stock')} className="text-xs text-[var(--accent)] hover:underline font-semibold cursor-pointer bg-transparent border-none">View All →</button>
           </div>
-          <div className="space-y-3">
-            {[
-              { name: 'Hydraulic Hose Fittings', sku: 'HHF-200', current: 12, capacity: 300 },
-              { name: 'Chemical Drums (20L)', sku: 'CHD-300', current: 0, capacity: 100 },
-              { name: 'Electrical Cables (Roll)', sku: 'ELC-600', current: 15, capacity: 200 },
-              { name: 'Lubricant Oil (5L)', sku: 'LBO-800', current: 8, capacity: 80 },
-            ].map(item => {
-              const pct = item.capacity > 0 ? Math.round((item.current / item.capacity) * 100) : 0;
-              const isOut = item.current === 0;
-              return (
-                <div key={item.sku}>
-                  <div className="flex items-center justify-between mb-1">
-                    <div>
-                      <p className="text-xs font-semibold text-[var(--text-primary)]">{item.name}</p>
-                      <p className="text-[10px] text-[var(--text-muted)] font-mono">{item.sku}</p>
+          <div className="space-y-3 max-h-[190px] overflow-y-auto pr-1">
+            {lowStockItems.length > 0 ? (
+              lowStockItems.map(item => {
+                const pct = item.capacity > 0 ? Math.round((item.current / item.capacity) * 100) : 0;
+                const isOut = item.current === 0;
+                return (
+                  <div key={item.sku || item.id}>
+                    <div className="flex items-center justify-between mb-1">
+                      <div>
+                        <p className="text-xs font-semibold text-[var(--text-primary)]">{item.name}</p>
+                        <p className="text-[10px] text-[var(--text-muted)] font-mono">{item.sku}</p>
+                      </div>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${isOut ? 'bg-rose-500/10 text-rose-600' : 'bg-amber-500/10 text-amber-600'}`}>
+                        {isOut ? 'OUT OF STOCK' : `${pct}%`}
+                      </span>
                     </div>
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${isOut ? 'bg-rose-500/10 text-rose-600' : 'bg-amber-500/10 text-amber-600'}`}>
-                      {isOut ? 'OUT OF STOCK' : `${pct}%`}
-                    </span>
+                    <div className="h-1.5 bg-[var(--bg)] rounded-full overflow-hidden">
+                      <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: isOut ? '#f43f5e' : '#f59e0b' }} />
+                    </div>
                   </div>
-                  <div className="h-1.5 bg-[var(--bg)] rounded-full overflow-hidden">
-                    <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: isOut ? '#f43f5e' : '#f59e0b' }} />
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })
+            ) : (
+              <div className="text-center py-8 text-[var(--text-muted)] text-xs">
+                <p className="font-semibold text-sm">All stock levels healthy</p>
+                <p className="text-[10px] mt-1">No low stock alerts detected.</p>
+              </div>
+            )}
           </div>
         </div>
       </div>

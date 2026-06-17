@@ -1152,6 +1152,36 @@ export const stockApi = {
       .select();
     if (error) throw new Error(error.message);
     return data?.[0] || null;
+  },
+
+  createStock: async (productName: string, productCode: string, category: string, initialQty: number, maximumLevel: number, minimumLevel: number, unit = 'units') => {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const performerId = sessionData.session?.user?.id || null;
+
+    const { data, error } = await supabase
+      .from('stock')
+      .insert({
+        product_name: productName,
+        product_code: productCode,
+        category: category || 'Uncategorized',
+        quantity: initialQty,
+        maximum_level: maximumLevel,
+        minimum_level: minimumLevel,
+        unit,
+        last_updated: new Date().toISOString(),
+        updated_by: performerId
+      })
+      .select();
+    if (error) throw new Error(error.message);
+    return data?.[0] || null;
+  },
+
+  deleteStock: async (id: string) => {
+    const { error } = await supabase
+      .from('stock')
+      .delete()
+      .eq('id', id);
+    if (error) throw new Error(error.message);
   }
 };
 

@@ -53,6 +53,51 @@ export default function StockView({ incomingGoodsList: _incomingGoodsList, addNo
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [showAdjust, setShowAdjust] = useState(false);
   const [adjustForm, setAdjustForm] = useState({ productId: '', type: 'Add', quantity: '', reason: '', notes: '' });
+  const [showAddProduct, setShowAddProduct] = useState(false);
+  const [newProductForm, setNewProductForm] = useState({
+    name: '',
+    sku: '',
+    category: '',
+    initialQty: '',
+    maximumLevel: '',
+    minimumLevel: '',
+    unit: 'units'
+  });
+
+  const doAddProduct = async () => {
+    if (!newProductForm.name || !newProductForm.sku || !newProductForm.category) {
+      alert('Please fill out all required fields.');
+      return;
+    }
+    const initQty = parseInt(newProductForm.initialQty) || 0;
+    const maxLvl = parseInt(newProductForm.maximumLevel) || 1000;
+    const minLvl = parseInt(newProductForm.minimumLevel) || 10;
+    try {
+      await stockApi.createStock(
+        newProductForm.name,
+        newProductForm.sku,
+        newProductForm.category,
+        initQty,
+        maxLvl,
+        minLvl,
+        newProductForm.unit
+      );
+      addNotification(`Product "${newProductForm.name}" created successfully.`);
+      loadData();
+      setShowAddProduct(false);
+      setNewProductForm({
+        name: '',
+        sku: '',
+        category: '',
+        initialQty: '',
+        maximumLevel: '',
+        minimumLevel: '',
+        unit: 'units'
+      });
+    } catch (err: any) {
+      alert(err.message || 'Failed to create product.');
+    }
+  };
 
   const loadData = async () => {
     setLoading(true);
@@ -134,9 +179,11 @@ export default function StockView({ incomingGoodsList: _incomingGoodsList, addNo
     const item = stock.find(s => s.id === adjustForm.productId);
     if (!item || !adjustForm.quantity) return;
     const delta = adjustForm.type === 'Add' ? parseInt(adjustForm.quantity) : -parseInt(adjustForm.quantity);
+    const reasonVal = adjustForm.reason.trim() || 'Manual Adjustment';
+    const notesVal = adjustForm.notes.trim() || 'Adjusted via Stock Management';
     
     try {
-      await stockApi.adjustStock(item.id, item.name, item.current, delta, adjustForm.reason, adjustForm.notes);
+      await stockApi.adjustStock(item.id, item.name, item.current, delta, reasonVal, notesVal);
       addNotification(`Stock for ${item.name} adjusted by ${delta > 0 ? '+' : ''}${delta}.`);
       loadData();
     } catch (err: any) {
@@ -178,9 +225,14 @@ export default function StockView({ incomingGoodsList: _incomingGoodsList, addNo
           <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Stock Management</h1>
           <p style={{ color: 'var(--text-muted)', margin: '4px 0 0', fontSize: 14 }}>Monitor and manage inventory levels</p>
         </div>
-        <button onClick={() => setShowAdjust(true)} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 12, padding: '10px 20px', fontWeight: 600, cursor: 'pointer', fontSize: 14 }}>
-          <Plus size={16} /> Adjust Stock
-        </button>
+        <div style={{ display: 'flex', gap: 12 }}>
+          <button onClick={() => setShowAddProduct(true)} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-primary)', borderRadius: 12, padding: '10px 20px', fontWeight: 600, cursor: 'pointer', fontSize: 14 }}>
+            <Plus size={16} /> Add Product
+          </button>
+          <button onClick={() => setShowAdjust(true)} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 12, padding: '10px 20px', fontWeight: 600, cursor: 'pointer', fontSize: 14 }}>
+            <Plus size={16} /> Adjust Stock
+          </button>
+        </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 24 }}>
@@ -203,24 +255,30 @@ export default function StockView({ incomingGoodsList: _incomingGoodsList, addNo
       <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 20, padding: '20px 24px', marginBottom: 24, boxShadow: 'var(--box-shadow)' }}>
         <h2 style={{ margin: '0 0 20px', fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>Stock Levels</h2>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {stock.map(s => {
-            const pct = s.capacity > 0 ? Math.round((s.current / s.capacity) * 100) : 0;
-            const st = stockStatus(s.current, s.capacity);
-            return (
-              <div key={s.id}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6, flexWrap: 'wrap', gap: 8 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: 14 }}>{s.name}</span>
-                    <span style={{ background: st.bg, color: st.color, borderRadius: 99, padding: '1px 8px', fontSize: 11, fontWeight: 600 }}>{st.label}</span>
+          {stock.length > 0 ? (
+            stock.map(s => {
+              const pct = s.capacity > 0 ? Math.round((s.current / s.capacity) * 100) : 0;
+              const st = stockStatus(s.current, s.capacity);
+              return (
+                <div key={s.id}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6, flexWrap: 'wrap', gap: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: 14 }}>{s.name}</span>
+                      <span style={{ background: st.bg, color: st.color, borderRadius: 99, padding: '1px 8px', fontSize: 11, fontWeight: 600 }}>{st.label}</span>
+                    </div>
+                    <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>{s.current.toLocaleString()} / {s.capacity.toLocaleString()} units</span>
                   </div>
-                  <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>{s.current.toLocaleString()} / {s.capacity.toLocaleString()} units</span>
+                  <div style={{ height: 10, background: 'var(--bg)', borderRadius: 99, overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${pct}%`, background: barColor(s.current, s.capacity), borderRadius: 99, transition: 'width 0.4s ease' }} />
+                  </div>
                 </div>
-                <div style={{ height: 10, background: 'var(--bg)', borderRadius: 99, overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: `${pct}%`, background: barColor(s.current, s.capacity), borderRadius: 99, transition: 'width 0.4s ease' }} />
-                </div>
-              </div>
-            );
-          })}
+              );
+            })
+          ) : (
+            <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--text-muted)', fontSize: 14 }}>
+              No stock levels recorded. Add a product to get started.
+            </div>
+          )}
         </div>
       </div>
 
@@ -288,8 +346,36 @@ export default function StockView({ incomingGoodsList: _incomingGoodsList, addNo
                         </button>
                         {openMenu === s.id && (
                           <div style={{ position: 'absolute', right: 0, top: 36, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.15)', zIndex: 10, minWidth: 140 }}>
-                            <button onClick={() => { setAdjustForm(f => ({ ...f, productId: s.id })); setShowAdjust(true); setOpenMenu(null); }} style={{ display: 'block', width: '100%', padding: '10px 16px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: 'var(--text-primary)', textAlign: 'left', fontWeight: 500 }}>Adjust Stock</button>
-                            <button onClick={() => setOpenMenu(null)} style={{ display: 'block', width: '100%', padding: '10px 16px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: 'var(--text-primary)', textAlign: 'left', fontWeight: 500 }}>View History</button>
+                            <button type="button" onClick={() => { setAdjustForm(f => ({ ...f, productId: s.id })); setShowAdjust(true); setOpenMenu(null); }} style={{ display: 'block', width: '100%', padding: '10px 16px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: 'var(--text-primary)', textAlign: 'left', fontWeight: 500 }}>Adjust Stock</button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSearch(s.name);
+                                setOpenMenu(null);
+                                document.getElementById('movement-history')?.scrollIntoView({ behavior: 'smooth' });
+                              }}
+                              style={{ display: 'block', width: '100%', padding: '10px 16px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: 'var(--text-primary)', textAlign: 'left', fontWeight: 500 }}
+                            >
+                              View History
+                            </button>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                if (confirm(`Are you sure you want to delete ${s.name}?`)) {
+                                  try {
+                                    await stockApi.deleteStock(s.id);
+                                    addNotification(`Stock item ${s.name} deleted.`);
+                                    loadData();
+                                  } catch (err: any) {
+                                    alert(err.message || 'Failed to delete stock.');
+                                  }
+                                }
+                                setOpenMenu(null);
+                              }}
+                              style={{ display: 'block', width: '100%', padding: '10px 16px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: '#f43f5e', textAlign: 'left', fontWeight: 500 }}
+                            >
+                              Delete Product
+                            </button>
                           </div>
                         )}
                       </td>
@@ -309,7 +395,7 @@ export default function StockView({ incomingGoodsList: _incomingGoodsList, addNo
         )}
       </div>
 
-      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 20, padding: '20px 24px', boxShadow: 'var(--box-shadow)' }}>
+      <div id="movement-history" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 20, padding: '20px 24px', boxShadow: 'var(--box-shadow)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
           <History size={18} style={{ color: 'var(--accent)' }} />
           <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>Stock Movement History</h2>
@@ -358,7 +444,7 @@ export default function StockView({ incomingGoodsList: _incomingGoodsList, addNo
               <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 5 }}>Adjustment Type</label>
               <div style={{ display: 'flex', gap: 10 }}>
                 {['Add', 'Remove'].map(t => (
-                  <button key={t} onClick={() => setAdjustForm(f => ({ ...f, type: t }))} style={{ flex: 1, padding: '10px', borderRadius: 10, border: `2px solid ${adjustForm.type === t ? 'var(--accent)' : 'var(--border)'}`, background: adjustForm.type === t ? 'var(--accent-light)' : 'var(--bg-input)', color: adjustForm.type === t ? 'var(--accent)' : 'var(--text-secondary)', fontWeight: 600, cursor: 'pointer', fontSize: 14 }}>{t}</button>
+                  <button type="button" key={t} onClick={() => setAdjustForm(f => ({ ...f, type: t }))} style={{ flex: 1, padding: '10px', borderRadius: 10, border: `2px solid ${adjustForm.type === t ? 'var(--accent)' : 'var(--border)'}`, background: adjustForm.type === t ? 'var(--accent-light)' : 'var(--bg-input)', color: adjustForm.type === t ? 'var(--accent)' : 'var(--text-secondary)', fontWeight: 600, cursor: 'pointer', fontSize: 14 }}>{t}</button>
                 ))}
               </div>
             </div>
@@ -375,6 +461,50 @@ export default function StockView({ incomingGoodsList: _incomingGoodsList, addNo
             <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
               <button onClick={() => setShowAdjust(false)} style={{ flex: 1, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 12, padding: '12px', fontWeight: 600, color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 14 }}>Cancel</button>
               <button onClick={doAdjust} style={{ flex: 1, background: 'var(--accent)', border: 'none', borderRadius: 12, padding: '12px', fontWeight: 600, color: '#fff', cursor: 'pointer', fontSize: 14 }}>Apply</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showAddProduct && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div style={{ background: 'var(--bg-card)', borderRadius: 20, padding: 32, width: '100%', maxWidth: 460, boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+              <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: 'var(--text-primary)' }}>Add New Product</h2>
+              <button onClick={() => setShowAddProduct(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={20} /></button>
+            </div>
+            {[
+              { label: 'Product Name *', key: 'name', placeholder: 'e.g. Hydraulic Hose Fittings', type: 'text' },
+              { label: 'SKU/Code *', key: 'sku', placeholder: 'e.g. HHF-200', type: 'text' },
+            ].map(f => (
+              <div key={f.key} style={{ marginBottom: 14 }}>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 5 }}>{f.label}</label>
+                <input type={f.type} value={(newProductForm as Record<string, string>)[f.key]} onChange={e => setNewProductForm(p => ({ ...p, [f.key]: e.target.value }))} placeholder={f.placeholder} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'var(--text-primary)', fontSize: 14, boxSizing: 'border-box' }} />
+              </div>
+            ))}
+            <div style={{ marginBottom: 14 }}>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 5 }}>Category *</label>
+              <select value={newProductForm.category} onChange={e => setNewProductForm(f => ({ ...f, category: e.target.value }))} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'var(--text-primary)', fontSize: 14 }}>
+                <option value="">Select category...</option>
+                {categories.filter(c => c !== 'All').map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              {[
+                { label: 'Initial Qty', key: 'initialQty', placeholder: 'e.g. 0', type: 'number' },
+                { label: 'Unit', key: 'unit', placeholder: 'e.g. units', type: 'text' },
+                { label: 'Min Level', key: 'minimumLevel', placeholder: 'e.g. 10', type: 'number' },
+                { label: 'Max Level', key: 'maximumLevel', placeholder: 'e.g. 500', type: 'number' },
+              ].map(f => (
+                <div key={f.key} style={{ marginBottom: 14 }}>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 5 }}>{f.label}</label>
+                  <input type={f.type} value={(newProductForm as Record<string, string>)[f.key]} onChange={e => setNewProductForm(p => ({ ...p, [f.key]: e.target.value }))} placeholder={f.placeholder} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'var(--text-primary)', fontSize: 14, boxSizing: 'border-box' }} />
+                </div>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
+              <button onClick={() => setShowAddProduct(false)} style={{ flex: 1, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 12, padding: '12px', fontWeight: 600, color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 14 }}>Cancel</button>
+              <button onClick={doAddProduct} style={{ flex: 1, background: 'var(--accent)', border: 'none', borderRadius: 12, padding: '12px', fontWeight: 600, color: '#fff', cursor: 'pointer', fontSize: 14 }}>Add Product</button>
             </div>
           </div>
         </div>
