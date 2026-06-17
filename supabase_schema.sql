@@ -451,4 +451,34 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.production_requests;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.finance_ledger;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.fulfillment_tickets;
 
+-- Categories (User-managed stock categories)
+CREATE TABLE IF NOT EXISTS public.categories (
+    id TEXT PRIMARY KEY DEFAULT 'CAT-' || substring(md5(random()::text) from 1 for 8),
+    name TEXT UNIQUE NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE public.categories ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow authenticated users full access to categories" ON public.categories FOR ALL TO authenticated USING (true) WITH CHECK (true);
+ALTER PUBLICATION supabase_realtime ADD TABLE public.categories;
+
+-- WIP Stock (Work in progress stock tracking)
+CREATE TABLE IF NOT EXISTS public.wip_stock (
+    id TEXT PRIMARY KEY DEFAULT 'WIP-' || substring(md5(random()::text) from 1 for 8),
+    product_name TEXT NOT NULL,
+    stage TEXT NOT NULL,
+    qty NUMERIC NOT NULL DEFAULT 0,
+    unit TEXT NOT NULL,
+    batch_ref TEXT,
+    notes TEXT,
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE public.wip_stock ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow authenticated users full access to wip_stock" ON public.wip_stock FOR ALL TO authenticated USING (true) WITH CHECK (true);
+ALTER PUBLICATION supabase_realtime ADD TABLE public.wip_stock;
+
+-- Alter stock table to include category
+ALTER TABLE public.stock ADD COLUMN IF NOT EXISTS category TEXT;
+
+
 

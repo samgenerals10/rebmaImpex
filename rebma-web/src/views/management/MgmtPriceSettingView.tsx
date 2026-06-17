@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import {
   Tag, TrendingUp, TrendingDown, Search, Plus, MoreVertical,
   Download, RefreshCw, CheckCircle, History, Save,
-  ArrowLeft, Edit2, Trash2, Bell
+  ArrowLeft, Edit2, Trash2, Bell, Camera, FileText, Image as ImageIcon
 } from 'lucide-react';
 import { exportToCSV } from '../../utils/export';
 
@@ -46,6 +46,39 @@ export default function MgmtPriceSettingView({ addNotification, currentUser }: P
   const [broadcastFinance, setRadioFinance] = useState(true);
   const [broadcastMarketing, setRadioMarketing] = useState(true);
   const [broadcastCeo, setRadioCeo] = useState(false);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const docInputRef = useRef<HTMLInputElement>(null);
+  const [imagePreview, setImagePreview] = useState<string>('');
+  const [cameraPreview, setCameraPreview] = useState<string>('');
+  const [docBase64, setDocBase64] = useState<string>('');
+  const [docName, setDocName] = useState<string>('');
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => setImagePreview(ev.target?.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const handleCameraChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => setCameraPreview(ev.target?.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const handleDocChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setDocName(file.name);
+    const reader = new FileReader();
+    reader.onload = (ev) => setDocBase64(ev.target?.result as string);
+    reader.readAsDataURL(file);
+  };
 
   useEffect(() => { loadPrices(); }, []);
 
@@ -165,6 +198,13 @@ export default function MgmtPriceSettingView({ addNotification, currentUser }: P
         currency: form.currency,
         updated_by: currentUser?.fullName || 'Management',
         updated_at: new Date().toISOString(),
+        metadata: {
+          note: form.note || null,
+          documentName: docName || null,
+          documentData: docBase64 || null,
+          cameraPhoto: cameraPreview || null,
+          productImage: imagePreview || null
+        }
       }]);
 
       if (broadcastFinance) {
@@ -186,6 +226,10 @@ export default function MgmtPriceSettingView({ addNotification, currentUser }: P
 
       addNotification?.(`Price ${editing ? 'updated' : 'set'}: ${form.productName} → ${form.currency} ${unitPrice}`);
       loadPrices();
+      setImagePreview('');
+      setCameraPreview('');
+      setDocBase64('');
+      setDocName('');
     } catch (e) {
       console.error(e);
       addNotification?.('Failed to save price catalog updates.');
@@ -423,6 +467,52 @@ export default function MgmtPriceSettingView({ addNotification, currentUser }: P
                   ))}
                 </div>
               </div>
+              {/* Camera, Document, Image Uploads */}
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-[var(--text-secondary)] block">Attachments (Image, Camera Photo, Document)</label>
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" onClick={() => fileInputRef.current?.click()} className="flex items-center gap-1.5 px-3 py-1.5 border border-dashed border-[var(--border)] rounded-xl text-xs text-[var(--text-secondary)] cursor-pointer hover:border-[var(--accent)] hover:text-[var(--accent)]">
+                    <ImageIcon size={14} /> Upload Image
+                  </button>
+                  <button type="button" onClick={() => cameraInputRef.current?.click()} className="flex items-center gap-1.5 px-3 py-1.5 border border-dashed border-[var(--border)] rounded-xl text-xs text-[var(--text-secondary)] cursor-pointer hover:border-[var(--accent)] hover:text-[var(--accent)]">
+                    <Camera size={14} /> Take Photo
+                  </button>
+                  <button type="button" onClick={() => docInputRef.current?.click()} className="flex items-center gap-1.5 px-3 py-1.5 border border-dashed border-[var(--border)] rounded-xl text-xs text-[var(--text-secondary)] cursor-pointer hover:border-[var(--accent)] hover:text-[var(--accent)]">
+                    <FileText size={14} /> Attach Doc
+                  </button>
+                  <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
+                  <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" onChange={handleCameraChange} className="hidden" />
+                  <input ref={docInputRef} type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.txt" onChange={handleDocChange} className="hidden" />
+                </div>
+                
+                {/* Previews */}
+                <div className="flex flex-wrap gap-3 mt-2">
+                  {imagePreview && (
+                    <div className="relative">
+                      <p className="text-[9px] text-[var(--text-muted)] mb-1">Image Preview</p>
+                      <img src={imagePreview} alt="Image Upload" className="w-12 h-12 object-cover rounded-lg border border-[var(--border)]" />
+                      <button type="button" onClick={() => setImagePreview('')} className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-rose-500 text-white rounded-full text-[9px] flex items-center justify-center">✕</button>
+                    </div>
+                  )}
+                  {cameraPreview && (
+                    <div className="relative">
+                      <p className="text-[9px] text-[var(--text-muted)] mb-1">Camera Preview</p>
+                      <img src={cameraPreview} alt="Camera Upload" className="w-12 h-12 object-cover rounded-lg border border-[var(--border)]" />
+                      <button type="button" onClick={() => setCameraPreview('')} className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-rose-500 text-white rounded-full text-[9px] flex items-center justify-center">✕</button>
+                    </div>
+                  )}
+                  {docName && (
+                    <div className="relative p-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl flex items-center gap-2">
+                      <FileText size={16} className="text-emerald-500" />
+                      <div className="text-[10px]">
+                        <p className="font-semibold truncate max-w-[100px]">{docName}</p>
+                      </div>
+                      <button type="button" onClick={() => { setDocName(''); setDocBase64(''); }} className="w-4 h-4 bg-rose-500 text-white rounded-full text-[9px] flex items-center justify-center">✕</button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
               <div>
                 <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Note (optional)</label>
                 <input value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))} placeholder="Reason for price change..." className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />

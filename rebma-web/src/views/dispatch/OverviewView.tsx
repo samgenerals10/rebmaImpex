@@ -87,7 +87,31 @@ export default function DispatchOverviewView({ addNotification, setActiveSubTab,
 
   // Load from Supabase
   useEffect(() => {
-    (async () => { try { const { data } = await supabase.from('deliveries').select('*').order('created_at', { ascending: false }).limit(50); setDeliveries((data as DeliveryRecord[]) ?? []); } catch { setDeliveries([]); } finally { setLoadingDeliveries(false); } })();
+    (async () => {
+      try {
+        const { data } = await supabase.from('delivery_logs').select('*').order('created_at', { ascending: false }).limit(50);
+        const mapped = (data ?? []).map((row: any) => ({
+          id: row.id,
+          orderId: row.order_id || '',
+          clientName: row.customer_name || '',
+          destination: row.delivery_address || '',
+          driverName: row.driver_name || '',
+          driverId: row.driver_id || '',
+          dispatchedAt: row.created_at || '',
+          deliveredAt: row.delivered_at || undefined,
+          status: row.status || 'PENDING_ASSIGNMENT',
+          vehicleId: row.vehicle_id || undefined,
+          proofUrl: row.proof_photo || undefined,
+          recipientName: row.recipient_name || undefined,
+          deliveryNotes: row.notes || undefined,
+        }));
+        setDeliveries(mapped);
+      } catch {
+        setDeliveries([]);
+      } finally {
+        setLoadingDeliveries(false);
+      }
+    })();
     (async () => { try { const { data } = await supabase.from('drivers').select('*').order('created_at', { ascending: false }); setDrivers((data as Driver[]) ?? []); } catch { setDrivers([]); } finally { setLoadingDrivers(false); } })();
   }, []);
 
@@ -115,7 +139,18 @@ export default function DispatchOverviewView({ addNotification, setActiveSubTab,
       driverId: assignDriverId, dispatchedAt: now, status: 'ASSIGNED', vehicleId: driver?.truckId,
     };
     setDeliveries(prev => [rec, ...prev]);
-    supabase.from('deliveries').insert(rec).then(() => {}, () => {});
+    const dbRec = {
+      id: rec.id,
+      order_id: rec.orderId,
+      customer_name: rec.clientName,
+      delivery_address: rec.destination,
+      driver_name: rec.driverName,
+      driver_id: rec.driverId || null,
+      vehicle_id: rec.vehicleId || null,
+      status: rec.status,
+      created_at: rec.dispatchedAt
+    };
+    supabase.from('delivery_logs').insert([dbRec]).then(() => {}, () => {});
     supabase.from('supplier_order_notifications').insert({
       order_id: assignOrderId, message: `Driver ${driver?.fullName} assigned to ${assignOrderId}`,
       notified_department: 'OPERATIONS', read: false, created_at: now,
@@ -133,7 +168,7 @@ export default function DispatchOverviewView({ addNotification, setActiveSubTab,
   const handleMarkDelivered = (id: string) => {
     const now = new Date().toISOString();
     setDeliveries(prev => prev.map(d => d.id === id ? { ...d, status: 'DELIVERED', deliveredAt: now } : d));
-    supabase.from('deliveries').update({ status: 'DELIVERED', deliveredAt: now }).eq('id', id).then(() => {}, () => {});
+    supabase.from('delivery_logs').update({ status: 'DELIVERED', delivered_at: now }).eq('id', id).then(() => {}, () => {});
     addNotification?.(`Delivery ${id} marked as delivered.`);
     setMenuOpen(null);
   };

@@ -51,10 +51,9 @@ interface CeoDashboardProps {
 
 const COUNTRY_FLAGS: Record<string, string> = { Poland: '🇵🇱', Turkey: '🇹🇷', Germany: '🇩🇪', UK: '🇬🇧', USA: '🇺🇸', Other: '🌍' };
 
-
 export default function CeoDashboard({
-  activeCoordinates,
-  deliveryStatus,
+  activeCoordinates: propCoords,
+  deliveryStatus: propStatus,
   gpsInterval,
   onNavigateToSupplierOrders,
   setActiveSubTab,
@@ -69,8 +68,27 @@ export default function CeoDashboard({
   const [kpiInvoices, setKpiInvoices] = useState<number | null>(null);
   const [kpiFleet, setKpiFleet] = useState<number | null>(null);
   const [kpiStaff, setKpiStaff] = useState<number | null>(null);
-  const [activeDriverName, setActiveDriverName] = useState<string | null>(null);
   const [lineChartData, setLineChartData] = useState<{ name: string; Inflow: number; Orders: number }[]>([]);
+  
+  // Live GPS tracking state
+  const [transitVehicles, setTransitVehicles] = useState<any[]>([]);
+
+  const loadTransit = async () => {
+    try {
+      const { data } = await supabase
+        .from('delivery_logs')
+        .select('id, driver_name, vehicle_id, active_coordinates, status')
+        .eq('status', 'IN_TRANSIT');
+      
+      const valid = (data ?? []).filter(d => {
+        const coords = d.active_coordinates;
+        return coords && typeof coords === 'object' && typeof (coords as any).lat === 'number' && typeof (coords as any).lng === 'number';
+      });
+      setTransitVehicles(valid);
+    } catch {
+      setTransitVehicles([]);
+    }
+  };
 
   useEffect(() => {
     const load = async () => {
@@ -129,17 +147,6 @@ export default function CeoDashboard({
           .eq('status', 'ACTIVE');
         setKpiStaff(staffCount ?? 0);
 
-        // Active driver name for GPS overlay
-        const { data: drivers } = await supabase
-          .from('drivers')
-          .select('name, vehicle_id')
-          .eq('status', 'ACTIVE')
-          .not('vehicle_id', 'is', null)
-          .limit(1);
-        if (drivers && drivers.length > 0) {
-          setActiveDriverName((drivers[0] as { name: string }).name || null);
-        }
-
         // Weekly inflow chart from finance_payments
         const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
         const { data: payments } = await supabase
@@ -150,8 +157,10 @@ export default function CeoDashboard({
           .from('orders')
           .select('total_amount, created_at')
           .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
+        
         const inflowByDay: Record<string, number> = {};
         const ordersByDay: Record<string, number> = {};
+        
         for (const p of (payments as { amount: number; created_at: string }[] ?? [])) {
           const d = days[new Date(p.created_at).getDay()];
           inflowByDay[d] = (inflowByDay[d] || 0) + (p.amount || 0);
@@ -170,16 +179,21 @@ export default function CeoDashboard({
         // leave KPIs null — UI will show 0
       }
     };
+
     load();
     loadPending();
     loadKPIs();
-  }, []);
+    loadTransit();
+
+    const interval = setInterval(loadTransit, gpsInterval ? gpsInterval * 1000 : 5000);
+    return () => clearInterval(interval);
+  }, [gpsInterval]);
 
   const handleExportCSV = () => {
     const data = [
       { Metric: 'Global Ingestion Flow', Value: kpiIngestion !== null ? `${kpiIngestion.toLocaleString()} Tons` : '—', Details: 'Accra Port Operations' },
       { Metric: 'Processing Invoices', Value: kpiInvoices !== null ? `${kpiInvoices} Invoices` : '—', Details: 'Awaiting finance clearance' },
-      { Metric: 'Active Logistics Vehicles', Value: kpiFleet !== null ? `${kpiFleet} Trucks` : '—', Details: `GPS Location: ${activeCoordinates.lat.toFixed(4)}, ${activeCoordinates.lng.toFixed(4)}` },
+      { Metric: 'Active Logistics Vehicles', Value: kpiFleet !== null ? `${kpiFleet} Trucks` : '—', Details: `${transitVehicles.length} vehicles currently in transit` },
       { Metric: 'Total Registered Staff', Value: kpiStaff !== null ? `${kpiStaff} Active` : '—', Details: 'HR approval pending queue' }
     ];
     exportToCSV(data, ['Metric', 'Value', 'Details'], 'ceo_executive_summary');
@@ -189,7 +203,7 @@ export default function CeoDashboard({
     const data = [
       { Metric: 'Global Ingestion Flow', Value: kpiIngestion !== null ? `${kpiIngestion.toLocaleString()} Tons` : '—', Details: 'Accra Port Operations' },
       { Metric: 'Processing Invoices', Value: kpiInvoices !== null ? `${kpiInvoices} Invoices` : '—', Details: 'Awaiting finance clearance' },
-      { Metric: 'Active Logistics Vehicles', Value: kpiFleet !== null ? `${kpiFleet} Trucks` : '—', Details: `GPS Location: ${activeCoordinates.lat.toFixed(4)}, ${activeCoordinates.lng.toFixed(4)}` },
+      { Metric: 'Active Logistics Vehicles', Value: kpiFleet !== null ? `${kpiFleet} Trucks` : '—', Details: `${transitVehicles.length} vehicles currently in transit` },
       { Metric: 'Total Registered Staff', Value: kpiStaff !== null ? `${kpiStaff} Active` : '—', Details: 'HR approval pending queue' }
     ];
     exportToPDF('CEO Executive Summary', data, ['Metric', 'Value', 'Details']);
@@ -314,22 +328,37 @@ export default function CeoDashboard({
           <h3 className="text-xs font-bold text-text-primary mb-2">Live Fleet Tracking</h3>
           <div className="h-32 bg-bg-page rounded-xl relative overflow-hidden flex items-center justify-center border border-[var(--border)]">
             <div className="absolute inset-0 opacity-15 bg-[radial-gradient(#3b82f6_1px,transparent_1px)] [background-size:14px_14px]" />
-            <motion.div
-              animate={{ scale: [1, 1.3, 1] }}
-              transition={{ repeat: Infinity, duration: 2 }}
-              className="absolute bg-emerald-500/20 border border-emerald-500 p-2 rounded-full z-10"
-              style={{
-                left: `${45 + (activeCoordinates.lat - 5.6037) * 2000}%`,
-                top: `${50 + (activeCoordinates.lng + 0.1870) * 2000}%`
-              }}
-            >
-              <div className="w-3 h-3 bg-emerald-600 rounded-full border-2 border-white" />
-            </motion.div>
-            <div className="absolute bottom-2 left-2 bg-slate-900/80 px-2.5 py-1.5 rounded-lg text-[9px] text-white space-y-0.5">
-              <p className="font-semibold text-emerald-400">{activeDriverName || 'Fleet tracking'}</p>
-              <p>Lat: {activeCoordinates.lat.toFixed(5)}</p>
-              <p>Status: <span className="text-emerald-400 font-bold">{deliveryStatus}</span></p>
-            </div>
+            {transitVehicles.length === 0 ? (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/20 backdrop-blur-[1px] z-10 text-center p-2">
+                <Truck className="w-6 h-6 text-text-muted opacity-40 mb-1 animate-pulse" />
+                <p className="text-[10px] font-semibold text-text-muted">No active dispatch runs in progress</p>
+              </div>
+            ) : (
+              <>
+                {transitVehicles.map((vehicle, idx) => {
+                  const coords = vehicle.active_coordinates;
+                  return (
+                    <motion.div
+                      key={vehicle.id}
+                      animate={{ scale: [1, 1.3, 1] }}
+                      transition={{ repeat: Infinity, duration: 2, delay: idx * 0.3 }}
+                      className="absolute bg-emerald-500/20 border border-emerald-500 p-2 rounded-full z-10"
+                      style={{
+                        left: `${45 + (coords.lat - 5.6037) * 2000}%`,
+                        top: `${50 + (coords.lng + 0.1870) * 2000}%`
+                      }}
+                    >
+                      <div className="w-3.5 h-3.5 bg-emerald-600 rounded-full border-2 border-white" />
+                    </motion.div>
+                  );
+                })}
+                <div className="absolute bottom-2 left-2 right-2 bg-slate-900/80 px-2 py-1 rounded-lg text-[9px] text-white space-y-0.5 max-h-16 overflow-y-auto z-10 shadow-lg">
+                  {transitVehicles.map((v) => (
+                    <p key={v.id} className="truncate"><span className="font-semibold text-emerald-400">{v.driver_name || 'Driver'}</span>: {v.vehicle_id || 'Truck'} ({v.status})</p>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
           <p className="text-[9px] text-text-muted mt-2 text-right">Refresh: {gpsInterval}s</p>
         </div>
@@ -396,7 +425,7 @@ export default function CeoDashboard({
                   <h3 className="text-sm font-bold text-[var(--text-primary)]">Recent Supplier Orders</h3>
                 </div>
                 <button onClick={onNavigateToSupplierOrders}
-                  className="flex items-center gap-1 text-xs text-[var(--accent)] font-semibold hover:opacity-80">
+                  className="flex items-center gap-1 text-xs text-[var(--accent)] font-semibold hover:underline">
                   View All <ChevronRight className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -476,41 +505,59 @@ export default function CeoDashboard({
             <div className="lg:col-span-2 p-6 bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] border border-[var(--border)] flex flex-col justify-between">
               <div className="mb-4">
                 <h3 className="text-lg font-bold text-[var(--text-primary)]">Live Fleet Tracking Map</h3>
-                <p className="text-xs text-[var(--text-muted)]">Simulated real-time vehicle GPS coordinate logging.</p>
+                <p className="text-xs text-[var(--text-muted)]">Real-time vehicle GPS coordinate logging from active routes.</p>
               </div>
               
               <div className="h-[200px] sm:h-64 bg-[var(--bg)] rounded-2xl relative overflow-hidden flex items-center justify-center border border-[var(--border)]">
                 <div className="absolute inset-0 opacity-20 bg-[radial-gradient(var(--accent)_1px,transparent_1px)] [background-size:16px_16px]"></div>
                 
-                <motion.div 
-                  animate={{ scale: [1, 1.2, 1] }}
-                  transition={{ repeat: Infinity, duration: 2 }}
-                  className="absolute bg-[var(--accent-light)] border border-[var(--accent)] p-2.5 rounded-full z-10"
-                  style={{
-                    left: `${45 + (activeCoordinates.lat - 5.6037) * 2000}%`,
-                    top: `${50 + (activeCoordinates.lng + 0.1870) * 2000}%`
-                  }}
-                >
-                  <div className="w-3.5 h-3.5 bg-[var(--accent)] rounded-full border-2 border-white"></div>
-                </motion.div>
-                
-                <div className="absolute top-10 left-12 text-[10px] font-bold text-[var(--text-muted)]">Kotoka Intl Airport</div>
-                <div className="absolute bottom-16 right-20 text-[10px] font-bold text-[var(--text-muted)]">Tema Harbour Port</div>
-                <div className="absolute bottom-10 left-10 text-[10px] font-bold text-[var(--text-muted)] font-semibold">Accra Central</div>
- 
-                <div className="absolute bottom-4 left-4 bg-slate-900/95 backdrop-blur px-3 py-1.5 rounded-lg border border-slate-800 text-[10px] text-white space-y-0.5 shadow-lg">
-                  <p className="font-semibold text-[var(--accent)]">{activeDriverName ? `${activeDriverName} — Active` : kpiFleet === 0 ? 'No active fleet' : 'Loading driver…'}</p>
-                  <p className="opacity-90">Lat: {activeCoordinates.lat.toFixed(6)}</p>
-                  <p className="opacity-90">Lng: {activeCoordinates.lng.toFixed(6)}</p>
-                  <p className="opacity-90">Status: <span className="text-emerald-400 font-bold uppercase">{deliveryStatus}</span></p>
-                </div>
+                {transitVehicles.length === 0 ? (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/20 backdrop-blur-[2px] z-10 text-center p-4">
+                    <Truck className="w-8 h-8 text-[var(--text-muted)] opacity-50 mb-2 animate-bounce" />
+                    <p className="text-xs font-semibold text-[var(--text-muted)]">No active dispatch runs in progress</p>
+                  </div>
+                ) : (
+                  <>
+                    {transitVehicles.map((vehicle, idx) => {
+                      const coords = vehicle.active_coordinates;
+                      return (
+                        <motion.div 
+                          key={vehicle.id}
+                          animate={{ scale: [1, 1.2, 1] }}
+                          transition={{ repeat: Infinity, duration: 2, delay: idx * 0.3 }}
+                          className="absolute bg-[var(--accent-light)] border border-[var(--accent)] p-2.5 rounded-full z-10 hover:z-20 cursor-pointer"
+                          style={{
+                            left: `${45 + (coords.lat - 5.6037) * 2000}%`,
+                            top: `${50 + (coords.lng + 0.1870) * 2000}%`
+                          }}
+                          title={`${vehicle.driver_name || 'Driver'} (${vehicle.vehicle_id || 'Truck'})`}
+                        >
+                          <div className="w-3.5 h-3.5 bg-[var(--accent)] rounded-full border-2 border-white"></div>
+                        </motion.div>
+                      );
+                    })}
+                    
+                    <div className="absolute top-10 left-12 text-[10px] font-bold text-[var(--text-muted)]">Kotoka Intl Airport</div>
+                    <div className="absolute bottom-16 right-20 text-[10px] font-bold text-[var(--text-muted)]">Tema Harbour Port</div>
+                    <div className="absolute bottom-10 left-10 text-[10px] font-bold text-[var(--text-muted)] font-semibold">Accra Central</div>
+     
+                    <div className="absolute bottom-4 left-4 bg-slate-900/95 backdrop-blur px-3 py-1.5 rounded-lg border border-slate-800 text-[10px] text-white space-y-1.5 shadow-lg max-h-32 overflow-y-auto z-10 min-w-[180px]">
+                      {transitVehicles.map((v) => (
+                        <div key={v.id} className="border-b border-slate-800 last:border-0 pb-1 last:pb-0">
+                          <p className="font-semibold text-[var(--accent)]">{v.driver_name || 'Driver'} ({v.vehicle_id || 'Truck'})</p>
+                          <p className="opacity-90">Lat: {v.active_coordinates.lat.toFixed(6)} | Lng: {v.active_coordinates.lng.toFixed(6)}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
               <div className="mt-4 flex items-center justify-between text-xs text-[var(--text-muted)]">
                 <span>Map Provider: Google Maps Platform SDK</span>
                 <span>Stream interval: {gpsInterval}s</span>
               </div>
             </div>
- 
+  
             {/* Line Chart */}
             <div className="p-6 bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] border border-[var(--border)] flex flex-col justify-between">
               <div>
@@ -530,7 +577,7 @@ export default function CeoDashboard({
                 </ResponsiveContainer>
               </div>
             </div>
- 
+  
           </div>
         </div>
       </div>

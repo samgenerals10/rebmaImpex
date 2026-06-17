@@ -24,6 +24,10 @@ export default function WalletsView({ setActiveSubTab }: WalletsViewProps) {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [chartData, setChartData] = useState<MonthlyFlow[]>([]);
   const [totalIn, setTotalIn] = useState(0);
+  const [cashTotal, setCashTotal] = useState(0);
+  const [momoTotal, setMomoTotal] = useState(0);
+  const [chequeTotal, setChequeTotal] = useState(0);
+  const [bankTotal, setBankTotal] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -32,13 +36,41 @@ export default function WalletsView({ setActiveSubTab }: WalletsViewProps) {
         const { data } = await supabase
           .from('finance_payments')
           .select('id, client_name, amount, payment_mode, created_at, status, recorded_by')
-          .order('created_at', { ascending: false })
-          .limit(20);
+          .order('created_at', { ascending: false });
         const rows = (data as Payment[]) ?? [];
         setPayments(rows);
 
-        const total = rows.reduce((s, p) => s + (p.amount || 0), 0);
+        const getMode = (mode: string) => {
+          if (!mode) return '';
+          const m = mode.toUpperCase().replace(/[\s_-]/g, '');
+          if (m === 'CASH') return 'CASH';
+          if (m === 'MOBILEMONEY' || m === 'MOMO') return 'MOBILE_MONEY';
+          if (m === 'CHEQUE' || m === 'CHECK') return 'CHEQUE';
+          if (m === 'BANKTRANSFER' || m === 'BANK') return 'BANK_TRANSFER';
+          return m;
+        };
+
+        let total = 0;
+        let cash = 0;
+        let momo = 0;
+        let cheque = 0;
+        let bank = 0;
+
+        for (const p of rows) {
+          const amt = Number(p.amount || 0);
+          total += amt;
+          const mode = getMode(p.payment_mode);
+          if (mode === 'CASH') cash += amt;
+          else if (mode === 'MOBILE_MONEY') momo += amt;
+          else if (mode === 'CHEQUE') cheque += amt;
+          else if (mode === 'BANK_TRANSFER') bank += amt;
+        }
+
         setTotalIn(total);
+        setCashTotal(cash);
+        setMomoTotal(momo);
+        setChequeTotal(cheque);
+        setBankTotal(bank);
 
         // Build monthly chart — last 6 months
         const monthMap: Record<string, { In: number; Out: number }> = {};
@@ -62,9 +94,10 @@ export default function WalletsView({ setActiveSubTab }: WalletsViewProps) {
   }, []);
 
   const WALLET_CARDS = [
-    { name: 'GHS Payments Received', currency: 'GHS', balance: totalIn, color: 'from-emerald-600 to-teal-700', sub: 'Total collected from orders' },
-    { name: 'Cash Payments', currency: 'GHS', balance: payments.filter(p => p.payment_mode === 'CASH').reduce((s, p) => s + p.amount, 0), color: 'from-blue-700 to-indigo-800', sub: 'Cash receipts' },
-    { name: 'Mobile Money', currency: 'GHS', balance: payments.filter(p => p.payment_mode === 'MOBILE_MONEY').reduce((s, p) => s + p.amount, 0), color: 'from-violet-700 to-purple-800', sub: 'MoMo receipts' },
+    { name: 'Cash Payments', currency: 'GHS', balance: cashTotal, color: 'from-blue-700 to-indigo-800', sub: 'Cash receipts' },
+    { name: 'Mobile Money', currency: 'GHS', balance: momoTotal, color: 'from-violet-700 to-purple-800', sub: 'MoMo receipts' },
+    { name: 'Cheque Payments', currency: 'GHS', balance: chequeTotal, color: 'from-amber-600 to-orange-700', sub: 'Cheque receipts' },
+    { name: 'Bank Transfer', currency: 'GHS', balance: bankTotal, color: 'from-cyan-700 to-blue-800', sub: 'Bank transfer receipts' },
   ];
 
   const [selected, setSelected] = useState(0);
@@ -91,7 +124,7 @@ export default function WalletsView({ setActiveSubTab }: WalletsViewProps) {
       </div>
 
       {/* Account cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {WALLET_CARDS.map((acct, i) => (
           <button key={i} onClick={() => setSelected(i)}
             className={`rounded-2xl p-5 text-left cursor-pointer transition-all bg-gradient-to-br ${acct.color} ${selected === i ? 'ring-2 ring-[var(--accent)] ring-offset-2 scale-[1.02]' : 'hover:scale-[1.01]'}`}>
@@ -120,7 +153,7 @@ export default function WalletsView({ setActiveSubTab }: WalletsViewProps) {
             <p className="text-xs text-gray-400 mt-1">Finance will record payments as orders are approved</p>
           </div>
         ) : (
-          <ResponsiveContainer width="100%" height={200}>
+          <ResponsiveContainer width="100%" height="200%">
             <BarChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
               <XAxis dataKey="name" tick={{ fontSize: 9 }} />

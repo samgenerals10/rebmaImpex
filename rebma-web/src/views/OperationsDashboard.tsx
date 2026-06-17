@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import {
   FileSpreadsheet, FileText, Layers, Truck, AlertTriangle, CheckCircle,
   Image as ImageIcon, History, PackageCheck, TicketCheck, ChevronRight,
-  MoreVertical, TrendingUp, TrendingDown
+  MoreVertical, TrendingUp, TrendingDown, Camera
 } from 'lucide-react';
 import MiniSparkline from '../components/MiniSparkline';
 import KpiDetailView from '../components/KpiDetailView';
@@ -63,6 +63,11 @@ export default function OperationsDashboard({
   const [goodsCode, setGoodsCode] = useState('');
   const [destination, setDestination] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const docInputRef = useRef<HTMLInputElement>(null);
+  const [cameraPreview, setCameraPreview] = useState<string>('');
+  const [docBase64, setDocBase64] = useState<string>('');
+  const [docName, setDocName] = useState<string>('');
 
   // Table interactive states: Approved Orders
   const [ordersSearch, setOrdersSearch] = useState('');
@@ -171,6 +176,23 @@ export default function OperationsDashboard({
     reader.readAsDataURL(file);
   };
 
+  const handleCameraChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => setCameraPreview(ev.target?.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const handleDocChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setDocName(file.name);
+    const reader = new FileReader();
+    reader.onload = (ev) => setDocBase64(ev.target?.result as string);
+    reader.readAsDataURL(file);
+  };
+
   const autoGoodsCode = () => `GC-${Date.now().toString().slice(-6)}`;
 
   const handleSubmitIntake = (e: React.FormEvent) => {
@@ -178,7 +200,7 @@ export default function OperationsDashboard({
     const target = e.target as any;
     onLogIntake({
       productName: productName || 'Unspecified Product',
-      productImage: imagePreview || undefined,
+      productImage: imagePreview || cameraPreview || undefined,
       goodsCode: goodsCode || autoGoodsCode(),
       destination: destination || 'Accra Warehouse',
       country: target.country.value,
@@ -186,9 +208,17 @@ export default function OperationsDashboard({
       quantity: parseInt(target.quantity.value),
       weight: parseFloat(target.weight.value),
       discrepancies: target.discrepancies.value || 'None',
-      createdAt: new Date().toLocaleString()
-    });
+      createdAt: new Date().toLocaleString(),
+      metadata: {
+        documentName: docName || null,
+        documentData: docBase64 || null,
+        cameraPhoto: cameraPreview || null
+      }
+    } as any);
     setImagePreview('');
+    setCameraPreview('');
+    setDocBase64('');
+    setDocName('');
     setProductName('');
     setGoodsCode('');
     setDestination('');
@@ -1125,29 +1155,95 @@ export default function OperationsDashboard({
                 </div>
               </div>
 
-              {/* Product Image Upload */}
-              <div>
-                <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Product Image <span className="text-[var(--text-muted)] font-normal">(optional)</span></label>
-                <div className="flex items-center gap-4">
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="flex items-center gap-2 px-4 py-2 border-2 border-dashed border-[var(--border)] hover:border-[var(--accent)] rounded-xl text-xs text-[var(--text-muted)] hover:text-[var(--accent)] cursor-pointer transition-all"
-                  >
-                    <ImageIcon className="w-4 h-4" />
-                    {imagePreview ? 'Change Image' : 'Upload Product Image'}
-                  </button>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageChange}
-                    className="hidden"
-                  />
+              {/* Product Image Upload & Attachments */}
+              <div className="space-y-3">
+                <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Cargo Media & Attachments <span className="text-[var(--text-muted)] font-normal">(optional)</span></label>
+                <div className="flex flex-wrap gap-4 items-center">
+                  {/* File Upload */}
+                  <div>
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="flex items-center gap-2 px-4 py-2 border border-dashed border-[var(--border)] hover:border-[var(--accent)] rounded-xl text-xs text-[var(--text-muted)] hover:text-[var(--accent)] cursor-pointer transition-all"
+                    >
+                      <ImageIcon className="w-4 h-4" />
+                      {imagePreview ? 'Change Image' : 'Upload Image'}
+                    </button>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageChange}
+                      className="hidden"
+                    />
+                  </div>
+
+                  {/* Camera Capture */}
+                  <div>
+                    <button
+                      type="button"
+                      onClick={() => cameraInputRef.current?.click()}
+                      className="flex items-center gap-2 px-4 py-2 border border-dashed border-[var(--border)] hover:border-[var(--accent)] rounded-xl text-xs text-[var(--text-muted)] hover:text-[var(--accent)] cursor-pointer transition-all"
+                    >
+                      <Camera className="w-4 h-4" />
+                      {cameraPreview ? 'Retake Photo' : 'Take Photo'}
+                    </button>
+                    <input
+                      ref={cameraInputRef}
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      onChange={handleCameraChange}
+                      className="hidden"
+                    />
+                  </div>
+
+                  {/* Doc Upload */}
+                  <div>
+                    <button
+                      type="button"
+                      onClick={() => docInputRef.current?.click()}
+                      className="flex items-center gap-2 px-4 py-2 border border-dashed border-[var(--border)] hover:border-[var(--accent)] rounded-xl text-xs text-[var(--text-muted)] hover:text-[var(--accent)] cursor-pointer transition-all"
+                    >
+                      <FileText className="w-4 h-4" />
+                      {docName ? docName : 'Attach Document'}
+                    </button>
+                    <input
+                      ref={docInputRef}
+                      type="file"
+                      accept=".pdf,.doc,.docx,.xls,.xlsx,.txt"
+                      onChange={handleDocChange}
+                      className="hidden"
+                    />
+                  </div>
+                </div>
+
+                {/* Previews Row */}
+                <div className="flex gap-4 flex-wrap mt-2">
                   {imagePreview && (
                     <div className="relative">
+                      <p className="text-[9px] text-[var(--text-muted)] mb-1">Uploaded Image</p>
                       <img src={imagePreview} alt="Preview" className="w-16 h-16 object-cover rounded-lg border border-[var(--border)]" />
-                      <button type="button" onClick={() => setImagePreview('')} className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-rose-500 text-white rounded-full text-[10px] flex items-center justify-center cursor-pointer">✕</button>
+                      <button type="button" onClick={() => setImagePreview('')} className="absolute top-4 right-0.5 w-5 h-5 bg-rose-500 text-white rounded-full text-[10px] flex items-center justify-center cursor-pointer">✕</button>
+                    </div>
+                  )}
+
+                  {cameraPreview && (
+                    <div className="relative">
+                      <p className="text-[9px] text-[var(--text-muted)] mb-1">Camera Photo</p>
+                      <img src={cameraPreview} alt="Camera Preview" className="w-16 h-16 object-cover rounded-lg border border-[var(--border)]" />
+                      <button type="button" onClick={() => setCameraPreview('')} className="absolute top-4 right-0.5 w-5 h-5 bg-rose-500 text-white rounded-full text-[10px] flex items-center justify-center cursor-pointer">✕</button>
+                    </div>
+                  )}
+
+                  {docName && (
+                    <div className="relative p-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl flex items-center gap-2">
+                      <FileText className="w-6 h-6 text-emerald-500" />
+                      <div className="text-[10px]">
+                        <p className="font-semibold truncate max-w-[120px]">{docName}</p>
+                        <p className="text-[var(--text-muted)]">Document Attached</p>
+                      </div>
+                      <button type="button" onClick={() => { setDocName(''); setDocBase64(''); }} className="w-5 h-5 bg-rose-500 text-white rounded-full text-[10px] flex items-center justify-center cursor-pointer">✕</button>
                     </div>
                   )}
                 </div>

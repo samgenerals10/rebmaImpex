@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Plus, Search, MoreVertical, Layers, Download, Printer, X, Edit2, TrendingUp } from 'lucide-react';
 import { exportToCSV, exportToPDF } from '../../utils/export';
+import { wipApi } from '../../services/apiClient';
 
 interface WipItem {
   id: string;
@@ -14,15 +15,6 @@ interface WipItem {
 }
 
 const STAGES = ['Raw Materials', 'Processing', 'Quality Check', 'Packaging', 'Awaiting Dispatch', 'Completed'];
-
-const INITIAL_WIP: WipItem[] = [
-  { id: 'WIP-001', productName: 'Refined Palm Oil', stage: 'Processing', qty: 250, unit: 'kg', updatedAt: '2026-05-25 09:00', batchRef: 'B-2026-0501', notes: '' },
-  { id: 'WIP-002', productName: 'Polymer Granules (Grade A)', stage: 'Quality Check', qty: 1200, unit: 'kg', updatedAt: '2026-05-25 10:30', batchRef: 'B-2026-0502', notes: 'Hold for re-test' },
-  { id: 'WIP-003', productName: 'Cocoa Butter Blocks', stage: 'Packaging', qty: 80, unit: 'blocks', updatedAt: '2026-05-24 15:00', batchRef: 'B-2026-0503', notes: '' },
-  { id: 'WIP-004', productName: 'Shea Butter Cream', stage: 'Awaiting Dispatch', qty: 340, unit: 'pcs', updatedAt: '2026-05-24 17:00', batchRef: 'B-2026-0504', notes: '' },
-  { id: 'WIP-005', productName: 'Groundnut Oil 1L', stage: 'Processing', qty: 600, unit: 'L', updatedAt: '2026-05-26 08:00', batchRef: 'B-2026-0505', notes: '' },
-  { id: 'WIP-006', productName: 'Coconut Oil Sachet', stage: 'Raw Materials', qty: 2000, unit: 'sachets', updatedAt: '2026-05-26 11:00', batchRef: 'B-2026-0506', notes: 'Waiting for labeling' },
-];
 
 const stageBadgeStyle = (stage: string) => {
   const m: Record<string, string> = {
@@ -43,7 +35,8 @@ interface Props {
 }
 
 export default function WipStockView({ addNotification }: Props) {
-  const [items, setItems] = useState<WipItem[]>(INITIAL_WIP);
+  const [items, setItems] = useState<WipItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [stageFilter, setStageFilter] = useState('All');
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
@@ -53,6 +46,21 @@ export default function WipStockView({ addNotification }: Props) {
   const [newStage, setNewStage] = useState('');
   const [newNotes, setNewNotes] = useState('');
   const [form, setForm] = useState({ productName: '', stage: 'Raw Materials', qty: '', unit: 'kg', batchRef: '', notes: '' });
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const wipData = await wipApi.getWipStock();
+      setItems(wipData);
+    } catch {
+      setItems([]);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
 
   const filtered = items.filter(item => {
     const matchStage = stageFilter === 'All' || item.stage === stageFilter;
@@ -67,42 +75,65 @@ export default function WipStockView({ addNotification }: Props) {
     { label: 'Ready to Dispatch', value: items.filter(i => i.stage === 'Awaiting Dispatch').length, color: '#059669' },
   ];
 
-  const handleUpdateStage = () => {
+  const handleUpdateStage = async () => {
     if (!updateModal || !newStage) return;
-    setItems(prev => prev.map(i => i.id === updateModal.id ? { ...i, stage: newStage, notes: newNotes, updatedAt: new Date().toLocaleString() } : i));
-    addNotification(`${updateModal.productName} moved to ${newStage}`);
+    try {
+      await wipApi.updateWipStock(updateModal.id, updateModal.qty, newNotes || updateModal.notes || '', newStage);
+      addNotification(`${updateModal.productName} moved to ${newStage}`);
+      loadData();
+    } catch (err: any) {
+      alert(err.message || 'Failed to update stage.');
+    }
     setUpdateModal(null);
     setNewStage(''); setNewNotes('');
   };
 
-  const handleAddItem = () => {
+  const handleAddItem = async () => {
     if (!form.productName || !form.qty) return;
-    const newItem: WipItem = {
-      id: `WIP-${String(items.length + 1).padStart(3, '0')}`,
-      productName: form.productName,
-      stage: form.stage,
-      qty: Number(form.qty),
-      unit: form.unit,
-      batchRef: form.batchRef || `B-${Date.now()}`,
-      notes: form.notes,
-      updatedAt: new Date().toLocaleString(),
-    };
-    setItems(prev => [newItem, ...prev]);
-    addNotification(`WIP item ${form.productName} added`);
-    setAddModal(false);
-    setForm({ productName: '', stage: 'Raw Materials', qty: '', unit: 'kg', batchRef: '', notes: '' });
+    try {
+      await wipApi.addWipStock({
+        productName: form.productName,
+        stage: form.stage,
+        qty: Number(form.qty),
+        unit: form.unit,
+        batchRef: form.batchRef || `B-${Date.now()}`,
+        notes: form.notes
+      });
+      addNotification(`WIP item ${form.productName} added`);
+      loadData();
+      setAddModal(false);
+      setForm({ productName: '', stage: 'Raw Materials', qty: '', unit: 'kg', batchRef: '', notes: '' });
+    } catch (err: any) {
+      alert(err.message || 'Failed to add WIP item.');
+    }
   };
 
-  const handleDelete = (id: string) => {
-    setItems(prev => prev.filter(i => i.id !== id));
-    addNotification('WIP item removed');
+  const handleDelete = async (id: string) => {
+    try {
+      await wipApi.deleteWipStock(id);
+      addNotification('WIP item removed');
+      loadData();
+    } catch (err: any) {
+      alert(err.message || 'Failed to remove WIP item.');
+    }
     setMenuOpen(null);
   };
 
-  const handleDuplicate = (item: WipItem) => {
-    const dup: WipItem = { ...item, id: `WIP-${String(items.length + 1).padStart(3, '0')}`, stage: 'Raw Materials', updatedAt: new Date().toLocaleString() };
-    setItems(prev => [dup, ...prev]);
-    addNotification(`Duplicated ${item.productName}`);
+  const handleDuplicate = async (item: WipItem) => {
+    try {
+      await wipApi.addWipStock({
+        productName: item.productName,
+        stage: 'Raw Materials',
+        qty: item.qty,
+        unit: item.unit,
+        batchRef: item.batchRef ? `${item.batchRef}-Copy` : `B-${Date.now()}`,
+        notes: item.notes
+      });
+      addNotification(`Duplicated ${item.productName}`);
+      loadData();
+    } catch (err: any) {
+      alert(err.message || 'Failed to duplicate WIP item.');
+    }
     setMenuOpen(null);
   };
 
@@ -214,7 +245,16 @@ export default function WipStockView({ addNotification }: Props) {
               </tr>
             </thead>
             <tbody>
-              {filtered.map(item => (
+              {loading ? (
+                <tr>
+                  <td colSpan={8} className="px-4 py-12 text-center text-[var(--text-muted)] text-sm">
+                    <div className="flex flex-col items-center gap-2">
+                      <div className="w-6 h-6 border-2 border-t-transparent border-[var(--accent)] rounded-full animate-spin" />
+                      Loading WIP Stock...
+                    </div>
+                  </td>
+                </tr>
+              ) : filtered.map(item => (
                 <tr key={item.id} className="border-b border-[var(--border)] hover:bg-[var(--accent-light)] transition-colors cursor-pointer" onClick={() => setDetailModal(item)}>
                   <td className="px-4 py-3 font-mono text-xs text-[var(--text-muted)]">{item.id}</td>
                   <td className="px-4 py-3 font-semibold text-[var(--text-primary)]">{item.productName}</td>

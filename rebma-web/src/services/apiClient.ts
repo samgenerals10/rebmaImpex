@@ -113,11 +113,11 @@ const mapOrderToFrontend = (db: any): any => {
     clientName: db.client_name || db.clientName,
     productName: db.product_name || db.productName,
     destination: db.destination,
-    ghanaCard: db.ghana_card || db.ghanaCard,
+    ghanaCard: db.metadata?.ghanaCard || db.ghana_card || db.ghanaCard,
     paymentMode: db.payment_mode || db.paymentMode,
     totalAmount: db.total_amount || db.totalAmount,
     status: db.status,
-    createdById: db.created_by_id || db.createdById,
+    createdById: db.created_by || db.created_by_id || db.createdById,
     createdAt: db.created_at || db.createdAt,
     updatedAt: db.updated_at || db.updatedAt,
     createdBy: db.createdBy ? {
@@ -190,8 +190,10 @@ const mapCustomerToFrontend = (db: any): any => {
     email: db.email,
     location: db.location,
     companyName: db.company_name || db.companyName,
-    ghanaCard: db.ghana_card || db.ghanaCard,
-    photo: db.photo,
+    ghanaCard: db.ghana_card_id || db.ghana_card || db.ghanaCard,
+    photo: db.customer_photo || db.photo,
+    ghanaCardFront: db.ghana_card_front,
+    ghanaCardBack: db.ghana_card_back,
     registeredAt: db.registered_at || db.registeredAt,
     updatedAt: db.updated_at || db.updatedAt
   };
@@ -428,6 +430,7 @@ export const operations = {
     productName?: string; goodsCode?: string; destination?: string;
     country: string; company: string; quantity: number; weight: number;
     discrepancies?: string; isFaulty?: boolean; productImage?: string;
+    metadata?: any;
   }) => {
     const { data: sessionData } = await supabase.auth.getSession();
     const performerId = sessionData.session?.user?.id || 'unknown';
@@ -450,7 +453,8 @@ export const operations = {
         is_fault_or_damaged: !!data.isFaulty,
         status: 'PENDING_MANAGEMENT_APPROVAL',
         created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
+        metadata: data.metadata || null
       }).select();
 
     if (error) throw new Error(error.message);
@@ -554,7 +558,7 @@ export const management = {
     return (data || []).map(mapPriceToFrontend);
   },
 
-  setPrice: async (data: { productName: string; category: string; unitPrice: number; currency: string }) => {
+  setPrice: async (data: { productName: string; category: string; unitPrice: number; currency: string; metadata?: any }) => {
     const { data: sessionData } = await supabase.auth.getSession();
     const performerId = sessionData.session?.user?.id || 'unknown';
     const { data: performers } = await supabase.from('profiles').select('full_name').eq('id', performerId).limit(1);
@@ -568,7 +572,8 @@ export const management = {
         unit_price: Number(data.unitPrice),
         currency: data.currency || 'GHS',
         set_by: performedBy,
-        set_at: new Date().toISOString()
+        set_at: new Date().toISOString(),
+        metadata: data.metadata || null
       }).select();
     if (error) throw new Error(error.message);
     return price ? mapPriceToFrontend(price[0]) : null;
@@ -684,11 +689,10 @@ export const marketing = {
         client_name: data.clientName,
         product_name: data.productName || null,
         destination: data.destination || null,
-        ghana_card: data.ghanaCard || null,
         payment_mode: data.paymentMode,
         total_amount: Number(data.totalAmount),
         status: 'PENDING_FINANCE',
-        created_by_id: performerId,
+        created_by: performerId,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         metadata: {
@@ -730,6 +734,7 @@ export const marketing = {
   registerCustomer: async (data: {
     name: string; phone: string; email?: string;
     location: string; companyName: string; ghanaCard?: string; photo?: string;
+    ghanaCardFront?: string; ghanaCardBack?: string;
   }) => {
     const { data: customer, error } = await supabase
       .from('customers')
@@ -739,8 +744,10 @@ export const marketing = {
         email: data.email || null,
         location: data.location,
         company_name: data.companyName,
-        ghana_card: data.ghanaCard || null,
-        photo: data.photo || null,
+        ghana_card_id: data.ghanaCard || null,
+        customer_photo: data.photo || null,
+        ghana_card_front: data.ghanaCardFront || null,
+        ghana_card_back: data.ghanaCardBack || null,
         registered_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       }).select();
@@ -1060,4 +1067,154 @@ export const reception = {
     if (error) throw new Error(error.message);
     return data ? data.map(mapAttendanceToFrontend) : null;
   },
+};
+
+export const stockApi = {
+  getStock: async () => {
+    const { data, error } = await supabase
+      .from('stock')
+      .select('*')
+      .order('last_updated', { ascending: false });
+    if (error) throw new Error(error.message);
+    return (data || []).map((s: any) => ({
+      id: s.id,
+      name: s.product_name || '',
+      sku: s.product_code || '',
+      category: s.category || 'Uncategorized',
+      current: Number(s.quantity || 0),
+      capacity: Number(s.maximum_level || 0),
+      minimum: Number(s.minimum_level || 0),
+      unit: s.unit || 'units',
+      updatedAt: s.last_updated || s.created_at || new Date().toISOString()
+    }));
+  },
+
+  getStockMovements: async () => {
+    const { data, error } = await supabase
+      .from('stock_ledger')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) throw new Error(error.message);
+    return (data || []).map((m: any) => ({
+      id: m.id,
+      productName: m.product_name || '',
+      change: Number(m.quantity || 0),
+      reason: m.reference || m.notes || 'Manual Adjustment',
+      updatedBy: 'Staff',
+      date: m.created_at || new Date().toISOString()
+    }));
+  },
+
+  adjustStock: async (productId: string, productName: string, currentQty: number, delta: number, reason: string, notes: string) => {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const performerId = sessionData.session?.user?.id || null;
+
+    const newQty = Math.max(0, currentQty + delta);
+    const { error: stockErr } = await supabase
+      .from('stock')
+      .update({
+        quantity: newQty,
+        last_updated: new Date().toISOString(),
+        updated_by: performerId
+      })
+      .eq('id', productId);
+    if (stockErr) throw new Error(stockErr.message);
+
+    const { error: ledgerErr } = await supabase
+      .from('stock_ledger')
+      .insert({
+        product_name: productName,
+        movement_type: delta > 0 ? 'ADD' : 'REMOVE',
+        quantity: delta,
+        reference: reason,
+        notes: notes || null,
+        performed_by: performerId,
+        created_at: new Date().toISOString()
+      });
+    if (ledgerErr) throw new Error(ledgerErr.message);
+
+    return newQty;
+  },
+
+  getCategories: async () => {
+    const { data, error } = await supabase
+      .from('categories')
+      .select('*')
+      .order('name', { ascending: true });
+    if (error) throw new Error(error.message);
+    return data || [];
+  },
+
+  addCategory: async (name: string) => {
+    const { data, error } = await supabase
+      .from('categories')
+      .insert({ name })
+      .select();
+    if (error) throw new Error(error.message);
+    return data?.[0] || null;
+  }
+};
+
+export const wipApi = {
+  getWipStock: async () => {
+    const { data, error } = await supabase
+      .from('wip_stock')
+      .select('*')
+      .order('updated_at', { ascending: false });
+    if (error) throw new Error(error.message);
+    return (data || []).map((w: any) => ({
+      id: w.id,
+      productName: w.product_name,
+      stage: w.stage,
+      qty: Number(w.qty),
+      unit: w.unit,
+      batchRef: w.batch_ref,
+      notes: w.notes,
+      updatedAt: w.updated_at
+    }));
+  },
+
+  addWipStock: async (data: { productName: string; stage: string; qty: number; unit: string; batchRef?: string; notes?: string }) => {
+    const { data: inserted, error } = await supabase
+      .from('wip_stock')
+      .insert({
+        product_name: data.productName,
+        stage: data.stage,
+        qty: Number(data.qty),
+        unit: data.unit,
+        batch_ref: data.batchRef || null,
+        notes: data.notes || null,
+        updated_at: new Date().toISOString(),
+        created_at: new Date().toISOString()
+      })
+      .select();
+    if (error) throw new Error(error.message);
+    return inserted?.[0] || null;
+  },
+
+  updateWipStock: async (id: string, qty: number, notes?: string, stage?: string) => {
+    const updateData: any = {
+      qty: Number(qty),
+      notes: notes || null,
+      updated_at: new Date().toISOString()
+    };
+    if (stage) {
+      updateData.stage = stage;
+    }
+    const { data: updated, error } = await supabase
+      .from('wip_stock')
+      .update(updateData)
+      .eq('id', id)
+      .select();
+    if (error) throw new Error(error.message);
+    return updated?.[0] || null;
+  },
+
+  deleteWipStock: async (id: string) => {
+    const { error } = await supabase
+      .from('wip_stock')
+      .delete()
+      .eq('id', id);
+    if (error) throw new Error(error.message);
+  }
 };

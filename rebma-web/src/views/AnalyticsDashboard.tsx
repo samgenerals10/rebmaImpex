@@ -171,9 +171,9 @@ export default function AnalyticsDashboard({ department, currentUser, addNotific
         ]);
       } else if (department === 'DISPATCH') {
         const [{ count: total }, { count: inTransit }, { count: delivered }, { count: drivers }] = await Promise.all([
-          supabase.from('deliveries').select('*', { count: 'exact', head: true }),
-          supabase.from('deliveries').select('*', { count: 'exact', head: true }).eq('status', 'IN_TRANSIT'),
-          supabase.from('deliveries').select('*', { count: 'exact', head: true }).eq('status', 'DELIVERED'),
+          supabase.from('delivery_logs').select('*', { count: 'exact', head: true }),
+          supabase.from('delivery_logs').select('*', { count: 'exact', head: true }).eq('status', 'IN_TRANSIT'),
+          supabase.from('delivery_logs').select('*', { count: 'exact', head: true }).eq('status', 'DELIVERED'),
           supabase.from('drivers').select('*', { count: 'exact', head: true }).eq('status', 'ACTIVE'),
         ]);
         setLiveStats([

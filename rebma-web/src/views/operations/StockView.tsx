@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Search, Plus, X, MoreVertical, Package, TrendingDown, TrendingUp, History } from 'lucide-react';
-import { supabase } from '../../lib/supabaseClient';
+import { Search, Plus, X, MoreVertical, Package, TrendingDown, TrendingUp, History, Download, Printer } from 'lucide-react';
+import { stockApi } from '../../services/apiClient';
+import { exportToCSV, exportToPDF } from '../../utils/export';
 import type { IncomingGoods } from '../../types/erp';
 
 interface StockItem {
@@ -36,7 +37,6 @@ const barColor = (current: number, capacity: number) => {
 };
 
 const fmt = (iso: string) => new Date(iso).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
-const CATEGORIES = ['All', 'Raw Materials', 'Components', 'Chemicals', 'Equipment', 'Electrical', 'Safety'];
 
 interface Props { incomingGoodsList: IncomingGoods[]; addNotification: (msg: string) => void }
 
@@ -46,23 +46,34 @@ export default function StockView({ incomingGoodsList: _incomingGoodsList, addNo
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
+  const [categories, setCategories] = useState<string[]>(['All']);
   const [statusFilter, setStatusFilter] = useState('All');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [showAdjust, setShowAdjust] = useState(false);
   const [adjustForm, setAdjustForm] = useState({ productId: '', type: 'Add', quantity: '', reason: '', notes: '' });
 
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const [stockData, movementsData, catsData] = await Promise.all([
+        stockApi.getStock(),
+        stockApi.getStockMovements(),
+        stockApi.getCategories()
+      ]);
+      setStock(stockData);
+      setMovements(movementsData);
+      setCategories(['All', ...catsData.map(c => c.name)]);
+    } catch {
+      setStock([]);
+      setMovements([]);
+    }
+    setLoading(false);
+  };
+
   useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      try {
-        const { data } = await supabase.from('stock_items').select('*').order('updatedAt', { ascending: false });
-        setStock(data ?? []);
-        const { data: movData } = await supabase.from('stock_movements').select('*').order('date', { ascending: false });
-        setMovements(movData ?? []);
-      } catch { setStock([]); setMovements([]); }
-      setLoading(false);
-    };
-    load();
+    loadData();
   }, []);
 
   const totalSKUs = stock.length;
@@ -70,29 +81,95 @@ export default function StockView({ incomingGoodsList: _incomingGoodsList, addNo
   const inStock = stock.filter(s => s.current > 0).length;
   const totalValue = stock.reduce((acc, s) => acc + s.current * 45.5, 0);
 
+  const handleAddCategory = async () => {
+    const name = prompt('Enter new stock category name:');
+    if (!name) {
+      setCategoryFilter('All');
+      return;
+    }
+    try {
+      await stockApi.addCategory(name);
+      addNotification(`Category "${name}" added successfully.`);
+      const cats = await stockApi.getCategories();
+      setCategories(['All', ...cats.map(c => c.name)]);
+      setCategoryFilter(name);
+    } catch (err: any) {
+      alert(err.message || 'Failed to add category.');
+      setCategoryFilter('All');
+    }
+  };
+
   const filtered = stock.filter(s => {
     const q = search.toLowerCase();
     const matchSearch = !search || s.name.toLowerCase().includes(q) || s.sku.toLowerCase().includes(q);
     const matchCat = categoryFilter === 'All' || s.category === categoryFilter;
     const st = stockStatus(s.current, s.capacity);
     const matchStatus = statusFilter === 'All' || st.label === statusFilter;
-    return matchSearch && matchCat && matchStatus;
+    
+    let matchDate = true;
+    if (startDate) {
+      matchDate = matchDate && new Date(s.updatedAt) >= new Date(startDate + 'T00:00:00');
+    }
+    if (endDate) {
+      matchDate = matchDate && new Date(s.updatedAt) <= new Date(endDate + 'T23:59:59');
+    }
+    return matchSearch && matchCat && matchStatus && matchDate;
+  });
+
+  const filteredMovements = movements.filter(m => {
+    const q = search.toLowerCase();
+    const matchSearch = !search || m.productName.toLowerCase().includes(q) || m.reason.toLowerCase().includes(q);
+    
+    let matchDate = true;
+    if (startDate) {
+      matchDate = matchDate && new Date(m.date) >= new Date(startDate + 'T00:00:00');
+    }
+    if (endDate) {
+      matchDate = matchDate && new Date(m.date) <= new Date(endDate + 'T23:59:59');
+    }
+    return matchSearch && matchDate;
   });
 
   const doAdjust = async () => {
     const item = stock.find(s => s.id === adjustForm.productId);
     if (!item || !adjustForm.quantity) return;
     const delta = adjustForm.type === 'Add' ? parseInt(adjustForm.quantity) : -parseInt(adjustForm.quantity);
-    const newCurrent = Math.max(0, Math.min(item.capacity, item.current + delta));
-    const now = new Date().toISOString();
-    setStock(prev => prev.map(s => s.id === item.id ? { ...s, current: newCurrent, updatedAt: now } : s));
-    const mov: StockMovement = { id: `MOV-${String(movements.length + 1).padStart(3, '0')}`, productName: item.name, change: delta, reason: adjustForm.reason, updatedBy: 'Current User', date: now };
-    setMovements(prev => [mov, ...prev]);
-    try { await supabase.from('stock_items').update({ current: newCurrent, updatedAt: now }).eq('id', item.id); } catch {}
-    addNotification(`Stock for ${item.name} adjusted by ${delta > 0 ? '+' : ''}${delta}.`);
+    
+    try {
+      await stockApi.adjustStock(item.id, item.name, item.current, delta, adjustForm.reason, adjustForm.notes);
+      addNotification(`Stock for ${item.name} adjusted by ${delta > 0 ? '+' : ''}${delta}.`);
+      loadData();
+    } catch (err: any) {
+      alert(err.message || 'Failed to adjust stock.');
+    }
     setShowAdjust(false);
     setAdjustForm({ productId: '', type: 'Add', quantity: '', reason: '', notes: '' });
   };
+
+  const exportStockCSV = () => {
+    exportToCSV(
+      filtered,
+      ['id', 'name', 'sku', 'category', 'current', 'capacity', 'updatedAt'],
+      'stock_levels'
+    );
+  };
+
+  const exportStockPDF = () => {
+    exportToPDF(
+      'Stock Levels',
+      filtered.map(s => ({
+        id: s.id,
+        name: s.name,
+        sku: s.sku,
+        category: s.category,
+        current: s.current.toLocaleString(),
+        capacity: s.capacity.toLocaleString(),
+        updatedAt: fmt(s.updatedAt)
+      })),
+      ['id', 'name', 'sku', 'category', 'current', 'capacity', 'updatedAt']
+    );
+  };
+
 
   return (
     <div style={{ padding: '24px 16px', maxWidth: 1200, margin: '0 auto' }}>
@@ -153,8 +230,15 @@ export default function StockView({ incomingGoodsList: _incomingGoodsList, addNo
             <Search size={16} style={{ color: 'var(--text-muted)' }} />
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search product or SKU..." style={{ border: 'none', background: 'transparent', outline: 'none', color: 'var(--text-primary)', fontSize: 14, width: '100%' }} />
           </div>
-          <select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)} style={{ flex: '0 0 160px', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '8px 12px', color: 'var(--text-primary)', fontSize: 14 }}>
-            {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+          <select value={categoryFilter} onChange={e => {
+            if (e.target.value === 'ADD_NEW') {
+              handleAddCategory();
+            } else {
+              setCategoryFilter(e.target.value);
+            }
+          }} style={{ flex: '0 0 160px', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '8px 12px', color: 'var(--text-primary)', fontSize: 14 }}>
+            {categories.map(c => <option key={c} value={c}>{c}</option>)}
+            <option value="ADD_NEW">+ Add Category...</option>
           </select>
           <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={{ flex: '0 0 150px', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '8px 12px', color: 'var(--text-primary)', fontSize: 14 }}>
             <option value="All">All Status</option>
@@ -162,6 +246,14 @@ export default function StockView({ incomingGoodsList: _incomingGoodsList, addNo
             <option value="Low Stock">Low Stock</option>
             <option value="Out of Stock">Out of Stock</option>
           </select>
+          <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} style={{ flex: '0 0 140px', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '8px 12px', color: 'var(--text-primary)', fontSize: 14 }} />
+          <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} style={{ flex: '0 0 140px', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '8px 12px', color: 'var(--text-primary)', fontSize: 14 }} />
+          <button onClick={exportStockCSV} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '8px 16px', color: 'var(--text-primary)', fontSize: 14, cursor: 'pointer', fontWeight: 600 }}>
+            <Download size={14} /> CSV
+          </button>
+          <button onClick={exportStockPDF} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '8px 16px', color: 'var(--text-primary)', fontSize: 14, cursor: 'pointer', fontWeight: 600 }}>
+            <Printer size={14} /> PDF
+          </button>
         </div>
 
         {loading ? (
@@ -232,7 +324,7 @@ export default function StockView({ incomingGoodsList: _incomingGoodsList, addNo
               </tr>
             </thead>
             <tbody>
-              {movements.map(m => (
+              {filteredMovements.map(m => (
                 <tr key={m.id} style={{ borderBottom: '1px solid var(--border)' }}>
                   <td style={{ padding: '11px 12px', color: 'var(--text-muted)', fontSize: 13, whiteSpace: 'nowrap' }}>{fmt(m.date)}</td>
                   <td style={{ padding: '11px 12px', fontWeight: 600, color: 'var(--text-primary)' }}>{m.productName}</td>

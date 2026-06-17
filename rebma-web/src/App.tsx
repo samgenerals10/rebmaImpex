@@ -1542,7 +1542,8 @@ export default function App() {
         weight: data.weight,
         discrepancies: data.discrepancies,
         isFaulty: false,
-        productImage: data.productImage
+        productImage: data.productImage,
+        metadata: (data as any).metadata
       });
       addNotification(`Operations logged new port cargo intake for ${data.company}. Sent to Management.`);
       refreshAllData();
@@ -2657,7 +2658,8 @@ export default function App() {
         productName: price.productName,
         category: price.category,
         unitPrice: price.unitPrice,
-        currency: price.currency
+        currency: price.currency,
+        metadata: (price as any).metadata
       });
       addNotification(`Management set price for ${price.productName}: ${price.currency} ${price.unitPrice}`);
       refreshAllData();

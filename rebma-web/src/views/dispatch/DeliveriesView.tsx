@@ -303,8 +303,23 @@ export default function DeliveriesView({ addNotification, currentUser }: Props) 
     const load = async () => {
       setLoading(true);
       try {
-        const { data } = await supabase.from('deliveries').select('*').order('dispatchedAt', { ascending: false }).limit(100);
-        setDeliveries((data ?? []) as DeliveryRecord[]);
+        const { data } = await supabase.from('delivery_logs').select('*').order('created_at', { ascending: false }).limit(100);
+        const mapped = (data ?? []).map((row: any) => ({
+          id: row.id,
+          orderId: row.order_id || '',
+          clientName: row.customer_name || '',
+          destination: row.delivery_address || '',
+          driverName: row.driver_name || '',
+          driverId: row.driver_id || '',
+          dispatchedAt: row.created_at || '',
+          deliveredAt: row.delivered_at || undefined,
+          status: row.status || 'PENDING_ASSIGNMENT',
+          vehicleId: row.vehicle_id || undefined,
+          proofUrl: row.proof_photo || undefined,
+          recipientName: row.recipient_name || undefined,
+          deliveryNotes: row.notes || undefined,
+        }));
+        setDeliveries(mapped);
       } catch { setDeliveries([]); }
       try {
         const { data } = await supabase.from('drivers').select('*');
@@ -340,7 +355,7 @@ export default function DeliveriesView({ addNotification, currentUser }: Props) 
   const markDelivered = async (id: string) => {
     const now = new Date().toISOString();
     setDeliveries(prev => prev.map(d => d.id === id ? { ...d, status: 'DELIVERED', deliveredAt: now } : d));
-    supabase.from('deliveries').update({ status: 'DELIVERED', deliveredAt: now }).eq('id', id).then(() => {}, () => {});
+    supabase.from('delivery_logs').update({ status: 'DELIVERED', delivered_at: now }).eq('id', id).then(() => {}, () => {});
     supabase.from('global_audit_history').insert({ department: 'DISPATCH', action: `Delivery ${id} marked as delivered`, performed_by: currentUser?.fullName || 'Dispatch', created_at: now }).then(() => {}, () => {});
     addNotification(`Delivery ${id} marked as delivered.`);
     if (detailRecord?.id === id) setDetailRecord(prev => prev ? { ...prev, status: 'DELIVERED', deliveredAt: now } : prev);
@@ -349,7 +364,7 @@ export default function DeliveriesView({ addNotification, currentUser }: Props) 
 
   const markFailed = async (id: string) => {
     setDeliveries(prev => prev.map(d => d.id === id ? { ...d, status: 'FAILED' } : d));
-    supabase.from('deliveries').update({ status: 'FAILED' }).eq('id', id).then(() => {}, () => {});
+    supabase.from('delivery_logs').update({ status: 'FAILED' }).eq('id', id).then(() => {}, () => {});
     addNotification(`Delivery ${id} marked as failed.`);
     setMenuOpen(null);
   };
@@ -366,7 +381,18 @@ export default function DeliveriesView({ addNotification, currentUser }: Props) 
       vehicleId: driver?.truckId,
     };
     setDeliveries(prev => [rec, ...prev]);
-    supabase.from('deliveries').insert(rec).then(() => {}, () => {});
+    const dbRec = {
+      id: rec.id,
+      order_id: rec.orderId,
+      customer_name: rec.clientName,
+      delivery_address: rec.destination,
+      driver_name: rec.driverName,
+      driver_id: rec.driverId || null,
+      vehicle_id: rec.vehicleId || null,
+      status: rec.status,
+      created_at: rec.dispatchedAt
+    };
+    supabase.from('delivery_logs').insert([dbRec]).then(() => {}, () => {});
     supabase.from('supplier_order_notifications').insert({ order_id: rec.orderId, message: `New delivery ${rec.id} created`, notified_department: 'OPERATIONS', read: false, created_at: rec.dispatchedAt }).then(() => {}, () => {});
     addNotification(`New delivery ${rec.id} dispatched.`);
     setShowNew(false);
@@ -381,7 +407,7 @@ export default function DeliveriesView({ addNotification, currentUser }: Props) 
       ? { ...d, driverId, driverName: driver.fullName, vehicleId: driver.truckId, status: 'ASSIGNED', deliveryNotes: notes || d.deliveryNotes }
       : d
     ));
-    supabase.from('deliveries').update({ driverId, driverName: driver.fullName, vehicleId: driver.truckId, status: 'ASSIGNED' }).eq('id', delivery.id).then(() => {}, () => {});
+    supabase.from('delivery_logs').update({ driver_id: driverId, driver_name: driver.fullName, vehicle_id: driver.truckId, status: 'ASSIGNED', notes: notes || null }).eq('id', delivery.id).then(() => {}, () => {});
     supabase.from('supplier_order_notifications').insert({ order_id: delivery.orderId, message: `Driver ${driver.fullName} assigned to ${delivery.orderId}`, notified_department: 'OPERATIONS', read: false, created_at: now }).then(() => {}, () => {});
     supabase.from('global_audit_history').insert({ department: 'DISPATCH', action: `Driver ${driver.fullName} assigned to ${delivery.id}`, performed_by: currentUser?.fullName || 'Dispatch', created_at: now }).then(() => {}, () => {});
     addNotification(`Driver ${driver.fullName} assigned to ${delivery.id}`);

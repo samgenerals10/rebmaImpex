@@ -72,7 +72,29 @@ export default function DispatchDashboard({
   // Load deliveries and drivers from Supabase
   useEffect(() => {
     (async () => {
-      try { const { data } = await supabase.from('deliveries').select('*').order('created_at', { ascending: false }); setLocalDeliveries(data ?? []); } catch { setLocalDeliveries([]); } finally { setLoadingDeliveries(false); }
+      try {
+        const { data } = await supabase.from('delivery_logs').select('*').order('created_at', { ascending: false });
+        const mapped = (data ?? []).map((row: any) => ({
+          id: row.id,
+          orderId: row.order_id || '',
+          clientName: row.customer_name || '',
+          destination: row.delivery_address || '',
+          driverName: row.driver_name || '',
+          driverId: row.driver_id || '',
+          dispatchedAt: row.created_at || '',
+          deliveredAt: row.delivered_at || undefined,
+          status: row.status || 'PENDING_ASSIGNMENT',
+          vehicleId: row.vehicle_id || undefined,
+          proofUrl: row.proof_photo || undefined,
+          recipientName: row.recipient_name || undefined,
+          deliveryNotes: row.notes || undefined,
+        }));
+        setLocalDeliveries(mapped);
+      } catch {
+        setLocalDeliveries([]);
+      } finally {
+        setLoadingDeliveries(false);
+      }
     })();
     (async () => {
       try { const { data } = await supabase.from('drivers').select('*').order('created_at', { ascending: false }); setLocalDrivers(data ?? []); } catch { setLocalDrivers([]); } finally { setLoadingDrivers(false); }
@@ -118,16 +140,57 @@ export default function DispatchDashboard({
     if (!newClient) return;
     const newDest = await prompt('Edit destination:', del.destination);
     if (!newDest) return;
+
+    const { error } = await supabase
+      .from('delivery_logs')
+      .update({ customer_name: newClient, delivery_address: newDest })
+      .eq('id', del.id);
+
+    if (error) {
+      alert('Error updating delivery: ' + error.message);
+      return;
+    }
+
     setLocalDeliveries(prev => prev.map(d => d.id === del.id ? { ...d, clientName: newClient, destination: newDest } : d));
   };
 
-  const handleDuplicateDelivery = (del: DeliveryRecord) => {
-    const duplicated: DeliveryRecord = {
-      ...del,
-      id: `DEL-${Math.floor(100 + Math.random() * 900)}`,
-      dispatchedAt: new Date().toLocaleString()
+  const handleDuplicateDelivery = async (del: DeliveryRecord) => {
+    const newId = `DEL-${Math.floor(100 + Math.random() * 900)}`;
+    const newRecord = {
+      id: newId,
+      order_id: del.orderId,
+      customer_name: del.clientName,
+      delivery_address: del.destination,
+      driver_name: del.driverName,
+      driver_id: del.driverId || null,
+      vehicle_id: del.vehicleId || null,
+      status: del.status,
+      notes: del.deliveryNotes || null
     };
-    setLocalDeliveries(prev => [duplicated, ...prev]);
+
+    const { error } = await supabase.from('delivery_logs').insert([newRecord]);
+    if (error) {
+      alert('Error duplicating delivery: ' + error.message);
+      return;
+    }
+
+    setLocalDeliveries(prev => [
+      {
+        id: newId,
+        orderId: del.orderId,
+        clientName: del.clientName,
+        destination: del.destination,
+        driverName: del.driverName,
+        driverId: del.driverId,
+        dispatchedAt: new Date().toISOString(),
+        status: del.status,
+        vehicleId: del.vehicleId,
+        proofUrl: del.proofUrl,
+        recipientName: del.recipientName,
+        deliveryNotes: del.deliveryNotes
+      },
+      ...prev
+    ]);
   };
 
   const handleShareDelivery = (del: DeliveryRecord) => {
@@ -139,6 +202,11 @@ export default function DispatchDashboard({
 
   const handleDeleteDelivery = async (id: string) => {
     if (!await confirm(`Delete shipment log entry ${id}?`)) return;
+    const { error } = await supabase.from('delivery_logs').delete().eq('id', id);
+    if (error) {
+      alert('Error deleting delivery: ' + error.message);
+      return;
+    }
     setLocalDeliveries(prev => prev.filter(d => d.id !== id));
   };
 

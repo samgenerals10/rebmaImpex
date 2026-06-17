@@ -69,21 +69,30 @@ export default function InternalOrdersView({ productionRequests, addNotification
   const [newMaterials, setNewMaterials] = useState([{ materialName: '', quantity: 0 }]);
   const [detailNotes, setDetailNotes] = useState('');
 
-  useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      try {
-        const { data, error } = await supabase.from('production_requests').select('*').order('created_at', { ascending: false });
-        if (!error && data && data.length > 0) setOrders(data);
-        else if (productionRequests.length) setOrders(productionRequests);
-        else setOrders([]);
-      } catch {
-        if (productionRequests.length) setOrders(productionRequests);
-        else setOrders([]);
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.from('production_requests').select('*').order('created_at', { ascending: false });
+      if (!error && data) {
+        const mapped = data.map((row: any) => ({
+          id: row.id,
+          items: row.items || [{ materialName: row.product_name || 'Materials', quantity: Number(row.quantity || 0) }],
+          status: row.status,
+          createdAt: row.created_at || row.createdAt,
+          producedGoods: row.product_name
+        }));
+        setOrders(mapped);
+      } else {
+        setOrders([]);
       }
-      setLoading(false);
-    };
-    load();
+    } catch {
+      setOrders([]);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    loadData();
   }, [productionRequests]);
 
   const filtered = orders.filter(o => {
@@ -100,28 +109,50 @@ export default function InternalOrdersView({ productionRequests, addNotification
     completed: orders.filter(o => o.status === 'COMPLETED').length,
   };
 
-  const handleDuplicate = (order: ProductionRequest) => {
-    const dup: ProductionRequest = { ...order, id: `PRO-${String(orders.length + 1).padStart(3, '0')}`, status: 'PENDING_MANAGEMENT', createdAt: new Date().toISOString() };
-    setOrders(prev => [dup, ...prev]);
-    addNotification(`Duplicated order ${order.id}`);
+  const handleDuplicate = async (order: ProductionRequest) => {
+    const firstMaterial = order.items[0] || { materialName: 'Duplicate Request', quantity: 1 };
+    try {
+      const { data, error } = await supabase.from('production_requests').insert([{
+        product_name: firstMaterial.materialName,
+        quantity: Number(firstMaterial.quantity),
+        unit: 'kg',
+        status: 'PENDING_MANAGEMENT',
+        notes: `Duplicated from order ${order.id}`
+      }]).select();
+      if (!error && data) {
+        addNotification(`Duplicated order ${order.id}`);
+        loadData();
+      }
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   const handleSubmitNew = async () => {
     const validMaterials = newMaterials.filter(m => m.materialName.trim());
     if (!validMaterials.length) return;
-    const newOrder: ProductionRequest = {
-      id: `PRO-${String(orders.length + 1).padStart(3, '0')}`,
-      items: validMaterials,
-      status: 'PENDING_MANAGEMENT',
-      createdAt: new Date().toISOString(),
-    };
+    const firstMaterial = validMaterials[0];
+    
     try {
-      await supabase.from('production_requests').insert([newOrder]);
-    } catch {}
-    setOrders(prev => [newOrder, ...prev]);
-    addNotification('New production request submitted');
+      const { data, error } = await supabase.from('production_requests').insert([{
+        product_name: firstMaterial.materialName,
+        quantity: Number(firstMaterial.quantity),
+        unit: 'kg',
+        status: 'PENDING_MANAGEMENT',
+        notes: detailNotes || null
+      }]).select();
+      if (!error && data) {
+        addNotification('New production request submitted');
+        loadData();
+      } else {
+        alert(error?.message || 'Failed to submit production request.');
+      }
+    } catch (e: any) {
+      alert(e.message || 'Failed to submit production request.');
+    }
     setShowNewModal(false);
     setNewMaterials([{ materialName: '', quantity: 0 }]);
+    setDetailNotes('');
   };
 
   const summaryCards = [

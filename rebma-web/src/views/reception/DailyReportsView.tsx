@@ -1,38 +1,21 @@
 // src/views/reception/DailyReportsView.tsx
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   FileText, Printer, Download, Calendar, Users, UserCheck, TrendingUp,
   Mail, X, Send, Eye, ChevronRight
 } from 'lucide-react';
 import { exportToPDF } from '../../utils/export';
+import { supabase } from '../../lib/supabaseClient';
 
-const DEPTS = [
-  { name: 'Management', present: 4, total: 5 },
-  { name: 'Finance', present: 6, total: 7 },
-  { name: 'Marketing', present: 5, total: 6 },
-  { name: 'Operations', present: 8, total: 9 },
-  { name: 'HR', present: 3, total: 4 },
-  { name: 'Dispatch', present: 10, total: 12 },
-  { name: 'Production', present: 9, total: 11 },
-  { name: 'Reception', present: 2, total: 2 },
-];
-
-const PAST_REPORTS = Array.from({ length: 7 }, (_, i) => {
-  const d = new Date(); d.setDate(d.getDate() - i - 1);
-  return {
-    date: d.toISOString().slice(0,10),
-    visitors: Math.floor(8 + Math.random() * 12),
-    attendanceRate: Math.floor(88 + Math.random() * 10),
-    checkins: Math.floor(5 + Math.random() * 8),
-  };
-});
-
-const VISITORS_TODAY = [
-  { id: 'V001', name: 'John Mensah', company: 'Accra Traders', purpose: 'Business Meeting', host: 'CEO', in: '09:15', out: '10:45' },
-  { id: 'V002', name: 'Ama Boateng', company: 'Gulf Imports', purpose: 'Delivery', host: 'Operations', in: '10:00', out: '10:20' },
-  { id: 'V003', name: 'Kofi Asante', company: 'Prime Suppliers', purpose: 'Invoice Payment', host: 'Finance', in: '11:30', out: null },
-  { id: 'V004', name: 'Abena Kusi', company: 'Delta Logistics', purpose: 'Interview', host: 'HR', in: '14:00', out: '15:30' },
-];
+interface VisitorToday {
+  id: string;
+  name: string;
+  company: string;
+  purpose: string;
+  host: string;
+  in: string | null;
+  out: string | null;
+}
 
 const STAFF_EMAILS = [
   'ceo@rebmaimpex.com', 'hr@rebmaimpex.com', 'finance@rebmaimpex.com',
@@ -46,7 +29,7 @@ export default function DailyReportsView({ addNotification }: Props) {
   const [selectedDate, setSelectedDate] = useState(today);
   const [notes, setNotes] = useState('');
   const [notesSaved, setNotesSaved] = useState(false);
-  const [viewingPast, setViewingPast] = useState<typeof PAST_REPORTS[0] | null>(null);
+  const [viewingPast, setViewingPast] = useState<any | null>(null);
   const [emailModal, setEmailModal] = useState(false);
   const [emailSearch, setEmailSearch] = useState('');
   const [emailTo, setEmailTo] = useState<string[]>([]);
@@ -54,19 +37,117 @@ export default function DailyReportsView({ addNotification }: Props) {
   const [emailMessage, setEmailMessage] = useState('');
   const [sending, setSending] = useState(false);
 
+  // Dynamic states replacing hardcoded constants
+  const [visitorsToday, setVisitorsToday] = useState<VisitorToday[]>([]);
+  const [depts, setDepts] = useState<{ name: string; present: number; total: number }[]>([]);
+  const [pastReports, setPastReports] = useState<{ date: string; visitors: number; attendanceRate: number; checkins: number }[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true);
+      try {
+        // 1. Fetch visitors for selected date
+        const { data: visData } = await supabase
+          .from('visitors')
+          .select('*')
+          .gte('check_in_time', `${selectedDate}T00:00:00Z`)
+          .lte('check_in_time', `${selectedDate}T23:59:59Z`);
+
+        const mappedVisitors = (visData ?? []).map((v: any) => ({
+          id: v.id,
+          name: v.visitor_name || v.full_name || '—',
+          company: v.company || '—',
+          purpose: v.purpose || '—',
+          host: v.host_name || '—',
+          in: v.check_in_time ? new Date(v.check_in_time).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '—',
+          out: v.check_out_time ? new Date(v.check_out_time).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : null,
+        }));
+        setVisitorsToday(mappedVisitors);
+
+        // 2. Fetch departments and active attendance for selectedDate
+        const { data: deptData } = await supabase.from('departments').select('name, headcount');
+        const { data: attData } = await supabase.from('attendance').select('department, check_in_time').eq('date', selectedDate);
+
+        const deptMap = (deptData ?? []).reduce((acc: any, d: any) => {
+          acc[d.name] = { name: d.name, present: 0, total: d.headcount || 0 };
+          return acc;
+        }, {});
+
+        // fallback initial categories for Rebma Impex if departments is empty
+        const initialDepts = ['Management', 'Finance', 'Marketing', 'Operations', 'HR', 'Dispatch', 'Production', 'Reception'];
+        initialDepts.forEach(d => {
+          if (!deptMap[d]) {
+            deptMap[d] = { name: d, present: 0, total: d === 'Dispatch' ? 12 : d === 'Production' ? 11 : 5 };
+          }
+        });
+
+        if (attData) {
+          for (const a of attData) {
+            const deptName = a.department;
+            if (deptMap[deptName]) {
+              deptMap[deptName].present += 1;
+            } else {
+              deptMap[deptName] = { name: deptName, present: 1, total: 1 };
+            }
+          }
+        }
+        setDepts(Object.values(deptMap));
+
+        // 3. Fetch past 7 days reports
+        const past7Days: string[] = [];
+        for (let i = 0; i < 7; i++) {
+          const d = new Date();
+          d.setDate(d.getDate() - i - 1);
+          past7Days.push(d.toISOString().slice(0, 10));
+        }
+
+        const { data: visPast } = await supabase
+          .from('visitors')
+          .select('check_in_time')
+          .gte('check_in_time', `${past7Days[6]}T00:00:00Z`);
+
+        const { data: attPast } = await supabase
+          .from('attendance')
+          .select('date')
+          .in('date', past7Days);
+
+        const pastReportsList = past7Days.map(date => {
+          const visCount = (visPast ?? []).filter((v: any) => v.check_in_time && v.check_in_time.startsWith(date)).length;
+          const attCount = (attPast ?? []).filter((a: any) => a.date === date).length;
+          const totalStaffForRate = Object.values(deptMap).reduce((s: number, d: any) => s + d.total, 0) || 1;
+          const rate = Math.round((attCount / totalStaffForRate) * 100);
+          return {
+            date,
+            visitors: visCount,
+            attendanceRate: Math.min(100, rate),
+            checkins: attCount,
+          };
+        });
+        setPastReports(pastReportsList);
+
+      } catch (err) {
+        console.error('Error loading receptionist reports:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
+  }, [selectedDate]);
+
   const isToday = selectedDate === today;
-  const totalPresent = DEPTS.reduce((s, d) => s + d.present, 0);
-  const totalStaff = DEPTS.reduce((s, d) => s + d.total, 0);
-  const attendanceRate = Math.round((totalPresent / totalStaff) * 100);
+  const totalPresent = depts.reduce((s, d) => s + d.present, 0);
+  const totalStaff = depts.reduce((s, d) => s + d.total, 0);
+  const attendanceRate = totalStaff > 0 ? Math.round((totalPresent / totalStaff) * 100) : 0;
 
   const handleExportPDF = () => {
-    exportToPDF(`Daily Report — ${selectedDate}`, VISITORS_TODAY, ['id','name','company','purpose','host','in','out']);
+    exportToPDF(`Daily Report — ${selectedDate}`, visitorsToday, ['id','name','company','purpose','host','in','out']);
     addNotification('Daily report exported as PDF.');
   };
 
   const handleOpenEmailModal = () => {
     setEmailSubject(`Daily Reception Report — ${selectedDate}`);
-    setEmailMessage(`Hello,\n\nPlease find today's reception summary:\n\n• Total Visitors: ${VISITORS_TODAY.length}\n• Staff Present: ${totalPresent}/${totalStaff} (${attendanceRate}%)\n• Check-outs: ${VISITORS_TODAY.filter(v => v.out).length}\n\nThis report was generated automatically by REBMA IMPEX ERP.\n\nReception Team`);
+    setEmailMessage(`Hello,\n\nPlease find today's reception summary:\n\n• Total Visitors: ${visitorsToday.length}\n• Staff Present: ${totalPresent}/${totalStaff} (${attendanceRate}%)\n• Check-outs: ${visitorsToday.filter((v: VisitorToday) => v.out).length}\n\nThis report was generated automatically by REBMA IMPEX ERP.\n\nReception Team`);
     setEmailModal(true);
   };
 
@@ -118,20 +199,28 @@ export default function DailyReportsView({ addNotification }: Props) {
           <Calendar className="w-5 h-5 opacity-80" />
           <p className="text-sm font-semibold opacity-90">{new Date(selectedDate).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[
-            { label: 'Total Visitors', val: VISITORS_TODAY.length, icon: Users },
-            { label: 'Staff Present', val: totalPresent, icon: UserCheck },
-            { label: 'Attendance Rate', val: `${attendanceRate}%`, icon: TrendingUp },
-            { label: 'Check-Outs', val: VISITORS_TODAY.filter(v => v.out).length, icon: FileText },
-          ].map((s, i) => { const Icon = s.icon; return (
-            <div key={i} className="bg-white/15 rounded-xl p-3">
-              <Icon className="w-4 h-4 mb-1 opacity-80" />
-              <p className="text-xl font-bold">{s.val}</p>
-              <p className="text-[10px] opacity-75">{s.label}</p>
-            </div>
-          ); })}
-        </div>
+        {loading ? (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="animate-pulse h-16 bg-white/10 rounded-xl" />
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[
+              { label: 'Total Visitors', val: visitorsToday.length, icon: Users },
+              { label: 'Staff Present', val: totalPresent, icon: UserCheck },
+              { label: 'Attendance Rate', val: `${attendanceRate}%`, icon: TrendingUp },
+              { label: 'Check-Outs', val: visitorsToday.filter(v => v.out).length, icon: FileText },
+            ].map((s, i) => { const Icon = s.icon; return (
+              <div key={i} className="bg-white/15 rounded-xl p-3">
+                <Icon className="w-4 h-4 mb-1 opacity-80" />
+                <p className="text-xl font-bold">{s.val}</p>
+                <p className="text-[10px] opacity-75">{s.label}</p>
+              </div>
+            ); })}
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
@@ -141,24 +230,37 @@ export default function DailyReportsView({ addNotification }: Props) {
             <h3 className="text-sm font-bold text-[var(--text-primary)]">Visitor Summary</h3>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead><tr className="bg-[var(--bg-input)] border-b border-[var(--border)]">
-                <th className="px-3 py-2 text-left text-[var(--text-muted)] font-semibold">Name</th>
-                <th className="px-3 py-2 text-left text-[var(--text-muted)] font-semibold">Purpose</th>
-                <th className="px-3 py-2 text-left text-[var(--text-muted)] font-semibold">In</th>
-                <th className="px-3 py-2 text-left text-[var(--text-muted)] font-semibold">Out</th>
-              </tr></thead>
-              <tbody>
-                {VISITORS_TODAY.map(v => (
-                  <tr key={v.id} className="border-b border-[var(--border)] hover:bg-[var(--accent-light)] transition-colors">
-                    <td className="px-3 py-2 font-semibold text-[var(--text-primary)]">{v.name}</td>
-                    <td className="px-3 py-2 text-[var(--text-secondary)]">{v.purpose}</td>
-                    <td className="px-3 py-2 text-[var(--text-muted)] font-mono">{v.in}</td>
-                    <td className="px-3 py-2 font-mono">{v.out ? <span className="text-[var(--text-muted)]">{v.out}</span> : <span className="text-emerald-600 font-semibold">On Site</span>}</td>
-                  </tr>
+            {loading ? (
+              <div className="p-4 space-y-2">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="animate-pulse h-8 bg-[var(--bg-input)] rounded-lg" />
                 ))}
-              </tbody>
-            </table>
+              </div>
+            ) : visitorsToday.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-10 text-[var(--text-muted)]">
+                <Users className="w-8 h-8 opacity-30 mb-2" />
+                <p className="text-xs">No visitor check-ins today.</p>
+              </div>
+            ) : (
+              <table className="w-full text-xs">
+                <thead><tr className="bg-[var(--bg-input)] border-b border-[var(--border)]">
+                  <th className="px-3 py-2 text-left text-[var(--text-muted)] font-semibold">Name</th>
+                  <th className="px-3 py-2 text-left text-[var(--text-muted)] font-semibold">Purpose</th>
+                  <th className="px-3 py-2 text-left text-[var(--text-muted)] font-semibold">In</th>
+                  <th className="px-3 py-2 text-left text-[var(--text-muted)] font-semibold">Out</th>
+                </tr></thead>
+                <tbody>
+                  {visitorsToday.map(v => (
+                    <tr key={v.id} className="border-b border-[var(--border)] hover:bg-[var(--accent-light)] transition-colors">
+                      <td className="px-3 py-2 font-semibold text-[var(--text-primary)]">{v.name}</td>
+                      <td className="px-3 py-2 text-[var(--text-secondary)]">{v.purpose}</td>
+                      <td className="px-3 py-2 text-[var(--text-muted)] font-mono">{v.in}</td>
+                      <td className="px-3 py-2 font-mono">{v.out ? <span className="text-[var(--text-muted)]">{v.out}</span> : <span className="text-emerald-600 font-semibold">On Site</span>}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
 
@@ -168,20 +270,30 @@ export default function DailyReportsView({ addNotification }: Props) {
             <h3 className="text-sm font-bold text-[var(--text-primary)]">Staff Attendance by Department</h3>
           </div>
           <div className="p-4 space-y-3">
-            {DEPTS.map(d => {
-              const pct = Math.round((d.present / d.total) * 100);
-              return (
-                <div key={d.name}>
-                  <div className="flex items-center justify-between text-xs mb-1">
-                    <span className="font-semibold text-[var(--text-primary)]">{d.name}</span>
-                    <span className="text-[var(--text-muted)]">{d.present}/{d.total} — {pct}%</span>
+            {loading ? (
+              <div className="space-y-3">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="animate-pulse h-6 bg-[var(--bg-input)] rounded-full" />
+                ))}
+              </div>
+            ) : depts.length === 0 ? (
+              <p className="text-xs text-[var(--text-muted)] text-center py-6">No attendance records found.</p>
+            ) : (
+              depts.map(d => {
+                const pct = d.total > 0 ? Math.round((d.present / d.total) * 100) : 0;
+                return (
+                  <div key={d.name}>
+                    <div className="flex items-center justify-between text-xs mb-1">
+                      <span className="font-semibold text-[var(--text-primary)]">{d.name}</span>
+                      <span className="text-[var(--text-muted)]">{d.present}/{d.total} — {pct}%</span>
+                    </div>
+                    <div className="h-2 bg-[var(--bg-input)] rounded-full overflow-hidden">
+                      <div className={`h-2 rounded-full transition-all ${pct >= 90 ? 'bg-emerald-500' : pct >= 70 ? 'bg-amber-500' : 'bg-rose-500'}`} style={{ width: `${pct}%` }} />
+                    </div>
                   </div>
-                  <div className="h-2 bg-[var(--bg-input)] rounded-full overflow-hidden">
-                    <div className={`h-2 rounded-full transition-all ${pct >= 90 ? 'bg-emerald-500' : pct >= 70 ? 'bg-amber-500' : 'bg-rose-500'}`} style={{ width: `${pct}%` }} />
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })
+            )}
           </div>
         </div>
       </div>
@@ -211,47 +323,57 @@ export default function DailyReportsView({ addNotification }: Props) {
           <h3 className="text-sm font-bold text-[var(--text-primary)]">Past Reports — Last 7 Days</h3>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="bg-[var(--bg-input)] border-b border-[var(--border)]">
-                {['Date', 'Visitors', 'Attendance Rate', 'Check-ins', 'Actions'].map(h => (
-                  <th key={h} className="px-4 py-3 text-left text-[var(--text-muted)] font-semibold uppercase text-[10px]">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {PAST_REPORTS.map((r, i) => (
-                <tr key={i} className="border-b border-[var(--border)] hover:bg-[var(--accent-light)] transition-colors">
-                  <td className="px-4 py-3 font-semibold text-[var(--text-primary)]">
-                    {new Date(r.date).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
-                  </td>
-                  <td className="px-4 py-3 text-[var(--text-secondary)]">{r.visitors}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 h-1.5 bg-[var(--bg-input)] rounded-full overflow-hidden max-w-20">
-                        <div className={`h-1.5 rounded-full ${r.attendanceRate >= 95 ? 'bg-emerald-500' : r.attendanceRate >= 80 ? 'bg-amber-500' : 'bg-rose-500'}`}
-                          style={{ width: `${r.attendanceRate}%` }} />
-                      </div>
-                      <span className="text-[var(--text-muted)]">{r.attendanceRate}%</span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-[var(--text-secondary)]">{r.checkins}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <button onClick={() => { setSelectedDate(r.date); setViewingPast(r); }}
-                        className="flex items-center gap-1 px-2 py-1 bg-[var(--accent-light)] text-[var(--accent)] text-[10px] font-semibold rounded-lg cursor-pointer hover:opacity-90">
-                        <Eye className="w-3 h-3" /> View
-                      </button>
-                      <button onClick={() => exportToPDF(`Daily Report ${r.date}`, VISITORS_TODAY, ['id','name','company','purpose','host','in','out'])}
-                        className="flex items-center gap-1 px-2 py-1 bg-[var(--bg-input)] text-[var(--text-secondary)] text-[10px] font-semibold rounded-lg cursor-pointer hover:bg-[var(--accent-light)] border border-[var(--border)]">
-                        <Download className="w-3 h-3" /> PDF
-                      </button>
-                    </div>
-                  </td>
-                </tr>
+          {loading ? (
+            <div className="p-4 space-y-2">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="animate-pulse h-8 bg-[var(--bg-input)] rounded-lg" />
               ))}
-            </tbody>
-          </table>
+            </div>
+          ) : pastReports.length === 0 ? (
+            <p className="text-xs text-[var(--text-muted)] text-center py-6">No historical data available.</p>
+          ) : (
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="bg-[var(--bg-input)] border-b border-[var(--border)]">
+                  {['Date', 'Visitors', 'Attendance Rate', 'Check-ins', 'Actions'].map(h => (
+                    <th key={h} className="px-4 py-3 text-left text-[var(--text-muted)] font-semibold uppercase text-[10px]">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {pastReports.map((r, i) => (
+                  <tr key={i} className="border-b border-[var(--border)] hover:bg-[var(--accent-light)] transition-colors">
+                    <td className="px-4 py-3 font-semibold text-[var(--text-primary)]">
+                      {new Date(r.date).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
+                    </td>
+                    <td className="px-4 py-3 text-[var(--text-secondary)]">{r.visitors}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 h-1.5 bg-[var(--bg-input)] rounded-full overflow-hidden max-w-20">
+                          <div className={`h-1.5 rounded-full ${r.attendanceRate >= 95 ? 'bg-emerald-500' : r.attendanceRate >= 80 ? 'bg-amber-500' : 'bg-rose-500'}`}
+                            style={{ width: `${r.attendanceRate}%` }} />
+                        </div>
+                        <span className="text-[var(--text-muted)]">{r.attendanceRate}%</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-[var(--text-secondary)]">{r.checkins}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => { setSelectedDate(r.date); setViewingPast(r); }}
+                          className="flex items-center gap-1 px-2 py-1 bg-[var(--accent-light)] text-[var(--accent)] text-[10px] font-semibold rounded-lg cursor-pointer hover:opacity-90">
+                          <Eye className="w-3 h-3" /> View
+                        </button>
+                        <button onClick={() => exportToPDF(`Daily Report ${r.date}`, visitorsToday, ['id','name','company','purpose','host','in','out'])}
+                          className="flex items-center gap-1 px-2 py-1 bg-[var(--bg-input)] text-[var(--text-secondary)] text-[10px] font-semibold rounded-lg cursor-pointer hover:bg-[var(--accent-light)] border border-[var(--border)]">
+                          <Download className="w-3 h-3" /> PDF
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
 
