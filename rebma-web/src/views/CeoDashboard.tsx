@@ -46,6 +46,7 @@ interface CeoDashboardProps {
   deliveryStatus: string;
   gpsInterval: number;
   onNavigateToSupplierOrders?: () => void;
+  setActiveSubTab?: (tab: string) => void;
 }
 
 const COUNTRY_FLAGS: Record<string, string> = { Poland: '🇵🇱', Turkey: '🇹🇷', Germany: '🇩🇪', UK: '🇬🇧', USA: '🇺🇸', Other: '🌍' };
@@ -56,11 +57,20 @@ export default function CeoDashboard({
   deliveryStatus,
   gpsInterval,
   onNavigateToSupplierOrders,
+  setActiveSubTab,
 }: CeoDashboardProps) {
   const [recentOrders, setRecentOrders] = useState<SupplierOrderSummary[]>([]);
   const [pendingOrders, setPendingOrders] = useState<SupplierOrderSummary[]>([]);
   const [loadingRecent, setLoadingRecent] = useState(true);
   const [loadingPending, setLoadingPending] = useState(true);
+
+  // Live KPI state
+  const [kpiIngestion, setKpiIngestion] = useState<number | null>(null);
+  const [kpiInvoices, setKpiInvoices] = useState<number | null>(null);
+  const [kpiFleet, setKpiFleet] = useState<number | null>(null);
+  const [kpiStaff, setKpiStaff] = useState<number | null>(null);
+  const [activeDriverName, setActiveDriverName] = useState<string | null>(null);
+  const [lineChartData, setLineChartData] = useState<{ name: string; Inflow: number; Orders: number }[]>([]);
 
   useEffect(() => {
     const load = async () => {
@@ -91,41 +101,103 @@ export default function CeoDashboard({
         setLoadingPending(false);
       }
     };
+    const loadKPIs = async () => {
+      try {
+        // Cargo ingestion total quantity
+        const { data: cargo } = await supabase.from('cargo_intake').select('qty_received');
+        const totalTons = (cargo as { qty_received: number }[] ?? []).reduce((s, r) => s + (r.qty_received || 0), 0);
+        setKpiIngestion(totalTons);
+
+        // Processing invoices — orders awaiting finance
+        const { count: invoiceCount } = await supabase
+          .from('orders')
+          .select('id', { count: 'exact', head: true })
+          .eq('status', 'finance_approved');
+        setKpiInvoices(invoiceCount ?? 0);
+
+        // Active fleet
+        const { count: fleetCount } = await supabase
+          .from('drivers')
+          .select('id', { count: 'exact', head: true })
+          .eq('status', 'ACTIVE');
+        setKpiFleet(fleetCount ?? 0);
+
+        // Total staff
+        const { count: staffCount } = await supabase
+          .from('profiles')
+          .select('id', { count: 'exact', head: true })
+          .eq('status', 'ACTIVE');
+        setKpiStaff(staffCount ?? 0);
+
+        // Active driver name for GPS overlay
+        const { data: drivers } = await supabase
+          .from('drivers')
+          .select('name, vehicle_id')
+          .eq('status', 'ACTIVE')
+          .not('vehicle_id', 'is', null)
+          .limit(1);
+        if (drivers && drivers.length > 0) {
+          setActiveDriverName((drivers[0] as { name: string }).name || null);
+        }
+
+        // Weekly inflow chart from finance_payments
+        const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+        const { data: payments } = await supabase
+          .from('finance_payments')
+          .select('amount, created_at')
+          .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
+        const { data: weekOrders } = await supabase
+          .from('orders')
+          .select('total_amount, created_at')
+          .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
+        const inflowByDay: Record<string, number> = {};
+        const ordersByDay: Record<string, number> = {};
+        for (const p of (payments as { amount: number; created_at: string }[] ?? [])) {
+          const d = days[new Date(p.created_at).getDay()];
+          inflowByDay[d] = (inflowByDay[d] || 0) + (p.amount || 0);
+        }
+        for (const o of (weekOrders as { total_amount: number; created_at: string }[] ?? [])) {
+          const d = days[new Date(o.created_at).getDay()];
+          ordersByDay[d] = (ordersByDay[d] || 0) + (o.total_amount || 0);
+        }
+        const last5Days = Array.from({ length: 5 }, (_, i) => {
+          const d = new Date(); d.setDate(d.getDate() - (4 - i));
+          const name = days[d.getDay()];
+          return { name, Inflow: inflowByDay[name] || 0, Orders: ordersByDay[name] || 0 };
+        });
+        setLineChartData(last5Days);
+      } catch {
+        // leave KPIs null — UI will show 0
+      }
+    };
     load();
     loadPending();
+    loadKPIs();
   }, []);
-
-  const lineChartData = [
-    { name: 'Mon', Inflow: 4000, Orders: 2400 },
-    { name: 'Tue', Inflow: 3000, Orders: 1398 },
-    { name: 'Wed', Inflow: 2000, Orders: 9800 },
-    { name: 'Thu', Inflow: 2780, Orders: 3908 },
-    { name: 'Fri', Inflow: 1890, Orders: 4800 },
-  ];
 
   const handleExportCSV = () => {
     const data = [
-      { Metric: 'Global Ingestion Flow', Value: '1,020 Tons', Details: 'Accra Port Operations' },
-      { Metric: 'Processing Invoices', Value: '4 Invoices', Details: '2 awaiting finance clearance' },
-      { Metric: 'Active Logistics Vehicles', Value: '1 Truck', Details: `GPS Location: ${activeCoordinates.lat.toFixed(4)}, ${activeCoordinates.lng.toFixed(4)}` },
-      { Metric: 'Total Registered Staff', Value: '25 Active', Details: 'HR approval pending queue' }
+      { Metric: 'Global Ingestion Flow', Value: kpiIngestion !== null ? `${kpiIngestion.toLocaleString()} Tons` : '—', Details: 'Accra Port Operations' },
+      { Metric: 'Processing Invoices', Value: kpiInvoices !== null ? `${kpiInvoices} Invoices` : '—', Details: 'Awaiting finance clearance' },
+      { Metric: 'Active Logistics Vehicles', Value: kpiFleet !== null ? `${kpiFleet} Trucks` : '—', Details: `GPS Location: ${activeCoordinates.lat.toFixed(4)}, ${activeCoordinates.lng.toFixed(4)}` },
+      { Metric: 'Total Registered Staff', Value: kpiStaff !== null ? `${kpiStaff} Active` : '—', Details: 'HR approval pending queue' }
     ];
     exportToCSV(data, ['Metric', 'Value', 'Details'], 'ceo_executive_summary');
   };
 
   const handleExportPDF = () => {
     const data = [
-      { Metric: 'Global Ingestion Flow', Value: '1,020 Tons', Details: 'Accra Port Operations' },
-      { Metric: 'Processing Invoices', Value: '4 Invoices', Details: '2 awaiting finance clearance' },
-      { Metric: 'Active Logistics Vehicles', Value: '1 Truck', Details: `GPS Location: ${activeCoordinates.lat.toFixed(4)}, ${activeCoordinates.lng.toFixed(4)}` },
-      { Metric: 'Total Registered Staff', Value: '25 Active', Details: 'HR approval pending queue' }
+      { Metric: 'Global Ingestion Flow', Value: kpiIngestion !== null ? `${kpiIngestion.toLocaleString()} Tons` : '—', Details: 'Accra Port Operations' },
+      { Metric: 'Processing Invoices', Value: kpiInvoices !== null ? `${kpiInvoices} Invoices` : '—', Details: 'Awaiting finance clearance' },
+      { Metric: 'Active Logistics Vehicles', Value: kpiFleet !== null ? `${kpiFleet} Trucks` : '—', Details: `GPS Location: ${activeCoordinates.lat.toFixed(4)}, ${activeCoordinates.lng.toFixed(4)}` },
+      { Metric: 'Total Registered Staff', Value: kpiStaff !== null ? `${kpiStaff} Active` : '—', Details: 'HR approval pending queue' }
     ];
     exportToPDF('CEO Executive Summary', data, ['Metric', 'Value', 'Details']);
   };
 
   const smallStats = [
-    { title: 'Logistics', value: '1 Truck', sub: 'GPS Live', icon: Truck, color: '#6366f1', bg: '#eef2ff' },
-    { title: 'Staff Force', value: '25 Active', sub: '3 Pending', icon: Users, color: '#f59e0b', bg: '#fef3c7' },
+    { title: 'Logistics', value: kpiFleet !== null ? `${kpiFleet} Truck${kpiFleet !== 1 ? 's' : ''}` : '—', sub: 'GPS Live', icon: Truck, color: '#6366f1', bg: '#eef2ff', tab: 'Fleet' },
+    { title: 'Staff Force', value: kpiStaff !== null ? `${kpiStaff} Active` : '—', sub: 'From HR', icon: Users, color: '#f59e0b', bg: '#fef3c7', tab: 'Staff' },
   ];
 
   return (
@@ -154,8 +226,8 @@ export default function CeoDashboard({
           <div className="flex justify-between items-start relative z-10">
             <div>
               <p className="text-[10px] uppercase tracking-widest text-white/60 font-bold">Global Ingestion Flow</p>
-              <h2 className="text-3xl font-extrabold text-white mt-1 tracking-tight">1,020 Tons</h2>
-              <p className="text-[10px] text-white/70 mt-1">+12% from last month</p>
+              <h2 className="text-3xl font-extrabold text-white mt-1 tracking-tight">{kpiIngestion !== null ? `${kpiIngestion.toLocaleString()} Tons` : '—'}</h2>
+              <p className="text-[10px] text-white/70 mt-1">Total cargo intake</p>
             </div>
             <div className="mobile-card-chip mt-1" />
           </div>
@@ -176,8 +248,8 @@ export default function CeoDashboard({
           <div className="flex justify-between items-start relative z-10">
             <div>
               <p className="text-[10px] uppercase tracking-widest text-white/60 font-bold">Processing Invoices</p>
-              <h2 className="text-3xl font-extrabold text-white mt-1 tracking-tight">4 Invoices</h2>
-              <p className="text-[10px] text-white/70 mt-1">2 awaiting finance clearance</p>
+              <h2 className="text-3xl font-extrabold text-white mt-1 tracking-tight">{kpiInvoices !== null ? `${kpiInvoices} Invoice${kpiInvoices !== 1 ? 's' : ''}` : '—'}</h2>
+              <p className="text-[10px] text-white/70 mt-1">Awaiting finance clearance</p>
             </div>
             <div className="mobile-card-chip mt-1" />
           </div>
@@ -198,7 +270,7 @@ export default function CeoDashboard({
           {smallStats.map((s, i) => {
             const Icon = s.icon;
             return (
-              <div key={i} className="mobile-stat-card">
+              <button key={i} className="mobile-stat-card text-left cursor-pointer" onClick={() => setActiveSubTab?.(s.tab)}>
                 <div className="mobile-stat-icon" style={{ background: s.bg }}>
                   <Icon className="w-5 h-5" style={{ color: s.color }} />
                 </div>
@@ -207,7 +279,7 @@ export default function CeoDashboard({
                   <p className="text-sm font-bold text-text-primary mt-0.5">{s.value}</p>
                   <p className="text-[9px] text-text-muted truncate">{s.sub}</p>
                 </div>
-              </div>
+              </button>
             );
           })}
         </div>
@@ -254,7 +326,7 @@ export default function CeoDashboard({
               <div className="w-3 h-3 bg-emerald-600 rounded-full border-2 border-white" />
             </motion.div>
             <div className="absolute bottom-2 left-2 bg-slate-900/80 px-2.5 py-1.5 rounded-lg text-[9px] text-white space-y-0.5">
-              <p className="font-semibold text-emerald-400">Truck #L-404</p>
+              <p className="font-semibold text-emerald-400">{activeDriverName || 'Fleet tracking'}</p>
               <p>Lat: {activeCoordinates.lat.toFixed(5)}</p>
               <p>Status: <span className="text-emerald-400 font-bold">{deliveryStatus}</span></p>
             </div>
@@ -292,12 +364,12 @@ export default function CeoDashboard({
           {/* Operational KPI Counters */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
             {[
-              { title: 'Global Ingestion Flow', value: '1,020 Tons', trend: '+12%', up: true,  data: [30,45,35,60,40,70,55] },
-              { title: 'Processing Invoices',   value: '4 Invoices', trend: '+8%',  up: true,  data: [20,35,25,50,30,55,45] },
-              { title: 'Active Fleet Vehicles',  value: '1 Truck',   trend: '0%',   up: true,  data: [40,40,40,40,40,40,40] },
-              { title: 'Total Registered Staff', value: '25 Active', trend: '+3%',  up: true,  data: [15,25,20,35,25,40,30] }
+              { title: 'Global Ingestion Flow', value: kpiIngestion !== null ? `${kpiIngestion.toLocaleString()} Tons` : '—', data: [30,45,35,60,40,70,55], tab: 'Cargo' },
+              { title: 'Processing Invoices',   value: kpiInvoices !== null ? `${kpiInvoices} Invoice${kpiInvoices !== 1 ? 's' : ''}` : '—', data: [20,35,25,50,30,55,45], tab: 'Orders' },
+              { title: 'Active Fleet Vehicles',  value: kpiFleet !== null ? `${kpiFleet} Truck${kpiFleet !== 1 ? 's' : ''}` : '—', data: [40,40,40,40,40,40,40], tab: 'Fleet' },
+              { title: 'Total Registered Staff', value: kpiStaff !== null ? `${kpiStaff} Active` : '—', data: [15,25,20,35,25,40,30], tab: 'Staff' }
             ].map((card, idx) => (
-              <div key={idx} className="kpi-card group">
+              <button key={idx} className="kpi-card group text-left cursor-pointer hover:ring-2 hover:ring-[var(--accent)] transition-all" onClick={() => setActiveSubTab?.(card.tab)}>
                 <div className="flex items-start justify-between gap-2">
                   <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wide font-semibold leading-tight">{card.title}</span>
                   <MoreVertical className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" />
@@ -305,14 +377,11 @@ export default function CeoDashboard({
                 <div className="flex items-end justify-between mt-2 gap-2">
                   <div>
                     <h3 className="text-2xl sm:text-3xl font-bold text-[var(--text-primary)] leading-none">{card.value}</h3>
-                    <p className={`flex items-center gap-0.5 text-[10px] font-semibold mt-1.5 ${card.up ? 'text-emerald-500' : 'text-rose-500'}`}>
-                      {card.up ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                      {card.trend}
-                    </p>
+                    <p className="flex items-center gap-0.5 text-[10px] font-semibold mt-1.5 text-[var(--text-muted)]">—</p>
                   </div>
-                  <MiniSparkline data={card.data} color={card.up ? 'var(--accent)' : '#f43f5e'} width={60} height={36} />
+                  <MiniSparkline data={card.data} color="var(--accent)" width={60} height={36} />
                 </div>
-              </div>
+              </button>
             ))}
           </div>
  
@@ -430,7 +499,7 @@ export default function CeoDashboard({
                 <div className="absolute bottom-10 left-10 text-[10px] font-bold text-[var(--text-muted)] font-semibold">Accra Central</div>
  
                 <div className="absolute bottom-4 left-4 bg-slate-900/95 backdrop-blur px-3 py-1.5 rounded-lg border border-slate-800 text-[10px] text-white space-y-0.5 shadow-lg">
-                  <p className="font-semibold text-[var(--accent)]">Truck #L-404 Active</p>
+                  <p className="font-semibold text-[var(--accent)]">{activeDriverName ? `${activeDriverName} — Active` : kpiFleet === 0 ? 'No active fleet' : 'Loading driver…'}</p>
                   <p className="opacity-90">Lat: {activeCoordinates.lat.toFixed(6)}</p>
                   <p className="opacity-90">Lng: {activeCoordinates.lng.toFixed(6)}</p>
                   <p className="opacity-90">Status: <span className="text-emerald-400 font-bold uppercase">{deliveryStatus}</span></p>

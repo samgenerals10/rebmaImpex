@@ -2730,8 +2730,8 @@ export default function App() {
     if (activeDepartment === 'CEO') {
       if (activeSubTab === 'Transactions')    return <CeoTransactionsView addNotification={addNotification} />;
       if (activeSubTab === 'Invoices')        return <CeoInvoicesView addNotification={addNotification} />;
-      if (activeSubTab === 'Wallets')         return <CeoWalletsView />;
-      if (activeSubTab === 'Accounts')        return <CeoAccountsView />;
+      if (activeSubTab === 'Wallets')         return <CeoWalletsView setActiveSubTab={setActiveSubTab} />;
+      if (activeSubTab === 'Accounts')        return <CeoAccountsView setActiveSubTab={setActiveSubTab} />;
       if (activeSubTab === 'Approvals')       return <CeoApprovalsView currentUser={currentUser} addNotification={addNotification} />;
       if (activeSubTab === 'SupplierOrders')  return <CeoSupplierOrdersView currentUser={currentUser} addNotification={addNotification} />;
       if (activeSubTab === 'ControlCenter')   return <CeoControlCenter currentUser={currentUser} addNotification={addNotification} />;
@@ -2848,6 +2848,7 @@ export default function App() {
             deliveryStatus={deliveryStatus}
             gpsInterval={gpsInterval}
             onNavigateToSupplierOrders={() => setActiveSubTab('SupplierOrders')}
+            setActiveSubTab={setActiveSubTab}
           />
         );
       case 'MANAGEMENT':
