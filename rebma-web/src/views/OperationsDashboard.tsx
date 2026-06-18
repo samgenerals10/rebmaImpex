@@ -76,9 +76,11 @@ export default function OperationsDashboard({
   const [cameraFacingMode, setCameraFacingMode] = useState<'user' | 'environment'>('environment');
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const [cameraError, setCameraError] = useState<string | null>(null);
 
   const startCamera = async (mode = cameraFacingMode) => {
     setIsCameraActive(true);
+    setCameraError(null);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: mode }
@@ -89,9 +91,7 @@ export default function OperationsDashboard({
       }
     } catch (err: any) {
       console.error("Error accessing camera:", err);
-      setIsCameraActive(false);
-      addNotification("Webcam access restricted. Opening system camera fallback...");
-      cameraInputRef.current?.click();
+      setCameraError(err.message || "Webcam access is restricted by your browser permissions or environment.");
     }
   };
 
@@ -101,6 +101,7 @@ export default function OperationsDashboard({
       setCameraStream(null);
     }
     setIsCameraActive(false);
+    setCameraError(null);
   };
 
   const toggleFacingMode = async () => {
@@ -1732,33 +1733,65 @@ export default function OperationsDashboard({
                 </button>
               </div>
             </div>
-            
-            <div className="relative aspect-video bg-black flex items-center justify-center overflow-hidden">
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                className="w-full h-full object-cover"
-              />
-              <div className="absolute inset-0 border-2 border-white/20 pointer-events-none rounded-xl m-4 border-dashed" />
-            </div>
+            {cameraError ? (
+              <div className="p-6 text-center space-y-4 flex flex-col items-center justify-center min-h-[220px]">
+                <AlertTriangle className="w-12 h-12 text-amber-500 animate-pulse" />
+                <div>
+                  <h4 className="text-sm font-bold text-[var(--text-primary)]">Webcam Stream Restricted</h4>
+                  <p className="text-[11px] text-[var(--text-secondary)] mt-2 max-w-[260px] mx-auto leading-relaxed">
+                    Live video is blocked by browser permissions, iframe sandboxing, or non-secure context settings.
+                  </p>
+                </div>
+                <div className="flex flex-col gap-2 w-full pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      cameraInputRef.current?.click();
+                      stopCamera();
+                    }}
+                    className="w-full py-2.5 bg-[var(--accent)] text-white text-xs font-bold rounded-xl shadow-md hover:opacity-95 cursor-pointer transition-opacity"
+                  >
+                    Use System Camera / Upload
+                  </button>
+                  <button
+                    type="button"
+                    onClick={stopCamera}
+                    className="w-full py-2 border border-[var(--border)] text-[var(--text-secondary)] hover:bg-[var(--accent-light)] text-xs font-semibold rounded-xl cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="relative aspect-video bg-black flex items-center justify-center overflow-hidden">
+                  <video
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute inset-0 border-2 border-white/20 pointer-events-none rounded-xl m-4 border-dashed" />
+                </div>
 
-            <div className="p-4 flex gap-3 justify-end bg-[var(--bg)]">
-              <button
-                type="button"
-                onClick={stopCamera}
-                className="px-4 py-2 border border-[var(--border)] text-xs font-semibold rounded-xl text-[var(--text-secondary)] hover:bg-[var(--accent-light)] cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={capturePhoto}
-                className="px-4 py-2 bg-[var(--accent)] text-white text-xs font-bold rounded-xl shadow-md hover:opacity-90 cursor-pointer flex items-center gap-1.5"
-              >
-                <Camera className="w-3.5 h-3.5" /> Capture Image
-              </button>
-            </div>
+                <div className="p-4 flex gap-3 justify-end bg-[var(--bg)]">
+                  <button
+                    type="button"
+                    onClick={stopCamera}
+                    className="px-4 py-2 border border-[var(--border)] text-xs font-semibold rounded-xl text-[var(--text-secondary)] hover:bg-[var(--accent-light)] cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={capturePhoto}
+                    className="px-4 py-2 bg-[var(--accent)] text-white text-xs font-bold rounded-xl shadow-md hover:opacity-90 cursor-pointer flex items-center gap-1.5"
+                  >
+                    <Camera className="w-3.5 h-3.5" /> Capture Image
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
