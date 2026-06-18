@@ -813,6 +813,145 @@ export default function OperationsDashboard({
 
           {/* Active Sub-tab views */}
           <div>
+            {/* DASHBOARD OVERVIEW */}
+            {activeSubTab === 'Overview' && (
+              <div className="space-y-6">
+                {/* Stats Cards */}
+                <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+                  {stats.map((stat, idx) => {
+                    const Icon = stat.icon;
+                    return (
+                      <div
+                        key={stat.title}
+                        onClick={() => setKpiDetail(idx)}
+                        className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4 cursor-pointer hover:border-[var(--accent)] hover:shadow-lg transition-all group relative overflow-hidden"
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-[11px] text-[var(--text-secondary)] font-semibold">{stat.title}</span>
+                          <div className="p-1.5 rounded-lg bg-[var(--accent-light)] text-[var(--accent)] group-hover:bg-[var(--accent)] group-hover:text-white transition-colors">
+                            <Icon className="w-3.5 h-3.5" />
+                          </div>
+                        </div>
+                        <p className="text-lg sm:text-xl font-bold text-[var(--text-primary)] font-mono">{stat.value}</p>
+                        <p className="text-[9px] text-[var(--text-muted)] mt-1">{stat.sub}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Processing Dynamics Chart */}
+                <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="font-semibold text-[var(--text-primary)] text-xs sm:text-sm">Cargo Processing Dynamics</h3>
+                      <p className="text-[10px] text-[var(--text-muted)] font-medium">Weekly Ingestion vs Releases</p>
+                    </div>
+                    <div className="flex items-center gap-3 text-[10px]">
+                      <span className="flex items-center gap-1 font-medium text-[var(--text-secondary)]">
+                        <span className="w-2 h-2 rounded-full bg-blue-500 inline-block" /> Ingested
+                      </span>
+                      <span className="flex items-center gap-1 font-medium text-[var(--text-secondary)]">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" /> Released
+                      </span>
+                    </div>
+                  </div>
+                  <div className="h-60 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={lineChartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
+                        <XAxis dataKey="name" tick={{ fill: 'var(--text-muted)', fontSize: 10 }} axisLine={false} tickLine={false} />
+                        <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 10 }} axisLine={false} tickLine={false} />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: 'var(--bg-card)',
+                            borderColor: 'var(--border)',
+                            borderRadius: '12px',
+                            fontSize: '11px',
+                            color: 'var(--text-primary)'
+                          }}
+                        />
+                        <Line type="monotone" dataKey="Ingested" name="Ingested" stroke="#3b82f6" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+                        <Line type="monotone" dataKey="Released" name="Released" stroke="#10b981" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                {/* Recent Items Summary */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Recent Intake List */}
+                  <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-semibold text-[var(--text-primary)] text-xs">Recent Cargo Intakes</h3>
+                      <button
+                        type="button"
+                        onClick={() => setActiveSubTab?.('LoggedCargo')}
+                        className="text-[10px] text-[var(--accent)] hover:underline font-bold bg-transparent border-none cursor-pointer"
+                      >
+                        View All
+                      </button>
+                    </div>
+                    <div className="space-y-2.5">
+                      {localCargo.slice(0, 3).map(item => (
+                        <div key={item.id} className="flex items-center justify-between p-3 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs">
+                          <div className="min-w-0">
+                            <p className="font-bold text-[var(--text-primary)] truncate">{item.productName || 'Unnamed Cargo'}</p>
+                            <p className="text-[10px] text-[var(--text-muted)] font-mono mt-0.5">CARGO-{item.id} | {item.company}</p>
+                          </div>
+                          <div className="text-right flex-shrink-0 ml-2">
+                            <p className="font-bold font-mono text-[var(--text-primary)]">{item.weight}T</p>
+                            <span className={`inline-block px-1.5 py-0.5 rounded text-[8px] font-bold ${statusBadge(item.status)}`}>
+                              {item.status.replace(/_/g, ' ')}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                      {localCargo.length === 0 && (
+                        <p className="text-[11px] text-[var(--text-muted)] text-center py-4">No cargo intakes logged.</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Releases Queue List */}
+                  <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-semibold text-[var(--text-primary)] text-xs">Fulfillment Release Queue</h3>
+                      <button
+                        type="button"
+                        onClick={() => setActiveSubTab?.('Releases')}
+                        className="text-[10px] text-[var(--accent)] hover:underline font-bold bg-transparent border-none cursor-pointer"
+                      >
+                        View Queue
+                      </button>
+                    </div>
+                    <div className="space-y-2.5">
+                      {localOrders.filter(o => o.status === 'PROCESSING').slice(0, 3).map(order => (
+                        <div key={order.id} className="flex items-center justify-between p-3 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs">
+                          <div className="min-w-0">
+                            <p className="font-bold text-[var(--text-primary)] truncate">{order.clientName}</p>
+                            <p className="text-[10px] text-[var(--text-muted)] font-mono mt-0.5">Order: {order.id} | {order.productName || 'N/A'}</p>
+                          </div>
+                          <div className="text-right flex-shrink-0 ml-2">
+                            <p className="font-bold text-emerald-500 font-mono">GHS {order.totalAmount.toLocaleString()}</p>
+                            <button
+                              type="button"
+                              onClick={() => onReleaseToDispatch(order.id)}
+                              className="mt-1 px-2 py-0.5 bg-[var(--accent)] text-white font-bold rounded text-[9px] hover:opacity-90 transition-opacity cursor-pointer border-none"
+                            >
+                              Release
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                      {localOrders.filter(o => o.status === 'PROCESSING').length === 0 && (
+                        <p className="text-[11px] text-[var(--text-muted)] text-center py-4">No orders waiting release.</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* PORT INGESTION FORM */}
             {activeSubTab === 'PortIngestion' && (
               <div className="p-6 bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] border border-[var(--border)] space-y-4">
