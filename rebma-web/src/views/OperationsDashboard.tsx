@@ -89,8 +89,9 @@ export default function OperationsDashboard({
       }
     } catch (err: any) {
       console.error("Error accessing camera:", err);
-      alert("Could not access camera. Please check camera permissions or upload an image file instead.");
       setIsCameraActive(false);
+      addNotification("Webcam access restricted. Opening system camera fallback...");
+      cameraInputRef.current?.click();
     }
   };
 
