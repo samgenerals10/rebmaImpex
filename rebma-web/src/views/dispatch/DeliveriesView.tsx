@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabaseClient';
 import {
   Truck, CheckCircle, XCircle, Plus, Search, Eye, X, Clock,
   Download, MoreVertical, ChevronLeft, MapPin, Camera, AlertCircle,
-  Calendar, User, Package, UserCheck
+  Calendar, User, Package, UserCheck, Edit, Trash2
 } from 'lucide-react';
 import { exportToCSV, exportToPDF } from '../../utils/export';
 import type { DeliveryRecord, Driver } from '../../types/erp';
@@ -299,36 +299,91 @@ export default function DeliveriesView({ addNotification, currentUser }: Props) 
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
+  const [showEdit, setShowEdit] = useState(false);
+  const [editingDelivery, setEditingDelivery] = useState<any | null>(null);
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const { data } = await supabase.from('delivery_logs').select('*').order('created_at', { ascending: false }).limit(100);
+      const mapped = (data ?? []).map((row: any) => ({
+        id: row.id,
+        orderId: row.order_id || '',
+        clientName: row.customer_name || '',
+        destination: row.delivery_address || '',
+        driverName: row.driver_name || '',
+        driverId: row.driver_id || '',
+        dispatchedAt: row.created_at || '',
+        deliveredAt: row.delivered_at || undefined,
+        status: row.status || 'PENDING_ASSIGNMENT',
+        vehicleId: row.vehicle_id || undefined,
+        proofUrl: row.proof_photo || undefined,
+        recipientName: row.recipient_name || undefined,
+        deliveryNotes: row.notes || undefined,
+      }));
+      setDeliveries(mapped);
+    } catch { setDeliveries([]); }
+    try {
+      const { data } = await supabase.from('drivers').select('*');
+      if (data && data.length > 0) setDrivers(data as Driver[]);
+    } catch {}
+    setLoading(false);
+  };
+
   useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      try {
-        const { data } = await supabase.from('delivery_logs').select('*').order('created_at', { ascending: false }).limit(100);
-        const mapped = (data ?? []).map((row: any) => ({
-          id: row.id,
-          orderId: row.order_id || '',
-          clientName: row.customer_name || '',
-          destination: row.delivery_address || '',
-          driverName: row.driver_name || '',
-          driverId: row.driver_id || '',
-          dispatchedAt: row.created_at || '',
-          deliveredAt: row.delivered_at || undefined,
-          status: row.status || 'PENDING_ASSIGNMENT',
-          vehicleId: row.vehicle_id || undefined,
-          proofUrl: row.proof_photo || undefined,
-          recipientName: row.recipient_name || undefined,
-          deliveryNotes: row.notes || undefined,
-        }));
-        setDeliveries(mapped);
-      } catch { setDeliveries([]); }
-      try {
-        const { data } = await supabase.from('drivers').select('*');
-        if (data && data.length > 0) setDrivers(data as Driver[]);
-      } catch {}
-      setLoading(false);
-    };
-    load();
+    loadData();
   }, []);
+
+  const handleEditSave = async () => {
+    if (!editingDelivery || !editingDelivery.clientName.trim() || !editingDelivery.orderId.trim()) {
+      alert('Customer Name and Order ID are required.');
+      return;
+    }
+    const driver = drivers.find(d => d.id === editingDelivery.driverId);
+    try {
+      const { error } = await supabase.from('delivery_logs')
+        .update({
+          order_id: editingDelivery.orderId,
+          customer_name: editingDelivery.clientName,
+          delivery_address: editingDelivery.destination,
+          driver_name: driver ? driver.fullName : editingDelivery.driverName || null,
+          driver_id: editingDelivery.driverId || null,
+          vehicle_id: driver ? driver.truckId : editingDelivery.vehicleId || null,
+          status: editingDelivery.status,
+          delivered_at: editingDelivery.deliveredAt || null,
+          notes: editingDelivery.deliveryNotes || null,
+          recipient_name: editingDelivery.recipientName || null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', editingDelivery.id);
+
+      if (!error) {
+        addNotification(`Updated delivery log ${editingDelivery.id}`);
+        loadData();
+        setShowEdit(false);
+        setEditingDelivery(null);
+      } else {
+        alert(error.message);
+      }
+    } catch (e: any) {
+      alert(e.message || 'Failed to update delivery log.');
+    }
+  };
+
+  const handleDeleteDelivery = async (id: string) => {
+    if (!window.confirm(`Are you sure you want to delete delivery log ${id}?`)) return;
+    try {
+      const { error } = await supabase.from('delivery_logs').delete().eq('id', id);
+      if (!error) {
+        addNotification(`Deleted delivery log ${id}`);
+        loadData();
+      } else {
+        alert(error.message);
+      }
+    } catch (e: any) {
+      alert(e.message || 'Failed to delete delivery log.');
+    }
+  };
 
   useEffect(() => {
     const handler = () => setMenuOpen(null);
@@ -571,6 +626,9 @@ export default function DeliveriesView({ addNotification, currentUser }: Props) 
                               <button onClick={() => markFailed(d.id)} className="w-full text-left px-3 py-2 text-xs text-red-500 hover:bg-[var(--bg-input)] flex items-center gap-2"><XCircle size={11} /> Mark as Failed</button>
                             )}
                             <div className="h-px bg-[var(--border)] mx-2 my-1" />
+                            <button onClick={() => { setEditingDelivery({ ...d }); setShowEdit(true); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--bg-input)] flex items-center gap-2"><Edit size={11} /> Edit Delivery Log</button>
+                            <button onClick={() => { handleDeleteDelivery(d.id); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-xs text-rose-500 hover:bg-[var(--bg-input)] flex items-center gap-2"><Trash2 size={11} /> Delete Delivery Log</button>
+                            <div className="h-px bg-[var(--border)] mx-2 my-1" />
                             <button onClick={() => { exportToPDF(`Delivery Note — ${d.id}`, [d], ['id', 'orderId', 'clientName', 'destination', 'driverName', 'status']); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--bg-input)] flex items-center gap-2"><Download size={11} /> Export Delivery Note PDF</button>
                           </div>
                         )}
@@ -637,6 +695,65 @@ export default function DeliveriesView({ addNotification, currentUser }: Props) 
           onAssign={(driverId, notes) => handleAssignDriver(assignTarget, driverId, notes)}
           onClose={() => setAssignTarget(null)}
         />
+      )}
+
+      {showEdit && editingDelivery && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => { setShowEdit(false); setEditingDelivery(null); }}>
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div className="relative bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-6 w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-lg font-bold text-[var(--text-primary)]">Edit Delivery</h2>
+              <button onClick={() => { setShowEdit(false); setEditingDelivery(null); }} className="p-1.5 rounded-lg hover:bg-[var(--bg-input)]"><X size={16} className="text-[var(--text-muted)]" /></button>
+            </div>
+            <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+              <div>
+                <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Customer Name</label>
+                <input value={editingDelivery.clientName} onChange={e => setEditingDelivery((prev: any) => ({ ...prev, clientName: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Order ID</label>
+                <input value={editingDelivery.orderId} onChange={e => setEditingDelivery((prev: any) => ({ ...prev, orderId: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Destination / Delivery Address</label>
+                <input value={editingDelivery.destination} onChange={e => setEditingDelivery((prev: any) => ({ ...prev, destination: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Driver ID / Name</label>
+                <select value={editingDelivery.driverId} onChange={e => setEditingDelivery((prev: any) => ({ ...prev, driverId: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]">
+                  <option value="">Assign later (Pending Assignment)</option>
+                  {drivers.map(d => (
+                    <option key={d.id} value={d.id}>{d.fullName} ({d.truckId})</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Status</label>
+                <select value={editingDelivery.status} onChange={e => setEditingDelivery((prev: any) => ({ ...prev, status: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]">
+                  <option value="PENDING_ASSIGNMENT">Pending Assignment</option>
+                  <option value="ASSIGNED">Assigned</option>
+                  <option value="IN_TRANSIT">In Transit</option>
+                  <option value="DELIVERED">Delivered</option>
+                  <option value="FAILED">Failed</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Notes / Special Instructions</label>
+                <textarea value={editingDelivery.deliveryNotes || ''} onChange={e => setEditingDelivery((prev: any) => ({ ...prev, deliveryNotes: e.target.value }))} rows={2}
+                  className="w-full px-3 py-2 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)] resize-none" />
+              </div>
+            </div>
+            <div className="flex items-center gap-3 mt-5">
+              <button onClick={() => { setShowEdit(false); setEditingDelivery(null); }} className="flex-1 py-2.5 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-input)]">Cancel</button>
+              <button onClick={handleEditSave} className="flex-1 py-2.5 rounded-xl text-white text-sm font-semibold" style={{ background: 'var(--accent)' }}>Save Changes</button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -41,7 +41,20 @@ export default function FinanceChequesView({ addNotification, currentUser }: Pro
           .from('finance_cheques')
           .select('*')
           .order('created_at', { ascending: false });
-        setCheques((data ?? []) as Cheque[]);
+        if (data) {
+          setCheques(data.map((c: any) => ({
+            id: c.id,
+            chequeNumber: c.cheque_number || c.chequeNumber || '',
+            bankName: c.bank_name || c.bankName || '',
+            accountName: c.account_name || c.accountName || '',
+            amount: c.amount || 0,
+            chequeDate: c.cheque_date || c.chequeDate || '',
+            expectedClearing: c.expected_clearing || c.expectedClearing || '',
+            status: c.status || 'Received',
+            customerRef: c.customer_ref || c.customerRef || '',
+            orderRef: c.order_ref || c.orderRef || ''
+          } as Cheque)));
+        }
       } catch {
         setCheques([]);
       }
@@ -54,6 +67,9 @@ export default function FinanceChequesView({ addNotification, currentUser }: Pro
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ chequeNumber: '', bankName: '', accountName: '', accountNumber: '', amount: '', chequeDate: '', expectedClearing: '', orderRef: '' });
+  const [editCheque, setEditCheque] = useState<Cheque | null>(null);
+  const [showEditForm, setShowEditForm] = useState(false);
+  const [editForm, setEditForm] = useState({ chequeNumber: '', bankName: '', accountName: '', accountNumber: '', amount: '', chequeDate: '', expectedClearing: '', orderRef: '' });
 
   const filtered = cheques.filter(c => {
     const matchSearch = !search || c.chequeNumber.toLowerCase().includes(search.toLowerCase()) || c.accountName.toLowerCase().includes(search.toLowerCase());
@@ -73,14 +89,86 @@ export default function FinanceChequesView({ addNotification, currentUser }: Pro
     } else {
       addNotification?.(`Cheque #${cheques.find(c => c.id === id)?.chequeNumber} marked as ${status}`);
     }
+    supabase.from('finance_cheques').update({ status }).eq('id', id).then(() => {}, () => {});
     supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Cheque ${id} status updated to ${status}`, performed_by: currentUser?.fullName || 'Finance', created_at: new Date().toISOString() }]).then(() => {}, () => {});
+    setMenuOpen(null);
+  }
+
+  function openEditForm(c: Cheque) {
+    setEditCheque(c);
+    setEditForm({
+      chequeNumber: c.chequeNumber,
+      bankName: c.bankName,
+      accountName: c.accountName,
+      accountNumber: '',
+      amount: String(c.amount),
+      chequeDate: c.chequeDate,
+      expectedClearing: c.expectedClearing,
+      orderRef: c.orderRef
+    });
+    setShowEditForm(true);
+    setMenuOpen(null);
+  }
+
+  async function updateCheque() {
+    if (!editCheque || !editForm.chequeNumber || !editForm.bankName || !editForm.accountName) return;
+    try {
+      const updatedAmount = parseFloat(editForm.amount) || 0;
+      const { error } = await supabase.from('finance_cheques')
+        .update({
+          cheque_number: editForm.chequeNumber,
+          bank_name: editForm.bankName,
+          account_name: editForm.accountName,
+          account_number: editForm.accountNumber || undefined,
+          amount: updatedAmount,
+          cheque_date: editForm.chequeDate,
+          expected_clearing: editForm.expectedClearing,
+          order_ref: editForm.orderRef,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', editCheque.id);
+      if (error) throw error;
+      setCheques(prev => prev.map(c => c.id === editCheque.id ? { ...c, chequeNumber: editForm.chequeNumber, bankName: editForm.bankName, accountName: editForm.accountName, amount: updatedAmount, chequeDate: editForm.chequeDate, expectedClearing: editForm.expectedClearing, orderRef: editForm.orderRef } : c));
+      addNotification?.('Cheque updated successfully.');
+      supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Cheque ${editCheque.id} updated`, performed_by: currentUser?.fullName || 'Finance', created_at: new Date().toISOString() }]).then(() => {}, () => {});
+    } catch (err: any) {
+      alert(err.message || 'Failed to update cheque.');
+    }
+    setShowEditForm(false);
+    setEditCheque(null);
+  }
+
+  async function deleteCheque(id: string) {
+    if (!window.confirm('Are you sure you want to delete this cheque?')) return;
+    try {
+      const { error } = await supabase.from('finance_cheques').delete().eq('id', id);
+      if (error) throw error;
+      setCheques(prev => prev.filter(c => c.id !== id));
+      addNotification?.('Cheque deleted successfully.');
+      supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Cheque ${id} deleted`, performed_by: currentUser?.fullName || 'Finance', created_at: new Date().toISOString() }]).then(() => {}, () => {});
+    } catch (err: any) {
+      alert(err.message || 'Failed to delete cheque.');
+    }
     setMenuOpen(null);
   }
 
   function addCheque() {
     const entry: Cheque = { id: Date.now().toString(), chequeNumber: form.chequeNumber, bankName: form.bankName, accountName: form.accountName, amount: parseFloat(form.amount) || 0, chequeDate: form.chequeDate, expectedClearing: form.expectedClearing, status: 'Received', customerRef: form.accountName, orderRef: form.orderRef };
     setCheques(prev => [entry, ...prev]);
-    supabase.from('finance_cheques').insert([{ ...form, amount: parseFloat(form.amount) || 0, status: 'Received', recorded_by: currentUser?.fullName || 'Finance', created_at: new Date().toISOString() }]).then(() => {}, () => {});
+    supabase.from('finance_cheques').insert([{
+      cheque_number: form.chequeNumber,
+      bank_name: form.bankName,
+      account_name: form.accountName,
+      account_number: form.accountNumber,
+      amount: parseFloat(form.amount) || 0,
+      cheque_date: form.chequeDate,
+      expected_clearing: form.expectedClearing,
+      customer_ref: form.accountName,
+      order_ref: form.orderRef,
+      status: 'Received',
+      recorded_by: currentUser?.fullName || 'Finance',
+      created_at: new Date().toISOString()
+    }]).then(() => {}, () => {});
     addNotification?.(`Cheque #${form.chequeNumber} added to register`);
     setShowForm(false);
     setForm({ chequeNumber: '', bankName: '', accountName: '', accountNumber: '', amount: '', chequeDate: '', expectedClearing: '', orderRef: '' });
@@ -155,6 +243,8 @@ export default function FinanceChequesView({ addNotification, currentUser }: Pro
                           {c.status !== 'Cleared' && <button onClick={() => updateStatus(c.id, 'Cleared')} className="w-full text-left px-3 py-2 text-sm text-green-600 hover:bg-[var(--bg-input)]">Mark Cleared</button>}
                           {c.status !== 'Bounced' && <button onClick={() => updateStatus(c.id, 'Bounced')} className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-[var(--bg-input)]">Mark Bounced</button>}
                           {c.status === 'Received' && <button onClick={() => updateStatus(c.id, 'Deposited')} className="w-full text-left px-3 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-input)]">Mark Deposited</button>}
+                          <button onClick={() => openEditForm(c)} className="w-full text-left px-3 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-input)]">Edit Cheque</button>
+                          <button onClick={() => deleteCheque(c.id)} className="w-full text-left px-3 py-2 text-sm text-rose-600 hover:bg-[var(--bg-input)]">Delete Cheque</button>
                           <button onClick={() => { window.print(); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-input)]">Export PDF</button>
                         </div>
                       )}
@@ -186,6 +276,29 @@ export default function FinanceChequesView({ addNotification, currentUser }: Pro
             <div className="flex items-center gap-3 justify-end mt-5">
               <button onClick={() => setShowForm(false)} className="px-4 py-2 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--text-secondary)]">Cancel</button>
               <button onClick={addCheque} className="px-4 py-2 rounded-xl text-white text-sm font-medium hover:opacity-90" style={{ background: 'var(--accent)' }}>Add to Register</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showEditForm && editCheque && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setShowEditForm(false)}>
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div className="relative bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-6 w-full max-w-lg shadow-2xl" onClick={e => e.stopPropagation()}>
+            <h3 className="text-base font-semibold text-[var(--text-primary)] mb-5">Edit Cheque</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {[
+                { label: 'Cheque Number', key: 'chequeNumber' }, { label: 'Bank Name', key: 'bankName' },
+                { label: 'Account Name', key: 'accountName' }, { label: 'Account Number', key: 'accountNumber' },
+                { label: 'Amount (GHS)', key: 'amount', type: 'number' }, { label: 'Order Reference', key: 'orderRef' },
+                { label: 'Cheque Date', key: 'chequeDate', type: 'date' }, { label: 'Expected Clearing', key: 'expectedClearing', type: 'date' },
+              ].map(({ label, key, type }) => (
+                <div key={key}><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">{label}</label><input type={type || 'text'} value={(editForm as Record<string, string>)[key]} onChange={e => setEditForm(f => ({ ...f, [key]: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" /></div>
+              ))}
+            </div>
+            <div className="flex items-center gap-3 justify-end mt-5">
+              <button onClick={() => setShowEditForm(false)} className="px-4 py-2 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--text-secondary)]">Cancel</button>
+              <button onClick={updateCheque} className="px-4 py-2 rounded-xl text-white text-sm font-medium hover:opacity-90" style={{ background: 'var(--accent)' }}>Save Changes</button>
             </div>
           </div>
         </div>

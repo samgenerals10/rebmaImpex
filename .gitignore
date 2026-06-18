@@ -10,3 +10,7 @@ dist/
 
 # Operating System files
 .DS_Store
+
+# Scratch / Temp development scripts
+scratch/
+

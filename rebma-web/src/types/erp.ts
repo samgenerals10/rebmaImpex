@@ -111,6 +111,7 @@ export interface Customer {
 
 export interface Driver {
   id: string;
+  driverId?: string;
   fullName: string;
   phone: string;
   ghanaCard: string;

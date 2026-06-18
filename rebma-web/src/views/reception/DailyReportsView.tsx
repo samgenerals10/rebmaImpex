@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import {
   FileText, Printer, Download, Calendar, Users, UserCheck, TrendingUp,
-  Mail, X, Send, Eye, ChevronRight
+  Mail, X, Send, Eye, ChevronRight, Edit, Trash2
 } from 'lucide-react';
 import { exportToPDF } from '../../utils/export';
 import { supabase } from '../../lib/supabaseClient';
@@ -36,12 +36,70 @@ export default function DailyReportsView({ addNotification }: Props) {
   const [emailSubject, setEmailSubject] = useState('');
   const [emailMessage, setEmailMessage] = useState('');
   const [sending, setSending] = useState(false);
+  const [editingVisitor, setEditingVisitor] = useState<any | null>(null);
 
   // Dynamic states replacing hardcoded constants
   const [visitorsToday, setVisitorsToday] = useState<VisitorToday[]>([]);
   const [depts, setDepts] = useState<{ name: string; present: number; total: number }[]>([]);
   const [pastReports, setPastReports] = useState<{ date: string; visitors: number; attendanceRate: number; checkins: number }[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const handleEditVisitor = (v: VisitorToday) => {
+    supabase.from('visitors').select('*').eq('id', v.id).single().then(({ data, error }) => {
+      if (!error && data) {
+        setEditingVisitor({
+          id: data.id,
+          fullName: data.full_name || data.visitor_name || '',
+          company: data.company || '',
+          purpose: data.purpose || '',
+          hostName: data.host_name || '',
+          checkInTime: data.check_in_time ? data.check_in_time.slice(0, 16) : '',
+          checkOutTime: data.check_out_time ? data.check_out_time.slice(0, 16) : '',
+        });
+      }
+    });
+  };
+
+  const handleSaveVisitor = async () => {
+    if (!editingVisitor) return;
+    try {
+      const { error } = await supabase.from('visitors').update({
+        full_name: editingVisitor.fullName,
+        visitor_name: editingVisitor.fullName,
+        company: editingVisitor.company,
+        purpose: editingVisitor.purpose,
+        host_name: editingVisitor.hostName,
+        check_in_time: editingVisitor.checkInTime || null,
+        check_out_time: editingVisitor.checkOutTime || null,
+      }).eq('id', editingVisitor.id);
+
+      if (!error) {
+        addNotification('Visitor log updated.');
+        setEditingVisitor(null);
+        // Trigger reload
+        setSelectedDate(selectedDate);
+      } else {
+        alert(error.message);
+      }
+    } catch (e: any) {
+      alert(e.message || 'Failed to update visitor.');
+    }
+  };
+
+  const handleDeleteVisitor = async (id: string) => {
+    if (!window.confirm('Are you sure you want to delete this visitor log?')) return;
+    try {
+      const { error } = await supabase.from('visitors').delete().eq('id', id);
+      if (!error) {
+        addNotification('Visitor log deleted.');
+        setVisitorsToday(prev => prev.filter(v => v.id !== id));
+      } else {
+        alert(error.message);
+      }
+    } catch (e: any) {
+      alert(e.message || 'Failed to delete visitor log.');
+    }
+  };
 
   useEffect(() => {
     const loadData = async () => {
@@ -248,6 +306,7 @@ export default function DailyReportsView({ addNotification }: Props) {
                   <th className="px-3 py-2 text-left text-[var(--text-muted)] font-semibold">Purpose</th>
                   <th className="px-3 py-2 text-left text-[var(--text-muted)] font-semibold">In</th>
                   <th className="px-3 py-2 text-left text-[var(--text-muted)] font-semibold">Out</th>
+                  <th className="px-3 py-2 text-right text-[var(--text-muted)] font-semibold">Actions</th>
                 </tr></thead>
                 <tbody>
                   {visitorsToday.map(v => (
@@ -256,6 +315,16 @@ export default function DailyReportsView({ addNotification }: Props) {
                       <td className="px-3 py-2 text-[var(--text-secondary)]">{v.purpose}</td>
                       <td className="px-3 py-2 text-[var(--text-muted)] font-mono">{v.in}</td>
                       <td className="px-3 py-2 font-mono">{v.out ? <span className="text-[var(--text-muted)]">{v.out}</span> : <span className="text-emerald-600 font-semibold">On Site</span>}</td>
+                      <td className="px-3 py-2 text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button onClick={() => handleEditVisitor(v)} className="p-1 text-[var(--text-secondary)] hover:text-[var(--accent)] hover:bg-[var(--bg)] rounded-lg transition-colors cursor-pointer" title="Edit">
+                            <Edit className="w-3.5 h-3.5" />
+                          </button>
+                          <button onClick={() => handleDeleteVisitor(v.id)} className="p-1 text-rose-500 hover:text-rose-700 hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer" title="Delete">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -421,6 +490,55 @@ export default function DailyReportsView({ addNotification }: Props) {
                 className="flex items-center gap-1.5 px-4 py-2 bg-[var(--accent)] text-white rounded-xl text-xs font-bold cursor-pointer hover:opacity-90 disabled:opacity-50">
                 <Send className="w-3.5 h-3.5" /> {sending ? 'Sending…' : 'Send Report'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {editingVisitor && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5 w-full max-w-md">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-[var(--text-primary)]">Edit Visitor Log</h3>
+              <button onClick={() => setEditingVisitor(null)} className="cursor-pointer"><X className="w-5 h-5 text-[var(--text-muted)]" /></button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-[10px] text-[var(--text-muted)] font-semibold uppercase mb-1">Visitor Name</label>
+                <input value={editingVisitor.fullName} onChange={e => setEditingVisitor({ ...editingVisitor, fullName: e.target.value })}
+                  className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs text-[var(--text-primary)] outline-none" />
+              </div>
+              <div>
+                <label className="block text-[10px] text-[var(--text-muted)] font-semibold uppercase mb-1">Company</label>
+                <input value={editingVisitor.company} onChange={e => setEditingVisitor({ ...editingVisitor, company: e.target.value })}
+                  className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs text-[var(--text-primary)] outline-none" />
+              </div>
+              <div>
+                <label className="block text-[10px] text-[var(--text-muted)] font-semibold uppercase mb-1">Purpose</label>
+                <input value={editingVisitor.purpose} onChange={e => setEditingVisitor({ ...editingVisitor, purpose: e.target.value })}
+                  className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs text-[var(--text-primary)] outline-none" />
+              </div>
+              <div>
+                <label className="block text-[10px] text-[var(--text-muted)] font-semibold uppercase mb-1">Host Name</label>
+                <input value={editingVisitor.hostName} onChange={e => setEditingVisitor({ ...editingVisitor, hostName: e.target.value })}
+                  className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs text-[var(--text-primary)] outline-none" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] text-[var(--text-muted)] font-semibold uppercase mb-1">Check In Time</label>
+                  <input type="datetime-local" value={editingVisitor.checkInTime} onChange={e => setEditingVisitor({ ...editingVisitor, checkInTime: e.target.value })}
+                    className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs text-[var(--text-primary)] outline-none" />
+                </div>
+                <div>
+                  <label className="block text-[10px] text-[var(--text-muted)] font-semibold uppercase mb-1">Check Out Time</label>
+                  <input type="datetime-local" value={editingVisitor.checkOutTime} onChange={e => setEditingVisitor({ ...editingVisitor, checkOutTime: e.target.value })}
+                    className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs text-[var(--text-primary)] outline-none" />
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-2 mt-5 justify-end">
+              <button onClick={() => setEditingVisitor(null)} className="px-4 py-2 border border-[var(--border)] rounded-xl text-xs text-[var(--text-secondary)] cursor-pointer">Cancel</button>
+              <button onClick={handleSaveVisitor} className="px-4 py-2 bg-[var(--accent)] text-white rounded-xl text-xs font-bold cursor-pointer hover:opacity-90">Save Changes</button>
             </div>
           </div>
         </div>

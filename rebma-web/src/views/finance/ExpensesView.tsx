@@ -71,6 +71,9 @@ export default function FinanceExpensesView({ addNotification, currentUser }: Pr
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ category: 'Rent', description: '', amount: '', date: new Date().toISOString().slice(0, 10), notes: '' });
+  const [editExpense, setEditExpense] = useState<Expense | null>(null);
+  const [showEditForm, setShowEditForm] = useState(false);
+  const [editForm, setEditForm] = useState({ category: 'Rent', description: '', amount: '', date: '', notes: '' });
 
   const filtered = expenses.filter(e => {
     const matchSearch = !search || e.description.toLowerCase().includes(search.toLowerCase()) || e.category.toLowerCase().includes(search.toLowerCase());
@@ -89,6 +92,58 @@ export default function FinanceExpensesView({ addNotification, currentUser }: Pr
     setExpenses(prev => prev.map(e => e.id === id ? { ...e, status } : e));
     addNotification?.(`Expense ${status.toLowerCase()}`);
     supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Expense ${id} ${status}`, performed_by: currentUser?.fullName || 'Finance', created_at: new Date().toISOString() }]).then(() => {}, () => {});
+    setMenuOpen(null);
+  }
+
+  function openEditForm(e: Expense) {
+    setEditExpense(e);
+    setEditForm({
+      category: e.category,
+      description: e.description,
+      amount: String(e.amount),
+      date: e.date,
+      notes: ''
+    });
+    setShowEditForm(true);
+    setMenuOpen(null);
+  }
+
+  async function updateExpense() {
+    if (!editExpense || !editForm.description || !editForm.amount) return;
+    try {
+      const updatedAmount = parseFloat(editForm.amount);
+      const { error } = await supabase.from('finance_expenses')
+        .update({
+          category: editForm.category,
+          description: editForm.description,
+          amount: updatedAmount,
+          date: editForm.date,
+          notes: editForm.notes || undefined,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', editExpense.id);
+      if (error) throw error;
+      setExpenses(prev => prev.map(e => e.id === editExpense.id ? { ...e, category: editForm.category, description: editForm.description, amount: updatedAmount, date: editForm.date } : e));
+      addNotification?.('Expense updated successfully.');
+      supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Expense ${editExpense.id} updated`, performed_by: currentUser?.fullName || 'Finance', created_at: new Date().toISOString() }]).then(() => {}, () => {});
+    } catch (err: any) {
+      alert(err.message || 'Failed to update expense.');
+    }
+    setShowEditForm(false);
+    setEditExpense(null);
+  }
+
+  async function deleteExpense(id: string) {
+    if (!window.confirm('Are you sure you want to delete this expense?')) return;
+    try {
+      const { error } = await supabase.from('finance_expenses').delete().eq('id', id);
+      if (error) throw error;
+      setExpenses(prev => prev.filter(e => e.id !== id));
+      addNotification?.('Expense deleted successfully.');
+      supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Expense ${id} deleted`, performed_by: currentUser?.fullName || 'Finance', created_at: new Date().toISOString() }]).then(() => {}, () => {});
+    } catch (err: any) {
+      alert(err.message || 'Failed to delete expense.');
+    }
     setMenuOpen(null);
   }
 
@@ -181,6 +236,8 @@ export default function FinanceExpensesView({ addNotification, currentUser }: Pr
                               <button onClick={() => updateStatus(e.id, 'Approved')} className="w-full text-left px-3 py-2 text-sm text-green-600 hover:bg-[var(--bg-input)]">Approve</button>
                               <button onClick={() => updateStatus(e.id, 'Rejected')} className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-[var(--bg-input)]">Reject</button>
                             </>}
+                            <button onClick={() => openEditForm(e)} className="w-full text-left px-3 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-input)]">Edit Expense</button>
+                            <button onClick={() => deleteExpense(e.id)} className="w-full text-left px-3 py-2 text-sm text-rose-600 hover:bg-[var(--bg-input)]">Delete Expense</button>
                             <button onClick={() => { window.print(); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-input)]">Export PDF</button>
                           </div>
                         )}
@@ -219,6 +276,28 @@ export default function FinanceExpensesView({ addNotification, currentUser }: Pr
             <div className="flex items-center gap-3 justify-end mt-5">
               <button onClick={() => setShowForm(false)} className="px-4 py-2 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--text-secondary)]">Cancel</button>
               <button onClick={logExpense} className="px-4 py-2 rounded-xl text-white text-sm font-medium hover:opacity-90" style={{ background: 'var(--accent)' }}>Submit for Approval</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showEditForm && editExpense && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setShowEditForm(false)}>
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div className="relative bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-6 w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
+            <h3 className="text-base font-semibold text-[var(--text-primary)] mb-5">Edit Expense</h3>
+            <div className="space-y-4">
+              <div><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Category</label><select value={editForm.category} onChange={e => setEditForm(f => ({ ...f, category: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]">{CATEGORIES.map(c => <option key={c}>{c}</option>)}</select></div>
+              <div><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Description</label><input value={editForm.description} onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" /></div>
+              <div className="grid grid-cols-2 gap-3">
+                <div><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Amount (GHS)</label><input type="number" value={editForm.amount} onChange={e => setEditForm(f => ({ ...f, amount: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" /></div>
+                <div><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Date</label><input type="date" value={editForm.date} onChange={e => setEditForm(f => ({ ...f, date: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" /></div>
+              </div>
+              <div><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Notes (optional)</label><textarea value={editForm.notes} onChange={e => setEditForm(f => ({ ...f, notes: e.target.value }))} rows={2} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)] resize-none" /></div>
+            </div>
+            <div className="flex items-center gap-3 justify-end mt-5">
+              <button onClick={() => setShowEditForm(false)} className="px-4 py-2 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--text-secondary)]">Cancel</button>
+              <button onClick={updateExpense} className="px-4 py-2 rounded-xl text-white text-sm font-medium hover:opacity-90" style={{ background: 'var(--accent)' }}>Save Changes</button>
             </div>
           </div>
         </div>

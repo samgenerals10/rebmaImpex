@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import {
   Plus, Search, X, LogOut, Eye, Users, UserCheck, UserMinus, Clock,
-  MoreVertical, Printer, Download, CheckCircle, AlertCircle, FileText
+  MoreVertical, Printer, Download, CheckCircle, AlertCircle, FileText,
+  Edit, Trash2
 } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { exportToPDF } from '../../utils/export';
@@ -77,11 +78,28 @@ export default function VisitorsView({ addNotification }: Props) {
     fullName: '', company: '', purpose: 'Business Meeting', hostName: '',
     expectedTime: '', idType: 'Ghana Card', idNumber: '', notes: '',
   });
+  const [showEdit, setShowEdit] = useState(false);
+  const [editForm, setEditForm] = useState<VisitorRecord | null>(null);
+
+  const mapToUI = (db: any): VisitorRecord => ({
+    id: db.id,
+    fullName: db.full_name || db.fullName || '',
+    purpose: db.purpose || '',
+    hostName: db.host_name || db.hostName || '',
+    checkInTime: db.check_in_time || db.checkInTime || '',
+    checkOutTime: db.check_out_time || db.checkOutTime || null,
+    badgeNumber: db.badge_number || db.badgeNumber || '',
+    company: db.company || '',
+    expectedTime: db.expected_time || db.expectedTime || '',
+    idType: db.id_type || db.idType || 'Ghana Card',
+    idNumber: db.id_number || db.idNumber || '',
+    notes: db.notes || '',
+  });
 
   useEffect(() => {
     setLoading(true);
-    supabase.from('visitors').select('*').order('checkInTime', { ascending: false }).then(({ data, error }) => {
-      if (!error && data) setVisitors(data as VisitorRecord[]);
+    supabase.from('visitors').select('*').order('check_in_time', { ascending: false }).then(({ data, error }) => {
+      if (!error && data) setVisitors(data.map(mapToUI));
       else setVisitors([]);
       setLoading(false);
     });
@@ -101,7 +119,7 @@ export default function VisitorsView({ addNotification }: Props) {
 
   const handleCheckOut = async (id: string) => {
     const now = new Date().toISOString();
-    await supabase.from('visitors').update({ checkOutTime: now }).eq('id', id);
+    await supabase.from('visitors').update({ check_out_time: now }).eq('id', id);
     setVisitors(prev => prev.map(v => v.id === id ? { ...v, checkOutTime: now } : v));
     addNotification('Visitor checked out');
   };
@@ -121,19 +139,73 @@ export default function VisitorsView({ addNotification }: Props) {
       idNumber: form.idNumber,
       notes: form.notes,
     };
-    const { error } = await supabase.from('visitors').insert([newVisitor]);
-    setVisitors(prev => [newVisitor, ...prev]);
-    supabase.from('supplier_order_notifications').insert([{
-      order_id: newVisitor.id,
-      message: `Visitor ${form.fullName} (${form.purpose}) has arrived to see ${form.hostName}. Badge: ${newVisitor.badgeNumber}`,
-      notified_department: 'ALL',
-      read: false,
-      created_at: new Date().toISOString(),
-    }]).then(() => {}, () => {});
-    addNotification(`Visitor ${form.fullName} checked in — Badge: ${newVisitor.badgeNumber}`);
-    setShowAdd(false);
-    setForm({ fullName: '', company: '', purpose: 'Business Meeting', hostName: '', expectedTime: '', idType: 'Ghana Card', idNumber: '', notes: '' });
-    if (error) console.error(error);
+    
+    const dbVisitor = {
+      id: newVisitor.id,
+      full_name: newVisitor.fullName,
+      company: newVisitor.company,
+      purpose: newVisitor.purpose,
+      host_name: newVisitor.hostName,
+      check_in_time: newVisitor.checkInTime,
+      badge_number: newVisitor.badgeNumber,
+      notes: newVisitor.notes,
+      status: 'inside'
+    };
+
+    const { error } = await supabase.from('visitors').insert([dbVisitor]);
+    if (!error) {
+      setVisitors(prev => [newVisitor, ...prev]);
+      supabase.from('supplier_order_notifications').insert([{
+        order_id: newVisitor.id,
+        message: `Visitor ${form.fullName} (${form.purpose}) has arrived to see ${form.hostName}. Badge: ${newVisitor.badgeNumber}`,
+        notified_department: 'ALL',
+        read: false,
+        created_at: new Date().toISOString(),
+      }]).then(() => {}, () => {});
+      addNotification(`Visitor ${form.fullName} checked in — Badge: ${newVisitor.badgeNumber}`);
+      setShowAdd(false);
+      setForm({ fullName: '', company: '', purpose: 'Business Meeting', hostName: '', expectedTime: '', idType: 'Ghana Card', idNumber: '', notes: '' });
+    } else {
+      alert(error.message || 'Failed to check in visitor');
+    }
+  };
+
+  const handleEditClick = (v: VisitorRecord) => {
+    setEditForm(v);
+    setShowEdit(true);
+  };
+
+  const handleEditSave = async () => {
+    if (!editForm) return;
+    const { error } = await supabase.from('visitors').update({
+      full_name: editForm.fullName,
+      company: editForm.company,
+      purpose: editForm.purpose,
+      host_name: editForm.hostName,
+      check_in_time: editForm.checkInTime,
+      check_out_time: editForm.checkOutTime || null,
+      notes: editForm.notes
+    }).eq('id', editForm.id);
+
+    if (!error) {
+      setVisitors(prev => prev.map(v => v.id === editForm.id ? editForm : v));
+      addNotification(`Visitor ${editForm.fullName} updated`);
+      setShowEdit(false);
+      setEditForm(null);
+    } else {
+      alert(error.message || 'Failed to update visitor');
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this visitor record?')) return;
+    const { error } = await supabase.from('visitors').delete().eq('id', id);
+    if (!error) {
+      setVisitors(prev => prev.filter(v => v.id !== id));
+      addNotification('Visitor record deleted');
+    } else {
+      alert(error.message || 'Failed to delete visitor record');
+    }
   };
 
   return (
@@ -248,6 +320,15 @@ export default function VisitorsView({ addNotification }: Props) {
                             <button onClick={() => { printVisitorPass(v); setMenuOpen(null); }}
                               className="flex items-center gap-2 w-full px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg cursor-pointer">
                               <Printer className="w-3.5 h-3.5" /> Print Visitor Pass
+                            </button>
+                            <button onClick={() => { handleEditClick(v); setMenuOpen(null); }}
+                              className="flex items-center gap-2 w-full px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg cursor-pointer">
+                              <Edit className="w-3.5 h-3.5" /> Edit Details
+                            </button>
+                            <div className="h-px bg-[var(--border)] my-1" />
+                            <button onClick={() => { handleDelete(v.id); setMenuOpen(null); }}
+                              className="flex items-center gap-2 w-full px-3 py-2 text-xs text-rose-500 hover:bg-rose-50 rounded-lg cursor-pointer">
+                              <Trash2 className="w-3.5 h-3.5" /> Delete Visitor
                             </button>
                             <button onClick={() => { exportToPDF('Visitor Record', [v], ['badgeNumber','fullName','company','purpose','hostName','checkInTime','checkOutTime']); setMenuOpen(null); }}
                               className="flex items-center gap-2 w-full px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg cursor-pointer">
@@ -400,6 +481,68 @@ export default function VisitorsView({ addNotification }: Props) {
       )}
 
       {menuOpen && <div className="fixed inset-0 z-20" onClick={() => setMenuOpen(null)} />}
+
+      {showEdit && editForm && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5 w-full max-w-md">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-[var(--text-primary)]">Edit Visitor Detail</h3>
+              <button onClick={() => { setShowEdit(false); setEditForm(null); }} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs text-[var(--text-secondary)] mb-1 font-semibold">Full Name</label>
+                <input value={editForm.fullName} onChange={e => setEditForm({ ...editForm!, fullName: e.target.value })}
+                  className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-[var(--text-primary)] text-sm outline-none" />
+              </div>
+              <div>
+                <label className="block text-xs text-[var(--text-secondary)] mb-1 font-semibold">Company</label>
+                <input value={editForm.company || ''} onChange={e => setEditForm({ ...editForm!, company: e.target.value })}
+                  className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-[var(--text-primary)] text-sm outline-none" />
+              </div>
+              <div>
+                <label className="block text-xs text-[var(--text-secondary)] mb-1 font-semibold">Purpose</label>
+                <select value={editForm.purpose} onChange={e => setEditForm({ ...editForm!, purpose: e.target.value })}
+                  className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-[var(--text-primary)] text-sm outline-none">
+                  {['Business Meeting', 'Delivery', 'Personal', 'Interview', 'Other'].map(p => <option key={p} value={p}>{p}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs text-[var(--text-secondary)] mb-1 font-semibold">Host Name</label>
+                <input value={editForm.hostName} onChange={e => setEditForm({ ...editForm!, hostName: e.target.value })}
+                  className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-[var(--text-primary)] text-sm outline-none" />
+              </div>
+              <div>
+                <label className="block text-xs text-[var(--text-secondary)] mb-1 font-semibold">Check-In Time</label>
+                <input type="datetime-local" value={editForm.checkInTime ? editForm.checkInTime.slice(0, 16) : ''} onChange={e => setEditForm({ ...editForm!, checkInTime: new Date(e.target.value).toISOString() })}
+                  className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-[var(--text-primary)] text-sm outline-none" />
+              </div>
+              <div>
+                <label className="block text-xs text-[var(--text-secondary)] mb-1 font-semibold">Check-Out Time (Optional)</label>
+                <input type="datetime-local" value={editForm.checkOutTime ? editForm.checkOutTime.slice(0, 16) : ''} onChange={e => setEditForm({ ...editForm!, checkOutTime: e.target.value ? new Date(e.target.value).toISOString() : undefined })}
+                  className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-[var(--text-primary)] text-sm outline-none" />
+              </div>
+              <div>
+                <label className="block text-xs text-[var(--text-secondary)] mb-1 font-semibold">Notes</label>
+                <textarea value={editForm.notes || ''} onChange={e => setEditForm({ ...editForm!, notes: e.target.value })} rows={2}
+                  className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-[var(--text-primary)] text-sm outline-none resize-none" />
+              </div>
+            </div>
+            <div className="flex gap-2 mt-5 justify-end">
+              <button onClick={() => { setShowEdit(false); setEditForm(null); }}
+                className="px-4 py-2 text-xs border border-[var(--border)] rounded-xl text-[var(--text-secondary)] hover:bg-[var(--accent-light)] cursor-pointer">
+                Cancel
+              </button>
+              <button onClick={handleEditSave}
+                className="px-4 py-2 text-xs bg-[var(--accent)] text-white rounded-xl font-semibold hover:opacity-90 cursor-pointer">
+                Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

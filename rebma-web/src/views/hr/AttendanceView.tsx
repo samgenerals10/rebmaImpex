@@ -37,13 +37,28 @@ export default function AttendanceView({ attendanceList, addNotification }: Prop
   const [settings, setSettings] = useState<WorkplaceSettings>(DEFAULT_SETTINGS);
   const [editRec, setEditRec] = useState<Attendance | null>(null);
   const [editStatus, setEditStatus] = useState<'PRESENT' | 'LATE'>('PRESENT');
+  const [editTime, setEditTime] = useState('');
   const [showAdd, setShowAdd] = useState(false);
   const [addForm, setAddForm] = useState({ fullName: '', checkInTime: '', status: 'PRESENT' as 'PRESENT' | 'LATE' });
 
+  const loadAttendance = async () => {
+    const { data, error } = await supabase
+      .from('attendance')
+      .select('*, user:profiles(full_name)')
+      .order('check_in_time', { ascending: false });
+    if (!error && data) {
+      setRecords(data.map((a: any) => ({
+        id: a.id,
+        fullName: a.user?.full_name || a.fullName || 'Unknown',
+        checkInTime: a.check_in_time ? new Date(a.check_in_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
+        status: a.status as 'PRESENT' | 'LATE',
+        date: a.date || (a.check_in_time ? new Date(a.check_in_time).toLocaleDateString() : '')
+      })));
+    }
+  };
+
   useEffect(() => {
-    supabase.from('attendance').select('*').then(({ data, error }) => {
-      if (!error && data && data.length > 0) setRecords(data as Attendance[]);
-    });
+    loadAttendance();
   }, []);
 
   const filtered = records.filter(r => {
@@ -57,20 +72,62 @@ export default function AttendanceView({ attendanceList, addNotification }: Prop
   const late = records.filter(r => r.status === 'LATE').length;
   const rate = records.length > 0 ? Math.round((present / records.length) * 100) : 0;
 
-  const handleEditSave = () => {
+  const handleEditSave = async () => {
     if (!editRec) return;
-    const updated = { ...editRec, status: editStatus };
-    supabase.from('attendance').update({ status: editStatus }).eq('id', editRec.id).then(() => {}, () => {});
-    setRecords(prev => prev.map(r => r.id === editRec.id ? updated : r));
-    addNotification(`${editRec.fullName} attendance updated`);
-    setEditRec(null);
+    const recordDate = editRec.date || new Date().toISOString().slice(0, 10);
+    const [hours, minutes] = editTime.split(':');
+    const checkInDate = new Date(recordDate);
+    if (hours && minutes) {
+      checkInDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+    }
+    const checkInTimeISO = checkInDate.toISOString();
+
+    const { error } = await supabase
+      .from('attendance')
+      .update({
+        status: editStatus,
+        check_in_time: checkInTimeISO
+      })
+      .eq('id', editRec.id);
+
+    if (!error) {
+      const updated = { ...editRec, status: editStatus, checkInTime: editTime };
+      setRecords(prev => prev.map(r => r.id === editRec.id ? updated : r));
+      addNotification(`${editRec.fullName} attendance updated`);
+      setEditRec(null);
+    } else {
+      alert(error.message || 'Failed to update attendance');
+    }
     setMenuOpen(null);
   };
 
-  const handleDuplicate = (r: Attendance) => {
-    const dup: Attendance = { ...r, id: `DUP-${Date.now()}` };
-    setRecords(prev => [dup, ...prev]);
-    addNotification(`Duplicated log for ${r.fullName}`);
+  const handleDuplicate = async (r: Attendance) => {
+    const dupId = `ATT-${Date.now().toString().slice(-6)}`;
+    const { data: prof } = await supabase.from('profiles').select('id').ilike('full_name', r.fullName).limit(1);
+    const userId = prof && prof[0] ? prof[0].id : null;
+    
+    // Default time is now
+    const nowISO = new Date().toISOString();
+    const { error } = await supabase.from('attendance').insert([{
+      id: dupId,
+      user_id: userId,
+      status: r.status,
+      check_in_time: nowISO,
+      date: nowISO.slice(0, 10)
+    }]);
+
+    if (!error) {
+      const dup: Attendance = {
+        ...r,
+        id: dupId,
+        checkInTime: new Date(nowISO).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        date: new Date(nowISO).toLocaleDateString()
+      };
+      setRecords(prev => [dup, ...prev]);
+      addNotification(`Duplicated log for ${r.fullName}`);
+    } else {
+      alert(error.message || 'Failed to duplicate attendance log');
+    }
     setMenuOpen(null);
   };
 
@@ -80,22 +137,54 @@ export default function AttendanceView({ attendanceList, addNotification }: Prop
     setMenuOpen(null);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     const rec = records.find(r => r.id === id);
-    supabase.from('attendance').delete().eq('id', id).then(() => {}, () => {});
-    setRecords(prev => prev.filter(r => r.id !== id));
-    addNotification(`Log deleted${rec ? ` for ${rec.fullName}` : ''}`);
+    if (!confirm(`Are you sure you want to delete this log?`)) return;
+    const { error } = await supabase.from('attendance').delete().eq('id', id);
+    if (!error) {
+      setRecords(prev => prev.filter(r => r.id !== id));
+      addNotification(`Log deleted${rec ? ` for ${rec.fullName}` : ''}`);
+    } else {
+      alert(error.message || 'Failed to delete attendance log');
+    }
     setMenuOpen(null);
   };
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (!addForm.fullName) return;
-    const newRec: Attendance = { id: `ATT-${Date.now()}`, ...addForm };
-    supabase.from('attendance').insert([newRec]).then(() => {}, () => {});
-    setRecords(prev => [newRec, ...prev]);
-    addNotification(`Attendance added for ${addForm.fullName}`);
-    setShowAdd(false);
-    setAddForm({ fullName: '', checkInTime: '', status: 'PRESENT' });
+    const { data: prof } = await supabase.from('profiles').select('id').ilike('full_name', addForm.fullName).limit(1);
+    const userId = prof && prof[0] ? prof[0].id : null;
+
+    const checkInDate = new Date();
+    if (addForm.checkInTime) {
+      const [hours, minutes] = addForm.checkInTime.split(':');
+      checkInDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+    }
+    
+    const newRecId = `ATT-${Date.now().toString().slice(-6)}`;
+    const { error } = await supabase.from('attendance').insert([{
+      id: newRecId,
+      user_id: userId,
+      status: addForm.status,
+      check_in_time: checkInDate.toISOString(),
+      date: checkInDate.toISOString().slice(0, 10)
+    }]);
+
+    if (!error) {
+      const newRec: Attendance = {
+        id: newRecId,
+        fullName: addForm.fullName,
+        checkInTime: addForm.checkInTime || checkInDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        status: addForm.status,
+        date: checkInDate.toLocaleDateString()
+      };
+      setRecords(prev => [newRec, ...prev]);
+      addNotification(`Attendance added for ${addForm.fullName}`);
+      setShowAdd(false);
+      setAddForm({ fullName: '', checkInTime: '', status: 'PRESENT' });
+    } else {
+      alert(error.message || 'Failed to add attendance log');
+    }
   };
 
   const handleSaveSettings = () => {
@@ -222,9 +311,9 @@ export default function AttendanceView({ attendanceList, addNotification }: Prop
                     </button>
                     {menuOpen === r.id && (
                       <div className="absolute right-4 mt-1 w-44 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl z-30 p-1 flex flex-col">
-                        <button onClick={() => { setEditRec(r); setEditStatus(r.status); setMenuOpen(null); }}
+                        <button onClick={() => { setEditRec(r); setEditStatus(r.status); setEditTime(r.checkInTime); setMenuOpen(null); }}
                           className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors cursor-pointer">
-                          <Edit2 className="w-3.5 h-3.5" /> Edit Status
+                          <Edit2 className="w-3.5 h-3.5" /> Edit Log
                         </button>
                         <button onClick={() => handleDuplicate(r)}
                           className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors cursor-pointer">
@@ -262,24 +351,31 @@ export default function AttendanceView({ attendanceList, addNotification }: Prop
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
           <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5 w-full max-w-sm">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-[var(--text-primary)]">Edit Attendance</h3>
+              <h3 className="font-bold text-[var(--text-primary)]">Edit Attendance Log</h3>
               <button onClick={() => setEditRec(null)} className="text-[var(--text-muted)] cursor-pointer"><X className="w-5 h-5" /></button>
             </div>
-            <p className="text-xs text-[var(--text-muted)] mb-3">{editRec.fullName} · {editRec.checkInTime}</p>
-            <div>
-              <label className="block text-xs text-[var(--text-secondary)] mb-1.5 font-semibold">Status</label>
-              <div className="flex gap-2">
-                {(['PRESENT', 'LATE'] as const).map(s => (
-                  <button key={s} onClick={() => setEditStatus(s)}
-                    className={`flex-1 py-2 rounded-xl text-xs font-bold border cursor-pointer transition-colors ${editStatus === s ? 'bg-[var(--accent)] text-white border-[var(--accent)]' : 'bg-[var(--bg)] text-[var(--text-secondary)] border-[var(--border)]'}`}>
-                    {s}
-                  </button>
-                ))}
+            <p className="text-xs text-[var(--text-muted)] mb-3">{editRec.fullName}</p>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs text-[var(--text-secondary)] mb-1 font-semibold">Check-In Time</label>
+                <input type="time" value={editTime} onChange={e => setEditTime(e.target.value)}
+                  className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-[var(--text-primary)] text-sm outline-none" />
+              </div>
+              <div>
+                <label className="block text-xs text-[var(--text-secondary)] mb-1.5 font-semibold">Status</label>
+                <div className="flex gap-2">
+                  {(['PRESENT', 'LATE'] as const).map(s => (
+                    <button key={s} onClick={() => setEditStatus(s)}
+                      className={`flex-1 py-2 rounded-xl text-xs font-bold border cursor-pointer transition-colors ${editStatus === s ? 'bg-[var(--accent)] text-white border-[var(--accent)]' : 'bg-[var(--bg)] text-[var(--text-secondary)] border-[var(--border)]'}`}>
+                      {s}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
             <div className="flex gap-2 mt-4 justify-end">
               <button onClick={() => setEditRec(null)} className="px-4 py-2 text-xs border border-[var(--border)] rounded-xl text-[var(--text-secondary)] cursor-pointer">Cancel</button>
-              <button onClick={handleEditSave} className="px-4 py-2 text-xs bg-[var(--accent)] text-white rounded-xl font-semibold cursor-pointer">Save</button>
+              <button onClick={handleEditSave} className="px-4 py-2 text-xs bg-[var(--accent)] text-white rounded-xl font-semibold cursor-pointer">Save Changes</button>
             </div>
           </div>
         </div>

@@ -45,6 +45,10 @@ export default function WipStockView({ addNotification }: Props) {
   const [detailModal, setDetailModal] = useState<WipItem | null>(null);
   const [newStage, setNewStage] = useState('');
   const [newNotes, setNewNotes] = useState('');
+  const [newProductName, setNewProductName] = useState('');
+  const [newQty, setNewQty] = useState('');
+  const [newUnit, setNewUnit] = useState('');
+  const [newBatchRef, setNewBatchRef] = useState('');
   const [form, setForm] = useState({ productName: '', stage: 'Raw Materials', qty: '', unit: 'kg', batchRef: '', notes: '' });
 
   const loadData = async () => {
@@ -75,17 +79,30 @@ export default function WipStockView({ addNotification }: Props) {
     { label: 'Ready to Dispatch', value: items.filter(i => i.stage === 'Awaiting Dispatch').length, color: '#059669' },
   ];
 
-  const handleUpdateStage = async () => {
-    if (!updateModal || !newStage) return;
+  const handleEditWipItem = async () => {
+    if (!updateModal) return;
     try {
-      await wipApi.updateWipStock(updateModal.id, updateModal.qty, newNotes || updateModal.notes || '', newStage);
-      addNotification(`${updateModal.productName} moved to ${newStage}`);
+      await wipApi.updateWipStock(
+        updateModal.id,
+        Number(newQty),
+        newNotes,
+        newStage,
+        newProductName,
+        newUnit,
+        newBatchRef
+      );
+      addNotification(`WIP item "${newProductName}" updated successfully.`);
       loadData();
     } catch (err: any) {
-      alert(err.message || 'Failed to update stage.');
+      alert(err.message || 'Failed to update WIP item.');
     }
     setUpdateModal(null);
-    setNewStage(''); setNewNotes('');
+    setNewProductName('');
+    setNewStage('');
+    setNewQty('');
+    setNewUnit('');
+    setNewBatchRef('');
+    setNewNotes('');
   };
 
   const handleAddItem = async () => {
@@ -274,7 +291,7 @@ export default function WipStockView({ addNotification }: Props) {
                       {menuOpen === item.id && (
                         <div className="absolute right-0 top-full mt-1 w-44 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl z-20 p-1">
                           <button onClick={() => { setDetailModal(item); setMenuOpen(null); }} className="flex w-full px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg cursor-pointer">View Details</button>
-                          <button onClick={() => { setUpdateModal(item); setNewStage(item.stage); setNewNotes(item.notes || ''); setMenuOpen(null); }} className="flex w-full px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg cursor-pointer gap-2 items-center"><Edit2 className="w-3 h-3" /> Update Stage</button>
+                          <button onClick={() => { setUpdateModal(item); setNewProductName(item.productName); setNewStage(item.stage); setNewQty(String(item.qty)); setNewUnit(item.unit); setNewBatchRef(item.batchRef || ''); setNewNotes(item.notes || ''); setMenuOpen(null); }} className="flex w-full px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg cursor-pointer gap-2 items-center"><Edit2 className="w-3 h-3" /> Edit WIP Item</button>
                           <button onClick={() => { printWipItem(item); setMenuOpen(null); }} className="flex w-full px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg cursor-pointer gap-2 items-center"><Printer className="w-3 h-3" /> Print Record</button>
                           <button onClick={() => handleDuplicate(item)} className="flex w-full px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg cursor-pointer">Duplicate</button>
                           <button onClick={() => handleDelete(item.id)} className="flex w-full px-3 py-2 text-xs text-rose-500 hover:bg-rose-500/10 rounded-lg cursor-pointer">Delete</button>
@@ -300,37 +317,47 @@ export default function WipStockView({ addNotification }: Props) {
       {/* Update Stage Modal */}
       {updateModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-6 w-full max-w-md">
+          <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-5">
-              <h2 className="text-lg font-bold text-[var(--text-primary)]">Update Stage</h2>
+              <h2 className="text-lg font-bold text-[var(--text-primary)]">Edit WIP Item</h2>
               <button onClick={() => setUpdateModal(null)} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer"><X className="w-5 h-5" /></button>
             </div>
-            <p className="text-sm font-semibold text-[var(--text-primary)] mb-4">{updateModal.productName}</p>
             <div className="space-y-4">
               <div>
-                <label className="block text-xs text-[var(--text-muted)] font-semibold mb-1.5">Current Stage</label>
-                <div className={`inline-block text-[10px] font-bold px-2 py-1 rounded-full ${stageBadgeStyle(updateModal.stage)}`}>{updateModal.stage}</div>
+                <label className="block text-xs text-[var(--text-muted)] font-semibold mb-1.5">Product Name *</label>
+                <input value={newProductName} onChange={e => setNewProductName(e.target.value)} className={inputCls} placeholder="Product Name" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-[var(--text-muted)] font-semibold mb-1.5">Quantity *</label>
+                  <input type="number" value={newQty} onChange={e => setNewQty(e.target.value)} className={inputCls} placeholder="0" />
+                </div>
+                <div>
+                  <label className="block text-xs text-[var(--text-muted)] font-semibold mb-1.5">Unit</label>
+                  <select value={newUnit} onChange={e => setNewUnit(e.target.value)} className={inputCls}>
+                    {['kg', 'L', 'pcs', 'boxes', 'sachets', 'blocks', 'bags'].map(u => <option key={u}>{u}</option>)}
+                  </select>
+                </div>
               </div>
               <div>
-                <label className="block text-xs text-[var(--text-muted)] font-semibold mb-1.5">New Stage</label>
-                <div className="grid grid-cols-2 gap-2">
-                  {STAGES.map(stage => (
-                    <button key={stage} onClick={() => setNewStage(stage)}
-                      className={`px-3 py-2 text-xs font-semibold rounded-xl border cursor-pointer transition-all ${newStage === stage ? 'bg-[var(--accent)] text-white border-[var(--accent)]' : 'bg-[var(--bg)] border-[var(--border)] text-[var(--text-secondary)] hover:bg-[var(--accent-light)]'}`}>
-                      {stage}
-                    </button>
-                  ))}
-                </div>
+                <label className="block text-xs text-[var(--text-muted)] font-semibold mb-1.5">Batch Reference</label>
+                <input value={newBatchRef} onChange={e => setNewBatchRef(e.target.value)} className={inputCls} placeholder="Batch Reference" />
+              </div>
+              <div>
+                <label className="block text-xs text-[var(--text-muted)] font-semibold mb-1.5">Stage</label>
+                <select value={newStage} onChange={e => setNewStage(e.target.value)} className={inputCls}>
+                  {STAGES.map(s => <option key={s}>{s}</option>)}
+                </select>
               </div>
               <div>
                 <label className="block text-xs text-[var(--text-muted)] font-semibold mb-1.5">Notes (optional)</label>
                 <textarea value={newNotes} onChange={e => setNewNotes(e.target.value)} rows={2}
-                  className={inputCls} placeholder="Any notes about this stage change..." />
+                  className={inputCls} placeholder="Any notes..." />
               </div>
             </div>
             <div className="flex gap-3 mt-5">
               <button onClick={() => setUpdateModal(null)} className="flex-1 py-2.5 text-sm font-semibold bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-secondary)] rounded-xl cursor-pointer">Cancel</button>
-              <button onClick={handleUpdateStage} className="flex-2 flex-1 py-2.5 text-sm font-semibold bg-[var(--accent)] text-white rounded-xl cursor-pointer hover:opacity-90">Update Stage</button>
+              <button onClick={handleEditWipItem} className="flex-1 py-2.5 text-sm font-semibold bg-[var(--accent)] text-white rounded-xl cursor-pointer hover:opacity-90">Save Changes</button>
             </div>
           </div>
         </div>
@@ -428,9 +455,9 @@ export default function WipStockView({ addNotification }: Props) {
               <button onClick={() => { printWipItem(detailModal); }} className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-secondary)] rounded-xl cursor-pointer">
                 <Printer className="w-3.5 h-3.5" /> Print
               </button>
-              <button onClick={() => { setUpdateModal(detailModal); setNewStage(detailModal.stage); setNewNotes(detailModal.notes || ''); setDetailModal(null); }}
+              <button onClick={() => { setUpdateModal(detailModal); setNewProductName(detailModal.productName); setNewStage(detailModal.stage); setNewQty(String(detailModal.qty)); setNewUnit(detailModal.unit); setNewBatchRef(detailModal.batchRef || ''); setNewNotes(detailModal.notes || ''); setDetailModal(null); }}
                 className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold bg-[var(--accent)] text-white rounded-xl cursor-pointer hover:opacity-90">
-                <TrendingUp className="w-3.5 h-3.5" /> Update Stage
+                <Edit2 className="w-3.5 h-3.5" /> Edit WIP Item
               </button>
             </div>
           </div>

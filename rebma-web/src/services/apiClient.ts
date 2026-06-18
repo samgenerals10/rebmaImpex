@@ -1222,15 +1222,25 @@ export const wipApi = {
     return inserted?.[0] || null;
   },
 
-  updateWipStock: async (id: string, qty: number, notes?: string, stage?: string) => {
+  updateWipStock: async (
+    id: string,
+    qty: number,
+    notes?: string,
+    stage?: string,
+    productName?: string,
+    unit?: string,
+    batchRef?: string
+  ) => {
     const updateData: any = {
       qty: Number(qty),
       notes: notes || null,
       updated_at: new Date().toISOString()
     };
-    if (stage) {
-      updateData.stage = stage;
-    }
+    if (stage) updateData.stage = stage;
+    if (productName) updateData.product_name = productName;
+    if (unit) updateData.unit = unit;
+    if (batchRef) updateData.batch_ref = batchRef;
+
     const { data: updated, error } = await supabase
       .from('wip_stock')
       .update(updateData)

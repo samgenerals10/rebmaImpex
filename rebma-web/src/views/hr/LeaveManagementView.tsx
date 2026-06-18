@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, X, CheckCircle, XCircle, Clock, Calendar, Users, Filter, LayoutList, CalendarDays, Wallet } from 'lucide-react';
+import { Plus, X, CheckCircle, XCircle, Clock, Calendar, Users, Filter, LayoutList, CalendarDays, Wallet, Edit, Trash2 } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import type { CurrentUser } from '../../types/erp';
 
@@ -115,6 +115,34 @@ function CalendarView({ leaves }: { leaves: LeaveRequest[] }) {
   );
 }
 
+const mapToUI = (db: any): LeaveRequest => ({
+  id: db.id,
+  employeeName: db.staff_name || '',
+  department: db.department || '',
+  leaveType: (db.leave_type || 'Annual') as LeaveRequest['leaveType'],
+  startDate: db.start_date || '',
+  endDate: db.end_date || '',
+  days: db.days_count || 0,
+  reason: db.reason || '',
+  status: (db.status || 'Pending') as LeaveRequest['status'],
+  rejectionReason: db.rejection_reason
+});
+
+const mapToDB = (ui: Partial<LeaveRequest>) => {
+  const db: any = {};
+  if (ui.id !== undefined) db.id = ui.id;
+  if (ui.employeeName !== undefined) db.staff_name = ui.employeeName;
+  if (ui.department !== undefined) db.department = ui.department;
+  if (ui.leaveType !== undefined) db.leave_type = ui.leaveType;
+  if (ui.startDate !== undefined) db.start_date = ui.startDate;
+  if (ui.endDate !== undefined) db.end_date = ui.endDate;
+  if (ui.days !== undefined) db.days_count = ui.days;
+  if (ui.reason !== undefined) db.reason = ui.reason;
+  if (ui.status !== undefined) db.status = ui.status;
+  if (ui.rejectionReason !== undefined) db.rejection_reason = ui.rejectionReason;
+  return db;
+};
+
 export default function LeaveManagementView({ currentUser, addNotification }: Props) {
   const [activeTab, setActiveTab] = useState<'requests' | 'calendar' | 'balances'>('requests');
   const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
@@ -123,6 +151,8 @@ export default function LeaveManagementView({ currentUser, addNotification }: Pr
   const [typeFilter, setTypeFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
   const [showAdd, setShowAdd] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
+  const [editForm, setEditForm] = useState<LeaveRequest | null>(null);
   const [rejectId, setRejectId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [form, setForm] = useState({ employeeName: '', department: 'Operations', leaveType: 'Annual' as LeaveRequest['leaveType'], startDate: '', endDate: '', reason: '' });
@@ -134,7 +164,7 @@ export default function LeaveManagementView({ currentUser, addNotification }: Pr
       setLoadingLeaves(true);
       try {
         const { data } = await supabase.from('leave_requests').select('*').order('created_at', { ascending: false });
-        if (data) setLeaves(data as LeaveRequest[]);
+        if (data) setLeaves(data.map(mapToUI));
       } catch {
         // show empty state
       }
@@ -164,7 +194,7 @@ export default function LeaveManagementView({ currentUser, addNotification }: Pr
 
   const handleReject = async () => {
     if (!rejectId) return;
-    await supabase.from('leave_requests').update({ status: 'Rejected', rejectionReason: rejectReason }).eq('id', rejectId);
+    await supabase.from('leave_requests').update({ status: 'Rejected', rejection_reason: rejectReason }).eq('id', rejectId);
     setLeaves(prev => prev.map(l => l.id === rejectId ? { ...l, status: 'Rejected', rejectionReason: rejectReason } : l));
     addNotification('Leave request rejected');
     setRejectId(null);
@@ -174,12 +204,48 @@ export default function LeaveManagementView({ currentUser, addNotification }: Pr
   const handleAdd = async () => {
     const days = calcDays(form.startDate, form.endDate);
     const newLeave: LeaveRequest = { id: Date.now().toString(), ...form, days, status: 'Pending' };
-    const { error } = await supabase.from('leave_requests').insert([newLeave]);
-    setLeaves(prev => [newLeave, ...prev]);
-    addNotification(`Leave request submitted for ${form.employeeName}`);
-    setShowAdd(false);
-    setForm({ employeeName: '', department: 'Operations', leaveType: 'Annual', startDate: '', endDate: '', reason: '' });
-    if (error) console.error(error);
+    const dbData = mapToDB(newLeave);
+    const { error } = await supabase.from('leave_requests').insert([dbData]);
+    if (!error) {
+      setLeaves(prev => [newLeave, ...prev]);
+      addNotification(`Leave request submitted for ${form.employeeName}`);
+      setShowAdd(false);
+      setForm({ employeeName: '', department: 'Operations', leaveType: 'Annual', startDate: '', endDate: '', reason: '' });
+    } else {
+      alert(error.message || 'Failed to submit leave request');
+    }
+  };
+
+  const handleEditClick = (leave: LeaveRequest) => {
+    setEditForm(leave);
+    setShowEdit(true);
+  };
+
+  const handleEditSave = async () => {
+    if (!editForm) return;
+    const days = calcDays(editForm.startDate, editForm.endDate);
+    const updated = { ...editForm, days };
+    const dbData = mapToDB(updated);
+    const { error } = await supabase.from('leave_requests').update(dbData).eq('id', editForm.id);
+    if (!error) {
+      setLeaves(prev => prev.map(l => l.id === editForm.id ? updated : l));
+      addNotification(`Leave request updated for ${editForm.employeeName}`);
+      setShowEdit(false);
+      setEditForm(null);
+    } else {
+      alert(error.message || 'Failed to update leave request');
+    }
+  };
+
+  const handleDeleteClick = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this leave request?')) return;
+    const { error } = await supabase.from('leave_requests').delete().eq('id', id);
+    if (!error) {
+      setLeaves(prev => prev.filter(l => l.id !== id));
+      addNotification('Leave request deleted');
+    } else {
+      alert(error.message || 'Failed to delete leave request');
+    }
   };
 
   const totalPending = leaves.filter(l => l.status === 'Pending').length;
@@ -292,6 +358,18 @@ export default function LeaveManagementView({ currentUser, addNotification }: Pr
                     </button>
                   </div>
                 )}
+                <div style={{ display: 'flex', gap: '0.35rem', flexShrink: 0, marginLeft: '0.5rem' }}>
+                  <button onClick={() => handleEditClick(leave)}
+                    style={{ padding: '0.4rem', background: 'transparent', border: '1px solid var(--border)', borderRadius: 8, cursor: 'pointer', color: 'var(--text-secondary)' }}
+                    title="Edit Request">
+                    <Edit size={14} />
+                  </button>
+                  <button onClick={() => handleDeleteClick(leave.id)}
+                    style={{ padding: '0.4rem', background: 'transparent', border: '1px solid var(--border)', borderRadius: 8, cursor: 'pointer', color: '#ef4444' }}
+                    title="Delete Request">
+                    <Trash2 size={14} />
+                  </button>
+                </div>
               </div>
               {rejectId === leave.id && (
                 <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid var(--border)' }}>
@@ -412,6 +490,73 @@ export default function LeaveManagementView({ currentUser, addNotification }: Pr
             <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.25rem', justifyContent: 'flex-end' }}>
               <button onClick={() => setShowAdd(false)} style={{ padding: '0.5rem 1.25rem', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer' }}>Cancel</button>
               <button onClick={handleAdd} style={{ padding: '0.5rem 1.25rem', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#fff', cursor: 'pointer', fontWeight: 600 }}>Submit</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showEdit && editForm && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+          <div style={{ background: 'var(--bg-card)', borderRadius: 12, padding: '1.5rem', width: '100%', maxWidth: 480, border: '1px solid var(--border)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+              <h3 style={{ margin: 0, color: 'var(--text-primary)', fontWeight: 600 }}>Edit Leave Request</h3>
+              <button onClick={() => { setShowEdit(false); setEditForm(null); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={20} /></button>
+            </div>
+            <div style={{ display: 'grid', gap: '0.75rem' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Employee Name</label>
+                <input value={editForm.employeeName} onChange={e => setEditForm(p => p ? ({ ...p, employeeName: e.target.value }) : null)}
+                  style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.75rem', color: 'var(--text-primary)', fontSize: 14, boxSizing: 'border-box' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Department</label>
+                <select value={editForm.department} onChange={e => setEditForm(p => p ? ({ ...p, department: e.target.value }) : null)}
+                  style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.75rem', color: 'var(--text-primary)', fontSize: 14 }}>
+                  {DEPARTMENTS.filter(d => d !== 'All').map(d => <option key={d}>{d}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Leave Type</label>
+                <select value={editForm.leaveType} onChange={e => setEditForm(p => p ? ({ ...p, leaveType: e.target.value as LeaveRequest['leaveType'] }) : null)}
+                  style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.75rem', color: 'var(--text-primary)', fontSize: 14 }}>
+                  {['Annual', 'Sick', 'Personal', 'Emergency'].map(t => <option key={t}>{t}</option>)}
+                </select>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Start Date</label>
+                  <input type="date" value={editForm.startDate} onChange={e => setEditForm(p => p ? ({ ...p, startDate: e.target.value }) : null)}
+                    style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.75rem', color: 'var(--text-primary)', fontSize: 14, boxSizing: 'border-box' }} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>End Date</label>
+                  <input type="date" value={editForm.endDate} onChange={e => setEditForm(p => p ? ({ ...p, endDate: e.target.value }) : null)}
+                    style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.75rem', color: 'var(--text-primary)', fontSize: 14, boxSizing: 'border-box' }} />
+                </div>
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Reason</label>
+                <textarea value={editForm.reason} onChange={e => setEditForm(p => p ? ({ ...p, reason: e.target.value }) : null)} rows={3}
+                  style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.75rem', color: 'var(--text-primary)', fontSize: 14, resize: 'vertical', boxSizing: 'border-box' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Status</label>
+                <select value={editForm.status} onChange={e => setEditForm(p => p ? ({ ...p, status: e.target.value as LeaveRequest['status'] }) : null)}
+                  style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.75rem', color: 'var(--text-primary)', fontSize: 14 }}>
+                  {['Pending', 'Approved', 'Rejected'].map(s => <option key={s}>{s}</option>)}
+                </select>
+              </div>
+              {editForm.status === 'Rejected' && (
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Rejection Reason</label>
+                  <textarea value={editForm.rejectionReason || ''} onChange={e => setEditForm(p => p ? ({ ...p, rejectionReason: e.target.value }) : null)} rows={2}
+                    style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.75rem', color: 'var(--text-primary)', fontSize: 14, resize: 'vertical', boxSizing: 'border-box' }} />
+                </div>
+              )}
+            </div>
+            <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.25rem', justifyContent: 'flex-end' }}>
+              <button onClick={() => { setShowEdit(false); setEditForm(null); }} style={{ padding: '0.5rem 1.25rem', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer' }}>Cancel</button>
+              <button onClick={handleEditSave} style={{ padding: '0.5rem 1.25rem', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#fff', cursor: 'pointer', fontWeight: 600 }}>Save Changes</button>
             </div>
           </div>
         </div>

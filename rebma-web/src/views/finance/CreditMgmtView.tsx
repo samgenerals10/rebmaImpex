@@ -82,6 +82,9 @@ export default function FinanceCreditMgmtView({ addNotification, currentUser }: 
   const [payModal, setPayModal] = useState<CreditEntry | null>(null);
   const [payAmount, setPayAmount] = useState('');
   const [payDate, setPayDate] = useState(new Date().toISOString().slice(0, 10));
+  const [editItem, setEditItem] = useState<CreditEntry | null>(null);
+  const [showEditForm, setShowEditForm] = useState(false);
+  const [editForm, setEditForm] = useState({ clientName: '', totalAmount: '', amountPaid: '', dueDate: '', phone: '' });
 
   const filtered = items.filter(i => {
     const matchSearch = !search || i.customerName.toLowerCase().includes(search.toLowerCase()) || i.orderRef.toLowerCase().includes(search.toLowerCase());
@@ -104,6 +107,82 @@ export default function FinanceCreditMgmtView({ addNotification, currentUser }: 
     supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Payment reminder sent to ${reminderModal.customerName} via ${reminderType} for order ${reminderModal.orderRef}`, performed_by: currentUser?.fullName || 'Finance', created_at: new Date().toISOString() }]).then(() => {}, () => {});
     addNotification?.(`Reminder sent to ${reminderModal.customerName} via ${reminderType}`);
     setReminderModal(null);
+  }
+
+  function openEditForm(item: CreditEntry) {
+    setEditItem(item);
+    setEditForm({
+      clientName: item.customerName,
+      totalAmount: String(item.creditAmount),
+      amountPaid: String(item.amountPaid),
+      dueDate: item.dueDate,
+      phone: item.phone || ''
+    });
+    setShowEditForm(true);
+    setMenuOpen(null);
+  }
+
+  async function updateCredit() {
+    if (!editItem || !editForm.clientName || !editForm.totalAmount) return;
+    try {
+      const totalAmt = parseFloat(editForm.totalAmount) || 0;
+      const amtPaid = parseFloat(editForm.amountPaid) || 0;
+      const outstanding = totalAmt - amtPaid;
+      const { error } = await supabase.from('orders')
+        .update({
+          client_name: editForm.clientName,
+          total_amount: totalAmt,
+          amount_paid: amtPaid,
+          due_date: editForm.dueDate || null,
+          phone: editForm.phone || null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', editItem.id);
+      if (error) throw error;
+
+      setItems(prev => prev.map(i => {
+        if (i.id !== editItem.id) return i;
+        const today = new Date();
+        const due = new Date(editForm.dueDate || today);
+        const diffDays = Math.floor((today.getTime() - due.getTime()) / 86400000);
+        let status: CreditEntry['status'] = 'Current';
+        if (amtPaid >= totalAmt) status = 'Paid';
+        else if (diffDays > 0) status = 'Overdue';
+        else if (diffDays > -7) status = 'Due Soon';
+
+        return {
+          ...i,
+          customerName: editForm.clientName,
+          creditAmount: totalAmt,
+          amountPaid: amtPaid,
+          outstanding,
+          dueDate: editForm.dueDate,
+          daysOverdue: diffDays > 0 ? diffDays : 0,
+          status,
+          phone: editForm.phone
+        };
+      }));
+      addNotification?.('Credit order updated successfully.');
+      supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Credit order ${editItem.id} updated`, performed_by: currentUser?.fullName || 'Finance', created_at: new Date().toISOString() }]).then(() => {}, () => {});
+    } catch (err: any) {
+      alert(err.message || 'Failed to update credit order.');
+    }
+    setShowEditForm(false);
+    setEditItem(null);
+  }
+
+  async function deleteCredit(id: string) {
+    if (!window.confirm('Are you sure you want to delete this credit order record?')) return;
+    try {
+      const { error } = await supabase.from('orders').delete().eq('id', id);
+      if (error) throw error;
+      setItems(prev => prev.filter(i => i.id !== id));
+      addNotification?.('Credit order deleted successfully.');
+      supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Credit order ${id} deleted`, performed_by: currentUser?.fullName || 'Finance', created_at: new Date().toISOString() }]).then(() => {}, () => {});
+    } catch (err: any) {
+      alert(err.message || 'Failed to delete credit order.');
+    }
+    setMenuOpen(null);
   }
 
   function recordPayment() {
@@ -243,11 +322,13 @@ export default function FinanceCreditMgmtView({ addNotification, currentUser }: 
                       <div className="relative">
                         <button onClick={() => setMenuOpen(menuOpen === item.id ? null : item.id)} className="p-1.5 rounded-lg hover:bg-[var(--bg-input)]"><MoreVertical size={14} className="text-[var(--text-muted)]" /></button>
                         {menuOpen === item.id && (
-                          <div className="absolute right-0 top-8 z-20 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-lg py-1 min-w-[160px]" onClick={() => setMenuOpen(null)}>
-                            <button onClick={() => setSelected(item)} className="w-full text-left px-3 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-input)]">View Details</button>
-                            {item.outstanding > 0 && <button onClick={() => setPayModal(item)} className="w-full text-left px-3 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-input)]">Record Payment</button>}
-                            <button onClick={() => openReminder(item)} className="w-full text-left px-3 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-input)]">Send Reminder</button>
-                            <button onClick={() => window.print()} className="w-full text-left px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-input)]">Export PDF</button>
+                          <div className="absolute right-0 top-8 z-20 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-lg py-1 min-w-[160px]">
+                            <button onClick={(e) => { e.stopPropagation(); setSelected(item); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-input)] font-medium">View Details</button>
+                            {item.outstanding > 0 && <button onClick={(e) => { e.stopPropagation(); setPayModal(item); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-input)]">Record Payment</button>}
+                            <button onClick={(e) => { e.stopPropagation(); openReminder(item); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-input)]">Send Reminder</button>
+                            <button onClick={(e) => { e.stopPropagation(); openEditForm(item); }} className="w-full text-left px-3 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-input)]">Edit Credit Order</button>
+                            <button onClick={(e) => { e.stopPropagation(); deleteCredit(item.id); }} className="w-full text-left px-3 py-2 text-sm text-rose-600 hover:bg-[var(--bg-input)]">Delete Credit</button>
+                            <button onClick={(e) => { e.stopPropagation(); window.print(); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-input)]">Export PDF</button>
                           </div>
                         )}
                       </div>
@@ -293,6 +374,29 @@ export default function FinanceCreditMgmtView({ addNotification, currentUser }: 
             <div className="flex items-center gap-3 justify-end mt-4">
               <button onClick={() => setPayModal(null)} className="px-4 py-2 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--text-secondary)]">Cancel</button>
               <button onClick={recordPayment} className="px-4 py-2 rounded-xl text-white text-sm font-medium hover:opacity-90" style={{ background: 'var(--accent)' }}>Save Payment</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {showEditForm && editItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setShowEditForm(false)}>
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div className="relative bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-6 w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
+            <h3 className="text-base font-semibold text-[var(--text-primary)] mb-5">Edit Credit Order</h3>
+            <div className="space-y-4">
+              <div><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Customer Name</label><input value={editForm.clientName} onChange={e => setEditForm(f => ({ ...f, clientName: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm focus:outline-none focus:border-[var(--accent)]" /></div>
+              <div className="grid grid-cols-2 gap-3">
+                <div><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Total Amount (GHS)</label><input type="number" value={editForm.totalAmount} onChange={e => setEditForm(f => ({ ...f, totalAmount: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm focus:outline-none focus:border-[var(--accent)]" /></div>
+                <div><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Amount Paid (GHS)</label><input type="number" value={editForm.amountPaid} onChange={e => setEditForm(f => ({ ...f, amountPaid: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm focus:outline-none focus:border-[var(--accent)]" /></div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Due Date</label><input type="date" value={editForm.dueDate} onChange={e => setEditForm(f => ({ ...f, dueDate: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm focus:outline-none focus:border-[var(--accent)]" /></div>
+                <div><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Phone Number</label><input value={editForm.phone} onChange={e => setEditForm(f => ({ ...f, phone: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm focus:outline-none focus:border-[var(--accent)]" /></div>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 justify-end mt-5">
+              <button onClick={() => setShowEditForm(false)} className="px-4 py-2 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--text-secondary)]">Cancel</button>
+              <button onClick={updateCredit} className="px-4 py-2 rounded-xl text-white text-sm font-medium hover:opacity-90" style={{ background: 'var(--accent)' }}>Save Changes</button>
             </div>
           </div>
         </div>

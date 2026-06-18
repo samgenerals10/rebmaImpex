@@ -31,6 +31,9 @@ export default function FinanceMobileMoneyView({ addNotification, currentUser }:
   const [networkFilter, setNetworkFilter] = useState('All');
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const [viewing, setViewing] = useState<MomoTxn | null>(null);
+  const [editTxn, setEditTxn] = useState<MomoTxn | null>(null);
+  const [showEditForm, setShowEditForm] = useState(false);
+  const [editForm, setEditForm] = useState({ transactionId: '', network: 'MTN' as MomoTxn['network'], customerName: '', momoNumber: '', amount: '', date: '' });
 
   useEffect(() => {
     const load = async () => {
@@ -77,6 +80,59 @@ export default function FinanceMobileMoneyView({ addNotification, currentUser }:
     await supabase.from('finance_payments').update({ status: 'Verified' }).eq('id', id);
     supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `MoMo transaction ${id} verified — ${txn?.transactionId}`, performed_by: currentUser?.fullName || 'Finance', created_at: new Date().toISOString() }]).then(() => {}, () => {});
     addNotification?.(`MoMo transaction verified: ${txn?.transactionId}`);
+    setMenuOpen(null);
+  }
+
+  function openEditForm(t: MomoTxn) {
+    setEditTxn(t);
+    setEditForm({
+      transactionId: t.transactionId,
+      network: t.network,
+      customerName: t.customerName,
+      momoNumber: t.momoNumber,
+      amount: String(t.amount),
+      date: t.date
+    });
+    setShowEditForm(true);
+    setMenuOpen(null);
+  }
+
+  async function updateTxn() {
+    if (!editTxn || !editForm.transactionId || !editForm.customerName || !editForm.amount) return;
+    try {
+      const updatedAmount = parseFloat(editForm.amount) || 0;
+      const { error } = await supabase.from('finance_payments')
+        .update({
+          transaction_id: editForm.transactionId,
+          network: editForm.network,
+          client_name: editForm.customerName,
+          momo_number: editForm.momoNumber,
+          amount: updatedAmount,
+          created_at: editForm.date ? new Date(editForm.date).toISOString() : undefined
+        })
+        .eq('id', editTxn.id);
+      if (error) throw error;
+      setTxns(prev => prev.map(t => t.id === editTxn.id ? { ...t, transactionId: editForm.transactionId, network: editForm.network, customerName: editForm.customerName, momoNumber: editForm.momoNumber, amount: updatedAmount, date: editForm.date } : t));
+      addNotification?.('MoMo transaction updated successfully.');
+      supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `MoMo transaction ${editTxn.id} updated`, performed_by: currentUser?.fullName || 'Finance', created_at: new Date().toISOString() }]).then(() => {}, () => {});
+    } catch (err: any) {
+      alert(err.message || 'Failed to update transaction.');
+    }
+    setShowEditForm(false);
+    setEditTxn(null);
+  }
+
+  async function deleteTxn(id: string) {
+    if (!window.confirm('Are you sure you want to delete this transaction record?')) return;
+    try {
+      const { error } = await supabase.from('finance_payments').delete().eq('id', id);
+      if (error) throw error;
+      setTxns(prev => prev.filter(t => t.id !== id));
+      addNotification?.('Transaction record deleted successfully.');
+      supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `MoMo transaction ${id} deleted`, performed_by: currentUser?.fullName || 'Finance', created_at: new Date().toISOString() }]).then(() => {}, () => {});
+    } catch (err: any) {
+      alert(err.message || 'Failed to delete transaction.');
+    }
     setMenuOpen(null);
   }
 
@@ -157,9 +213,11 @@ export default function FinanceMobileMoneyView({ addNotification, currentUser }:
                       <div className="relative">
                         <button onClick={() => setMenuOpen(menuOpen === t.id ? null : t.id)} className="p-1.5 rounded-lg hover:bg-[var(--bg-input)]"><MoreVertical size={14} className="text-[var(--text-muted)]" /></button>
                         {menuOpen === t.id && (
-                          <div className="absolute right-0 top-8 z-20 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-lg py-1 min-w-[140px]">
+                          <div className="absolute right-0 top-8 z-20 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-lg py-1 min-w-[150px]">
                             <button onClick={() => { setViewing(t); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-input)]">View Details</button>
                             {t.status === 'Pending' && <button onClick={() => verify(t.id)} className="w-full text-left px-3 py-2 text-sm text-green-600 hover:bg-[var(--bg-input)]">Verify</button>}
+                            <button onClick={() => openEditForm(t)} className="w-full text-left px-3 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-input)]">Edit Txn</button>
+                            <button onClick={() => deleteTxn(t.id)} className="w-full text-left px-3 py-2 text-sm text-rose-600 hover:bg-[var(--bg-input)]">Delete Txn</button>
                             <button onClick={() => { window.print(); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-input)]">Export Receipt</button>
                           </div>
                         )}
@@ -198,6 +256,30 @@ export default function FinanceMobileMoneyView({ addNotification, currentUser }:
             <div className="flex items-center gap-3 justify-end mt-5">
               {viewing.status === 'Pending' && <button onClick={() => { verify(viewing.id); setViewing(null); }} className="px-4 py-2 rounded-xl bg-green-500 text-white text-sm font-medium">Verify</button>}
               <button onClick={() => setViewing(null)} className="px-4 py-2 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--text-secondary)]">Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {showEditForm && editTxn && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setShowEditForm(false)}>
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div className="relative bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-6 w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
+            <h3 className="text-base font-semibold text-[var(--text-primary)] mb-5">Edit MoMo Transaction</h3>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Transaction ID</label><input value={editForm.transactionId} onChange={e => setEditForm(f => ({ ...f, transactionId: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm focus:outline-none focus:border-[var(--accent)]" /></div>
+                <div><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Network</label><select value={editForm.network} onChange={e => setEditForm(f => ({ ...f, network: e.target.value as any }))} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm focus:outline-none focus:border-[var(--accent)]">{['MTN', 'Vodafone', 'AirtelTigo'].map(n => <option key={n}>{n}</option>)}</select></div>
+              </div>
+              <div><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Customer Name</label><input value={editForm.customerName} onChange={e => setEditForm(f => ({ ...f, customerName: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm focus:outline-none focus:border-[var(--accent)]" /></div>
+              <div className="grid grid-cols-2 gap-3">
+                <div><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">MoMo Number</label><input value={editForm.momoNumber} onChange={e => setEditForm(f => ({ ...f, momoNumber: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm focus:outline-none focus:border-[var(--accent)]" /></div>
+                <div><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Amount (GHS)</label><input type="number" value={editForm.amount} onChange={e => setEditForm(f => ({ ...f, amount: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm focus:outline-none focus:border-[var(--accent)]" /></div>
+              </div>
+              <div><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Date</label><input type="date" value={editForm.date} onChange={e => setEditForm(f => ({ ...f, date: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm focus:outline-none focus:border-[var(--accent)]" /></div>
+            </div>
+            <div className="flex items-center gap-3 justify-end mt-5">
+              <button onClick={() => setShowEditForm(false)} className="px-4 py-2 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--text-secondary)]">Cancel</button>
+              <button onClick={updateTxn} className="px-4 py-2 rounded-xl text-white text-sm font-medium hover:opacity-90" style={{ background: 'var(--accent)' }}>Save Changes</button>
             </div>
           </div>
         </div>

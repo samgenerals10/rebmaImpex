@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, X, Fuel } from 'lucide-react';
+import { Plus, X, Fuel, Edit, Trash2 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { supabase } from '../../lib/supabaseClient';
 
@@ -13,7 +13,6 @@ interface FuelLog {
   station: string;
   odometer: number;
 }
-
 
 const CHART_DATA = [
   { vehicle: 'GR-1234', Jan: 720, Feb: 810, Mar: 680, Apr: 750, May: 855, Jun: 855 },
@@ -30,27 +29,57 @@ interface Props {
   addNotification: (msg: string) => void;
 }
 
+const mapToUI = (db: any): FuelLog => ({
+  id: db.id,
+  date: db.date || '',
+  vehicleId: db.vehicle_id || db.vehicleId || '',
+  driver: db.driver || '',
+  liters: Number(db.liters || 0),
+  cost: Number(db.cost || 0),
+  station: db.station || '',
+  odometer: Number(db.odometer || 0),
+});
+
+const mapToDB = (ui: Partial<FuelLog>) => {
+  const db: any = {};
+  if (ui.id !== undefined) db.id = ui.id;
+  if (ui.date !== undefined) db.date = ui.date;
+  if (ui.vehicleId !== undefined) db.vehicle_id = ui.vehicleId;
+  if (ui.driver !== undefined) db.driver = ui.driver;
+  if (ui.liters !== undefined) db.liters = Number(ui.liters);
+  if (ui.cost !== undefined) db.cost = Number(ui.cost);
+  if (ui.station !== undefined) db.station = ui.station;
+  if (ui.odometer !== undefined) db.odometer = Number(ui.odometer);
+  return db;
+};
+
 export default function FuelManagementView({ addNotification }: Props) {
   const [logs, setLogs] = useState<FuelLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editForm, setEditForm] = useState<FuelLog | null>(null);
   const [filterVehicle, setFilterVehicle] = useState('All');
   const [filterDriver, setFilterDriver] = useState('');
   const [form, setForm] = useState({ vehicleId: 'GR-1234-22', driver: '', liters: '', cost: '', station: '', odometer: '', date: new Date().toISOString().split('T')[0] });
 
-  useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      try {
-        const { data, error } = await supabase.from('fuel_logs').select('*').order('date', { ascending: false });
-        if (!error && data) setLogs(data);
-        else setLogs([]);
-      } catch {
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.from('fuel_logs').select('*').order('date', { ascending: false });
+      if (!error && data) {
+        setLogs(data.map(mapToUI));
+      } else {
         setLogs([]);
       }
-      setLoading(false);
-    };
-    load();
+    } catch {
+      setLogs([]);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    loadData();
   }, []);
 
   const filtered = logs.filter(l => {
@@ -69,13 +98,77 @@ export default function FuelManagementView({ addNotification }: Props) {
   const avgCost = VEHICLES.length ? Math.round(totalCost / VEHICLES.length) : 0;
 
   const handleSubmit = async () => {
-    if (!form.vehicleId || !form.liters || !form.cost) return;
-    const newLog: FuelLog = { id: String(Date.now()), date: form.date, vehicleId: form.vehicleId, driver: form.driver, liters: Number(form.liters), cost: Number(form.cost), station: form.station, odometer: Number(form.odometer) };
-    try { await supabase.from('fuel_logs').insert([newLog]); } catch {}
-    setLogs(prev => [newLog, ...prev]);
-    addNotification(`Fuel entry logged for ${form.vehicleId}`);
-    setShowModal(false);
-    setForm({ vehicleId: 'GR-1234-22', driver: '', liters: '', cost: '', station: '', odometer: '', date: new Date().toISOString().split('T')[0] });
+    if (!form.vehicleId || !form.liters || !form.cost) {
+      alert('Vehicle ID, Liters, and Cost are required.');
+      return;
+    }
+    const newDbRow = mapToDB({
+      date: form.date,
+      vehicleId: form.vehicleId,
+      driver: form.driver,
+      liters: Number(form.liters),
+      cost: Number(form.cost),
+      station: form.station,
+      odometer: Number(form.odometer || 0)
+    });
+
+    try {
+      const { data, error } = await supabase.from('fuel_logs').insert([newDbRow]).select();
+      if (!error && data) {
+        addNotification(`Fuel entry logged for ${form.vehicleId}`);
+        loadData();
+        setShowModal(false);
+        setForm({ vehicleId: 'GR-1234-22', driver: '', liters: '', cost: '', station: '', odometer: '', date: new Date().toISOString().split('T')[0] });
+      } else {
+        alert(error?.message || 'Failed to log fuel entry.');
+      }
+    } catch (e: any) {
+      alert(e.message || 'Failed to log fuel entry.');
+    }
+  };
+
+  const handleEditSave = async () => {
+    if (!editForm || !editForm.vehicleId || !editForm.liters || !editForm.cost) {
+      alert('Vehicle ID, Liters, and Cost are required.');
+      return;
+    }
+    const updatedDbRow = mapToDB(editForm);
+    delete updatedDbRow.id; // Avoid overriding primary key in update
+
+    try {
+      const { error } = await supabase.from('fuel_logs')
+        .update({
+          ...updatedDbRow,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', editForm.id);
+
+      if (!error) {
+        addNotification(`Fuel log updated for ${editForm.vehicleId}`);
+        loadData();
+        setShowEditModal(false);
+        setEditForm(null);
+      } else {
+        alert(error.message);
+      }
+    } catch (e: any) {
+      alert(e.message || 'Failed to update fuel log.');
+    }
+  };
+
+  const handleDelete = async (log: FuelLog) => {
+    if (!window.confirm(`Are you sure you want to delete the fuel log for ${log.vehicleId} on ${log.date}?`)) return;
+    try {
+      const { error } = await supabase.from('fuel_logs').delete().eq('id', log.id);
+      if (!error) {
+        addNotification(`Deleted fuel log for ${log.vehicleId}`);
+        loadData();
+      } else {
+        alert(error.message);
+      }
+    } catch (e: any) {
+      alert(e.message || 'Failed to delete fuel log.');
+    }
   };
 
   const inputStyle: React.CSSProperties = { background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'var(--text-primary)', fontSize: 14, width: '100%', boxSizing: 'border-box' };
@@ -137,7 +230,7 @@ export default function FuelManagementView({ addNotification }: Props) {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                {['Date', 'Vehicle ID', 'Driver', 'Liters', 'Cost (GHS)', 'Fuel Station', 'Odometer (km)'].map(h => (
+                {['Date', 'Vehicle ID', 'Driver', 'Liters', 'Cost (GHS)', 'Fuel Station', 'Odometer (km)', 'Actions'].map(h => (
                   <th key={h} style={{ textAlign: 'left', padding: '10px 12px', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
@@ -152,6 +245,16 @@ export default function FuelManagementView({ addNotification }: Props) {
                   <td style={{ padding: '12px', color: 'var(--accent)', fontSize: 13, fontWeight: 600 }}>GHS {l.cost.toLocaleString()}</td>
                   <td style={{ padding: '12px', color: 'var(--text-secondary)', fontSize: 13 }}>{l.station}</td>
                   <td style={{ padding: '12px', color: 'var(--text-muted)', fontSize: 13 }}>{l.odometer.toLocaleString()}</td>
+                  <td style={{ padding: '12px' }}>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button onClick={() => { setEditForm({ ...l }); setShowEditModal(true); }} style={{ background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 8, padding: '4px 8px', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 12 }} title="Edit">
+                        <Edit size={12} />
+                      </button>
+                      <button onClick={() => handleDelete(l)} style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 8, padding: '4px 8px', color: '#dc2626', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 12 }} title="Delete">
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -197,6 +300,42 @@ export default function FuelManagementView({ addNotification }: Props) {
             <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
               <button onClick={() => setShowModal(false)} style={{ flex: 1, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 12, padding: 12, color: 'var(--text-secondary)', cursor: 'pointer', fontWeight: 600 }}>Cancel</button>
               <button onClick={handleSubmit} style={{ flex: 2, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 12, padding: 12, fontWeight: 700, cursor: 'pointer', fontSize: 15 }}>Log Entry</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showEditModal && editForm && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}>
+          <div style={{ background: 'var(--bg-card)', borderRadius: 20, padding: 28, width: '100%', maxWidth: 520, border: '1px solid var(--border)', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Edit Fuel Entry</h2>
+              <button onClick={() => { setShowEditModal(false); setEditForm(null); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={20} /></button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {([
+                { label: 'Date', key: 'date', type: 'date' },
+                { label: 'Driver', key: 'driver', type: 'text', placeholder: 'Driver name' },
+                { label: 'Liters', key: 'liters', type: 'number', placeholder: '0' },
+                { label: 'Cost (GHS)', key: 'cost', type: 'number', placeholder: '0' },
+                { label: 'Fuel Station', key: 'station', type: 'text', placeholder: 'Station name' },
+                { label: 'Odometer Reading (km)', key: 'odometer', type: 'number', placeholder: '0' },
+              ] as Array<{ label: string; key: keyof typeof form; type: string; placeholder?: string }>).map(field => (
+                <div key={field.key}>
+                  <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>{field.label}</label>
+                  <input type={field.type} value={editForm[field.key]} onChange={e => setEditForm(f => f ? ({ ...f, [field.key]: e.target.value }) : null)} placeholder={field.placeholder} style={inputStyle} />
+                </div>
+              ))}
+              <div>
+                <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Vehicle ID</label>
+                <select value={editForm.vehicleId} onChange={e => setEditForm(f => f ? ({ ...f, vehicleId: e.target.value }) : null)} style={inputStyle}>
+                  {VEHICLES.map(v => <option key={v} value={v}>{v}</option>)}
+                </select>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+              <button onClick={() => { setShowEditModal(false); setEditForm(null); }} style={{ flex: 1, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 12, padding: 12, color: 'var(--text-secondary)', cursor: 'pointer', fontWeight: 600 }}>Cancel</button>
+              <button onClick={handleEditSave} style={{ flex: 2, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 12, padding: 12, fontWeight: 700, cursor: 'pointer', fontSize: 15 }}>Save Changes</button>
             </div>
           </div>
         </div>

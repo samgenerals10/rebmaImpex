@@ -1,14 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Eye, Copy, X, ChevronRight, Package } from 'lucide-react';
+import { Plus, Search, Eye, Copy, X, ChevronRight, Package, Edit, Trash2 } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
-import type { ProductionRequest } from '../../types/erp';
-
 
 const STATUS_COLORS: Record<string, string> = {
   PENDING_MANAGEMENT: 'amber',
   APPROVED: 'blue',
   TICKETS_ISSUED: 'indigo',
   COMPLETED: 'emerald',
+  REJECTED: 'red',
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -16,6 +15,7 @@ const STATUS_LABELS: Record<string, string> = {
   APPROVED: 'Approved',
   TICKETS_ISSUED: 'Issued',
   COMPLETED: 'Completed',
+  REJECTED: 'Rejected',
 };
 
 const STEPS = ['PENDING_MANAGEMENT', 'APPROVED', 'TICKETS_ISSUED', 'COMPLETED'];
@@ -27,6 +27,7 @@ function StatusBadge({ status }: { status: string }) {
     blue: 'background:rgba(59,130,246,0.15);color:#2563eb',
     indigo: 'background:rgba(99,102,241,0.15);color:#4338ca',
     emerald: 'background:rgba(16,185,129,0.15);color:#059669',
+    red: 'background:rgba(239,68,68,0.15);color:#dc2626',
     gray: 'background:rgba(107,114,128,0.15);color:#6b7280',
   };
   return (
@@ -38,6 +39,9 @@ function StatusBadge({ status }: { status: string }) {
 
 function ProgressSteps({ status }: { status: string }) {
   const current = STEPS.indexOf(status);
+  if (status === 'REJECTED') {
+    return <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>Rejected</span>;
+  }
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
       {STEPS.map((step, i) => (
@@ -55,19 +59,30 @@ function ProgressSteps({ status }: { status: string }) {
 }
 
 interface Props {
-  productionRequests: ProductionRequest[];
+  productionRequests: any[];
   addNotification: (msg: string) => void;
 }
 
 export default function InternalOrdersView({ productionRequests, addNotification }: Props) {
-  const [orders, setOrders] = useState<ProductionRequest[]>([]);
+  const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
-  const [selectedOrder, setSelectedOrder] = useState<ProductionRequest | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
+  
   const [showNewModal, setShowNewModal] = useState(false);
-  const [newMaterials, setNewMaterials] = useState([{ materialName: '', quantity: 0 }]);
-  const [detailNotes, setDetailNotes] = useState('');
+  const [newForm, setNewForm] = useState({
+    productName: '',
+    quantity: 0,
+    unit: 'kg',
+    requiredByDate: '',
+    purpose: '',
+    priority: 'Medium',
+    notes: ''
+  });
+
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editForm, setEditForm] = useState<any | null>(null);
 
   const loadData = async () => {
     setLoading(true);
@@ -76,10 +91,18 @@ export default function InternalOrdersView({ productionRequests, addNotification
       if (!error && data) {
         const mapped = data.map((row: any) => ({
           id: row.id,
-          items: row.items || [{ materialName: row.product_name || 'Materials', quantity: Number(row.quantity || 0) }],
+          requestNumber: row.request_number,
+          productName: row.product_name,
+          quantity: row.quantity,
+          unit: row.unit,
+          requiredByDate: row.required_by_date,
+          purpose: row.purpose,
+          priority: row.priority,
           status: row.status,
+          notes: row.notes,
+          rejectionReason: row.rejection_reason,
           createdAt: row.created_at || row.createdAt,
-          producedGoods: row.product_name
+          items: [{ materialName: row.product_name || 'Materials', quantity: Number(row.quantity || 0) }]
         }));
         setOrders(mapped);
       } else {
@@ -97,8 +120,11 @@ export default function InternalOrdersView({ productionRequests, addNotification
 
   const filtered = orders.filter(o => {
     const matchStatus = statusFilter === 'All' || o.status === statusFilter;
-    const matchSearch = o.id.toLowerCase().includes(search.toLowerCase()) ||
-      o.items.some(i => i.materialName.toLowerCase().includes(search.toLowerCase()));
+    const matchSearch = 
+      (o.id && o.id.toLowerCase().includes(search.toLowerCase())) ||
+      (o.productName && o.productName.toLowerCase().includes(search.toLowerCase())) ||
+      (o.requestNumber && String(o.requestNumber).toLowerCase().includes(search.toLowerCase())) ||
+      (o.purpose && o.purpose.toLowerCase().includes(search.toLowerCase()));
     return matchStatus && matchSearch;
   });
 
@@ -109,18 +135,20 @@ export default function InternalOrdersView({ productionRequests, addNotification
     completed: orders.filter(o => o.status === 'COMPLETED').length,
   };
 
-  const handleDuplicate = async (order: ProductionRequest) => {
-    const firstMaterial = order.items[0] || { materialName: 'Duplicate Request', quantity: 1 };
+  const handleDuplicate = async (order: any) => {
     try {
       const { data, error } = await supabase.from('production_requests').insert([{
-        product_name: firstMaterial.materialName,
-        quantity: Number(firstMaterial.quantity),
-        unit: 'kg',
+        product_name: order.productName,
+        quantity: Number(order.quantity),
+        unit: order.unit,
+        required_by_date: order.requiredByDate || null,
+        purpose: order.purpose || null,
+        priority: order.priority || 'Medium',
         status: 'PENDING_MANAGEMENT',
-        notes: `Duplicated from order ${order.id}`
+        notes: `Duplicated from request ${order.requestNumber || order.id}`
       }]).select();
       if (!error && data) {
-        addNotification(`Duplicated order ${order.id}`);
+        addNotification(`Duplicated request ${order.requestNumber || order.id}`);
         loadData();
       }
     } catch (e) {
@@ -129,17 +157,21 @@ export default function InternalOrdersView({ productionRequests, addNotification
   };
 
   const handleSubmitNew = async () => {
-    const validMaterials = newMaterials.filter(m => m.materialName.trim());
-    if (!validMaterials.length) return;
-    const firstMaterial = validMaterials[0];
+    if (!newForm.productName.trim()) {
+      alert('Product Name is required.');
+      return;
+    }
     
     try {
       const { data, error } = await supabase.from('production_requests').insert([{
-        product_name: firstMaterial.materialName,
-        quantity: Number(firstMaterial.quantity),
-        unit: 'kg',
+        product_name: newForm.productName,
+        quantity: Number(newForm.quantity),
+        unit: newForm.unit,
+        required_by_date: newForm.requiredByDate || null,
+        purpose: newForm.purpose || null,
+        priority: newForm.priority,
         status: 'PENDING_MANAGEMENT',
-        notes: detailNotes || null
+        notes: newForm.notes || null
       }]).select();
       if (!error && data) {
         addNotification('New production request submitted');
@@ -151,8 +183,65 @@ export default function InternalOrdersView({ productionRequests, addNotification
       alert(e.message || 'Failed to submit production request.');
     }
     setShowNewModal(false);
-    setNewMaterials([{ materialName: '', quantity: 0 }]);
-    setDetailNotes('');
+    setNewForm({
+      productName: '',
+      quantity: 0,
+      unit: 'kg',
+      requiredByDate: '',
+      purpose: '',
+      priority: 'Medium',
+      notes: ''
+    });
+  };
+
+  const handleEditSave = async () => {
+    if (!editForm || !editForm.productName.trim()) {
+      alert('Product Name is required.');
+      return;
+    }
+
+    try {
+      const { error } = await supabase.from('production_requests')
+        .update({
+          product_name: editForm.productName,
+          quantity: Number(editForm.quantity),
+          unit: editForm.unit,
+          required_by_date: editForm.requiredByDate || null,
+          purpose: editForm.purpose || null,
+          priority: editForm.priority,
+          status: editForm.status,
+          notes: editForm.notes || null,
+          rejection_reason: editForm.status === 'REJECTED' ? editForm.rejectionReason : null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', editForm.id);
+
+      if (!error) {
+        addNotification(`Updated request ${editForm.requestNumber || editForm.id}`);
+        loadData();
+        setShowEditModal(false);
+        setEditForm(null);
+      } else {
+        alert(error.message);
+      }
+    } catch (e: any) {
+      alert(e.message || 'Failed to update request.');
+    }
+  };
+
+  const handleDelete = async (order: any) => {
+    if (!window.confirm(`Are you sure you want to delete production request ${order.requestNumber || order.id}?`)) return;
+    try {
+      const { error } = await supabase.from('production_requests').delete().eq('id', order.id);
+      if (!error) {
+        addNotification(`Deleted request ${order.requestNumber || order.id}`);
+        loadData();
+      } else {
+        alert(error.message);
+      }
+    } catch (e: any) {
+      alert(e.message || 'Failed to delete request.');
+    }
   };
 
   const summaryCards = [
@@ -194,6 +283,7 @@ export default function InternalOrdersView({ productionRequests, addNotification
           <option value="APPROVED">Approved</option>
           <option value="TICKETS_ISSUED">Tickets Issued</option>
           <option value="COMPLETED">Completed</option>
+          <option value="REJECTED">Rejected</option>
         </select>
       </div>
 
@@ -201,15 +291,14 @@ export default function InternalOrdersView({ productionRequests, addNotification
         {loading && Array.from({ length: 5 }).map((_, i) => <div key={i} className="animate-pulse h-10 bg-slate-200 dark:bg-slate-700 rounded mb-2" />)}
         {!loading && filtered.map(order => (
           <div key={order.id} style={{ background: 'var(--bg-card)', borderRadius: 16, padding: '18px 20px', border: '1px solid var(--border)', boxShadow: 'var(--box-shadow)', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap', cursor: 'pointer' }} onClick={() => setSelectedOrder(order)}>
-            <div style={{ width: 12, height: 12, borderRadius: '50%', background: { PENDING_MANAGEMENT: '#d97706', APPROVED: '#2563eb', TICKETS_ISSUED: '#4338ca', COMPLETED: '#059669' }[order.status] || '#888', flexShrink: 0 }} />
+            <div style={{ width: 12, height: 12, borderRadius: '50%', background: (STATUS_COLORS[order.status as keyof typeof STATUS_COLORS] ? { PENDING_MANAGEMENT: '#d97706', APPROVED: '#2563eb', TICKETS_ISSUED: '#4338ca', COMPLETED: '#059669', REJECTED: '#dc2626' }[order.status as keyof typeof STATUS_COLORS] : '#888') || '#888', flexShrink: 0 }} />
             <div style={{ minWidth: 90 }}>
-              <p style={{ fontWeight: 700, color: 'var(--text-primary)', margin: 0, fontSize: 14 }}>{order.id}</p>
+              <p style={{ fontWeight: 700, color: 'var(--text-primary)', margin: 0, fontSize: 14 }}>Req #{order.requestNumber || order.id.slice(0, 8)}</p>
               <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: 12 }}>{order.createdAt ? new Date(order.createdAt).toLocaleDateString() : '—'}</p>
             </div>
             <div style={{ flex: 1, minWidth: 200 }}>
-              <p style={{ color: 'var(--text-secondary)', margin: 0, fontSize: 13 }}>
-                {order.items.map(i => `${i.materialName} (${i.quantity})`).join(', ')}
-              </p>
+              <p style={{ color: 'var(--text-primary)', margin: 0, fontSize: 14, fontWeight: 600 }}>{order.productName}</p>
+              <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: 12 }}>Qty: {order.quantity} {order.unit} | Priority: {order.priority}</p>
             </div>
             <ProgressSteps status={order.status} />
             <StatusBadge status={order.status} />
@@ -217,8 +306,14 @@ export default function InternalOrdersView({ productionRequests, addNotification
               <button onClick={() => setSelectedOrder(order)} style={{ background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 12px', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 13 }}>
                 <Eye size={14} /> View
               </button>
-              <button onClick={() => handleDuplicate(order)} style={{ background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 12px', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 13 }}>
+              <button onClick={() => { setEditForm({ ...order }); setShowEditModal(true); }} style={{ background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 12px', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 13 }}>
+                <Edit size={14} /> Edit
+              </button>
+              <button onClick={() => handleDuplicate(order)} style={{ background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 12px', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 13 }} title="Duplicate">
                 <Copy size={14} />
+              </button>
+              <button onClick={() => handleDelete(order)} style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 8, padding: '6px 12px', color: '#dc2626', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 13 }} title="Delete">
+                <Trash2 size={14} />
               </button>
             </div>
           </div>
@@ -236,33 +331,37 @@ export default function InternalOrdersView({ productionRequests, addNotification
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}>
           <div style={{ background: 'var(--bg-card)', borderRadius: 20, padding: 28, width: '100%', maxWidth: 580, maxHeight: '90vh', overflowY: 'auto', border: '1px solid var(--border)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Order {selectedOrder.id}</h2>
+              <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Request Details</h2>
               <button onClick={() => setSelectedOrder(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={20} /></button>
             </div>
             <div style={{ display: 'flex', gap: 12, marginBottom: 16, alignItems: 'center', flexWrap: 'wrap' }}>
               <StatusBadge status={selectedOrder.status} />
               <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>Created: {selectedOrder.createdAt ? new Date(selectedOrder.createdAt).toLocaleString() : '—'}</span>
             </div>
-            <h3 style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: 14, marginBottom: 10 }}>Materials</h3>
-            <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 16 }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                  <th style={{ textAlign: 'left', padding: '8px 12px', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600 }}>Material</th>
-                  <th style={{ textAlign: 'right', padding: '8px 12px', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600 }}>Qty</th>
-                </tr>
-              </thead>
-              <tbody>
-                {selectedOrder.items.map((item, idx) => (
-                  <tr key={idx} style={{ borderBottom: '1px solid var(--border)' }}>
-                    <td style={{ padding: '10px 12px', color: 'var(--text-primary)', fontSize: 14 }}>{item.materialName}</td>
-                    <td style={{ padding: '10px 12px', color: 'var(--text-secondary)', fontSize: 14, textAlign: 'right' }}>{item.quantity}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {selectedOrder.producedGoods !== undefined && (
-              <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 16 }}>Produced Goods: <strong>{selectedOrder.producedGoods}</strong></p>
-            )}
+            
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
+              <div>
+                <p style={{ margin: '0 0 4px', fontSize: 12, color: 'var(--text-muted)' }}>Product Name</p>
+                <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>{selectedOrder.productName}</p>
+              </div>
+              <div>
+                <p style={{ margin: '0 0 4px', fontSize: 12, color: 'var(--text-muted)' }}>Quantity</p>
+                <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>{selectedOrder.quantity} {selectedOrder.unit}</p>
+              </div>
+              <div>
+                <p style={{ margin: '0 0 4px', fontSize: 12, color: 'var(--text-muted)' }}>Required By Date</p>
+                <p style={{ margin: 0, fontSize: 14, color: 'var(--text-primary)' }}>{selectedOrder.requiredByDate ? new Date(selectedOrder.requiredByDate).toLocaleDateString() : '—'}</p>
+              </div>
+              <div>
+                <p style={{ margin: '0 0 4px', fontSize: 12, color: 'var(--text-muted)' }}>Priority</p>
+                <p style={{ margin: 0, fontSize: 14, color: 'var(--text-primary)' }}>{selectedOrder.priority}</p>
+              </div>
+              <div style={{ gridColumn: 'span 2' }}>
+                <p style={{ margin: '0 0 4px', fontSize: 12, color: 'var(--text-muted)' }}>Purpose</p>
+                <p style={{ margin: 0, fontSize: 14, color: 'var(--text-primary)' }}>{selectedOrder.purpose || '—'}</p>
+              </div>
+            </div>
+
             <h3 style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: 14, marginBottom: 8 }}>Progress</h3>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
               {STEPS.map((step, i) => {
@@ -278,9 +377,20 @@ export default function InternalOrdersView({ productionRequests, addNotification
                 );
               })}
             </div>
+
+            {selectedOrder.rejectionReason && (
+              <div style={{ marginBottom: 16, padding: 12, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 12 }}>
+                <p style={{ margin: '0 0 4px', fontSize: 12, color: '#dc2626', fontWeight: 600 }}>Rejection Reason</p>
+                <p style={{ margin: 0, fontSize: 14, color: 'var(--text-primary)' }}>{selectedOrder.rejectionReason}</p>
+              </div>
+            )}
+
             <h3 style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: 14, marginBottom: 8 }}>Notes</h3>
-            <textarea value={detailNotes} onChange={e => setDetailNotes(e.target.value)} placeholder="Add notes..." rows={3} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 12, padding: '10px 14px', color: 'var(--text-primary)', fontSize: 14, resize: 'vertical', boxSizing: 'border-box' }} />
-            <button onClick={() => setSelectedOrder(null)} style={{ marginTop: 16, width: '100%', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 12, padding: '12px', fontWeight: 600, cursor: 'pointer', fontSize: 15 }}>Close</button>
+            <p style={{ background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 12, padding: '12px', color: 'var(--text-primary)', fontSize: 14, margin: 0, whiteSpace: 'pre-wrap' }}>
+              {selectedOrder.notes || 'No notes added.'}
+            </p>
+
+            <button onClick={() => setSelectedOrder(null)} style={{ marginTop: 20, width: '100%', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 12, padding: '12px', fontWeight: 600, cursor: 'pointer', fontSize: 15 }}>Close</button>
           </div>
         </div>
       )}
@@ -292,26 +402,130 @@ export default function InternalOrdersView({ productionRequests, addNotification
               <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>New Production Request</h2>
               <button onClick={() => setShowNewModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={20} /></button>
             </div>
-            <h3 style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: 14, marginBottom: 12 }}>Materials</h3>
-            {newMaterials.map((mat, idx) => (
-              <div key={idx} style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
-                <input value={mat.materialName} onChange={e => {
-                  const updated = [...newMaterials]; updated[idx].materialName = e.target.value; setNewMaterials(updated);
-                }} placeholder="Material name" style={{ flex: 2, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'var(--text-primary)', fontSize: 14 }} />
-                <input type="number" value={mat.quantity || ''} onChange={e => {
-                  const updated = [...newMaterials]; updated[idx].quantity = Number(e.target.value); setNewMaterials(updated);
-                }} placeholder="Qty" style={{ flex: 1, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'var(--text-primary)', fontSize: 14 }} />
-                {newMaterials.length > 1 && (
-                  <button onClick={() => setNewMaterials(prev => prev.filter((_, i) => i !== idx))} style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 10, padding: '0 10px', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={14} /></button>
-                )}
+            
+            <div style={{ display: 'grid', gap: '16px', marginBottom: '24px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Product Name</label>
+                <input value={newForm.productName} onChange={e => setNewForm(prev => ({ ...prev, productName: e.target.value }))} placeholder="e.g. Bread Flour" style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'var(--text-primary)', fontSize: 14, boxSizing: 'border-box' }} />
               </div>
-            ))}
-            <button onClick={() => setNewMaterials(prev => [...prev, { materialName: '', quantity: 0 }])} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '8px 14px', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 13, marginBottom: 20 }}>
-              <Plus size={14} /> Add Material
-            </button>
-            <div style={{ display: 'flex', gap: 10 }}>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Quantity</label>
+                  <input type="number" value={newForm.quantity || ''} onChange={e => setNewForm(prev => ({ ...prev, quantity: Number(e.target.value) }))} placeholder="Qty" style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'var(--text-primary)', fontSize: 14, boxSizing: 'border-box' }} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Unit</label>
+                  <input value={newForm.unit} onChange={e => setNewForm(prev => ({ ...prev, unit: e.target.value }))} placeholder="e.g. kg" style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'var(--text-primary)', fontSize: 14, boxSizing: 'border-box' }} />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Required By Date</label>
+                  <input type="date" value={newForm.requiredByDate} onChange={e => setNewForm(prev => ({ ...prev, requiredByDate: e.target.value }))} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'var(--text-primary)', fontSize: 14, boxSizing: 'border-box' }} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Priority</label>
+                  <select value={newForm.priority} onChange={e => setNewForm(prev => ({ ...prev, priority: e.target.value }))} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'var(--text-primary)', fontSize: 14, cursor: 'pointer', boxSizing: 'border-box' }}>
+                    <option value="Low">Low</option>
+                    <option value="Medium">Medium</option>
+                    <option value="High">High</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Purpose</label>
+                <input value={newForm.purpose} onChange={e => setNewForm(prev => ({ ...prev, purpose: e.target.value }))} placeholder="e.g. Order Fulfillment" style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'var(--text-primary)', fontSize: 14, boxSizing: 'border-box' }} />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Notes</label>
+                <textarea value={newForm.notes} onChange={e => setNewForm(prev => ({ ...prev, notes: e.target.value }))} placeholder="Additional requirements..." rows={3} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'var(--text-primary)', fontSize: 14, resize: 'vertical', boxSizing: 'border-box' }} />
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 12 }}>
               <button onClick={() => setShowNewModal(false)} style={{ flex: 1, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 12, padding: '12px', color: 'var(--text-secondary)', cursor: 'pointer', fontWeight: 600 }}>Cancel</button>
               <button onClick={handleSubmitNew} style={{ flex: 2, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 12, padding: '12px', fontWeight: 600, cursor: 'pointer', fontSize: 15 }}>Submit Request</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showEditModal && editForm && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}>
+          <div style={{ background: 'var(--bg-card)', borderRadius: 20, padding: 28, width: '100%', maxWidth: 520, border: '1px solid var(--border)', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Edit Production Request</h2>
+              <button onClick={() => { setShowEditModal(false); setEditForm(null); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={20} /></button>
+            </div>
+            
+            <div style={{ display: 'grid', gap: '16px', marginBottom: '24px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Product Name</label>
+                <input value={editForm.productName} onChange={e => setEditForm({ ...editForm, productName: e.target.value })} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'var(--text-primary)', fontSize: 14, boxSizing: 'border-box' }} />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Quantity</label>
+                  <input type="number" value={editForm.quantity || ''} onChange={e => setEditForm({ ...editForm, quantity: Number(e.target.value) })} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'var(--text-primary)', fontSize: 14, boxSizing: 'border-box' }} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Unit</label>
+                  <input value={editForm.unit} onChange={e => setEditForm({ ...editForm, unit: e.target.value })} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'var(--text-primary)', fontSize: 14, boxSizing: 'border-box' }} />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Required By Date</label>
+                  <input type="date" value={editForm.requiredByDate || ''} onChange={e => setEditForm({ ...editForm, requiredByDate: e.target.value })} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'var(--text-primary)', fontSize: 14, boxSizing: 'border-box' }} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Priority</label>
+                  <select value={editForm.priority} onChange={e => setEditForm({ ...editForm, priority: e.target.value })} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'var(--text-primary)', fontSize: 14, cursor: 'pointer', boxSizing: 'border-box' }}>
+                    <option value="Low">Low</option>
+                    <option value="Medium">Medium</option>
+                    <option value="High">High</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Purpose</label>
+                <input value={editForm.purpose || ''} onChange={e => setEditForm({ ...editForm, purpose: e.target.value })} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'var(--text-primary)', fontSize: 14, boxSizing: 'border-box' }} />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Status</label>
+                <select value={editForm.status} onChange={e => setEditForm({ ...editForm, status: e.target.value })} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'var(--text-primary)', fontSize: 14, cursor: 'pointer', boxSizing: 'border-box' }}>
+                  <option value="PENDING_MANAGEMENT">Pending</option>
+                  <option value="APPROVED">Approved</option>
+                  <option value="TICKETS_ISSUED">Tickets Issued</option>
+                  <option value="COMPLETED">Completed</option>
+                  <option value="REJECTED">Rejected</option>
+                </select>
+              </div>
+
+              {editForm.status === 'REJECTED' && (
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Rejection Reason</label>
+                  <textarea value={editForm.rejectionReason || ''} onChange={e => setEditForm({ ...editForm, rejectionReason: e.target.value })} rows={2} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'var(--text-primary)', fontSize: 14, resize: 'vertical', boxSizing: 'border-box' }} />
+                </div>
+              )}
+
+              <div>
+                <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Notes</label>
+                <textarea value={editForm.notes || ''} onChange={e => setEditForm({ ...editForm, notes: e.target.value })} rows={3} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'var(--text-primary)', fontSize: 14, resize: 'vertical', boxSizing: 'border-box' }} />
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button onClick={() => { setShowEditModal(false); setEditForm(null); }} style={{ flex: 1, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 12, padding: '12px', color: 'var(--text-secondary)', cursor: 'pointer', fontWeight: 600 }}>Cancel</button>
+              <button onClick={handleEditSave} style={{ flex: 2, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 12, padding: '12px', fontWeight: 600, cursor: 'pointer', fontSize: 15 }}>Save Changes</button>
             </div>
           </div>
         </div>

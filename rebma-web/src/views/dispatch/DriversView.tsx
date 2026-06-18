@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Search, Plus, ArrowLeft, X, Edit2, UserMinus, Truck } from 'lucide-react';
+import { Search, Plus, ArrowLeft, X, Edit2, UserMinus, Truck, Trash2, Edit } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import type { Driver, DeliveryRecord } from '../../types/erp';
-
 
 const statusColors: Record<Driver['status'], { bg: string; color: string; label: string }> = {
   ACTIVE:      { bg: '#d1fae5', color: '#065f46', label: 'Active' },
@@ -21,6 +20,32 @@ interface Props { addNotification: (msg: string) => void }
 
 const emptyForm = { fullName: '', phone: '', ghanaCard: '', licenseNumber: '', truckId: '' };
 
+const mapToUI = (db: any): Driver => ({
+  id: db.id,
+  driverId: db.driver_id || db.id || '',
+  fullName: db.full_name || db.fullName || '',
+  phone: db.phone || '',
+  ghanaCard: db.ghana_card_id || db.ghanaCard || '',
+  licenseNumber: db.license_number || db.licenseNumber || '',
+  truckId: db.vehicle_id || db.truckId || '',
+  status: db.status || 'OFFLINE',
+  totalDeliveries: Number(db.total_deliveries || 0),
+  joinedAt: db.created_at || db.joinedAt || '',
+});
+
+const mapToDB = (ui: Partial<Driver>) => {
+  const db: any = {};
+  if (ui.id !== undefined) db.id = ui.id;
+  if (ui.driverId !== undefined) db.driver_id = ui.driverId;
+  if (ui.fullName !== undefined) db.full_name = ui.fullName;
+  if (ui.phone !== undefined) db.phone = ui.phone;
+  if (ui.ghanaCard !== undefined) db.ghana_card_id = ui.ghanaCard;
+  if (ui.licenseNumber !== undefined) db.license_number = ui.licenseNumber;
+  if (ui.truckId !== undefined) db.vehicle_id = ui.truckId;
+  if (ui.status !== undefined) db.status = ui.status;
+  return db;
+};
+
 export default function DriversView({ addNotification }: Props) {
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [loading, setLoading] = useState(true);
@@ -31,16 +56,21 @@ export default function DriversView({ addNotification }: Props) {
   const [editDriver, setEditDriver] = useState<Driver | null>(null);
   const [form, setForm] = useState(emptyForm);
 
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.from('drivers').select('*').order('full_name');
+      if (!error && data) {
+        setDrivers(data.map(mapToUI));
+      } else {
+        setDrivers([]);
+      }
+    } catch { setDrivers([]); }
+    setLoading(false);
+  };
+
   useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      try {
-        const { data } = await supabase.from('drivers').select('*').order('fullName');
-        setDrivers(data ?? []);
-      } catch { setDrivers([]); }
-      setLoading(false);
-    };
-    load();
+    loadData();
   }, []);
 
   const total = drivers.length;
@@ -55,37 +85,105 @@ export default function DriversView({ addNotification }: Props) {
     return matchSearch && matchStatus;
   });
 
-  const openEdit = (d: Driver) => { setEditDriver(d); setForm({ fullName: d.fullName, phone: d.phone, ghanaCard: d.ghanaCard, licenseNumber: d.licenseNumber, truckId: d.truckId }); };
+  const openEdit = (d: Driver) => {
+    setEditDriver(d);
+    setForm({
+      fullName: d.fullName,
+      phone: d.phone,
+      ghanaCard: d.ghanaCard,
+      licenseNumber: d.licenseNumber,
+      truckId: d.truckId
+    });
+  };
 
   const saveDriver = async () => {
-    if (!form.fullName || !form.phone) return;
+    if (!form.fullName || !form.phone) {
+      alert('Full Name and Phone are required.');
+      return;
+    }
     if (editDriver) {
-      const updated = { ...editDriver, ...form };
-      setDrivers(prev => prev.map(d => d.id === editDriver.id ? updated : d));
-      if (profileDriver?.id === editDriver.id) setProfileDriver(updated);
-      try { await supabase.from('drivers').update(form).eq('id', editDriver.id); } catch {}
-      addNotification(`Driver ${form.fullName} updated.`);
-      setEditDriver(null);
+      const updatedDbRow = mapToDB(form);
+      try {
+        const { error } = await supabase.from('drivers').update(updatedDbRow).eq('id', editDriver.id);
+        if (!error) {
+          addNotification(`Driver ${form.fullName} updated.`);
+          loadData();
+          setEditDriver(null);
+          // If viewing profile of this driver, reload profile state too
+          if (profileDriver?.id === editDriver.id) {
+            setProfileDriver({ ...profileDriver, ...form });
+          }
+        } else {
+          alert(error.message);
+        }
+      } catch (e: any) {
+        alert(e.message || 'Failed to update driver.');
+      }
     } else {
-      const nd: Driver = { id: `DRV-${String(drivers.length + 1).padStart(3, '0')}`, ...form, status: 'ACTIVE', totalDeliveries: 0, joinedAt: new Date().toISOString().split('T')[0] };
-      setDrivers(prev => [nd, ...prev]);
-      try { await supabase.from('drivers').insert(nd); } catch {}
-      addNotification(`Driver ${form.fullName} added.`);
-      setShowAdd(false);
+      const generatedId = `DRV-${String(drivers.length + 1).padStart(3, '0')}`;
+      const newDbRow = mapToDB({
+        driverId: generatedId,
+        fullName: form.fullName,
+        phone: form.phone,
+        ghanaCard: form.ghanaCard,
+        licenseNumber: form.licenseNumber,
+        truckId: form.truckId,
+        status: 'ACTIVE'
+      });
+      try {
+        const { error } = await supabase.from('drivers').insert([newDbRow]);
+        if (!error) {
+          addNotification(`Driver ${form.fullName} added.`);
+          loadData();
+          setShowAdd(false);
+        } else {
+          alert(error.message);
+        }
+      } catch (e: any) {
+        alert(e.message || 'Failed to add driver.');
+      }
     }
     setForm(emptyForm);
   };
 
   const deactivate = async (id: string) => {
-    setDrivers(prev => prev.map(d => d.id === id ? { ...d, status: 'OFFLINE' } : d));
-    if (profileDriver?.id === id) setProfileDriver(p => p ? { ...p, status: 'OFFLINE' } : p);
-    try { await supabase.from('drivers').update({ status: 'OFFLINE' }).eq('id', id); } catch {}
-    addNotification(`Driver ${id} deactivated.`);
+    try {
+      const { error } = await supabase.from('drivers').update({ status: 'OFFLINE' }).eq('id', id);
+      if (!error) {
+        addNotification(`Driver deactivated.`);
+        loadData();
+        if (profileDriver?.id === id) {
+          setProfileDriver(p => p ? { ...p, status: 'OFFLINE' } : p);
+        }
+      } else {
+        alert(error.message);
+      }
+    } catch (e: any) {
+      alert(e.message || 'Failed to deactivate driver.');
+    }
+  };
+
+  const handleDelete = async (d: Driver) => {
+    if (!window.confirm(`Are you sure you want to delete driver ${d.fullName}?`)) return;
+    try {
+      const { error } = await supabase.from('drivers').delete().eq('id', d.id);
+      if (!error) {
+        addNotification(`Deleted driver ${d.fullName}`);
+        loadData();
+        if (profileDriver?.id === d.id) {
+          setProfileDriver(null);
+        }
+      } else {
+        alert(error.message);
+      }
+    } catch (e: any) {
+      alert(e.message || 'Failed to delete driver.');
+    }
   };
 
   const DriverFormModal = ({ title, onClose }: { title: string; onClose: () => void }) => (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-      <div style={{ background: 'var(--bg-card)', borderRadius: 20, padding: 32, width: '100%', maxWidth: 460, boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
+      <div style={{ background: 'var(--bg-card)', borderRadius: 20, padding: 32, width: '100%', maxWidth: 460, boxShadow: '0 20px 60px rgba(0,0,0,0.3)', border: '1px solid var(--border)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
           <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: 'var(--text-primary)' }}>{title}</h2>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={20} /></button>
@@ -258,7 +356,7 @@ export default function DriversView({ addNotification }: Props) {
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 16 }}>
                 {[
-                  { label: 'Truck', value: d.truckId },
+                  { label: 'Truck ID', value: d.truckId },
                   { label: 'Phone', value: d.phone },
                   { label: 'License', value: d.licenseNumber },
                   { label: 'Deliveries', value: String(d.totalDeliveries ?? 0) },
@@ -274,9 +372,13 @@ export default function DriversView({ addNotification }: Props) {
                 <button onClick={() => openEdit(d)} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '8px', fontWeight: 600, fontSize: 13, color: 'var(--text-secondary)', cursor: 'pointer' }}>
                   <Edit2 size={13} /> Edit
                 </button>
-                {d.status !== 'OFFLINE' && (
+                {d.status !== 'OFFLINE' ? (
                   <button onClick={() => deactivate(d.id)} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, background: '#ffe4e6', border: 'none', borderRadius: 10, padding: '8px', fontWeight: 600, fontSize: 13, color: '#9f1239', cursor: 'pointer' }}>
                     <UserMinus size={13} /> Deactivate
+                  </button>
+                ) : (
+                  <button onClick={() => handleDelete(d)} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 10, padding: '8px', fontWeight: 600, fontSize: 13, color: '#dc2626', cursor: 'pointer' }}>
+                    <Trash2 size={13} /> Delete
                   </button>
                 )}
               </div>

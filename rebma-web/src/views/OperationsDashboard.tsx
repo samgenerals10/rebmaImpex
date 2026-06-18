@@ -290,11 +290,20 @@ export default function OperationsDashboard({
 
   // Row Action Handlers
   const handleEditOrder = async (order: Order) => {
-    const newClient = await prompt('Edit client name:', order.clientName);
+    const newClient = window.prompt('Edit client name:', order.clientName);
     if (!newClient) return;
-    const newDest = await prompt('Edit destination:', order.destination || '');
-    setLocalOrders(prev => prev.map(o => o.id === order.id ? { ...o, clientName: newClient, destination: newDest || undefined } : o));
-    addNotification(`Updated order ${order.id}`);
+    const newDest = window.prompt('Edit destination:', order.destination || '');
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .update({ client_name: newClient, destination: newDest })
+        .eq('id', order.id);
+      if (error) throw error;
+      setLocalOrders(prev => prev.map(o => o.id === order.id ? { ...o, clientName: newClient, destination: newDest || undefined } : o));
+      addNotification(`Updated order ${order.id}`);
+    } catch (err: any) {
+      addNotification(`Error updating order: ${err.message}`);
+    }
   };
 
   const handleDuplicateOrder = (order: Order) => {
@@ -316,18 +325,36 @@ export default function OperationsDashboard({
   };
 
   const handleDeleteOrder = async (id: string) => {
-    if (!await confirm(`Delete order entry ${id}?`)) return;
-    setLocalOrders(prev => prev.filter(o => o.id !== id));
-    addNotification(`Deleted order entry ${id}`);
+    if (!window.confirm(`Delete order entry ${id}?`)) return;
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .delete()
+        .eq('id', id);
+      if (error) throw error;
+      setLocalOrders(prev => prev.filter(o => o.id !== id));
+      addNotification(`Deleted order entry ${id}`);
+    } catch (err: any) {
+      addNotification(`Error deleting order: ${err.message}`);
+    }
   };
 
   const handleEditCargo = async (cargo: IncomingGoods) => {
-    const newName = await prompt('Edit product name:', cargo.productName);
+    const newName = window.prompt('Edit product name:', cargo.productName);
     if (!newName) return;
-    const newCarrier = await prompt('Edit shipping carrier:', cargo.company);
+    const newCarrier = window.prompt('Edit shipping carrier:', cargo.company);
     if (!newCarrier) return;
-    setLocalCargo(prev => prev.map(c => c.id === cargo.id ? { ...c, productName: newName, company: newCarrier } : c));
-    addNotification(`Updated cargo intake details for CARGO-${cargo.id}`);
+    try {
+      const { error } = await supabase
+        .from('cargo_intake')
+        .update({ product_name: newName, company: newCarrier })
+        .eq('id', cargo.id);
+      if (error) throw error;
+      setLocalCargo(prev => prev.map(c => c.id === cargo.id ? { ...c, productName: newName, company: newCarrier } : c));
+      addNotification(`Updated cargo intake details for CARGO-${cargo.id}`);
+    } catch (err: any) {
+      addNotification(`Error updating cargo: ${err.message}`);
+    }
   };
 
   const handleDuplicateCargo = (cargo: IncomingGoods) => {
@@ -349,9 +376,18 @@ export default function OperationsDashboard({
   };
 
   const handleDeleteCargo = async (id: string) => {
-    if (!await confirm(`Delete cargo intake record CARGO-${id}?`)) return;
-    setLocalCargo(prev => prev.filter(c => c.id !== id));
-    addNotification(`Deleted cargo record ${id}`);
+    if (!window.confirm(`Delete cargo intake record CARGO-${id}?`)) return;
+    try {
+      const { error } = await supabase
+        .from('cargo_intake')
+        .delete()
+        .eq('id', id);
+      if (error) throw error;
+      setLocalCargo(prev => prev.filter(c => c.id !== id));
+      addNotification(`Deleted cargo record ${id}`);
+    } catch (err: any) {
+      addNotification(`Error deleting cargo record: ${err.message}`);
+    }
   };
 
   // Row selection checkboxes
@@ -660,303 +696,941 @@ export default function OperationsDashboard({
           )}
         </div>
       </div>
-
-      {/* Quick Actions + Low Stock Alerts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Quick Actions */}
-        <div className="p-5 bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] border border-[var(--border)]">
-          <h3 className="text-sm font-bold text-[var(--text-primary)] mb-4">Quick Actions</h3>
-          <div className="grid grid-cols-2 gap-3">
-            {[
-              { label: 'Log Cargo Intake', tab: 'PortIngestion', icon: PackageCheck, color: 'var(--accent)' },
-              { label: 'View Stock', tab: 'Stock', icon: Layers, color: '#8b5cf6' },
-              { label: 'Discrepancy Reports', tab: 'OpsHistory', icon: AlertTriangle, color: '#f59e0b' },
-              { label: 'Fulfillment Queue', tab: 'Releases', icon: Truck, color: '#10b981' },
-            ].map(action => {
-              const Icon = action.icon;
-              return (
-                <button
-                  key={action.tab}
-                  onClick={() => setActiveSubTab?.(action.tab)}
-                  className="flex flex-col items-center gap-2 p-4 rounded-2xl border border-[var(--border)] hover:border-[var(--accent)] hover:bg-[var(--accent-light)] transition-all cursor-pointer text-center bg-transparent"
-                >
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${action.color}18` }}>
-                    <Icon className="w-5 h-5" style={{ color: action.color }} />
-                  </div>
-                  <span className="text-xs font-semibold text-[var(--text-secondary)] leading-tight">{action.label}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Low Stock Alerts */}
-        <div className="p-5 bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] border border-[var(--border)]">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-amber-500" />
-              <h3 className="text-sm font-bold text-[var(--text-primary)]">Low Stock Alerts</h3>
-            </div>
-            <button onClick={() => setActiveSubTab?.('Stock')} className="text-xs text-[var(--accent)] hover:underline font-semibold cursor-pointer bg-transparent border-none">View All →</button>
-          </div>
-          <div className="space-y-3 max-h-[190px] overflow-y-auto pr-1">
-            {lowStockItems.length > 0 ? (
-              lowStockItems.map(item => {
-                const pct = item.capacity > 0 ? Math.round((item.current / item.capacity) * 100) : 0;
-                const isOut = item.current === 0;
-                return (
-                  <div key={item.sku || item.id}>
-                    <div className="flex items-center justify-between mb-1">
-                      <div>
-                        <p className="text-xs font-semibold text-[var(--text-primary)]">{item.name}</p>
-                        <p className="text-[10px] text-[var(--text-muted)] font-mono">{item.sku}</p>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        {/* Left Column: notifications, sub-tab panels, approved orders, approved goods */}
+        <div className="lg:col-span-7 xl:col-span-8 space-y-6">
+          
+          {/* INCOMING GOODS FROM CEO SUPPLIER ORDERS */}
+          {incomingSupplierOrders.length > 0 && (
+            <div className="p-5 bg-[var(--bg-card)] rounded-2xl border border-indigo-200 dark:border-indigo-800 shadow-[var(--box-shadow)]">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
+                <h3 className="text-sm font-bold text-[var(--text-primary)]">Incoming Goods Notifications</h3>
+                <span className="ml-auto px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 text-[11px] font-bold">{incomingSupplierOrders.length} pending</span>
+              </div>
+              <div className="space-y-3">
+                {incomingSupplierOrders.map((o: any) => (
+                  <div key={o.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl border border-[var(--border)] bg-[var(--bg)] hover:border-indigo-400 transition-colors">
+                    <div className="min-w-0 space-y-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-mono text-xs font-semibold text-indigo-600 dark:text-indigo-400">{o.order_number}</span>
+                        <span className="text-xs text-[var(--text-secondary)] font-semibold">{o.supplier_name}</span>
                       </div>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${isOut ? 'bg-rose-500/10 text-rose-600' : 'bg-amber-500/10 text-amber-600'}`}>
-                        {isOut ? 'OUT OF STOCK' : `${pct}%`}
-                      </span>
+                      <p className="text-xs text-[var(--text-muted)]">
+                        {Array.isArray(o.products) ? o.products.map((p: any) => `${p.product_name} (${p.quantity} ${p.unit})`).join(', ') : '—'}
+                      </p>
+                      {o.message && <p className="text-[11px] text-indigo-600 dark:text-indigo-400 italic">{o.message}</p>}
                     </div>
-                    <div className="h-1.5 bg-[var(--bg)] rounded-full overflow-hidden">
-                      <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: isOut ? '#f43f5e' : '#f59e0b' }} />
+                    <div className="flex items-center gap-3 flex-shrink-0">
+                      {o.expected_delivery_date && <span className="text-xs text-[var(--text-muted)] whitespace-nowrap">ETA: {o.expected_delivery_date}</span>}
+                      <button
+                        onClick={() => addNotification(`Log Receipt opened for ${o.order_number}.`)}
+                        className="px-3 py-1.5 bg-indigo-600 text-white text-xs font-bold rounded-xl hover:bg-indigo-700 whitespace-nowrap cursor-pointer">
+                        Log Receipt
+                      </button>
                     </div>
                   </div>
-                );
-              })
-            ) : (
-              <div className="text-center py-8 text-[var(--text-muted)] text-xs">
-                <p className="font-semibold text-sm">All stock levels healthy</p>
-                <p className="text-[10px] mt-1">No low stock alerts detected.</p>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Active Sub-tab views */}
+          <div>
+            {/* PORT INGESTION FORM */}
+            {activeSubTab === 'PortIngestion' && (
+              <div className="p-6 bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] border border-[var(--border)] space-y-4">
+                <h3 className="text-lg font-bold text-[var(--text-primary)]">Workflow A: Log Incoming Port Cargo</h3>
+                <form onSubmit={handleSubmitIntake} className="space-y-4">
+                  {/* Product Name & Goods Code */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Product / Goods Name <span className="text-rose-500">*</span></label>
+                      <input
+                        type="text"
+                        value={productName}
+                        onChange={e => setProductName(e.target.value)}
+                        required
+                        placeholder="E.g., Palm Oil Barrels"
+                        className="w-full px-3 py-2 bg-[var(--bg)] text-[var(--text-primary)] border border-[var(--border)] focus:border-[var(--accent)] rounded-xl text-xs focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Goods Code <span className="text-[var(--text-muted)] font-normal">(auto-generated if empty)</span></label>
+                      <input
+                        type="text"
+                        value={goodsCode}
+                        onChange={e => setGoodsCode(e.target.value)}
+                        placeholder={`E.g., ${autoGoodsCode()}`}
+                        className="w-full px-3 py-2 bg-[var(--bg)] text-[var(--text-primary)] border border-[var(--border)] focus:border-[var(--accent)] rounded-xl text-xs focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Product Image Upload & Attachments */}
+                  <div className="space-y-3">
+                    <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Cargo Media & Attachments <span className="text-[var(--text-muted)] font-normal">(optional)</span></label>
+                    <div className="flex flex-wrap gap-4 items-center">
+                      {/* File Upload */}
+                      <div>
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="flex items-center gap-2 px-4 py-2 border border-dashed border-[var(--border)] hover:border-[var(--accent)] rounded-xl text-xs text-[var(--text-muted)] hover:text-[var(--accent)] cursor-pointer transition-all"
+                        >
+                          <ImageIcon className="w-4 h-4" />
+                          {imagePreview ? 'Change Image' : 'Upload Image'}
+                        </button>
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImageChange}
+                          className="hidden"
+                        />
+                      </div>
+
+                      {/* Camera Capture */}
+                      <div>
+                        <button
+                          type="button"
+                          onClick={() => cameraInputRef.current?.click()}
+                          className="flex items-center gap-2 px-4 py-2 border border-dashed border-[var(--border)] hover:border-[var(--accent)] rounded-xl text-xs text-[var(--text-muted)] hover:text-[var(--accent)] cursor-pointer transition-all"
+                        >
+                          <Camera className="w-4 h-4" />
+                          {cameraPreview ? 'Retake Photo' : 'Take Photo'}
+                        </button>
+                        <input
+                          ref={cameraInputRef}
+                          type="file"
+                          accept="image/*"
+                          capture="environment"
+                          onChange={handleCameraChange}
+                          className="hidden"
+                        />
+                      </div>
+
+                      {/* Doc Upload */}
+                      <div>
+                        <button
+                          type="button"
+                          onClick={() => docInputRef.current?.click()}
+                          className="flex items-center gap-2 px-4 py-2 border border-dashed border-[var(--border)] hover:border-[var(--accent)] rounded-xl text-xs text-[var(--text-muted)] hover:text-[var(--accent)] cursor-pointer transition-all"
+                        >
+                          <FileText className="w-4 h-4" />
+                          {docName ? docName : 'Attach Document'}
+                        </button>
+                        <input
+                          ref={docInputRef}
+                          type="file"
+                          accept=".pdf,.doc,.docx,.xls,.xlsx,.txt"
+                          onChange={handleDocChange}
+                          className="hidden"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Previews Row */}
+                    <div className="flex gap-4 flex-wrap mt-2">
+                      {imagePreview && (
+                        <div className="relative">
+                          <p className="text-[9px] text-[var(--text-muted)] mb-1">Uploaded Image</p>
+                          <img src={imagePreview} alt="Preview" className="w-16 h-16 object-cover rounded-lg border border-[var(--border)]" />
+                          <button type="button" onClick={() => setImagePreview('')} className="absolute top-4 right-0.5 w-5 h-5 bg-rose-500 text-white rounded-full text-[10px] flex items-center justify-center cursor-pointer">✕</button>
+                        </div>
+                      )}
+
+                      {cameraPreview && (
+                        <div className="relative">
+                          <p className="text-[9px] text-[var(--text-muted)] mb-1">Camera Photo</p>
+                          <img src={cameraPreview} alt="Camera Preview" className="w-16 h-16 object-cover rounded-lg border border-[var(--border)]" />
+                          <button type="button" onClick={() => setCameraPreview('')} className="absolute top-4 right-0.5 w-5 h-5 bg-rose-500 text-white rounded-full text-[10px] flex items-center justify-center cursor-pointer">✕</button>
+                        </div>
+                      )}
+
+                      {docName && (
+                        <div className="relative p-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl flex items-center gap-2">
+                          <FileText className="w-6 h-6 text-emerald-500" />
+                          <div className="text-[10px]">
+                            <p className="font-semibold truncate max-w-[120px]">{docName}</p>
+                            <p className="text-[var(--text-muted)]">Document Attached</p>
+                          </div>
+                          <button type="button" onClick={() => { setDocName(''); setDocBase64(''); }} className="w-5 h-5 bg-rose-500 text-white rounded-full text-[10px] flex items-center justify-center cursor-pointer">✕</button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Destination */}
+                  <div>
+                    <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Delivery Destination <span className="text-rose-500">*</span></label>
+                    <input
+                      type="text"
+                      value={destination}
+                      onChange={e => setDestination(e.target.value)}
+                      required
+                      placeholder="E.g., Accra Main Warehouse, Tema Port Depot"
+                      className="w-full px-3 py-2 bg-[var(--bg)] text-[var(--text-primary)] border border-[var(--border)] focus:border-[var(--accent)] rounded-xl text-xs focus:outline-none"
+                    />
+                  </div>
+
+                  {/* Country & Company */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Country of Origin <span className="text-rose-500">*</span></label>
+                      <input type="text" name="country" required placeholder="E.g., Germany" className="w-full px-3 py-2 bg-[var(--bg)] text-[var(--text-primary)] border border-[var(--border)] focus:border-[var(--accent)] rounded-xl text-xs focus:outline-none" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Shipping Company <span className="text-rose-500">*</span></label>
+                      <input type="text" name="company" required placeholder="E.g., COSCO, Maersk" className="w-full px-3 py-2 bg-[var(--bg)] text-[var(--text-primary)] border border-[var(--border)] focus:border-[var(--accent)] rounded-xl text-xs focus:outline-none" />
+                    </div>
+                  </div>
+
+                  {/* Quantity & Weight */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Total Quantity <span className="text-rose-500">*</span></label>
+                      <input type="number" name="quantity" required placeholder="E.g., 350" className="w-full px-3 py-2 bg-[var(--bg)] text-[var(--text-primary)] border border-[var(--border)] focus:border-[var(--accent)] rounded-xl text-xs focus:outline-none" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Weight (Metric Tons) <span className="text-rose-500">*</span></label>
+                      <input type="number" step="0.1" name="weight" required placeholder="E.g., 12.5" className="w-full px-3 py-2 bg-[var(--bg)] text-[var(--text-primary)] border border-[var(--border)] focus:border-[var(--accent)] rounded-xl text-xs focus:outline-none" />
+                    </div>
+                  </div>
+
+                  {/* Date/Time auto-display */}
+                  <div className="p-3 bg-[var(--accent-light)] border border-[var(--border)] rounded-xl text-xs text-[var(--accent)] flex items-center gap-2">
+                    <CheckCircle className="w-4 h-4 shrink-0 text-[var(--accent)]" />
+                    <span><strong>Date & Time</strong> will be auto-generated on submission: <strong>{new Date().toLocaleString()}</strong></span>
+                  </div>
+
+                  {/* Discrepancy Notes */}
+                  <div>
+                    <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Discrepancy Notes / Faults</label>
+                    <input type="text" name="discrepancies" placeholder="Optional: E.g., 2 boxes damaged, missing tags" className="w-full px-3 py-2 bg-[var(--bg)] text-[var(--text-primary)] border border-[var(--border)] focus:border-[var(--accent)] rounded-xl text-xs focus:outline-none" />
+                  </div>
+
+                  <button type="submit" className="w-full py-2.5 bg-[var(--accent)] hover:opacity-90 text-white rounded-xl text-xs font-bold shadow cursor-pointer transition-opacity">
+                    Submit Cargo Logs
+                  </button>
+                </form>
+              </div>
+            )}
+
+            {/* FULFILLMENT RELEASES */}
+            {activeSubTab === 'Releases' && (
+              <div className="p-6 bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] border border-[var(--border)] space-y-4">
+                <h3 className="text-lg font-bold text-[var(--text-primary)]">Fulfillment Releasing Queue</h3>
+                <div className="divide-y divide-[var(--border)]">
+                  {localOrders.filter(o => o.status === 'PROCESSING').map(order => (
+                    <div key={order.id} className="py-4 flex items-center justify-between">
+                      <div className="text-[var(--text-primary)]">
+                        <div className="flex items-center gap-2">
+                          <p className="text-xs font-bold text-[var(--text-primary)]">Order: {order.id}</p>
+                          {order.ticketNumber && (
+                            <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-500 rounded text-[9px] font-bold">🎫 {order.ticketNumber}</span>
+                          )}
+                        </div>
+                        <p className="text-[10px] text-[var(--text-muted)] mt-0.5">Client: <strong>{order.clientName}</strong> | Product: <strong>{order.productName || 'N/A'}</strong></p>
+                        <p className="text-[10px] text-[var(--text-muted)]">Destination: <strong>{order.destination || '—'}</strong> | Value: <strong>GHS {order.totalAmount.toLocaleString()}</strong></p>
+                        <p className="text-[10px] text-emerald-500 font-semibold mt-1">Invoice Generated. Release Authorized.</p>
+                      </div>
+                      <div>
+                        <button
+                          onClick={() => onReleaseToDispatch(order.id)}
+                          className="px-3 py-1.5 bg-[var(--accent)] hover:opacity-90 text-white rounded-lg text-xs font-bold cursor-pointer transition-opacity shadow"
+                        >
+                          Release & Load Truck
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  {localOrders.filter(o => o.status === 'PROCESSING').length === 0 && (
+                    <p className="text-xs text-[var(--text-muted)] text-center py-6">No orders pending release from warehouse floor.</p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* INTAKE RECORDS LOG */}
+            {activeSubTab === 'LoggedCargo' && (
+              <div className="theme-table-wrapper border border-[var(--border)] bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)]">
+                {/* Toolbar */}
+                <div className="theme-table-toolbar flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-5 py-4 border-b border-[var(--border)] bg-[var(--bg)]">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-sm text-[var(--text-primary)]">Operations Intake Logging Records</h3>
+                    <span className="text-xs font-mono text-[var(--text-muted)] bg-[var(--accent-light)] px-2 py-0.5 rounded-full">{filteredCargo.length} records</span>
+                  </div>
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
+                    {/* Search */}
+                    <div className="relative flex items-center w-full sm:w-auto">
+                      <span className="absolute left-3 text-[var(--text-muted)] text-xs pointer-events-none">🔍</span>
+                      <input
+                        type="text"
+                        placeholder="Search cargo…"
+                        value={cargoSearch}
+                        onChange={e => setCargoSearch(e.target.value)}
+                        className="pl-8 pr-3 py-1.5 text-xs rounded-lg outline-none border border-[var(--border)] transition w-full sm:w-40 bg-[var(--bg-card)] text-[var(--text-primary)] focus:border-[var(--accent)]"
+                      />
+                    </div>
+                    {/* Status dropdown */}
+                    <div className="relative w-full sm:w-auto">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setIsCargoFilterOpen(!isCargoFilterOpen); }}
+                        className="flex items-center justify-between sm:justify-start gap-1.5 text-xs text-[var(--text-primary)] bg-[var(--bg-card)] hover:bg-[var(--accent-light)] px-3 py-1.5 rounded-lg transition-colors border border-[var(--border)] w-full sm:w-auto"
+                      >
+                        <span>Status: {cargoStatusFilter === 'ALL' ? 'All' : cargoStatusFilter.replace(/_/g, ' ')}</span>
+                        <span className="text-[10px]">▼</span>
+                      </button>
+                      {isCargoFilterOpen && (
+                        <div className="absolute right-0 top-full mt-1.5 w-full sm:w-48 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl z-20 p-1 flex flex-col text-left">
+                          {(['ALL', 'PENDING_MANAGEMENT_APPROVAL', 'APPROVED', 'REJECTED'] as const).map(st => (
+                            <button
+                              key={st}
+                              onClick={() => { setCargoStatusFilter(st); setIsCargoFilterOpen(false); }}
+                              className="flex items-center gap-2 px-3 py-2 text-xs rounded-lg hover:bg-[var(--accent-light)] text-left transition-colors text-[var(--text-primary)]"
+                            >
+                              <span className={`w-2 h-2 rounded-full ${st === 'APPROVED' ? 'bg-emerald-500' : st === 'REJECTED' ? 'bg-rose-500' : 'bg-amber-500'}`} />
+                              {st === 'ALL' ? 'All Status' : st.replace(/_/g, ' ')}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Scrollable table / Mobile Card List */}
+                <div>
+                  {/* Mobile Card List */}
+                  <div className="lg:hidden space-y-3 p-4">
+                    {sortedCargo.map(item => (
+                      <div 
+                        key={item.id} 
+                        onClick={() => setActiveMobileDetail({ type: 'cargo', data: item })}
+                        className="bg-[var(--bg-card)] rounded-2xl shadow-card p-4 border border-[var(--border)] flex items-center justify-between cursor-pointer"
+                      >
+                        <div className="flex items-center gap-3">
+                          {item.productImage ? (
+                            <img src={item.productImage} alt={item.productName} className="w-10 h-10 object-cover rounded-lg border border-[var(--border)] shrink-0" />
+                          ) : (
+                            <div className="w-10 h-10 rounded-full bg-[var(--accent-light)] text-[var(--accent)] flex items-center justify-center font-bold text-base shrink-0">
+                              {item.productName ? item.productName[0] : 'C'}
+                            </div>
+                          )}
+                          <div>
+                            <h4 className="text-sm font-bold text-[var(--text-primary)]">{item.productName || 'Unnamed'}</h4>
+                            <p className="text-xs text-[var(--text-secondary)] font-semibold">{item.company}</p>
+                            <p className="text-[10px] text-[var(--text-muted)] mt-0.5 font-mono">CARGO-{item.id}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${statusBadge(item.status)}`}>
+                            {item.status.replace(/_/g, ' ')}
+                          </span>
+                          <ChevronRight className="w-4 h-4 text-[var(--text-muted)]" />
+                        </div>
+                      </div>
+                    ))}
+                    {filteredCargo.length === 0 && (
+                      <div className="p-8 text-center text-[var(--text-muted)] text-xs bg-[var(--bg-card)] rounded-2xl border border-[var(--border)]">No cargo records found.</div>
+                    )}
+                  </div>
+
+                  {/* Desktop Table View */}
+                  <div className="hidden lg:block overflow-x-auto w-full">
+                    <table className="w-full text-left text-xs">
+                      <thead>
+                        <tr className="theme-table-header-row text-[var(--text-muted)] uppercase font-semibold text-[10px] border-b border-[var(--border)]">
+                          <th className="py-3 px-5 whitespace-nowrap">
+                            <input
+                              type="checkbox"
+                              checked={filteredCargo.length > 0 && selectedCargoRows.size === filteredCargo.length}
+                              onChange={handleSelectAllCargo}
+                              className="accent-[var(--accent)] w-3.5 h-3.5"
+                            />
+                          </th>
+                          <th className="py-3 px-2 whitespace-nowrap hidden sm:table-cell text-[var(--text-primary)]">Image</th>
+                          <th onClick={() => handleSort('id', cargoSortField, setCargoSortField, cargoSortDir, setCargoSortDir)} className="py-3 px-2 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none text-[var(--text-primary)]">
+                            <div className="flex items-center gap-1">
+                              <span>Cargo ID</span>
+                              <span className="text-[9px] opacity-70">{cargoSortField === 'id' ? (cargoSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                            </div>
+                          </th>
+                          <th onClick={() => handleSort('productName', cargoSortField, setCargoSortField, cargoSortDir, setCargoSortDir)} className="py-3 px-2 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none text-[var(--text-primary)]">
+                            <div className="flex items-center gap-1">
+                              <span>Product</span>
+                              <span className="text-[9px] opacity-70">{cargoSortField === 'productName' ? (cargoSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                            </div>
+                          </th>
+                          <th onClick={() => handleSort('createdAt', cargoSortField, setCargoSortField, cargoSortDir, setCargoSortDir)} className="py-3 px-2 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none hidden lg:table-cell text-[var(--text-primary)]">
+                            <div className="flex items-center gap-1">
+                              <span>Timestamp</span>
+                              <span className="text-[9px] opacity-70">{cargoSortField === 'createdAt' ? (cargoSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                            </div>
+                          </th>
+                          <th onClick={() => handleSort('country', cargoSortField, setCargoSortField, cargoSortDir, setCargoSortDir)} className="py-3 px-2 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none hidden md:table-cell text-[var(--text-primary)]">
+                            <div className="flex items-center gap-1">
+                              <span>Origin</span>
+                              <span className="text-[9px] opacity-70">{cargoSortField === 'country' ? (cargoSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                            </div>
+                          </th>
+                          <th onClick={() => handleSort('company', cargoSortField, setCargoSortField, cargoSortDir, setCargoSortDir)} className="py-3 px-2 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none hidden md:table-cell text-[var(--text-primary)]">
+                            <div className="flex items-center gap-1">
+                              <span>Carrier</span>
+                              <span className="text-[9px] opacity-70">{cargoSortField === 'company' ? (cargoSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                            </div>
+                          </th>
+                          <th onClick={() => handleSort('destination', cargoSortField, setCargoSortField, cargoSortDir, setCargoSortDir)} className="py-3 px-2 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none hidden lg:table-cell text-[var(--text-primary)]">
+                            <div className="flex items-center gap-1">
+                              <span>Destination</span>
+                              <span className="text-[9px] opacity-70">{cargoSortField === 'destination' ? (cargoSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                            </div>
+                          </th>
+                          <th onClick={() => handleSort('quantity', cargoSortField, setCargoSortField, cargoSortDir, setCargoSortDir)} className="py-3 px-2 text-right whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none text-[var(--text-primary)]">
+                            <div className="flex items-center justify-end gap-1">
+                              <span>Qty</span>
+                              <span className="text-[9px] opacity-70">{cargoSortField === 'quantity' ? (cargoSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                            </div>
+                          </th>
+                          <th onClick={() => handleSort('weight', cargoSortField, setCargoSortField, cargoSortDir, setCargoSortDir)} className="py-3 px-2 text-right whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none text-[var(--text-primary)]">
+                            <div className="flex items-center justify-end gap-1">
+                              <span>Weight</span>
+                              <span className="text-[9px] opacity-70">{cargoSortField === 'weight' ? (cargoSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                            </div>
+                          </th>
+                          <th onClick={() => handleSort('discrepancies', cargoSortField, setCargoSortField, cargoSortDir, setCargoSortDir)} className="py-3 px-2 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none hidden sm:table-cell text-[var(--text-primary)]">
+                            <div className="flex items-center gap-1">
+                              <span>Discrepancies</span>
+                              <span className="text-[9px] opacity-70">{cargoSortField === 'discrepancies' ? (cargoSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                            </div>
+                          </th>
+                          <th onClick={() => handleSort('status', cargoSortField, setCargoSortField, cargoSortDir, setCargoSortDir)} className="py-3 px-2 text-center whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none text-[var(--text-primary)]">
+                            <div className="flex items-center justify-center gap-1">
+                              <span>Status</span>
+                              <span className="text-[9px] opacity-70">{cargoSortField === 'status' ? (cargoSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                            </div>
+                          </th>
+                          <th className="py-3 px-5 text-center whitespace-nowrap text-[var(--text-primary)]">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[var(--border)]">
+                        {sortedCargo.map(item => (
+                          <tr key={item.id} className="theme-table-row hover:bg-[var(--accent-light)] transition-colors group cursor-pointer text-[var(--text-primary)]" onClick={() => setActiveMobileDetail({ type: 'cargo', data: item })}>
+                            <td className="py-3 px-5" onClick={e => e.stopPropagation()}>
+                              <input
+                                type="checkbox"
+                                checked={selectedCargoRows.has(item.id)}
+                                onChange={() => handleSelectCargoRow(item.id)}
+                                className="accent-[var(--accent)] w-3.5 h-3.5"
+                              />
+                            </td>
+                            <td className="py-3 px-2 hidden sm:table-cell text-[var(--text-primary)]">
+                              {item.productImage ? (
+                                <img src={item.productImage} alt={item.productName} className="w-10 h-10 object-cover rounded-lg border border-[var(--border)]" />
+                              ) : (
+                                <div className="w-10 h-10 bg-[var(--accent-light)] rounded-lg flex items-center justify-center border border-[var(--border)]">
+                                  <ImageIcon className="w-4 h-4 text-[var(--accent)]" />
+                                </div>
+                              )}
+                            </td>
+                            <td className="py-3 px-2">
+                              <p className="font-mono font-bold text-[var(--text-primary)]">CARGO-{item.id}</p>
+                              {item.goodsCode && <p className="text-[9px] text-[var(--text-muted)]">{item.goodsCode}</p>}
+                            </td>
+                            <td className="py-3 px-2 font-medium text-[13px]">{item.productName || '—'}</td>
+                            <td className="py-3 px-2 text-[var(--text-muted)] font-mono text-[10px] whitespace-nowrap hidden lg:table-cell">{item.createdAt || 'N/A'}</td>
+                            <td className="py-3 px-2 font-semibold text-[13px] hidden md:table-cell">{item.country}</td>
+                            <td className="py-3 px-2 text-[var(--text-muted)] hidden md:table-cell">{item.company}</td>
+                            <td className="py-3 px-2 text-[var(--text-muted)] hidden lg:table-cell">{item.destination || '—'}</td>
+                            <td className="py-3 px-2 text-right font-mono font-bold text-[13px]">{item.quantity} u.</td>
+                            <td className="py-3 px-2 text-right font-mono font-bold text-[13px]">{item.weight}T</td>
+                            <td className="py-3 px-2 text-rose-500 font-semibold hidden sm:table-cell">{item.discrepancies}</td>
+                            <td className="py-3 px-2 text-center">
+                              <span className={`px-2.5 py-0.5 rounded font-bold text-[9px] ${statusBadge(item.status)}`}>
+                                {item.status.replace(/_/g, ' ')}
+                              </span>
+                            </td>
+                            <td className="py-3 px-5 text-center relative" onClick={(e) => e.stopPropagation()}>
+                              <button
+                                onClick={() => setActiveCargoMenu(activeCargoMenu === item.id ? null : item.id)}
+                                className="w-8 h-8 inline-flex items-center justify-center bg-[var(--bg)] hover:bg-[var(--accent-light)] rounded-lg text-[var(--text-secondary)] transition-colors select-none border border-[var(--border)]"
+                              >
+                                ···
+                              </button>
+                              {activeCargoMenu === item.id && (
+                                <div className="absolute right-5 mt-1 w-44 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl z-30 p-1 flex flex-col text-left">
+                                  <button onClick={() => handleEditCargo(item)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left">✏ Edit Ingest</button>
+                                  <button onClick={() => handleDuplicateCargo(item)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left">📋 Duplicate</button>
+                                  <button onClick={() => handleShareCargo(item)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left">🔗 Share Link</button>
+                                  <div className="h-px bg-[var(--border)] my-1"></div>
+                                  <button onClick={() => handleDeleteCargo(item.id)} className="flex items-center gap-2 px-3 py-2 text-xs text-rose-500 hover:bg-rose-50 rounded-lg transition-colors text-left">🗑 Delete</button>
+                                </div>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                        {filteredCargo.length === 0 && (
+                          <tr>
+                            <td colSpan={13} className="py-6 text-center text-[var(--text-muted)]">No cargo intake logs found matching criteria.</td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Footer */}
+                <div className="theme-table-footer flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-4 border-t border-[var(--border)] bg-[var(--bg)]">
+                  <p className="text-xs text-[var(--text-muted)] font-mono">Showing {filteredCargo.length} of {localCargo.length} logs</p>
+                  <div className="flex items-center gap-1">
+                    <button className="w-8 h-8 flex items-center justify-center text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-[var(--bg-card)] hover:bg-[var(--accent-light)] rounded-lg transition-colors border border-[var(--border)] disabled:opacity-30" disabled>‹</button>
+                    <button className="w-8 h-8 flex items-center justify-center text-xs text-white bg-[var(--accent)] rounded-lg font-bold">1</button>
+                    <button className="w-8 h-8 flex items-center justify-center text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-[var(--bg-card)] hover:bg-[var(--accent-light)] rounded-lg transition-colors border border-[var(--border)] disabled:opacity-30" disabled>›</button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Ops History logs */}
+            {activeSubTab === 'OpsHistory' && (
+              <div className="theme-table-wrapper border border-[var(--border)] bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)]">
+                {/* Toolbar */}
+                <div className="theme-table-toolbar flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-5 py-4 border-b border-[var(--border)] bg-[var(--bg)]">
+                  <div className="flex items-center gap-2">
+                    <History className="w-5 h-5 text-[var(--accent)]" />
+                    <h3 className="text-sm font-bold text-[var(--text-primary)]">Operations Activity History</h3>
+                    <span className="text-xs font-mono text-[var(--text-muted)] bg-[var(--accent-light)] px-2 py-0.5 rounded-full">{filteredHistory.length} logs</span>
+                  </div>
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
+                    {/* Search */}
+                    <div className="relative flex items-center w-full sm:w-auto">
+                      <span className="absolute left-3 text-[var(--text-muted)] text-xs pointer-events-none">🔍</span>
+                      <input
+                        type="text"
+                        placeholder="Search history…"
+                        value={historySearch}
+                        onChange={e => setHistorySearch(e.target.value)}
+                        className="pl-8 pr-3 py-1.5 text-xs rounded-lg outline-none border border-[var(--border)] transition w-full sm:w-40 bg-[var(--bg-card)] text-[var(--text-primary)] focus:border-[var(--accent)]"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Scrollable table */}
+                <div className="overflow-x-auto w-full">
+                  <table className="w-full text-xs text-left">
+                    <thead>
+                      <tr className="theme-table-header-row text-[var(--text-muted)] uppercase font-semibold text-[10px] border-b border-[var(--border)]">
+                        <th className="py-3 px-5 whitespace-nowrap text-[var(--text-primary)]">
+                          <input
+                            type="checkbox"
+                            checked={filteredHistory.length > 0 && selectedHistoryRows.size === filteredHistory.length}
+                            onChange={handleSelectAllHistory}
+                            className="accent-[var(--accent)] w-3.5 h-3.5"
+                          />
+                        </th>
+                        <th onClick={() => handleSort('goodsCode', historySortField, setHistorySortField, historySortDir, setHistorySortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none text-[var(--text-primary)]">
+                          <div className="flex items-center gap-1">
+                            <span>Goods Code</span>
+                            <span className="text-[9px] opacity-70">{historySortField === 'goodsCode' ? (historySortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                          </div>
+                        </th>
+                        <th onClick={() => handleSort('productName', historySortField, setHistorySortField, historySortDir, setHistorySortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none text-[var(--text-primary)]">
+                          <div className="flex items-center gap-1">
+                            <span>Product</span>
+                            <span className="text-[9px] opacity-70">{historySortField === 'productName' ? (historySortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                          </div>
+                        </th>
+                        <th onClick={() => handleSort('country', historySortField, setHistorySortField, historySortDir, setHistorySortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none hidden md:table-cell text-[var(--text-primary)]">
+                          <div className="flex items-center gap-1">
+                            <span>Origin</span>
+                            <span className="text-[9px] opacity-70">{historySortField === 'country' ? (historySortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                          </div>
+                        </th>
+                        <th onClick={() => handleSort('destination', historySortField, setHistorySortField, historySortDir, setHistorySortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none hidden lg:table-cell text-[var(--text-primary)]">
+                          <div className="flex items-center gap-1">
+                            <span>Destination</span>
+                            <span className="text-[9px] opacity-70">{historySortField === 'destination' ? (historySortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                          </div>
+                        </th>
+                        <th onClick={() => handleSort('createdAt', historySortField, setHistorySortField, historySortDir, setHistorySortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none hidden sm:table-cell text-[var(--text-primary)]">
+                          <div className="flex items-center gap-1">
+                            <span>Logged At</span>
+                            <span className="text-[9px] opacity-70">{historySortField === 'createdAt' ? (historySortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                          </div>
+                        </th>
+                        <th onClick={() => handleSort('status', historySortField, setHistorySortField, historySortDir, setHistorySortDir)} className="py-3 px-3 text-center whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none text-[var(--text-primary)]">
+                          <div className="flex items-center justify-center gap-1">
+                            <span>Status</span>
+                            <span className="text-[9px] opacity-70">{historySortField === 'status' ? (historySortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                          </div>
+                        </th>
+                        <th onClick={() => handleSort('unitPrice', historySortField, setHistorySortField, historySortDir, setHistorySortDir)} className="py-3 px-3 text-right whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none text-[var(--text-primary)]">
+                          <div className="flex items-center justify-end gap-1">
+                            <span>Unit Price</span>
+                            <span className="text-[9px] opacity-70">{historySortField === 'unitPrice' ? (historySortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                          </div>
+                        </th>
+                        <th className="py-3 px-5 text-center whitespace-nowrap text-[var(--text-primary)]">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[var(--border)]">
+                      {sortedHistory.map(item => (
+                        <tr key={item.id} className="theme-table-row hover:bg-[var(--accent-light)] transition-colors group cursor-pointer text-[var(--text-primary)]" onClick={() => setActiveMobileDetail({ type: 'cargo', data: item })}>
+                          <td className="py-3.5 px-5" onClick={e => e.stopPropagation()}>
+                            <input
+                              type="checkbox"
+                              checked={selectedHistoryRows.has(item.id)}
+                              onChange={() => handleSelectHistoryRow(item.id)}
+                              className="accent-[var(--accent)] w-3.5 h-3.5"
+                            />
+                          </td>
+                          <td className="py-3.5 px-3 font-mono font-bold text-[var(--text-primary)]">{item.goodsCode || `CARGO-${item.id}`}</td>
+                          <td className="py-3.5 px-3 font-medium text-[13px]">{item.productName || '—'}</td>
+                          <td className="py-3.5 px-3 text-[var(--text-muted)] hidden md:table-cell">{item.country} / {item.company}</td>
+                          <td className="py-3.5 px-3 text-[var(--text-muted)] hidden lg:table-cell">{item.destination || '—'}</td>
+                          <td className="py-3.5 px-3 text-[var(--text-muted)] font-mono text-[10px] hidden sm:table-cell">{item.createdAt || 'N/A'}</td>
+                          <td className="py-3.5 px-3 text-center">
+                            <span className={`px-2 py-0.5 rounded font-bold text-[9px] ${statusBadge(item.status)}`}>{item.status.replace(/_/g, ' ')}</span>
+                          </td>
+                          <td className="py-3.5 px-3 text-right font-mono font-bold text-[13px] text-[var(--text-primary)]">{item.unitPrice ? `GHS ${item.unitPrice}` : '—'}</td>
+                          <td className="py-3.5 px-5 text-center relative" onClick={(e) => e.stopPropagation()}>
+                            <button
+                              onClick={() => setActiveHistoryMenu(activeHistoryMenu === item.id ? null : item.id)}
+                              className="w-8 h-8 inline-flex items-center justify-center bg-[var(--bg)] hover:bg-[var(--accent-light)] rounded-lg text-[var(--text-secondary)] transition-colors select-none border border-[var(--border)]"
+                            >
+                              ···
+                            </button>
+                            {activeHistoryMenu === item.id && (
+                              <div className="absolute right-5 mt-1 w-44 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl z-30 p-1 flex flex-col text-left">
+                                <button onClick={() => handleDuplicateCargo(item)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left">📋 Duplicate Log</button>
+                                <button onClick={() => handleShareCargo(item)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left">🔗 Share Link</button>
+                                <div className="h-px bg-[var(--border)] my-1"></div>
+                                <button onClick={() => handleDeleteCargo(item.id)} className="flex items-center gap-2 px-3 py-2 text-xs text-rose-500 hover:bg-rose-50 rounded-lg transition-colors text-left">🗑 Delete</button>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Footer */}
+                <div className="theme-table-footer flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-4 border-t border-[var(--border)] bg-[var(--bg)]">
+                  <p className="text-xs text-[var(--text-muted)] font-mono">Showing {filteredHistory.length} of {localCargo.length} logs</p>
+                  <div className="flex items-center gap-1">
+                    <button className="w-8 h-8 flex items-center justify-center text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-[var(--bg-card)] hover:bg-[var(--accent-light)] rounded-lg transition-colors border border-[var(--border)] disabled:opacity-30" disabled>‹</button>
+                    <button className="w-8 h-8 flex items-center justify-center text-xs text-white bg-[var(--accent)] rounded-lg font-bold">1</button>
+                    <button className="w-8 h-8 flex items-center justify-center text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-[var(--bg-card)] hover:bg-[var(--accent-light)] rounded-lg transition-colors border border-[var(--border)] disabled:opacity-30" disabled>›</button>
+                  </div>
+                </div>
               </div>
             )}
           </div>
-        </div>
-      </div>
 
-      {/* Approved Orders Section — always visible */}
-      {approvedOrders.length > 0 && (
-        <div className="theme-table-wrapper border border-[var(--border)] bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] mt-6">
-          {/* Toolbar */}
-          <div className="theme-table-toolbar flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-5 py-4 border-b border-[var(--border)] bg-[var(--bg)]">
-            <div className="flex items-center gap-2">
-              <TicketCheck className="w-5 h-5 text-[var(--accent)]" />
-              <h3 className="text-sm font-bold text-[var(--text-primary)]">Approved Orders (with Ticket Numbers)</h3>
-              <span className="text-xs font-mono text-[var(--text-muted)] bg-[var(--accent-light)] px-2 py-0.5 rounded-full">{filteredOrders.length} orders</span>
-            </div>
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
-              {/* Search */}
-              <div className="relative flex items-center w-full sm:w-auto">
-                <span className="absolute left-3 text-[var(--text-muted)] text-xs pointer-events-none">🔍</span>
-                <input
-                  type="text"
-                  placeholder="Search orders…"
-                  value={ordersSearch}
-                  onChange={e => setOrdersSearch(e.target.value)}
-                  className="pl-8 pr-3 py-1.5 text-xs rounded-lg outline-none border border-[var(--border)] transition w-full sm:w-40 bg-[var(--bg-card)] text-[var(--text-primary)] focus:border-[var(--accent)]"
-                />
-              </div>
-              {/* Status dropdown */}
-              <div className="relative w-full sm:w-auto">
-                <button
-                  onClick={(e) => { e.stopPropagation(); setIsOrdersFilterOpen(!isOrdersFilterOpen); }}
-                  className="flex items-center justify-between sm:justify-start gap-1.5 text-xs text-[var(--text-primary)] bg-[var(--bg-card)] hover:bg-[var(--accent-light)] px-3 py-1.5 rounded-lg transition-colors border border-[var(--border)] w-full sm:w-auto"
-                >
-                  <span>Status: {ordersStatusFilter === 'ALL' ? 'All' : ordersStatusFilter.replace(/_/g, ' ')}</span>
-                  <span className="text-[10px]">▼</span>
-                </button>
-                {isOrdersFilterOpen && (
-                  <div className="absolute right-0 top-full mt-1.5 w-full sm:w-48 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl z-20 p-1 flex flex-col text-left">
-                    {(['ALL', 'PROCESSING', 'APPROVED', 'OUT_FOR_DELIVERY', 'DELIVERED'] as const).map(st => (
-                      <button
-                        key={st}
-                        onClick={() => { setOrdersStatusFilter(st); setIsOrdersFilterOpen(false); }}
-                        className="flex items-center gap-2 px-3 py-2 text-xs rounded-lg hover:bg-[var(--accent-light)] text-left transition-colors text-[var(--text-primary)]"
-                      >
-                        <span className={`w-2 h-2 rounded-full ${st === 'APPROVED' || st === 'DELIVERED' ? 'bg-emerald-500' : st === 'PROCESSING' ? 'bg-indigo-500' : 'bg-slate-450'}`} />
-                        {st === 'ALL' ? 'All Status' : st.replace(/_/g, ' ')}
-                      </button>
-                    ))}
+          {/* Approved Orders Section — always visible */}
+          {approvedOrders.length > 0 && (
+            <div className="theme-table-wrapper border border-[var(--border)] bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)]">
+              {/* Toolbar */}
+              <div className="theme-table-toolbar flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-5 py-4 border-b border-[var(--border)] bg-[var(--bg)]">
+                <div className="flex items-center gap-2">
+                  <TicketCheck className="w-5 h-5 text-[var(--accent)]" />
+                  <h3 className="text-sm font-bold text-[var(--text-primary)]">Approved Orders (with Ticket Numbers)</h3>
+                  <span className="text-xs font-mono text-[var(--text-muted)] bg-[var(--accent-light)] px-2 py-0.5 rounded-full">{filteredOrders.length} orders</span>
+                </div>
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
+                  {/* Search */}
+                  <div className="relative flex items-center w-full sm:w-auto">
+                    <span className="absolute left-3 text-[var(--text-muted)] text-xs pointer-events-none">🔍</span>
+                    <input
+                      type="text"
+                      placeholder="Search orders…"
+                      value={ordersSearch}
+                      onChange={e => setOrdersSearch(e.target.value)}
+                      className="pl-8 pr-3 py-1.5 text-xs rounded-lg outline-none border border-[var(--border)] transition w-full sm:w-40 bg-[var(--bg-card)] text-[var(--text-primary)] focus:border-[var(--accent)]"
+                    />
                   </div>
-                )}
+                  {/* Status dropdown */}
+                  <div className="relative w-full sm:w-auto">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setIsOrdersFilterOpen(!isOrdersFilterOpen); }}
+                      className="flex items-center justify-between sm:justify-start gap-1.5 text-xs text-[var(--text-primary)] bg-[var(--bg-card)] hover:bg-[var(--accent-light)] px-3 py-1.5 rounded-lg transition-colors border border-[var(--border)] w-full sm:w-auto"
+                    >
+                      <span>Status: {ordersStatusFilter === 'ALL' ? 'All' : ordersStatusFilter.replace(/_/g, ' ')}</span>
+                      <span className="text-[10px]">▼</span>
+                    </button>
+                    {isOrdersFilterOpen && (
+                      <div className="absolute right-0 top-full mt-1.5 w-full sm:w-48 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl z-20 p-1 flex flex-col text-left">
+                        {(['ALL', 'PROCESSING', 'APPROVED', 'OUT_FOR_DELIVERY', 'DELIVERED'] as const).map(st => (
+                          <button
+                            key={st}
+                            onClick={() => { setOrdersStatusFilter(st); setIsOrdersFilterOpen(false); }}
+                            className="flex items-center gap-2 px-3 py-2 text-xs rounded-lg hover:bg-[var(--accent-light)] text-left transition-colors text-[var(--text-primary)]"
+                          >
+                            <span className={`w-2 h-2 rounded-full ${st === 'APPROVED' || st === 'DELIVERED' ? 'bg-emerald-500' : st === 'PROCESSING' ? 'bg-indigo-500' : 'bg-slate-450'}`} />
+                            {st === 'ALL' ? 'All Status' : st.replace(/_/g, ' ')}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
+
+              {/* Scrollable table / Mobile Card List */}
+              <div>
+                {/* Mobile Card List */}
+                <div className="lg:hidden space-y-3 p-4">
+                  {sortedOrders.map(order => (
+                    <div 
+                      key={order.id} 
+                      onClick={() => setActiveMobileDetail({ type: 'order', data: order })}
+                      className="bg-[var(--bg-card)] rounded-2xl shadow-card p-4 border border-[var(--border)] flex items-center justify-between cursor-pointer"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-[var(--accent-light)] text-[var(--accent)] flex items-center justify-center font-bold text-base shrink-0">
+                          {order.clientName[0]}
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-bold text-[var(--text-primary)]">{order.clientName}</h4>
+                          <p className="text-xs text-[var(--text-secondary)] font-semibold">{order.productName || '—'}</p>
+                          <p className="text-[10px] text-[var(--text-muted)] mt-0.5 font-mono">{order.ticketNumber || order.id}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${statusBadge(order.status)}`}>
+                          {order.status.replace(/_/g, ' ')}
+                        </span>
+                        <ChevronRight className="w-4 h-4 text-[var(--text-muted)]" />
+                      </div>
+                    </div>
+                  ))}
+                  {filteredOrders.length === 0 && (
+                    <div className="p-8 text-center text-[var(--text-muted)] text-xs bg-[var(--bg-card)] rounded-2xl border border-[var(--border)]">No orders found.</div>
+                  )}
+                </div>
+
+                {/* Desktop Table View */}
+                <div className="hidden lg:block overflow-x-auto w-full">
+                  <table className="w-full text-xs text-left">
+                    <thead>
+                      <tr className="theme-table-header-row text-[var(--text-muted)] uppercase font-semibold text-[10px] border-b border-[var(--border)]">
+                        <th className="py-3 px-5 whitespace-nowrap">
+                          <input
+                            type="checkbox"
+                            checked={filteredOrders.length > 0 && selectedOrdersRows.size === filteredOrders.length}
+                            onChange={handleSelectAllOrders}
+                            className="accent-[var(--accent)] w-3.5 h-3.5"
+                          />
+                        </th>
+                        <th onClick={() => handleSort('ticketNumber', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none text-[var(--text-primary)]">
+                          <div className="flex items-center gap-1">
+                            <span>Ticket #</span>
+                            <span className="text-[9px] opacity-70">{ordersSortField === 'ticketNumber' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                          </div>
+                        </th>
+                        <th onClick={() => handleSort('id', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none hidden sm:table-cell text-[var(--text-primary)]">
+                          <div className="flex items-center gap-1">
+                            <span>Order ID</span>
+                            <span className="text-[9px] opacity-70">{ordersSortField === 'id' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                          </div>
+                        </th>
+                        <th onClick={() => handleSort('clientName', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none text-[var(--text-primary)]">
+                          <div className="flex items-center gap-1">
+                            <span>Client</span>
+                            <span className="text-[9px] opacity-70">{ordersSortField === 'clientName' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                          </div>
+                        </th>
+                        <th onClick={() => handleSort('productName', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none hidden md:table-cell text-[var(--text-primary)]">
+                          <div className="flex items-center gap-1">
+                            <span>Product</span>
+                            <span className="text-[9px] opacity-70">{ordersSortField === 'productName' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                          </div>
+                        </th>
+                        <th onClick={() => handleSort('destination', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none hidden lg:table-cell text-[var(--text-primary)]">
+                          <div className="flex items-center gap-1">
+                            <span>Destination</span>
+                            <span className="text-[9px] opacity-70">{ordersSortField === 'destination' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                          </div>
+                        </th>
+                        <th onClick={() => handleSort('totalAmount', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 text-right whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none text-[var(--text-primary)]">
+                          <div className="flex items-center justify-end gap-1">
+                            <span>Amount</span>
+                            <span className="text-[9px] opacity-70">{ordersSortField === 'totalAmount' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                          </div>
+                        </th>
+                        <th onClick={() => handleSort('status', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 text-center whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none text-[var(--text-primary)]">
+                          <div className="flex items-center justify-center gap-1">
+                            <span>Status</span>
+                            <span className="text-[9px] opacity-70">{ordersSortField === 'status' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                          </div>
+                        </th>
+                        <th className="py-3 px-5 text-center whitespace-nowrap text-[var(--text-primary)]">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[var(--border)]">
+                      {sortedOrders.map(order => (
+                        <tr key={order.id} className="theme-table-row hover:bg-[var(--accent-light)] transition-colors group cursor-pointer text-[var(--text-primary)]" onClick={() => setActiveMobileDetail({ type: 'order', data: order })}>
+                          <td className="py-3 px-5" onClick={e => e.stopPropagation()}>
+                            <input
+                              type="checkbox"
+                              checked={selectedOrdersRows.has(order.id)}
+                              onChange={() => handleSelectOrdersRow(order.id)}
+                              className="accent-[var(--accent)] w-3.5 h-3.5"
+                            />
+                          </td>
+                          <td className="py-3.5 px-3 font-mono font-bold text-emerald-500">{order.ticketNumber || '—'}</td>
+                          <td className="py-3.5 px-3 font-mono font-semibold hidden sm:table-cell text-[var(--text-primary)]">{order.id}</td>
+                          <td className="py-3.5 px-3 font-semibold text-[13px]">{order.clientName}</td>
+                          <td className="py-3.5 px-3 text-[var(--text-muted)] hidden md:table-cell">{order.productName || '—'}</td>
+                          <td className="py-3.5 px-3 text-[var(--text-muted)] hidden lg:table-cell">{order.destination || '—'}</td>
+                          <td className="py-3.5 px-3 text-right font-bold font-mono text-[13px] text-[var(--text-primary)]">GHS {order.totalAmount.toLocaleString()}</td>
+                          <td className="py-3.5 px-3 text-center">
+                            <span className={`px-2.5 py-0.5 rounded text-[9px] font-bold ${statusBadge(order.status)}`}>
+                              {order.status.replace(/_/g, ' ')}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-5 text-center relative" onClick={(e) => e.stopPropagation()}>
+                            <button
+                              onClick={() => setActiveOrdersMenu(activeOrdersMenu === order.id ? null : order.id)}
+                              className="w-8 h-8 inline-flex items-center justify-center bg-[var(--bg)] hover:bg-[var(--accent-light)] rounded-lg text-[var(--text-secondary)] transition-colors select-none border border-[var(--border)]"
+                            >
+                              ···
+                            </button>
+                            {activeOrdersMenu === order.id && (
+                              <div className="absolute right-5 mt-1 w-44 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl z-30 p-1 flex flex-col text-left">
+                                <button onClick={() => handleEditOrder(order)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left">✏ Edit Details</button>
+                                <button onClick={() => handleDuplicateOrder(order)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left">📋 Duplicate</button>
+                                <button onClick={() => handleShareOrder(order)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left">🔗 Share Link</button>
+                                <div className="h-px bg-[var(--border)] my-1"></div>
+                                <button onClick={() => handleDeleteOrder(order.id)} className="flex items-center gap-2 px-3 py-2 text-xs text-rose-500 hover:bg-rose-50 rounded-lg transition-colors text-left">🗑 Delete</button>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Footer */}
+                <div className="theme-table-footer flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-4 border-t border-[var(--border)] bg-[var(--bg)]">
+                  <p className="text-xs text-[var(--text-muted)] font-mono">Showing {filteredOrders.length} of {approvedOrders.length} shipments</p>
+                  <div className="flex items-center gap-1">
+                    <button className="w-8 h-8 flex items-center justify-center text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-[var(--bg-card)] hover:bg-[var(--accent-light)] rounded-lg transition-colors border border-[var(--border)] disabled:opacity-30" disabled>‹</button>
+                    <button className="w-8 h-8 flex items-center justify-center text-xs text-white bg-[var(--accent)] rounded-lg font-bold">1</button>
+                    <button className="w-8 h-8 flex items-center justify-center text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-[var(--bg-card)] hover:bg-[var(--accent-light)] rounded-lg transition-colors border border-[var(--border)] disabled:opacity-30" disabled>›</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Approved Goods Section — always visible */}
+          {approvedGoods.length > 0 && (
+            <div className="p-6 bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] border border-[var(--border)] space-y-3">
+              <div className="flex items-center gap-2">
+                <PackageCheck className="w-5 h-5 text-[var(--accent)]" />
+                <h3 className="text-lg font-bold text-[var(--text-primary)]">Approved Incoming Goods</h3>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {approvedGoods.map(item => (
+                  <div key={item.id} className="p-4 bg-[var(--bg)] border border-[var(--border)] rounded-xl space-y-2 text-[var(--text-primary)]">
+                    {item.productImage && (
+                      <img src={item.productImage} alt={item.productName} className="w-full h-24 object-cover rounded-lg border border-[var(--border)]" />
+                    )}
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="text-xs font-bold text-[var(--text-primary)]">{item.productName || 'Unnamed Product'}</p>
+                        <p className="text-[10px] text-[var(--text-muted)]">Code: <code>{item.goodsCode || item.id}</code></p>
+                      </div>
+                      <span className="px-2 py-0.5 rounded font-bold text-[9px] bg-emerald-500/10 text-emerald-500">APPROVED</span>
+                    </div>
+                    <p className="text-[10px] text-[var(--text-muted)]">From: <strong className="text-[var(--text-primary)]">{item.country}</strong> via {item.company}</p>
+                    <p className="text-[10px] text-[var(--text-muted)]">Destination: <strong className="text-[var(--text-primary)]">{item.destination || 'Accra Warehouse'}</strong></p>
+                    <p className="text-[10px] text-[var(--text-muted)]">Qty: <strong className="text-[var(--text-primary)]">{item.quantity}</strong> | Weight: <strong className="text-[var(--text-primary)]">{item.weight}T</strong> | Unit: <strong className="text-[var(--text-primary)]">GHS {item.unitPrice || '—'}</strong></p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+        </div>
+
+        {/* Right Column */}
+        <div className="lg:col-span-5 xl:col-span-4 space-y-6">
+          
+          {/* Quick Actions */}
+          <div className="p-5 bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] border border-[var(--border)]">
+            <h3 className="text-sm font-bold text-[var(--text-primary)] mb-4">Quick Actions</h3>
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { label: 'Log Cargo Intake', tab: 'PortIngestion', icon: PackageCheck, color: 'var(--accent)' },
+                { label: 'View Stock', tab: 'Stock', icon: Layers, color: '#8b5cf6' },
+                { label: 'Discrepancy Reports', tab: 'OpsHistory', icon: AlertTriangle, color: '#f59e0b' },
+                { label: 'Fulfillment Queue', tab: 'Releases', icon: Truck, color: '#10b981' },
+              ].map(action => {
+                const Icon = action.icon;
+                return (
+                  <button
+                    key={action.tab}
+                    onClick={() => setActiveSubTab?.(action.tab)}
+                    className="flex flex-col items-center gap-2 p-4 rounded-2xl border border-[var(--border)] hover:border-[var(--accent)] hover:bg-[var(--accent-light)] transition-all cursor-pointer text-center bg-transparent"
+                  >
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${action.color}18` }}>
+                      <Icon className="w-5 h-5" style={{ color: action.color }} />
+                    </div>
+                    <span className="text-xs font-semibold text-[var(--text-secondary)] leading-tight">{action.label}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
-          {/* Scrollable table / Mobile Card List */}
-          <div>
-            {/* Mobile Card List */}
-            <div className="lg:hidden space-y-3 p-4">
-              {sortedOrders.map(order => (
-                <div 
-                  key={order.id} 
-                  onClick={() => setActiveMobileDetail({ type: 'order', data: order })}
-                  className="bg-[var(--bg-card)] rounded-2xl shadow-card p-4 border border-[var(--border)] flex items-center justify-between cursor-pointer"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-[var(--accent-light)] text-[var(--accent)] flex items-center justify-center font-bold text-base shrink-0">
-                      {order.clientName[0]}
+          {/* Low Stock Alerts */}
+          <div className="p-5 bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] border border-[var(--border)]">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-500" />
+                <h3 className="text-sm font-bold text-[var(--text-primary)]">Low Stock Alerts</h3>
+              </div>
+              <button onClick={() => setActiveSubTab?.('Stock')} className="text-xs text-[var(--accent)] hover:underline font-semibold cursor-pointer bg-transparent border-none">View All →</button>
+            </div>
+            <div className="space-y-3 max-h-[290px] overflow-y-auto pr-1">
+              {lowStockItems.length > 0 ? (
+                lowStockItems.map(item => {
+                  const pct = item.capacity > 0 ? Math.round((item.current / item.capacity) * 100) : 0;
+                  const isOut = item.current === 0;
+                  return (
+                    <div key={item.sku || item.id}>
+                      <div className="flex items-center justify-between mb-1">
+                        <div>
+                          <p className="text-xs font-semibold text-[var(--text-primary)]">{item.name}</p>
+                          <p className="text-[10px] text-[var(--text-muted)] font-mono">{item.sku}</p>
+                        </div>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${isOut ? 'bg-rose-500/10 text-rose-600' : 'bg-amber-500/10 text-amber-600'}`}>
+                          {isOut ? 'OUT OF STOCK' : `${pct}%`}
+                        </span>
+                      </div>
+                      <div className="h-1.5 bg-[var(--bg)] rounded-full overflow-hidden">
+                        <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: isOut ? '#f43f5e' : '#f59e0b' }} />
+                      </div>
                     </div>
-                    <div>
-                      <h4 className="text-sm font-bold text-[var(--text-primary)]">{order.clientName}</h4>
-                      <p className="text-xs text-[var(--text-secondary)] font-semibold">{order.productName || '—'}</p>
-                      <p className="text-[10px] text-[var(--text-muted)] mt-0.5 font-mono">{order.ticketNumber || order.id}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${statusBadge(order.status)}`}>
-                      {order.status.replace(/_/g, ' ')}
-                    </span>
-                    <ChevronRight className="w-4 h-4 text-[var(--text-muted)]" />
-                  </div>
+                  );
+                })
+              ) : (
+                <div className="text-center py-8 text-[var(--text-muted)] text-xs">
+                  <p className="font-semibold text-sm">All stock levels healthy</p>
+                  <p className="text-[10px] mt-1">No low stock alerts detected.</p>
                 </div>
-              ))}
-              {filteredOrders.length === 0 && (
-                <div className="p-8 text-center text-[var(--text-muted)] text-xs bg-[var(--bg-card)] rounded-2xl border border-[var(--border)]">No orders found.</div>
               )}
             </div>
-
-            {/* Desktop Table View */}
-            <div className="hidden lg:block overflow-x-auto w-full">
-              <table className="w-full text-xs text-left">
-              <thead>
-                <tr className="theme-table-header-row text-[var(--text-muted)] uppercase font-semibold text-[10px] border-b border-[var(--border)]">
-                  <th className="py-3 px-5 whitespace-nowrap">
-                    <input
-                      type="checkbox"
-                      checked={filteredOrders.length > 0 && selectedOrdersRows.size === filteredOrders.length}
-                      onChange={handleSelectAllOrders}
-                      className="accent-[var(--accent)] w-3.5 h-3.5"
-                    />
-                  </th>
-                  <th onClick={() => handleSort('ticketNumber', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none text-[var(--text-primary)]">
-                    <div className="flex items-center gap-1">
-                      <span>Ticket #</span>
-                      <span className="text-[9px] opacity-70">{ordersSortField === 'ticketNumber' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
-                    </div>
-                  </th>
-                  <th onClick={() => handleSort('id', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none hidden sm:table-cell text-[var(--text-primary)]">
-                    <div className="flex items-center gap-1">
-                      <span>Order ID</span>
-                      <span className="text-[9px] opacity-70">{ordersSortField === 'id' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
-                    </div>
-                  </th>
-                  <th onClick={() => handleSort('clientName', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none text-[var(--text-primary)]">
-                    <div className="flex items-center gap-1">
-                      <span>Client</span>
-                      <span className="text-[9px] opacity-70">{ordersSortField === 'clientName' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
-                    </div>
-                  </th>
-                  <th onClick={() => handleSort('productName', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none hidden md:table-cell text-[var(--text-primary)]">
-                    <div className="flex items-center gap-1">
-                      <span>Product</span>
-                      <span className="text-[9px] opacity-70">{ordersSortField === 'productName' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
-                    </div>
-                  </th>
-                  <th onClick={() => handleSort('destination', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none hidden lg:table-cell text-[var(--text-primary)]">
-                    <div className="flex items-center gap-1">
-                      <span>Destination</span>
-                      <span className="text-[9px] opacity-70">{ordersSortField === 'destination' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
-                    </div>
-                  </th>
-                  <th onClick={() => handleSort('totalAmount', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 text-right whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none text-[var(--text-primary)]">
-                    <div className="flex items-center justify-end gap-1">
-                      <span>Amount</span>
-                      <span className="text-[9px] opacity-70">{ordersSortField === 'totalAmount' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
-                    </div>
-                  </th>
-                  <th onClick={() => handleSort('status', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 text-center whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none text-[var(--text-primary)]">
-                    <div className="flex items-center justify-center gap-1">
-                      <span>Status</span>
-                      <span className="text-[9px] opacity-70">{ordersSortField === 'status' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
-                    </div>
-                  </th>
-                  <th className="py-3 px-5 text-center whitespace-nowrap text-[var(--text-primary)]">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[var(--border)]">
-                {sortedOrders.map(order => (
-                  <tr key={order.id} className="theme-table-row hover:bg-[var(--accent-light)] transition-colors group cursor-pointer text-[var(--text-primary)]" onClick={() => setActiveMobileDetail({ type: 'order', data: order })}>
-                    <td className="py-3 px-5" onClick={e => e.stopPropagation()}>
-                      <input
-                        type="checkbox"
-                        checked={selectedOrdersRows.has(order.id)}
-                        onChange={() => handleSelectOrdersRow(order.id)}
-                        className="accent-[var(--accent)] w-3.5 h-3.5"
-                      />
-                    </td>
-                    <td className="py-3.5 px-3 font-mono font-bold text-emerald-500">{order.ticketNumber || '—'}</td>
-                    <td className="py-3.5 px-3 font-mono font-semibold hidden sm:table-cell text-[var(--text-primary)]">{order.id}</td>
-                    <td className="py-3.5 px-3 font-semibold text-[13px]">{order.clientName}</td>
-                    <td className="py-3.5 px-3 text-[var(--text-muted)] hidden md:table-cell">{order.productName || '—'}</td>
-                    <td className="py-3.5 px-3 text-[var(--text-muted)] hidden lg:table-cell">{order.destination || '—'}</td>
-                    <td className="py-3.5 px-3 text-right font-bold font-mono text-[13px] text-[var(--text-primary)]">GHS {order.totalAmount.toLocaleString()}</td>
-                    <td className="py-3.5 px-3 text-center">
-                      <span className={`px-2.5 py-0.5 rounded text-[9px] font-bold ${statusBadge(order.status)}`}>
-                        {order.status.replace(/_/g, ' ')}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-5 text-center relative" onClick={(e) => e.stopPropagation()}>
-                      <button
-                        onClick={() => setActiveOrdersMenu(activeOrdersMenu === order.id ? null : order.id)}
-                        className="w-8 h-8 inline-flex items-center justify-center bg-[var(--bg)] hover:bg-[var(--accent-light)] rounded-lg text-[var(--text-secondary)] transition-colors select-none border border-[var(--border)]"
-                      >
-                        ···
-                      </button>
-                      {activeOrdersMenu === order.id && (
-                        <div className="absolute right-5 mt-1 w-44 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl z-30 p-1 flex flex-col text-left">
-                          <button onClick={() => handleEditOrder(order)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left">✏ Edit Details</button>
-                          <button onClick={() => handleDuplicateOrder(order)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left">📋 Duplicate</button>
-                          <button onClick={() => handleShareOrder(order)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left">🔗 Share Link</button>
-                          <div className="h-px bg-[var(--border)] my-1"></div>
-                          <button onClick={() => handleDeleteOrder(order.id)} className="flex items-center gap-2 px-3 py-2 text-xs text-rose-500 hover:bg-rose-50 rounded-lg transition-colors text-left">🗑 Delete</button>
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
           </div>
         </div>
-
-          {/* Footer */}
-          <div className="theme-table-footer flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-4 border-t border-[var(--border)] bg-[var(--bg)]">
-            <p className="text-xs text-[var(--text-muted)] font-mono">Showing {filteredOrders.length} of {approvedOrders.length} shipments</p>
-            <div className="flex items-center gap-1">
-              <button className="w-8 h-8 flex items-center justify-center text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-[var(--bg-card)] hover:bg-[var(--accent-light)] rounded-lg transition-colors border border-[var(--border)] disabled:opacity-30" disabled>‹</button>
-              <button className="w-8 h-8 flex items-center justify-center text-xs text-white bg-[var(--accent)] rounded-lg font-bold">1</button>
-              <button className="w-8 h-8 flex items-center justify-center text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-[var(--bg-card)] hover:bg-[var(--accent-light)] rounded-lg transition-colors border border-[var(--border)] disabled:opacity-30" disabled>›</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Approved Goods Section — always visible */}
-      {approvedGoods.length > 0 && (
-        <div className="p-6 bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] border border-[var(--border)] space-y-3 mt-6">
-          <div className="flex items-center gap-2">
-            <PackageCheck className="w-5 h-5 text-[var(--accent)]" />
-            <h3 className="text-lg font-bold text-[var(--text-primary)]">Approved Incoming Goods</h3>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {approvedGoods.map(item => (
-              <div key={item.id} className="p-4 bg-[var(--bg)] border border-[var(--border)] rounded-xl space-y-2 text-[var(--text-primary)]">
-                {item.productImage && (
-                  <img src={item.productImage} alt={item.productName} className="w-full h-24 object-cover rounded-lg border border-[var(--border)]" />
-                )}
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="text-xs font-bold text-[var(--text-primary)]">{item.productName || 'Unnamed Product'}</p>
-                    <p className="text-[10px] text-[var(--text-muted)]">Code: <code>{item.goodsCode || item.id}</code></p>
-                  </div>
-                  <span className="px-2 py-0.5 rounded font-bold text-[9px] bg-emerald-500/10 text-emerald-500">APPROVED</span>
-                </div>
-                <p className="text-[10px] text-[var(--text-muted)]">From: <strong className="text-[var(--text-primary)]">{item.country}</strong> via {item.company}</p>
-                <p className="text-[10px] text-[var(--text-muted)]">Destination: <strong className="text-[var(--text-primary)]">{item.destination || 'Accra Warehouse'}</strong></p>
-                <p className="text-[10px] text-[var(--text-muted)]">Qty: <strong className="text-[var(--text-primary)]">{item.quantity}</strong> | Weight: <strong className="text-[var(--text-primary)]">{item.weight}T</strong> | Unit: <strong className="text-[var(--text-primary)]">GHS {item.unitPrice || '—'}</strong></p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      </div>
 
       {/* Tab-based views */}
       <div className="border-t border-[var(--border)] pt-6">

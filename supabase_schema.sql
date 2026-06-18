@@ -480,5 +480,101 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.wip_stock;
 -- Alter stock table to include category
 ALTER TABLE public.stock ADD COLUMN IF NOT EXISTS category TEXT;
 
+-- FINANCE EXPENSES TABLE
+CREATE TABLE IF NOT EXISTS public.finance_expenses (
+    id TEXT PRIMARY KEY DEFAULT 'EXP-' || substring(md5(random()::text) from 1 for 8),
+    category TEXT NOT NULL,
+    description TEXT,
+    amount NUMERIC NOT NULL,
+    date DATE NOT NULL DEFAULT CURRENT_DATE,
+    receipt BOOLEAN DEFAULT FALSE,
+    submitted_by TEXT,
+    status TEXT NOT NULL DEFAULT 'Pending' CHECK (status IN ('Pending', 'Approved', 'Rejected')),
+    notes TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
 
+-- FINANCE CHEQUES TABLE
+CREATE TABLE IF NOT EXISTS public.finance_cheques (
+    id TEXT PRIMARY KEY DEFAULT 'CHQ-' || substring(md5(random()::text) from 1 for 8),
+    cheque_number TEXT NOT NULL,
+    bank_name TEXT NOT NULL,
+    account_name TEXT NOT NULL,
+    account_number TEXT,
+    amount NUMERIC NOT NULL,
+    cheque_date DATE NOT NULL,
+    expected_clearing DATE,
+    status TEXT NOT NULL DEFAULT 'Received' CHECK (status IN ('Received', 'Deposited', 'Cleared', 'Bounced')),
+    customer_ref TEXT,
+    order_ref TEXT,
+    recorded_by TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
 
+-- FINANCE PETTY CASH TABLE
+CREATE TABLE IF NOT EXISTS public.finance_petty_cash (
+    id TEXT PRIMARY KEY DEFAULT 'PC-' || substring(md5(random()::text) from 1 for 8),
+    date DATE NOT NULL DEFAULT CURRENT_DATE,
+    description TEXT NOT NULL,
+    amount NUMERIC NOT NULL,
+    disbursed_to TEXT,
+    category TEXT NOT NULL,
+    receipt BOOLEAN DEFAULT FALSE,
+    balance_after NUMERIC NOT NULL,
+    type TEXT NOT NULL CHECK (type IN ('disbursement', 'replenishment')),
+    notes TEXT,
+    recorded_by TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- MAINTENANCE SCHEDULE TABLE
+CREATE TABLE IF NOT EXISTS public.maintenance_schedule (
+    id TEXT PRIMARY KEY DEFAULT 'MAIN-' || substring(md5(random()::text) from 1 for 8),
+    date DATE NOT NULL,
+    vehicle_id TEXT NOT NULL,
+    type TEXT NOT NULL CHECK (type IN ('Service', 'Repair', 'Inspection')),
+    description TEXT NOT NULL,
+    cost NUMERIC NOT NULL,
+    status TEXT NOT NULL DEFAULT 'Scheduled' CHECK (status IN ('Scheduled', 'In Progress', 'Completed')),
+    mechanic TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- FUEL LOGS TABLE
+CREATE TABLE IF NOT EXISTS public.fuel_logs (
+    id TEXT PRIMARY KEY DEFAULT 'FUEL-' || substring(md5(random()::text) from 1 for 8),
+    date DATE NOT NULL DEFAULT CURRENT_DATE,
+    vehicle_id TEXT NOT NULL,
+    driver TEXT,
+    liters NUMERIC NOT NULL,
+    cost NUMERIC NOT NULL,
+    station TEXT,
+    odometer NUMERIC NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Enable RLS on the new tables
+ALTER TABLE public.finance_expenses ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.finance_cheques ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.finance_petty_cash ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.maintenance_schedule ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.fuel_logs ENABLE ROW LEVEL SECURITY;
+
+-- Setup full RLS access for authenticated users on new tables
+CREATE POLICY "Allow authenticated users full access to finance_expenses" ON public.finance_expenses FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Allow authenticated users full access to finance_cheques" ON public.finance_cheques FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Allow authenticated users full access to finance_petty_cash" ON public.finance_petty_cash FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Allow authenticated users full access to maintenance_schedule" ON public.maintenance_schedule FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Allow authenticated users full access to fuel_logs" ON public.fuel_logs FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
+-- Enable Realtime for new tables
+ALTER PUBLICATION supabase_realtime ADD TABLE public.finance_expenses;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.finance_cheques;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.finance_petty_cash;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.maintenance_schedule;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.fuel_logs;

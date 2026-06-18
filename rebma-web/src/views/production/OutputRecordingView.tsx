@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Download, Trash2, Package } from 'lucide-react';
+import { Download, Trash2, Package, Edit, X } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { exportToCSV } from '../../utils/export';
 
@@ -14,22 +14,52 @@ interface OutputRecord {
   notes: string;
 }
 
-
 interface Props {
   addNotification: (msg: string) => void;
 }
+
+const mapToUI = (db: any): OutputRecord => ({
+  id: db.id,
+  date: db.date || '',
+  product: db.product_name || '',
+  received: Number(db.goods_received || 0),
+  boxes: Number(db.boxes_produced || 0),
+  sachets: Number(db.total_sachets || 0),
+  quality: (db.quality_result === 'Fail' ? 'Fail' : 'Pass') as 'Pass' | 'Fail',
+  notes: db.notes || '',
+});
+
+const mapToDB = (ui: Partial<OutputRecord>) => {
+  const db: any = {};
+  if (ui.id !== undefined) db.id = ui.id;
+  if (ui.date !== undefined) db.date = ui.date;
+  if (ui.product !== undefined) db.product_name = ui.product;
+  if (ui.received !== undefined) db.goods_received = ui.received;
+  if (ui.boxes !== undefined) db.boxes_produced = ui.boxes;
+  if (ui.sachets !== undefined) {
+    db.total_sachets = ui.sachets;
+    if (ui.boxes && ui.boxes > 0) {
+      db.sachets_per_box = Math.round(ui.sachets / ui.boxes);
+    }
+  }
+  if (ui.quality !== undefined) db.quality_result = ui.quality;
+  if (ui.notes !== undefined) db.notes = ui.notes;
+  return db;
+};
 
 export default function OutputRecordingView({ addNotification }: Props) {
   const [records, setRecords] = useState<OutputRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ date: new Date().toISOString().split('T')[0], product: '', received: '', boxes: '', sachets: '', quality: 'Pass' as 'Pass' | 'Fail', notes: '' });
+  const [showEdit, setShowEdit] = useState(false);
+  const [editForm, setEditForm] = useState<OutputRecord | null>(null);
 
   useEffect(() => {
     const load = async () => {
       setLoading(true);
       try {
-        const { data, error } = await supabase.from('production_output').select('*').order('date', { ascending: false });
-        if (!error && data) setRecords(data);
+        const { data, error } = await supabase.from('production_logs').select('*').order('date', { ascending: false });
+        if (!error && data) setRecords(data.map(mapToUI));
         else setRecords([]);
       } catch {
         setRecords([]);
@@ -60,17 +90,48 @@ export default function OutputRecordingView({ addNotification }: Props) {
       quality: form.quality,
       notes: form.notes,
     };
-    try {
-      await supabase.from('production_output').insert([newRecord]);
-    } catch {}
-    setRecords(prev => [newRecord, ...prev]);
-    addNotification(`Output recorded for ${form.product}`);
-    setForm({ date: new Date().toISOString().split('T')[0], product: '', received: '', boxes: '', sachets: '', quality: 'Pass', notes: '' });
+    
+    const dbData = mapToDB(newRecord);
+    dbData.record_number = `REC-${Date.now().toString().slice(-6)}`;
+    
+    const { error } = await supabase.from('production_logs').insert([dbData]);
+    if (!error) {
+      setRecords(prev => [newRecord, ...prev]);
+      addNotification(`Output recorded for ${form.product}`);
+      setForm({ date: new Date().toISOString().split('T')[0], product: '', received: '', boxes: '', sachets: '', quality: 'Pass', notes: '' });
+    } else {
+      alert(error.message || 'Failed to insert output record');
+    }
   };
 
-  const handleDelete = (id: string) => {
-    setRecords(prev => prev.filter(r => r.id !== id));
-    addNotification('Record deleted');
+  const handleEditClick = (r: OutputRecord) => {
+    setEditForm(r);
+    setShowEdit(true);
+  };
+
+  const handleEditSave = async () => {
+    if (!editForm) return;
+    const dbData = mapToDB(editForm);
+    const { error } = await supabase.from('production_logs').update(dbData).eq('id', editForm.id);
+    if (!error) {
+      setRecords(prev => prev.map(r => r.id === editForm.id ? editForm : r));
+      addNotification(`Output record updated for ${editForm.product}`);
+      setShowEdit(false);
+      setEditForm(null);
+    } else {
+      alert(error.message || 'Failed to update record');
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this production record?')) return;
+    const { error } = await supabase.from('production_logs').delete().eq('id', id);
+    if (!error) {
+      setRecords(prev => prev.filter(r => r.id !== id));
+      addNotification('Record deleted');
+    } else {
+      alert(error.message || 'Failed to delete record');
+    }
   };
 
   const handleExport = () => {
@@ -176,7 +237,10 @@ export default function OutputRecordingView({ addNotification }: Props) {
                   </td>
                   <td style={{ padding: '12px', color: 'var(--text-muted)', fontSize: 12, maxWidth: 160 }}>{r.notes || '—'}</td>
                   <td style={{ padding: '12px' }}>
-                    <button onClick={() => handleDelete(r.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', padding: 4 }}><Trash2 size={14} /></button>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button onClick={() => handleEditClick(r)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent)', padding: 4 }} title="Edit"><Edit size={14} /></button>
+                      <button onClick={() => handleDelete(r.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', padding: 4 }} title="Delete"><Trash2 size={14} /></button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -205,6 +269,57 @@ export default function OutputRecordingView({ addNotification }: Props) {
           </div>
         ))}
       </div>
+
+      {showEdit && editForm && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+          <div style={{ background: 'var(--bg-card)', borderRadius: 12, padding: '24px', width: '100%', maxWidth: 480, border: '1px solid var(--border)', boxShadow: 'var(--box-shadow)', margin: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h3 style={{ margin: 0, color: 'var(--text-primary)', fontWeight: 700, fontSize: 16 }}>Edit Production Output</h3>
+              <button onClick={() => { setShowEdit(false); setEditForm(null); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={20} /></button>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+              <div style={{ gridColumn: 'span 2' }}>
+                <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Product</label>
+                <input value={editForm.product} onChange={e => setEditForm({ ...editForm, product: e.target.value })} style={inputStyle} />
+              </div>
+              <div>
+                <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Date</label>
+                <input type="date" value={editForm.date} onChange={e => setEditForm({ ...editForm, date: e.target.value })} style={inputStyle} />
+              </div>
+              <div>
+                <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Goods Received</label>
+                <input type="number" value={editForm.received} onChange={e => setEditForm({ ...editForm, received: Number(e.target.value) })} style={inputStyle} />
+              </div>
+              <div>
+                <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Boxes Produced</label>
+                <input type="number" value={editForm.boxes} onChange={e => setEditForm({ ...editForm, boxes: Number(e.target.value) })} style={inputStyle} />
+              </div>
+              <div>
+                <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Sachets Produced</label>
+                <input type="number" value={editForm.sachets} onChange={e => setEditForm({ ...editForm, sachets: Number(e.target.value) })} style={inputStyle} />
+              </div>
+              <div style={{ gridColumn: 'span 2' }}>
+                <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Quality Check</label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {(['Pass', 'Fail'] as const).map(q => (
+                    <button key={q} onClick={() => setEditForm({ ...editForm, quality: q })} style={{ flex: 1, padding: '10px', borderRadius: 10, border: '1px solid var(--border)', cursor: 'pointer', fontWeight: 600, fontSize: 13, background: editForm.quality === q ? (q === 'Pass' ? '#059669' : '#dc2626') : 'var(--bg-input)', color: editForm.quality === q ? '#fff' : 'var(--text-secondary)' }}>
+                      {q}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div style={{ gridColumn: 'span 2' }}>
+                <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Notes (optional)</label>
+                <textarea value={editForm.notes} onChange={e => setEditForm({ ...editForm, notes: e.target.value })} placeholder="Any observations..." rows={2} style={{ ...inputStyle, resize: 'vertical' }} />
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '12px', marginTop: '20px', justifyContent: 'flex-end' }}>
+              <button onClick={() => { setShowEdit(false); setEditForm(null); }} style={{ padding: '10px 20px', borderRadius: 10, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 14 }}>Cancel</button>
+              <button onClick={handleEditSave} style={{ padding: '10px 24px', borderRadius: 10, border: 'none', background: 'var(--accent)', color: '#fff', cursor: 'pointer', fontWeight: 600, fontSize: 14 }}>Save Changes</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

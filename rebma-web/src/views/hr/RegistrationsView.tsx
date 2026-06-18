@@ -1,12 +1,29 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   UserPlus, CheckCircle, XCircle, Search, Filter, Clock,
-  Copy, Eye, EyeOff, X, Mail, Phone, CreditCard, Building2, Calendar
+  Copy, Eye, EyeOff, X, Mail, Phone, CreditCard, Building2, Calendar,
+  Edit, Trash2
 } from 'lucide-react';
 import type { PendingRegistration } from '../../types/erp';
+import { supabase } from '../../lib/supabaseClient';
 
 const DEPARTMENTS = ['All', 'Operations', 'Finance', 'Logistics', 'HR', 'Marketing', 'Reception', 'Production', 'Management', 'Dispatch'];
 const STATUSES = ['All', 'PENDING', 'APPROVED', 'REJECTED'];
+
+const deptToRole = (dept: string): string => {
+  const map: Record<string, string> = {
+    'HR': 'HR',
+    'Operations': 'operations',
+    'Finance': 'finance',
+    'Logistics': 'logistics',
+    'Marketing': 'marketing',
+    'Reception': 'receptionist',
+    'Production': 'production',
+    'Management': 'admin',
+    'Dispatch': 'dispatch'
+  };
+  return map[dept] || 'Staff';
+};
 
 function generatePassword(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#';
@@ -29,6 +46,7 @@ interface CredPopup {
 }
 
 export default function RegistrationsView({ pendingRegistrations, addNotification, onApprove, onDeny }: Props) {
+  const [registrations, setRegistrations] = useState<PendingRegistration[]>([]);
   const [search, setSearch] = useState('');
   const [deptFilter, setDeptFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
@@ -38,8 +56,14 @@ export default function RegistrationsView({ pendingRegistrations, addNotificatio
   const [showPw, setShowPw] = useState(false);
   const [detailReg, setDetailReg] = useState<PendingRegistration | null>(null);
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
+  const [showEdit, setShowEdit] = useState(false);
+  const [editForm, setEditForm] = useState<PendingRegistration | null>(null);
 
-  const filtered = pendingRegistrations.filter(r => {
+  useEffect(() => {
+    setRegistrations(pendingRegistrations);
+  }, [pendingRegistrations]);
+
+  const filtered = registrations.filter(r => {
     const matchSearch = r.fullName.toLowerCase().includes(search.toLowerCase()) ||
       r.email.toLowerCase().includes(search.toLowerCase()) ||
       r.ghanaCard.toLowerCase().includes(search.toLowerCase());
@@ -48,9 +72,9 @@ export default function RegistrationsView({ pendingRegistrations, addNotificatio
     return matchSearch && matchDept && matchStatus;
   });
 
-  const pending = pendingRegistrations.filter(r => r.status === 'PENDING').length;
-  const approved = pendingRegistrations.filter(r => r.status === 'APPROVED').length;
-  const rejected = pendingRegistrations.filter(r => r.status === 'REJECTED').length;
+  const pending = registrations.filter(r => r.status === 'PENDING').length;
+  const approved = registrations.filter(r => r.status === 'APPROVED').length;
+  const rejected = registrations.filter(r => r.status === 'REJECTED').length;
 
   const handleApprove = (reg: PendingRegistration) => {
     const pw = generatePassword();
@@ -63,13 +87,50 @@ export default function RegistrationsView({ pendingRegistrations, addNotificatio
 
   const handleDeny = () => {
     if (!denyId) return;
-    const reg = pendingRegistrations.find(r => r.id === denyId);
+    const reg = registrations.find(r => r.id === denyId);
     if (!reg) return;
     onDeny(reg);
     addNotification(`${reg.fullName} registration denied`);
     setDenyId(null);
     setDenyReason('');
     setMenuOpen(null);
+  };
+
+  const handleEditClick = (reg: PendingRegistration) => {
+    setEditForm(reg);
+    setShowEdit(true);
+  };
+
+  const handleEditSave = async () => {
+    if (!editForm) return;
+    const role = deptToRole(editForm.department);
+    const { error } = await supabase.from('profiles').update({
+      full_name: editForm.fullName,
+      email: editForm.email,
+      role: role,
+      ghana_card_id: editForm.ghanaCard,
+      phone: editForm.phone || null
+    }).eq('id', editForm.id);
+
+    if (!error) {
+      setRegistrations(prev => prev.map(r => r.id === editForm.id ? editForm : r));
+      addNotification(`Updated registration for ${editForm.fullName}`);
+      setShowEdit(false);
+      setEditForm(null);
+    } else {
+      alert(error.message || 'Failed to update registration');
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this registration request?')) return;
+    const { error } = await supabase.from('profiles').delete().eq('id', id);
+    if (!error) {
+      setRegistrations(prev => prev.filter(r => r.id !== id));
+      addNotification('Registration request deleted');
+    } else {
+      alert(error.message || 'Failed to delete registration');
+    }
   };
 
   const statusBadge = (status: string) => {
@@ -178,6 +239,14 @@ export default function RegistrationsView({ pendingRegistrations, addNotificatio
                             </button>
                           </>
                         )}
+                        <button onClick={() => handleEditClick(reg)}
+                          className="w-7 h-7 rounded-lg bg-indigo-500/10 text-indigo-500 flex items-center justify-center hover:bg-indigo-500/20 cursor-pointer transition-colors" title="Edit">
+                          <Edit className="w-3.5 h-3.5" />
+                        </button>
+                        <button onClick={() => handleDelete(reg.id)}
+                          className="w-7 h-7 rounded-lg bg-rose-500/10 text-rose-500 flex items-center justify-center hover:bg-rose-500/20 cursor-pointer transition-colors" title="Delete">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -309,6 +378,57 @@ export default function RegistrationsView({ pendingRegistrations, addNotificatio
               <button onClick={() => setCredPopup(null)}
                 className="px-4 py-2.5 bg-[var(--bg)] border border-[var(--border)] text-[var(--text-primary)] rounded-xl text-sm cursor-pointer hover:bg-[var(--accent-light)]">
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {showEdit && editForm && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5 w-full max-w-md">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-[var(--text-primary)]">Edit Registration Detail</h3>
+              <button onClick={() => { setShowEdit(false); setEditForm(null); }} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs text-[var(--text-secondary)] mb-1 font-semibold">Full Name</label>
+                <input value={editForm.fullName} onChange={e => setEditForm({ ...editForm, fullName: e.target.value })}
+                  className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-[var(--text-primary)] text-sm outline-none" />
+              </div>
+              <div>
+                <label className="block text-xs text-[var(--text-secondary)] mb-1 font-semibold">Email</label>
+                <input value={editForm.email} onChange={e => setEditForm({ ...editForm, email: e.target.value })}
+                  className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-[var(--text-primary)] text-sm outline-none" />
+              </div>
+              <div>
+                <label className="block text-xs text-[var(--text-secondary)] mb-1 font-semibold">Phone</label>
+                <input value={editForm.phone || ''} onChange={e => setEditForm({ ...editForm, phone: e.target.value })}
+                  className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-[var(--text-primary)] text-sm outline-none" />
+              </div>
+              <div>
+                <label className="block text-xs text-[var(--text-secondary)] mb-1 font-semibold">Department / Role</label>
+                <select value={editForm.department} onChange={e => setEditForm({ ...editForm, department: e.target.value })}
+                  className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-[var(--text-primary)] text-sm outline-none">
+                  {DEPARTMENTS.filter(d => d !== 'All').map(d => <option key={d} value={d}>{d}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs text-[var(--text-secondary)] mb-1 font-semibold">Ghana Card ID</label>
+                <input value={editForm.ghanaCard} onChange={e => setEditForm({ ...editForm, ghanaCard: e.target.value })}
+                  className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 font-mono text-[var(--text-primary)] text-sm outline-none" />
+              </div>
+            </div>
+            <div className="flex gap-2 mt-5 justify-end">
+              <button onClick={() => { setShowEdit(false); setEditForm(null); }}
+                className="px-4 py-2 text-xs border border-[var(--border)] rounded-xl text-[var(--text-secondary)] hover:bg-[var(--accent-light)] cursor-pointer">
+                Cancel
+              </button>
+              <button onClick={handleEditSave}
+                className="px-4 py-2 text-xs bg-[var(--accent)] text-white rounded-xl font-semibold hover:opacity-90 cursor-pointer">
+                Save Changes
               </button>
             </div>
           </div>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, X, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Plus, X, AlertTriangle, CheckCircle, Edit, Trash2 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { supabase } from '../../lib/supabaseClient';
 
@@ -14,7 +14,6 @@ interface MaintenanceRecord {
   mechanic: string;
 }
 
-
 const COST_TREND = [
   { month: 'Jan', cost: 3200 }, { month: 'Feb', cost: 2800 }, { month: 'Mar', cost: 4100 },
   { month: 'Apr', cost: 3600 }, { month: 'May', cost: 5200 }, { month: 'Jun', cost: 4380 },
@@ -27,29 +26,58 @@ interface Props {
   addNotification: (msg: string) => void;
 }
 
+const mapToUI = (db: any): MaintenanceRecord => ({
+  id: db.id,
+  date: db.date || '',
+  vehicleId: db.vehicle_id || db.vehicleId || '',
+  type: db.type || 'Service',
+  description: db.description || '',
+  cost: Number(db.cost || 0),
+  status: db.status || 'Scheduled',
+  mechanic: db.mechanic || '',
+});
+
+const mapToDB = (ui: Partial<MaintenanceRecord>) => {
+  const db: any = {};
+  if (ui.id !== undefined) db.id = ui.id;
+  if (ui.date !== undefined) db.date = ui.date;
+  if (ui.vehicleId !== undefined) db.vehicle_id = ui.vehicleId;
+  if (ui.type !== undefined) db.type = ui.type;
+  if (ui.description !== undefined) db.description = ui.description;
+  if (ui.cost !== undefined) db.cost = Number(ui.cost);
+  if (ui.status !== undefined) db.status = ui.status;
+  if (ui.mechanic !== undefined) db.mechanic = ui.mechanic;
+  return db;
+};
+
 export default function MaintenanceView({ addNotification }: Props) {
   const [records, setRecords] = useState<MaintenanceRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [editRecord, setEditRecord] = useState<MaintenanceRecord | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editForm, setEditForm] = useState<MaintenanceRecord | null>(null);
   const [filterVehicle, setFilterVehicle] = useState('All');
   const [filterStatus, setFilterStatus] = useState('All');
   const [filterType, setFilterType] = useState('All');
   const [form, setForm] = useState({ vehicleId: 'GR-1234-22', type: 'Service' as MaintenanceRecord['type'], date: '', description: '', mechanic: '', cost: '' });
 
-  useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      try {
-        const { data, error } = await supabase.from('maintenance_schedule').select('*').order('date', { ascending: false });
-        if (!error && data) setRecords(data);
-        else setRecords([]);
-      } catch {
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.from('maintenance_schedule').select('*').order('date', { ascending: false });
+      if (!error && data) {
+        setRecords(data.map(mapToUI));
+      } else {
         setRecords([]);
       }
-      setLoading(false);
-    };
-    load();
+    } catch {
+      setRecords([]);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    loadData();
   }, []);
 
   const today = new Date().toISOString().split('T')[0];
@@ -71,19 +99,91 @@ export default function MaintenanceView({ addNotification }: Props) {
   };
 
   const handleMarkComplete = async (id: string) => {
-    try { await supabase.from('maintenance_schedule').update({ status: 'Completed' }).eq('id', id); } catch {}
-    setRecords(prev => prev.map(r => r.id === id ? { ...r, status: 'Completed' } : r));
-    addNotification('Maintenance marked as completed');
+    try {
+      const { error } = await supabase.from('maintenance_schedule').update({ status: 'Completed', updated_at: new Date().toISOString() }).eq('id', id);
+      if (!error) {
+        setRecords(prev => prev.map(r => r.id === id ? { ...r, status: 'Completed' } : r));
+        addNotification('Maintenance marked as completed');
+      } else {
+        alert(error.message);
+      }
+    } catch (e: any) {
+      alert(e.message || 'Failed to update status.');
+    }
   };
 
   const handleSubmit = async () => {
-    if (!form.vehicleId || !form.date || !form.description) return;
-    const newRec: MaintenanceRecord = { id: String(Date.now()), vehicleId: form.vehicleId, type: form.type, date: form.date, description: form.description, mechanic: form.mechanic, cost: Number(form.cost), status: 'Scheduled' };
-    try { await supabase.from('maintenance_schedule').insert([newRec]); } catch {}
-    setRecords(prev => [newRec, ...prev]);
-    addNotification(`Maintenance scheduled for ${form.vehicleId}`);
-    setShowModal(false);
-    setForm({ vehicleId: 'GR-1234-22', type: 'Service', date: '', description: '', mechanic: '', cost: '' });
+    if (!form.vehicleId || !form.date || !form.description) {
+      alert('Vehicle, Date, and Description are required.');
+      return;
+    }
+    const newDbRow = mapToDB({
+      vehicleId: form.vehicleId,
+      type: form.type,
+      date: form.date,
+      description: form.description,
+      mechanic: form.mechanic,
+      cost: Number(form.cost || 0),
+      status: 'Scheduled'
+    });
+
+    try {
+      const { data, error } = await supabase.from('maintenance_schedule').insert([newDbRow]).select();
+      if (!error && data) {
+        addNotification(`Maintenance scheduled for ${form.vehicleId}`);
+        loadData();
+        setShowModal(false);
+        setForm({ vehicleId: 'GR-1234-22', type: 'Service', date: '', description: '', mechanic: '', cost: '' });
+      } else {
+        alert(error?.message || 'Failed to schedule maintenance.');
+      }
+    } catch (e: any) {
+      alert(e.message || 'Failed to schedule maintenance.');
+    }
+  };
+
+  const handleEditSave = async () => {
+    if (!editForm || !editForm.vehicleId || !editForm.date || !editForm.description) {
+      alert('Vehicle, Date, and Description are required.');
+      return;
+    }
+    const updatedDbRow = mapToDB(editForm);
+    delete updatedDbRow.id; // Avoid overriding primary key in update
+
+    try {
+      const { error } = await supabase.from('maintenance_schedule')
+        .update({
+          ...updatedDbRow,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', editForm.id);
+
+      if (!error) {
+        addNotification(`Maintenance record updated for ${editForm.vehicleId}`);
+        loadData();
+        setShowEditModal(false);
+        setEditForm(null);
+      } else {
+        alert(error.message);
+      }
+    } catch (e: any) {
+      alert(e.message || 'Failed to update maintenance record.');
+    }
+  };
+
+  const handleDelete = async (record: MaintenanceRecord) => {
+    if (!window.confirm(`Are you sure you want to delete the maintenance log for ${record.vehicleId} on ${record.date}?`)) return;
+    try {
+      const { error } = await supabase.from('maintenance_schedule').delete().eq('id', record.id);
+      if (!error) {
+        addNotification(`Deleted maintenance log for ${record.vehicleId}`);
+        loadData();
+      } else {
+        alert(error.message);
+      }
+    } catch (e: any) {
+      alert(e.message || 'Failed to delete maintenance record.');
+    }
   };
 
   const inputStyle: React.CSSProperties = { background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'var(--text-primary)', fontSize: 14, width: '100%', boxSizing: 'border-box' };
@@ -177,12 +277,18 @@ export default function MaintenanceView({ addNotification }: Props) {
                   </td>
                   <td style={{ padding: '12px', color: 'var(--text-muted)', fontSize: 12 }}>{r.mechanic}</td>
                   <td style={{ padding: '12px' }}>
-                    <div style={{ display: 'flex', gap: 6 }}>
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                       {r.status !== 'Completed' && (
                         <button onClick={() => handleMarkComplete(r.id)} style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: 8, padding: '4px 10px', color: '#059669', cursor: 'pointer', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' }}>
                           <CheckCircle size={12} /> Complete
                         </button>
                       )}
+                      <button onClick={() => { setEditForm({ ...r }); setShowEditModal(true); }} style={{ background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 8, padding: '4px 8px', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 12 }} title="Edit">
+                        <Edit size={12} />
+                      </button>
+                      <button onClick={() => handleDelete(r)} style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 8, padding: '4px 8px', color: '#dc2626', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 12 }} title="Delete">
+                        <Trash2 size={12} />
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -254,6 +360,61 @@ export default function MaintenanceView({ addNotification }: Props) {
             <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
               <button onClick={() => setShowModal(false)} style={{ flex: 1, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 12, padding: 12, color: 'var(--text-secondary)', cursor: 'pointer', fontWeight: 600 }}>Cancel</button>
               <button onClick={handleSubmit} style={{ flex: 2, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 12, padding: 12, fontWeight: 700, cursor: 'pointer', fontSize: 15 }}>Schedule</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showEditModal && editForm && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}>
+          <div style={{ background: 'var(--bg-card)', borderRadius: 20, padding: 28, width: '100%', maxWidth: 520, border: '1px solid var(--border)', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Edit Maintenance</h2>
+              <button onClick={() => { setShowEditModal(false); setEditForm(null); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={20} /></button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div>
+                <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Vehicle</label>
+                <select value={editForm.vehicleId} onChange={e => setEditForm(f => f ? ({ ...f, vehicleId: e.target.value }) : null)} style={inputStyle}>
+                  {VEHICLES.map(v => <option key={v} value={v}>{v}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Type</label>
+                <select value={editForm.type} onChange={e => setEditForm(f => f ? ({ ...f, type: e.target.value as MaintenanceRecord['type'] }) : null)} style={inputStyle}>
+                  <option value="Service">Service</option>
+                  <option value="Repair">Repair</option>
+                  <option value="Inspection">Inspection</option>
+                </select>
+              </div>
+              <div>
+                <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Date</label>
+                <input type="date" value={editForm.date} onChange={e => setEditForm(f => f ? ({ ...f, date: e.target.value }) : null)} style={inputStyle} />
+              </div>
+              <div>
+                <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Description</label>
+                <input value={editForm.description} onChange={e => setEditForm(f => f ? ({ ...f, description: e.target.value }) : null)} placeholder="Describe the maintenance work" style={inputStyle} />
+              </div>
+              <div>
+                <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Mechanic</label>
+                <input value={editForm.mechanic} onChange={e => setEditForm(f => f ? ({ ...f, mechanic: e.target.value }) : null)} placeholder="Mechanic or workshop name" style={inputStyle} />
+              </div>
+              <div>
+                <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Estimated Cost (GHS)</label>
+                <input type="number" value={editForm.cost} onChange={e => setEditForm(f => f ? ({ ...f, cost: Number(e.target.value) }) : null)} placeholder="0" style={inputStyle} />
+              </div>
+              <div>
+                <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Status</label>
+                <select value={editForm.status} onChange={e => setEditForm(f => f ? ({ ...f, status: e.target.value as MaintenanceRecord['status'] }) : null)} style={inputStyle}>
+                  <option value="Scheduled">Scheduled</option>
+                  <option value="In Progress">In Progress</option>
+                  <option value="Completed">Completed</option>
+                </select>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+              <button onClick={() => { setShowEditModal(false); setEditForm(null); }} style={{ flex: 1, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 12, padding: 12, color: 'var(--text-secondary)', cursor: 'pointer', fontWeight: 600 }}>Cancel</button>
+              <button onClick={handleEditSave} style={{ flex: 2, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 12, padding: 12, fontWeight: 700, cursor: 'pointer', fontSize: 15 }}>Save Changes</button>
             </div>
           </div>
         </div>
