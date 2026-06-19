@@ -56,7 +56,7 @@ import CeoSupplierOrdersView from './views/ceo/SupplierOrdersView';
 import CeoControlCenter from './views/ceo/CeoControlCenter';
 import MaintenancePage from './components/MaintenancePage';
 import { CeoSettingsProvider, useCeoSettings } from './contexts/CeoSettingsContext';
-import { playNotificationSound, getSavedSound } from './utils/notificationSound';
+import { playNotificationSound, getSavedSound, getSavedVolume, stopAlertSound } from './utils/notificationSound';
 
 // Finance dedicated pages
 import FinanceWalletsView from './views/finance/WalletsView';
@@ -1238,7 +1238,7 @@ export default function App() {
     const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     setNotifications(prev => [{ id, msg, time }, ...prev.slice(0, 49)]); // keep max 50
     // Play notification sound
-    playNotificationSound(getSavedSound());
+    playNotificationSound(getSavedSound(), getSavedVolume());
     // Auto-dismiss toast after 6 seconds
     setTimeout(() => {
       setNotifications(prev => prev.filter(n => n.id !== id));

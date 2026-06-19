@@ -4,7 +4,7 @@ import type { CurrentUser } from '../types/erp';
 import { auth } from '../services/apiClient';
 import { supabase } from '../lib/supabaseClient';
 import { applyAccentOverride, clearAccentOverride } from '../utils/accentOverride';
-import { playNotificationSound, getSavedSound, saveSound } from '../utils/notificationSound';
+import { playNotificationSound, getSavedSound, saveSound, getSavedVolume, saveVolume, stopAlertSound } from '../utils/notificationSound';
 import type { NotificationSoundType } from '../utils/notificationSound';
 
 interface SettingsDashboardProps {
@@ -89,14 +89,26 @@ export default function SettingsDashboard({
 
   // Notification sound
   const [selectedSound, setSelectedSound] = useState<NotificationSoundType>(getSavedSound);
+  const [soundVolume, setSoundVolume] = useState<number>(getSavedVolume);
 
   const handleSelectSound = (s: NotificationSoundType) => {
+    stopAlertSound(); // stop repeating alert if switching away
     setSelectedSound(s);
     saveSound(s);
-    // Persist to profile metadata
     if (currentUser?.id) {
       supabase.from('profiles')
         .update({ metadata: { ...(currentUser as any).metadata, notification_sound: s } })
+        .eq('id', currentUser.id)
+        .then(() => {}, () => {});
+    }
+  };
+
+  const handleVolumeChange = (v: number) => {
+    setSoundVolume(v);
+    saveVolume(v);
+    if (currentUser?.id) {
+      supabase.from('profiles')
+        .update({ metadata: { ...(currentUser as any).metadata, notification_volume: v } })
         .eq('id', currentUser.id)
         .then(() => {}, () => {});
     }
@@ -107,6 +119,7 @@ export default function SettingsDashboard({
     { id: 'ping',    label: 'Ping',     desc: 'Short sharp ping' },
     { id: 'bell',    label: 'Bell',     desc: 'Classic bell ring' },
     { id: 'soft',    label: 'Soft',     desc: 'Gentle soft tone' },
+    { id: 'alert',   label: 'Alert',    desc: 'Repeating beep until dismissed' },
     { id: 'silent',  label: 'Silent',   desc: 'No sound' },
   ];
 
@@ -864,6 +877,26 @@ export default function SettingsDashboard({
                 </h3>
                 <p className="text-xs text-[var(--text-muted)] mt-0.5">Choose the sound played when you receive a notification.</p>
               </div>
+
+              {/* Volume slider */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-[var(--text-secondary)]">Volume</label>
+                  <span className="text-xs font-mono text-[var(--accent)]">{Math.round(soundVolume * 100)}%</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <VolumeX className="w-4 h-4 text-[var(--text-muted)] flex-shrink-0" />
+                  <input
+                    type="range"
+                    min={0} max={1} step={0.05}
+                    value={soundVolume}
+                    onChange={e => handleVolumeChange(parseFloat(e.target.value))}
+                    className="flex-1 h-1.5 accent-[var(--accent)] cursor-pointer"
+                  />
+                  <Volume2 className="w-4 h-4 text-[var(--text-muted)] flex-shrink-0" />
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {SOUND_OPTIONS.map(opt => {
                   const active = selectedSound === opt.id;
@@ -892,13 +925,32 @@ export default function SettingsDashboard({
                         <p className="text-[10px] text-[var(--text-muted)] leading-tight mt-0.5">{opt.desc}</p>
                       </div>
 
-                      {/* Preview play button */}
+                      {/* Preview / stop button */}
                       {opt.id === 'silent' ? (
                         <VolumeX className="w-4 h-4 text-[var(--text-muted)] flex-shrink-0" />
+                      ) : opt.id === 'alert' ? (
+                        <div className="flex gap-1 flex-shrink-0">
+                          <button
+                            type="button"
+                            onClick={e => { e.stopPropagation(); playNotificationSound('alert', soundVolume); }}
+                            title="Preview alert"
+                            className="w-7 h-7 flex items-center justify-center rounded-lg bg-[var(--bg-card)] border border-[var(--border)] hover:bg-[var(--accent)] hover:text-white hover:border-[var(--accent)] text-[var(--text-muted)] transition-colors cursor-pointer"
+                          >
+                            <Play className="w-3 h-3" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={e => { e.stopPropagation(); stopAlertSound(); }}
+                            title="Stop alert"
+                            className="w-7 h-7 flex items-center justify-center rounded-lg bg-[var(--bg-card)] border border-rose-400 hover:bg-rose-500 hover:text-white text-rose-400 transition-colors cursor-pointer"
+                          >
+                            <VolumeX className="w-3 h-3" />
+                          </button>
+                        </div>
                       ) : (
                         <button
                           type="button"
-                          onClick={e => { e.stopPropagation(); playNotificationSound(opt.id); }}
+                          onClick={e => { e.stopPropagation(); playNotificationSound(opt.id, soundVolume); }}
                           title="Preview sound"
                           className="flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-lg bg-[var(--bg-card)] border border-[var(--border)] hover:bg-[var(--accent)] hover:text-white hover:border-[var(--accent)] text-[var(--text-muted)] transition-colors cursor-pointer"
                         >
@@ -909,6 +961,15 @@ export default function SettingsDashboard({
                   );
                 })}
               </div>
+
+              {selectedSound === 'alert' && (
+                <div className="flex items-start gap-2 p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl">
+                  <Play className="w-3.5 h-3.5 text-amber-500 flex-shrink-0 mt-0.5" />
+                  <p className="text-xs text-amber-600 leading-relaxed">
+                    Alert mode plays a continuous beep when notifications arrive. Click the stop button or dismiss the notification to silence it.
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* ── Apply + Reset ── */}

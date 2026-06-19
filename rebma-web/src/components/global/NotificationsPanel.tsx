@@ -1,7 +1,8 @@
 // src/components/global/NotificationsPanel.tsx
 import { useEffect, useState, useCallback } from 'react';
-import { Bell, CheckCheck, Trash2, BellOff } from 'lucide-react';
+import { Bell, CheckCheck, Trash2, BellOff, ExternalLink } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
+import { stopAlertSound } from '../../utils/notificationSound';
 
 interface DbNotification {
   id: string;
@@ -64,7 +65,7 @@ export default function NotificationsPanel({ notifications = [], onClear, curren
 
       if (!uid) return;
 
-      // Real-time subscription
+      // Real-time: subscribe to both personal and department notifications
       const channel = supabase
         .channel('notifications-panel')
         .on('postgres_changes', {
@@ -77,14 +78,41 @@ export default function NotificationsPanel({ notifications = [], onClear, curren
         })
         .subscribe();
 
-      return () => { supabase.removeChannel(channel); };
+      // Also subscribe to department-level notifications if dept is known
+      const deptChannel = dept ? supabase
+        .channel('notifications-panel-dept')
+        .on('postgres_changes', {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notifications',
+          filter: `recipient_department=eq.${dept}`,
+        }, (payload) => {
+          const n = payload.new as DbNotification;
+          // Avoid duplicate if also addressed to this user specifically
+          setDbNotifs(prev => prev.some(x => x.id === n.id) ? prev : [n, ...prev]);
+        })
+        .subscribe() : null;
+
+      return () => {
+        supabase.removeChannel(channel);
+        if (deptChannel) supabase.removeChannel(deptChannel);
+      };
     };
     init();
   }, [currentUser, load]);
 
-  const markRead = async (id: string) => {
+  const markRead = async (id: string, actionUrl?: string | null) => {
+    stopAlertSound(); // stop any repeating alert
     setDbNotifs(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
-    await supabase.from('notifications').update({ read: true }).eq('id', id);
+    supabase.from('notifications').update({ read: true }).eq('id', id).then(() => {}, () => {});
+    if (actionUrl) {
+      // Navigate within the SPA if it's a hash/path, or open external URL
+      if (actionUrl.startsWith('http')) {
+        window.open(actionUrl, '_blank', 'noopener');
+      } else {
+        window.location.hash = actionUrl;
+      }
+    }
   };
 
   const markAllRead = async () => {
@@ -95,6 +123,7 @@ export default function NotificationsPanel({ notifications = [], onClear, curren
   };
 
   const clearAll = async () => {
+    stopAlertSound();
     if (userId) {
       await supabase.from('notifications').delete().eq('recipient_id', userId);
       setDbNotifs([]);
@@ -176,7 +205,7 @@ export default function NotificationsPanel({ notifications = [], onClear, curren
           {dbNotifs.map(n => (
             <button
               key={n.id}
-              onClick={() => markRead(n.id)}
+              onClick={() => markRead(n.id, n.action_url)}
               className={`w-full text-left flex items-start gap-3 border border-[var(--border)] rounded-xl p-3 transition-all cursor-pointer ${
                 n.read
                   ? 'bg-[var(--bg-card)] opacity-60'
@@ -189,9 +218,15 @@ export default function NotificationsPanel({ notifications = [], onClear, curren
               <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between gap-2">
                   <p className="text-xs font-semibold text-[var(--text-primary)] leading-tight">{n.title}</p>
-                  {!n.read && <span className="w-2 h-2 rounded-full bg-[var(--accent)] flex-shrink-0 mt-1" />}
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    {n.action_url && <ExternalLink className="w-3 h-3 text-[var(--accent)] opacity-70" />}
+                    {!n.read && <span className="w-2 h-2 rounded-full bg-[var(--accent)]" />}
+                  </div>
                 </div>
                 <p className="text-xs text-[var(--text-secondary)] mt-0.5 leading-relaxed">{n.message}</p>
+                {n.action_label && (
+                  <span className="inline-block mt-1 text-[10px] font-semibold text-[var(--accent)] underline underline-offset-2">{n.action_label}</span>
+                )}
                 <p className="text-[10px] text-[var(--text-muted)] mt-1">{timeAgo(n.created_at)}</p>
               </div>
             </button>

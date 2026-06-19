@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { FileSpreadsheet, FileText, Truck, ShieldCheck, Activity, Users, MapPin, History, UserCheck, ChevronRight, MoreVertical, TrendingUp, TrendingDown } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
+import { useCeoSettings } from '../contexts/CeoSettingsContext';
 import MiniSparkline from '../components/MiniSparkline';
 import KpiDetailView from '../components/KpiDetailView';
 import { exportToCSV, exportToPDF } from '../utils/export';
@@ -39,6 +40,11 @@ export default function DispatchDashboard({
   handleMarkDelivered,
   activeSubTab = 'Deliveries'
 }: DispatchDashboardProps) {
+
+  const { getSetting } = useCeoSettings();
+  const deliveriesEnabled = getSetting('deliveries_enabled', true);
+  const proofRequired = getSetting('proof_of_delivery_required', true);
+  const dataExportEnabled = getSetting('data_export_enabled', true);
 
   // Local deliveries state to support adding/duplicating/deleting rows
   const [kpiDetail, setKpiDetail] = useState<number | null>(null);
@@ -317,12 +323,20 @@ export default function DispatchDashboard({
 
           <div className="space-y-3">
             {activeMobileDetail.status === 'IN_TRANSIT' && (
-              <button 
-                onClick={() => { handleMarkDelivered(activeMobileDetail.id); setActiveMobileDetail(null); }}
-                className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold text-center cursor-pointer shadow"
-              >
-                Mark as Delivered
-              </button>
+              <>
+                {proofRequired && !activeMobileDetail.proofUrl && (
+                  <div className="w-full py-2 px-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-xs text-amber-600 text-center">
+                    Proof of delivery photo required before marking complete.
+                  </div>
+                )}
+                <button
+                  disabled={proofRequired && !activeMobileDetail.proofUrl}
+                  onClick={() => { handleMarkDelivered(activeMobileDetail.id); setActiveMobileDetail(null); }}
+                  className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold text-center cursor-pointer shadow disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Mark as Delivered
+                </button>
+              </>
             )}
             <div className="grid grid-cols-2 gap-3">
               <button 
@@ -610,9 +624,10 @@ export default function DispatchDashboard({
                 </div>
                 {deliveryStatus === 'IN_TRANSIT' && (
                   <button
+                    disabled={!deliveriesEnabled}
                     onClick={() => handleMarkDelivered('ORD-101')}
-                    className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs cursor-pointer shadow transition-colors"
-                  >Signal Order Received / Delivered</button>
+                    className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs cursor-pointer shadow transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  >{deliveriesEnabled ? 'Signal Order Received / Delivered' : 'Deliveries disabled by CEO'}</button>
                 )}
                 {deliveryStatus === 'DELIVERED' && (
                   <div className="p-3 bg-emerald-500/10 text-emerald-400 rounded-xl text-xs text-center font-semibold border border-emerald-500/20">

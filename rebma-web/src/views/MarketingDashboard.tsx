@@ -7,6 +7,7 @@ import MiniSparkline from '../components/MiniSparkline';
 import KpiDetailView from '../components/KpiDetailView';
 import { exportToCSV, exportToPDF } from '../utils/export';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
+import { useCeoSettings } from '../contexts/CeoSettingsContext';
 
 interface MarketingDashboardProps {
   ordersList: Order[];
@@ -38,6 +39,11 @@ export default function MarketingDashboard({
   onRegisterCustomer,
   addNotification
 }: MarketingDashboardProps) {
+
+  const { getSetting } = useCeoSettings();
+  const creditSalesEnabled = getSetting('credit_sales_enabled', true);
+  const ordersEnabled = getSetting('orders_enabled', true);
+  const dataExportEnabled = getSetting('data_export_enabled', true);
 
   // Local state copies of lists to allow full client-side actions
   const [kpiDetail, setKpiDetail] = useState<number | null>(null);
@@ -512,7 +518,8 @@ export default function MarketingDashboard({
 
         {/* Quick actions panel */}
         <div className="grid grid-cols-2 gap-2">
-          <button onClick={() => setShowOrderModal(true)} className="flex items-center justify-center gap-1.5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-card">
+          <button onClick={() => ordersEnabled ? setShowOrderModal(true) : undefined} disabled={!ordersEnabled}
+            className="flex items-center justify-center gap-1.5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-card disabled:opacity-40 disabled:cursor-not-allowed">
             <UserPlus className="w-4 h-4" /> Book Order
           </button>
           <button onClick={() => setShowCustomerModal(true)} className="flex items-center justify-center gap-1.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-text-primary rounded-xl text-xs font-bold transition-all border border-[var(--border)]">
@@ -603,7 +610,7 @@ export default function MarketingDashboard({
                     <option value="CASH">Cash Payment</option>
                     <option value="MOBILE_MONEY">Mobile Money</option>
                     <option value="CHEQUE">Cheque</option>
-                    <option value="CREDIT">On Credit Terms</option>
+                    {creditSalesEnabled && <option value="CREDIT">On Credit Terms</option>}
                   </select>
                 </div>
               </div>
@@ -827,18 +834,19 @@ export default function MarketingDashboard({
           <p className="text-xs sm:text-sm text-[var(--text-muted)]">Create client sales orders, register customers, and inspect history logs.</p>
         </div>
         <div className="flex flex-wrap gap-2 w-full xl:w-auto">
-          <button onClick={() => setShowOrderModal(true)} className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-2 bg-[var(--accent)] hover:opacity-90 text-white rounded-lg text-xs font-bold cursor-pointer shadow transition-opacity">
+          <button onClick={() => ordersEnabled ? setShowOrderModal(true) : undefined} disabled={!ordersEnabled}
+            className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-2 bg-[var(--accent)] hover:opacity-90 text-white rounded-lg text-xs font-bold cursor-pointer shadow transition-opacity disabled:opacity-40 disabled:cursor-not-allowed">
             <Clipboard className="w-3.5 h-3.5" /> Create Order
           </button>
           <button onClick={() => setShowCustomerModal(true)} className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold cursor-pointer shadow transition-colors">
             <UserPlus className="w-3.5 h-3.5" /> Register Customer
           </button>
-          <button onClick={() => exportToCSV(localOrders, ['id', 'ticketNumber', 'clientName', 'productName', 'destination', 'paymentMode', 'totalAmount', 'status', 'createdAt'], 'marketing_orders')} className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 bg-[var(--accent-light)] hover:opacity-90 text-[var(--accent)] rounded-lg text-xs font-semibold cursor-pointer border border-[var(--border)] transition-opacity">
+          {dataExportEnabled && <button onClick={() => exportToCSV(localOrders, ['id', 'ticketNumber', 'clientName', 'productName', 'destination', 'paymentMode', 'totalAmount', 'status', 'createdAt'], 'marketing_orders')} className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 bg-[var(--accent-light)] hover:opacity-90 text-[var(--accent)] rounded-lg text-xs font-semibold cursor-pointer border border-[var(--border)] transition-opacity">
             <FileSpreadsheet className="w-3.5 h-3.5" /> CSV
-          </button>
-          <button onClick={() => exportToPDF('Sales Orders Ledger', localOrders, ['id', 'ticketNumber', 'clientName', 'productName', 'destination', 'paymentMode', 'totalAmount', 'status', 'createdAt'])} className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 bg-[var(--accent-light)] hover:opacity-90 text-[var(--accent)] rounded-lg text-xs font-semibold cursor-pointer border border-[var(--border)] transition-opacity">
+          </button>}
+          {dataExportEnabled && <button onClick={() => exportToPDF('Sales Orders Ledger', localOrders, ['id', 'ticketNumber', 'clientName', 'productName', 'destination', 'paymentMode', 'totalAmount', 'status', 'createdAt'])} className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 bg-[var(--accent-light)] hover:opacity-90 text-[var(--accent)] rounded-lg text-xs font-semibold cursor-pointer border border-[var(--border)] transition-opacity">
             <FileText className="w-3.5 h-3.5" /> PDF
-          </button>
+          </button>}
         </div>
       </div>
 

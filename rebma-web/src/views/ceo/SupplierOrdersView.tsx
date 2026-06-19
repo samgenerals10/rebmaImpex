@@ -375,23 +375,30 @@ export default function SupplierOrdersView({ currentUser, addNotification }: Pro
         />
       )}
 
-      {/* Notify Operations Modal */}
+      {/* Notify Department Modal */}
       {showNotifyModal && selectedOrder && (
         <NotifyOperationsModal
           order={selectedOrder}
           onClose={() => { setShowNotifyModal(false); setSelectedOrder(null); }}
           currentUser={currentUser}
           onSend={(msg, dept, userId) => {
+            const targetDept = dept || 'MANAGEMENT';
             supabase.from('supplier_order_notifications').insert([{
               order_id: selectedOrder.id,
-              notified_department: 'MANAGEMENT',
+              notified_department: targetDept,
               notified_user_id: userId || null,
               message: msg,
-              sent_by: null,
+              sent_by: currentUser?.fullName || 'CEO',
               read: false,
             }]).then(() => {}, () => {});
-            supabase.from('supplier_orders').update({ management_notified: true }).eq('id', selectedOrder.id).then(() => {}, () => {});
-            addNotification(`Management notified about ${selectedOrder.order_number}.`);
+            // Also flag the order as notified
+            const updatePayload: Record<string, any> = {};
+            if (targetDept === 'MANAGEMENT') updatePayload.management_notified = true;
+            if (targetDept === 'OPERATIONS') updatePayload.operations_notified = true;
+            if (Object.keys(updatePayload).length > 0) {
+              supabase.from('supplier_orders').update(updatePayload).eq('id', selectedOrder.id).then(() => {}, () => {});
+            }
+            addNotification(`${targetDept.charAt(0) + targetDept.slice(1).toLowerCase()} notified about ${selectedOrder.order_number}.`);
             setShowNotifyModal(false);
             setSelectedOrder(null);
           }}
@@ -1073,7 +1080,9 @@ function PaymentAuthModal({ order, currentUser, onClose, onAuthorise }: {
   );
 }
 
-// ─── Notify Operations Modal ──────────────────────────────────────────────────
+// ─── Notify Department Modal ──────────────────────────────────────────────────
+
+const NOTIFY_DEPTS = ['MANAGEMENT', 'OPERATIONS', 'FINANCE', 'HR', 'DISPATCH', 'PRODUCTION', 'LOGISTICS'];
 
 function NotifyOperationsModal({ order, onClose, currentUser, onSend }: {
   order: SupplierOrder;
@@ -1081,34 +1090,60 @@ function NotifyOperationsModal({ order, onClose, currentUser, onSend }: {
   currentUser: { fullName: string; department: string } | null;
   onSend: (msg: string, dept: string, userId: string | null) => void;
 }) {
-  const defaultMsg = `Incoming goods from ${order.supplier_name} (${order.supplier_country}).\nProducts: ${order.products.map(p => `${p.product_name} — ${p.quantity} ${p.unit}`).join(', ')}.\nExpected: ${order.expected_delivery_date || 'TBD'}.\nPlease prepare to receive.`;
+  const defaultMsg = `Incoming goods from ${order.supplier_name} (${order.supplier_country}).\nProducts: ${order.products.map(p => `${p.product_name} — ${p.quantity} ${p.unit}`).join(', ')}.\nExpected: ${order.expected_delivery_date || 'TBD'}.\nOrder Ref: ${order.order_number}.\nPlease prepare to receive.`;
   const [msg, setMsg] = useState(defaultMsg);
-  const [notifyDept, setNotifyDept] = useState(true);
+  const [dept, setDept] = useState('MANAGEMENT');
+  const [staffList, setStaffList] = useState<Array<{ id: string; full_name: string; department: string }>>([]);
+  const [specificUserId, setSpecificUserId] = useState('');
+
+  useEffect(() => {
+    supabase.from('profiles').select('id, full_name, department').eq('department', dept)
+      .then(({ data }) => { setStaffList(data ?? []); setSpecificUserId(''); }, () => {});
+  }, [dept]);
+
+  const inputCls = 'w-full px-3 py-2 rounded-xl border border-[var(--border)] bg-[var(--bg-input)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]';
 
   return (
     <div className="fixed inset-0 z-60 flex items-center justify-center p-4" onClick={onClose}>
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
       <div className="relative w-full max-w-md bg-[var(--bg-card)] rounded-2xl shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between p-5 border-b border-[var(--border)]">
-          <h3 className="font-bold text-[var(--text-primary)]">Notify Operations</h3>
-          <button onClick={onClose} className="p-2 rounded-xl hover:bg-[var(--accent-light)]"><X className="w-4 h-4 text-[var(--text-muted)]" /></button>
+          <h3 className="font-bold text-[var(--text-primary)] flex items-center gap-2">
+            <Bell className="w-4 h-4 text-[var(--accent)]" /> Notify Department
+          </h3>
+          <button onClick={onClose} className="p-2 rounded-xl hover:bg-[var(--accent-light)] cursor-pointer"><X className="w-4 h-4 text-[var(--text-muted)]" /></button>
         </div>
         <div className="p-5 space-y-4">
-          <p className="text-xs text-[var(--text-muted)]">Order <span className="font-mono font-semibold text-[var(--text-primary)]">{order.order_number}</span> — Operations will be able to see this in their Incoming Goods section.</p>
+          <div className="p-3 bg-[var(--bg)] rounded-xl text-xs text-[var(--text-muted)] border border-[var(--border)]">
+            Order <span className="font-mono font-semibold text-[var(--text-primary)]">{order.order_number}</span> · {order.supplier_name} · {order.currency} {order.total_amount?.toLocaleString()}
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Department <span className="text-rose-500">*</span></label>
+            <select value={dept} onChange={e => setDept(e.target.value)} className={inputCls}>
+              {NOTIFY_DEPTS.map(d => <option key={d} value={d}>{d.charAt(0) + d.slice(1).toLowerCase()}</option>)}
+            </select>
+          </div>
+
+          {staffList.length > 0 && (
+            <div>
+              <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Also notify specific person (optional)</label>
+              <select value={specificUserId} onChange={e => setSpecificUserId(e.target.value)} className={inputCls}>
+                <option value="">— Department only —</option>
+                {staffList.map(s => <option key={s.id} value={s.id}>{s.full_name}</option>)}
+              </select>
+            </div>
+          )}
+
           <div>
             <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Message</label>
-            <textarea value={msg} onChange={e => setMsg(e.target.value)} rows={5}
-              className="w-full px-3 py-2 rounded-xl border border-[var(--border)] bg-[var(--bg-input)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)] resize-none" />
+            <textarea value={msg} onChange={e => setMsg(e.target.value)} rows={5} className={`${inputCls} resize-none`} />
           </div>
-          <label className="flex items-center gap-3 cursor-pointer">
-            <input type="checkbox" checked={notifyDept} onChange={e => setNotifyDept(e.target.checked)} className="w-4 h-4 accent-[var(--accent)]" />
-            <span className="text-sm font-semibold text-[var(--text-primary)]">Operations Department</span>
-          </label>
         </div>
         <div className="flex gap-3 p-5 border-t border-[var(--border)]">
-          <button onClick={onClose} className="flex-1 px-4 py-2.5 border border-[var(--border)] rounded-xl text-sm font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-input)]">Cancel</button>
-          <button onClick={() => onSend(msg, notifyDept ? 'OPERATIONS' : '', null)}
-            className="flex-1 px-4 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700">
+          <button onClick={onClose} className="flex-1 px-4 py-2.5 border border-[var(--border)] rounded-xl text-sm font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-input)] cursor-pointer">Cancel</button>
+          <button onClick={() => onSend(msg, dept, specificUserId || null)}
+            className="flex-1 px-4 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 cursor-pointer">
             Send Notification
           </button>
         </div>

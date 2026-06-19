@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import {
   FileSpreadsheet, FileText, DollarSign, Clipboard, ShieldCheck, Activity, X, ExternalLink, ChevronRight, MoreVertical, TrendingUp, TrendingDown
 } from 'lucide-react';
+import { useCeoSettings } from '../contexts/CeoSettingsContext';
 import MiniSparkline from '../components/MiniSparkline';
 import KpiDetailView from '../components/KpiDetailView';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
@@ -48,6 +49,12 @@ export default function FinanceDashboard({
   productionRequests,
   addNotification
 }: FinanceDashboardProps) {
+
+  const { getSetting } = useCeoSettings();
+  const cashEnabled = getSetting('cash_payments_enabled', true);
+  const chequeEnabled = getSetting('cheque_payments_enabled', true);
+  const momoEnabled = getSetting('momo_payments_enabled', true);
+  const dataExportEnabled = getSetting('data_export_enabled', true);
 
   // Local state copies to support inline dynamic table additions, updates and deletes
   const [localPayments, setLocalPayments] = useState<FinancePayment[]>(paymentsList);
@@ -789,9 +796,9 @@ export default function FinanceDashboard({
               <p className="text-xs sm:text-sm text-[var(--text-secondary)] opacity-80">Clear cash invoice payments, verify credit requests, and issue receipt tickets.</p>
             </div>
             <div className="flex gap-2 w-full sm:w-auto justify-end">
-              <button onClick={() => exportToCSV(ordersList, ['id', 'ticketNumber', 'clientName', 'productName', 'destination', 'paymentMode', 'totalAmount', 'status', 'createdAt'], 'finance_orders_ledger')} className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--bg)] hover:bg-[var(--accent-light)] text-[var(--text-primary)] rounded-lg text-xs font-semibold cursor-pointer border border-[var(--border)] transition-colors">
+              {dataExportEnabled && <button onClick={() => exportToCSV(ordersList, ['id', 'ticketNumber', 'clientName', 'productName', 'destination', 'paymentMode', 'totalAmount', 'status', 'createdAt'], 'finance_orders_ledger')} className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--bg)] hover:bg-[var(--accent-light)] text-[var(--text-primary)] rounded-lg text-xs font-semibold cursor-pointer border border-[var(--border)] transition-colors">
                 <FileSpreadsheet className="w-3.5 h-3.5" /><span>Ledgers (CSV)</span>
-              </button>
+              </button>}
               <button onClick={() => exportToPDF('Finance Ledger Statement', ordersList, ['id', 'ticketNumber', 'clientName', 'productName', 'paymentMode', 'totalAmount', 'status', 'createdAt'])} className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--bg)] hover:bg-[var(--accent-light)] text-[var(--text-primary)] rounded-lg text-xs font-semibold cursor-pointer border border-[var(--border)] transition-colors">
                 <FileText className="w-3.5 h-3.5" /><span>Ledgers (PDF)</span>
               </button>
@@ -1001,9 +1008,9 @@ export default function FinanceDashboard({
                   <div>
                     <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Payment Mode</label>
                     <select value={payMode} onChange={e => setPayMode(e.target.value as any)} className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]">
-                      <option value="CASH" className="bg-[var(--bg-card)]">Cash</option>
-                      <option value="CHEQUE" className="bg-[var(--bg-card)]">Cheque</option>
-                      <option value="MOBILE_MONEY" className="bg-[var(--bg-card)]">Mobile Money (MTN/Telecel)</option>
+                      {cashEnabled && <option value="CASH" className="bg-[var(--bg-card)]">Cash</option>}
+                      {chequeEnabled && <option value="CHEQUE" className="bg-[var(--bg-card)]">Cheque</option>}
+                      {momoEnabled && <option value="MOBILE_MONEY" className="bg-[var(--bg-card)]">Mobile Money (MTN/Telecel)</option>}
                       <option value="CREDIT" className="bg-[var(--bg-card)]">Credit</option>
                     </select>
                   </div>
