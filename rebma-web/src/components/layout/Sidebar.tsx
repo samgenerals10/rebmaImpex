@@ -84,6 +84,7 @@ export default function Sidebar({
       { id: 'Approvals',       label: 'Approvals',             icon: ClipboardCheck },
       { id: 'Tracking',        label: 'GPS Tracking',          icon: MapPin },
       { id: 'Messages',        label: 'Messages & Boardroom',  icon: MessageCircle },
+      { id: 'DeptActivity',    label: 'Dept Activity',          icon: Activity },
       { id: 'ControlCenter',   label: 'Control Center',         icon: Shield },
     ],
     FINANCE: [

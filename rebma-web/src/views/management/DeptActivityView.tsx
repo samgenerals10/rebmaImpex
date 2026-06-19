@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Activity, Search, RefreshCw, ChevronRight, Building2, Package, DollarSign, Truck, Users, ShoppingCart, Factory, UserCheck, Clock } from 'lucide-react';
+import { Activity, Search, RefreshCw, ChevronRight, Building2, Package, DollarSign, Truck, Users, ShoppingCart, Factory, UserCheck, Clock, Trash2 } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { exportToCSV, exportToPDF } from '../../utils/export';
 import { FileSpreadsheet, FileText } from 'lucide-react';
@@ -23,6 +23,7 @@ const DEPT_COLORS: Record<string, string> = {
   RECEPTION:  'bg-pink-500/10 text-pink-600',
   PRODUCTION: 'bg-amber-500/10 text-amber-600',
   LOGISTICS:  'bg-indigo-500/10 text-indigo-600',
+  CEO:        'bg-rose-500/10 text-rose-600',
 };
 
 const DEPT_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -36,18 +37,6 @@ const DEPT_ICONS: Record<string, React.ComponentType<{ className?: string }>> = 
   LOGISTICS:  Truck,
 };
 
-
-const DEPT_STATS: Array<{ dept: string; todayCount: number; lastActivity: string; status: 'Active' | 'Quiet' | 'Alert' }> = [
-  { dept: 'OPERATIONS', todayCount: 12, lastActivity: '2 min ago', status: 'Active' },
-  { dept: 'FINANCE',    todayCount: 8,  lastActivity: '15 min ago', status: 'Active' },
-  { dept: 'MARKETING',  todayCount: 5,  lastActivity: '30 min ago', status: 'Active' },
-  { dept: 'DISPATCH',   todayCount: 15, lastActivity: '45 min ago', status: 'Active' },
-  { dept: 'HR',         todayCount: 3,  lastActivity: '1 hr ago',   status: 'Quiet' },
-  { dept: 'RECEPTION',  todayCount: 7,  lastActivity: '1.5 hrs ago', status: 'Quiet' },
-  { dept: 'PRODUCTION', todayCount: 4,  lastActivity: '2 hrs ago',  status: 'Active' },
-  { dept: 'LOGISTICS',  todayCount: 2,  lastActivity: '8 hrs ago',  status: 'Quiet' },
-];
-
 const timeAgo = (iso: string): string => {
   const diff = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diff / 60000);
@@ -58,11 +47,14 @@ const timeAgo = (iso: string): string => {
   return `${Math.floor(hrs / 24)} day${Math.floor(hrs / 24) > 1 ? 's' : ''} ago`;
 };
 
-const ALL_DEPTS = ['All', 'OPERATIONS', 'FINANCE', 'MARKETING', 'DISPATCH', 'HR', 'RECEPTION', 'PRODUCTION', 'LOGISTICS'];
+interface Props {
+  addNotification: (msg: string) => void;
+  currentUser?: { id: string; fullName?: string; department?: string } | null;
+}
 
-interface Props { addNotification: (msg: string) => void }
+export default function DeptActivityView({ addNotification, currentUser }: Props) {
+  const isCeo = currentUser?.department === 'CEO';
 
-export default function DeptActivityView({ addNotification }: Props) {
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [loadingActivities, setLoadingActivities] = useState(true);
   const [filter, setFilter] = useState('All');
@@ -73,12 +65,18 @@ export default function DeptActivityView({ addNotification }: Props) {
 
   const loadActivities = async () => {
     try {
-      const { data } = await supabase
+      let query = supabase
         .from('global_audit_history')
         .select('*')
-        .not('department', 'eq', 'CEO')
         .order('timestamp', { ascending: false })
-        .limit(50);
+        .limit(200);
+
+      // Non-CEO users never see CEO department entries
+      if (!isCeo) {
+        query = query.not('department', 'eq', 'CEO');
+      }
+
+      const { data } = await query;
       const mapped: ActivityItem[] = (data ?? []).map((d: any) => ({
         id: d.id,
         department: d.department,
@@ -100,13 +98,22 @@ export default function DeptActivityView({ addNotification }: Props) {
     loadActivities();
     intervalRef.current = setInterval(loadActivities, 30000);
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isCeo]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
     await loadActivities();
     setTimeout(() => setIsRefreshing(false), 600);
     addNotification('Department activity refreshed.');
+  };
+
+  const handleDelete = async (item: ActivityItem) => {
+    const canDelete = isCeo || item.user === (currentUser?.fullName ?? '');
+    if (!canDelete) return;
+    await supabase.from('global_audit_history').delete().eq('id', item.id);
+    setActivities(prev => prev.filter(a => a.id !== item.id));
+    addNotification(`Activity entry deleted.`);
   };
 
   const filtered = activities.filter(a => {
@@ -120,13 +127,29 @@ export default function DeptActivityView({ addNotification }: Props) {
 
   const visible = filtered.slice(0, visibleCount);
 
+  // Compute per-department stats from real activity data
+  const ALL_DEPT_KEYS = isCeo
+    ? ['OPERATIONS', 'FINANCE', 'MARKETING', 'DISPATCH', 'HR', 'RECEPTION', 'PRODUCTION', 'LOGISTICS', 'CEO']
+    : ['OPERATIONS', 'FINANCE', 'MARKETING', 'DISPATCH', 'HR', 'RECEPTION', 'PRODUCTION', 'LOGISTICS'];
+
+  const ALL_DEPTS = ['All', ...ALL_DEPT_KEYS];
+
+  const deptStats = ALL_DEPT_KEYS.map(dept => {
+    const deptActivities = activities.filter(a => a.department === dept);
+    const count = deptActivities.length;
+    const latest = deptActivities[0]; // already sorted desc
+    return { dept, count, lastActivity: latest ? timeAgo(latest.timestamp) : null };
+  });
+
   return (
     <div className="p-4 sm:p-6 space-y-6 max-w-[1400px] mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-[var(--text-primary)]">Department Activity Monitor</h1>
-          <p className="text-xs text-[var(--text-muted)] mt-1">Real-time activities across all departments (CEO excluded)</p>
+          <p className="text-xs text-[var(--text-muted)] mt-1">
+            {isCeo ? 'Real-time activities across all departments including CEO' : 'Real-time activities across all departments (CEO excluded)'}
+          </p>
         </div>
         <div className="flex gap-2">
           <button onClick={() => exportToCSV(filtered, ['id','department','user','action','details','timestamp','refId'], 'dept_activity')} className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--accent-light)] text-[var(--accent)] rounded-lg text-xs font-semibold border border-[var(--border)] cursor-pointer hover:opacity-90">
@@ -141,12 +164,13 @@ export default function DeptActivityView({ addNotification }: Props) {
         </div>
       </div>
 
-      {/* Department Summary Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-8 gap-3">
-        {DEPT_STATS.map(ds => {
+      {/* Department Summary Cards — counts derived from real activity data */}
+      <div className={`grid gap-3 ${isCeo ? 'grid-cols-3 sm:grid-cols-5 xl:grid-cols-9' : 'grid-cols-2 sm:grid-cols-4 xl:grid-cols-8'}`}>
+        {deptStats.map(ds => {
           const Icon = DEPT_ICONS[ds.dept] || Building2;
           const color = DEPT_COLORS[ds.dept] || 'bg-slate-500/10 text-slate-600';
-          const statusColor = ds.status === 'Active' ? 'bg-emerald-500' : ds.status === 'Alert' ? 'bg-rose-500' : 'bg-amber-400';
+          const isActive = ds.count > 0;
+          const statusColor = isActive ? 'bg-emerald-500' : 'bg-slate-300';
           const recentActivities = activities.filter(a => a.department === ds.dept).slice(0, 3);
           return (
             <div
@@ -158,11 +182,11 @@ export default function DeptActivityView({ addNotification }: Props) {
                 <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${color}`}>
                   <Icon className="w-3.5 h-3.5" />
                 </div>
-                <div className={`w-2 h-2 rounded-full ${statusColor}`} title={ds.status} />
+                <div className={`w-2 h-2 rounded-full ${statusColor}`} title={isActive ? 'Active' : 'No activity'} />
               </div>
               <p className="text-[10px] font-bold text-[var(--text-primary)] uppercase tracking-wide">{ds.dept}</p>
-              <p className="text-lg font-extrabold text-[var(--text-primary)]">{ds.todayCount}</p>
-              <p className="text-[9px] text-[var(--text-muted)] mt-0.5">{ds.lastActivity}</p>
+              <p className="text-lg font-extrabold text-[var(--text-primary)]">{ds.count}</p>
+              <p className="text-[9px] text-[var(--text-muted)] mt-0.5">{ds.lastActivity ?? 'No activity yet'}</p>
               <div className="mt-2 space-y-0.5">
                 {recentActivities.map(a => (
                   <p key={a.id} className="text-[8px] text-[var(--text-muted)] truncate">{a.action}</p>
@@ -228,6 +252,7 @@ export default function DeptActivityView({ addNotification }: Props) {
           {visible.map(item => {
             const Icon = DEPT_ICONS[item.department] || Building2;
             const color = DEPT_COLORS[item.department] || 'bg-slate-500/10 text-slate-600';
+            const canDelete = isCeo || item.user === (currentUser?.fullName ?? '');
             return (
               <div key={item.id} className="flex items-start gap-4 px-5 py-4 hover:bg-[var(--accent-light)] transition-colors group">
                 <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${color}`}>
@@ -251,7 +276,18 @@ export default function DeptActivityView({ addNotification }: Props) {
                     )}
                   </div>
                 </div>
-                <ChevronRight className="w-4 h-4 text-[var(--text-muted)] opacity-0 group-hover:opacity-100 transition-opacity shrink-0 mt-2" />
+                <div className="flex items-center gap-2 shrink-0 mt-1.5">
+                  {canDelete && (
+                    <button
+                      onClick={() => handleDelete(item)}
+                      title="Delete this entry"
+                      className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg hover:bg-rose-500/10 text-rose-500 cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                  <ChevronRight className="w-4 h-4 text-[var(--text-muted)] opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
               </div>
             );
           })}

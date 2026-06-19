@@ -2734,6 +2734,7 @@ export default function App() {
       if (activeSubTab === 'Accounts')        return <CeoAccountsView setActiveSubTab={setActiveSubTab} />;
       if (activeSubTab === 'Approvals')       return <CeoApprovalsView currentUser={currentUser} addNotification={addNotification} />;
       if (activeSubTab === 'SupplierOrders')  return <CeoSupplierOrdersView currentUser={currentUser} addNotification={addNotification} />;
+      if (activeSubTab === 'DeptActivity')    return <DeptActivityView currentUser={currentUser} addNotification={addNotification} />;
       if (activeSubTab === 'ControlCenter')   return <CeoControlCenter currentUser={currentUser} addNotification={addNotification} />;
       if (activeSubTab === 'FleetOverview')  return <LogisticsFleetOverviewView addNotification={addNotification} />;
       if (activeSubTab === 'FuelManagement') return <LogisticsFuelManagementView addNotification={addNotification} />;
@@ -2765,7 +2766,7 @@ export default function App() {
       if (activeSubTab === 'SetPrices')       return <MgmtPriceSettingView addNotification={addNotification} currentUser={currentUser} />;
       if (activeSubTab === 'Transactions')    return <ManagementTransactionsView addNotification={addNotification} />;
       if (activeSubTab === 'MgmtAnalytics')   return <MgmtAnalyticsView addNotification={addNotification} />;
-      if (activeSubTab === 'DeptActivity')    return <DeptActivityView addNotification={addNotification} />;
+      if (activeSubTab === 'DeptActivity')    return <DeptActivityView currentUser={currentUser} addNotification={addNotification} />;
       if (activeSubTab === 'FleetOverview')   return <LogisticsFleetOverviewView addNotification={addNotification} />;
       if (activeSubTab === 'FuelManagement')  return <LogisticsFuelManagementView addNotification={addNotification} />;
       if (activeSubTab === 'Maintenance')     return <LogisticsMaintenanceView addNotification={addNotification} />;
