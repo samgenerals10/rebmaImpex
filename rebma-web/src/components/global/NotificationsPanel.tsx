@@ -2,7 +2,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Bell, CheckCheck, Trash2, BellOff, ExternalLink } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
-import { stopAlertSound } from '../../utils/notificationSound';
+import { stopAlertSound, setAlertNotifId, playNotificationSound, getSavedSound, getSavedVolume } from '../../utils/notificationSound';
 
 interface DbNotification {
   id: string;
@@ -74,7 +74,10 @@ export default function NotificationsPanel({ notifications = [], onClear, curren
           table: 'notifications',
           filter: `recipient_id=eq.${uid}`,
         }, (payload) => {
-          setDbNotifs(prev => [payload.new as DbNotification, ...prev]);
+          const n = payload.new as DbNotification;
+          setDbNotifs(prev => prev.some(x => x.id === n.id) ? prev : [n, ...prev]);
+          setAlertNotifId(n.id);
+          playNotificationSound(getSavedSound(), getSavedVolume());
         })
         .subscribe();
 
@@ -88,8 +91,10 @@ export default function NotificationsPanel({ notifications = [], onClear, curren
           filter: `recipient_department=eq.${dept}`,
         }, (payload) => {
           const n = payload.new as DbNotification;
-          // Avoid duplicate if also addressed to this user specifically
+          if (n.recipient_id === uid) return; // already handled by personal channel
           setDbNotifs(prev => prev.some(x => x.id === n.id) ? prev : [n, ...prev]);
+          setAlertNotifId(n.id);
+          playNotificationSound(getSavedSound(), getSavedVolume());
         })
         .subscribe() : null;
 
@@ -102,7 +107,7 @@ export default function NotificationsPanel({ notifications = [], onClear, curren
   }, [currentUser, load]);
 
   const markRead = async (id: string, actionUrl?: string | null) => {
-    stopAlertSound(); // stop any repeating alert
+    stopAlertSound(id); // only stops if this notification triggered the alert
     setDbNotifs(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
     supabase.from('notifications').update({ read: true }).eq('id', id).then(() => {}, () => {});
     if (actionUrl) {

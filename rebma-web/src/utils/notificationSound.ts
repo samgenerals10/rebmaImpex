@@ -26,13 +26,27 @@ export function saveVolume(vol: number): void {
 // Repeating alert — stored so it can be stopped
 let _alertInterval: ReturnType<typeof setInterval> | null = null;
 let _alertActive = false;
+// Track which notification ID triggered the current alert (null = triggered by local toast)
+let _alertNotifId: string | null = null;
 
-export function stopAlertSound(): void {
+/** Set the notification ID that owns the current alert sound. */
+export function setAlertNotifId(id: string | null): void {
+  _alertNotifId = id;
+}
+
+/**
+ * Stop the repeating alert.
+ * If `notifId` is provided, only stops when it matches the ID that started the alert
+ * (so clicking a different notification doesn't kill someone else's sound).
+ */
+export function stopAlertSound(notifId?: string): void {
+  if (notifId !== undefined && _alertNotifId !== null && _alertNotifId !== notifId) return;
   if (_alertInterval !== null) {
     clearInterval(_alertInterval);
     _alertInterval = null;
   }
   _alertActive = false;
+  _alertNotifId = null;
 }
 
 function playOnce(sound: Exclude<NotificationSoundType, 'silent' | 'alert'>, volume: number): void {

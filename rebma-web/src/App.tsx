@@ -1237,12 +1237,10 @@ export default function App() {
     const id = Date.now().toString();
     const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     setNotifications(prev => [{ id, msg, time }, ...prev.slice(0, 49)]); // keep max 50
-    // Play notification sound
-    playNotificationSound(getSavedSound(), getSavedVolume());
-    // Auto-dismiss toast after 6 seconds
+    // Auto-dismiss toast quickly — sound is played by NotificationsPanel on real DB inserts
     setTimeout(() => {
       setNotifications(prev => prev.filter(n => n.id !== id));
-    }, 6000);
+    }, 1200);
   };
 
   // Change theme class on document body (redundant safety sync)
