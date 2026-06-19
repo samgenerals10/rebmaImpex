@@ -61,7 +61,7 @@ async function fetchPendingForDept(department: string): Promise<PendingItem[]> {
     }
 
     if (department === 'PRODUCTION') {
-      const { count } = await supabase.from('production_requests').select('id', { count: 'exact', head: true }).eq('status', 'PENDING').catch(() => ({ count: 0 }));
+      const { count } = await supabase.from('production_requests').select('id', { count: 'exact', head: true }).eq('status', 'PENDING');
       if ((count ?? 0) > 0) items.push({ label: 'internal production requests pending', count: count!, tab: 'Requisition' });
     }
   } catch {
