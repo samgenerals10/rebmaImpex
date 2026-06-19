@@ -2902,6 +2902,7 @@ export default function App() {
             activeSubTab={activeSubTab}
             addNotification={addNotification}
             setActiveSubTab={setActiveSubTab}
+            onRefresh={refreshAllData}
           />
         );
       case 'FINANCE':

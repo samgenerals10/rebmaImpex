@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Search, Plus, X, MoreVertical, Package, TrendingDown, TrendingUp, History, Download, Printer } from 'lucide-react';
-import { stockApi } from '../../services/apiClient';
+import { stockApi, operations } from '../../services/apiClient';
 import { exportToCSV, exportToPDF } from '../../utils/export';
-import type { IncomingGoods } from '../../types/erp';
+import type { IncomingGoods, GeneralPurchase } from '../../types/erp';
+import StockIntakeForm from '../../components/StockIntakeForm';
 
 interface StockItem {
   id: string;
@@ -43,6 +44,8 @@ interface Props { incomingGoodsList: IncomingGoods[]; addNotification: (msg: str
 export default function StockView({ incomingGoodsList: _incomingGoodsList, addNotification }: Props) {
   const [stock, setStock] = useState<StockItem[]>([]);
   const [movements, setMovements] = useState<StockMovement[]>([]);
+  const [generalPurchases, setGeneralPurchases] = useState<GeneralPurchase[]>([]);
+  const [activeTab, setActiveTab] = useState<'PRODUCTS' | 'GENERAL_PURCHASES'>('PRODUCTS');
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
@@ -54,65 +57,25 @@ export default function StockView({ incomingGoodsList: _incomingGoodsList, addNo
   const [showAdjust, setShowAdjust] = useState(false);
   const [adjustForm, setAdjustForm] = useState({ productId: '', type: 'Add', quantity: '', reason: '', notes: '' });
   const [showAddProduct, setShowAddProduct] = useState(false);
-  const [newProductForm, setNewProductForm] = useState({
-    name: '',
-    sku: '',
-    category: '',
-    initialQty: '',
-    maximumLevel: '',
-    minimumLevel: '',
-    unit: 'units'
-  });
-
-  const doAddProduct = async () => {
-    if (!newProductForm.name || !newProductForm.sku || !newProductForm.category) {
-      alert('Please fill out all required fields.');
-      return;
-    }
-    const initQty = parseInt(newProductForm.initialQty) || 0;
-    const maxLvl = parseInt(newProductForm.maximumLevel) || 1000;
-    const minLvl = parseInt(newProductForm.minimumLevel) || 10;
-    try {
-      await stockApi.createStock(
-        newProductForm.name,
-        newProductForm.sku,
-        newProductForm.category,
-        initQty,
-        maxLvl,
-        minLvl,
-        newProductForm.unit
-      );
-      addNotification(`Product "${newProductForm.name}" created successfully.`);
-      loadData();
-      setShowAddProduct(false);
-      setNewProductForm({
-        name: '',
-        sku: '',
-        category: '',
-        initialQty: '',
-        maximumLevel: '',
-        minimumLevel: '',
-        unit: 'units'
-      });
-    } catch (err: any) {
-      alert(err.message || 'Failed to create product.');
-    }
-  };
 
   const loadData = async () => {
     setLoading(true);
     try {
-      const [stockData, movementsData, catsData] = await Promise.all([
+      const [stockData, movementsData, catsData, gpData] = await Promise.all([
         stockApi.getStock(),
         stockApi.getStockMovements(),
-        stockApi.getCategories()
+        stockApi.getCategories(),
+        operations.getGeneralPurchases()
       ]);
       setStock(stockData);
       setMovements(movementsData);
       setCategories(['All', ...catsData.map(c => c.name)]);
-    } catch {
+      setGeneralPurchases((gpData || []).filter((gp: any) => gp.status === 'APPROVED'));
+    } catch (err) {
+      console.error(err);
       setStock([]);
       setMovements([]);
+      setGeneralPurchases([]);
     }
     setLoading(false);
   };
@@ -161,7 +124,22 @@ export default function StockView({ incomingGoodsList: _incomingGoodsList, addNo
     return matchSearch && matchCat && matchStatus && matchDate;
   });
 
-  const filteredMovements = movements.filter(m => {
+  const filteredGeneralPurchases = generalPurchases.filter(gp => {
+    const q = search.toLowerCase();
+    const matchSearch = !search || gp.itemName.toLowerCase().includes(q) || gp.itemCode.toLowerCase().includes(q);
+    const matchCat = categoryFilter === 'All' || gp.category.toLowerCase().includes(categoryFilter.toLowerCase());
+    
+    let matchDate = true;
+    if (startDate) {
+      matchDate = matchDate && new Date(gp.dateReceived) >= new Date(startDate);
+    }
+    if (endDate) {
+      matchDate = matchDate && new Date(gp.dateReceived) <= new Date(endDate);
+    }
+    return matchSearch && matchCat && matchDate;
+  });
+
+  const filteredMovements = movements.filter((m: StockMovement) => {
     const q = search.toLowerCase();
     const matchSearch = !search || m.productName.toLowerCase().includes(q) || m.reason.toLowerCase().includes(q);
     
@@ -227,12 +205,48 @@ export default function StockView({ incomingGoodsList: _incomingGoodsList, addNo
         </div>
         <div style={{ display: 'flex', gap: 12 }}>
           <button onClick={() => setShowAddProduct(true)} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-primary)', borderRadius: 12, padding: '10px 20px', fontWeight: 600, cursor: 'pointer', fontSize: 14 }}>
-            <Plus size={16} /> Add Product
+            <Plus size={16} /> Log Stock Intake
           </button>
           <button onClick={() => setShowAdjust(true)} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 12, padding: '10px 20px', fontWeight: 600, cursor: 'pointer', fontSize: 14 }}>
             <Plus size={16} /> Adjust Stock
           </button>
         </div>
+      </div>
+
+      {/* Tabs */}
+      <div style={{ display: 'flex', gap: 12, marginBottom: 24, borderBottom: '1px solid var(--border)', paddingBottom: 10 }}>
+        <button
+          onClick={() => setActiveTab('PRODUCTS')}
+          style={{
+            background: 'none',
+            border: 'none',
+            borderBottom: activeTab === 'PRODUCTS' ? '3px solid var(--accent)' : '3px solid transparent',
+            color: activeTab === 'PRODUCTS' ? 'var(--accent)' : 'var(--text-muted)',
+            padding: '10px 16px',
+            fontSize: 14,
+            fontWeight: 700,
+            cursor: 'pointer',
+            transition: 'all 0.2s'
+          }}
+        >
+          Company Products (Finished Goods)
+        </button>
+        <button
+          onClick={() => setActiveTab('GENERAL_PURCHASES')}
+          style={{
+            background: 'none',
+            border: 'none',
+            borderBottom: activeTab === 'GENERAL_PURCHASES' ? '3px solid var(--accent)' : '3px solid transparent',
+            color: activeTab === 'GENERAL_PURCHASES' ? 'var(--accent)' : 'var(--text-muted)',
+            padding: '10px 16px',
+            fontSize: 14,
+            fontWeight: 700,
+            cursor: 'pointer',
+            transition: 'all 0.2s'
+          }}
+        >
+          General Purchased Items
+        </button>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 24 }}>
@@ -250,37 +264,37 @@ export default function StockView({ incomingGoodsList: _incomingGoodsList, addNo
             <p style={{ fontSize: typeof c.value === 'string' ? 18 : 28, fontWeight: 700, color: c.color, margin: 0 }}>{c.value}</p>
           </div>
         ))}
-      </div>
-
-      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 20, padding: '20px 24px', marginBottom: 24, boxShadow: 'var(--box-shadow)' }}>
-        <h2 style={{ margin: '0 0 20px', fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>Stock Levels</h2>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {stock.length > 0 ? (
-            stock.map(s => {
-              const pct = s.capacity > 0 ? Math.round((s.current / s.capacity) * 100) : 0;
-              const st = stockStatus(s.current, s.capacity);
-              return (
-                <div key={s.id}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6, flexWrap: 'wrap', gap: 8 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: 14 }}>{s.name}</span>
-                      <span style={{ background: st.bg, color: st.color, borderRadius: 99, padding: '1px 8px', fontSize: 11, fontWeight: 600 }}>{st.label}</span>
+      </div>      {activeTab === 'PRODUCTS' && (
+        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 20, padding: '20px 24px', marginBottom: 24, boxShadow: 'var(--box-shadow)' }}>
+          <h2 style={{ margin: '0 0 20px', fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>Stock Levels</h2>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {stock.length > 0 ? (
+              stock.map(s => {
+                const pct = s.capacity > 0 ? Math.round((s.current / s.capacity) * 100) : 0;
+                const st = stockStatus(s.current, s.capacity);
+                return (
+                  <div key={s.id}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6, flexWrap: 'wrap', gap: 8 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: 14 }}>{s.name}</span>
+                        <span style={{ background: st.bg, color: st.color, borderRadius: 99, padding: '1px 8px', fontSize: 11, fontWeight: 600 }}>{st.label}</span>
+                      </div>
+                      <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>{s.current.toLocaleString()} / {s.capacity.toLocaleString()} units</span>
                     </div>
-                    <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>{s.current.toLocaleString()} / {s.capacity.toLocaleString()} units</span>
+                    <div style={{ height: 10, background: 'var(--bg)', borderRadius: 99, overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${pct}%`, background: barColor(s.current, s.capacity), borderRadius: 99, transition: 'width 0.4s ease' }} />
+                    </div>
                   </div>
-                  <div style={{ height: 10, background: 'var(--bg)', borderRadius: 99, overflow: 'hidden' }}>
-                    <div style={{ height: '100%', width: `${pct}%`, background: barColor(s.current, s.capacity), borderRadius: 99, transition: 'width 0.4s ease' }} />
-                  </div>
-                </div>
-              );
-            })
-          ) : (
-            <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--text-muted)', fontSize: 14 }}>
-              No stock levels recorded. Add a product to get started.
-            </div>
-          )}
+                );
+              })
+            ) : (
+              <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--text-muted)', fontSize: 14 }}>
+                No stock levels recorded. Add a product to get started.
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 20, padding: '20px 24px', marginBottom: 24, boxShadow: 'var(--box-shadow)' }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 20 }}>
@@ -312,11 +326,9 @@ export default function StockView({ incomingGoodsList: _incomingGoodsList, addNo
           <button onClick={exportStockPDF} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '8px 16px', color: 'var(--text-primary)', fontSize: 14, cursor: 'pointer', fontWeight: 600 }}>
             <Printer size={14} /> PDF
           </button>
-        </div>
-
-        {loading ? (
+        </div>        {loading ? (
           <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>Loading stock...</div>
-        ) : (
+        ) : activeTab === 'PRODUCTS' ? (
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
               <thead>
@@ -342,7 +354,7 @@ export default function StockView({ incomingGoodsList: _incomingGoodsList, addNo
                       </td>
                       <td style={{ padding: '12px 12px', position: 'relative' }}>
                         <button onClick={() => setOpenMenu(openMenu === s.id ? null : s.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4, borderRadius: 6 }}>
-                          <MoreVertical size={16} />
+                           <MoreVertical size={16} />
                         </button>
                         {openMenu === s.id && (
                           <div style={{ position: 'absolute', right: 0, top: 36, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.15)', zIndex: 10, minWidth: 140 }}>
@@ -385,10 +397,44 @@ export default function StockView({ incomingGoodsList: _incomingGoodsList, addNo
               </tbody>
             </table>
             {filtered.length === 0 && (
-              <div className="text-center py-12 text-[var(--text-muted)]">
+              <div style={{ textAlign: 'center', padding: '24px 0' }}>
                 <Package className="w-10 h-10 mx-auto mb-3 opacity-40" />
-                <p className="font-semibold text-sm">No stock items yet</p>
-                <p className="text-xs mt-1">They will appear here once added</p>
+                <p className="font-semibold text-sm" style={{ color: 'var(--text-muted)' }}>No stock items yet</p>
+                <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>They will appear here once added</p>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+              <thead>
+                <tr style={{ borderBottom: '2px solid var(--border)' }}>
+                  {['Item Name', 'Item Code', 'Category', 'Quantity', 'Cost (GHS)', 'Date Received', ''].map(h => (
+                    <th key={h} style={{ textAlign: 'left', padding: '10px 12px', fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {filteredGeneralPurchases.map(gp => {
+                  return (
+                    <tr key={gp.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                      <td style={{ padding: '12px 12px', fontWeight: 600, color: 'var(--text-primary)' }}>{gp.itemName}</td>
+                      <td style={{ padding: '12px 12px', color: 'var(--text-secondary)', fontFamily: 'monospace', fontSize: 13 }}>{gp.itemCode}</td>
+                      <td style={{ padding: '12px 12px', color: 'var(--text-secondary)' }}>{gp.category}</td>
+                      <td style={{ padding: '12px 12px', fontWeight: 750, color: 'var(--text-primary)' }}>{gp.quantity.toLocaleString()}</td>
+                      <td style={{ padding: '12px 12px', color: 'var(--text-secondary)', fontWeight: 600 }}>₵{gp.cost.toLocaleString('en-GH', { minimumFractionDigits: 2 })}</td>
+                      <td style={{ padding: '12px 12px', color: 'var(--text-muted)', fontSize: 13, whiteSpace: 'nowrap' }}>{gp.dateReceived}</td>
+                      <td style={{ padding: '12px 12px', position: 'relative' }}></td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            {filteredGeneralPurchases.length === 0 && (
+              <div style={{ textAlign: 'center', padding: '24px 0' }}>
+                <Package className="w-10 h-10 mx-auto mb-3 opacity-40" />
+                <p className="font-semibold text-sm" style={{ color: 'var(--text-muted)' }}>No general purchases yet</p>
+                <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>They will appear here once approved by Management</p>
               </div>
             )}
           </div>
@@ -466,49 +512,12 @@ export default function StockView({ incomingGoodsList: _incomingGoodsList, addNo
         </div>
       )}
 
-      {showAddProduct && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-          <div style={{ background: 'var(--bg-card)', borderRadius: 20, padding: 32, width: '100%', maxWidth: 460, boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-              <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: 'var(--text-primary)' }}>Add New Product</h2>
-              <button onClick={() => setShowAddProduct(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={20} /></button>
-            </div>
-            {[
-              { label: 'Product Name *', key: 'name', placeholder: 'e.g. Hydraulic Hose Fittings', type: 'text' },
-              { label: 'SKU/Code *', key: 'sku', placeholder: 'e.g. HHF-200', type: 'text' },
-            ].map(f => (
-              <div key={f.key} style={{ marginBottom: 14 }}>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 5 }}>{f.label}</label>
-                <input type={f.type} value={(newProductForm as Record<string, string>)[f.key]} onChange={e => setNewProductForm(p => ({ ...p, [f.key]: e.target.value }))} placeholder={f.placeholder} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'var(--text-primary)', fontSize: 14, boxSizing: 'border-box' }} />
-              </div>
-            ))}
-            <div style={{ marginBottom: 14 }}>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 5 }}>Category *</label>
-              <select value={newProductForm.category} onChange={e => setNewProductForm(f => ({ ...f, category: e.target.value }))} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'var(--text-primary)', fontSize: 14 }}>
-                <option value="">Select category...</option>
-                {categories.filter(c => c !== 'All').map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              {[
-                { label: 'Initial Qty', key: 'initialQty', placeholder: 'e.g. 0', type: 'number' },
-                { label: 'Unit', key: 'unit', placeholder: 'e.g. units', type: 'text' },
-                { label: 'Min Level', key: 'minimumLevel', placeholder: 'e.g. 10', type: 'number' },
-                { label: 'Max Level', key: 'maximumLevel', placeholder: 'e.g. 500', type: 'number' },
-              ].map(f => (
-                <div key={f.key} style={{ marginBottom: 14 }}>
-                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 5 }}>{f.label}</label>
-                  <input type={f.type} value={(newProductForm as Record<string, string>)[f.key]} onChange={e => setNewProductForm(p => ({ ...p, [f.key]: e.target.value }))} placeholder={f.placeholder} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'var(--text-primary)', fontSize: 14, boxSizing: 'border-box' }} />
-                </div>
-              ))}
-            </div>
-            <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
-              <button onClick={() => setShowAddProduct(false)} style={{ flex: 1, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 12, padding: '12px', fontWeight: 600, color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 14 }}>Cancel</button>
-              <button onClick={doAddProduct} style={{ flex: 1, background: 'var(--accent)', border: 'none', borderRadius: 12, padding: '12px', fontWeight: 600, color: '#fff', cursor: 'pointer', fontSize: 14 }}>Add Product</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <StockIntakeForm
+        isOpen={showAddProduct}
+        onClose={() => setShowAddProduct(false)}
+        addNotification={addNotification}
+        onSuccess={loadData}
+      />
     </div>
   );
 }

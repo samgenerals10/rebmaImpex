@@ -71,6 +71,13 @@ export default function CeoDashboard({
   const [kpiStaff, setKpiStaff] = useState<number | null>(null);
   const [lineChartData, setLineChartData] = useState<{ name: string; Inflow: number; Orders: number }[]>([]);
   
+  // Oversight stats
+  const [totalFinishedGoods, setTotalFinishedGoods] = useState<number>(0);
+  const [finishedGoodsVal, setFinishedGoodsVal] = useState<number>(0);
+  const [totalRawMaterials, setTotalRawMaterials] = useState<number>(0);
+  const [totalGeneralPurchases, setTotalGeneralPurchases] = useState<number>(0);
+  const [generalPurchasesVal, setGeneralPurchasesVal] = useState<number>(0);
+  
   // Live GPS tracking state
   const [transitVehicles, setTransitVehicles] = useState<any[]>([]);
 
@@ -176,6 +183,36 @@ export default function CeoDashboard({
           return { name, Inflow: inflowByDay[name] || 0, Orders: ordersByDay[name] || 0 };
         });
         setLineChartData(last5Days);
+
+        // Finished Goods
+        try {
+          const { data: stockData } = await supabase.from('stock').select('quantity');
+          const fgUnits = (stockData as { quantity: number }[] ?? []).reduce((s, r) => s + (r.quantity || 0), 0);
+          setTotalFinishedGoods(fgUnits);
+          setFinishedGoodsVal(fgUnits * 45.5);
+        } catch (e) {
+          console.error(e);
+        }
+
+        // Raw Materials
+        try {
+          const { data: wipData } = await supabase.from('wip_stock').select('qty').eq('stage', 'Raw Materials');
+          const rmUnits = (wipData as { qty: number }[] ?? []).reduce((s, r) => s + (r.qty || 0), 0);
+          setTotalRawMaterials(rmUnits);
+        } catch (e) {
+          console.error(e);
+        }
+
+        // Approved General Purchases
+        try {
+          const { data: gpData } = await supabase.from('general_purchases').select('quantity, cost').eq('status', 'APPROVED');
+          const gpUnits = (gpData as { quantity: number }[] ?? []).reduce((s, r) => s + (r.quantity || 0), 0);
+          const gpCost = (gpData as { cost: number }[] ?? []).reduce((s, r) => s + (r.cost || 0), 0);
+          setTotalGeneralPurchases(gpUnits);
+          setGeneralPurchasesVal(gpCost);
+        } catch (e) {
+          console.error(e);
+        }
       } catch {
         // leave KPIs null — UI will show 0
       }
@@ -300,6 +337,32 @@ export default function CeoDashboard({
               </button>
             );
           })}
+        </div>
+
+        {/* Mobile Inventory & Asset Oversight Panel */}
+        <div className="bg-bg-card rounded-2xl border border-[var(--border)] shadow-card p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-bold text-text-primary">Inventory & Assets Oversight</h3>
+            <span className="text-[9px] text-text-muted font-mono">Live</span>
+          </div>
+          <div className="space-y-2">
+            {[
+              { label: 'Finished Goods', value: `${totalFinishedGoods.toLocaleString()} Units`, sub: `Valued GHS ${finishedGoodsVal.toLocaleString(undefined, { maximumFractionDigits: 0 })}`, icon: '📦' },
+              { label: 'Raw Materials (WIP)', value: `${totalRawMaterials.toLocaleString()} Units`, sub: 'In production stage', icon: '🧱' },
+              { label: 'General Purchases', value: `${totalGeneralPurchases.toLocaleString()} Items`, sub: `Spent GHS ${generalPurchasesVal.toLocaleString(undefined, { maximumFractionDigits: 0 })}`, icon: '💰' }
+            ].map((item, idx) => (
+              <div key={idx} className="flex items-center justify-between p-2.5 bg-bg-page rounded-xl border border-[var(--border)]">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">{item.icon}</span>
+                  <div>
+                    <p className="text-[10px] font-bold text-text-primary">{item.label}</p>
+                    <p className="text-[9px] text-text-muted">{item.sub}</p>
+                  </div>
+                </div>
+                <span className="text-xs font-bold text-text-primary font-mono">{item.value}</span>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Mini Chart card */}
@@ -502,6 +565,55 @@ export default function CeoDashboard({
                   ))}
                 </div>
               )}
+            </div>
+          </div>
+
+          {/* Inventory & Asset Oversight Panel */}
+          <div className="bg-[var(--bg-card)] rounded-2xl border border-[var(--border)] shadow-[var(--box-shadow)] p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Layers className="w-5 h-5 text-[var(--accent)]" />
+                <h3 className="text-sm font-bold text-[var(--text-primary)]">Inventory & Asset Oversight</h3>
+              </div>
+              <span className="text-xs text-[var(--text-muted)] font-mono">Real-time DB Sync</span>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Finished Goods */}
+              <div className="p-4 bg-[var(--bg)] border border-[var(--border)] rounded-xl space-y-2 hover:ring-1 hover:ring-[var(--accent)] transition-all">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider font-bold">Finished Goods</span>
+                  <span className="text-xs">📦</span>
+                </div>
+                <div className="space-y-1">
+                  <h4 className="text-xl font-bold text-[var(--text-primary)] font-mono">{totalFinishedGoods.toLocaleString()} <span className="text-xs font-normal font-sans text-[var(--text-secondary)]">Units</span></h4>
+                  <p className="text-[10px] text-[var(--text-muted)] font-mono">Value: GHS {finishedGoodsVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                </div>
+              </div>
+
+              {/* Raw Materials */}
+              <div className="p-4 bg-[var(--bg)] border border-[var(--border)] rounded-xl space-y-2 hover:ring-1 hover:ring-[var(--accent)] transition-all">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider font-bold">Raw Materials (WIP)</span>
+                  <span className="text-xs">🧱</span>
+                </div>
+                <div className="space-y-1">
+                  <h4 className="text-xl font-bold text-[var(--text-primary)] font-mono">{totalRawMaterials.toLocaleString()} <span className="text-xs font-normal font-sans text-[var(--text-secondary)]">Units</span></h4>
+                  <p className="text-[10px] text-[var(--text-muted)]">Currently in production queue stage</p>
+                </div>
+              </div>
+
+              {/* General Purchases */}
+              <div className="p-4 bg-[var(--bg)] border border-[var(--border)] rounded-xl space-y-2 hover:ring-1 hover:ring-[var(--accent)] transition-all">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider font-bold">General Purchased Items</span>
+                  <span className="text-xs">💰</span>
+                </div>
+                <div className="space-y-1">
+                  <h4 className="text-xl font-bold text-[var(--text-primary)] font-mono">{totalGeneralPurchases.toLocaleString()} <span className="text-xs font-normal font-sans text-[var(--text-secondary)]">Items</span></h4>
+                  <p className="text-[10px] text-[var(--text-muted)] font-mono">Spent: GHS {generalPurchasesVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                </div>
+              </div>
             </div>
           </div>
 

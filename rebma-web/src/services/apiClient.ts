@@ -535,6 +535,70 @@ export const operations = {
       } : null
     };
   },
+
+  getGeneralPurchases: async () => {
+    const { data, error } = await supabase
+      .from('general_purchases')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) throw new Error(error.message);
+    return (data || []).map((p: any) => ({
+      id: p.id,
+      itemName: p.item_name,
+      itemCode: p.item_code,
+      category: p.category,
+      quantity: Number(p.quantity),
+      cost: Number(p.cost),
+      status: p.status,
+      createdAt: p.created_at || new Date().toISOString(),
+      dateReceived: p.date_received,
+      approvedById: p.approved_by_id
+    }));
+  },
+
+  logGeneralPurchase: async (data: {
+    itemName: string;
+    itemCode: string;
+    category: string;
+    quantity: number;
+    cost: number;
+    dateReceived: string;
+  }) => {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const performerId = sessionData.session?.user?.id || 'unknown';
+    const { data: performers } = await supabase.from('profiles').select('full_name').eq('id', performerId).limit(1);
+    const performedBy = performers?.[0]?.full_name || 'Ops Staff';
+
+    const { data: purchase, error } = await supabase
+      .from('general_purchases')
+      .insert({
+        item_name: data.itemName,
+        item_code: data.itemCode,
+        category: data.category,
+        quantity: Number(data.quantity),
+        cost: Number(data.cost),
+        date_received: data.dateReceived,
+        status: 'PENDING_MANAGEMENT_APPROVAL',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .select();
+    if (error) throw new Error(error.message);
+
+    try {
+      await supabase.from('global_audit_history').insert({
+        action: 'LOG_GENERAL_PURCHASE',
+        department: 'OPERATIONS',
+        performed_by: performedBy,
+        user_id: performerId,
+        details: `General purchase logged: ${data.itemName} (${data.quantity} units, GHS ${data.cost}). Code: ${data.itemCode}`,
+        timestamp: new Date().toISOString()
+      });
+    } catch (e) {
+      console.error('Audit entry failed:', e);
+    }
+    return purchase ? purchase[0] : null;
+  },
 };
 
 // ── Management ────────────────────────────────────────────────
@@ -598,6 +662,72 @@ export const management = {
       .select();
     if (error) throw new Error(error.message);
 
+    // If approved cargo intake is in-house production, sync it to stock table
+    if (approve && intake && intake.length > 0) {
+      const approvedCargo = intake[0];
+      if (approvedCargo.company === 'REBMA IN-HOUSE PRODUCTION') {
+        try {
+          const { data: existingStock } = await supabase
+            .from('stock')
+            .select('*')
+            .eq('product_code', approvedCargo.goods_code)
+            .limit(1);
+
+          if (existingStock && existingStock.length > 0) {
+            const newQty = (existingStock[0].quantity || 0) + approvedCargo.quantity;
+            await supabase
+              .from('stock')
+              .update({
+                quantity: newQty,
+                last_updated: new Date().toISOString(),
+                updated_by: performerId
+              })
+              .eq('id', existingStock[0].id);
+
+            await supabase
+              .from('stock_ledger')
+              .insert({
+                product_name: approvedCargo.product_name,
+                movement_type: 'ADD',
+                quantity: approvedCargo.quantity,
+                reference: 'In-House Production Approved',
+                notes: `Cargo Intake ID: ${intakeId}`,
+                performed_by: performerId,
+                created_at: new Date().toISOString()
+              });
+          } else {
+            await supabase
+              .from('stock')
+              .insert({
+                product_name: approvedCargo.product_name,
+                product_code: approvedCargo.goods_code,
+                category: 'In-House Production',
+                quantity: approvedCargo.quantity,
+                maximum_level: 1000,
+                minimum_level: 10,
+                unit: 'units',
+                last_updated: new Date().toISOString(),
+                updated_by: performerId
+              });
+
+            await supabase
+              .from('stock_ledger')
+              .insert({
+                product_name: approvedCargo.product_name,
+                movement_type: 'ADD',
+                quantity: approvedCargo.quantity,
+                reference: 'In-House Production Approved',
+                notes: `Cargo Intake ID: ${intakeId}`,
+                performed_by: performerId,
+                created_at: new Date().toISOString()
+              });
+          }
+        } catch (e) {
+          console.error('Error auto-syncing to stock table:', e);
+        }
+      }
+    }
+
     try {
       await supabase.from('global_audit_history').insert({
         action: approve ? 'APPROVE_PORT_CARGO' : 'REJECT_PORT_CARGO',
@@ -658,6 +788,39 @@ export const management = {
       .select();
     if (error) throw new Error(error.message);
     return data ? mapRequisitionToFrontend(data[0]) : null;
+  },
+
+  approveGeneralPurchase: async (purchaseId: string, approve: boolean) => {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const performerId = sessionData.session?.user?.id || 'unknown';
+    const { data: performers } = await supabase.from('profiles').select('full_name').eq('id', performerId).limit(1);
+    const performedBy = performers?.[0]?.full_name || 'Management';
+
+    const status = approve ? 'APPROVED' : 'REJECTED';
+    const { data: purchase, error } = await supabase
+      .from('general_purchases')
+      .update({
+        status,
+        approved_by_id: performerId,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', purchaseId)
+      .select();
+    if (error) throw new Error(error.message);
+
+    try {
+      await supabase.from('global_audit_history').insert({
+        action: approve ? 'APPROVE_GENERAL_PURCHASE' : 'REJECT_GENERAL_PURCHASE',
+        department: 'MANAGEMENT',
+        performed_by: performedBy,
+        user_id: performerId,
+        details: `General purchase ${purchaseId} ${approve ? 'approved' : 'rejected'}.`,
+        timestamp: new Date().toISOString()
+      });
+    } catch (e) {
+      console.error(e);
+    }
+    return purchase ? purchase[0] : null;
   },
 };
 

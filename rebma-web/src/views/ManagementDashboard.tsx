@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import type { IncomingGoods, Order, Customer, GoodsPrice, AuditEntry } from '../types/erp';
 import { FileSpreadsheet, FileText, Clipboard, Activity, ShieldCheck, DollarSign, History, Tag, User, ChevronDown, ChevronUp, MoreVertical, TrendingUp, TrendingDown, Bell, Truck } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
+import { operations, management } from '../services/apiClient';
 import MiniSparkline from '../components/MiniSparkline';
 import KpiDetailView from '../components/KpiDetailView';
 import { exportToCSV, exportToPDF } from '../utils/export';
@@ -60,6 +61,28 @@ export default function ManagementDashboard({
   const [localGoods, setLocalGoods] = useState<IncomingGoods[]>(incomingGoodsList);
   const [localOrders, setLocalOrders] = useState<Order[]>(ordersList);
   const [localLedger, setLocalLedger] = useState<AuditEntry[]>(auditLog);
+  const [pendingGeneralPurchases, setPendingGeneralPurchases] = useState<any[]>([]);
+  const [approvedGeneralPurchases, setApprovedGeneralPurchases] = useState<any[]>([]);
+
+  const loadGeneralPurchases = async () => {
+    try {
+      const gp = await operations.getGeneralPurchases();
+      setPendingGeneralPurchases(gp.filter((x: any) => x.status === 'PENDING_MANAGEMENT_APPROVAL'));
+      setApprovedGeneralPurchases(gp.filter((x: any) => x.status === 'APPROVED' || x.status === 'REJECTED'));
+    } catch (err) {
+      console.error('Failed to load GP in ManagementDashboard:', err);
+    }
+  };
+
+  const handleApproveGP = async (id: string, approve: boolean) => {
+    try {
+      await management.approveGeneralPurchase(id, approve);
+      addNotification?.(`General purchase request ${approve ? 'approved' : 'rejected'}.`);
+      loadGeneralPurchases();
+    } catch (err: any) {
+      alert(err.message || 'Failed to process general purchase approval.');
+    }
+  };
 
   const [expandedCreditId, setExpandedCreditId] = useState<string | null>(null);
   const [priceForm, setPriceForm] = useState({ productName: '', category: 'INCOMING_GOODS' as GoodsPrice['category'], unitPrice: '', currency: 'GHS' as 'GHS' | 'USD' });
@@ -89,6 +112,7 @@ export default function ManagementDashboard({
   // Sync props to local states
   useEffect(() => {
     setLocalGoods(incomingGoodsList);
+    loadGeneralPurchases();
   }, [incomingGoodsList]);
 
   useEffect(() => {
@@ -139,6 +163,7 @@ export default function ManagementDashboard({
   ];
 
   const pendingCargoCount = localGoods.filter(i => i.status === 'PENDING_MANAGEMENT_APPROVAL').length;
+  const totalPendingIntakes = pendingCargoCount + pendingGeneralPurchases.length;
   const pendingCreditCount = localOrders.filter(o => o.status === 'PENDING_MANAGEMENT').length;
   const approvedOrdersCount = localOrders.filter(o => ['APPROVED', 'DELIVERED', 'PROCESSING'].includes(o.status)).length;
   const totalApprovedValue = localOrders
@@ -146,7 +171,7 @@ export default function ManagementDashboard({
     .reduce((acc, o) => acc + o.totalAmount, 0);
 
   const stats = [
-    { title: 'Cargo Awaiting Price', value: `${pendingCargoCount} Batches`, sub: 'Incoming port cargo queue', icon: Clipboard, color: 'text-blue-500' },
+    { title: 'Cargo Awaiting Price', value: `${totalPendingIntakes} Batches`, sub: 'Incoming port cargo & purchases', icon: Clipboard, color: 'text-blue-500' },
     { title: 'Credit Audits Pending', value: `${pendingCreditCount} Orders`, sub: 'Awaiting limit check-offs', icon: Activity, color: 'text-amber-500' },
     { title: 'Authorized Orders', value: `${approvedOrdersCount} Cleared`, sub: 'Sales orders verified', icon: ShieldCheck, color: 'text-emerald-500' },
     { title: 'Net Authorized Value', value: `GHS ${totalApprovedValue.toLocaleString()}`, sub: 'Approved credit limit funds', icon: DollarSign, color: 'text-indigo-500' }
@@ -321,6 +346,19 @@ export default function ManagementDashboard({
     originalItem: g
   }));
 
+  const flatHistoryGP = approvedGeneralPurchases.map(gp => ({
+    id: gp.id,
+    displayId: gp.itemCode || `PURCH-${gp.id}`,
+    type: 'PURCHASE',
+    clientProduct: gp.itemName,
+    origin: gp.category,
+    amount: `GHS ${gp.cost.toLocaleString()}`,
+    amountVal: gp.cost,
+    status: gp.status,
+    date: new Date(gp.createdAt).toLocaleString(),
+    originalItem: gp
+  }));
+
   const flatHistoryOrders = localOrders.filter(o => !['PENDING_FINANCE', 'PENDING_MANAGEMENT'].includes(o.status)).map(o => ({
     id: o.id,
     displayId: o.id,
@@ -334,7 +372,7 @@ export default function ManagementDashboard({
     originalItem: o
   }));
 
-  const combinedHistory = [...flatHistoryCargo, ...flatHistoryOrders].filter(h => {
+  const combinedHistory = [...flatHistoryCargo, ...flatHistoryGP, ...flatHistoryOrders].filter(h => {
     const matchesSearch = h.displayId.toLowerCase().includes(historySearch.toLowerCase()) ||
                           h.clientProduct.toLowerCase().includes(historySearch.toLowerCase());
     const matchesType = historyTypeFilter === 'ALL' || h.type === historyTypeFilter;
@@ -572,7 +610,7 @@ export default function ManagementDashboard({
             <h3 className="text-sm font-bold text-[var(--text-primary)]">Pending Approvals</h3>
             <button onClick={() => setActiveSubTab?.('CargoApproval')} className="text-xs text-[var(--accent)] font-semibold hover:underline cursor-pointer">View All →</button>
           </div>
-          {localGoods.filter(g => g.status === 'PENDING_MANAGEMENT_APPROVAL').length === 0 && localOrders.filter(o => o.status === 'PENDING_MANAGEMENT').length === 0 ? (
+          {localGoods.filter(g => g.status === 'PENDING_MANAGEMENT_APPROVAL').length === 0 && pendingGeneralPurchases.length === 0 && localOrders.filter(o => o.status === 'PENDING_MANAGEMENT').length === 0 ? (
             <p className="text-xs text-emerald-600 font-semibold py-4 text-center">No pending approvals 🎉</p>
           ) : (
             <div className="space-y-2">
@@ -582,6 +620,12 @@ export default function ManagementDashboard({
                   sub: `Operations · ${g.createdAt || 'Just now'}`, type: 'Cargo', amount: g.unitPrice ? `GHS ${g.unitPrice}` : undefined,
                   onApprove: () => { setActiveSubTab?.('CargoApproval'); addNotification?.(`Opening cargo approval for ${g.goodsCode || g.id}. Set a price to approve.`); },
                   onReject: () => { onApproveIntake(g.id, false); addNotification?.(`Cargo ${g.id} rejected.`); }
+                })),
+                ...pendingGeneralPurchases.slice(0, 3).map(gp => ({
+                  id: gp.id, icon: '💰', title: `Purchase: ${gp.itemName}`,
+                  sub: `Operations · ${new Date(gp.createdAt).toLocaleString()}`, type: 'Purchase', amount: `GHS ${gp.cost.toLocaleString()}`,
+                  onApprove: () => { handleApproveGP(gp.id, true); },
+                  onReject: () => { handleApproveGP(gp.id, false); }
                 })),
                 ...localOrders.filter(o => o.status === 'PENDING_MANAGEMENT').slice(0, 3).map(o => ({
                   id: o.id, icon: '💳', title: `Credit: ${o.clientName}`,
@@ -701,7 +745,7 @@ export default function ManagementDashboard({
                         <span className="text-[10px] text-[var(--text-muted)]">No Image</span>
                       </div>
                     )}
-                    <div className="flex-1 space-y-1 w-full">
+                    <div className="flex-1 space-y-1 w-full text-[var(--text-primary)]">
                       <div className="flex items-center justify-between gap-2">
                         <span className="text-xs font-bold text-[var(--text-primary)]">{item.productName || 'Unnamed Product'}</span>
                         <span className="px-2 py-0.5 bg-amber-500/10 text-amber-600 rounded font-bold text-[9px] shrink-0">Awaiting Pricing</span>
@@ -748,6 +792,52 @@ export default function ManagementDashboard({
               ))}
               {localGoods.filter(i => i.status === 'PENDING_MANAGEMENT_APPROVAL').length === 0 && (
                 <p className="text-xs text-[var(--text-muted)] text-center py-6">No cargo awaiting management pricing reviews.</p>
+              )}
+            </div>
+          </div>
+
+          {/* GENERAL PURCHASES APPROVAL QUEUE */}
+          <div className="p-6 bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] border border-[var(--border)] space-y-4 mt-6">
+            <h3 className="text-lg font-bold text-[var(--text-primary)] flex items-center gap-2">
+              <DollarSign className="w-5 h-5 text-[var(--accent)]" />
+              General Purchases Approval Queue
+            </h3>
+            <p className="text-xs text-[var(--text-muted)]">Approve or reject general purchased items logged by Operations staff.</p>
+            <div className="space-y-4">
+              {pendingGeneralPurchases.map(gp => (
+                <div key={gp.id} className="p-4 bg-[var(--bg)] border border-[var(--border)] rounded-xl space-y-3">
+                  <div className="flex flex-col sm:flex-row items-start gap-4">
+                    <div className="w-10 h-10 rounded-xl bg-[var(--accent-light)] flex items-center justify-center border border-[var(--border)] shrink-0">
+                      <DollarSign className="w-5 h-5 text-[var(--accent)]" />
+                    </div>
+                    <div className="flex-1 space-y-1 w-full text-[var(--text-primary)]">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-bold text-[var(--text-primary)]">{gp.itemName}</span>
+                        <span className="px-2 py-0.5 bg-amber-500/10 text-amber-600 rounded font-bold text-[9px] shrink-0">Awaiting Approval</span>
+                      </div>
+                      <p className="text-[10px] text-[var(--text-muted)] font-mono">Code: <code className="bg-[var(--bg-card)] px-1 rounded border border-[var(--border)] text-[var(--text-primary)]">{gp.itemCode}</code></p>
+                      <p className="text-[10px] text-[var(--text-muted)]">Category: <strong>{gp.category}</strong></p>
+                      <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-[var(--text-muted)] font-mono">
+                        <span>Qty: <strong>{gp.quantity}</strong></span>
+                        <span>Cost: <strong>GHS {gp.cost.toLocaleString()}</strong></span>
+                        <span>Logged: <strong>{new Date(gp.createdAt).toLocaleString()}</strong></span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex gap-2 justify-end w-full pt-2">
+                    <button
+                      onClick={() => handleApproveGP(gp.id, true)}
+                      className="px-4 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-xs font-bold cursor-pointer transition-colors shadow text-center"
+                    >Approve</button>
+                    <button
+                      onClick={() => handleApproveGP(gp.id, false)}
+                      className="px-4 py-1.5 bg-red-50 text-red-600 rounded-lg text-xs font-bold cursor-pointer hover:bg-red-100 transition-colors"
+                    >Reject</button>
+                  </div>
+                </div>
+              ))}
+              {pendingGeneralPurchases.length === 0 && (
+                <p className="text-xs text-[var(--text-muted)] text-center py-6">No general purchases awaiting management approval.</p>
               )}
             </div>
           </div>
@@ -1152,7 +1242,7 @@ export default function ManagementDashboard({
                   </button>
                   {isHistoryFilterOpen && (
                     <div className="absolute right-0 top-full mt-1.5 w-48 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl z-20 p-1 flex flex-col">
-                      {(['ALL', 'CARGO', 'ORDER'] as const).map(t => (
+                      {(['ALL', 'CARGO', 'ORDER', 'PURCHASE'] as const).map(t => (
                         <button
                           key={t}
                           onClick={() => { setHistoryTypeFilter(t); setIsHistoryFilterOpen(false); }}
@@ -1234,10 +1324,12 @@ export default function ManagementDashboard({
                       <td className="py-3.5 px-3 font-mono font-bold text-[var(--text-primary)]">{item.displayId}</td>
                       <td className="py-3.5 px-3">
                         <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
-                          item.type === 'CARGO' ? 'bg-[var(--accent-light)] text-[var(--accent)]' : 'bg-purple-500/10 text-purple-600'
+                          item.type === 'CARGO' ? 'bg-[var(--accent-light)] text-[var(--accent)]' :
+                          item.type === 'PURCHASE' ? 'bg-indigo-500/10 text-indigo-600' :
+                          'bg-purple-500/10 text-purple-600'
                         }`}>{item.type}</span>
                       </td>
-                      <td className="py-3.5 px-3 font-medium text-[13px] text-[var(--text-primary)]">{item.clientProduct} {item.origin !== 'Sales Order Portal' && <span className="text-[10px] text-[var(--text-muted)] font-normal font-sans">({item.origin})</span>}</td>
+                      <td className="py-3.5 px-3 font-medium text-[13px] text-[var(--text-primary)]">{item.clientProduct} {item.origin !== 'Sales Order Portal' && item.type !== 'PURCHASE' && <span className="text-[10px] text-[var(--text-muted)] font-normal font-sans">({item.origin})</span>}</td>
                       <td className="py-3.5 px-3 text-right font-mono font-bold text-[13px] text-emerald-600">{item.amount}</td>
                       <td className="py-3.5 px-3 text-center">
                         <span className={`px-2.5 py-0.5 rounded text-[9px] font-bold ${statusBadge(item.status)}`}>{item.status.replace(/_/g, ' ')}</span>

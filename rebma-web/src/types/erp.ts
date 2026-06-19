@@ -189,3 +189,17 @@ export interface Notification {
   timestamp: string;
   read: boolean;
 }
+
+export interface GeneralPurchase {
+  id: string;
+  itemName: string;
+  itemCode: string;
+  category: string;
+  quantity: number;
+  cost: number;
+  status: 'PENDING_MANAGEMENT_APPROVAL' | 'APPROVED' | 'REJECTED';
+  createdAt: string;
+  dateReceived: string;
+  approvedById?: string;
+}
+

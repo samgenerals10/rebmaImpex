@@ -15,6 +15,7 @@ import { exportToCSV, exportToPDF } from '../utils/export';
 import { supabase } from '../lib/supabaseClient';
 import PendingApprovalsAlert from '../components/global/PendingApprovalsAlert';
 import { stockApi } from '../services/apiClient';
+import StockIntakeForm from '../components/StockIntakeForm';
 
 interface OperationsDashboardProps {
   ordersList: Order[];
@@ -24,6 +25,7 @@ interface OperationsDashboardProps {
   activeSubTab: string;
   addNotification: (msg: string) => void;
   setActiveSubTab?: (tab: string) => void;
+  onRefresh?: () => void;
 }
 
 const handleSort = (
@@ -48,7 +50,8 @@ export default function OperationsDashboard({
   onReleaseToDispatch,
   activeSubTab = 'PortIngestion',
   addNotification,
-  setActiveSubTab
+  setActiveSubTab,
+  onRefresh
 }: OperationsDashboardProps) {
 
   // Local state copies of lists to support edit, delete, duplicate actions locally
@@ -175,12 +178,10 @@ export default function OperationsDashboard({
     }
   };
 
-  const handleTakePhoto = async () => {
-    if (navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function') {
-      await startCamera();
-    } else {
-      cameraInputRef.current?.click();
-    }
+  const handleTakePhoto = () => {
+    // Logic for triggering camera UI goes here, if separate camera modal exists.
+    // Otherwise keep current simple file input trigger.
+    cameraInputRef.current?.click();
   };
 
   useEffect(() => {
@@ -1052,11 +1053,11 @@ export default function OperationsDashboard({
                     className="flex flex-col items-center gap-3 p-8 bg-[var(--bg-card)] border-2 border-[var(--border)] hover:border-[var(--accent)] hover:shadow-lg rounded-2xl cursor-pointer transition-all group"
                   >
                     <div className="w-14 h-14 rounded-2xl bg-[var(--accent-light)] flex items-center justify-center group-hover:bg-[var(--accent)] transition-colors">
-                      <Factory className="w-7 h-7 text-[var(--accent)] group-hover:text-white transition-colors" />
+                      <Package className="w-7 h-7 text-[var(--accent)] group-hover:text-white transition-colors" />
                     </div>
                     <div className="text-center">
-                      <p className="font-bold text-[var(--text-primary)] text-sm">Log In-House Production Output</p>
-                      <p className="text-xs text-[var(--text-muted)] mt-1">Take stock of finished goods produced internally by the Production department</p>
+                      <p className="font-bold text-[var(--text-primary)] text-sm">Log Stock Intake</p>
+                      <p className="text-xs text-[var(--text-muted)] mt-1">Log internal production outputs or general purchased items into the warehouse</p>
                     </div>
                   </button>
                 </div>
@@ -1253,150 +1254,15 @@ export default function OperationsDashboard({
                   </div>
                 )}
 
-                {/* IN-HOUSE PRODUCTION MODAL */}
-                {showInHouseModal && (
-                  <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-                    <div className="bg-[var(--bg-card)] rounded-2xl shadow-2xl border border-[var(--border)] w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-                      <div className="flex items-center justify-between p-5 border-b border-[var(--border)] sticky top-0 bg-[var(--bg-card)] z-10">
-                        <div className="flex items-center gap-2">
-                          <Factory className="w-5 h-5 text-[var(--accent)]" />
-                          <h3 className="text-base font-bold text-[var(--text-primary)]">Log In-House Production Output</h3>
-                        </div>
-                        <button onClick={() => setShowInHouseModal(false)} className="p-1.5 rounded-lg hover:bg-[var(--accent-light)] cursor-pointer transition-colors">
-                          <X className="w-4 h-4 text-[var(--text-muted)]" />
-                        </button>
-                      </div>
-                      <div className="p-5">
-                        <form onSubmit={handleSubmitInHouse} className="space-y-4">
-                          {/* Link to production output */}
-                          {productionOutputs.length > 0 && (
-                            <div>
-                              <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Link to Production Output <span className="text-[var(--text-muted)] font-normal">(optional)</span></label>
-                              <select
-                                value={ihProductionReqId}
-                                onChange={e => {
-                                  const id = e.target.value;
-                                  setIhProductionReqId(id);
-                                  if (id) {
-                                    const req = productionOutputs.find(r => r.id === id);
-                                    if (req && req.items?.length > 0) {
-                                      setIhProductName(req.items[0].materialName || '');
-                                      setIhUnits(String(req.items[0].quantity || ''));
-                                    }
-                                  }
-                                }}
-                                className="w-full px-3 py-2 bg-[var(--bg)] text-[var(--text-primary)] border border-[var(--border)] focus:border-[var(--accent)] rounded-xl text-xs focus:outline-none"
-                              >
-                                <option value="">— Select a completed production batch —</option>
-                                {productionOutputs.map(req => (
-                                  <option key={req.id} value={req.id}>
-                                    {req.id} · {req.items?.[0]?.materialName || 'Batch'} ({req.status})
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-                          )}
-
-                          {/* Product Name & Goods Code */}
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                              <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Product Name <span className="text-rose-500">*</span></label>
-                              <input
-                                type="text"
-                                value={ihProductName}
-                                onChange={e => setIhProductName(e.target.value)}
-                                required
-                                placeholder="E.g., Refined Palm Oil Barrels"
-                                className="w-full px-3 py-2 bg-[var(--bg)] text-[var(--text-primary)] border border-[var(--border)] focus:border-[var(--accent)] rounded-xl text-xs focus:outline-none"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Goods Code <span className="text-[var(--text-muted)] font-normal">(auto-generated if empty)</span></label>
-                              <input
-                                type="text"
-                                value={ihGoodsCode}
-                                onChange={e => setIhGoodsCode(e.target.value)}
-                                placeholder={`E.g., ${autoGoodsCode()}`}
-                                className="w-full px-3 py-2 bg-[var(--bg)] text-[var(--text-primary)] border border-[var(--border)] focus:border-[var(--accent)] rounded-xl text-xs focus:outline-none"
-                              />
-                            </div>
-                          </div>
-
-                          {/* Type of Goods */}
-                          <div>
-                            <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Type of Goods <span className="text-rose-500">*</span></label>
-                            <input
-                              type="text"
-                              value={ihGoodsType}
-                              onChange={e => setIhGoodsType(e.target.value)}
-                              required
-                              placeholder="E.g., Finished Product, Packaged Goods, Bulk Output"
-                              className="w-full px-3 py-2 bg-[var(--bg)] text-[var(--text-primary)] border border-[var(--border)] focus:border-[var(--accent)] rounded-xl text-xs focus:outline-none"
-                            />
-                          </div>
-
-                          {/* Units & Weight */}
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                              <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">
-                                <Package className="w-3 h-3 inline mr-1" />
-                                Units / Boxes Produced <span className="text-rose-500">*</span>
-                              </label>
-                              <input
-                                type="number"
-                                value={ihUnits}
-                                onChange={e => setIhUnits(e.target.value)}
-                                required
-                                min="1"
-                                placeholder="E.g., 240"
-                                className="w-full px-3 py-2 bg-[var(--bg)] text-[var(--text-primary)] border border-[var(--border)] focus:border-[var(--accent)] rounded-xl text-xs focus:outline-none"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Weight (Metric Tons) <span className="text-rose-500">*</span></label>
-                              <input
-                                type="number"
-                                step="0.1"
-                                value={ihWeight}
-                                onChange={e => setIhWeight(e.target.value)}
-                                required
-                                min="0.1"
-                                placeholder="E.g., 5.0"
-                                className="w-full px-3 py-2 bg-[var(--bg)] text-[var(--text-primary)] border border-[var(--border)] focus:border-[var(--accent)] rounded-xl text-xs focus:outline-none"
-                              />
-                            </div>
-                          </div>
-
-                          {/* Date received into warehouse */}
-                          <div>
-                            <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">
-                              <Calendar className="w-3 h-3 inline mr-1" />
-                              Date Received into Warehouse <span className="text-rose-500">*</span>
-                            </label>
-                            <input
-                              type="date"
-                              value={ihDate}
-                              onChange={e => setIhDate(e.target.value)}
-                              required
-                              max={new Date().toISOString().split('T')[0]}
-                              className="w-full px-3 py-2 bg-[var(--bg)] text-[var(--text-primary)] border border-[var(--border)] focus:border-[var(--accent)] rounded-xl text-xs focus:outline-none"
-                            />
-                          </div>
-
-                          {/* Source label */}
-                          <div className="p-3 bg-[var(--accent-light)] border border-[var(--border)] rounded-xl text-xs text-[var(--accent)] flex items-center gap-2">
-                            <Factory className="w-4 h-4 shrink-0" />
-                            <span>This intake will be recorded with source: <strong>REBMA IN-HOUSE PRODUCTION</strong> and destination: <strong>Main Warehouse</strong></span>
-                          </div>
-
-                          <button type="submit" className="w-full py-2.5 bg-[var(--accent)] hover:opacity-90 text-white rounded-xl text-xs font-bold shadow cursor-pointer transition-opacity">
-                            Submit In-House Intake
-                          </button>
-                        </form>
-                      </div>
-                    </div>
-                  </div>
-                )}
+                {/* IN-HOUSE PRODUCTION / GENERAL PURCHASES UNIFIED MODAL */}
+                <StockIntakeForm
+                  isOpen={showInHouseModal}
+                  onClose={() => setShowInHouseModal(false)}
+                  addNotification={addNotification}
+                  onSuccess={() => {
+                    if (onRefresh) onRefresh();
+                  }}
+                />
               </>
             )}
 

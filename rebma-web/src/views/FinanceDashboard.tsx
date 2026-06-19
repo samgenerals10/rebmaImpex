@@ -10,6 +10,7 @@ import KpiDetailView from '../components/KpiDetailView';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import type { Order, FinancePayment, ProductionRequest } from '../types/erp';
 import { exportToCSV, exportToPDF } from '../utils/export';
+import { stockApi, operations } from '../services/apiClient';
 
 interface FinanceDashboardProps {
   ordersList: Order[];
@@ -59,6 +60,24 @@ export default function FinanceDashboard({
   // Local state copies to support inline dynamic table additions, updates and deletes
   const [localPayments, setLocalPayments] = useState<FinancePayment[]>(paymentsList);
   const [localRequisitions, setLocalRequisitions] = useState<ProductionRequest[]>(productionRequests);
+  const [totalCapitalAssets, setTotalCapitalAssets] = useState(0);
+
+  const fetchCapitalMetrics = async () => {
+    try {
+      const [stockData, gpData] = await Promise.all([
+        stockApi.getStock(),
+        operations.getGeneralPurchases()
+      ]);
+      const finishedGoodsValue = stockData.reduce((acc: number, s: any) => acc + (s.current * 45.5), 0);
+      const gpValue = (gpData || [])
+        .filter((gp: any) => gp.status === 'APPROVED')
+        .reduce((acc: number, gp: any) => acc + gp.cost, 0);
+      
+      setTotalCapitalAssets(finishedGoodsValue + gpValue);
+    } catch (err) {
+      console.error('Failed to fetch capital metrics in FinanceDashboard:', err);
+    }
+  };
 
   const [payType, setPayType] = useState<'DIRECT' | 'CREDIT_SETTLEMENT'>('DIRECT');
   const [clientName, setClientName] = useState('');
@@ -95,6 +114,7 @@ export default function FinanceDashboard({
   // Sync props to local states
   useEffect(() => {
     setLocalPayments(paymentsList);
+    fetchCapitalMetrics();
   }, [paymentsList]);
 
   useEffect(() => {
@@ -870,7 +890,7 @@ export default function FinanceDashboard({
           </div>
 
           {/* Production & Warehouse Summary — always visible */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6">
             <div className="p-4 md:p-6 bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-[var(--box-shadow)] space-y-3">
               <h3 className="text-sm font-bold text-[var(--text-primary)]">Overall Goods Produced by Production</h3>
               <p className="text-2xl md:text-3xl font-bold text-[var(--accent)] font-mono">{totalGoodsProduced} <span className="text-xs md:text-base text-[var(--text-secondary)] font-normal font-sans">Batches</span></p>
@@ -880,6 +900,11 @@ export default function FinanceDashboard({
               <h3 className="text-sm font-bold text-[var(--text-primary)]">Overall Goods in Warehouse</h3>
               <p className="text-2xl md:text-3xl font-bold text-emerald-500 font-mono">{totalWarehouseItems.toLocaleString()} <span className="text-xs md:text-base text-[var(--text-secondary)] font-normal font-sans">Units</span></p>
               <p className="text-[10px] text-[var(--text-secondary)] opacity-80">Total approved and released production units currently in warehouse stock.</p>
+            </div>
+            <div className="p-4 md:p-6 bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-[var(--box-shadow)] space-y-3">
+              <h3 className="text-sm font-bold text-[var(--text-primary)]">Capital Tied Up in Assets</h3>
+              <p className="text-2xl md:text-3xl font-bold text-indigo-500 font-mono">₵{totalCapitalAssets.toLocaleString('en-GH', { maximumFractionDigits: 0 })}</p>
+              <p className="text-[10px] text-[var(--text-secondary)] opacity-80">Value of finished goods stock plus approved general purchased items.</p>
             </div>
           </div>
 
