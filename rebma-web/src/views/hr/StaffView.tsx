@@ -35,6 +35,7 @@ export default function StaffView({ staffList: propStaff, addNotification }: Pro
   const [editTarget, setEditTarget] = useState<StaffMember | null>(null);
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const [form, setForm] = useState({ fullName: '', email: '', department: 'Operations', role: '', phone: '', ghanaCard: '' });
+  const [totalOnLeave, setTotalOnLeave] = useState(0);
 
   // Detail loading state
   const [attendance, setAttendance] = useState<any[]>([]);
@@ -63,6 +64,20 @@ export default function StaffView({ staffList: propStaff, addNotification }: Pro
             status: p.status || 'ACTIVE'
           }));
           setStaff(mapped);
+        }
+
+        // Fetch leave requests to compute dynamic On Leave count
+        const { data: leavesData, error: leavesError } = await supabase
+          .from('leave_requests')
+          .select('status, start_date, end_date');
+        if (leavesError) throw leavesError;
+        if (leavesData) {
+          const count = leavesData.filter((l: any) => 
+            l.status === 'Approved' && 
+            l.start_date <= '2026-06-12' && 
+            l.end_date >= '2026-06-12'
+          ).length;
+          setTotalOnLeave(count);
         }
       } catch (err: any) {
         addNotification(`Error loading staff: ${err.message}`);
@@ -406,7 +421,7 @@ export default function StaffView({ staffList: propStaff, addNotification }: Pro
         {[
           { label: 'Total Staff', value: staff.length, icon: <Users size={18} />, color: 'var(--accent)' },
           { label: 'Active', value: totalActive, icon: <Award size={18} />, color: '#10b981' },
-          { label: 'On Leave', value: 2, icon: <Calendar size={18} />, color: '#f59e0b' },
+          { label: 'On Leave', value: totalOnLeave, icon: <Calendar size={18} />, color: '#f59e0b' },
           { label: 'Suspended', value: totalSuspended, icon: <UserX size={18} />, color: '#ef4444' },
         ].map(card => (
           <div key={card.label} style={{ background: 'var(--bg-card)', borderRadius: 12, padding: '1rem', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
