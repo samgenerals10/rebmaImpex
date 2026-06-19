@@ -1,8 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
-import { Activity, Search, RefreshCw, ChevronRight, Building2, Package, DollarSign, Truck, Users, ShoppingCart, Factory, UserCheck, Clock, Trash2 } from 'lucide-react';
+import {
+  Activity, Search, RefreshCw, ChevronRight, Building2, Package, DollarSign,
+  Truck, Users, ShoppingCart, Factory, UserCheck, Clock, Trash2, Eye,
+  Download, Share2, MoreVertical, X, FileSpreadsheet, FileText,
+} from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { exportToCSV, exportToPDF } from '../../utils/export';
-import { FileSpreadsheet, FileText } from 'lucide-react';
+import { useCeoSettings } from '../../contexts/CeoSettingsContext';
 
 interface ActivityItem {
   id: string;
@@ -38,6 +42,7 @@ const DEPT_ICONS: Record<string, React.ComponentType<{ className?: string }>> = 
 };
 
 const timeAgo = (iso: string): string => {
+  if (!iso) return '—';
   const diff = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diff / 60000);
   if (mins < 1) return 'just now';
@@ -54,6 +59,10 @@ interface Props {
 
 export default function DeptActivityView({ addNotification, currentUser }: Props) {
   const isCeo = currentUser?.department === 'CEO';
+  const { getSetting } = useCeoSettings();
+  // Other departments only see CEO entries when CEO has explicitly enabled it
+  const ceoActivityVisible: boolean = getSetting('ceo_activity_visible_to_others', false);
+  const showCeoEntries = isCeo || ceoActivityVisible;
 
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [loadingActivities, setLoadingActivities] = useState(true);
@@ -61,6 +70,8 @@ export default function DeptActivityView({ addNotification, currentUser }: Props
   const [search, setSearch] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [visibleCount, setVisibleCount] = useState(10);
+  const [rowMenuOpen, setRowMenuOpen] = useState<string | null>(null);
+  const [detailItem, setDetailItem] = useState<ActivityItem | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const loadActivities = async () => {
@@ -71,8 +82,7 @@ export default function DeptActivityView({ addNotification, currentUser }: Props
         .order('timestamp', { ascending: false })
         .limit(200);
 
-      // Non-CEO users never see CEO department entries
-      if (!isCeo) {
+      if (!showCeoEntries) {
         query = query.not('department', 'eq', 'CEO');
       }
 
@@ -99,7 +109,14 @@ export default function DeptActivityView({ addNotification, currentUser }: Props
     intervalRef.current = setInterval(loadActivities, 30000);
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isCeo]);
+  }, [showCeoEntries]);
+
+  // Close row menu on outside click
+  useEffect(() => {
+    const close = () => setRowMenuOpen(null);
+    window.addEventListener('click', close);
+    return () => window.removeEventListener('click', close);
+  }, []);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -113,64 +130,86 @@ export default function DeptActivityView({ addNotification, currentUser }: Props
     if (!canDelete) return;
     await supabase.from('global_audit_history').delete().eq('id', item.id);
     setActivities(prev => prev.filter(a => a.id !== item.id));
-    addNotification(`Activity entry deleted.`);
+    if (detailItem?.id === item.id) setDetailItem(null);
+    addNotification('Activity entry deleted.');
+  };
+
+  const handleExportSingle = (item: ActivityItem) => {
+    exportToCSV([item], ['id', 'department', 'user', 'action', 'details', 'timestamp', 'refId'], `activity_${item.id}`);
+    addNotification('Activity entry exported.');
+  };
+
+  const handleShare = (item: ActivityItem) => {
+    const text = `[REBMA IMPEX Activity]\nDept: ${item.department} | By: ${item.user}\nAction: ${item.action}\nDetails: ${item.details}\nTime: ${item.timestamp}`;
+    navigator.clipboard.writeText(text).then(
+      () => addNotification('Activity entry copied to clipboard.'),
+      () => addNotification('Share: ' + item.action),
+    );
   };
 
   const filtered = activities.filter(a => {
     const matchDept = filter === 'All' || a.department === filter;
-    const matchSearch = !search || a.user.toLowerCase().includes(search.toLowerCase()) ||
-      a.action.toLowerCase().includes(search.toLowerCase()) ||
-      a.details.toLowerCase().includes(search.toLowerCase()) ||
-      (a.refId || '').toLowerCase().includes(search.toLowerCase());
+    const matchSearch = !search
+      || a.user.toLowerCase().includes(search.toLowerCase())
+      || a.action.toLowerCase().includes(search.toLowerCase())
+      || a.details.toLowerCase().includes(search.toLowerCase())
+      || (a.refId || '').toLowerCase().includes(search.toLowerCase());
     return matchDept && matchSearch;
   });
 
   const visible = filtered.slice(0, visibleCount);
 
-  // Compute per-department stats from real activity data
-  const ALL_DEPT_KEYS = isCeo
-    ? ['OPERATIONS', 'FINANCE', 'MARKETING', 'DISPATCH', 'HR', 'RECEPTION', 'PRODUCTION', 'LOGISTICS', 'CEO']
-    : ['OPERATIONS', 'FINANCE', 'MARKETING', 'DISPATCH', 'HR', 'RECEPTION', 'PRODUCTION', 'LOGISTICS'];
-
+  // Dept keys shown — CEO card only shown if permitted
+  const BASE_DEPTS = ['OPERATIONS', 'FINANCE', 'MARKETING', 'DISPATCH', 'HR', 'RECEPTION', 'PRODUCTION', 'LOGISTICS'];
+  const ALL_DEPT_KEYS = showCeoEntries ? [...BASE_DEPTS, 'CEO'] : BASE_DEPTS;
   const ALL_DEPTS = ['All', ...ALL_DEPT_KEYS];
 
   const deptStats = ALL_DEPT_KEYS.map(dept => {
     const deptActivities = activities.filter(a => a.department === dept);
-    const count = deptActivities.length;
-    const latest = deptActivities[0]; // already sorted desc
-    return { dept, count, lastActivity: latest ? timeAgo(latest.timestamp) : null };
+    return {
+      dept,
+      count: deptActivities.length,
+      lastActivity: deptActivities[0] ? timeAgo(deptActivities[0].timestamp) : null,
+    };
   });
 
   return (
+    <>
     <div className="p-4 sm:p-6 space-y-6 max-w-[1400px] mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-[var(--text-primary)]">Department Activity Monitor</h1>
           <p className="text-xs text-[var(--text-muted)] mt-1">
-            {isCeo ? 'Real-time activities across all departments including CEO' : 'Real-time activities across all departments (CEO excluded)'}
+            {isCeo
+              ? 'Real-time activities across all departments including CEO'
+              : ceoActivityVisible
+                ? 'Real-time activities across all departments (CEO activity visible)'
+                : 'Real-time activities across all departments (CEO excluded)'}
           </p>
         </div>
         <div className="flex gap-2">
-          <button onClick={() => exportToCSV(filtered, ['id','department','user','action','details','timestamp','refId'], 'dept_activity')} className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--accent-light)] text-[var(--accent)] rounded-lg text-xs font-semibold border border-[var(--border)] cursor-pointer hover:opacity-90">
+          <button onClick={() => exportToCSV(filtered, ['id','department','user','action','details','timestamp','refId'], 'dept_activity')}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--accent-light)] text-[var(--accent)] rounded-lg text-xs font-semibold border border-[var(--border)] cursor-pointer hover:opacity-90">
             <FileSpreadsheet className="w-3.5 h-3.5" /> CSV
           </button>
-          <button onClick={() => exportToPDF('Department Activity', filtered, ['department','user','action','details','timestamp'])} className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--accent-light)] text-[var(--accent)] rounded-lg text-xs font-semibold border border-[var(--border)] cursor-pointer hover:opacity-90">
+          <button onClick={() => exportToPDF('Department Activity', filtered, ['department','user','action','details','timestamp'])}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--accent-light)] text-[var(--accent)] rounded-lg text-xs font-semibold border border-[var(--border)] cursor-pointer hover:opacity-90">
             <FileText className="w-3.5 h-3.5" /> PDF
           </button>
-          <button onClick={handleRefresh} className={`flex items-center gap-1.5 px-3 py-1.5 bg-[var(--bg-card)] border border-[var(--border)] rounded-lg text-xs font-semibold text-[var(--text-secondary)] cursor-pointer hover:bg-[var(--accent-light)] transition-all ${isRefreshing ? 'opacity-60' : ''}`}>
+          <button onClick={handleRefresh}
+            className={`flex items-center gap-1.5 px-3 py-1.5 bg-[var(--bg-card)] border border-[var(--border)] rounded-lg text-xs font-semibold text-[var(--text-secondary)] cursor-pointer hover:bg-[var(--accent-light)] transition-all ${isRefreshing ? 'opacity-60' : ''}`}>
             <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} /> Refresh
           </button>
         </div>
       </div>
 
-      {/* Department Summary Cards — counts derived from real activity data */}
-      <div className={`grid gap-3 ${isCeo ? 'grid-cols-3 sm:grid-cols-5 xl:grid-cols-9' : 'grid-cols-2 sm:grid-cols-4 xl:grid-cols-8'}`}>
+      {/* Department Summary Cards — counts from real data */}
+      <div className={`grid gap-3 ${showCeoEntries ? 'grid-cols-3 sm:grid-cols-5 xl:grid-cols-9' : 'grid-cols-2 sm:grid-cols-4 xl:grid-cols-8'}`}>
         {deptStats.map(ds => {
           const Icon = DEPT_ICONS[ds.dept] || Building2;
           const color = DEPT_COLORS[ds.dept] || 'bg-slate-500/10 text-slate-600';
-          const isActive = ds.count > 0;
-          const statusColor = isActive ? 'bg-emerald-500' : 'bg-slate-300';
+          const statusColor = ds.count > 0 ? 'bg-emerald-500' : 'bg-slate-300';
           const recentActivities = activities.filter(a => a.department === ds.dept).slice(0, 3);
           return (
             <div
@@ -182,7 +221,7 @@ export default function DeptActivityView({ addNotification, currentUser }: Props
                 <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${color}`}>
                   <Icon className="w-3.5 h-3.5" />
                 </div>
-                <div className={`w-2 h-2 rounded-full ${statusColor}`} title={isActive ? 'Active' : 'No activity'} />
+                <div className={`w-2 h-2 rounded-full ${statusColor}`} />
               </div>
               <p className="text-[10px] font-bold text-[var(--text-primary)] uppercase tracking-wide">{ds.dept}</p>
               <p className="text-lg font-extrabold text-[var(--text-primary)]">{ds.count}</p>
@@ -197,27 +236,20 @@ export default function DeptActivityView({ addNotification, currentUser }: Props
         })}
       </div>
 
-      {/* Filter + Search Bar */}
+      {/* Filter + Search */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="flex gap-2 flex-wrap flex-1">
           {ALL_DEPTS.map(d => (
-            <button
-              key={d}
-              onClick={() => setFilter(d)}
-              className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer ${filter === d ? 'bg-[var(--accent)] text-white' : 'bg-[var(--bg-card)] border border-[var(--border)] text-[var(--text-secondary)] hover:bg-[var(--accent-light)]'}`}
-            >
+            <button key={d} onClick={() => setFilter(d)}
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer ${filter === d ? 'bg-[var(--accent)] text-white' : 'bg-[var(--bg-card)] border border-[var(--border)] text-[var(--text-secondary)] hover:bg-[var(--accent-light)]'}`}>
               {d === 'All' ? 'All Departments' : d.charAt(0) + d.slice(1).toLowerCase()}
             </button>
           ))}
         </div>
         <div className="relative flex items-center">
           <Search className="absolute left-3 w-3.5 h-3.5 text-[var(--text-muted)]" />
-          <input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Search activities..."
-            className="pl-9 pr-4 py-2 text-xs rounded-xl border border-[var(--border)] bg-[var(--bg-card)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)] w-full sm:w-52"
-          />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search activities..."
+            className="pl-9 pr-4 py-2 text-xs rounded-xl border border-[var(--border)] bg-[var(--bg-card)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)] w-full sm:w-52" />
         </div>
       </div>
 
@@ -272,22 +304,54 @@ export default function DeptActivityView({ addNotification, currentUser }: Props
                       <span>{timeAgo(item.timestamp)}</span>
                     </div>
                     {item.refId && (
-                      <span className="text-[10px] font-mono text-[var(--accent)] cursor-pointer hover:underline">{item.refId}</span>
+                      <span className="text-[10px] font-mono text-[var(--accent)]">{item.refId}</span>
                     )}
                   </div>
                 </div>
-                <div className="flex items-center gap-2 shrink-0 mt-1.5">
-                  {canDelete && (
-                    <button
-                      onClick={() => handleDelete(item)}
-                      title="Delete this entry"
-                      className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg hover:bg-rose-500/10 text-rose-500 cursor-pointer"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+
+                {/* Row action menu */}
+                <div className="shrink-0 relative" onClick={e => e.stopPropagation()}>
+                  <button
+                    onClick={() => setRowMenuOpen(rowMenuOpen === item.id ? null : item.id)}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[var(--bg)] border border-transparent hover:border-[var(--border)] text-[var(--text-muted)] cursor-pointer"
+                  >
+                    <MoreVertical className="w-4 h-4" />
+                  </button>
+                  {rowMenuOpen === item.id && (
+                    <div className="absolute right-0 top-9 w-44 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl z-30 p-1 flex flex-col">
+                      <button
+                        onClick={() => { setDetailItem(item); setRowMenuOpen(null); }}
+                        className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left cursor-pointer"
+                      >
+                        <Eye className="w-3.5 h-3.5 text-[var(--accent)]" /> View More
+                      </button>
+                      <button
+                        onClick={() => { handleExportSingle(item); setRowMenuOpen(null); }}
+                        className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left cursor-pointer"
+                      >
+                        <Download className="w-3.5 h-3.5 text-[var(--accent)]" /> Export
+                      </button>
+                      <button
+                        onClick={() => { handleShare(item); setRowMenuOpen(null); }}
+                        className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left cursor-pointer"
+                      >
+                        <Share2 className="w-3.5 h-3.5 text-[var(--accent)]" /> Share
+                      </button>
+                      {canDelete && (
+                        <>
+                          <div className="h-px bg-[var(--border)] my-1" />
+                          <button
+                            onClick={() => { handleDelete(item); setRowMenuOpen(null); }}
+                            className="flex items-center gap-2 px-3 py-2 text-xs text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-lg transition-colors text-left cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" /> Delete
+                          </button>
+                        </>
+                      )}
+                    </div>
                   )}
-                  <ChevronRight className="w-4 h-4 text-[var(--text-muted)] opacity-0 group-hover:opacity-100 transition-opacity" />
                 </div>
+                <ChevronRight className="w-4 h-4 text-[var(--text-muted)] opacity-0 group-hover:opacity-100 transition-opacity shrink-0 mt-2" />
               </div>
             );
           })}
@@ -295,15 +359,64 @@ export default function DeptActivityView({ addNotification, currentUser }: Props
 
         {filtered.length > visibleCount && (
           <div className="px-5 py-4 border-t border-[var(--border)] flex justify-center">
-            <button
-              onClick={() => setVisibleCount(c => c + 10)}
-              className="px-6 py-2 bg-[var(--accent)] hover:opacity-90 text-white rounded-xl text-xs font-bold cursor-pointer transition-opacity"
-            >
+            <button onClick={() => setVisibleCount(c => c + 10)}
+              className="px-6 py-2 bg-[var(--accent)] hover:opacity-90 text-white rounded-xl text-xs font-bold cursor-pointer transition-opacity">
               Load More ({filtered.length - visibleCount} remaining)
             </button>
           </div>
         )}
       </div>
     </div>
+
+    {/* View More Detail Modal */}
+    {detailItem && (
+      <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 p-4" onClick={() => setDetailItem(null)}>
+        <div className="bg-[var(--bg-card)] rounded-2xl border border-[var(--border)] shadow-2xl max-w-lg w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h2 className="text-base font-bold text-[var(--text-primary)]">Activity Detail</h2>
+              <p className="text-xs text-[var(--text-muted)] mt-0.5 font-mono">{detailItem.id}</p>
+            </div>
+            <button onClick={() => setDetailItem(null)} className="p-1.5 rounded-lg hover:bg-[var(--accent-light)] cursor-pointer text-[var(--text-muted)]">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          <div className="space-y-3 text-sm">
+            {[
+              { label: 'Department', value: detailItem.department },
+              { label: 'Performed By', value: detailItem.user },
+              { label: 'Action', value: detailItem.action },
+              { label: 'Details', value: detailItem.details || '—' },
+              { label: 'Timestamp', value: detailItem.timestamp ? new Date(detailItem.timestamp).toLocaleString() : '—' },
+              { label: 'Reference ID', value: detailItem.refId || '—' },
+            ].map(row => (
+              <div key={row.label} className="flex flex-col gap-0.5 p-3 bg-[var(--bg)] rounded-xl border border-[var(--border)]">
+                <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wide">{row.label}</span>
+                <span className="text-xs text-[var(--text-primary)] font-medium leading-relaxed">{row.value}</span>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex gap-2 pt-2 flex-wrap">
+            <button onClick={() => handleExportSingle(detailItem)}
+              className="flex items-center gap-1.5 px-3 py-2 bg-[var(--accent-light)] text-[var(--accent)] rounded-xl text-xs font-semibold border border-[var(--border)] cursor-pointer hover:opacity-90">
+              <Download className="w-3.5 h-3.5" /> Export
+            </button>
+            <button onClick={() => handleShare(detailItem)}
+              className="flex items-center gap-1.5 px-3 py-2 bg-[var(--accent-light)] text-[var(--accent)] rounded-xl text-xs font-semibold border border-[var(--border)] cursor-pointer hover:opacity-90">
+              <Share2 className="w-3.5 h-3.5" /> Share
+            </button>
+            {(isCeo || detailItem.user === (currentUser?.fullName ?? '')) && (
+              <button onClick={() => handleDelete(detailItem)}
+                className="flex items-center gap-1.5 px-3 py-2 bg-rose-50 dark:bg-rose-950/20 text-rose-500 rounded-xl text-xs font-semibold border border-rose-200 dark:border-rose-900 cursor-pointer hover:opacity-90 ml-auto">
+                <Trash2 className="w-3.5 h-3.5" /> Delete Entry
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }

@@ -687,6 +687,8 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
           description="Allow printing across all departments. When OFF print buttons are hidden and disabled." />
         <SettingToggle settingKey="report_generation_enabled" label="Reports Enabled"
           description="Allow financial report generation in Finance department." />
+        <SettingToggle settingKey="ceo_activity_visible_to_others" label="CEO Activity Visible to Others"
+          description="When ON, other departments can see CEO-authored entries in the Department Activity feed and the CEO department card. When OFF (default), only the CEO can see their own activity entries." />
       </Section>
 
       {/* ── SECTION 6: COMMUNICATION CONTROLS ────────────────────────── */}

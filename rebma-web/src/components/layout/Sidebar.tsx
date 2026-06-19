@@ -12,6 +12,7 @@ import {
   Smartphone, Receipt, Calculator, PiggyBank, Shield
 } from 'lucide-react';
 import type { CurrentUser } from '../../types/erp';
+import MiniCalendar from './MiniCalendar';
 
 interface SidebarProps {
   activeDepartment: string;
@@ -483,6 +484,9 @@ export default function Sidebar({
                 { id: 'Notifications', label: 'Activity', icon: Bell,         badge: 0 },
               ].map(t => renderNavBtn(t, t.badge))}
             </div>
+
+            {/* MINI CALENDAR */}
+            <MiniCalendar isCollapsed={isActualCollapsed} />
 
             {/* SUPPORT section */}
             {sectionLabel('Support')}

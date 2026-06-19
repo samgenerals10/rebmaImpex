@@ -12,6 +12,7 @@ import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianG
 import type { Order, IncomingGoods } from '../types/erp';
 import { exportToCSV, exportToPDF } from '../utils/export';
 import { supabase } from '../lib/supabaseClient';
+import PendingApprovalsAlert from '../components/global/PendingApprovalsAlert';
 import { stockApi } from '../services/apiClient';
 
 interface OperationsDashboardProps {
@@ -811,11 +812,44 @@ export default function OperationsDashboard({
             </div>
           )}
 
+          {/* Approved Goods — shown FIRST on the PortIngestion page, above the form */}
+          {activeSubTab === 'PortIngestion' && approvedGoods.length > 0 && (
+            <div className="p-6 bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] border border-[var(--border)] space-y-3">
+              <div className="flex items-center gap-2">
+                <PackageCheck className="w-5 h-5 text-[var(--accent)]" />
+                <h3 className="text-lg font-bold text-[var(--text-primary)]">Approved Incoming Goods</h3>
+                <span className="ml-auto text-xs font-mono text-[var(--text-muted)] bg-[var(--accent-light)] px-2 py-0.5 rounded-full">{approvedGoods.length} items</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {approvedGoods.map(item => (
+                  <div key={item.id} className="p-4 bg-[var(--bg)] border border-[var(--border)] rounded-xl space-y-2 text-[var(--text-primary)]">
+                    {item.productImage && (
+                      <img src={item.productImage} alt={item.productName} className="w-full h-24 object-cover rounded-lg border border-[var(--border)]" />
+                    )}
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="text-xs font-bold text-[var(--text-primary)]">{item.productName || 'Unnamed Product'}</p>
+                        <p className="text-[10px] text-[var(--text-muted)]">Code: <code>{item.goodsCode || item.id}</code></p>
+                      </div>
+                      <span className="px-2 py-0.5 rounded font-bold text-[9px] bg-emerald-500/10 text-emerald-500">APPROVED</span>
+                    </div>
+                    <p className="text-[10px] text-[var(--text-muted)]">From: <strong className="text-[var(--text-primary)]">{item.country}</strong> via {item.company}</p>
+                    <p className="text-[10px] text-[var(--text-muted)]">Destination: <strong className="text-[var(--text-primary)]">{item.destination || 'Accra Warehouse'}</strong></p>
+                    <p className="text-[10px] text-[var(--text-muted)]">Qty: <strong className="text-[var(--text-primary)]">{item.quantity}</strong> | Weight: <strong className="text-[var(--text-primary)]">{item.weight}T</strong> | Unit: <strong className="text-[var(--text-primary)]">GHS {item.unitPrice || '—'}</strong></p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Active Sub-tab views */}
           <div>
             {/* DASHBOARD OVERVIEW */}
             {activeSubTab === 'Overview' && (
               <div className="space-y-6">
+                {/* Pending approvals alert */}
+                <PendingApprovalsAlert department="OPERATIONS" onNavigate={setActiveSubTab} />
+
                 {/* Stats Cards */}
                 <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
                   {stats.map((stat, idx) => {
@@ -1743,8 +1777,8 @@ export default function OperationsDashboard({
             </div>
           )}
 
-          {/* Approved Goods Section — always visible */}
-          {approvedGoods.length > 0 && (
+          {/* Approved Goods Section — shown on all tabs except PortIngestion (where it appears above the form) */}
+          {approvedGoods.length > 0 && activeSubTab !== 'PortIngestion' && (
             <div className="p-6 bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] border border-[var(--border)] space-y-3">
               <div className="flex items-center gap-2">
                 <PackageCheck className="w-5 h-5 text-[var(--accent)]" />

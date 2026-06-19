@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { FileSpreadsheet, FileText, Truck, ShieldCheck, Activity, Users, MapPin, History, UserCheck, ChevronRight, MoreVertical, TrendingUp, TrendingDown } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
+import PendingApprovalsAlert from '../components/global/PendingApprovalsAlert';
 import { useCeoSettings } from '../contexts/CeoSettingsContext';
 import MiniSparkline from '../components/MiniSparkline';
 import KpiDetailView from '../components/KpiDetailView';
@@ -503,6 +504,9 @@ export default function DispatchDashboard({
           </button>
         </div>
       </div>
+
+      {/* Pending approvals alert */}
+      <PendingApprovalsAlert department="DISPATCH" />
 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">

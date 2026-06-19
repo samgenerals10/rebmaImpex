@@ -62,6 +62,7 @@ const defaults: Record<string, any> = {
   ceo_must_approve_payroll: false,
   ceo_must_approve_departments: false,
   ceo_must_approve_registrations: false,
+  ceo_activity_visible_to_others: false,
 };
 
 const CeoSettingsContext = createContext<CeoSettingsContextType>({

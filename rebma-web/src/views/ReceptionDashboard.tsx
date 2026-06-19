@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { Visitor } from '../types/erp';
 import { FileSpreadsheet, FileText, Users, ShieldCheck, Activity, Clock, ChevronRight, MoreVertical, TrendingUp, TrendingDown } from 'lucide-react';
 import MiniSparkline from '../components/MiniSparkline';
+import PendingApprovalsAlert from '../components/global/PendingApprovalsAlert';
 import KpiDetailView from '../components/KpiDetailView';
 import { exportToCSV, exportToPDF } from '../utils/export';
 import { 
@@ -279,6 +280,9 @@ export default function ReceptionDashboard({
           </button>
         </div>
       </div>
+
+      {/* Pending approvals alert */}
+      <PendingApprovalsAlert department="RECEPTION" />
 
       {/* Stats KPI Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">

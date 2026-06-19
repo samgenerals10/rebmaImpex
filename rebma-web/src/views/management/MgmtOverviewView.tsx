@@ -5,6 +5,7 @@ import {
   Package, CreditCard, DollarSign, Activity, Users, BarChart2,
   ArrowRight, RefreshCw
 } from 'lucide-react';
+import PendingApprovalsAlert from '../../components/global/PendingApprovalsAlert';
 import {
   ResponsiveContainer, AreaChart, Area, BarChart, Bar, LineChart, Line,
   XAxis, YAxis, Tooltip, PieChart, Pie, Cell
@@ -367,6 +368,9 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
           <RefreshCw size={14} /> Refresh
         </button>
       </div>
+
+      {/* Pending approvals alert banner */}
+      <PendingApprovalsAlert department="MANAGEMENT" onNavigate={setActiveSubTab} />
 
       {/* Quick Actions */}
       <div className="flex items-center gap-2 flex-wrap">

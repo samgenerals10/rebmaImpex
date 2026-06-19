@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Layers, DollarSign, Truck, Users, FileSpreadsheet, FileText, MoreVertical, TrendingUp, TrendingDown, ShoppingBag, Clock, ChevronRight, CheckCircle, AlertCircle } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import MiniSparkline from '../components/MiniSparkline';
+import PendingApprovalsAlert from '../components/global/PendingApprovalsAlert';
 import { 
   ResponsiveContainer, 
   LineChart, 
@@ -235,6 +236,9 @@ export default function CeoDashboard({
           </div>
         </div>
 
+        {/* Pending approvals alert */}
+        <PendingApprovalsAlert department="CEO" onNavigate={setActiveSubTab} />
+
         {/* Physical card — Global Ingestion Flow */}
         <div className="mobile-physical-card">
           <div className="flex justify-between items-start relative z-10">
@@ -390,6 +394,9 @@ export default function CeoDashboard({
             </div>
           </div>
  
+          {/* Pending approvals alert */}
+          <PendingApprovalsAlert department="CEO" onNavigate={setActiveSubTab} />
+
           {/* Operational KPI Counters */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
             {[

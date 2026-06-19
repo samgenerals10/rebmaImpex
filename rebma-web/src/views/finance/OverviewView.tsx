@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
+import PendingApprovalsAlert from '../../components/global/PendingApprovalsAlert';
 import {
   DollarSign, FileText, ClipboardCheck, BarChart2, CreditCard, Receipt,
   TrendingUp, TrendingDown, ArrowRight, RefreshCw, MoreVertical,
@@ -146,6 +147,9 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
           </button>
         ))}
       </div>
+
+      {/* Pending approvals alert */}
+      <PendingApprovalsAlert department="FINANCE" onNavigate={setActiveSubTab} />
 
       {/* ROW 1 - KPI Cards */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">

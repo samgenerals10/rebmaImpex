@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import PendingApprovalsAlert from '../../components/global/PendingApprovalsAlert';
 import {
   Users, UserCheck, UserPlus, TrendingUp, Calendar, AlertTriangle,
   BarChart2, ChevronRight, Clock, CheckCircle, XCircle, Bell, Building2,
@@ -268,6 +269,9 @@ export default function HrOverviewView({ currentUser, addNotification, setActive
           ))}
         </div>
       </div>
+
+      {/* Pending approvals alert */}
+      <PendingApprovalsAlert department="HR" onNavigate={setActiveSubTab} />
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
