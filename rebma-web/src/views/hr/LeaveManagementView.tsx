@@ -451,7 +451,7 @@ export default function LeaveManagementView({ currentUser, addNotification }: Pr
             title={viewLeave.employeeName}
             subtitle={`${viewLeave.department} · ${viewLeave.leaveType} Leave`}
             badgeText={viewLeave.status}
-            badgeStyle={statusBadge(viewLeave.status)}
+            badgeStyle={(() => { const s = statusBadge(viewLeave.status); return { background: s.bg, color: s.color }; })()}
             fields={[
               { label: 'Leave Type', value: viewLeave.leaveType },
               { label: 'Days', value: `${viewLeave.days} day${viewLeave.days !== 1 ? 's' : ''}` },
