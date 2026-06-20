@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, X, CheckCircle, XCircle, Clock, Calendar, Users, Filter, LayoutList, CalendarDays, Wallet, Edit, Trash2 } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import type { CurrentUser } from '../../types/erp';
+import EntityDetailPanel from '../../components/global/EntityDetailPanel';
 
 interface LeaveRequest {
   id: string;
@@ -156,6 +157,7 @@ export default function LeaveManagementView({ currentUser, addNotification }: Pr
   const [rejectId, setRejectId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [form, setForm] = useState({ employeeName: '', department: 'Operations', leaveType: 'Annual' as LeaveRequest['leaveType'], startDate: '', endDate: '', reason: '' });
+  const [viewLeave, setViewLeave] = useState<LeaveRequest | null>(null);
 
   const canApprove = currentUser?.isCeo || currentUser?.department === 'HR';
 
@@ -325,7 +327,7 @@ export default function LeaveManagementView({ currentUser, addNotification }: Pr
           const ltc = leaveTypeBadge(leave.leaveType);
           const sc = statusBadge(leave.status);
           return (
-            <div key={leave.id} style={{ background: 'var(--bg-card)', borderRadius: 12, padding: '1.25rem', border: '1px solid var(--border)' }}>
+            <div key={leave.id} style={{ background: 'var(--bg-card)', borderRadius: 12, padding: '1.25rem', border: '1px solid var(--border)', cursor: 'pointer' }} onClick={() => setViewLeave(leave)}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.75rem' }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', marginBottom: 6 }}>
@@ -347,7 +349,7 @@ export default function LeaveManagementView({ currentUser, addNotification }: Pr
                   )}
                 </div>
                 {canApprove && leave.status === 'Pending' && (
-                  <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
+                  <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }} onClick={e => e.stopPropagation()}>
                     <button onClick={() => handleApprove(leave.id)}
                       style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0.4rem 1rem', background: 'rgba(16,185,129,0.12)', color: '#10b981', border: '1px solid rgba(16,185,129,0.3)', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 13 }}>
                       <CheckCircle size={14} /> Approve
@@ -358,7 +360,7 @@ export default function LeaveManagementView({ currentUser, addNotification }: Pr
                     </button>
                   </div>
                 )}
-                <div style={{ display: 'flex', gap: '0.35rem', flexShrink: 0, marginLeft: '0.5rem' }}>
+                <div style={{ display: 'flex', gap: '0.35rem', flexShrink: 0, marginLeft: '0.5rem' }} onClick={e => e.stopPropagation()}>
                   <button onClick={() => handleEditClick(leave)}
                     style={{ padding: '0.4rem', background: 'transparent', border: '1px solid var(--border)', borderRadius: 8, cursor: 'pointer', color: 'var(--text-secondary)' }}
                     title="Edit Request">
@@ -441,6 +443,40 @@ export default function LeaveManagementView({ currentUser, addNotification }: Pr
           </div>
         </div>
       )}
+
+      {viewLeave && (() => {
+        const ltc = leaveTypeBadge(viewLeave.leaveType);
+        return (
+          <EntityDetailPanel
+            title={viewLeave.employeeName}
+            subtitle={`${viewLeave.department} · ${viewLeave.leaveType} Leave`}
+            badgeText={viewLeave.status}
+            badgeStyle={statusBadge(viewLeave.status)}
+            fields={[
+              { label: 'Leave Type', value: viewLeave.leaveType },
+              { label: 'Days', value: `${viewLeave.days} day${viewLeave.days !== 1 ? 's' : ''}` },
+              { label: 'Start Date', value: viewLeave.startDate },
+              { label: 'End Date', value: viewLeave.endDate },
+              { label: 'Department', value: viewLeave.department },
+              { label: 'Status', value: viewLeave.status },
+              { label: 'Reason', value: viewLeave.reason },
+              ...(viewLeave.rejectionReason ? [{ label: 'Rejection Reason', value: viewLeave.rejectionReason }] : []),
+            ]}
+            onClose={() => setViewLeave(null)}
+            actions={
+              <>
+                {canApprove && viewLeave.status === 'Pending' && (
+                  <>
+                    <button onClick={() => { handleApprove(viewLeave.id); setViewLeave(null); }} style={{ padding: '8px 16px', background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: 10, color: '#10b981', fontWeight: 600, cursor: 'pointer', fontSize: 13 }}>Approve</button>
+                    <button onClick={() => { setRejectId(viewLeave.id); setViewLeave(null); }} style={{ padding: '8px 16px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 10, color: '#ef4444', fontWeight: 600, cursor: 'pointer', fontSize: 13 }}>Reject</button>
+                  </>
+                )}
+                <button onClick={() => setViewLeave(null)} style={{ padding: '8px 16px', background: 'var(--accent)', border: 'none', borderRadius: 10, color: '#fff', fontWeight: 600, cursor: 'pointer', fontSize: 13 }}>Close</button>
+              </>
+            }
+          />
+        );
+      })()}
 
       {showAdd && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>

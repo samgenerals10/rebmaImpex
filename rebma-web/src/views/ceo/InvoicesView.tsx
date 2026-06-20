@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { Download, Eye } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { exportToCSV, exportToPDF } from '../../utils/export';
+import EntityDetailPanel from '../../components/global/EntityDetailPanel';
 
 interface InvoiceRow {
   id: string;
@@ -30,6 +31,7 @@ export default function InvoicesView({ addNotification }: Props) {
   const [deptFilter, setDeptFilter]     = useState('all');
   const [search, setSearch]       = useState('');
   const [page, setPage]           = useState(0);
+  const [selectedInvoice, setSelectedInvoice] = useState<InvoiceRow | null>(null);
   const PAGE_SIZE = 15;
 
   const load = async () => {
@@ -150,7 +152,7 @@ export default function InvoicesView({ addNotification }: Props) {
                       </td>
                     </tr>
                   ) : paginated.map(row => (
-                    <tr key={row.id} className="border-b border-[var(--border)] hover:bg-[var(--accent-light)] transition-colors">
+                    <tr key={row.id} className="border-b border-[var(--border)] hover:bg-[var(--accent-light)] transition-colors cursor-pointer" onClick={() => setSelectedInvoice(row)}>
                       <td className="px-4 py-2.5 font-mono font-semibold text-[var(--accent)]">{row.invoice_no}</td>
                       <td className="px-4 py-2.5 text-[var(--text-primary)] font-medium whitespace-nowrap">{row.customer}</td>
                       <td className="px-4 py-2.5 text-[var(--text-secondary)]">{row.department}</td>
@@ -160,8 +162,8 @@ export default function InvoicesView({ addNotification }: Props) {
                       <td className="px-4 py-2.5">
                         <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold capitalize ${STATUS_STYLES[row.status]}`}>{row.status}</span>
                       </td>
-                      <td className="px-4 py-2.5">
-                        <button className="p-1 hover:bg-[var(--accent-light)] rounded-lg cursor-pointer text-[var(--accent)]" title="View"><Eye className="w-3.5 h-3.5" /></button>
+                      <td className="px-4 py-2.5" onClick={e => e.stopPropagation()}>
+                        <button onClick={() => setSelectedInvoice(row)} className="p-1 hover:bg-[var(--accent-light)] rounded-lg cursor-pointer text-[var(--accent)]" title="View"><Eye className="w-3.5 h-3.5" /></button>
                       </td>
                     </tr>
                   ))
@@ -180,5 +182,31 @@ export default function InvoicesView({ addNotification }: Props) {
         )}
       </div>
     </div>
+
+    {selectedInvoice && (
+      <EntityDetailPanel
+        title={selectedInvoice.invoice_no}
+        subtitle={selectedInvoice.customer}
+        badgeText={selectedInvoice.status}
+        badgeStyle={
+          selectedInvoice.status === 'paid'    ? { background: 'rgba(16,185,129,0.12)', color: '#10b981' } :
+          selectedInvoice.status === 'overdue' ? { background: 'rgba(239,68,68,0.12)',  color: '#ef4444' } :
+          { background: 'rgba(245,158,11,0.12)', color: '#f59e0b' }
+        }
+        fields={[
+          { label: 'Invoice No',  value: selectedInvoice.invoice_no, highlight: true },
+          { label: 'Amount',      value: `GHS ${selectedInvoice.amount.toLocaleString()}`, highlight: true },
+          { label: 'Customer',    value: selectedInvoice.customer },
+          { label: 'Department',  value: selectedInvoice.department },
+          { label: 'Issue Date',  value: selectedInvoice.date },
+          { label: 'Due Date',    value: selectedInvoice.due_date },
+          { label: 'Status',      value: selectedInvoice.status },
+        ]}
+        onClose={() => setSelectedInvoice(null)}
+        actions={
+          <button onClick={() => setSelectedInvoice(null)} className="px-4 py-2 rounded-xl text-white text-sm font-medium cursor-pointer" style={{ background: 'var(--accent)' }}>Close</button>
+        }
+      />
+    )}
   );
 }

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { Search, Download, MoreVertical, Plus, CheckCircle, XCircle, Clock, AlertTriangle } from 'lucide-react';
 import { exportToCSV } from '../../utils/export';
+import EntityDetailPanel from '../../components/global/EntityDetailPanel';
 
 interface Cheque {
   id: string;
@@ -67,6 +68,7 @@ export default function FinanceChequesView({ addNotification, currentUser }: Pro
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ chequeNumber: '', bankName: '', accountName: '', accountNumber: '', amount: '', chequeDate: '', expectedClearing: '', orderRef: '' });
+  const [selectedCheque, setSelectedCheque] = useState<Cheque | null>(null);
   const [editCheque, setEditCheque] = useState<Cheque | null>(null);
   const [showEditForm, setShowEditForm] = useState(false);
   const [editForm, setEditForm] = useState({ chequeNumber: '', bankName: '', accountName: '', accountNumber: '', amount: '', chequeDate: '', expectedClearing: '', orderRef: '' });
@@ -227,7 +229,7 @@ export default function FinanceChequesView({ addNotification, currentUser }: Pro
             <thead><tr className="border-b border-[var(--border)]">{['Cheque #', 'Bank', 'Account Name', 'Amount', 'Date', 'Expected Clearing', 'Status', ''].map(h => <th key={h} className="px-4 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wide whitespace-nowrap">{h}</th>)}</tr></thead>
             <tbody className="divide-y divide-[var(--border)]">
               {filtered.map(c => (
-                <tr key={c.id} className="hover:bg-[var(--bg-input)] group">
+                <tr key={c.id} className="hover:bg-[var(--bg-input)] group cursor-pointer" onClick={() => setSelectedCheque(c)}>
                   <td className="px-4 py-3 font-mono text-xs text-[var(--text-secondary)]">{c.chequeNumber}</td>
                   <td className="px-4 py-3 text-[var(--text-primary)]">{c.bankName}</td>
                   <td className="px-4 py-3 font-medium text-[var(--text-primary)] whitespace-nowrap">{c.accountName}</td>
@@ -279,6 +281,37 @@ export default function FinanceChequesView({ addNotification, currentUser }: Pro
             </div>
           </div>
         </div>
+      )}
+
+      {selectedCheque && (
+        <EntityDetailPanel
+          title={`Cheque #${selectedCheque.chequeNumber}`}
+          subtitle={selectedCheque.bankName}
+          badgeText={selectedCheque.status}
+          badgeStyle={
+            selectedCheque.status === 'Cleared' ? { background: 'rgba(16,185,129,0.12)', color: '#10b981' } :
+            selectedCheque.status === 'Bounced' ? { background: 'rgba(239,68,68,0.12)', color: '#ef4444' } :
+            selectedCheque.status === 'Deposited' ? { background: 'rgba(245,158,11,0.12)', color: '#f59e0b' } :
+            { background: 'rgba(59,130,246,0.12)', color: '#3b82f6' }
+          }
+          fields={[
+            { label: 'Cheque Number', value: selectedCheque.chequeNumber, highlight: true },
+            { label: 'Amount', value: `GHS ${selectedCheque.amount.toLocaleString()}`, highlight: true },
+            { label: 'Bank Name', value: selectedCheque.bankName },
+            { label: 'Account Name', value: selectedCheque.accountName },
+            { label: 'Cheque Date', value: selectedCheque.chequeDate },
+            { label: 'Expected Clearing', value: selectedCheque.expectedClearing },
+            { label: 'Order Reference', value: selectedCheque.orderRef || '—' },
+            { label: 'Status', value: selectedCheque.status },
+          ]}
+          onClose={() => setSelectedCheque(null)}
+          actions={
+            <>
+              <button onClick={() => { openEditForm(selectedCheque); setSelectedCheque(null); }} className="px-4 py-2 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--text-secondary)] cursor-pointer hover:bg-[var(--bg-input)]">Edit</button>
+              <button onClick={() => setSelectedCheque(null)} className="px-4 py-2 rounded-xl text-white text-sm font-medium cursor-pointer" style={{ background: 'var(--accent)' }}>Close</button>
+            </>
+          }
+        />
       )}
 
       {showEditForm && editCheque && (

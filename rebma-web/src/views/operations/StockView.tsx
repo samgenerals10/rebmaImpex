@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Search, Plus, X, MoreVertical, Package, TrendingDown, TrendingUp, History, Download, Printer } from 'lucide-react';
+import EntityDetailPanel from '../../components/global/EntityDetailPanel';
 import { stockApi, operations } from '../../services/apiClient';
 import { exportToCSV, exportToPDF } from '../../utils/export';
 import type { IncomingGoods, GeneralPurchase } from '../../types/erp';
@@ -57,6 +58,7 @@ export default function StockView({ incomingGoodsList: _incomingGoodsList, addNo
   const [showAdjust, setShowAdjust] = useState(false);
   const [adjustForm, setAdjustForm] = useState({ productId: '', type: 'Add', quantity: '', reason: '', notes: '' });
   const [showAddProduct, setShowAddProduct] = useState(false);
+  const [selectedStockItem, setSelectedStockItem] = useState<StockItem | null>(null);
 
   const loadData = async () => {
     setLoading(true);
@@ -342,7 +344,7 @@ export default function StockView({ incomingGoodsList: _incomingGoodsList, addNo
                 {filtered.map(s => {
                   const st = stockStatus(s.current, s.capacity);
                   return (
-                    <tr key={s.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                    <tr key={s.id} style={{ borderBottom: '1px solid var(--border)', cursor: 'pointer' }} onClick={() => setSelectedStockItem(s)}>
                       <td style={{ padding: '12px 12px', fontWeight: 600, color: 'var(--text-primary)' }}>{s.name}</td>
                       <td style={{ padding: '12px 12px', color: 'var(--text-secondary)', fontFamily: 'monospace', fontSize: 13 }}>{s.sku}</td>
                       <td style={{ padding: '12px 12px', color: 'var(--text-secondary)' }}>{s.category}</td>
@@ -352,7 +354,7 @@ export default function StockView({ incomingGoodsList: _incomingGoodsList, addNo
                       <td style={{ padding: '12px 12px' }}>
                         <span style={{ background: st.bg, color: st.color, borderRadius: 99, padding: '2px 10px', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' }}>{st.label}</span>
                       </td>
-                      <td style={{ padding: '12px 12px', position: 'relative' }}>
+                      <td style={{ padding: '12px 12px', position: 'relative' }} onClick={e => e.stopPropagation()}>
                         <button onClick={() => setOpenMenu(openMenu === s.id ? null : s.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4, borderRadius: 6 }}>
                            <MoreVertical size={16} />
                         </button>
@@ -518,6 +520,49 @@ export default function StockView({ incomingGoodsList: _incomingGoodsList, addNo
         addNotification={addNotification}
         onSuccess={loadData}
       />
+
+      {selectedStockItem && (() => {
+        const st = stockStatus(selectedStockItem.current, selectedStockItem.capacity);
+        const pct = selectedStockItem.capacity > 0 ? Math.round((selectedStockItem.current / selectedStockItem.capacity) * 100) : 0;
+        const itemMovements = movements.filter(m => m.productName === selectedStockItem.name).slice(0, 5);
+        return (
+          <EntityDetailPanel
+            title={selectedStockItem.name}
+            subtitle={selectedStockItem.category}
+            badgeText={st.label}
+            badgeStyle={{ background: st.bg, color: st.color }}
+            fields={[
+              { label: 'SKU', value: selectedStockItem.sku, highlight: true },
+              { label: 'Current Stock', value: `${selectedStockItem.current.toLocaleString()} units`, highlight: true },
+              { label: 'Category', value: selectedStockItem.category },
+              { label: 'Capacity', value: `${selectedStockItem.capacity.toLocaleString()} units` },
+              { label: 'Fill Level', value: `${pct}%` },
+              { label: 'Last Updated', value: fmt(selectedStockItem.updatedAt) },
+            ]}
+            onClose={() => setSelectedStockItem(null)}
+            actions={
+              <>
+                <button onClick={() => { setAdjustForm(f => ({ ...f, productId: selectedStockItem.id })); setShowAdjust(true); setSelectedStockItem(null); }} style={{ padding: '8px 16px', background: 'var(--accent-light)', border: '1px solid var(--border)', borderRadius: 10, color: 'var(--accent)', fontWeight: 600, cursor: 'pointer', fontSize: 13 }}>Adjust Stock</button>
+                <button onClick={() => setSelectedStockItem(null)} style={{ padding: '8px 16px', background: 'var(--accent)', border: 'none', borderRadius: 10, color: '#fff', fontWeight: 600, cursor: 'pointer', fontSize: 13 }}>Close</button>
+              </>
+            }
+          >
+            {itemMovements.length > 0 && (
+              <div>
+                <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Recent Movements</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {itemMovements.map(m => (
+                    <div key={m.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 10px', background: 'var(--bg)', borderRadius: 8, border: '1px solid var(--border)' }}>
+                      <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{m.reason}</span>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: m.change >= 0 ? '#10b981' : '#ef4444' }}>{m.change >= 0 ? '+' : ''}{m.change}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </EntityDetailPanel>
+        );
+      })()}
     </div>
   );
 }
