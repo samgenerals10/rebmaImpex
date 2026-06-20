@@ -395,13 +395,22 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
           <div className="flex items-center gap-6">
             <div className="relative" style={{ width: 130, height: 130 }}>
               {(() => {
+                const realTotal = ordersList.length;
+                if (realTotal === 0) {
+                  return (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <p className="text-base font-bold text-[var(--text-primary)]">0</p>
+                      <p className="text-xs text-[var(--text-muted)]">No orders yet</p>
+                    </div>
+                  );
+                }
                 const paid = ordersList.filter(o => ['DELIVERED', 'APPROVED'].includes(o.status)).length;
                 const pending = ordersList.filter(o => o.status.startsWith('PENDING')).length;
-                const total = ordersList.length || 1;
+                const rejected = realTotal - paid - pending;
                 const invData = [
-                  { name: 'Paid', value: Math.round((paid / total) * 100), color: '#10b981' },
-                  { name: 'Pending', value: Math.round((pending / total) * 100), color: '#f59e0b' },
-                  { name: 'Rejected', value: Math.round(((total - paid - pending) / total) * 100), color: '#ef4444' },
+                  { name: 'Paid', value: Math.round((paid / realTotal) * 100), color: '#10b981' },
+                  { name: 'Pending', value: Math.round((pending / realTotal) * 100), color: '#f59e0b' },
+                  { name: 'Rejected', value: Math.round((rejected / realTotal) * 100), color: '#ef4444' },
                 ].filter(d => d.value > 0);
                 return (
                   <>

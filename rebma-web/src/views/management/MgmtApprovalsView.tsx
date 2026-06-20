@@ -225,6 +225,22 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
         await supabase.from('cargo_intake').update({ status: newDbStatus }).eq('id', rawId);
 
         if (action === 'approve') {
+          // Auto-populate stock table from approved cargo
+          const cargoRow = selectedItem.raw as Record<string, unknown>;
+          const productName = String(cargoRow.product_name || 'Unknown Product');
+          const productCode = String(cargoRow.goods_code || rawId.slice(0, 8).toUpperCase());
+          const incomingQty = Number(cargoRow.quantity || cargoRow.qty_received || 0);
+          const unit = String(cargoRow.goods_type || cargoRow.unit || 'units');
+          const now = new Date().toISOString();
+
+          const { data: existingStock } = await supabase.from('stock').select('id, quantity').eq('product_name', productName).maybeSingle();
+          if (existingStock) {
+            await supabase.from('stock').update({ quantity: (Number(existingStock.quantity) || 0) + incomingQty, last_updated: now }).eq('id', existingStock.id);
+          } else {
+            await supabase.from('stock').insert({ product_name: productName, product_code: productCode, category: 'INCOMING_GOODS', quantity: incomingQty, maximum_level: incomingQty * 2 || 1000, minimum_level: Math.round(incomingQty * 0.1) || 50, unit, last_updated: now });
+          }
+          await supabase.from('stock_ledger').insert({ product_name: productName, movement_type: 'ADD', quantity: incomingQty, reference: `Cargo approved: ${selectedItem.requestId}`, notes: selectedItem.description, created_at: now });
+
           if (notifyOps) {
             await supabase.from('supplier_order_notifications').insert([{ order_id: rawId, message: `Cargo intake APPROVED by Management: ${selectedItem.description}`, notified_department: 'OPERATIONS', read: false }]);
           }
@@ -232,7 +248,7 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
             await supabase.from('supplier_order_notifications').insert([{ order_id: rawId, message: `Cargo intake APPROVED by Management: ${selectedItem.description}`, notified_department: 'CEO', read: false }]);
           }
           if (sellingPrice) {
-            await supabase.from('goods_prices').upsert([{ product_name: String(selectedItem.raw.product_name || ''), unit_price: parseFloat(sellingPrice), currency: 'GHS', category: 'INCOMING_GOODS' }]);
+            await supabase.from('goods_prices').upsert([{ product_name: productName, unit_price: parseFloat(sellingPrice), currency: 'GHS', category: 'INCOMING_GOODS' }]);
           }
           await supabase.from('supplier_order_notifications').insert([{ order_id: rawId, message: `Cargo intake APPROVED by Management: ${selectedItem.description}`, notified_department: 'FINANCE', read: false }]);
           await supabase.from('supplier_order_notifications').insert([{ order_id: rawId, message: `New stock approved: ${selectedItem.description}. Update pricing in Marketing.`, notified_department: 'MARKETING', read: false }]);

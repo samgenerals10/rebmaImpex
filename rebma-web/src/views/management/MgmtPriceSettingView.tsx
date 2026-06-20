@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabaseClient';
 import {
   Tag, TrendingUp, TrendingDown, Search, Plus, MoreVertical,
   Download, RefreshCw, CheckCircle, History, Save,
-  ArrowLeft, Edit2, Trash2, Bell, Camera, FileText, Image as ImageIcon
+  ArrowLeft, Edit2, Trash2, Bell, Camera, FileText, Image as ImageIcon, AlertTriangle
 } from 'lucide-react';
 import { exportToCSV } from '../../utils/export';
 
@@ -48,13 +48,19 @@ export default function MgmtPriceSettingView({ addNotification, currentUser }: P
   const [broadcastCeo, setRadioCeo] = useState(false);
 
   const [approvedGoods, setApprovedGoods] = useState<string[]>([]);
+  const [unpricedGoods, setUnpricedGoods] = useState<string[]>([]);
 
   useEffect(() => {
-    supabase.from('cargo_intake').select('product_name').eq('status', 'APPROVED').then(({ data }) => {
-      const names = Array.from(new Set((data || []).map((r: any) => String(r.product_name || '')).filter(Boolean)));
-      setApprovedGoods(names);
+    Promise.all([
+      supabase.from('cargo_intake').select('product_name').eq('status', 'APPROVED'),
+      supabase.from('goods_prices').select('product_name'),
+    ]).then(([{ data: cargoData }, { data: priceData }]) => {
+      const approved = Array.from(new Set((cargoData || []).map((r: any) => String(r.product_name || '')).filter(Boolean)));
+      const priced = new Set((priceData || []).map((r: any) => String(r.product_name || '')));
+      setApprovedGoods(approved);
+      setUnpricedGoods(approved.filter(name => !priced.has(name)));
     }, () => {});
-  }, []);
+  }, [prices]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -322,6 +328,28 @@ export default function MgmtPriceSettingView({ addNotification, currentUser }: P
           </button>
         </div>
       </div>
+
+      {/* Unpriced goods alert */}
+      {unpricedGoods.length > 0 && (
+        <div className="flex items-start gap-3 p-4 rounded-2xl border" style={{ background: 'rgba(245,158,11,0.08)', borderColor: 'rgba(245,158,11,0.3)' }}>
+          <AlertTriangle size={16} className="flex-shrink-0 mt-0.5" style={{ color: '#f59e0b' }} />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold" style={{ color: '#92400e' }}>
+              {unpricedGoods.length} approved {unpricedGoods.length === 1 ? 'product needs' : 'products need'} a price set
+            </p>
+            <p className="text-xs mt-1" style={{ color: '#b45309' }}>
+              {unpricedGoods.join(' · ')}
+            </p>
+          </div>
+          <button
+            onClick={() => { setEditing(null); setForm(f => ({ ...f, productName: unpricedGoods[0] })); setShowForm(true); }}
+            className="flex-shrink-0 px-3 py-1.5 rounded-xl text-white text-xs font-semibold cursor-pointer"
+            style={{ background: '#f59e0b' }}
+          >
+            Set Price
+          </button>
+        </div>
+      )}
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
