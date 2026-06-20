@@ -33,7 +33,11 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
   const [cargoIntake, setCargoIntake] = useState<any[]>([]);
   const [departments, setDepartments] = useState<any[]>([]);
   const [profiles, setProfiles] = useState<any[]>([]);
-  
+  const [productionRequests, setProductionRequests] = useState<any[]>([]);
+  const [generalPurchases, setGeneralPurchases] = useState<any[]>([]);
+  const [attendanceRecords, setAttendanceRecords] = useState<any[]>([]);
+  const [financeExpenses, setFinanceExpenses] = useState<any[]>([]);
+
   const [cashflowTab, setCashflowTab] = useState<'income' | 'expense' | 'savings'>('income');
   const [earnPeriod, setEarnPeriod] = useState('6M');
   const [activities, setActivities] = useState<any[]>([]);
@@ -49,13 +53,21 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
         { data: txns },
         { data: cargo },
         { data: depts },
-        { data: profs }
+        { data: profs },
+        { data: prodReqs },
+        { data: genPurch },
+        { data: att },
+        { data: expenses }
       ] = await Promise.all([
         supabase.from('orders').select('*'),
         supabase.from('transactions').select('*'),
         supabase.from('cargo_intake').select('*'),
         supabase.from('departments').select('*'),
-        supabase.from('profiles').select('*')
+        supabase.from('profiles').select('*'),
+        supabase.from('production_requests').select('*').then(r => r, () => ({ data: [] })),
+        supabase.from('general_purchases').select('*').then(r => r, () => ({ data: [] })),
+        supabase.from('attendance').select('*').then(r => r, () => ({ data: [] })),
+        supabase.from('finance_expenses').select('*').then(r => r, () => ({ data: [] })),
       ]);
 
       setOrders(ords || []);
@@ -63,6 +75,10 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
       setCargoIntake(cargo || []);
       setDepartments(depts || []);
       setProfiles(profs || []);
+      setProductionRequests((prodReqs as any) || []);
+      setGeneralPurchases((genPurch as any) || []);
+      setAttendanceRecords((att as any) || []);
+      setFinanceExpenses((expenses as any) || []);
     } catch (e) {
       console.error('Error fetching dashboard stats:', e);
     } finally {
@@ -110,6 +126,9 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
   // Monthly Revenue
   const currentMonth = new Date().getMonth();
   const currentYear = new Date().getFullYear();
+  const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+  const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+
   const monthlyRevenue = orders
     .filter(o => {
       const d = new Date(o.created_at);
@@ -117,13 +136,37 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
     })
     .reduce((s, o) => s + Number(o.total_amount), 0);
 
-  // Pending count across all categories
+  const lastMonthRevenue = orders
+    .filter(o => {
+      const d = new Date(o.created_at);
+      return d.getMonth() === lastMonth && d.getFullYear() === lastMonthYear && ['APPROVED', 'PROCESSING', 'DELIVERED'].includes(o.status);
+    })
+    .reduce((s, o) => s + Number(o.total_amount), 0);
+
+  const revenueChangeNum = lastMonthRevenue > 0
+    ? ((monthlyRevenue - lastMonthRevenue) / lastMonthRevenue) * 100
+    : null;
+  const revenueChangeStr = revenueChangeNum !== null
+    ? `${revenueChangeNum >= 0 ? '+' : ''}${revenueChangeNum.toFixed(1)}% vs last month`
+    : monthlyRevenue > 0 ? 'First month data' : 'No orders yet';
+  const revenueUp = revenueChangeNum === null ? true : revenueChangeNum >= 0;
+
+  // Pending count across ALL Management approval categories
   const pendingOrders = orders.filter(o => o.status === 'PENDING_MANAGEMENT');
-  const pendingCargo = cargoIntake.filter(c => c.status === 'PENDING_APPROVAL');
+  const pendingCargo = cargoIntake.filter(c => c.status === 'PENDING_MANAGEMENT_APPROVAL');
   const pendingProfiles = profiles.filter(p => p.status === 'PENDING_APPROVAL');
-  const pendingCount = pendingOrders.length + pendingCargo.length + pendingProfiles.length;
+  const pendingProduction = productionRequests.filter(r => r.status === 'PENDING_MANAGEMENT');
+  const pendingGenPurchases = generalPurchases.filter(g => g.status === 'PENDING_MANAGEMENT_APPROVAL');
+  const pendingCount = pendingOrders.length + pendingCargo.length + pendingProfiles.length + pendingProduction.length + pendingGenPurchases.length;
 
   const pendingApprovalsList = [
+    ...pendingCargo.map(c => ({
+      id: c.id,
+      type: 'Cargo Intake',
+      desc: `Intake of ${c.product_name} from ${c.company || 'Operations'}`,
+      priority: 'High',
+      amount: Number(c.unit_price || 0) * (c.quantity || 0)
+    })),
     ...pendingOrders.map(o => ({
       id: o.id,
       type: 'Credit Order',
@@ -131,12 +174,19 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
       priority: 'High',
       amount: Number(o.total_amount)
     })),
-    ...pendingCargo.map(c => ({
-      id: c.id,
-      type: 'Cargo Intake',
-      desc: `Intake of ${c.product_name} from ${c.company}`,
-      priority: 'High',
-      amount: Number(c.unit_price || 0) * (c.quantity || 0)
+    ...pendingProduction.map(r => ({
+      id: r.id,
+      type: 'Production Request',
+      desc: `Production batch: ${r.items?.[0]?.materialName || r.id}`,
+      priority: 'Medium',
+      amount: null
+    })),
+    ...pendingGenPurchases.map(g => ({
+      id: g.id,
+      type: 'General Purchase',
+      desc: `Purchase: ${g.item_name || g.description || g.id}`,
+      priority: 'Medium',
+      amount: Number(g.total_cost || g.cost || 0) || null
     })),
     ...pendingProfiles.map(p => ({
       id: p.id,
@@ -147,10 +197,24 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
     }))
   ].slice(0, 4);
 
-  // Avg profit score
-  const avgDeptScore = departments.length > 0 
-    ? Math.round(departments.reduce((sum, d) => sum + (d.performance_score || 0), 0) / departments.length)
-    : 87;
+  // Average Profit Margin — computed from real revenue vs finance_expenses this month
+  const monthlyExpenses = financeExpenses
+    .filter(e => {
+      const d = new Date(e.created_at);
+      return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+    })
+    .reduce((s, e) => s + Number(e.amount || 0), 0);
+  const avgProfitMargin: number | null = monthlyRevenue > 0 && financeExpenses.length > 0
+    ? Math.round(((monthlyRevenue - monthlyExpenses) / monthlyRevenue) * 100)
+    : null;
+
+  // Staff Reliability — from real attendance records (PRESENT / total)
+  const presentCount = attendanceRecords.filter(a => a.status === 'PRESENT').length;
+  const lateCount = attendanceRecords.filter(a => a.status === 'LATE').length;
+  const totalAttendance = presentCount + lateCount;
+  const attendanceReliability: number | null = totalAttendance > 0
+    ? Math.round((presentCount / totalAttendance) * 100)
+    : null;
 
   // Earning Overview
   const last6Months = Array.from({ length: 6 }).map((_, i) => {
@@ -297,7 +361,7 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
     status: t.status === 'completed' ? 'Completed' : 'Pending'
   }));
 
-  // Approval Pie
+  // Approval Pie — all Management approval categories combined
   let appCount = 0;
   let penCount = 0;
   let rejCount = 0;
@@ -308,8 +372,23 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
   });
   cargoIntake.forEach(c => {
     if (c.status === 'APPROVED') appCount++;
-    else if (c.status === 'PENDING_APPROVAL') penCount++;
+    else if (c.status === 'PENDING_MANAGEMENT_APPROVAL') penCount++;
     else if (c.status === 'REJECTED') rejCount++;
+  });
+  productionRequests.forEach(r => {
+    if (['APPROVED', 'COMPLETED', 'TICKETS_ISSUED'].includes(r.status)) appCount++;
+    else if (r.status === 'PENDING_MANAGEMENT') penCount++;
+    else if (r.status === 'REJECTED') rejCount++;
+  });
+  profiles.forEach(p => {
+    if (p.status === 'ACTIVE') appCount++;
+    else if (p.status === 'PENDING_APPROVAL') penCount++;
+    else if (p.status === 'REJECTED') rejCount++;
+  });
+  generalPurchases.forEach(g => {
+    if (g.status === 'APPROVED') appCount++;
+    else if (g.status === 'PENDING_MANAGEMENT_APPROVAL') penCount++;
+    else if (g.status === 'REJECTED') rejCount++;
   });
   const totalApprovalsCountForPie = appCount + penCount + rejCount || 1;
   const approvalPie = [
@@ -320,7 +399,7 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
 
   const deptPerfData = departments.map(d => ({
     dept: d.name.substring(0, 3).toUpperCase(),
-    score: d.performance_score || 80
+    score: d.performance_score || 0
   }));
 
   const cashflowValue = cashflowData[cashflowData.length - 1] || { income: 0, expense: 0 };
@@ -397,10 +476,36 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
       {/* ROW 1: KPI Cards */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
         {[
-          { label: 'Monthly Revenue', value: `GHS ${(monthlyRevenue / 1000).toFixed(0)}K`, change: '+12.3%', up: true, sub: 'vs last month' },
-          { label: 'Pending Approvals', value: pendingCount, change: `${pendingCount > 0 ? 'requires action' : 'all clear'}`, up: pendingCount === 0, sub: 'approvals log' },
-          { label: 'Avg profit Margin', value: '52.4%', change: '+2.1%', up: true, sub: 'across products' },
-          { label: 'Staff Performance', value: `${avgDeptScore}/100`, change: '+5 pts', up: true, sub: 'average rating' },
+          {
+            label: 'Monthly Revenue',
+            value: `GHS ${(monthlyRevenue / 1000).toFixed(0)}K`,
+            change: revenueChangeStr,
+            up: revenueUp,
+            sub: ''
+          },
+          {
+            label: 'Pending Approvals',
+            value: pendingCount,
+            change: pendingCount > 0 ? 'requires action' : 'all clear',
+            up: pendingCount === 0,
+            sub: `${pendingCargo.length} cargo · ${pendingOrders.length} credit · ${pendingProduction.length} prod · ${pendingProfiles.length} staff`
+          },
+          {
+            label: 'Avg Profit Margin',
+            value: avgProfitMargin !== null ? `${avgProfitMargin}%` : '—',
+            change: avgProfitMargin !== null ? (avgProfitMargin >= 0 ? 'positive margin' : 'negative margin') : 'No expense data yet',
+            up: avgProfitMargin === null ? true : avgProfitMargin >= 0,
+            sub: avgProfitMargin !== null ? 'revenue vs expenses' : 'log expenses in Finance'
+          },
+          {
+            label: 'Staff Reliability',
+            value: attendanceReliability !== null ? `${attendanceReliability}%` : '—',
+            change: attendanceReliability !== null
+              ? `${presentCount} on-time / ${totalAttendance} total`
+              : 'No attendance recorded',
+            up: attendanceReliability === null ? true : attendanceReliability >= 80,
+            sub: attendanceReliability !== null ? 'attendance-based' : 'check HR attendance'
+          },
         ].map(({ label, value, change, up, sub }) => (
           <div key={label} className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4">
             <p className="text-xs text-[var(--text-muted)] mb-1">{label}</p>
@@ -408,8 +513,8 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
             <div className="flex items-center gap-1 mt-1">
               {up ? <TrendingUp size={11} className="text-green-500" /> : <TrendingDown size={11} className="text-red-400" />}
               <span className={`text-xs font-medium ${up ? 'text-green-500' : 'text-red-400'}`}>{change}</span>
-              <span className="text-xs text-[var(--text-muted)]">{sub}</span>
             </div>
+            {sub && <p className="text-xs text-[var(--text-muted)] mt-0.5">{sub}</p>}
           </div>
         ))}
       </div>
