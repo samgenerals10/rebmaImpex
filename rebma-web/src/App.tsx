@@ -111,6 +111,7 @@ import ReceptionAnalyticsView from './views/reception/AnalyticsView';
 // Operations dedicated pages
 import OperationsStockView from './views/operations/StockView';
 import OperationsAnalyticsView from './views/operations/AnalyticsView';
+import OperationsApprovedGoodsView from './views/operations/ApprovedGoodsView';
 
 // Management dedicated pages
 import MgmtAnalyticsView from './views/management/MgmtAnalyticsView';
@@ -118,6 +119,7 @@ import DeptActivityView from './views/management/DeptActivityView';
 import MgmtOverviewView from './views/management/MgmtOverviewView';
 import MgmtApprovalsView from './views/management/MgmtApprovalsView';
 import MgmtPriceSettingView from './views/management/MgmtPriceSettingView';
+import GoodsPriceCatalogView from './views/shared/GoodsPriceCatalogView';
 
 // Production dedicated pages
 import ProductionOverviewView from './views/production/OverviewView';
@@ -2733,6 +2735,7 @@ export default function App() {
       if (activeSubTab === 'Wallets')         return <CeoWalletsView setActiveSubTab={setActiveSubTab} />;
       if (activeSubTab === 'Accounts')        return <CeoAccountsView setActiveSubTab={setActiveSubTab} />;
       if (activeSubTab === 'Approvals')       return <CeoApprovalsView currentUser={currentUser} addNotification={addNotification} />;
+      if (activeSubTab === 'PriceCatalog')    return <GoodsPriceCatalogView addNotification={addNotification} />;
       if (activeSubTab === 'SupplierOrders')  return <CeoSupplierOrdersView currentUser={currentUser} addNotification={addNotification} />;
       if (activeSubTab === 'DeptActivity')    return <DeptActivityView currentUser={currentUser} addNotification={addNotification} />;
       if (activeSubTab === 'ControlCenter')   return <CeoControlCenter currentUser={currentUser} addNotification={addNotification} />;
@@ -2749,6 +2752,7 @@ export default function App() {
       if (activeSubTab === 'Wallets')           return <FinanceWalletsView />;
       if (activeSubTab === 'Transactions')      return <FinanceTransactionsView addNotification={addNotification} />;
       if (activeSubTab === 'Invoices')          return <CeoInvoicesView addNotification={addNotification} />;
+      if (activeSubTab === 'PriceCatalog')      return <GoodsPriceCatalogView addNotification={addNotification} />;
       if (activeSubTab === 'RecurringPayments') return <FinanceRecurringView currentUser={currentUser} addNotification={addNotification} />;
       if (activeSubTab === 'CreditMgmt')        return <FinanceCreditMgmtView addNotification={addNotification} currentUser={currentUser} />;
       if (activeSubTab === 'Expenses')          return <FinanceExpensesView addNotification={addNotification} currentUser={currentUser} />;
@@ -2777,6 +2781,7 @@ export default function App() {
     if (activeDepartment === 'MARKETING') {
       if (activeSubTab === 'Overview')          return <MarketingOverviewView addNotification={addNotification} setActiveSubTab={setActiveSubTab} currentUser={currentUser} ordersList={ordersList} customersList={customersList} />;
       if (activeSubTab === 'Invoices')          return <MarketingInvoicesView addNotification={addNotification} />;
+      if (activeSubTab === 'PriceCatalog')      return <GoodsPriceCatalogView addNotification={addNotification} />;
       if (activeSubTab === 'CreateOrder')       return <MarketingOrdersView ordersList={ordersList} onCreateOrder={handleCreateOrder} addNotification={addNotification} />;
       if (activeSubTab === 'RegisterCustomer')  return <MarketingCustomersView customersList={customersList} onRegisterCustomer={handleRegisterCustomer} addNotification={addNotification} />;
       if (activeSubTab === 'SalesHistory')      return <MarketingSalesHistoryView ordersList={ordersList} addNotification={addNotification} />;
@@ -2821,6 +2826,7 @@ export default function App() {
     // Operations dedicated sub-tab pages
     if (activeDepartment === 'OPERATIONS') {
       if (activeSubTab === 'Stock') return <OperationsStockView incomingGoodsList={incomingGoodsList} addNotification={addNotification} />;
+      if (activeSubTab === 'ApprovedGoods') return <OperationsApprovedGoodsView addNotification={addNotification} />;
       if (activeSubTab === 'OpsAnalytics') return <OperationsAnalyticsView addNotification={addNotification} />;
     }
 

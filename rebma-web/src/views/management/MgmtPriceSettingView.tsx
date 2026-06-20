@@ -47,6 +47,15 @@ export default function MgmtPriceSettingView({ addNotification, currentUser }: P
   const [broadcastMarketing, setRadioMarketing] = useState(true);
   const [broadcastCeo, setRadioCeo] = useState(false);
 
+  const [approvedGoods, setApprovedGoods] = useState<string[]>([]);
+
+  useEffect(() => {
+    supabase.from('cargo_intake').select('product_name').eq('status', 'APPROVED').then(({ data }) => {
+      const names = Array.from(new Set((data || []).map((r: any) => String(r.product_name || '')).filter(Boolean)));
+      setApprovedGoods(names);
+    }, () => {});
+  }, []);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const docInputRef = useRef<HTMLInputElement>(null);
@@ -418,7 +427,19 @@ export default function MgmtPriceSettingView({ addNotification, currentUser }: P
             <div className="space-y-4">
               <div>
                 <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Product Name *</label>
-                <input value={form.productName} onChange={e => setForm(f => ({ ...f, productName: e.target.value }))} placeholder="Enter product name" className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />
+                <input
+                  list="approved-goods-list"
+                  value={form.productName}
+                  onChange={e => setForm(f => ({ ...f, productName: e.target.value }))}
+                  placeholder={approvedGoods.length > 0 ? 'Select or type product name…' : 'Enter product name'}
+                  className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
+                />
+                <datalist id="approved-goods-list">
+                  {approvedGoods.map(name => <option key={name} value={name} />)}
+                </datalist>
+                {approvedGoods.length > 0 && (
+                  <p className="text-[10px] text-[var(--text-muted)] mt-1">{approvedGoods.length} approved goods available to price</p>
+                )}
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
