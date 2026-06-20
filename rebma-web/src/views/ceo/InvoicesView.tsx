@@ -76,6 +76,7 @@ export default function InvoicesView({ addNotification }: Props) {
   const paginated    = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
   return (
+    <>
     <div className="space-y-5">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
@@ -208,5 +209,6 @@ export default function InvoicesView({ addNotification }: Props) {
         }
       />
     )}
+    </>
   );
 }
