@@ -74,8 +74,8 @@ export default function StaffView({ staffList: propStaff, addNotification }: Pro
         if (leavesData) {
           const count = leavesData.filter((l: any) => 
             l.status === 'Approved' && 
-            l.start_date <= '2026-06-12' && 
-            l.end_date >= '2026-06-12'
+            l.start_date <= new Date().toISOString().split('T')[0] &&
+            l.end_date >= new Date().toISOString().split('T')[0]
           ).length;
           setTotalOnLeave(count);
         }

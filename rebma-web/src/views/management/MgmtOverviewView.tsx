@@ -334,7 +334,7 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
 
   // Low Stock Alert
   const productQuantities: Record<string, { sku: string; current: number; capacity: number }> = {};
-  cargoIntake.forEach(c => {
+  cargoIntake.filter(c => c.status === 'APPROVED').forEach(c => {
     const name = c.product_name || 'Generic Goods';
     if (!productQuantities[name]) {
       productQuantities[name] = { sku: c.goods_code || 'SKU-TEMP', current: 0, capacity: 500 };

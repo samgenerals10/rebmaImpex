@@ -59,7 +59,7 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
     const load = async () => {
       setLoading(true);
       try {
-        const { data } = await supabase.from('orders').select('*').order('createdAt', { ascending: false }).limit(300);
+        const { data } = await supabase.from('orders').select('*').order('created_at', { ascending: false }).limit(300);
         setOrders(data && data.length > 0 ? data : ordersList.length > 0 ? ordersList : []);
       } catch {
         setOrders(ordersList.length > 0 ? ordersList : []);

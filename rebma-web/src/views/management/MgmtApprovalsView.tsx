@@ -3,20 +3,20 @@ import { supabase } from '../../lib/supabaseClient';
 import {
   CheckCircle, XCircle, Clock, AlertTriangle, Search, Filter,
   MoreVertical, ArrowLeft, Package, CreditCard,
-  UserPlus, FileText, Tag, RefreshCw, Download, Eye
+  UserPlus, FileText, Tag, RefreshCw, Download, Eye, ShoppingCart
 } from 'lucide-react';
 import { exportToCSV } from '../../utils/export';
 
 interface ApprovalItem {
   id: string;
   requestId: string;
-  type: 'Cargo Intake' | 'Credit Order' | 'Staff Registration' | 'Discrepancy' | 'Price Review';
+  type: 'Cargo Intake' | 'Credit Order' | 'Staff Registration' | 'Discrepancy' | 'Price Review' | 'Production Request' | 'General Purchase';
   description: string;
   department: string;
   amount: number | null;
   date: string;
   priority: 'High' | 'Medium' | 'Low';
-  status: 'Pending' | 'Approved' | 'Rejected' | 'Info Requested';
+  status: 'Pending' | 'Approved' | 'Rejected';
   submittedBy: string;
   notes?: string;
   raw?: Record<string, unknown>;
@@ -33,6 +33,8 @@ const TYPE_COLORS: Record<string, string> = {
   'Staff Registration': 'bg-green-100 text-green-700',
   'Discrepancy': 'bg-orange-100 text-orange-700',
   'Price Review': 'bg-pink-100 text-pink-700',
+  'Production Request': 'bg-cyan-100 text-cyan-700',
+  'General Purchase': 'bg-amber-100 text-amber-700',
 };
 
 const PRIORITY_COLORS: Record<string, string> = {
@@ -45,7 +47,6 @@ const STATUS_COLORS: Record<string, string> = {
   Pending: 'bg-yellow-100 text-yellow-700',
   Approved: 'bg-green-100 text-green-700',
   Rejected: 'bg-red-100 text-red-700',
-  'Info Requested': 'bg-blue-100 text-blue-700',
 };
 
 const TYPE_ICONS: Record<string, React.ElementType> = {
@@ -54,19 +55,21 @@ const TYPE_ICONS: Record<string, React.ElementType> = {
   'Staff Registration': UserPlus,
   'Discrepancy': AlertTriangle,
   'Price Review': Tag,
+  'Production Request': ShoppingCart,
+  'General Purchase': ShoppingCart,
 };
 
-const TABS = ['All', 'Cargo Intake', 'Credit Order', 'Staff Registration', 'Discrepancy', 'Price Review'] as const;
+const TABS = ['All', 'Cargo Intake', 'Credit Order', 'Staff Registration', 'Production Request', 'General Purchase', 'Discrepancy'] as const;
 
 export default function MgmtApprovalsView({ addNotification, currentUser }: Props) {
   const [items, setItems] = useState<ApprovalItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<typeof TABS[number]>('All');
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('All');
+  const [statusFilter, setStatusFilter] = useState('Pending');
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
-  const [showModal, setShowModal] = useState<'approve' | 'reject' | 'info' | null>(null);
+  const [showModal, setShowModal] = useState<'approve' | 'reject' | null>(null);
   const [modalNote, setModalNote] = useState('');
   const [sellingPrice, setSellingPrice] = useState('');
   const [notifyOps, setNotifyOps] = useState(true);
@@ -83,22 +86,26 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
         { data: cargoData },
         { data: ordersData },
         { data: profilesData },
+        { data: productionData },
+        { data: purchasesData },
       ] = await Promise.all([
-        supabase.from('cargo_intake').select('*').order('created_at', { ascending: false }).limit(50),
-        supabase.from('orders').select('*').eq('payment_mode', 'CREDIT').order('created_at', { ascending: false }).limit(50),
-        supabase.from('profiles').select('*').order('created_at', { ascending: false }).limit(50),
+        supabase.from('cargo_intake').select('*').eq('status', 'PENDING_MANAGEMENT_APPROVAL').order('created_at', { ascending: false }).limit(50),
+        supabase.from('orders').select('*').eq('payment_mode', 'CREDIT').eq('status', 'PENDING_MANAGEMENT').order('created_at', { ascending: false }).limit(50),
+        supabase.from('profiles').select('*').eq('status', 'PENDING_APPROVAL').order('created_at', { ascending: false }).limit(50),
+        supabase.from('production_requests').select('*').eq('status', 'PENDING_MANAGEMENT').order('created_at', { ascending: false }).limit(50).then(r => r, () => ({ data: [] })),
+        supabase.from('general_purchases').select('*').eq('status', 'PENDING_MANAGEMENT_APPROVAL').order('created_at', { ascending: false }).limit(50).then(r => r, () => ({ data: [] })),
       ]);
 
       const mappedCargo: ApprovalItem[] = (cargoData || []).map((row: any) => ({
         id: row.id,
         requestId: `CARGO-${row.id.slice(-6).toUpperCase()}`,
         type: 'Cargo Intake' as const,
-        description: `${row.product_name || 'Goods'} — ${row.quantity || 0} units`,
+        description: `${row.product_name || 'Goods'} — ${row.qty_received || row.quantity || 0} ${row.goods_type || 'units'} from ${row.company || 'supplier'}`,
         department: 'OPERATIONS',
-        amount: row.unit_price ? Number(row.unit_price) * (row.quantity || 0) : null,
+        amount: row.unit_price ? Number(row.unit_price) * (row.qty_received || row.quantity || 0) : null,
         date: row.created_at?.slice(0, 10) || '',
         priority: 'High' as const,
-        status: (row.status === 'APPROVED' ? 'Approved' : row.status === 'REJECTED' ? 'Rejected' : 'Pending') as ApprovalItem['status'],
+        status: 'Pending' as ApprovalItem['status'],
         submittedBy: row.company || 'Operations',
         raw: row,
       }));
@@ -114,7 +121,7 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
           amount: null,
           date: row.created_at?.slice(0, 10) || '',
           priority: 'Medium' as const,
-          status: (row.status === 'APPROVED' ? 'Approved' : row.status === 'REJECTED' ? 'Rejected' : 'Pending') as ApprovalItem['status'],
+          status: 'Pending' as ApprovalItem['status'],
           submittedBy: row.company || 'Operations',
           raw: row,
         }));
@@ -128,28 +135,54 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
         amount: Number(row.total_amount || 0),
         date: row.created_at?.slice(0, 10) || '',
         priority: 'High' as const,
-        status: (row.status === 'APPROVED' ? 'Approved' : row.status === 'REJECTED' ? 'Rejected' : 'Pending') as ApprovalItem['status'],
+        status: 'Pending' as ApprovalItem['status'],
         submittedBy: row.client_name || 'Marketing',
         raw: row,
       }));
 
-      const mappedProfiles: ApprovalItem[] = (profilesData || [])
-        .filter((row: any) => row.status === 'PENDING_APPROVAL' || row.status === 'ACTIVE' || row.status === 'REJECTED')
-        .map((row: any) => ({
-          id: row.id,
-          requestId: `REG-${row.id.slice(-6).toUpperCase()}`,
-          type: 'Staff Registration' as const,
-          description: `Teammate signup: ${row.full_name || 'Employee'} (${row.role})`,
-          department: 'HR',
-          amount: null,
-          date: row.created_at?.slice(0, 10) || '',
-          priority: 'Medium' as const,
-          status: (row.status === 'ACTIVE' ? 'Approved' : row.status === 'REJECTED' ? 'Rejected' : 'Pending') as ApprovalItem['status'],
-          submittedBy: row.full_name || 'HR Department',
-          raw: row,
-        }));
+      const mappedProfiles: ApprovalItem[] = (profilesData || []).map((row: any) => ({
+        id: row.id,
+        requestId: `REG-${row.id.slice(-6).toUpperCase()}`,
+        type: 'Staff Registration' as const,
+        description: `Teammate signup: ${row.full_name || 'Employee'} (${row.role || row.department || 'Staff'})`,
+        department: 'HR',
+        amount: null,
+        date: row.created_at?.slice(0, 10) || '',
+        priority: 'Medium' as const,
+        status: 'Pending' as ApprovalItem['status'],
+        submittedBy: row.full_name || 'HR Department',
+        raw: row,
+      }));
 
-      setItems([...mappedCargo, ...mappedDiscrepancies, ...mappedOrders, ...mappedProfiles]);
+      const mappedProduction: ApprovalItem[] = (productionData || []).map((row: any) => ({
+        id: row.id,
+        requestId: `PROD-${row.id.slice(-6).toUpperCase()}`,
+        type: 'Production Request' as const,
+        description: `${row.product_name || row.productName || 'Product'} — ${row.quantity || 0} ${row.unit || 'units'}`,
+        department: 'PRODUCTION',
+        amount: null,
+        date: row.created_at?.slice(0, 10) || '',
+        priority: (row.priority === 'HIGH' || row.priority === 'High' ? 'High' : row.priority === 'LOW' || row.priority === 'Low' ? 'Low' : 'Medium') as ApprovalItem['priority'],
+        status: 'Pending' as ApprovalItem['status'],
+        submittedBy: row.requested_by || 'Production',
+        raw: row,
+      }));
+
+      const mappedPurchases: ApprovalItem[] = (purchasesData || []).map((row: any) => ({
+        id: row.id,
+        requestId: `PURCH-${row.id.slice(-6).toUpperCase()}`,
+        type: 'General Purchase' as const,
+        description: `${row.item_name || row.itemName || 'Item'} — ${row.quantity || 0} units`,
+        department: row.department || 'OPERATIONS',
+        amount: row.cost ? Number(row.cost) : null,
+        date: row.created_at?.slice(0, 10) || '',
+        priority: 'Medium' as const,
+        status: 'Pending' as ApprovalItem['status'],
+        submittedBy: row.requested_by || row.department || 'Staff',
+        raw: row,
+      }));
+
+      setItems([...mappedCargo, ...mappedDiscrepancies, ...mappedOrders, ...mappedProfiles, ...mappedProduction, ...mappedPurchases]);
     } catch (e) {
       console.error(e);
       setItems([]);
@@ -174,7 +207,7 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
 
   const selectedItem = items.find(i => i.id === selected);
 
-  function handleAction(id: string, action: 'approve' | 'reject' | 'info') {
+  function handleAction(id: string, action: 'approve' | 'reject') {
     setSelected(id);
     setShowModal(action);
     setModalNote('');
@@ -184,42 +217,65 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
   async function confirmAction() {
     if (!selectedItem || !showModal) return;
     const action = showModal;
-    const newStatus: ApprovalItem['status'] = action === 'approve' ? 'Approved' : action === 'reject' ? 'Rejected' : 'Info Requested';
 
     try {
       if ((selectedItem.type === 'Cargo Intake' || selectedItem.type === 'Discrepancy') && selectedItem.raw) {
-        const newDbStatus = action === 'approve' ? 'APPROVED' : action === 'reject' ? 'REJECTED' : 'INFO_REQUESTED';
-        await supabase.from('cargo_intake').update({ status: newDbStatus }).eq('id', selectedItem.raw.id);
+        const newDbStatus = action === 'approve' ? 'APPROVED' : 'REJECTED';
+        const rawId = String(selectedItem.raw.id);
+        await supabase.from('cargo_intake').update({ status: newDbStatus }).eq('id', rawId);
 
         if (action === 'approve') {
           if (notifyOps) {
-            await supabase.from('supplier_order_notifications').insert([{ order_id: selectedItem.raw.id, message: `Cargo intake APPROVED by Management: ${selectedItem.description}`, notified_department: 'OPERATIONS', read: false }]);
+            await supabase.from('supplier_order_notifications').insert([{ order_id: rawId, message: `Cargo intake APPROVED by Management: ${selectedItem.description}`, notified_department: 'OPERATIONS', read: false }]);
           }
           if (notifyCeo) {
-            await supabase.from('supplier_order_notifications').insert([{ order_id: selectedItem.raw.id, message: `Cargo intake APPROVED by Management: ${selectedItem.description}`, notified_department: 'CEO', read: false }]);
+            await supabase.from('supplier_order_notifications').insert([{ order_id: rawId, message: `Cargo intake APPROVED by Management: ${selectedItem.description}`, notified_department: 'CEO', read: false }]);
           }
           if (sellingPrice) {
             await supabase.from('goods_prices').upsert([{ product_name: String(selectedItem.raw.product_name || ''), unit_price: parseFloat(sellingPrice), currency: 'GHS', category: 'INCOMING_GOODS' }]);
           }
+          await supabase.from('supplier_order_notifications').insert([{ order_id: rawId, message: `Cargo intake APPROVED by Management: ${selectedItem.description}`, notified_department: 'FINANCE', read: false }]);
+          await supabase.from('supplier_order_notifications').insert([{ order_id: rawId, message: `New stock approved: ${selectedItem.description}. Update pricing in Marketing.`, notified_department: 'MARKETING', read: false }]);
         }
       }
 
       if (selectedItem.type === 'Credit Order') {
-        const newDbStatus = action === 'approve' ? 'APPROVED' : action === 'reject' ? 'REJECTED' : 'PENDING_MANAGEMENT';
+        // Management approval moves order to PENDING_FINANCE so Finance can process payment
+        const newDbStatus = action === 'approve' ? 'PENDING_FINANCE' : 'REJECTED';
         await supabase.from('orders').update({ status: newDbStatus }).eq('id', selectedItem.id);
 
         if (action === 'approve') {
-          await supabase.from('supplier_order_notifications').insert([{ order_id: selectedItem.id, message: `Credit order APPROVED: ${selectedItem.description}`, notified_department: 'FINANCE', read: false }]);
-          await supabase.from('supplier_order_notifications').insert([{ order_id: selectedItem.id, message: `Credit order APPROVED: ${selectedItem.description}`, notified_department: 'MARKETING', read: false }]);
+          await supabase.from('supplier_order_notifications').insert([{ order_id: selectedItem.id, message: `Credit order approved by Management — now awaiting Finance processing: ${selectedItem.description}`, notified_department: 'FINANCE', read: false }]);
+          await supabase.from('supplier_order_notifications').insert([{ order_id: selectedItem.id, message: `Your credit order has been approved by Management and sent to Finance: ${selectedItem.description}`, notified_department: 'MARKETING', read: false }]);
+        } else {
+          await supabase.from('supplier_order_notifications').insert([{ order_id: selectedItem.id, message: `Credit order REJECTED by Management: ${selectedItem.description}${modalNote ? ` — ${modalNote}` : ''}`, notified_department: 'MARKETING', read: false }]);
         }
       }
 
       if (selectedItem.type === 'Staff Registration') {
-        const newDbStatus = action === 'approve' ? 'ACTIVE' : action === 'reject' ? 'REJECTED' : 'PENDING_APPROVAL';
+        const newDbStatus = action === 'approve' ? 'ACTIVE' : 'REJECTED';
         await supabase.from('profiles').update({ status: newDbStatus }).eq('id', selectedItem.id);
 
         if (action === 'approve') {
           await supabase.from('supplier_order_notifications').insert([{ order_id: selectedItem.id, message: `Staff registration APPROVED: ${selectedItem.description}`, notified_department: 'HR', read: false }]);
+        }
+      }
+
+      if (selectedItem.type === 'Production Request' && selectedItem.raw) {
+        const newDbStatus = action === 'approve' ? 'APPROVED' : 'REJECTED';
+        await supabase.from('production_requests').update({ status: newDbStatus }).eq('id', selectedItem.id).then(() => {}, () => {});
+
+        if (action === 'approve') {
+          await supabase.from('supplier_order_notifications').insert([{ order_id: selectedItem.id, message: `Production request APPROVED by Management: ${selectedItem.description}`, notified_department: 'PRODUCTION', read: false }]).then(() => {}, () => {});
+        }
+      }
+
+      if (selectedItem.type === 'General Purchase' && selectedItem.raw) {
+        const newDbStatus = action === 'approve' ? 'APPROVED' : 'REJECTED';
+        await supabase.from('general_purchases').update({ status: newDbStatus }).eq('id', selectedItem.id).then(() => {}, () => {});
+
+        if (action === 'approve') {
+          await supabase.from('supplier_order_notifications').insert([{ order_id: selectedItem.id, message: `General purchase APPROVED by Management: ${selectedItem.description}`, notified_department: action === 'approve' ? (String(selectedItem.raw.department || 'OPERATIONS')) : 'OPERATIONS', read: false }]).then(() => {}, () => {});
         }
       }
 
@@ -229,7 +285,7 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
         performed_by: currentUser?.fullName || 'Management',
       }]);
 
-      addNotification?.(`${selectedItem.requestId} ${newStatus}${modalNote ? ` — "${modalNote}"` : ''}`);
+      addNotification?.(`${selectedItem.requestId} ${action === 'approve' ? 'Approved' : 'Rejected'}${modalNote ? ` — "${modalNote}"` : ''}`);
     } catch (e) {
       console.error(e);
       addNotification?.('Action execution failed.');
@@ -273,7 +329,6 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
             </div>
             {selectedItem.status === 'Pending' && (
               <div className="flex items-center gap-2">
-                <button onClick={() => handleAction(selectedItem.id, 'info')} className="px-4 py-2 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-input)]">Request Info</button>
                 <button onClick={() => handleAction(selectedItem.id, 'reject')} className="px-4 py-2 rounded-xl bg-red-500 text-white text-sm font-medium hover:bg-red-600"><XCircle size={14} className="inline mr-1" />Reject</button>
                 <button onClick={() => handleAction(selectedItem.id, 'approve')} className="px-4 py-2 rounded-xl text-white text-sm font-medium hover:opacity-90" style={{ background: 'var(--accent)' }}><CheckCircle size={14} className="inline mr-1" />Approve</button>
               </div>
@@ -333,10 +388,10 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
       {/* Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Total Requests', value: counts.total, icon: FileText, color: 'var(--accent)' },
-          { label: 'Pending', value: counts.pending, icon: Clock, color: '#f59e0b' },
-          { label: 'Approved', value: counts.approved, icon: CheckCircle, color: '#10b981' },
-          { label: 'Rejected', value: counts.rejected, icon: XCircle, color: '#ef4444' },
+          { label: 'Total Pending', value: counts.total, icon: FileText, color: 'var(--accent)' },
+          { label: 'Awaiting Action', value: counts.pending, icon: Clock, color: '#f59e0b' },
+          { label: 'Approved Today', value: counts.approved, icon: CheckCircle, color: '#10b981' },
+          { label: 'Rejected Today', value: counts.rejected, icon: XCircle, color: '#ef4444' },
         ].map(({ label, value, icon: Icon, color }) => (
           <div key={label} className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4 flex items-center gap-4">
             <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${color}20` }}>
@@ -389,7 +444,7 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
               onChange={e => setStatusFilter(e.target.value)}
               className="bg-transparent text-[var(--text-secondary)] text-sm focus:outline-none cursor-pointer"
             >
-              {['All', 'Pending', 'Approved', 'Rejected', 'Info Requested'].map(s => (
+              {['All', 'Pending', 'Approved', 'Rejected'].map(s => (
                 <option key={s} value={s}>{s}</option>
               ))}
             </select>
@@ -408,7 +463,7 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center p-12 gap-2 text-[var(--text-muted)]">
             <CheckCircle size={32} className="opacity-30" />
-            <p className="text-sm">No pending approvals found matching the criteria.</p>
+            <p className="text-sm">No pending approvals — you're all caught up.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -464,7 +519,6 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
                                 {item.status === 'Pending' && <>
                                   <button onClick={() => handleAction(item.id, 'approve')} className="w-full text-left px-3 py-2 text-sm text-green-600 hover:bg-[var(--bg-input)]">Approve</button>
                                   <button onClick={() => handleAction(item.id, 'reject')} className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-[var(--bg-input)]">Reject</button>
-                                  <button onClick={() => handleAction(item.id, 'info')} className="w-full text-left px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-input)]">Request Info</button>
                                 </>}
                               </div>
                             )}
@@ -488,9 +542,8 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
             <div className="flex items-center gap-3 mb-4">
               {showModal === 'approve' && <CheckCircle size={20} className="text-green-500" />}
               {showModal === 'reject' && <XCircle size={20} className="text-red-500" />}
-              {showModal === 'info' && <AlertTriangle size={20} className="text-yellow-500" />}
               <h3 className="text-base font-semibold text-[var(--text-primary)]">
-                {showModal === 'approve' ? 'Approve' : showModal === 'reject' ? 'Reject' : 'Request More Info'}: {selectedItem.requestId}
+                {showModal === 'approve' ? 'Approve' : 'Reject'}: {selectedItem.requestId}
               </h3>
             </div>
 
@@ -522,15 +575,21 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
               </div>
             )}
 
+            {showModal === 'approve' && selectedItem.type === 'Credit Order' && (
+              <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-700">
+                Approving will move this order to <strong>Finance</strong> for payment processing.
+              </div>
+            )}
+
             <div className="mb-4">
               <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">
-                {showModal === 'approve' ? 'Additional notes (optional)' : showModal === 'reject' ? 'Reason for rejection *' : 'Information needed *'}
+                {showModal === 'approve' ? 'Additional notes (optional)' : 'Reason for rejection *'}
               </label>
               <textarea
                 value={modalNote}
                 onChange={e => setModalNote(e.target.value)}
                 rows={3}
-                placeholder={showModal === 'approve' ? 'Any notes for this approval...' : showModal === 'reject' ? 'Explain why this is being rejected...' : 'Describe what additional information is needed...'}
+                placeholder={showModal === 'approve' ? 'Any notes for this approval...' : 'Explain why this is being rejected...'}
                 className="w-full px-3 py-2 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent)] resize-none"
               />
             </div>
@@ -539,9 +598,9 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
               <button onClick={() => setShowModal(null)} className="px-4 py-2 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-input)]">Cancel</button>
               <button
                 onClick={confirmAction}
-                className={`px-4 py-2 rounded-xl text-white text-sm font-medium ${showModal === 'approve' ? 'bg-green-500 hover:bg-green-600' : showModal === 'reject' ? 'bg-red-500 hover:bg-red-600' : 'bg-yellow-500 hover:bg-yellow-600'}`}
+                className={`px-4 py-2 rounded-xl text-white text-sm font-medium ${showModal === 'approve' ? 'bg-green-500 hover:bg-green-600' : 'bg-red-500 hover:bg-red-600'}`}
               >
-                {showModal === 'approve' ? 'Confirm Approval' : showModal === 'reject' ? 'Confirm Rejection' : 'Send Request'}
+                {showModal === 'approve' ? 'Confirm Approval' : 'Confirm Rejection'}
               </button>
             </div>
           </div>

@@ -411,6 +411,10 @@ export default function DeliveriesView({ addNotification, currentUser }: Props) 
     const now = new Date().toISOString();
     setDeliveries(prev => prev.map(d => d.id === id ? { ...d, status: 'DELIVERED', deliveredAt: now } : d));
     supabase.from('delivery_logs').update({ status: 'DELIVERED', delivered_at: now }).eq('id', id).then(() => {}, () => {});
+    const delivery = deliveries.find(d => d.id === id);
+    if (delivery?.orderId) {
+      supabase.from('orders').update({ status: 'DELIVERED' }).eq('id', delivery.orderId).then(() => {}, () => {});
+    }
     supabase.from('global_audit_history').insert({ department: 'DISPATCH', action: `Delivery ${id} marked as delivered`, performed_by: currentUser?.fullName || 'Dispatch', created_at: now }).then(() => {}, () => {});
     addNotification(`Delivery ${id} marked as delivered.`);
     if (detailRecord?.id === id) setDetailRecord(prev => prev ? { ...prev, status: 'DELIVERED', deliveredAt: now } : prev);

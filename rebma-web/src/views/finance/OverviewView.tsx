@@ -91,7 +91,7 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
         }
 
         // Build earning trend from orders — last 6 months
-        const { data: orders } = await supabase.from('orders').select('total_amount, created_at').not('status', 'in', '(REJECTED,PENDING_FINANCE)');
+        const { data: orders } = await supabase.from('orders').select('total_amount, created_at').in('status', ['APPROVED', 'PROCESSING', 'DELIVERED']);
         if (orders) {
           const monthMap: Record<string, number> = {};
           for (const o of orders) {
@@ -380,8 +380,7 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
                   <p className="text-xs text-[var(--text-muted)]">GHS {order.totalAmount.toLocaleString()} · {order.paymentMode || 'CASH'}</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button onClick={() => { onEvaluateOrder?.(order.id, true); addNotification?.(`Order ${order.id} approved`); }} className="px-3 py-1.5 rounded-lg bg-green-500 text-white text-xs font-medium hover:bg-green-600">Approve</button>
-                  <button onClick={() => { onEvaluateOrder?.(order.id, false); addNotification?.(`Order ${order.id} rejected`); }} className="px-3 py-1.5 rounded-lg bg-red-500 text-white text-xs font-medium hover:bg-red-600">Reject</button>
+                  <button onClick={() => setActiveSubTab?.('orders-queue')} className="px-3 py-1.5 rounded-lg text-white text-xs font-medium hover:opacity-90" style={{ background: 'var(--accent)' }}>Review in Queue</button>
                 </div>
               </div>
             ))}

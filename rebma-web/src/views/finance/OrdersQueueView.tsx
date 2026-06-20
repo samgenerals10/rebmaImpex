@@ -73,7 +73,7 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
   const [loadingOrders, setLoadingOrders] = useState(!propOrders || propOrders.length === 0);
   const [search, setSearch] = useState('');
   const [modeFilter, setModeFilter] = useState('All');
-  const [statusFilter, setStatusFilter] = useState('All');
+  const [statusFilter, setStatusFilter] = useState('PENDING_FINANCE');
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const [selected, setSelected] = useState<Order | null>(null);
   const [rejectModal, setRejectModal] = useState<string | null>(null);
@@ -90,7 +90,7 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
     const load = async () => {
       setLoadingOrders(true);
       try {
-        const { data } = await supabase.from('orders').select('*').order('createdAt', { ascending: false }).limit(200);
+        const { data } = await supabase.from('orders').select('*').eq('status', 'PENDING_FINANCE').order('created_at', { ascending: false }).limit(200);
         const rows = (data ?? []) as Order[];
         setAllOrders(rows);
         setOrders(rows);
