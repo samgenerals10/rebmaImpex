@@ -9,7 +9,7 @@ import {
   CreditCard, ClipboardCheck, MapPin, MessageCircle, RefreshCw, Banknote, ShoppingCart,
   Package, AlertTriangle, UserCheck, Camera, UserPlus, Calendar, Building2, AlertCircle,
   FileBarChart, ClipboardList, Factory, Wrench, BarChart3, Gauge, Plus, ShoppingBag,
-  Smartphone, Receipt, Calculator, PiggyBank, Shield
+  Smartphone, Receipt, Calculator, PiggyBank, Shield, FileSpreadsheet
 } from 'lucide-react';
 import type { CurrentUser } from '../../types/erp';
 import MiniCalendar from './MiniCalendar';
@@ -88,6 +88,7 @@ export default function Sidebar({
       { id: 'Messages',        label: 'Messages & Boardroom',  icon: MessageCircle },
       { id: 'DeptActivity',    label: 'Dept Activity',          icon: Activity },
       { id: 'ControlCenter',   label: 'Control Center',         icon: Shield },
+      { id: 'Spreadsheets',    label: 'Spreadsheets',           icon: FileSpreadsheet },
     ],
     FINANCE: [
       { id: 'Evaluation',        label: 'Dashboard',              icon: LayoutDashboard },
@@ -106,6 +107,7 @@ export default function Sidebar({
       { id: 'PettyCash',         label: 'Petty Cash',             icon: PiggyBank },
       { id: 'FinReports',        label: 'Reports',                icon: BarChart2 },
       { id: 'Payroll',           label: 'Payroll',                icon: Banknote },
+      { id: 'Spreadsheets',      label: 'Spreadsheets',           icon: FileSpreadsheet },
     ],
     MANAGEMENT: [
       { id: 'CargoApproval',   label: 'Dashboard',           icon: LayoutDashboard },
@@ -117,6 +119,7 @@ export default function Sidebar({
       { id: 'MgmtAnalytics',   label: 'Analytics',            icon: BarChart2 },
       { id: 'DeptActivity',    label: 'Dept Activity',        icon: Activity },
       { id: 'PerformanceAlerts', label: 'Performance Alerts', icon: AlertCircle },
+      { id: 'Spreadsheets',      label: 'Spreadsheets',       icon: FileSpreadsheet },
     ],
     HR: [
       { id: 'Employees',          label: 'Dashboard',            icon: LayoutDashboard },
@@ -127,6 +130,7 @@ export default function Sidebar({
       { id: 'Payroll',            label: 'Payroll',               icon: Banknote },
       { id: 'DepartmentManager',  label: 'Department Manager',    icon: Building2 },
       { id: 'PerformanceAlerts',  label: 'Performance Alerts',    icon: AlertCircle },
+      { id: 'Spreadsheets',       label: 'Spreadsheets',          icon: FileSpreadsheet },
     ],
     MARKETING: [
       { id: 'Overview',          label: 'Dashboard',        icon: LayoutDashboard },
@@ -137,6 +141,7 @@ export default function Sidebar({
       { id: 'SalesHistory',      label: 'Sales History',     icon: TrendingUp },
       { id: 'CreditRequests',    label: 'Credit Requests',   icon: CreditCard },
       { id: 'MktAnalytics',      label: 'Analytics',         icon: BarChart2 },
+      { id: 'Spreadsheets',      label: 'Spreadsheets',      icon: FileSpreadsheet },
     ],
     OPERATIONS: [
       { id: 'Overview',        label: 'Dashboard',            icon: LayoutDashboard },
@@ -146,6 +151,7 @@ export default function Sidebar({
       { id: 'OpsHistory',      label: 'Discrepancy Reports',   icon: AlertTriangle },
       { id: 'Releases',        label: 'Fulfillment',           icon: PackageCheck },
       { id: 'OpsAnalytics',    label: 'Analytics',             icon: BarChart2 },
+      { id: 'Spreadsheets',    label: 'Spreadsheets',          icon: FileSpreadsheet },
     ],
     DISPATCH: [
       { id: 'Deliveries',       label: 'Dashboard',              icon: LayoutDashboard },
@@ -153,6 +159,7 @@ export default function Sidebar({
       { id: 'Drivers',          label: 'Drivers',                 icon: UserCheck },
       { id: 'Tracking',         label: 'GPS Tracking',            icon: MapPin },
       { id: 'ProofOfDelivery',  label: 'Proof of Delivery',       icon: Camera },
+      { id: 'Spreadsheets',     label: 'Spreadsheets',             icon: FileSpreadsheet },
     ],
     HR_LOGISTICS_VIEW: [
       { id: 'FleetOverview',    label: 'Fleet Overview',        icon: Truck },
@@ -166,6 +173,7 @@ export default function Sidebar({
       { id: 'EmployeeCheckin',  label: 'Attendance',             icon: UserCheck },
       { id: 'DailyReports',     label: 'Daily Reports',          icon: FileBarChart },
       { id: 'Analytics',        label: 'Analytics',              icon: BarChart2 },
+      { id: 'Spreadsheets',    label: 'Spreadsheets',           icon: FileSpreadsheet },
     ],
     PRODUCTION: [
       { id: 'Requisition',       label: 'Dashboard',             icon: LayoutDashboard },
@@ -173,6 +181,7 @@ export default function Sidebar({
       { id: 'WIPStock',          label: 'WIP Stock',              icon: Layers },
       { id: 'OutputRecording',   label: 'Output Recording',       icon: Factory },
       { id: 'ProdAnalytics',     label: 'Analytics',              icon: BarChart2 },
+      { id: 'Spreadsheets',      label: 'Spreadsheets',           icon: FileSpreadsheet },
     ],
     LOGISTICS: [
       { id: 'Overview',          label: 'Dashboard',              icon: LayoutDashboard },
@@ -180,6 +189,7 @@ export default function Sidebar({
       { id: 'FuelManagement',    label: 'Fuel Management',         icon: Gauge },
       { id: 'Maintenance',       label: 'Maintenance Schedule',    icon: Wrench },
       { id: 'FleetAnalytics',    label: 'Fleet Analytics',         icon: BarChart3 },
+      { id: 'Spreadsheets',      label: 'Spreadsheets',            icon: FileSpreadsheet },
     ],
     BOARDROOM: [
       { id: 'VideoConf',       label: 'Live Video Minutes',   icon: Video },

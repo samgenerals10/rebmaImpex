@@ -120,6 +120,7 @@ import MgmtOverviewView from './views/management/MgmtOverviewView';
 import MgmtApprovalsView from './views/management/MgmtApprovalsView';
 import MgmtPriceSettingView from './views/management/MgmtPriceSettingView';
 import GoodsPriceCatalogView from './views/shared/GoodsPriceCatalogView';
+import SpreadsheetView from './views/shared/SpreadsheetView';
 
 // Production dedicated pages
 import ProductionOverviewView from './views/production/OverviewView';
@@ -2727,6 +2728,7 @@ export default function App() {
     if (activeSubTab === 'Payroll') return <PayrollPanel currentUser={currentUser} addNotification={addNotification} />;
     if (activeSubTab === 'PerformanceAlerts') return <PerformanceAlertsPanel currentUser={currentUser} addNotification={addNotification} />;
     if (activeSubTab === 'Messages') { setActiveDepartment('BOARDROOM'); setActiveSubTab('VideoConf'); return null; }
+    if (activeSubTab === 'Spreadsheets') return <SpreadsheetView currentUser={currentUser} department={activeDepartment} addNotification={addNotification} />;
 
     // CEO dedicated sub-tab pages
     if (activeDepartment === 'CEO') {

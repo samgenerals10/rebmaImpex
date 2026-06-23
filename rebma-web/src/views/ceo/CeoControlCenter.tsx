@@ -65,6 +65,129 @@ function SettingToggle({
   );
 }
 
+// ── Toggle With Per-User Email Exception Component ────────────────────────────
+function SettingToggleWithException({
+  label, description, settingKey,
+}: { label: string; description: string; settingKey: string }) {
+  const { getSetting, updateSetting } = useCeoSettings();
+  const value = getSetting(settingKey, true);
+  const [exceptions, setExceptions] = useState<Array<{ user_email: string; allowed: boolean }>>([]);
+  const [newEmail, setNewEmail] = useState('');
+  const [newAllowed, setNewAllowed] = useState(false); // default: block that user
+  const [showExc, setShowExc] = useState(false);
+  const [loadingExc, setLoadingExc] = useState(false);
+
+  useEffect(() => {
+    if (!showExc) return;
+    setLoadingExc(true);
+    supabase
+      .from('ceo_feature_exceptions')
+      .select('user_email, allowed')
+      .eq('feature_key', settingKey)
+      .then(({ data }) => { setExceptions(data || []); setLoadingExc(false); }, () => setLoadingExc(false));
+  }, [showExc, settingKey]);
+
+  const addException = () => {
+    const email = newEmail.trim().toLowerCase();
+    if (!email) return;
+    supabase
+      .from('ceo_feature_exceptions')
+      .upsert([{ feature_key: settingKey, user_email: email, allowed: newAllowed }], { onConflict: 'feature_key,user_email' })
+      .then(() => {
+        setExceptions(prev => [...prev.filter(e => e.user_email !== email), { user_email: email, allowed: newAllowed }]);
+        setNewEmail('');
+      }, () => {});
+  };
+
+  const removeException = (email: string) => {
+    supabase
+      .from('ceo_feature_exceptions')
+      .delete()
+      .eq('feature_key', settingKey)
+      .eq('user_email', email)
+      .then(() => { setExceptions(prev => prev.filter(e => e.user_email !== email)); }, () => {});
+  };
+
+  return (
+    <div className="border-b border-[var(--border)] last:border-0">
+      <div className="flex items-start justify-between gap-4 py-3">
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-[var(--text-primary)]">{label}</p>
+          <p className="text-xs text-[var(--text-muted)] mt-0.5 leading-relaxed">{description}</p>
+        </div>
+        <button onClick={() => updateSetting(settingKey, !value)} className="shrink-0 mt-0.5 cursor-pointer" title={value ? 'Turn OFF' : 'Turn ON'}>
+          {value ? <ToggleRight className="w-8 h-8 text-[var(--accent)]" /> : <ToggleLeft className="w-8 h-8 text-[var(--text-muted)]" />}
+        </button>
+      </div>
+      <div className="pb-3">
+        <button
+          onClick={() => setShowExc(v => !v)}
+          className="flex items-center gap-1.5 text-xs text-[var(--accent)] font-semibold hover:opacity-80 cursor-pointer">
+          <Key className="w-3 h-3" />
+          {showExc ? 'Hide' : 'Manage'} User Email Exceptions
+          {exceptions.length > 0 && !showExc && <span className="ml-1 px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-600 text-[10px]">{exceptions.length}</span>}
+        </button>
+        {showExc && (
+          <div className="mt-3 space-y-3 pl-2 border-l-2 border-[var(--accent-light)]">
+            <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
+              Each email exception overrides the master toggle above for that specific user only.
+              An <strong>Allow</strong> exception grants access even when the master toggle is OFF.
+              A <strong>Block</strong> exception denies access even when the master toggle is ON.
+            </p>
+            {/* Add exception form */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <input
+                type="email"
+                value={newEmail}
+                onChange={e => setNewEmail(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && addException()}
+                placeholder="user@example.com"
+                className="flex-1 min-w-[180px] px-3 py-1.5 rounded-xl bg-[var(--bg-card)] border border-[var(--border)] text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
+              />
+              <select
+                value={newAllowed ? 'allow' : 'block'}
+                onChange={e => setNewAllowed(e.target.value === 'allow')}
+                className="px-2 py-1.5 rounded-xl bg-[var(--bg-card)] border border-[var(--border)] text-xs text-[var(--text-primary)] focus:outline-none cursor-pointer">
+                <option value="block">Block this user</option>
+                <option value="allow">Allow this user</option>
+              </select>
+              <button
+                onClick={addException}
+                disabled={!newEmail.trim()}
+                className="px-3 py-1.5 rounded-xl text-xs font-bold text-white disabled:opacity-40 cursor-pointer"
+                style={{ background: 'var(--accent)' }}>
+                Add
+              </button>
+            </div>
+            {/* Exception list */}
+            {loadingExc ? (
+              <p className="text-xs text-[var(--text-muted)]">Loading…</p>
+            ) : exceptions.length === 0 ? (
+              <p className="text-xs text-[var(--text-muted)]">No exceptions yet. All users follow the master toggle.</p>
+            ) : (
+              <div className="space-y-1.5">
+                {exceptions.map(ex => (
+                  <div key={ex.user_email} className="flex items-center justify-between gap-2 px-3 py-2 bg-[var(--bg-input)] rounded-xl">
+                    <span className="text-xs font-mono text-[var(--text-primary)] truncate flex-1">{ex.user_email}</span>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${ex.allowed ? 'bg-emerald-500/10 text-emerald-600' : 'bg-rose-500/10 text-rose-600'}`}>
+                      {ex.allowed ? 'ALLOWED' : 'BLOCKED'}
+                    </span>
+                    <button
+                      onClick={() => removeException(ex.user_email)}
+                      className="p-1 hover:bg-rose-500/10 rounded text-[var(--text-muted)] hover:text-rose-500 cursor-pointer">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Number Input Component ────────────────────────────────────────────────────
 function SettingNumber({ label, description, settingKey, min = 0, max = 999999, unit = '' }: {
   label: string; description: string; settingKey: string; min?: number; max?: number; unit?: string;
@@ -745,6 +868,15 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
           description="When ON HR cannot activate new departments without CEO approval. Department is created but stays inactive until CEO approves." />
         <SettingToggle settingKey="ceo_must_approve_registrations" label="CEO Registration Approval"
           description="All new staff registrations go directly to CEO first before HR review. Highest level of staff access control." />
+      </Section>
+
+      {/* ── SECTION 9: SPREADSHEETS CONTROL ──────────────────────────── */}
+      <Section title="Section 9 — Spreadsheets Control" icon={FileSpreadsheet}>
+        <SettingToggleWithException
+          settingKey="spreadsheets_enabled"
+          label="Spreadsheets Enabled (Master)"
+          description="Master switch for the Spreadsheets feature across all departments. When OFF no user can access Free Sheets or Data Sheets unless they have a specific email exception that overrides this toggle."
+        />
       </Section>
 
       {/* ── USER MANAGEMENT MODAL ───────────────────────────────────────── */}

@@ -30,6 +30,7 @@ const defaults: Record<string, any> = {
   ceo_must_approve_prices: false,
   forms_control: true,
   orders_enabled: true,
+  spreadsheets_enabled: true,
   cargo_intake_enabled: true,
   stock_adjustments_allowed: true,
   quality_check_needs_cosign: false,
