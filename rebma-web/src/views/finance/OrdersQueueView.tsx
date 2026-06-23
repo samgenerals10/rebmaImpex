@@ -125,9 +125,17 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
     onEvaluateOrder?.(order.id, true);
 
     supabase.from('orders').update({ status: updatedStatus }).eq('id', order.id).then(() => {}, () => {});
+    supabase.from('delivery_logs').insert([{
+      order_id: order.id,
+      customer_name: order.clientName,
+      delivery_address: order.clientName,
+      status: 'PENDING_ASSIGNMENT',
+      created_at: new Date().toISOString(),
+    }]).then(() => {}, () => {});
     supabase.from('supplier_order_notifications').insert([
       { order_id: order.id, message: `Finance approved order ${order.id} for ${order.clientName}. Please prepare goods for dispatch.`, notified_department: 'OPERATIONS', read: false },
       { order_id: order.id, message: `Your order ${order.id} has been approved by Finance. Operations is preparing your goods.`, notified_department: 'MARKETING', read: false },
+      { order_id: order.id, message: `Order ${order.id} for ${order.clientName} is ready for delivery assignment.`, notified_department: 'DISPATCH', read: false },
     ]).then(() => {}, () => {});
     supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Order ${order.id} APPROVED for ${order.clientName} — GHS ${order.totalAmount.toLocaleString()}`, performed_by: currentUser?.fullName || 'Finance', created_at: new Date().toISOString() }]).then(() => {}, () => {});
 

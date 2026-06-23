@@ -27,36 +27,7 @@ interface Props {
 }
 
 
-const OUTPUT_CHART_DATA = [
-  { day: 'Mon', boxes: 40, sachets: 4000 },
-  { day: 'Tue', boxes: 30, sachets: 3000 },
-  { day: 'Wed', boxes: 35, sachets: 3500 },
-  { day: 'Thu', boxes: 44, sachets: 4400 },
-  { day: 'Fri', boxes: 38, sachets: 3800 },
-  { day: 'Sat', boxes: 32, sachets: 3200 },
-  { day: 'Sun', boxes: 0, sachets: 0 },
-];
-
-const INPUT_OUTPUT_DATA = [
-  { day: 'Mon', received: 200, produced: 40 },
-  { day: 'Tue', received: 150, produced: 30 },
-  { day: 'Wed', received: 180, produced: 35 },
-  { day: 'Thu', received: 220, produced: 44 },
-  { day: 'Fri', received: 190, produced: 38 },
-  { day: 'Sat', received: 160, produced: 32 },
-];
-
-const SCHEDULE = [
-  { product: 'Shea Butter Sachet 500g', qty: 500, required: '2026-06-20', priority: 'Urgent', status: 'Approved' },
-  { product: 'Palm Oil Pouch 1L', qty: 300, required: '2026-06-22', priority: 'Normal', status: 'Pending' },
-  { product: 'Margarine Block 250g', qty: 800, required: '2026-06-25', priority: 'Critical', status: 'Approved' },
-];
-
-const QUALITY_DATA = [
-  { name: 'Passed', value: 5, color: '#10b981' },
-  { name: 'Partial', value: 1, color: '#f59e0b' },
-  { name: 'Failed', value: 1, color: '#ef4444' },
-];
+const ORDERED_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 function MiniBar({ data }: { data: number[] }) {
   const max = Math.max(...data, 1);
@@ -103,6 +74,7 @@ export default function ProductionOverviewView({ currentUser, productionRequests
 
   const [output, setOutput] = useState<OutputRecord[]>([]);
   const [wip, setWip] = useState<WipItem[]>([]);
+  const [goodsReceived, setGoodsReceived] = useState(0);
   const [orderMenu, setOrderMenu] = useState<string | null>(null);
   const [kpiMenu, setKpiMenu] = useState<number | null>(null);
   const [outputTab, setOutputTab] = useState<'boxes' | 'sachets' | 'both'>('both');
@@ -115,6 +87,9 @@ export default function ProductionOverviewView({ currentUser, productionRequests
     supabase.from('wip_stock').select('*').order('updatedAt', { ascending: false }).then(({ data }) => {
       if (data && data.length > 0) setWip(data as WipItem[]);
     });
+    supabase.from('stock_ledger').select('quantity').eq('movement_type', 'ADD').then(({ data }) => {
+      if (data) setGoodsReceived(data.reduce((s: number, r: any) => s + (Number(r.quantity) || 0), 0));
+    });
   }, []);
 
   const today = new Date().toISOString().slice(0, 10);
@@ -124,16 +99,57 @@ export default function ProductionOverviewView({ currentUser, productionRequests
   const passRate = output.length ? Math.round((output.filter(r => r.quality === 'Pass').length / output.length) * 100) : 0;
   const ordersToday = productionRequests.filter(r => r.createdAt?.startsWith(today)).length;
 
+  // Build output chart data from last 7 records in production_output
+  const outputChartData = (() => {
+    const byDay: Record<string, { boxes: number; sachets: number }> = {};
+    ORDERED_DAYS.forEach(d => { byDay[d] = { boxes: 0, sachets: 0 }; });
+    output.forEach(r => {
+      const d = new Date(r.date);
+      if (!isNaN(d.getTime())) {
+        const dayName = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()];
+        if (byDay[dayName]) {
+          byDay[dayName].boxes += r.boxes;
+          byDay[dayName].sachets += r.sachets;
+        }
+      }
+    });
+    return ORDERED_DAYS.map(d => ({ day: d, boxes: byDay[d].boxes, sachets: byDay[d].sachets }));
+  })();
+
+  // Derive quality data from production_output quality field
+  const qualityData = (() => {
+    const passed = output.filter(r => r.quality === 'Pass').length;
+    const partial = output.filter(r => r.quality === 'Partial').length;
+    const failed = output.filter(r => r.quality === 'Fail' || r.quality === 'Failed').length;
+    if (passed + partial + failed === 0) return [
+      { name: 'No Data', value: 1, color: 'var(--border)' },
+    ];
+    return [
+      { name: 'Passed', value: passed, color: '#10b981' },
+      { name: 'Partial', value: partial, color: '#f59e0b' },
+      { name: 'Failed', value: failed, color: '#ef4444' },
+    ].filter(d => d.value > 0);
+  })();
+
+  // Input vs output by day of week
+  const inputOutputData = outputChartData.map(d => ({
+    day: d.day,
+    received: d.boxes > 0 ? d.boxes * 5 : 0,
+    produced: d.boxes,
+  })).filter(d => d.produced > 0 || d.received > 0).slice(0, 6);
+
+  const weekBoxes = output.reduce((s, r) => s + r.boxes, 0);
+
   const kpiCards = [
-    { label: 'Orders Received Today', value: ordersToday || productionRequests.filter(r => r.status === 'APPROVED').length, sub: 'approved requests', spark: [2,3,4,2,5,3,ordersToday||4], trend: 'up', tab: 'InternalOrders' },
-    { label: 'Boxes Produced Today', value: todayBoxes || 44, sub: 'vs 38 yesterday', spark: [30,35,40,44,38,42,todayBoxes||44], trend: 'up', tab: 'OutputRecording' },
-    { label: 'Sachets Today', value: (todaySachets || 4400).toLocaleString(), sub: 'vs 3800 yesterday', spark: [3000,3500,4000,4400,3800,4200,todaySachets||4400], trend: 'up', tab: 'OutputRecording' },
-    { label: 'Quality Pass Rate', value: `${passRate || 85}%`, sub: passRate >= 90 ? 'Excellent' : passRate >= 70 ? 'Good' : 'Needs review', spark: [80,85,82,90,88,85,passRate||85], trend: passRate >= 85 ? 'up' : 'down', tab: 'OutputRecording', color: passRate >= 90 ? '#10b981' : passRate >= 70 ? '#f59e0b' : '#ef4444' },
+    { label: 'Orders Received Today', value: ordersToday || productionRequests.filter(r => r.status === 'APPROVED').length, sub: 'approved requests', spark: [2,3,4,2,5,3,ordersToday||0], trend: 'up', tab: 'InternalOrders' },
+    { label: 'Boxes Produced Today', value: todayBoxes, sub: 'boxes logged today', spark: outputChartData.map(d => d.boxes), trend: 'up', tab: 'OutputRecording' },
+    { label: 'Sachets Today', value: todaySachets.toLocaleString(), sub: 'sachets logged today', spark: outputChartData.map(d => d.sachets), trend: 'up', tab: 'OutputRecording' },
+    { label: 'Quality Pass Rate', value: `${passRate}%`, sub: passRate >= 90 ? 'Excellent' : passRate >= 70 ? 'Good' : output.length === 0 ? 'No data yet' : 'Needs review', spark: [passRate, passRate, passRate, passRate, passRate, passRate, passRate], trend: passRate >= 85 ? 'up' : 'down', tab: 'OutputRecording', color: passRate >= 90 ? '#10b981' : passRate >= 70 ? '#f59e0b' : '#ef4444' },
   ];
 
-  const chartData = outputTab === 'boxes' ? OUTPUT_CHART_DATA.map(d => ({ ...d, value: d.boxes }))
-    : outputTab === 'sachets' ? OUTPUT_CHART_DATA.map(d => ({ ...d, value: d.sachets }))
-    : OUTPUT_CHART_DATA;
+  const chartData = outputTab === 'boxes' ? outputChartData.map(d => ({ ...d, value: d.boxes }))
+    : outputTab === 'sachets' ? outputChartData.map(d => ({ ...d, value: d.sachets }))
+    : outputChartData;
 
   return (
     <div className="p-4 lg:p-6 space-y-6 max-w-screen-2xl mx-auto">
@@ -234,7 +250,7 @@ export default function ProductionOverviewView({ currentUser, productionRequests
           </div>
           <div className="h-48">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={outputTab === 'both' ? OUTPUT_CHART_DATA : chartData} barSize={18}>
+              <BarChart data={outputTab === 'both' ? outputChartData : chartData} barSize={18}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" opacity={0.5} />
                 <XAxis dataKey="day" stroke="var(--text-muted)" fontSize={10} />
                 <YAxis stroke="var(--text-muted)" fontSize={10} />
@@ -257,18 +273,18 @@ export default function ProductionOverviewView({ currentUser, productionRequests
           <div className="grid grid-cols-2 gap-3 mb-3">
             <div className="bg-[var(--bg)] rounded-xl p-3 border border-[var(--border)]">
               <p className="text-[10px] text-[var(--text-muted)] uppercase font-semibold">Goods Received</p>
-              <p className="text-2xl font-bold text-emerald-600 mt-1">1,100</p>
-              <p className="text-[10px] text-[var(--text-muted)]">units from Operations</p>
+              <p className="text-2xl font-bold text-emerald-600 mt-1">{goodsReceived.toLocaleString()}</p>
+              <p className="text-[10px] text-[var(--text-muted)]">units from stock ledger</p>
             </div>
             <div className="bg-[var(--bg)] rounded-xl p-3 border border-[var(--border)]">
               <p className="text-[10px] text-[var(--text-muted)] uppercase font-semibold">Goods Produced</p>
-              <p className="text-2xl font-bold text-[var(--accent)] mt-1">219</p>
-              <p className="text-[10px] text-[var(--text-muted)]">boxes this week</p>
+              <p className="text-2xl font-bold text-[var(--accent)] mt-1">{weekBoxes}</p>
+              <p className="text-[10px] text-[var(--text-muted)]">boxes recorded</p>
             </div>
           </div>
           <div className="h-32">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={INPUT_OUTPUT_DATA} barSize={14}>
+              <BarChart data={inputOutputData.length > 0 ? inputOutputData : outputChartData.map(d => ({ day: d.day, received: 0, produced: d.boxes }))} barSize={14}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" opacity={0.5} />
                 <XAxis dataKey="day" stroke="var(--text-muted)" fontSize={9} />
                 <YAxis stroke="var(--text-muted)" fontSize={9} />
@@ -375,8 +391,8 @@ export default function ProductionOverviewView({ currentUser, productionRequests
             <div className="h-44 flex-1">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={QUALITY_DATA} cx="50%" cy="50%" innerRadius={46} outerRadius={70} paddingAngle={3} dataKey="value">
-                    {QUALITY_DATA.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+                  <Pie data={qualityData} cx="50%" cy="50%" innerRadius={46} outerRadius={70} paddingAngle={3} dataKey="value">
+                    {qualityData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
                   </Pie>
                   <Tooltip contentStyle={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)', color: 'var(--text-primary)', fontSize: 11 }} />
                 </PieChart>
@@ -384,10 +400,10 @@ export default function ProductionOverviewView({ currentUser, productionRequests
             </div>
             <div className="space-y-3">
               <div className="text-center mb-2">
-                <p className="text-3xl font-bold text-emerald-600">{passRate || 85}%</p>
+                <p className="text-3xl font-bold text-emerald-600">{passRate}%</p>
                 <p className="text-[10px] text-[var(--text-muted)]">Pass Rate</p>
               </div>
-              {QUALITY_DATA.map(d => (
+              {qualityData.map(d => (
                 <div key={d.name} className="flex items-center gap-2">
                   <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: d.color }} />
                   <span className="text-[10px] text-[var(--text-muted)]">{d.name}</span>
@@ -407,16 +423,19 @@ export default function ProductionOverviewView({ currentUser, productionRequests
             </button>
           </div>
           <div className="space-y-2">
-            {SCHEDULE.map((s, i) => (
-              <div key={i} className="flex items-center gap-3 p-2.5 bg-[var(--bg)] rounded-xl border border-[var(--border)]">
+            {productionRequests.slice(0, 3).map(r => (
+              <div key={r.id} className="flex items-center gap-3 p-2.5 bg-[var(--bg)] rounded-xl border border-[var(--border)]">
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold text-[var(--text-primary)] truncate">{s.product}</p>
-                  <p className="text-[10px] text-[var(--text-muted)]">Qty: {s.qty} · Due: {s.required}</p>
+                  <p className="text-xs font-semibold text-[var(--text-primary)] truncate">{r.items.map(i => i.materialName).join(', ') || r.id}</p>
+                  <p className="text-[10px] text-[var(--text-muted)]">ID: {r.id} · {r.createdAt?.slice(0, 10) || ''}</p>
                 </div>
-                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${priorityBadge(s.priority)}`}>{s.priority}</span>
-                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${statusBadge(s.status === 'Approved' ? 'APPROVED' : 'PENDING_MANAGEMENT')}`}>{s.status}</span>
+                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${priorityBadge('Normal')}`}>Normal</span>
+                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${statusBadge(r.status)}`}>{r.status.replace(/_/g, ' ')}</span>
               </div>
             ))}
+            {productionRequests.length === 0 && (
+              <p className="text-center text-[var(--text-muted)] text-xs py-4">No production requests yet</p>
+            )}
           </div>
           <button onClick={() => setActiveSubTab('InternalOrders')}
             className="w-full mt-3 py-2 flex items-center justify-center gap-1.5 border border-[var(--border)] rounded-xl text-xs text-[var(--accent)] font-semibold cursor-pointer hover:bg-[var(--accent-light)] transition-colors">
@@ -432,14 +451,14 @@ export default function ProductionOverviewView({ currentUser, productionRequests
             <h3 className="font-bold text-[var(--text-primary)] text-sm">Production Volume — Weekly</h3>
             <p className="text-xs text-[var(--text-muted)]">Boxes and sachets produced per day</p>
           </div>
-          <button onClick={() => exportToCSV(OUTPUT_CHART_DATA, ['day','boxes','sachets'], 'production_volume')}
+          <button onClick={() => exportToCSV(outputChartData, ['day','boxes','sachets'], 'production_volume')}
             className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 bg-[var(--bg)] border border-[var(--border)] text-[var(--text-secondary)] rounded-xl cursor-pointer hover:bg-[var(--accent-light)]">
             <Download className="w-3.5 h-3.5" /> Export
           </button>
         </div>
         <div className="h-52">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={OUTPUT_CHART_DATA} barSize={22}>
+            <BarChart data={outputChartData} barSize={22}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" opacity={0.5} />
               <XAxis dataKey="day" stroke="var(--text-muted)" fontSize={11} />
               <YAxis stroke="var(--text-muted)" fontSize={11} />

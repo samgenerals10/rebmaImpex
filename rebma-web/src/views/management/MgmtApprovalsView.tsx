@@ -90,7 +90,7 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
         { data: purchasesData },
       ] = await Promise.all([
         supabase.from('cargo_intake').select('*').eq('status', 'PENDING_MANAGEMENT_APPROVAL').order('created_at', { ascending: false }).limit(50),
-        supabase.from('orders').select('*').eq('payment_mode', 'CREDIT').eq('status', 'PENDING_MANAGEMENT').order('created_at', { ascending: false }).limit(50),
+        supabase.from('orders').select('*').eq('status', 'PENDING_MANAGEMENT').order('created_at', { ascending: false }).limit(50),
         supabase.from('profiles').select('*').eq('status', 'PENDING_APPROVAL').order('created_at', { ascending: false }).limit(50),
         supabase.from('production_requests').select('*').eq('status', 'PENDING_MANAGEMENT').order('created_at', { ascending: false }).limit(50).then(r => r, () => ({ data: [] })),
         supabase.from('general_purchases').select('*').eq('status', 'PENDING_MANAGEMENT_APPROVAL').order('created_at', { ascending: false }).limit(50).then(r => r, () => ({ data: [] })),
@@ -128,9 +128,9 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
 
       const mappedOrders: ApprovalItem[] = (ordersData || []).map((row: any) => ({
         id: row.id,
-        requestId: `CREDIT-${row.id.slice(-6).toUpperCase()}`,
+        requestId: `ORD-${row.id.slice(-6).toUpperCase()}`,
         type: 'Credit Order' as const,
-        description: `Credit terms request for ${row.client_name}`,
+        description: `${row.payment_mode === 'CREDIT' ? 'Credit order' : `${row.payment_mode || 'Cash'} order`} for ${row.client_name} — GHS ${Number(row.total_amount || 0).toLocaleString()}`,
         department: 'MARKETING',
         amount: Number(row.total_amount || 0),
         date: row.created_at?.slice(0, 10) || '',
@@ -256,15 +256,31 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
       }
 
       if (selectedItem.type === 'Credit Order') {
-        // Management approval moves order to PENDING_FINANCE so Finance can process payment
-        const newDbStatus = action === 'approve' ? 'PENDING_FINANCE' : 'REJECTED';
+        const paymentMode = String(selectedItem.raw?.payment_mode || 'CASH');
+        const isCreditPayment = paymentMode === 'CREDIT';
+        const newDbStatus = action === 'approve' ? (isCreditPayment ? 'PENDING_FINANCE' : 'APPROVED') : 'REJECTED';
         await supabase.from('orders').update({ status: newDbStatus }).eq('id', selectedItem.id);
 
         if (action === 'approve') {
-          await supabase.from('supplier_order_notifications').insert([{ order_id: selectedItem.id, message: `Credit order approved by Management — now awaiting Finance processing: ${selectedItem.description}`, notified_department: 'FINANCE', read: false }]);
-          await supabase.from('supplier_order_notifications').insert([{ order_id: selectedItem.id, message: `Your credit order has been approved by Management and sent to Finance: ${selectedItem.description}`, notified_department: 'MARKETING', read: false }]);
+          if (isCreditPayment) {
+            await supabase.from('supplier_order_notifications').insert([{ order_id: selectedItem.id, message: `Credit order approved by Management — now awaiting Finance processing: ${selectedItem.description}`, notified_department: 'FINANCE', read: false }]);
+            await supabase.from('supplier_order_notifications').insert([{ order_id: selectedItem.id, message: `Your credit order has been approved by Management and sent to Finance: ${selectedItem.description}`, notified_department: 'MARKETING', read: false }]);
+          } else {
+            // CASH/CHEQUE/MOMO orders bypass Finance — create delivery log for Dispatch directly
+            const now = new Date().toISOString();
+            await supabase.from('delivery_logs').insert([{
+              order_id: selectedItem.id,
+              customer_name: String(selectedItem.raw?.client_name || selectedItem.submittedBy || ''),
+              delivery_address: String(selectedItem.raw?.delivery_address || selectedItem.raw?.client_name || ''),
+              status: 'PENDING_ASSIGNMENT',
+              created_at: now,
+            }]);
+            await supabase.from('supplier_order_notifications').insert([{ order_id: selectedItem.id, message: `${paymentMode} order approved by Management — ready for dispatch: ${selectedItem.description}`, notified_department: 'DISPATCH', read: false }]);
+            await supabase.from('supplier_order_notifications').insert([{ order_id: selectedItem.id, message: `${paymentMode} order approved — Operations is preparing goods: ${selectedItem.description}`, notified_department: 'MARKETING', read: false }]);
+            await supabase.from('supplier_order_notifications').insert([{ order_id: selectedItem.id, message: `Approved ${paymentMode} order ready for fulfillment: ${selectedItem.description}`, notified_department: 'OPERATIONS', read: false }]);
+          }
         } else {
-          await supabase.from('supplier_order_notifications').insert([{ order_id: selectedItem.id, message: `Credit order REJECTED by Management: ${selectedItem.description}${modalNote ? ` — ${modalNote}` : ''}`, notified_department: 'MARKETING', read: false }]);
+          await supabase.from('supplier_order_notifications').insert([{ order_id: selectedItem.id, message: `Order REJECTED by Management: ${selectedItem.description}${modalNote ? ` — ${modalNote}` : ''}`, notified_department: 'MARKETING', read: false }]);
         }
       }
 
