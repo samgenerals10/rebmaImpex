@@ -285,7 +285,7 @@ export default function OperationsDashboard({
   const stats = [
     { title: 'Total Cargo Weight', value: `${totalTons.toFixed(1)} Tons`, sub: 'Accumulated cargo intake', icon: Layers, color: 'text-blue-500' },
     { title: 'Awaiting Release', value: `${pendingReleaseCount} Shipments`, sub: 'Queue ready to load', icon: Truck, color: 'text-emerald-500' },
-    { title: 'Awaiting Pricing', value: `${pendingMgmtApprovalCount} Batches`, sub: 'Pending manager approval', icon: CheckCircle, color: 'text-amber-500' },
+    { title: 'Pending Approval', value: `${pendingMgmtApprovalCount} Batches`, sub: 'Pending manager approval', icon: CheckCircle, color: 'text-amber-500' },
     { title: 'Discrepancy Notes', value: `${discrepancyCount} Flagged`, sub: 'Faults or damaged boxes', icon: AlertTriangle, color: 'text-rose-500' }
   ];
 

@@ -129,16 +129,16 @@ export default function CeoDashboard({
     };
     const loadKPIs = async () => {
       try {
-        // Cargo ingestion total quantity
-        const { data: cargo } = await supabase.from('cargo_intake').select('qty_received');
-        const totalTons = (cargo as { qty_received: number }[] ?? []).reduce((s, r) => s + (r.qty_received || 0), 0);
+        // Cargo ingestion — total weight (metric tons) of APPROVED cargo
+        const { data: cargo } = await supabase.from('cargo_intake').select('weight').eq('status', 'APPROVED');
+        const totalTons = (cargo as { weight: number }[] ?? []).reduce((s, r) => s + (r.weight || 0), 0);
         setKpiIngestion(totalTons);
 
-        // Processing invoices — orders awaiting finance
+        // Processing invoices — orders awaiting Finance review
         const { count: invoiceCount } = await supabase
           .from('orders')
           .select('id', { count: 'exact', head: true })
-          .eq('status', 'finance_approved');
+          .eq('status', 'PENDING_FINANCE');
         setKpiInvoices(invoiceCount ?? 0);
 
         // Active fleet
