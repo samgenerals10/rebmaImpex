@@ -127,8 +127,17 @@ CREATE TABLE IF NOT EXISTS public.goods_prices (
     id TEXT PRIMARY KEY DEFAULT 'PRC-' || substring(md5(random()::text) from 1 for 8),
     product_name TEXT UNIQUE NOT NULL,
     unit_price NUMERIC NOT NULL,
+    cost_price NUMERIC,
+    currency TEXT DEFAULT 'GHS',
+    category TEXT DEFAULT 'INCOMING_GOODS',
+    updated_by TEXT,
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+-- Migration: if the table already exists, run these to add missing columns:
+-- ALTER TABLE public.goods_prices ADD COLUMN IF NOT EXISTS cost_price NUMERIC;
+-- ALTER TABLE public.goods_prices ADD COLUMN IF NOT EXISTS currency TEXT DEFAULT 'GHS';
+-- ALTER TABLE public.goods_prices ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'INCOMING_GOODS';
+-- ALTER TABLE public.goods_prices ADD COLUMN IF NOT EXISTS updated_by TEXT;
 
 -- BOARDROOM MEETINGS TABLE
 CREATE TABLE IF NOT EXISTS public.boardroom_meetings (

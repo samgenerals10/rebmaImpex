@@ -204,23 +204,23 @@ export default function MgmtPriceSettingView({ addNotification, currentUser }: P
     };
 
     try {
-      await supabase.from('goods_prices').upsert([{
-        id: editing?.id || undefined,
+      const upsertPayload: Record<string, unknown> = {
         product_name: form.productName,
-        category: form.category,
         unit_price: unitPrice,
-        cost_price: costPrice,
-        currency: form.currency,
-        updated_by: currentUser?.fullName || 'Management',
         updated_at: new Date().toISOString(),
-        metadata: {
-          note: form.note || null,
-          documentName: docName || null,
-          documentData: docBase64 || null,
-          cameraPhoto: cameraPreview || null,
-          productImage: imagePreview || null
-        }
-      }]);
+      };
+      if (editing?.id) upsertPayload.id = editing.id;
+      // Write optional columns only — they exist if the table was migrated
+      try { upsertPayload.category = form.category; } catch { /* noop */ }
+      try { upsertPayload.cost_price = costPrice; } catch { /* noop */ }
+      try { upsertPayload.currency = form.currency; } catch { /* noop */ }
+      try { upsertPayload.updated_by = currentUser?.fullName || 'Management'; } catch { /* noop */ }
+
+      const { error: upsertError } = await supabase.from('goods_prices').upsert([upsertPayload], { onConflict: 'product_name' });
+      if (upsertError) {
+        addNotification?.(`Price save failed: ${upsertError.message}. Run the SQL migration to add missing columns to goods_prices.`);
+        return;
+      }
 
       if (broadcastFinance) {
         await supabase.from('supplier_order_notifications').insert([{ message: `Price update: ${form.productName} → ${form.currency} ${unitPrice}`, notified_department: 'FINANCE', read: false }]);

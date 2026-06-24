@@ -74,6 +74,8 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
   const [sellingPrice, setSellingPrice] = useState('');
   const [notifyOps, setNotifyOps] = useState(true);
   const [notifyCeo, setNotifyCeo] = useState(true);
+  const [todayApproved, setTodayApproved] = useState(0);
+  const [todayRejected, setTodayRejected] = useState(0);
 
   useEffect(() => {
     loadApprovals();
@@ -81,6 +83,18 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
 
   async function loadApprovals() {
     setLoading(true);
+    const today = new Date().toISOString().slice(0, 10);
+    supabase
+      .from('global_audit_history')
+      .select('action')
+      .eq('department', 'MANAGEMENT')
+      .gte('timestamp', `${today}T00:00:00.000Z`)
+      .lte('timestamp', `${today}T23:59:59.999Z`)
+      .then(({ data }) => {
+        const rows = data || [];
+        setTodayApproved(rows.filter((r: any) => String(r.action).startsWith('APPROVE')).length);
+        setTodayRejected(rows.filter((r: any) => String(r.action).startsWith('REJECT')).length);
+      }, () => {});
     try {
       const [
         { data: cargoData },
@@ -248,7 +262,7 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
             await supabase.from('supplier_order_notifications').insert([{ order_id: rawId, message: `Cargo intake APPROVED by Management: ${selectedItem.description}`, notified_department: 'CEO', read: false }]);
           }
           if (sellingPrice) {
-            await supabase.from('goods_prices').upsert([{ product_name: productName, unit_price: parseFloat(sellingPrice), currency: 'GHS', category: 'INCOMING_GOODS' }]);
+            await supabase.from('goods_prices').upsert([{ product_name: productName, unit_price: parseFloat(sellingPrice) }], { onConflict: 'product_name' }).then(() => {}, () => {});
           }
           await supabase.from('supplier_order_notifications').insert([{ order_id: rawId, message: `Cargo intake APPROVED by Management: ${selectedItem.description}`, notified_department: 'FINANCE', read: false }]);
           await supabase.from('supplier_order_notifications').insert([{ order_id: rawId, message: `New stock approved: ${selectedItem.description}. Update pricing in Marketing.`, notified_department: 'MARKETING', read: false }]);
@@ -420,12 +434,17 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
       {/* Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Total Pending', value: counts.total, icon: FileText, color: 'var(--accent)' },
-          { label: 'Awaiting Action', value: counts.pending, icon: Clock, color: '#f59e0b' },
-          { label: 'Approved Today', value: counts.approved, icon: CheckCircle, color: '#10b981' },
-          { label: 'Rejected Today', value: counts.rejected, icon: XCircle, color: '#ef4444' },
-        ].map(({ label, value, icon: Icon, color }) => (
-          <div key={label} className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4 flex items-center gap-4">
+          { label: 'Total Pending', value: counts.total, icon: FileText, color: 'var(--accent)', filter: 'Pending' },
+          { label: 'Awaiting Action', value: counts.pending, icon: Clock, color: '#f59e0b', filter: 'Pending' },
+          { label: 'Approved Today', value: todayApproved, icon: CheckCircle, color: '#10b981', filter: 'Approved' },
+          { label: 'Rejected Today', value: todayRejected, icon: XCircle, color: '#ef4444', filter: 'Rejected' },
+        ].map(({ label, value, icon: Icon, color, filter }) => (
+          <button
+            key={label}
+            onClick={() => setStatusFilter(filter)}
+            className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4 flex items-center gap-4 text-left hover:border-[var(--accent)] transition-colors cursor-pointer w-full"
+            style={statusFilter === filter ? { borderColor: color, boxShadow: `0 0 0 2px ${color}30` } : {}}
+          >
             <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${color}20` }}>
               <Icon size={20} style={{ color }} />
             </div>
@@ -433,7 +452,7 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
               <p className="text-xs text-[var(--text-muted)]">{label}</p>
               <p className="text-xl font-bold text-[var(--text-primary)]">{value}</p>
             </div>
-          </div>
+          </button>
         ))}
       </div>
 
