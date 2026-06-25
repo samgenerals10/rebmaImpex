@@ -147,7 +147,7 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
 
   const exportCSV = () => {
     const headers = ['Order#', 'Customer', 'Product', 'Amount', 'Payment Mode', 'Status', 'Date'];
-    const rows = filtered.map(o => [o.ticketNumber || o.id, o.clientName, o.productName || '', o.totalAmount, o.paymentMode, o.status, o.createdAt.split('T')[0]]);
+    const rows = filtered.map(o => [o.ticketNumber || o.id, o.clientName, o.productName || '', o.totalAmount ?? 0, o.paymentMode, o.status, (o.createdAt || '').split('T')[0]]);
     const csv = [headers, ...rows].map(r => r.join(',')).join('\n');
     const a = document.createElement('a'); a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv); a.download = 'orders.csv'; a.click();
     addNotification('Exported CSV.');
@@ -339,9 +339,9 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
                 ['Customer', selectedOrder.clientName],
                 ['Product', selectedOrder.productName || '—'],
                 ['Destination', selectedOrder.destination || '—'],
-                ['Amount', `GHS ${selectedOrder.totalAmount.toLocaleString()}`],
+                ['Amount', `GHS ${(Number(selectedOrder.totalAmount ?? 0)).toLocaleString()}`],
                 ['Payment Mode', selectedOrder.paymentMode],
-                ['Date', selectedOrder.createdAt.split('T')[0]],
+                ['Date', (selectedOrder.createdAt || '').split('T')[0]],
               ].map(([k, v]) => (
                 <div key={k}>
                   <p className="text-xs text-[var(--text-muted)]">{k}</p>
