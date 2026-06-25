@@ -29,11 +29,34 @@ export default function CustomersView({ customersList, onRegisterCustomer, addNo
       setLoading(true);
       try {
         const [{ data: cData }, { data: oData }] = await Promise.all([
-          supabase.from('customers').select('*').order('registeredAt', { ascending: false }).limit(200),
-          supabase.from('orders').select('*').order('createdAt', { ascending: false }).limit(300),
+          supabase.from('customers').select('*').order('registered_at', { ascending: false }).limit(200),
+          supabase.from('orders').select('*').order('created_at', { ascending: false }).limit(300),
         ]);
-        setCustomers(cData && cData.length > 0 ? cData : customersList.length > 0 ? customersList : []);
-        setOrders(oData && oData.length > 0 ? oData : []);
+        const mappedCustomers = (cData || []).map((r: any) => ({
+          id: r.id,
+          name: r.name || '',
+          companyName: r.company_name || r.companyName || '',
+          phone: r.phone || '',
+          email: r.email || '',
+          location: r.location || '',
+          ghanaCard: r.ghana_card_id || r.ghanaCard || '',
+          registeredAt: r.registered_at || r.registeredAt || new Date().toISOString(),
+          orderHistory: [],
+          creditHistory: [],
+        }));
+        const mappedOrders = (oData || []).map((r: any) => ({
+          id: r.id,
+          ticketNumber: r.ticket_number || r.ticketNumber || r.id,
+          clientName: r.client_name || r.clientName || '',
+          productName: r.product_name || r.productName || '',
+          destination: r.destination || '',
+          totalAmount: Number(r.total_amount || r.totalAmount || 0),
+          paymentMode: r.payment_mode || r.paymentMode || 'CASH',
+          status: r.status || 'PENDING_FINANCE',
+          createdAt: r.created_at || r.createdAt || new Date().toISOString(),
+        }));
+        setCustomers(mappedCustomers.length > 0 ? mappedCustomers : customersList.length > 0 ? customersList : []);
+        setOrders(mappedOrders.length > 0 ? mappedOrders : []);
       } catch {
         setCustomers(customersList.length > 0 ? customersList : []);
         setOrders([]);
@@ -61,22 +84,34 @@ export default function CustomersView({ customersList, onRegisterCustomer, addNo
     return true;
   });
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.name || !form.phone) { addNotification('Name and phone are required.'); return; }
-    const newCust: Partial<Customer> = {
-      id: `cust-${Date.now()}`,
+    const now = new Date().toISOString();
+    const { data: inserted, error } = await supabase.from('customers').insert({
+      name: form.name,
+      company_name: form.companyName || form.name,
+      phone: form.phone,
+      email: form.email || null,
+      location: form.location || null,
+      ghana_card_id: form.ghanaCard || null,
+      registered_at: now,
+      updated_at: now,
+    }).select().single();
+    if (error) { addNotification(`Failed to register customer: ${error.message}`); return; }
+    const newCust: Customer = {
+      id: inserted?.id || `cust-${Date.now()}`,
       name: form.name,
       companyName: form.companyName,
       phone: form.phone,
       location: form.location,
       email: form.email,
       ghanaCard: form.ghanaCard,
-      registeredAt: new Date().toISOString(),
+      registeredAt: now,
       orderHistory: [],
       creditHistory: [],
     };
     onRegisterCustomer(newCust);
-    setCustomers(prev => [newCust as Customer, ...prev]);
+    setCustomers(prev => [newCust, ...prev]);
     setShowModal(false);
     setForm({ name: '', companyName: '', phone: '', location: '', email: '', ghanaCard: '' });
     addNotification('Customer registered successfully.');

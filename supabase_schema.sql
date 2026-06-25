@@ -86,9 +86,16 @@ CREATE TABLE IF NOT EXISTS public.orders (
     total_amount NUMERIC NOT NULL,
     status TEXT NOT NULL, -- 'PENDING_FINANCE', 'PENDING_MANAGEMENT', 'APPROVED', 'REJECTED', 'PROCESSING', 'OUT_FOR_DELIVERY', 'DELIVERED'
     ticket_number TEXT UNIQUE,
+    payment_mode TEXT DEFAULT 'CASH',
+    created_by TEXT,
+    metadata JSONB,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+-- Migration: add missing columns if table already exists
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS payment_mode TEXT DEFAULT 'CASH';
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS created_by TEXT;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS metadata JSONB;
 
 -- GLOBAL AUDIT HISTORY TABLE
 CREATE TABLE IF NOT EXISTS public.global_audit_history (
@@ -116,11 +123,24 @@ CREATE TABLE IF NOT EXISTS public.finance_payments (
 CREATE TABLE IF NOT EXISTS public.customers (
     id TEXT PRIMARY KEY DEFAULT 'CUST-' || substring(md5(random()::text) from 1 for 8),
     name TEXT NOT NULL,
-    company_name TEXT NOT NULL,
+    company_name TEXT,
     phone TEXT,
+    email TEXT,
     location TEXT,
-    registered_at TIMESTAMPTZ DEFAULT NOW()
+    ghana_card_id TEXT,
+    customer_photo TEXT,
+    ghana_card_front TEXT,
+    ghana_card_back TEXT,
+    registered_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+-- Migration: add missing columns if table already exists
+ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS email TEXT;
+ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS ghana_card_id TEXT;
+ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS customer_photo TEXT;
+ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS ghana_card_front TEXT;
+ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS ghana_card_back TEXT;
+ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
 
 -- GOODS PRICES (CATALOG) TABLE
 CREATE TABLE IF NOT EXISTS public.goods_prices (
