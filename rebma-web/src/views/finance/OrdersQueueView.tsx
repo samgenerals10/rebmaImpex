@@ -154,6 +154,7 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
       { order_id: order.id, message: `Order ${order.id} for ${order.clientName} is ready for delivery assignment.`, notified_department: 'DISPATCH', read: false },
     ]).then(() => {}, () => {});
     supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Order ${order.id} APPROVED for ${order.clientName} — GHS ${(Number(order.totalAmount ?? 0)).toLocaleString()}`, performed_by: currentUser?.fullName || 'Finance', timestamp: new Date().toISOString() }]).then(() => {}, () => {});
+    supabase.from('finance_payments').insert([{ client_name: order.clientName, amount: Number(order.totalAmount ?? 0), payment_mode: order.paymentMode || 'CASH', status: 'APPROVED', recorded_by: currentUser?.fullName || 'Finance', order_id: order.id, created_at: new Date().toISOString() }]).then(() => {}, () => {});
 
     addNotification?.(`Order ${order.id} approved. Operations notified.`);
     setSelected(null);

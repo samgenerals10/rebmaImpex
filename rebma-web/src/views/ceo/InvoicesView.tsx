@@ -1,6 +1,6 @@
 // src/views/ceo/InvoicesView.tsx
 import { useState, useEffect } from 'react';
-import { Download, Eye } from 'lucide-react';
+import { Download, Eye, Printer } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { exportToCSV, exportToPDF } from '../../utils/export';
 import EntityDetailPanel from '../../components/global/EntityDetailPanel';
@@ -47,6 +47,53 @@ const STATUS_STYLES = {
 };
 
 interface Props { addNotification: (msg: string) => void }
+
+function printInvoices(rows: InvoiceRow[]) {
+  const html = `<html><head><title>Invoices</title><style>
+    body{font-family:sans-serif;padding:24px;color:#111}
+    table{width:100%;border-collapse:collapse;font-size:13px}
+    th{background:#f1f5f9;text-align:left;padding:8px 12px;border-bottom:2px solid #e2e8f0;font-size:11px;text-transform:uppercase;letter-spacing:.05em}
+    td{padding:8px 12px;border-bottom:1px solid #e2e8f0}
+    h1{font-size:20px;margin-bottom:4px}
+    .meta{color:#64748b;font-size:12px;margin-bottom:20px}
+    .badge{display:inline-block;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:600}
+    .paid{background:#d1fae5;color:#065f46}.pending{background:#fef3c7;color:#92400e}.overdue{background:#fee2e2;color:#991b1b}
+    @media print{button{display:none}}
+  </style></head><body>
+  <h1>Invoice Ledger</h1>
+  <p class="meta">Printed ${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})} &mdash; ${rows.length} invoices</p>
+  <table><thead><tr><th>Invoice #</th><th>Customer</th><th>Dept</th><th>Amount (GHS)</th><th>Date</th><th>Due Date</th><th>Status</th></tr></thead><tbody>
+  ${rows.map(r=>`<tr><td><b>${r.invoice_no}</b></td><td>${r.customer}</td><td>${r.department}</td><td><b>${Number(r.amount??0).toLocaleString()}</b></td><td>${r.date}</td><td>${r.due_date}</td><td><span class="badge ${r.status}">${r.status}</span></td></tr>`).join('')}
+  </tbody></table></body></html>`;
+  const w = window.open('','_blank','width=900,height=700');
+  if(w){w.document.write(html);w.document.close();w.onload=()=>w.print();}
+}
+
+function printSingleInvoice(r: InvoiceRow) {
+  const html = `<html><head><title>Invoice ${r.invoice_no}</title><style>
+    body{font-family:sans-serif;padding:40px;color:#111;max-width:600px;margin:0 auto}
+    h1{font-size:28px;color:#1e293b;margin:0}
+    .sub{color:#64748b;font-size:14px;margin-top:4px}
+    .badge{display:inline-block;padding:4px 14px;border-radius:99px;font-size:13px;font-weight:700;margin-top:12px}
+    .paid{background:#d1fae5;color:#065f46}.pending{background:#fef3c7;color:#92400e}.overdue{background:#fee2e2;color:#991b1b}
+    .divider{border:none;border-top:1px solid #e2e8f0;margin:24px 0}
+    .row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f1f5f9;font-size:14px}
+    .label{color:#64748b}.value{font-weight:600;color:#1e293b}
+    .amount{font-size:32px;font-weight:800;color:#0f172a;margin-top:8px}
+    @media print{button{display:none}}
+  </style></head><body>
+  <h1>${r.invoice_no}</h1>
+  <p class="sub">${r.customer} &mdash; ${r.department}</p>
+  <span class="badge ${r.status}">${r.status.toUpperCase()}</span>
+  <hr class="divider"/>
+  <p class="amount">GHS ${Number(r.amount??0).toLocaleString()}</p>
+  <hr class="divider"/>
+  ${[['Issue Date',r.date],['Due Date',r.due_date],['Customer',r.customer],['Department',r.department],['Status',r.status]].map(([l,v])=>`<div class="row"><span class="label">${l}</span><span class="value">${v}</span></div>`).join('')}
+  </body></html>`;
+  const w = window.open('','_blank','width=700,height=600');
+  if(w){w.document.write(html);w.document.close();w.onload=()=>w.print();}
+}
+
 
 export default function InvoicesView({ addNotification }: Props) {
   const [rows, setRows]           = useState<InvoiceRow[]>([]);
@@ -116,6 +163,10 @@ export default function InvoicesView({ addNotification }: Props) {
           <button onClick={() => { exportToPDF('All Invoices', filtered, ['Invoice#','Customer','Amount','Status']); addNotification('Exported PDF.'); }}
             className="flex items-center gap-1 px-3 py-1.5 bg-[var(--accent)] text-white text-xs font-semibold rounded-xl cursor-pointer hover:opacity-90">
             <Download className="w-3.5 h-3.5" /> PDF
+          </button>
+          <button onClick={() => { printInvoices(filtered); addNotification('Printing invoices…'); }}
+            className="flex items-center gap-1 px-3 py-1.5 bg-[var(--bg-card)] border border-[var(--border)] text-[var(--text-secondary)] text-xs font-semibold rounded-xl cursor-pointer hover:bg-[var(--accent-light)]">
+            <Printer className="w-3.5 h-3.5" /> Print All
           </button>
         </div>
       </div>
@@ -230,7 +281,10 @@ export default function InvoicesView({ addNotification }: Props) {
         ]}
         onClose={() => setSelectedInvoice(null)}
         actions={
-          <button onClick={() => setSelectedInvoice(null)} className="px-4 py-2 rounded-xl text-white text-sm font-medium cursor-pointer" style={{ background: 'var(--accent)' }}>Close</button>
+          <div className="flex gap-2">
+            <button onClick={() => { if(selectedInvoice) printSingleInvoice(selectedInvoice); }} className="px-4 py-2 rounded-xl border border-[var(--border)] text-sm font-medium cursor-pointer flex items-center gap-1.5" style={{ color: 'var(--text-secondary)' }}><Printer className="w-4 h-4" /> Print</button>
+            <button onClick={() => setSelectedInvoice(null)} className="px-4 py-2 rounded-xl text-white text-sm font-medium cursor-pointer" style={{ background: 'var(--accent)' }}>Close</button>
+          </div>
         }
       />
     )}

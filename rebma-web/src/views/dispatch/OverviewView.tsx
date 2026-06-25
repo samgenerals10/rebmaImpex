@@ -112,7 +112,18 @@ export default function DispatchOverviewView({ addNotification, setActiveSubTab,
         setLoadingDeliveries(false);
       }
     })();
-    (async () => { try { const { data } = await supabase.from('drivers').select('*').order('created_at', { ascending: false }); setDrivers((data as Driver[]) ?? []); } catch { setDrivers([]); } finally { setLoadingDrivers(false); } })();
+    (async () => { try { const { data } = await supabase.from('drivers').select('*').order('created_at', { ascending: false }); setDrivers((data ?? []).map((db: any) => ({
+          id: db.id,
+          driverId: db.driver_id || db.id || '',
+          fullName: db.full_name || db.fullName || '',
+          phone: db.phone || '',
+          ghanaCard: db.ghana_card_id || db.ghanaCard || '',
+          licenseNumber: db.license_number || db.licenseNumber || '',
+          truckId: db.vehicle_id || db.truckId || '',
+          status: db.status || 'OFFLINE',
+          totalDeliveries: Number(db.total_deliveries || 0),
+          joinedAt: db.created_at || db.joinedAt || '',
+        } as Driver))); } catch { setDrivers([]); } finally { setLoadingDrivers(false); } })();
   }, []);
 
   // KPI counts

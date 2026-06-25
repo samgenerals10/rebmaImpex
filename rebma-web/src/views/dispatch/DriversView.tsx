@@ -46,6 +46,47 @@ const mapToDB = (ui: Partial<Driver>) => {
   return db;
 };
 
+interface DriverFormModalProps {
+  title: string;
+  form: Record<string, string>;
+  onClose: () => void;
+  onSave: () => void;
+  onChange: (key: string, val: string) => void;
+}
+function DriverFormModal({ title, form, onClose, onSave, onChange }: DriverFormModalProps) {
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+      <div style={{ background: 'var(--bg-card)', borderRadius: 20, padding: 32, width: '100%', maxWidth: 460, boxShadow: '0 20px 60px rgba(0,0,0,0.3)', border: '1px solid var(--border)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+          <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: 'var(--text-primary)' }}>{title}</h2>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={20} /></button>
+        </div>
+        {[
+          { label: 'Full Name', key: 'fullName', placeholder: 'e.g. Kwesi Asante' },
+          { label: 'Phone', key: 'phone', placeholder: '0244123456' },
+          { label: 'Ghana Card #', key: 'ghanaCard', placeholder: 'GHA-00001-1' },
+          { label: 'License Number', key: 'licenseNumber', placeholder: 'LIC-GH-001' },
+          { label: 'Truck ID', key: 'truckId', placeholder: 'GR-1234-22' },
+        ].map(f => (
+          <div key={f.key} style={{ marginBottom: 14 }}>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 5 }}>{f.label}</label>
+            <input
+              value={form[f.key] || ''}
+              onChange={e => onChange(f.key, e.target.value)}
+              placeholder={f.placeholder}
+              style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'var(--text-primary)', fontSize: 14, boxSizing: 'border-box' }}
+            />
+          </div>
+        ))}
+        <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
+          <button onClick={onClose} style={{ flex: 1, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 12, padding: '12px', fontWeight: 600, color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 14 }}>Cancel</button>
+          <button onClick={onSave} style={{ flex: 1, background: 'var(--accent)', border: 'none', borderRadius: 12, padding: '12px', fontWeight: 600, color: '#fff', cursor: 'pointer', fontSize: 14 }}>Save</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function DriversView({ addNotification }: Props) {
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [loading, setLoading] = useState(true);
@@ -181,32 +222,7 @@ export default function DriversView({ addNotification }: Props) {
     }
   };
 
-  const DriverFormModal = ({ title, onClose }: { title: string; onClose: () => void }) => (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-      <div style={{ background: 'var(--bg-card)', borderRadius: 20, padding: 32, width: '100%', maxWidth: 460, boxShadow: '0 20px 60px rgba(0,0,0,0.3)', border: '1px solid var(--border)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-          <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: 'var(--text-primary)' }}>{title}</h2>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={20} /></button>
-        </div>
-        {[
-          { label: 'Full Name', key: 'fullName', placeholder: 'e.g. Kwesi Asante' },
-          { label: 'Phone', key: 'phone', placeholder: '0244123456' },
-          { label: 'Ghana Card #', key: 'ghanaCard', placeholder: 'GHA-00001-1' },
-          { label: 'License Number', key: 'licenseNumber', placeholder: 'LIC-GH-001' },
-          { label: 'Truck ID', key: 'truckId', placeholder: 'GR-1234-22' },
-        ].map(f => (
-          <div key={f.key} style={{ marginBottom: 14 }}>
-            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 5 }}>{f.label}</label>
-            <input value={(form as Record<string, string>)[f.key]} onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))} placeholder={f.placeholder} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'var(--text-primary)', fontSize: 14, boxSizing: 'border-box' }} />
-          </div>
-        ))}
-        <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
-          <button onClick={onClose} style={{ flex: 1, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 12, padding: '12px', fontWeight: 600, color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 14 }}>Cancel</button>
-          <button onClick={saveDriver} style={{ flex: 1, background: 'var(--accent)', border: 'none', borderRadius: 12, padding: '12px', fontWeight: 600, color: '#fff', cursor: 'pointer', fontSize: 14 }}>Save</button>
-        </div>
-      </div>
-    </div>
-  );
+
 
   if (profileDriver) {
     const history: DeliveryRecord[] = [];
@@ -388,7 +404,13 @@ export default function DriversView({ addNotification }: Props) {
       )}
 
       {(showAdd || editDriver) && (
-        <DriverFormModal title={editDriver ? 'Edit Driver' : 'Add Driver'} onClose={() => { setShowAdd(false); setEditDriver(null); setForm(emptyForm); }} />
+        <DriverFormModal
+          title={editDriver ? 'Edit Driver' : 'Add Driver'}
+          form={form as Record<string, string>}
+          onClose={() => { setShowAdd(false); setEditDriver(null); setForm(emptyForm); }}
+          onSave={saveDriver}
+          onChange={(key, val) => setForm(p => ({ ...p, [key]: val }))}
+        />
       )}
     </div>
   );
