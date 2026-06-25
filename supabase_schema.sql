@@ -682,7 +682,7 @@ CREATE TABLE IF NOT EXISTS public.material_requisitions (
     notes TEXT,
     status TEXT NOT NULL DEFAULT 'PENDING',
     -- 'PENDING' | 'APPROVED' | 'REJECTED' | 'FULFILLED'
-    production_request_id TEXT REFERENCES public.production_requests(id) ON DELETE SET NULL,
+    production_request_id UUID,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
