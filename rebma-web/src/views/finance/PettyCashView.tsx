@@ -105,7 +105,7 @@ export default function FinancePettyCashView({ addNotification, currentUser }: P
       if (error) throw error;
       setEntries(prev => prev.map(e => e.id === editEntry.id ? { ...e, amount: updatedAmount, description: editForm.description, disbursedTo: editForm.disbursedTo, category: editForm.category, balanceAfter: updatedBalance } : e));
       addNotification?.('Petty cash entry updated successfully.');
-      supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Petty cash ${editEntry.id} updated`, performed_by: currentUser?.fullName || 'Finance', created_at: new Date().toISOString() }]).then(() => {}, () => {});
+      supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Petty cash ${editEntry.id} updated`, performed_by: currentUser?.fullName || 'Finance', timestamp: new Date().toISOString() }]).then(() => {}, () => {});
     } catch (err: any) {
       alert(err.message || 'Failed to update entry.');
     }
@@ -120,7 +120,7 @@ export default function FinancePettyCashView({ addNotification, currentUser }: P
       if (error) throw error;
       setEntries(prev => prev.filter(e => e.id !== id));
       addNotification?.('Entry deleted successfully.');
-      supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Petty cash ${id} deleted`, performed_by: currentUser?.fullName || 'Finance', created_at: new Date().toISOString() }]).then(() => {}, () => {});
+      supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Petty cash ${id} deleted`, performed_by: currentUser?.fullName || 'Finance', timestamp: new Date().toISOString() }]).then(() => {}, () => {});
     } catch (err: any) {
       alert(err.message || 'Failed to delete entry.');
     }
@@ -143,7 +143,7 @@ export default function FinancePettyCashView({ addNotification, currentUser }: P
       balance_after: newBalance,
       type: 'disbursement',
       recorded_by: currentUser?.fullName || 'Finance',
-      created_at: new Date().toISOString()
+      timestamp: new Date().toISOString()
     }]).then(() => {}, () => {});
     addNotification?.(`Petty cash disbursed: GHS ${amount.toLocaleString()} to ${form.disbursedTo}`);
     setShowDisbForm(false);

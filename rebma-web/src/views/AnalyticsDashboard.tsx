@@ -160,7 +160,7 @@ export default function AnalyticsDashboard({ department, currentUser, addNotific
       } else if (department === 'OPERATIONS') {
         const [{ count: cargoC }, { count: stockC }, { count: discC }] = await Promise.all([
           supabase.from('cargo_intake').select('*', { count: 'exact', head: true }),
-          supabase.from('stock_items').select('*', { count: 'exact', head: true }),
+          supabase.from('stock').select('*', { count: 'exact', head: true }),
           supabase.from('cargo_intake').select('*', { count: 'exact', head: true }).neq('discrepancies', 'None'),
         ]);
         setLiveStats([

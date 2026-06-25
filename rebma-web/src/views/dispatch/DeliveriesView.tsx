@@ -415,7 +415,7 @@ export default function DeliveriesView({ addNotification, currentUser }: Props) 
     if (delivery?.orderId) {
       supabase.from('orders').update({ status: 'DELIVERED' }).eq('id', delivery.orderId).then(() => {}, () => {});
     }
-    supabase.from('global_audit_history').insert({ department: 'DISPATCH', action: `Delivery ${id} marked as delivered`, performed_by: currentUser?.fullName || 'Dispatch', created_at: now }).then(() => {}, () => {});
+    supabase.from('global_audit_history').insert({ department: 'DISPATCH', action: `Delivery ${id} marked as delivered`, performed_by: currentUser?.fullName || 'Dispatch', timestamp: now }).then(() => {}, () => {});
     addNotification(`Delivery ${id} marked as delivered.`);
     if (detailRecord?.id === id) setDetailRecord(prev => prev ? { ...prev, status: 'DELIVERED', deliveredAt: now } : prev);
     setMenuOpen(null);
@@ -468,7 +468,7 @@ export default function DeliveriesView({ addNotification, currentUser }: Props) 
     ));
     supabase.from('delivery_logs').update({ driver_id: driverId, driver_name: driver.fullName, vehicle_id: driver.truckId, status: 'ASSIGNED', notes: notes || null }).eq('id', delivery.id).then(() => {}, () => {});
     supabase.from('supplier_order_notifications').insert({ order_id: delivery.orderId, message: `Driver ${driver.fullName} assigned to ${delivery.orderId}`, notified_department: 'OPERATIONS', read: false, created_at: now }).then(() => {}, () => {});
-    supabase.from('global_audit_history').insert({ department: 'DISPATCH', action: `Driver ${driver.fullName} assigned to ${delivery.id}`, performed_by: currentUser?.fullName || 'Dispatch', created_at: now }).then(() => {}, () => {});
+    supabase.from('global_audit_history').insert({ department: 'DISPATCH', action: `Driver ${driver.fullName} assigned to ${delivery.id}`, performed_by: currentUser?.fullName || 'Dispatch', timestamp: now }).then(() => {}, () => {});
     addNotification(`Driver ${driver.fullName} assigned to ${delivery.id}`);
     setAssignTarget(null);
     if (detailRecord?.id === delivery.id) setDetailRecord(prev => prev ? { ...prev, driverId, driverName: driver.fullName, vehicleId: driver.truckId, status: 'ASSIGNED' } : prev);

@@ -288,7 +288,7 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
               customer_name: String(selectedItem.raw?.client_name || selectedItem.submittedBy || ''),
               delivery_address: String(selectedItem.raw?.delivery_address || selectedItem.raw?.client_name || ''),
               status: 'PENDING_ASSIGNMENT',
-              created_at: now,
+              timestamp: now,
             }]);
             await supabase.from('supplier_order_notifications').insert([{ order_id: selectedItem.id, message: `${paymentMode} order approved by Management — ready for dispatch: ${selectedItem.description}`, notified_department: 'DISPATCH', read: false }]);
             await supabase.from('supplier_order_notifications').insert([{ order_id: selectedItem.id, message: `${paymentMode} order approved — Operations is preparing goods: ${selectedItem.description}`, notified_department: 'MARKETING', read: false }]);

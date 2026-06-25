@@ -264,7 +264,9 @@ export default function MgmtPriceSettingView({ addNotification, currentUser }: P
 
   async function handleDelete(id: string) {
     try {
-      await supabase.from('goods_prices').delete().eq('id', id);
+      const entry = prices.find(p => p.id === id);
+      if (!entry) return;
+      await supabase.from('goods_prices').delete().eq('product_name', entry.productName);
       setPrices(prev => prev.filter(p => p.id !== id));
       addNotification?.('Price entry removed');
     } catch (e) {

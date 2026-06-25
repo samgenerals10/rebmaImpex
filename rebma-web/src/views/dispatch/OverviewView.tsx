@@ -157,7 +157,7 @@ export default function DispatchOverviewView({ addNotification, setActiveSubTab,
     }).then(() => {}, () => {});
     supabase.from('global_audit_history').insert({
       department: 'DISPATCH', action: `Driver ${driver?.fullName} assigned to ${assignOrderId}`,
-      performed_by: currentUser?.fullName || 'Dispatch', created_at: now,
+      performed_by: currentUser?.fullName || 'Dispatch', timestamp: now,
     }).then(() => {}, () => {});
     addNotification?.(`Driver ${driver?.fullName} assigned to ${assignOrderId}`);
     setAssignOrderId(''); setAssignDriverId('');

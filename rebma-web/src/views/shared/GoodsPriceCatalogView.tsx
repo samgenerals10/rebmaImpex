@@ -38,7 +38,7 @@ export default function GoodsPriceCatalogView({ addNotification }: Props) {
           const unitPrice = typeof row.unit_price === 'number' ? row.unit_price : 0;
           const costPrice = typeof row.cost_price === 'number' ? row.cost_price : unitPrice * 0.65;
           return {
-            id: String(row.id),
+            id: String(row.product_name || row.id),
             productName: String(row.product_name || ''),
             category: String(row.category || 'INCOMING_GOODS'),
             unitPrice,

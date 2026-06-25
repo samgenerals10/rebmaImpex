@@ -128,7 +128,7 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
     supabase.from('delivery_logs').insert([{
       order_id: order.id,
       customer_name: order.clientName,
-      delivery_address: order.clientName,
+      delivery_address: order.destination || order.clientName,
       status: 'PENDING_ASSIGNMENT',
       created_at: new Date().toISOString(),
     }]).then(() => {}, () => {});
@@ -137,7 +137,7 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
       { order_id: order.id, message: `Your order ${order.id} has been approved by Finance. Operations is preparing your goods.`, notified_department: 'MARKETING', read: false },
       { order_id: order.id, message: `Order ${order.id} for ${order.clientName} is ready for delivery assignment.`, notified_department: 'DISPATCH', read: false },
     ]).then(() => {}, () => {});
-    supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Order ${order.id} APPROVED for ${order.clientName} — GHS ${order.totalAmount.toLocaleString()}`, performed_by: currentUser?.fullName || 'Finance', created_at: new Date().toISOString() }]).then(() => {}, () => {});
+    supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Order ${order.id} APPROVED for ${order.clientName} — GHS ${order.totalAmount.toLocaleString()}`, performed_by: currentUser?.fullName || 'Finance', timestamp: new Date().toISOString() }]).then(() => {}, () => {});
 
     addNotification?.(`Order ${order.id} approved. Operations notified.`);
     setSelected(null);
@@ -151,7 +151,7 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
 
     supabase.from('orders').update({ status: 'REJECTED', reject_reason: rejectReason }).eq('id', id).then(() => {}, () => {});
     supabase.from('supplier_order_notifications').insert([{ order_id: id, message: `Order ${id} rejected by Finance. Reason: ${rejectReason}`, notified_department: 'MARKETING', read: false }]).then(() => {}, () => {});
-    supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Order ${id} REJECTED. Reason: ${rejectReason}`, performed_by: currentUser?.fullName || 'Finance', created_at: new Date().toISOString() }]).then(() => {}, () => {});
+    supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Order ${id} REJECTED. Reason: ${rejectReason}`, performed_by: currentUser?.fullName || 'Finance', timestamp: new Date().toISOString() }]).then(() => {}, () => {});
 
     addNotification?.(`Order ${id} rejected.`);
     setRejectModal(null);

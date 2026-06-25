@@ -96,7 +96,7 @@ export default function PayrollView({ currentUser, staffList, addNotification }:
   const handleProcessBatch = (batch: PayrollBatch) => {
     const updated = { ...batch, status: 'PAID' as const, processedAt: new Date().toISOString().split('T')[0] };
     supabase.from('payroll_batches').update({ status: 'PAID' }).eq('id', batch.id).then(() => {}, () => {});
-    supabase.from('global_audit_history').insert([{ department: 'HR', action: `Payroll processed: ${batch.period}`, performed_by: currentUser?.fullName || 'HR Admin', created_at: new Date().toISOString() }]).then(() => {}, () => {});
+    supabase.from('global_audit_history').insert([{ department: 'HR', action: `Payroll processed: ${batch.period}`, performed_by: currentUser?.fullName || 'HR Admin', timestamp: new Date().toISOString() }]).then(() => {}, () => {});
     setBatches(prev => prev.map(b => b.id === batch.id ? updated : b));
     if (activeBatch?.id === batch.id) setActiveBatch(updated);
     addNotification(`Payroll batch ${batch.period} processed`);

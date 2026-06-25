@@ -92,7 +92,7 @@ export default function FinanceChequesView({ addNotification, currentUser }: Pro
       addNotification?.(`Cheque #${cheques.find(c => c.id === id)?.chequeNumber} marked as ${status}`);
     }
     supabase.from('finance_cheques').update({ status }).eq('id', id).then(() => {}, () => {});
-    supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Cheque ${id} status updated to ${status}`, performed_by: currentUser?.fullName || 'Finance', created_at: new Date().toISOString() }]).then(() => {}, () => {});
+    supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Cheque ${id} status updated to ${status}`, performed_by: currentUser?.fullName || 'Finance', timestamp: new Date().toISOString() }]).then(() => {}, () => {});
     setMenuOpen(null);
   }
 
@@ -132,7 +132,7 @@ export default function FinanceChequesView({ addNotification, currentUser }: Pro
       if (error) throw error;
       setCheques(prev => prev.map(c => c.id === editCheque.id ? { ...c, chequeNumber: editForm.chequeNumber, bankName: editForm.bankName, accountName: editForm.accountName, amount: updatedAmount, chequeDate: editForm.chequeDate, expectedClearing: editForm.expectedClearing, orderRef: editForm.orderRef } : c));
       addNotification?.('Cheque updated successfully.');
-      supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Cheque ${editCheque.id} updated`, performed_by: currentUser?.fullName || 'Finance', created_at: new Date().toISOString() }]).then(() => {}, () => {});
+      supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Cheque ${editCheque.id} updated`, performed_by: currentUser?.fullName || 'Finance', timestamp: new Date().toISOString() }]).then(() => {}, () => {});
     } catch (err: any) {
       alert(err.message || 'Failed to update cheque.');
     }
@@ -147,7 +147,7 @@ export default function FinanceChequesView({ addNotification, currentUser }: Pro
       if (error) throw error;
       setCheques(prev => prev.filter(c => c.id !== id));
       addNotification?.('Cheque deleted successfully.');
-      supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Cheque ${id} deleted`, performed_by: currentUser?.fullName || 'Finance', created_at: new Date().toISOString() }]).then(() => {}, () => {});
+      supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Cheque ${id} deleted`, performed_by: currentUser?.fullName || 'Finance', timestamp: new Date().toISOString() }]).then(() => {}, () => {});
     } catch (err: any) {
       alert(err.message || 'Failed to delete cheque.');
     }
@@ -169,7 +169,7 @@ export default function FinanceChequesView({ addNotification, currentUser }: Pro
       order_ref: form.orderRef,
       status: 'Received',
       recorded_by: currentUser?.fullName || 'Finance',
-      created_at: new Date().toISOString()
+      timestamp: new Date().toISOString()
     }]).then(() => {}, () => {});
     addNotification?.(`Cheque #${form.chequeNumber} added to register`);
     setShowForm(false);

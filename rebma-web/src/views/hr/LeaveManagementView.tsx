@@ -13,14 +13,14 @@ interface LeaveRequest {
   endDate: string;
   days: number;
   reason: string;
-  status: 'Pending' | 'Approved' | 'Rejected';
+  status: 'PENDING' | 'Approved' | 'Rejected';
   rejectionReason?: string;
 }
 
 
 const DEPARTMENTS = ['All', 'Operations', 'Finance', 'Logistics', 'HR', 'Marketing', 'Reception', 'Production', 'Management'];
 const LEAVE_TYPES = ['All', 'Annual', 'Sick', 'Personal', 'Emergency'];
-const STATUSES = ['All', 'Pending', 'Approved', 'Rejected'];
+const STATUSES = ['All', 'PENDING', 'APPROVED', 'REJECTED'];
 
 const leaveTypeBadge = (type: string) => {
   const map: Record<string, { bg: string; color: string }> = {
@@ -33,8 +33,8 @@ const leaveTypeBadge = (type: string) => {
 };
 
 const statusBadge = (status: string) => {
-  if (status === 'Approved') return { bg: 'rgba(16,185,129,0.12)', color: '#10b981' };
-  if (status === 'Rejected') return { bg: 'rgba(239,68,68,0.12)', color: '#ef4444' };
+  if (status === 'APPROVED') return { bg: 'rgba(16,185,129,0.12)', color: '#10b981' };
+  if (status === 'REJECTED') return { bg: 'rgba(239,68,68,0.12)', color: '#ef4444' };
   return { bg: 'rgba(245,158,11,0.12)', color: '#f59e0b' };
 };
 
@@ -65,7 +65,7 @@ function CalendarView({ leaves }: { leaves: LeaveRequest[] }) {
   const leavesThisMonth = leaves.filter(l => {
     const start = new Date(l.startDate);
     const end = new Date(l.endDate);
-    return l.status === 'Approved' && (start.getMonth() === month || end.getMonth() === month);
+    return l.status === 'APPROVED' && (start.getMonth() === month || end.getMonth() === month);
   });
 
   const getLeaveForDay = (day: number) => {
@@ -189,15 +189,15 @@ export default function LeaveManagementView({ currentUser, addNotification }: Pr
   };
 
   const handleApprove = async (id: string) => {
-    await supabase.from('leave_requests').update({ status: 'Approved' }).eq('id', id);
-    setLeaves(prev => prev.map(l => l.id === id ? { ...l, status: 'Approved' } : l));
+    await supabase.from('leave_requests').update({ status: 'APPROVED' }).eq('id', id);
+    setLeaves(prev => prev.map(l => l.id === id ? { ...l, status: 'APPROVED' } : l));
     addNotification('Leave request approved');
   };
 
   const handleReject = async () => {
     if (!rejectId) return;
-    await supabase.from('leave_requests').update({ status: 'Rejected', rejection_reason: rejectReason }).eq('id', rejectId);
-    setLeaves(prev => prev.map(l => l.id === rejectId ? { ...l, status: 'Rejected', rejectionReason: rejectReason } : l));
+    await supabase.from('leave_requests').update({ status: 'REJECTED', rejection_reason: rejectReason }).eq('id', rejectId);
+    setLeaves(prev => prev.map(l => l.id === rejectId ? { ...l, status: 'REJECTED', rejectionReason: rejectReason } : l));
     addNotification('Leave request rejected');
     setRejectId(null);
     setRejectReason('');
@@ -205,7 +205,7 @@ export default function LeaveManagementView({ currentUser, addNotification }: Pr
 
   const handleAdd = async () => {
     const days = calcDays(form.startDate, form.endDate);
-    const newLeave: LeaveRequest = { id: Date.now().toString(), ...form, days, status: 'Pending' };
+    const newLeave: LeaveRequest = { id: Date.now().toString(), ...form, days, status: 'PENDING' };
     const dbData = mapToDB(newLeave);
     const { error } = await supabase.from('leave_requests').insert([dbData]);
     if (!error) {
@@ -251,8 +251,8 @@ export default function LeaveManagementView({ currentUser, addNotification }: Pr
   };
 
   const totalPending = leaves.filter(l => l.status === 'Pending').length;
-  const totalApproved = leaves.filter(l => l.status === 'Approved').length;
-  const onLeaveNow = leaves.filter(l => l.status === 'Approved' && l.startDate <= '2026-06-12' && l.endDate >= '2026-06-12').length;
+  const totalApproved = leaves.filter(l => l.status === 'APPROVED').length;
+  const onLeaveNow = leaves.filter(l => l.status === 'APPROVED' && l.startDate <= '2026-06-12' && l.endDate >= '2026-06-12').length;
 
   return (
     <div style={{ padding: '1.5rem', maxWidth: 1100, margin: '0 auto' }}>
@@ -582,7 +582,7 @@ export default function LeaveManagementView({ currentUser, addNotification }: Pr
                   {['Pending', 'Approved', 'Rejected'].map(s => <option key={s}>{s}</option>)}
                 </select>
               </div>
-              {editForm.status === 'Rejected' && (
+              {editForm.status === 'REJECTED' && (
                 <div>
                   <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Rejection Reason</label>
                   <textarea value={editForm.rejectionReason || ''} onChange={e => setEditForm(p => p ? ({ ...p, rejectionReason: e.target.value }) : null)} rows={2}

@@ -60,9 +60,9 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
         { data: expenses }
       ] = await Promise.all([
         supabase.from('orders').select('*'),
-        supabase.from('transactions').select('*'),
+        Promise.resolve({ data: [] }),
         supabase.from('cargo_intake').select('*'),
-        supabase.from('departments').select('*'),
+        Promise.resolve({ data: [] }),
         supabase.from('profiles').select('*'),
         supabase.from('production_requests').select('*').then(r => r, () => ({ data: [] })),
         supabase.from('general_purchases').select('*').then(r => r, () => ({ data: [] })),

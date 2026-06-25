@@ -125,7 +125,7 @@ export default function PerformanceAlertsView({ currentUser, addNotification }: 
         department: 'HR',
         action: `Performance alert ${isResolved ? 'resolved' : 'updated'}: ${alert.staffName}`,
         performed_by: currentUser?.fullName || 'HR Admin',
-        created_at: new Date().toISOString(),
+        timestamp: new Date().toISOString(),
       }]);
 
       const updated: PerformanceAlert = {

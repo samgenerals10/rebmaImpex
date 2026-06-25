@@ -73,12 +73,12 @@ export default function AnalyticsView({ addNotification }: AddNotificationProps)
 
         // Stock trend from stock_items
         const { data: stockRows } = await supabase
-          .from('stock_items')
-          .select('quantity, minimum_quantity, max_quantity');
+          .from('stock')
+          .select('quantity, minimum_level, maximum_level');
         if (stockRows && stockRows.length > 0) {
-          const items = stockRows as { quantity: number; minimum_quantity: number; max_quantity: number }[];
-          const inStock = items.filter(s => s.quantity > (s.minimum_quantity || 0)).length;
-          const lowStock = items.filter(s => s.quantity > 0 && s.quantity <= (s.minimum_quantity || 0)).length;
+          const items = stockRows as { quantity: number; minimum_level: number; maximum_level: number }[];
+          const inStock = items.filter(s => s.quantity > (s.minimum_level || 0)).length;
+          const lowStock = items.filter(s => s.quantity > 0 && s.quantity <= (s.minimum_level || 0)).length;
           const outOfStock = items.filter(s => s.quantity <= 0).length;
           const months = Array.from({ length: 6 }, (_, i) => {
             const d = new Date(); d.setMonth(d.getMonth() - (5 - i));
@@ -94,7 +94,7 @@ export default function AnalyticsView({ addNotification }: AddNotificationProps)
 
         // Category breakdown from stock_items
         const { data: catRows } = await supabase
-          .from('stock_items')
+          .from('stock')
           .select('category');
         if (catRows && catRows.length > 0) {
           const catMap: Record<string, number> = {};

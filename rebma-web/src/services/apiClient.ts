@@ -510,7 +510,7 @@ export const operations = {
         vehicle_id: vehicleId,
         driver_name: driverName || null,
         status: 'ASSIGNED',
-        created_at: new Date().toISOString(),
+        timestamp: new Date().toISOString(),
         updated_at: new Date().toISOString()
       }).select();
     if (delErr) throw new Error(delErr.message);
@@ -855,7 +855,7 @@ export const marketing = {
         total_amount: Number(data.totalAmount),
         status: 'PENDING_FINANCE',
         created_by: performerId,
-        created_at: new Date().toISOString(),
+        timestamp: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         metadata: {
           clientName: data.clientName,
@@ -1094,7 +1094,7 @@ export const production = {
         items,
         notes: notes || null,
         status: 'PENDING_MANAGEMENT',
-        created_at: new Date().toISOString(),
+        timestamp: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         extended_data: {
           notes: notes || null,
