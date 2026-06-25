@@ -266,13 +266,18 @@ export default function OperationsDashboard({
     return () => window.removeEventListener('click', handleOutsideClick);
   }, []);
 
-  const lineChartData = [
-    { name: 'Mon', Ingested: 120, Released: 90 },
-    { name: 'Tue', Ingested: 240, Released: 150 },
-    { name: 'Wed', Ingested: 180, Released: 160 },
-    { name: 'Thu', Ingested: 300, Released: 220 },
-    { name: 'Fri', Ingested: 210, Released: 180 },
-  ];
+  const lineChartData = (() => {
+    const today = new Date();
+    return Array.from({ length: 5 }, (_, i) => {
+      const d = new Date(today);
+      d.setDate(d.getDate() - (4 - i));
+      const dayStr = d.toISOString().slice(0, 10);
+      const label = d.toLocaleDateString('en', { weekday: 'short' });
+      const ingested = localCargo.filter(c => String(c.createdAt || '').startsWith(dayStr)).length;
+      const released = localOrders.filter(o => o.status === 'DELIVERED' && String(o.createdAt || '').startsWith(dayStr)).length;
+      return { name: label, Ingested: ingested, Released: released };
+    });
+  })();
 
   const totalTons = localCargo.reduce((acc, item) => acc + item.weight, 0);
   const pendingReleaseCount = localOrders.filter(o => o.status === 'PROCESSING').length;
@@ -290,10 +295,48 @@ export default function OperationsDashboard({
   ];
 
   const kpiDetails = [
-    { title: 'Total Cargo Weight', metric: 'Tons', trendData: [{name:'Jan',value:42},{name:'Feb',value:58},{name:'Mar',value:51},{name:'Apr',value:73},{name:'May',value:65},{name:'Jun',value:80}], breakdownData: [{name:'Steel',value:120}, {name:'Cement',value:85}, {name:'Other',value:45}], tableData: [{ref:'ING-01', product:'Steel Rods', weight:'25t', status:'Cleared'}, {ref:'ING-02', product:'Cement', weight:'18t', status:'Pending'}], columns: [{key:'ref',label:'Ref'}, {key:'product',label:'Product'}, {key:'weight',label:'Weight'}, {key:'status',label:'Status'}] },
-    { title: 'Awaiting Release', metric: 'Items', trendData: [{name:'Jan',value:42},{name:'Feb',value:58},{name:'Mar',value:51},{name:'Apr',value:73},{name:'May',value:65},{name:'Jun',value:80}], breakdownData: [{name:'Ready',value:14}, {name:'Pending',value:7}, {name:'Held',value:3}], tableData: [{id:'STK-01', item:'Shea Butter', qty:200, status:'Pending Release'}, {id:'STK-02', item:'Palm Oil', qty:150, status:'Ready'}], columns: [{key:'id',label:'ID'}, {key:'item',label:'Item'}, {key:'qty',label:'Qty'}, {key:'status',label:'Status'}] },
-    { title: 'Awaiting Pricing', metric: 'Items', trendData: [{name:'Jan',value:42},{name:'Feb',value:58},{name:'Mar',value:51},{name:'Apr',value:73},{name:'May',value:65},{name:'Jun',value:80}], breakdownData: [{name:'Priced',value:22}, {name:'Unpriced',value:9}, {name:'Reviewed',value:5}], tableData: [{code:'GDS-01', name:'Groundnut Oil', unit:'50L'}, {code:'GDS-02', name:'Cocoa Butter', unit:'25kg'}], columns: [{key:'code',label:'Code'}, {key:'name',label:'Product'}, {key:'unit',label:'Unit'}] },
-    { title: 'Discrepancy Notes', metric: 'Flags', trendData: [{name:'Jan',value:42},{name:'Feb',value:58},{name:'Mar',value:51},{name:'Apr',value:73},{name:'May',value:65},{name:'Jun',value:80}], breakdownData: [{name:'Resolved',value:18}, {name:'Open',value:4}, {name:'Escalated',value:2}], tableData: [{id:'DIS-01', item:'Steel Rods', issue:'Short weight', status:'Open'}, {id:'DIS-02', item:'PVC Pipes', issue:'Damaged batch', status:'Resolved'}], columns: [{key:'id',label:'ID'}, {key:'item',label:'Item'}, {key:'issue',label:'Issue'}, {key:'status',label:'Status'}] }
+    {
+      title: 'Total Cargo Weight', metric: 'Tons',
+      trendData: localCargo.slice(-6).map((c, i) => ({ name: c.goodsCode || `#${i + 1}`, value: Number(c.weight || 0) })),
+      breakdownData: [
+        { name: 'Approved', value: localCargo.filter(c => c.status === 'APPROVED').length },
+        { name: 'Pending', value: localCargo.filter(c => c.status === 'PENDING_MANAGEMENT_APPROVAL').length },
+        { name: 'Rejected', value: localCargo.filter(c => c.status === 'REJECTED').length },
+      ],
+      tableData: localCargo.slice(0, 8).map(c => ({ ref: c.goodsCode || c.id, product: c.productName || c.company || '—', weight: `${Number(c.weight || 0).toFixed(1)}t`, status: c.status.replace('_', ' ') })),
+      columns: [{ key: 'ref', label: 'Ref' }, { key: 'product', label: 'Product' }, { key: 'weight', label: 'Weight' }, { key: 'status', label: 'Status' }]
+    },
+    {
+      title: 'Awaiting Release', metric: 'Items',
+      trendData: localOrders.filter(o => o.status === 'PROCESSING').slice(-6).map((o, i) => ({ name: `#${i + 1}`, value: 1 })),
+      breakdownData: [
+        { name: 'Processing', value: localOrders.filter(o => o.status === 'PROCESSING').length },
+        { name: 'Delivered', value: localOrders.filter(o => o.status === 'DELIVERED').length },
+        { name: 'Pending', value: localOrders.filter(o => o.status === 'PENDING_MANAGEMENT' || o.status === 'PENDING_FINANCE').length },
+      ],
+      tableData: localOrders.filter(o => o.status === 'PROCESSING').slice(0, 8).map(o => ({ id: o.ticketNumber || o.id, item: o.productName || '—', qty: '—', status: 'Awaiting Release' })),
+      columns: [{ key: 'id', label: 'ID' }, { key: 'item', label: 'Item' }, { key: 'qty', label: 'Qty' }, { key: 'status', label: 'Status' }]
+    },
+    {
+      title: 'Pending Approval', metric: 'Items',
+      trendData: localCargo.filter(c => c.status === 'PENDING_MANAGEMENT_APPROVAL').slice(-6).map((c, i) => ({ name: c.goodsCode || `#${i + 1}`, value: 1 })),
+      breakdownData: [
+        { name: 'Pending', value: localCargo.filter(c => c.status === 'PENDING_MANAGEMENT_APPROVAL').length },
+        { name: 'Approved', value: localCargo.filter(c => c.status === 'APPROVED').length },
+      ],
+      tableData: localCargo.filter(c => c.status === 'PENDING_MANAGEMENT_APPROVAL').slice(0, 8).map(c => ({ code: c.goodsCode || c.id, name: c.productName || c.company || '—', unit: String((c as any).unit || 'units') })),
+      columns: [{ key: 'code', label: 'Code' }, { key: 'name', label: 'Product' }, { key: 'unit', label: 'Unit' }]
+    },
+    {
+      title: 'Discrepancy Notes', metric: 'Flags',
+      trendData: localCargo.filter(c => c.discrepancies && c.discrepancies !== 'None').slice(-6).map((c, i) => ({ name: c.goodsCode || `#${i + 1}`, value: 1 })),
+      breakdownData: [
+        { name: 'Flagged', value: discrepancyCount },
+        { name: 'Clear', value: localCargo.filter(c => !c.discrepancies || c.discrepancies === 'None').length },
+      ],
+      tableData: localCargo.filter(c => c.discrepancies && c.discrepancies !== 'None').slice(0, 8).map(c => ({ id: c.goodsCode || c.id, item: c.productName || c.company || '—', issue: c.discrepancies || '—', status: 'Flagged' })),
+      columns: [{ key: 'id', label: 'ID' }, { key: 'item', label: 'Item' }, { key: 'issue', label: 'Issue' }, { key: 'status', label: 'Status' }]
+    }
   ];
 
 

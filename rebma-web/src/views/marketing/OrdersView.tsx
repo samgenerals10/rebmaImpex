@@ -50,10 +50,18 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
   const [page, setPage] = useState(0);
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const [showNewModal, setShowNewModal] = useState(false);
+
+  const openNewOrderModal = () => {
+    setShowNewModal(true);
+    supabase.from('goods_prices').select('product_name').order('product_name').then(({ data }) => {
+      setAvailableProducts((data || []).map((r: any) => String(r.product_name)));
+    }, () => {});
+  };
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   const [form, setForm] = useState({ clientName: '', productName: '', destination: '', totalAmount: '', paymentMode: 'CASH' as Order['paymentMode'] });
+  const [availableProducts, setAvailableProducts] = useState<string[]>([]);
 
   useEffect(() => {
     const load = async () => {
@@ -139,7 +147,7 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
           <button onClick={() => addNotification('PDF export ready.')} className="flex items-center gap-1 px-3 py-1.5 bg-[var(--bg-input)] text-[var(--text-secondary)] text-xs font-semibold rounded-xl cursor-pointer hover:opacity-90">
             <FileText className="w-3.5 h-3.5" /> PDF
           </button>
-          <button onClick={() => setShowNewModal(true)} className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--accent)] text-white text-xs font-semibold rounded-xl cursor-pointer hover:opacity-90">
+          <button onClick={openNewOrderModal} className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--accent)] text-white text-xs font-semibold rounded-xl cursor-pointer hover:opacity-90">
             <Plus className="w-3.5 h-3.5" /> New Order
           </button>
         </div>
@@ -255,7 +263,6 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
             </div>
             {[
               { label: 'Customer Name *', key: 'clientName', type: 'text' },
-              { label: 'Product', key: 'productName', type: 'text' },
               { label: 'Destination', key: 'destination', type: 'text' },
               { label: 'Amount (GHS) *', key: 'totalAmount', type: 'number' },
             ].map(f => (
@@ -265,6 +272,20 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
                   className="w-full px-3 py-2 text-sm rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />
               </div>
             ))}
+            <div>
+              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Product</label>
+              {availableProducts.length > 0 ? (
+                <select value={form.productName} onChange={e => setForm(prev => ({ ...prev, productName: e.target.value }))}
+                  className="w-full px-3 py-2 text-sm rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]">
+                  <option value="">— Select product —</option>
+                  {availableProducts.map(p => <option key={p} value={p}>{p}</option>)}
+                </select>
+              ) : (
+                <input type="text" value={form.productName} onChange={e => setForm(prev => ({ ...prev, productName: e.target.value }))}
+                  placeholder="Type product name…"
+                  className="w-full px-3 py-2 text-sm rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />
+              )}
+            </div>
             <div>
               <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Payment Mode</label>
               <select value={form.paymentMode} onChange={e => setForm(prev => ({ ...prev, paymentMode: e.target.value as Order['paymentMode'] }))}

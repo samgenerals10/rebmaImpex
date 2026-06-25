@@ -247,11 +247,12 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
           const unit = String(cargoRow.goods_type || cargoRow.unit || 'units');
           const now = new Date().toISOString();
 
-          const { data: existingStock } = await supabase.from('stock').select('id, quantity').eq('product_name', productName).maybeSingle();
+          const { data: existingStock } = await supabase.from('stock').select('id, quantity').eq('product_name', productName).maybeSingle().then(r => r, () => ({ data: null, error: null }));
           if (existingStock) {
-            await supabase.from('stock').update({ quantity: (Number(existingStock.quantity) || 0) + incomingQty, last_updated: now }).eq('id', existingStock.id);
+            await supabase.from('stock').update({ quantity: (Number(existingStock.quantity) || 0) + incomingQty, last_updated: now }).eq('id', existingStock.id).then(() => {}, () => {});
           } else {
-            await supabase.from('stock').insert({ product_name: productName, product_code: productCode, category: 'INCOMING_GOODS', quantity: incomingQty, maximum_level: incomingQty * 2 || 1000, minimum_level: Math.round(incomingQty * 0.1) || 50, unit, last_updated: now });
+            const { error: stockErr } = await supabase.from('stock').upsert([{ product_name: productName, product_code: productCode, category: 'INCOMING_GOODS', quantity: incomingQty, maximum_level: incomingQty * 2 || 1000, minimum_level: Math.round(incomingQty * 0.1) || 50, unit, last_updated: now }], { onConflict: 'product_name' });
+            if (stockErr) addNotification?.(`Stock table update failed: ${stockErr.message}. Please run the SQL migrations in supabase_schema.sql.`);
           }
           await supabase.from('stock_ledger').insert({ product_name: productName, movement_type: 'ADD', quantity: incomingQty, reference: `Cargo approved: ${selectedItem.requestId}`, notes: selectedItem.description, created_at: now });
 

@@ -486,8 +486,48 @@ ALTER TABLE public.wip_stock ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Allow authenticated users full access to wip_stock" ON public.wip_stock FOR ALL TO authenticated USING (true) WITH CHECK (true);
 ALTER PUBLICATION supabase_realtime ADD TABLE public.wip_stock;
 
--- Alter stock table to include category
-ALTER TABLE public.stock ADD COLUMN IF NOT EXISTS category TEXT;
+-- Stock table (finished goods inventory — auto-populated when Management approves cargo)
+CREATE TABLE IF NOT EXISTS public.stock (
+    id TEXT PRIMARY KEY DEFAULT 'STK-' || substring(md5(random()::text) from 1 for 8),
+    product_name TEXT UNIQUE NOT NULL,
+    product_code TEXT,
+    category TEXT DEFAULT 'INCOMING_GOODS',
+    quantity NUMERIC NOT NULL DEFAULT 0,
+    maximum_level NUMERIC DEFAULT 1000,
+    minimum_level NUMERIC DEFAULT 50,
+    unit TEXT DEFAULT 'units',
+    last_updated TIMESTAMPTZ DEFAULT NOW(),
+    updated_by TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE public.stock ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow authenticated users full access to stock" ON public.stock FOR ALL TO authenticated USING (true) WITH CHECK (true);
+ALTER PUBLICATION supabase_realtime ADD TABLE public.stock;
+
+-- Stock ledger (movement log — appended on every stock change)
+CREATE TABLE IF NOT EXISTS public.stock_ledger (
+    id TEXT PRIMARY KEY DEFAULT 'LEDG-' || substring(md5(random()::text) from 1 for 8),
+    product_name TEXT NOT NULL,
+    movement_type TEXT NOT NULL DEFAULT 'ADD',
+    quantity NUMERIC NOT NULL DEFAULT 0,
+    reference TEXT,
+    notes TEXT,
+    performed_by TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE public.stock_ledger ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow authenticated users full access to stock_ledger" ON public.stock_ledger FOR ALL TO authenticated USING (true) WITH CHECK (true);
+ALTER PUBLICATION supabase_realtime ADD TABLE public.stock_ledger;
+
+-- Migration: if stock or stock_ledger already exist, add any missing columns:
+ALTER TABLE public.stock ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'INCOMING_GOODS';
+ALTER TABLE public.stock ADD COLUMN IF NOT EXISTS product_code TEXT;
+ALTER TABLE public.stock ADD COLUMN IF NOT EXISTS maximum_level NUMERIC DEFAULT 1000;
+ALTER TABLE public.stock ADD COLUMN IF NOT EXISTS minimum_level NUMERIC DEFAULT 50;
+ALTER TABLE public.stock ADD COLUMN IF NOT EXISTS unit TEXT DEFAULT 'units';
+ALTER TABLE public.stock ADD COLUMN IF NOT EXISTS last_updated TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE public.stock ADD COLUMN IF NOT EXISTS updated_by TEXT;
+ALTER TABLE public.stock ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
 
 -- FINANCE EXPENSES TABLE
 CREATE TABLE IF NOT EXISTS public.finance_expenses (

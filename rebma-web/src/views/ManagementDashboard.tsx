@@ -84,6 +84,32 @@ export default function ManagementDashboard({
     }
   };
 
+  const [lineChartData, setLineChartData] = useState<Array<{ name: string; Approved: number; Rejected: number }>>([]);
+
+  useEffect(() => {
+    const today = new Date();
+    const days = Array.from({ length: 5 }, (_, i) => {
+      const d = new Date(today);
+      d.setDate(d.getDate() - (4 - i));
+      return { date: d.toISOString().slice(0, 10), label: d.toLocaleDateString('en', { weekday: 'short' }) };
+    });
+    supabase
+      .from('global_audit_history')
+      .select('action, timestamp')
+      .eq('department', 'MANAGEMENT')
+      .gte('timestamp', days[0].date + 'T00:00:00.000Z')
+      .then(({ data }) => {
+        const rows = data || [];
+        setLineChartData(days.map(({ date, label }) => ({
+          name: label,
+          Approved: rows.filter((r: any) => String(r.action).startsWith('APPROVE') && String(r.timestamp || '').startsWith(date)).length,
+          Rejected: rows.filter((r: any) => String(r.action).startsWith('REJECT') && String(r.timestamp || '').startsWith(date)).length,
+        })));
+      }, () => {
+        setLineChartData(days.map(({ label }) => ({ name: label, Approved: 0, Rejected: 0 })));
+      });
+  }, []);
+
   const [expandedCreditId, setExpandedCreditId] = useState<string | null>(null);
   const [priceForm, setPriceForm] = useState({ productName: '', category: 'INCOMING_GOODS' as GoodsPrice['category'], unitPrice: '', currency: 'GHS' as 'GHS' | 'USD' });
 
@@ -153,14 +179,6 @@ export default function ManagementDashboard({
       } catch { /* silent */ }
     })();
   }, []);
-
-  const lineChartData = [
-    { name: 'Mon', Approved: 8, Rejected: 1 },
-    { name: 'Tue', Approved: 12, Rejected: 0 },
-    { name: 'Wed', Approved: 15, Rejected: 2 },
-    { name: 'Thu', Approved: 10, Rejected: 1 },
-    { name: 'Fri', Approved: 18, Rejected: 3 },
-  ];
 
   const pendingCargoCount = localGoods.filter(i => i.status === 'PENDING_MANAGEMENT_APPROVAL').length;
   const totalPendingIntakes = pendingCargoCount + pendingGeneralPurchases.length;

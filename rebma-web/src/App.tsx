@@ -1233,17 +1233,21 @@ export default function App() {
   // Unread internal email count (for sidebar badge)
   const [unreadEmailCount, setUnreadEmailCount] = useState<number>(0);
 
-  // Notification system — real toast notifications
+  // Notification system — notifications persist in bell until user clears them
   const [notifications, setNotifications] = useState<Array<{ id: string; msg: string; time: string }>>([]);
+  const [activeToastIds, setActiveToastIds] = useState<Set<string>>(new Set());
 
   const addNotification = (msg: string) => {
     const id = Date.now().toString();
     const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    setNotifications(prev => [{ id, msg, time }, ...prev.slice(0, 49)]); // keep max 50
-    // Auto-dismiss toast quickly — sound is played by NotificationsPanel on real DB inserts
+    setNotifications(prev => [{ id, msg, time }, ...prev.slice(0, 49)]); // keep max 50 in bell
+    setActiveToastIds(prev => { const s = new Set(prev); s.add(id); return s; });
+    // Play sound for in-app notifications
+    try { playNotificationSound(getSavedSound(), getSavedVolume()); } catch {}
+    // Auto-dismiss toast visually after 5 seconds (notifications remain in bell)
     setTimeout(() => {
-      setNotifications(prev => prev.filter(n => n.id !== id));
-    }, 1200);
+      setActiveToastIds(prev => { const s = new Set(prev); s.delete(id); return s; });
+    }, 5000);
   };
 
   // Change theme class on document body (redundant safety sync)
@@ -3653,7 +3657,7 @@ function AppInner({
                 setActiveMobileView('dashboard');
               }}
               notifications={notifications}
-              onClearNotifications={() => setNotifications([])}
+              onClearNotifications={() => { setNotifications([]); setActiveToastIds(new Set()); }}
               onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
               currentUser={currentUser}
               onOpenNotifications={() => setIsMobileNotificationsActive(true)}
@@ -3778,7 +3782,7 @@ function AppInner({
         {/* 9. GLOBAL TOAST NOTIFICATION OVERLAY */}
         <div className="fixed bottom-6 right-6 z-[300] flex flex-col gap-2 max-w-sm pointer-events-none">
           <AnimatePresence mode="sync">
-            {notifications.slice(0, 3).map((n: { id: string; msg: string; time: string }) => (
+            {notifications.filter((n: { id: string; msg: string; time: string }) => activeToastIds.has(n.id)).slice(0, 3).map((n: { id: string; msg: string; time: string }) => (
               <motion.div
                 key={n.id}
                 initial={{ opacity: 0, x: 40, scale: 0.9 }}
