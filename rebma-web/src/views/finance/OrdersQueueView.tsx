@@ -68,6 +68,22 @@ const EMPTY_FORM: PaymentForm = {
   ghanaCardNumber: '', dueDate: '', paymentTerms: 'Net 30', creditAmount: '',
 };
 
+function mapRow(r: any): Order {
+  return {
+    id: String(r.id || ''),
+    ticketNumber: r.ticket_number || r.ticketNumber || r.id,
+    clientName: r.client_name || r.clientName || '',
+    productName: r.product_name || r.productName || '',
+    destination: r.destination || '',
+    paymentMode: r.payment_mode || r.paymentMode || 'CASH',
+    totalAmount: Number(r.total_amount ?? r.totalAmount ?? 0),
+    status: r.status || 'PENDING_FINANCE',
+    createdAt: r.created_at || r.createdAt || '',
+    products: r.product_name || r.productName || r.products || '',
+    submittedBy: r.created_by || r.submittedBy || '',
+  };
+}
+
 export default function FinanceOrdersQueueView({ addNotification, ordersList: propOrders, setOrdersList, onEvaluateOrder, currentUser }: Props) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(!propOrders || propOrders.length === 0);
@@ -90,8 +106,8 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
     const load = async () => {
       setLoadingOrders(true);
       try {
-        const { data } = await supabase.from('orders').select('*').eq('status', 'PENDING_FINANCE').order('created_at', { ascending: false }).limit(200);
-        const rows = (data ?? []) as Order[];
+        const { data } = await supabase.from('orders').select('*').order('created_at', { ascending: false }).limit(200);
+        const rows = (data ?? []).map(mapRow);
         setAllOrders(rows);
         setOrders(rows);
       } catch {
@@ -106,7 +122,7 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
   const displayOrders = (propOrders && propOrders.length > 0 ? propOrders : allOrders);
 
   const filtered = displayOrders.filter(o => {
-    const matchSearch = !search || o.clientName.toLowerCase().includes(search.toLowerCase()) || o.id.toLowerCase().includes(search.toLowerCase());
+    const matchSearch = !search || (o.clientName || '').toLowerCase().includes(search.toLowerCase()) || (o.id || '').toLowerCase().includes(search.toLowerCase());
     const matchMode = modeFilter === 'All' || o.paymentMode === modeFilter;
     const matchStatus = statusFilter === 'All' || o.status === statusFilter;
     return matchSearch && matchMode && matchStatus;
@@ -137,7 +153,7 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
       { order_id: order.id, message: `Your order ${order.id} has been approved by Finance. Operations is preparing your goods.`, notified_department: 'MARKETING', read: false },
       { order_id: order.id, message: `Order ${order.id} for ${order.clientName} is ready for delivery assignment.`, notified_department: 'DISPATCH', read: false },
     ]).then(() => {}, () => {});
-    supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Order ${order.id} APPROVED for ${order.clientName} — GHS ${order.totalAmount.toLocaleString()}`, performed_by: currentUser?.fullName || 'Finance', timestamp: new Date().toISOString() }]).then(() => {}, () => {});
+    supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Order ${order.id} APPROVED for ${order.clientName} — GHS ${(Number(order.totalAmount ?? 0)).toLocaleString()}`, performed_by: currentUser?.fullName || 'Finance', timestamp: new Date().toISOString() }]).then(() => {}, () => {});
 
     addNotification?.(`Order ${order.id} approved. Operations notified.`);
     setSelected(null);
@@ -204,7 +220,7 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {[
-              { label: 'Total Amount', value: `GHS ${selected.totalAmount.toLocaleString()}` },
+              { label: 'Total Amount', value: `GHS ${(Number(selected.totalAmount ?? 0)).toLocaleString()}` },
               { label: 'Products', value: selected.products || '—' },
               { label: 'Submitted By', value: selected.submittedBy || '—' },
               { label: 'Payment Mode', value: selected.paymentMode },
@@ -383,7 +399,7 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
                   <td className="px-4 py-3 font-mono text-xs text-[var(--text-secondary)]">{order.id}</td>
                   <td className="px-4 py-3 font-medium text-[var(--text-primary)] whitespace-nowrap">{order.clientName}</td>
                   <td className="px-4 py-3 text-[var(--text-secondary)] max-w-[160px]"><p className="truncate text-xs">{order.products || '—'}</p></td>
-                  <td className="px-4 py-3 font-semibold text-[var(--text-primary)] whitespace-nowrap">GHS {order.totalAmount.toLocaleString()}</td>
+                  <td className="px-4 py-3 font-semibold text-[var(--text-primary)] whitespace-nowrap">GHS {(Number(order.totalAmount ?? 0)).toLocaleString()}</td>
                   <td className="px-4 py-3"><span className={`text-xs px-2 py-1 rounded-full font-medium ${MODE_COLORS[order.paymentMode] || ''}`}>{order.paymentMode}</span></td>
                   <td className="px-4 py-3 text-[var(--text-muted)] whitespace-nowrap text-xs">{order.createdAt}</td>
                   <td className="px-4 py-3"><span className={`text-xs px-2 py-1 rounded-full font-medium ${STATUS_COLORS[order.status] || ''}`}>{order.status}</span></td>
