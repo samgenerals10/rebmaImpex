@@ -647,3 +647,45 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.finance_cheques;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.finance_petty_cash;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.maintenance_schedule;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.fuel_logs;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- GENERAL PURCHASES TABLE (Operations logs supply purchases, Management approves)
+-- ─────────────────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.general_purchases (
+    id TEXT PRIMARY KEY DEFAULT 'GP-' || substring(md5(random()::text) from 1 for 8),
+    item_name TEXT NOT NULL,
+    item_code TEXT,
+    category TEXT DEFAULT 'General',
+    quantity NUMERIC NOT NULL DEFAULT 1,
+    cost NUMERIC NOT NULL DEFAULT 0,
+    date_received DATE,
+    status TEXT NOT NULL DEFAULT 'PENDING_MANAGEMENT_APPROVAL',
+    -- 'PENDING_MANAGEMENT_APPROVAL' | 'APPROVED' | 'REJECTED'
+    approved_by_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    department TEXT,
+    notes TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE public.general_purchases ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow authenticated users full access to general_purchases" ON public.general_purchases FOR ALL TO authenticated USING (true) WITH CHECK (true);
+ALTER PUBLICATION supabase_realtime ADD TABLE public.general_purchases;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- MATERIAL REQUISITIONS TABLE (Production team requests raw materials)
+-- ─────────────────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.material_requisitions (
+    id TEXT PRIMARY KEY DEFAULT 'MR-' || substring(md5(random()::text) from 1 for 8),
+    requested_by TEXT NOT NULL,
+    department TEXT DEFAULT 'PRODUCTION',
+    items JSONB NOT NULL DEFAULT '[]',
+    notes TEXT,
+    status TEXT NOT NULL DEFAULT 'PENDING',
+    -- 'PENDING' | 'APPROVED' | 'REJECTED' | 'FULFILLED'
+    production_request_id TEXT REFERENCES public.production_requests(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE public.material_requisitions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow authenticated users full access to material_requisitions" ON public.material_requisitions FOR ALL TO authenticated USING (true) WITH CHECK (true);
+ALTER PUBLICATION supabase_realtime ADD TABLE public.material_requisitions;

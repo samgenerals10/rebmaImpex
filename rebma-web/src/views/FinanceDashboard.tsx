@@ -11,6 +11,7 @@ import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianG
 import type { Order, FinancePayment, ProductionRequest } from '../types/erp';
 import { exportToCSV, exportToPDF } from '../utils/export';
 import { stockApi, operations } from '../services/apiClient';
+import { supabase } from '../lib/supabaseClient';
 
 interface FinanceDashboardProps {
   ordersList: Order[];
@@ -205,20 +206,29 @@ export default function FinanceDashboard({
     { title: 'Credit Outstanding', value: `GHS ${liquidCashVal.toLocaleString()}`,   sub: 'Total direct collections',   icon: Activity,   color: 'text-indigo-500' },
   ];
 
-  const handleRecordPaymentSubmit = (e: React.FormEvent) => {
+  const handleRecordPaymentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const now = new Date().toISOString();
     if (payType === 'DIRECT') {
       if (!clientName || !amount || parseFloat(amount) <= 0) {
         alert('Please fill out a valid client name and positive amount');
         return;
       }
+      const { data: inserted, error } = await supabase.from('finance_payments').insert({
+        client_name: clientName,
+        amount: parseFloat(amount),
+        payment_mode: payMode,
+        payment_type: 'DIRECT',
+        created_at: now,
+      }).select().single();
+      if (error) { addNotification(`Payment save failed: ${error.message}`); return; }
       const newPayment: FinancePayment = {
-        id: `PAY-${Date.now().toString().slice(-4)}`,
+        id: inserted?.id || `PAY-${Date.now().toString().slice(-4)}`,
         clientName,
         amount: parseFloat(amount),
         paymentMode: payMode,
         paymentType: 'DIRECT',
-        createdAt: new Date().toLocaleString()
+        createdAt: now,
       };
       const updated = [newPayment, ...localPayments];
       setLocalPayments(updated);
@@ -233,14 +243,24 @@ export default function FinanceDashboard({
       }
       const order = ordersList.find(o => o.id === selectedOrderId);
       if (!order) return;
+      const { data: inserted, error } = await supabase.from('finance_payments').insert({
+        client_name: order.clientName,
+        amount: order.totalAmount,
+        payment_mode: payMode,
+        payment_type: 'CREDIT_SETTLEMENT',
+        order_id: selectedOrderId,
+        created_at: now,
+      }).select().single();
+      if (error) { addNotification(`Payment save failed: ${error.message}`); return; }
+      await supabase.from('orders').update({ status: 'APPROVED', updated_at: now }).eq('id', selectedOrderId).then(() => {}, () => {});
       const newPayment: FinancePayment = {
-        id: `PAY-${Date.now().toString().slice(-4)}`,
+        id: inserted?.id || `PAY-${Date.now().toString().slice(-4)}`,
         clientName: order.clientName,
         amount: order.totalAmount,
         paymentMode: payMode,
         paymentType: 'CREDIT_SETTLEMENT',
         orderId: selectedOrderId,
-        createdAt: new Date().toLocaleString()
+        createdAt: now,
       };
       const updated = [newPayment, ...localPayments];
       setLocalPayments(updated);
