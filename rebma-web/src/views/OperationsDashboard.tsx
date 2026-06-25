@@ -939,7 +939,7 @@ export default function OperationsDashboard({
                 <PendingApprovalsAlert department="OPERATIONS" onNavigate={setActiveSubTab} />
 
                 {/* Stats Cards */}
-                <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 xl:grid-cols-5 gap-4">
                   {stats.map((stat, idx) => {
                     const Icon = stat.icon;
                     return (
@@ -959,6 +959,23 @@ export default function OperationsDashboard({
                       </div>
                     );
                   })}
+                  {/* Stock Summary Card — clickable, navigates to Stock tab */}
+                  <div
+                    onClick={() => setActiveSubTab?.('Stock')}
+                    className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4 cursor-pointer hover:border-[var(--accent)] hover:shadow-lg transition-all group relative overflow-hidden col-span-2 xl:col-span-1"
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[11px] text-[var(--text-secondary)] font-semibold">Total Stock Items</span>
+                      <div className="p-1.5 rounded-lg bg-[var(--accent-light)] text-[var(--accent)] group-hover:bg-[var(--accent)] group-hover:text-white transition-colors">
+                        <Package className="w-3.5 h-3.5" />
+                      </div>
+                    </div>
+                    <p className="text-lg sm:text-xl font-bold text-[var(--text-primary)] font-mono">
+                      {localCargo.filter(c => c.status === 'APPROVED').length} <span className="text-xs font-normal text-[var(--text-muted)]">approved</span>
+                    </p>
+                    <p className="text-[9px] text-[var(--text-muted)] mt-1">Port + Products + Purchases</p>
+                    <span className="absolute bottom-3 right-3 text-[9px] font-bold text-[var(--accent)] opacity-0 group-hover:opacity-100 transition-opacity">View Stock →</span>
+                  </div>
                 </div>
 
                 {/* Processing Dynamics Chart */}

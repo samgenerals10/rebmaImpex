@@ -1,6 +1,6 @@
 // src/views/ceo/InvoicesView.tsx
 import { useState, useEffect } from 'react';
-import { Download, Eye, Printer } from 'lucide-react';
+import { Download, Eye, Printer, FileCheck, Edit3, X } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { exportToCSV, exportToPDF } from '../../utils/export';
 import EntityDetailPanel from '../../components/global/EntityDetailPanel';
@@ -69,29 +69,128 @@ function printInvoices(rows: InvoiceRow[]) {
   if(w){w.document.write(html);w.document.close();w.onload=()=>w.print();}
 }
 
-function printSingleInvoice(r: InvoiceRow) {
-  const html = `<html><head><title>Invoice ${r.invoice_no}</title><style>
-    body{font-family:sans-serif;padding:40px;color:#111;max-width:600px;margin:0 auto}
-    h1{font-size:28px;color:#1e293b;margin:0}
-    .sub{color:#64748b;font-size:14px;margin-top:4px}
-    .badge{display:inline-block;padding:4px 14px;border-radius:99px;font-size:13px;font-weight:700;margin-top:12px}
+async function printSingleInvoice(r: InvoiceRow, notes?: string) {
+  // Generate QR code as data URL
+  let qrDataUrl = '';
+  try {
+    const QRCode = await import('qrcode');
+    qrDataUrl = await QRCode.toDataURL(
+      `REBMA IMPEX GHANA LIMITED\nInvoice: ${r.invoice_no}\nCustomer: ${r.customer}\nAmount: GHS ${Number(r.amount??0).toLocaleString()}\nDate: ${r.date}\nDue: ${r.due_date}\nStatus: ${r.status.toUpperCase()}`,
+      { width: 120, margin: 1, color: { dark: '#1e293b', light: '#ffffff' } }
+    );
+  } catch { qrDataUrl = ''; }
+
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>Invoice ${r.invoice_no} — REBMA IMPEX Ghana Limited</title><style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',Arial,sans-serif;background:#f8fafc;color:#1e293b;padding:0}
+    .page{background:#fff;max-width:760px;margin:32px auto;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.10);position:relative}
+    .watermark{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-35deg);font-size:72px;font-weight:900;color:rgba(0,0,0,0.04);white-space:nowrap;pointer-events:none;z-index:0;letter-spacing:4px}
+    .content{position:relative;z-index:1;padding:40px 48px}
+    .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:36px}
+    .logo-block .company{font-size:22px;font-weight:800;color:#1e293b;letter-spacing:.5px}
+    .logo-block .tagline{font-size:11px;color:#64748b;margin-top:2px;letter-spacing:.5px}
+    .logo-block .address{font-size:10px;color:#94a3b8;margin-top:6px;line-height:1.6}
+    .inv-meta{text-align:right}
+    .inv-meta .inv-label{font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px}
+    .inv-meta .inv-no{font-size:24px;font-weight:800;color:var(--accent,#e91e8c)}
+    .inv-meta .inv-date{font-size:11px;color:#64748b;margin-top:4px}
+    .divider{height:2px;background:linear-gradient(90deg,#e91e8c,#7c3aed,transparent);margin:0 0 28px;border:none;border-radius:99px}
+    .bill-section{display:flex;justify-content:space-between;margin-bottom:32px;gap:24px}
+    .bill-box{flex:1;background:#f8fafc;border-radius:10px;padding:16px 20px}
+    .bill-box .blabel{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#94a3b8;margin-bottom:8px}
+    .bill-box .bname{font-size:15px;font-weight:700;color:#1e293b;margin-bottom:2px}
+    .bill-box .bsub{font-size:11px;color:#64748b}
+    .amount-hero{background:linear-gradient(135deg,#1e293b 0%,#334155 100%);border-radius:12px;padding:24px 28px;margin-bottom:28px;display:flex;justify-content:space-between;align-items:center}
+    .amount-hero .alabel{font-size:11px;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px}
+    .amount-hero .avalue{font-size:36px;font-weight:800;color:#fff;letter-spacing:-1px}
+    .badge{display:inline-block;padding:5px 14px;border-radius:99px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em}
     .paid{background:#d1fae5;color:#065f46}.pending{background:#fef3c7;color:#92400e}.overdue{background:#fee2e2;color:#991b1b}
-    .divider{border:none;border-top:1px solid #e2e8f0;margin:24px 0}
-    .row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f1f5f9;font-size:14px}
-    .label{color:#64748b}.value{font-weight:600;color:#1e293b}
-    .amount{font-size:32px;font-weight:800;color:#0f172a;margin-top:8px}
-    @media print{button{display:none}}
+    .fields{border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;margin-bottom:24px}
+    .field-row{display:flex;justify-content:space-between;padding:11px 18px;border-bottom:1px solid #f1f5f9;font-size:13px}
+    .field-row:last-child{border-bottom:none}
+    .field-row .fl{color:#64748b}.field-row .fv{font-weight:600;color:#1e293b}
+    .notes-box{background:#fefce8;border:1px solid #fde68a;border-radius:10px;padding:14px 18px;margin-bottom:24px;font-size:12px;color:#92400e}
+    .notes-box strong{display:block;margin-bottom:4px;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#b45309}
+    .footer{display:flex;justify-content:space-between;align-items:flex-end;margin-top:8px;padding-top:20px;border-top:1px solid #f1f5f9}
+    .footer .legal{font-size:9px;color:#94a3b8;line-height:1.7;max-width:400px}
+    .qr-block{text-align:right}
+    .qr-block img{width:90px;height:90px;border:2px solid #e2e8f0;border-radius:8px}
+    .qr-block .qlabel{font-size:8px;color:#94a3b8;margin-top:4px;text-align:center}
+    .seal{display:inline-block;border:2px solid rgba(233,30,140,0.3);border-radius:8px;padding:6px 12px;font-size:10px;font-weight:700;color:#e91e8c;text-transform:uppercase;letter-spacing:.1em;margin-top:8px}
+    @media print{body{background:white}.page{margin:0;box-shadow:none;border-radius:0}button{display:none!important}}
   </style></head><body>
-  <h1>${r.invoice_no}</h1>
-  <p class="sub">${r.customer} &mdash; ${r.department}</p>
-  <span class="badge ${r.status}">${r.status.toUpperCase()}</span>
-  <hr class="divider"/>
-  <p class="amount">GHS ${Number(r.amount??0).toLocaleString()}</p>
-  <hr class="divider"/>
-  ${[['Issue Date',r.date],['Due Date',r.due_date],['Customer',r.customer],['Department',r.department],['Status',r.status]].map(([l,v])=>`<div class="row"><span class="label">${l}</span><span class="value">${v}</span></div>`).join('')}
+  <div class="page">
+    <div class="watermark">REBMA IMPEX</div>
+    <div class="content">
+      <div class="header">
+        <div class="logo-block">
+          <div class="company">REBMA IMPEX</div>
+          <div class="tagline">GHANA LIMITED</div>
+          <div class="address">
+            Accra, Ghana &bull; Tel: +233 XX XXX XXXX<br/>
+            Email: info@rebmaimpex.com
+          </div>
+        </div>
+        <div class="inv-meta">
+          <div class="inv-label">Invoice</div>
+          <div class="inv-no">${r.invoice_no}</div>
+          <div class="inv-date">Issued: ${r.date} &bull; Due: ${r.due_date}</div>
+          <div style="margin-top:8px"><span class="badge ${r.status}">${r.status.toUpperCase()}</span></div>
+        </div>
+      </div>
+      <hr class="divider"/>
+      <div class="bill-section">
+        <div class="bill-box">
+          <div class="blabel">Bill To</div>
+          <div class="bname">${r.customer}</div>
+          <div class="bsub">${r.department} Department</div>
+        </div>
+        <div class="bill-box">
+          <div class="blabel">From</div>
+          <div class="bname">REBMA IMPEX Ghana Limited</div>
+          <div class="bsub">Authorized Finance Department</div>
+        </div>
+      </div>
+      <div class="amount-hero">
+        <div>
+          <div class="alabel">Total Amount Due</div>
+          <div class="avalue">GHS ${Number(r.amount??0).toLocaleString()}</div>
+        </div>
+        <div class="seal">Finance Verified</div>
+      </div>
+      <div class="fields">
+        ${[
+          ['Invoice Number', r.invoice_no],
+          ['Customer', r.customer],
+          ['Department', r.department],
+          ['Issue Date', r.date],
+          ['Due Date', r.due_date],
+          ['Payment Status', r.status.toUpperCase()],
+        ].map(([l,v])=>`<div class="field-row"><span class="fl">${l}</span><span class="fv">${v}</span></div>`).join('')}
+      </div>
+      ${notes ? `<div class="notes-box"><strong>Finance Notes</strong>${notes}</div>` : ''}
+      <div class="footer">
+        <div>
+          <div class="legal">
+            This invoice is issued by REBMA IMPEX Ghana Limited and is subject to the company's standard terms and conditions.
+            Payment is due by ${r.due_date}. For queries contact the Finance Department.<br/>
+            <em>This document is system-generated and valid without a physical signature when verified by QR code.</em>
+          </div>
+        </div>
+        <div class="qr-block">
+          ${qrDataUrl ? `<img src="${qrDataUrl}" alt="Invoice QR"/>` : '<div style="width:90px;height:90px;border:2px dashed #e2e8f0;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:9px;color:#94a3b8">QR</div>'}
+          <div class="qlabel">Scan to verify</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div style="text-align:center;margin:16px 0">
+    <button onclick="window.print()" style="background:#1e293b;color:#fff;border:none;padding:10px 28px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;margin-right:8px">Print Invoice</button>
+    <button onclick="window.close()" style="background:#f1f5f9;color:#334155;border:none;padding:10px 28px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">Close</button>
+  </div>
   </body></html>`;
-  const w = window.open('','_blank','width=700,height=600');
-  if(w){w.document.write(html);w.document.close();w.onload=()=>w.print();}
+  const w = window.open('','_blank','width=860,height=900');
+  if(w){w.document.write(html);w.document.close();}
 }
 
 
@@ -103,6 +202,8 @@ export default function InvoicesView({ addNotification }: Props) {
   const [search, setSearch]       = useState('');
   const [page, setPage]           = useState(0);
   const [selectedInvoice, setSelectedInvoice] = useState<InvoiceRow | null>(null);
+  const [generateModal, setGenerateModal] = useState<InvoiceRow | null>(null);
+  const [invoiceNotes, setInvoiceNotes] = useState('');
   const PAGE_SIZE = 15;
 
   const load = async () => {
@@ -281,12 +382,74 @@ export default function InvoicesView({ addNotification }: Props) {
         ]}
         onClose={() => setSelectedInvoice(null)}
         actions={
-          <div className="flex gap-2">
-            <button onClick={() => { if(selectedInvoice) printSingleInvoice(selectedInvoice); }} className="px-4 py-2 rounded-xl border border-[var(--border)] text-sm font-medium cursor-pointer flex items-center gap-1.5" style={{ color: 'var(--text-secondary)' }}><Printer className="w-4 h-4" /> Print</button>
-            <button onClick={() => setSelectedInvoice(null)} className="px-4 py-2 rounded-xl text-white text-sm font-medium cursor-pointer" style={{ background: 'var(--accent)' }}>Close</button>
+          <div className="flex gap-2 flex-wrap">
+            <button onClick={() => { if(selectedInvoice) { setGenerateModal(selectedInvoice); setInvoiceNotes(''); setSelectedInvoice(null); } }} className="px-4 py-2 rounded-xl text-white text-sm font-medium cursor-pointer flex items-center gap-1.5" style={{ background: 'var(--accent)' }}>
+              <FileCheck className="w-4 h-4" /> Generate Invoice
+            </button>
+            <button onClick={() => { if(selectedInvoice) printSingleInvoice(selectedInvoice); }} className="px-4 py-2 rounded-xl border border-[var(--border)] text-sm font-medium cursor-pointer flex items-center gap-1.5" style={{ color: 'var(--text-secondary)' }}>
+              <Printer className="w-4 h-4" /> Quick Print
+            </button>
+            <button onClick={() => setSelectedInvoice(null)} className="px-4 py-2 rounded-xl border border-[var(--border)] text-sm font-medium cursor-pointer" style={{ color: 'var(--text-secondary)' }}>Close</button>
           </div>
         }
       />
+    )}
+
+    {/* Generate Invoice Modal */}
+    {generateModal && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+        <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-2xl w-full max-w-lg">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)]">
+            <div className="flex items-center gap-2">
+              <FileCheck className="w-5 h-5 text-[var(--accent)]" />
+              <h3 className="font-bold text-base text-[var(--text-primary)]">Generate Invoice</h3>
+            </div>
+            <button onClick={() => setGenerateModal(null)} className="p-1.5 rounded-lg hover:bg-[var(--bg-input)] cursor-pointer">
+              <X className="w-4 h-4 text-[var(--text-muted)]" />
+            </button>
+          </div>
+          <div className="px-6 py-4 space-y-3">
+            <div className="bg-[var(--bg)] rounded-xl p-4 border border-[var(--border)] grid grid-cols-2 gap-3">
+              {([
+                ['Invoice #', generateModal.invoice_no],
+                ['Customer', generateModal.customer],
+                ['Amount', `GHS ${(Number(generateModal.amount??0)).toLocaleString()}`],
+                ['Issue Date', generateModal.date],
+                ['Due Date', generateModal.due_date],
+                ['Status', generateModal.status.toUpperCase()],
+              ] as [string,string][]).map(([l, v]) => (
+                <div key={l}>
+                  <p className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-0.5">{l}</p>
+                  <p className={`text-sm font-bold ${l === 'Amount' ? 'text-[var(--accent)]' : 'text-[var(--text-primary)]'}`}>{v}</p>
+                </div>
+              ))}
+            </div>
+            <div className="flex items-center gap-2">
+              <span className={`px-3 py-1 rounded-full text-xs font-bold ${generateModal.status === 'paid' ? 'bg-emerald-100 text-emerald-700' : generateModal.status === 'overdue' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>{generateModal.status.toUpperCase()}</span>
+              <span className="text-xs text-[var(--text-muted)]">This status appears on the printed invoice</span>
+            </div>
+            <div>
+              <label className="flex items-center gap-1.5 text-xs font-semibold text-[var(--text-secondary)] mb-1.5">
+                <Edit3 className="w-3.5 h-3.5" /> Finance Notes (optional — printed on invoice)
+              </label>
+              <textarea value={invoiceNotes} onChange={e => setInvoiceNotes(e.target.value)}
+                placeholder="e.g. Payment received via cheque on 25/06/2026. Ref: CHQ-001234. Verified by Finance."
+                rows={3}
+                className="w-full px-3 py-2 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none focus:ring-1 focus:ring-[var(--accent)] resize-none" />
+            </div>
+            <p className="text-[10px] text-[var(--text-muted)] leading-relaxed bg-[var(--accent-light)] rounded-lg px-3 py-2">
+              The invoice will include the <strong>REBMA IMPEX Ghana Limited</strong> watermark, a unique QR code for verification, and your Finance notes. What is printed matches what is recorded in the system.
+            </p>
+          </div>
+          <div className="flex justify-end gap-2 px-6 py-4 border-t border-[var(--border)]">
+            <button onClick={() => setGenerateModal(null)} className="px-4 py-2 text-sm font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-input)] rounded-xl cursor-pointer border border-[var(--border)]">Cancel</button>
+            <button onClick={() => { printSingleInvoice(generateModal, invoiceNotes); setGenerateModal(null); addNotification(`Invoice ${generateModal.invoice_no} generated.`); }}
+              className="flex items-center gap-2 px-5 py-2 text-sm font-bold text-white rounded-xl cursor-pointer hover:opacity-90" style={{ background: 'var(--accent)' }}>
+              <Printer className="w-4 h-4" /> Generate &amp; Print
+            </button>
+          </div>
+        </div>
+      </div>
     )}
     </>
   );

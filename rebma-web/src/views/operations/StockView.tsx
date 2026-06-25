@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Search, Plus, X, MoreVertical, Package, TrendingDown, TrendingUp, History, Download, Printer } from 'lucide-react';
+import { Search, Plus, X, MoreVertical, Package, TrendingDown, TrendingUp, History, Download, Printer, Lock } from 'lucide-react';
 import EntityDetailPanel from '../../components/global/EntityDetailPanel';
 import { stockApi, operations } from '../../services/apiClient';
 import { exportToCSV, exportToPDF } from '../../utils/export';
+import { supabase } from '../../lib/supabaseClient';
 import type { IncomingGoods, GeneralPurchase } from '../../types/erp';
 import StockIntakeForm from '../../components/StockIntakeForm';
 
@@ -16,6 +17,18 @@ interface StockItem {
   updatedAt: string;
 }
 
+interface ApprovedCargo {
+  id: string;
+  productName: string;
+  goodsCode: string;
+  quantity: number;
+  unit: string;
+  weight: number;
+  supplier: string;
+  portOfOrigin: string;
+  approvedAt: string;
+}
+
 interface StockMovement {
   id: string;
   productName: string;
@@ -25,424 +38,435 @@ interface StockMovement {
   date: string;
 }
 
+type ActiveTab = 'APPROVED_CARGO' | 'PRODUCTS' | 'GENERAL_PURCHASES';
 
-const stockStatus = (current: number, capacity: number): { label: string; bg: string; color: string } => {
+const stockStatus = (current: number, capacity: number) => {
   if (current === 0) return { label: 'Out of Stock', bg: '#ffe4e6', color: '#9f1239' };
-  if (current / capacity < 0.2) return { label: 'Low Stock', bg: '#fef3c7', color: '#92400e' };
+  if (capacity > 0 && current / capacity < 0.2) return { label: 'Low Stock', bg: '#fef3c7', color: '#92400e' };
   return { label: 'In Stock', bg: '#d1fae5', color: '#065f46' };
 };
 
 const barColor = (current: number, capacity: number) => {
   if (current === 0) return '#f43f5e';
-  if (current / capacity < 0.2) return '#f59e0b';
+  if (capacity > 0 && current / capacity < 0.2) return '#f59e0b';
   return '#10b981';
 };
 
-const fmt = (iso: string) => new Date(iso).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+const fmt = (iso: string) => {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+};
+
+const fmtDate = (iso: string) => {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+};
 
 interface Props { incomingGoodsList: IncomingGoods[]; addNotification: (msg: string) => void }
 
 export default function StockView({ incomingGoodsList: _incomingGoodsList, addNotification }: Props) {
+  const [activeTab, setActiveTab] = useState<ActiveTab>('APPROVED_CARGO');
+  const [approvedCargo, setApprovedCargo] = useState<ApprovedCargo[]>([]);
   const [stock, setStock] = useState<StockItem[]>([]);
   const [movements, setMovements] = useState<StockMovement[]>([]);
   const [generalPurchases, setGeneralPurchases] = useState<GeneralPurchase[]>([]);
-  const [activeTab, setActiveTab] = useState<'PRODUCTS' | 'GENERAL_PURCHASES'>('PRODUCTS');
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('All');
-  const [categories, setCategories] = useState<string[]>(['All']);
   const [statusFilter, setStatusFilter] = useState('All');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [openMenu, setOpenMenu] = useState<string | null>(null);
+
+  // Adjust stock (General Purchases only)
   const [showAdjust, setShowAdjust] = useState(false);
-  const [adjustForm, setAdjustForm] = useState({ productId: '', type: 'Add', quantity: '', reason: '', notes: '' });
+  const [adjustTarget, setAdjustTarget] = useState<GeneralPurchase | null>(null);
+  const [adjustForm, setAdjustForm] = useState({ type: 'Add', quantity: '', reason: '', notes: '' });
+
   const [showAddProduct, setShowAddProduct] = useState(false);
   const [selectedStockItem, setSelectedStockItem] = useState<StockItem | null>(null);
 
   const loadData = async () => {
     setLoading(true);
     try {
-      const [stockData, movementsData, catsData, gpData] = await Promise.all([
+      // Tab 1: cargo_intake APPROVED
+      const { data: cargoData } = await supabase
+        .from('cargo_intake')
+        .select('*')
+        .eq('status', 'APPROVED')
+        .order('updated_at', { ascending: false })
+        .limit(200);
+      setApprovedCargo((cargoData || []).map((r: any) => ({
+        id: String(r.id),
+        productName: r.description || r.product_name || r.productName || 'Unknown',
+        goodsCode: r.request_id || r.id,
+        quantity: Number(r.quantity ?? 0),
+        unit: r.unit || 'units',
+        weight: Number(r.weight_kg ?? r.weight ?? 0),
+        supplier: r.supplier_name || r.company || '—',
+        portOfOrigin: r.port_of_origin || r.country || '—',
+        approvedAt: r.updated_at || r.created_at || '',
+      })));
+
+      // Tab 2: stock table (company products — exclude INCOMING_GOODS)
+      const [stockData, movementsData] = await Promise.all([
         stockApi.getStock(),
         stockApi.getStockMovements(),
-        stockApi.getCategories(),
-        operations.getGeneralPurchases()
       ]);
-      setStock(stockData);
+      setStock(stockData.filter((s: StockItem) => s.category !== 'INCOMING_GOODS'));
       setMovements(movementsData);
-      setCategories(['All', ...catsData.map(c => c.name)]);
+
+      // Tab 3: general purchases APPROVED
+      const gpData = await operations.getGeneralPurchases();
       setGeneralPurchases((gpData || []).filter((gp: any) => gp.status === 'APPROVED'));
     } catch (err) {
       console.error(err);
-      setStock([]);
-      setMovements([]);
-      setGeneralPurchases([]);
     }
     setLoading(false);
   };
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  useEffect(() => { loadData(); }, []);
 
-  const totalSKUs = stock.length;
-  const lowStock = stock.filter(s => s.current > 0 && s.current / s.capacity < 0.2).length;
+  // KPI counts across all tabs
+  const totalApprovedCargo = approvedCargo.length;
+  const totalProducts = stock.length;
+  const lowStock = stock.filter(s => s.current > 0 && s.capacity > 0 && s.current / s.capacity < 0.2).length;
   const inStock = stock.filter(s => s.current > 0).length;
-  const totalValue = stock.reduce((acc, s) => acc + s.current * 45.5, 0);
 
-  const handleAddCategory = async () => {
-    const name = prompt('Enter new stock category name:');
-    if (!name) {
-      setCategoryFilter('All');
-      return;
-    }
-    try {
-      await stockApi.addCategory(name);
-      addNotification(`Category "${name}" added successfully.`);
-      const cats = await stockApi.getCategories();
-      setCategories(['All', ...cats.map(c => c.name)]);
-      setCategoryFilter(name);
-    } catch (err: any) {
-      alert(err.message || 'Failed to add category.');
-      setCategoryFilter('All');
-    }
-  };
+  // Filtered lists
+  const filteredCargo = approvedCargo.filter(c => {
+    const q = search.toLowerCase();
+    return !search || c.productName.toLowerCase().includes(q) || c.goodsCode.toLowerCase().includes(q) || c.supplier.toLowerCase().includes(q);
+  });
 
-  const filtered = stock.filter(s => {
+  const filteredStock = stock.filter(s => {
     const q = search.toLowerCase();
     const matchSearch = !search || s.name.toLowerCase().includes(q) || s.sku.toLowerCase().includes(q);
-    const matchCat = categoryFilter === 'All' || s.category === categoryFilter;
     const st = stockStatus(s.current, s.capacity);
     const matchStatus = statusFilter === 'All' || st.label === statusFilter;
-    
     let matchDate = true;
-    if (startDate) {
-      matchDate = matchDate && new Date(s.updatedAt) >= new Date(startDate + 'T00:00:00');
-    }
-    if (endDate) {
-      matchDate = matchDate && new Date(s.updatedAt) <= new Date(endDate + 'T23:59:59');
-    }
-    return matchSearch && matchCat && matchStatus && matchDate;
+    if (startDate) matchDate = matchDate && new Date(s.updatedAt) >= new Date(startDate + 'T00:00:00');
+    if (endDate) matchDate = matchDate && new Date(s.updatedAt) <= new Date(endDate + 'T23:59:59');
+    return matchSearch && matchStatus && matchDate;
   });
 
-  const filteredGeneralPurchases = generalPurchases.filter(gp => {
+  const filteredGP = generalPurchases.filter(gp => {
     const q = search.toLowerCase();
     const matchSearch = !search || gp.itemName.toLowerCase().includes(q) || gp.itemCode.toLowerCase().includes(q);
-    const matchCat = categoryFilter === 'All' || gp.category.toLowerCase().includes(categoryFilter.toLowerCase());
-    
     let matchDate = true;
-    if (startDate) {
-      matchDate = matchDate && new Date(gp.dateReceived) >= new Date(startDate);
-    }
-    if (endDate) {
-      matchDate = matchDate && new Date(gp.dateReceived) <= new Date(endDate);
-    }
-    return matchSearch && matchCat && matchDate;
-  });
-
-  const filteredMovements = movements.filter((m: StockMovement) => {
-    const q = search.toLowerCase();
-    const matchSearch = !search || m.productName.toLowerCase().includes(q) || m.reason.toLowerCase().includes(q);
-    
-    let matchDate = true;
-    if (startDate) {
-      matchDate = matchDate && new Date(m.date) >= new Date(startDate + 'T00:00:00');
-    }
-    if (endDate) {
-      matchDate = matchDate && new Date(m.date) <= new Date(endDate + 'T23:59:59');
-    }
+    if (startDate) matchDate = matchDate && new Date(gp.dateReceived) >= new Date(startDate);
+    if (endDate) matchDate = matchDate && new Date(gp.dateReceived) <= new Date(endDate);
     return matchSearch && matchDate;
   });
 
-  const doAdjust = async () => {
-    const item = stock.find(s => s.id === adjustForm.productId);
-    if (!item || !adjustForm.quantity) return;
+  const filteredMovements = movements.filter(m => {
+    const q = search.toLowerCase();
+    const matchSearch = !search || m.productName.toLowerCase().includes(q) || m.reason.toLowerCase().includes(q);
+    let matchDate = true;
+    if (startDate) matchDate = matchDate && new Date(m.date) >= new Date(startDate + 'T00:00:00');
+    if (endDate) matchDate = matchDate && new Date(m.date) <= new Date(endDate + 'T23:59:59');
+    return matchSearch && matchDate;
+  });
+
+  const doAdjustGP = async () => {
+    if (!adjustTarget || !adjustForm.quantity) return;
     const delta = adjustForm.type === 'Add' ? parseInt(adjustForm.quantity) : -parseInt(adjustForm.quantity);
-    const reasonVal = adjustForm.reason.trim() || 'Manual Adjustment';
-    const notesVal = adjustForm.notes.trim() || 'Adjusted via Stock Management';
-    
+    const newQty = Math.max(0, Number(adjustTarget.quantity) + delta);
     try {
-      await stockApi.adjustStock(item.id, item.name, item.current, delta, reasonVal, notesVal);
-      addNotification(`Stock for ${item.name} adjusted by ${delta > 0 ? '+' : ''}${delta}.`);
+      await supabase.from('general_purchases').update({ quantity: newQty, notes: adjustForm.notes || adjustTarget.itemName }).eq('id', adjustTarget.id);
+      await supabase.from('stock_ledger').insert({
+        product_name: adjustTarget.itemName,
+        movement_type: adjustForm.type === 'Add' ? 'ADD' : 'REMOVE',
+        quantity: Math.abs(delta),
+        reference: adjustForm.reason || 'Manual Adjustment',
+        notes: adjustForm.notes || '',
+        created_at: new Date().toISOString(),
+      });
+      addNotification(`${adjustTarget.itemName} quantity adjusted by ${delta > 0 ? '+' : ''}${delta}.`);
       loadData();
     } catch (err: any) {
-      alert(err.message || 'Failed to adjust stock.');
+      alert(err.message || 'Failed to adjust.');
     }
     setShowAdjust(false);
-    setAdjustForm({ productId: '', type: 'Add', quantity: '', reason: '', notes: '' });
+    setAdjustTarget(null);
+    setAdjustForm({ type: 'Add', quantity: '', reason: '', notes: '' });
   };
 
-  const exportStockCSV = () => {
-    exportToCSV(
-      filtered,
-      ['id', 'name', 'sku', 'category', 'current', 'capacity', 'updatedAt'],
-      'stock_levels'
-    );
-  };
+  const TABS: { key: ActiveTab; label: string; count: number }[] = [
+    { key: 'APPROVED_CARGO', label: 'Approved Port Stock', count: totalApprovedCargo },
+    { key: 'PRODUCTS', label: 'Company Products (Finished Goods)', count: totalProducts },
+    { key: 'GENERAL_PURCHASES', label: 'General Purchased Items', count: filteredGP.length },
+  ];
 
-  const exportStockPDF = () => {
-    exportToPDF(
-      'Stock Levels',
-      filtered.map(s => ({
-        id: s.id,
-        name: s.name,
-        sku: s.sku,
-        category: s.category,
-        current: (Number(s.current ?? 0)).toLocaleString(),
-        capacity: (Number(s.capacity ?? 0)).toLocaleString(),
-        updatedAt: fmt(s.updatedAt)
-      })),
-      ['id', 'name', 'sku', 'category', 'current', 'capacity', 'updatedAt']
-    );
-  };
-
+  const tabStyle = (key: ActiveTab) => ({
+    background: 'none',
+    border: 'none',
+    borderBottom: activeTab === key ? '3px solid var(--accent)' : '3px solid transparent',
+    color: activeTab === key ? 'var(--accent)' : 'var(--text-muted)',
+    padding: '10px 16px',
+    fontSize: 13,
+    fontWeight: 700,
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+    whiteSpace: 'nowrap' as const,
+  });
 
   return (
     <div style={{ padding: '24px 16px', maxWidth: 1200, margin: '0 auto' }}>
+      {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Stock Management</h1>
           <p style={{ color: 'var(--text-muted)', margin: '4px 0 0', fontSize: 14 }}>Monitor and manage inventory levels</p>
         </div>
-        <div style={{ display: 'flex', gap: 12 }}>
-          <button onClick={() => setShowAddProduct(true)} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-primary)', borderRadius: 12, padding: '10px 20px', fontWeight: 600, cursor: 'pointer', fontSize: 14 }}>
-            <Plus size={16} /> Log Stock Intake
-          </button>
+        {activeTab === 'GENERAL_PURCHASES' && (
           <button onClick={() => setShowAdjust(true)} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 12, padding: '10px 20px', fontWeight: 600, cursor: 'pointer', fontSize: 14 }}>
             <Plus size={16} /> Adjust Stock
           </button>
-        </div>
+        )}
+        {activeTab === 'PRODUCTS' && (
+          <button onClick={() => setShowAddProduct(true)} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-primary)', borderRadius: 12, padding: '10px 20px', fontWeight: 600, cursor: 'pointer', fontSize: 14 }}>
+            <Plus size={16} /> Log Stock Intake
+          </button>
+        )}
       </div>
 
-      {/* Tabs */}
-      <div style={{ display: 'flex', gap: 12, marginBottom: 24, borderBottom: '1px solid var(--border)', paddingBottom: 10 }}>
-        <button
-          onClick={() => setActiveTab('PRODUCTS')}
-          style={{
-            background: 'none',
-            border: 'none',
-            borderBottom: activeTab === 'PRODUCTS' ? '3px solid var(--accent)' : '3px solid transparent',
-            color: activeTab === 'PRODUCTS' ? 'var(--accent)' : 'var(--text-muted)',
-            padding: '10px 16px',
-            fontSize: 14,
-            fontWeight: 700,
-            cursor: 'pointer',
-            transition: 'all 0.2s'
-          }}
-        >
-          Company Products (Finished Goods)
-        </button>
-        <button
-          onClick={() => setActiveTab('GENERAL_PURCHASES')}
-          style={{
-            background: 'none',
-            border: 'none',
-            borderBottom: activeTab === 'GENERAL_PURCHASES' ? '3px solid var(--accent)' : '3px solid transparent',
-            color: activeTab === 'GENERAL_PURCHASES' ? 'var(--accent)' : 'var(--text-muted)',
-            padding: '10px 16px',
-            fontSize: 14,
-            fontWeight: 700,
-            cursor: 'pointer',
-            transition: 'all 0.2s'
-          }}
-        >
-          General Purchased Items
-        </button>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 24 }}>
+      {/* KPI Cards — no Total Value */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 24 }}>
         {[
-          { label: 'Total SKUs', value: totalSKUs, color: 'var(--accent)', icon: <Package size={18} /> },
-          { label: 'Low Stock', value: lowStock, color: '#f59e0b', icon: <TrendingDown size={18} /> },
-          { label: 'In Stock', value: inStock, color: '#10b981', icon: <TrendingUp size={18} /> },
-          { label: 'Total Value (GHS)', value: `₵${totalValue.toLocaleString('en-GH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, color: '#8b5cf6', icon: <Package size={18} /> },
+          { label: 'Port Approved Goods', value: totalApprovedCargo, color: '#3b82f6', icon: <Package size={18} /> },
+          { label: 'Company Product SKUs', value: totalProducts, color: 'var(--accent)', icon: <Package size={18} /> },
+          { label: 'Low Stock Items', value: lowStock, color: '#f59e0b', icon: <TrendingDown size={18} /> },
+          { label: 'In Stock (Products)', value: inStock, color: '#10b981', icon: <TrendingUp size={18} /> },
         ].map(c => (
           <div key={c.label} style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, padding: '20px', boxShadow: 'var(--box-shadow)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-              <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: 0 }}>{c.label}</p>
+              <p style={{ color: 'var(--text-muted)', fontSize: 12, margin: 0 }}>{c.label}</p>
               <div style={{ color: c.color, opacity: 0.7 }}>{c.icon}</div>
             </div>
-            <p style={{ fontSize: typeof c.value === 'string' ? 18 : 28, fontWeight: 700, color: c.color, margin: 0 }}>{c.value}</p>
+            <p style={{ fontSize: 28, fontWeight: 700, color: c.color, margin: 0 }}>{c.value}</p>
           </div>
         ))}
-      </div>      {activeTab === 'PRODUCTS' && (
-        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 20, padding: '20px 24px', marginBottom: 24, boxShadow: 'var(--box-shadow)' }}>
-          <h2 style={{ margin: '0 0 20px', fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>Stock Levels</h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {stock.length > 0 ? (
-              stock.map(s => {
-                const pct = s.capacity > 0 ? Math.round((s.current / s.capacity) * 100) : 0;
-                const st = stockStatus(s.current, s.capacity);
-                return (
-                  <div key={s.id}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6, flexWrap: 'wrap', gap: 8 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: 14 }}>{s.name}</span>
-                        <span style={{ background: st.bg, color: st.color, borderRadius: 99, padding: '1px 8px', fontSize: 11, fontWeight: 600 }}>{st.label}</span>
-                      </div>
-                      <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>{(Number(s.current ?? 0)).toLocaleString()} / {(Number(s.capacity ?? 0)).toLocaleString()} units</span>
-                    </div>
-                    <div style={{ height: 10, background: 'var(--bg)', borderRadius: 99, overflow: 'hidden' }}>
-                      <div style={{ height: '100%', width: `${pct}%`, background: barColor(s.current, s.capacity), borderRadius: 99, transition: 'width 0.4s ease' }} />
-                    </div>
-                  </div>
-                );
-              })
-            ) : (
-              <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--text-muted)', fontSize: 14 }}>
-                No stock levels recorded. Add a product to get started.
-              </div>
-            )}
-          </div>
+      </div>
+
+      {/* Tabs */}
+      <div style={{ display: 'flex', gap: 0, marginBottom: 24, borderBottom: '1px solid var(--border)', overflowX: 'auto' }}>
+        {TABS.map(t => (
+          <button key={t.key} onClick={() => setActiveTab(t.key)} style={tabStyle(t.key)}>
+            {t.label}
+            <span style={{ marginLeft: 6, background: activeTab === t.key ? 'var(--accent)' : 'var(--bg-input)', color: activeTab === t.key ? '#fff' : 'var(--text-muted)', borderRadius: 99, padding: '1px 7px', fontSize: 11 }}>{t.count}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Read-only notice for port stock and company products */}
+      {(activeTab === 'APPROVED_CARGO' || activeTab === 'PRODUCTS') && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: 10, padding: '8px 14px', marginBottom: 16, fontSize: 12, color: '#92400e', fontWeight: 600 }}>
+          <Lock size={13} />
+          {activeTab === 'APPROVED_CARGO'
+            ? 'Port-approved stock is read-only. Quantities are set by Management approval and cannot be manually adjusted.'
+            : 'Company product stock is read-only. Adjustments must go through production or management approval workflows.'}
         </div>
       )}
 
-      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 20, padding: '20px 24px', marginBottom: 24, boxShadow: 'var(--box-shadow)' }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 20 }}>
-          <div style={{ flex: '1 1 200px', display: 'flex', alignItems: 'center', gap: 8, background: 'var(--bg-input)', borderRadius: 10, padding: '8px 12px', border: '1px solid var(--border)' }}>
-            <Search size={16} style={{ color: 'var(--text-muted)' }} />
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search product or SKU..." style={{ border: 'none', background: 'transparent', outline: 'none', color: 'var(--text-primary)', fontSize: 14, width: '100%' }} />
-          </div>
-          <select value={categoryFilter} onChange={e => {
-            if (e.target.value === 'ADD_NEW') {
-              handleAddCategory();
-            } else {
-              setCategoryFilter(e.target.value);
-            }
-          }} style={{ flex: '0 0 160px', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '8px 12px', color: 'var(--text-primary)', fontSize: 14 }}>
-            {categories.map(c => <option key={c} value={c}>{c}</option>)}
-            <option value="ADD_NEW">+ Add Category...</option>
-          </select>
+      {/* Search / Filter bar */}
+      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, padding: '16px', marginBottom: 20, display: 'flex', flexWrap: 'wrap', gap: 12, boxShadow: 'var(--box-shadow)' }}>
+        <div style={{ flex: '1 1 200px', display: 'flex', alignItems: 'center', gap: 8, background: 'var(--bg-input)', borderRadius: 10, padding: '8px 12px', border: '1px solid var(--border)' }}>
+          <Search size={16} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search product or SKU..." style={{ border: 'none', background: 'transparent', outline: 'none', color: 'var(--text-primary)', fontSize: 14, width: '100%' }} />
+        </div>
+        {activeTab === 'PRODUCTS' && (
           <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={{ flex: '0 0 150px', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '8px 12px', color: 'var(--text-primary)', fontSize: 14 }}>
             <option value="All">All Status</option>
             <option value="In Stock">In Stock</option>
             <option value="Low Stock">Low Stock</option>
             <option value="Out of Stock">Out of Stock</option>
           </select>
-          <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} style={{ flex: '0 0 140px', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '8px 12px', color: 'var(--text-primary)', fontSize: 14 }} />
-          <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} style={{ flex: '0 0 140px', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '8px 12px', color: 'var(--text-primary)', fontSize: 14 }} />
-          <button onClick={exportStockCSV} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '8px 16px', color: 'var(--text-primary)', fontSize: 14, cursor: 'pointer', fontWeight: 600 }}>
-            <Download size={14} /> CSV
-          </button>
-          <button onClick={exportStockPDF} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '8px 16px', color: 'var(--text-primary)', fontSize: 14, cursor: 'pointer', fontWeight: 600 }}>
-            <Printer size={14} /> PDF
-          </button>
-        </div>        {loading ? (
-          <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>Loading stock...</div>
-        ) : activeTab === 'PRODUCTS' ? (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
-              <thead>
-                <tr style={{ borderBottom: '2px solid var(--border)' }}>
-                  {['Product', 'SKU', 'Category', 'Current', 'Capacity', 'Last Updated', 'Status', ''].map(h => (
-                    <th key={h} style={{ textAlign: 'left', padding: '10px 12px', fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>{h}</th>
+        )}
+        <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} style={{ flex: '0 0 140px', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '8px 12px', color: 'var(--text-primary)', fontSize: 14 }} />
+        <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} style={{ flex: '0 0 140px', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '8px 12px', color: 'var(--text-primary)', fontSize: 14 }} />
+        <button onClick={() => {
+          const data = activeTab === 'APPROVED_CARGO' ? filteredCargo : activeTab === 'PRODUCTS' ? filteredStock : filteredGP;
+          exportToCSV(data as any[], Object.keys(data[0] || {}), `stock_${activeTab.toLowerCase()}`);
+        }} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '8px 16px', color: 'var(--text-primary)', fontSize: 14, cursor: 'pointer', fontWeight: 600 }}>
+          <Download size={14} /> CSV
+        </button>
+        <button onClick={() => {
+          const data = activeTab === 'APPROVED_CARGO' ? filteredCargo : activeTab === 'PRODUCTS' ? filteredStock : filteredGP;
+          exportToPDF(`Stock — ${activeTab}`, data as any[], Object.keys(data[0] || {}));
+        }} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '8px 16px', color: 'var(--text-primary)', fontSize: 14, cursor: 'pointer', fontWeight: 600 }}>
+          <Printer size={14} /> PDF
+        </button>
+      </div>
+
+      {/* Tab content */}
+      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 20, padding: '20px 24px', marginBottom: 24, boxShadow: 'var(--box-shadow)' }}>
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>Loading stock…</div>
+        ) : activeTab === 'APPROVED_CARGO' ? (
+          <>
+            <h2 style={{ margin: '0 0 16px', fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>Port-Approved Goods ({filteredCargo.length})</h2>
+            {/* Stock level bars */}
+            {filteredCargo.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
+                {filteredCargo.slice(0, 5).map(c => (
+                  <div key={c.id}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                      <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: 13 }}>{c.productName}</span>
+                      <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>{c.quantity.toLocaleString()} {c.unit}</span>
+                    </div>
+                    <div style={{ height: 8, background: 'var(--bg)', borderRadius: 99, overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${Math.min(100, (c.quantity / Math.max(...filteredCargo.map(x => x.quantity), 1)) * 100)}%`, background: '#3b82f6', borderRadius: 99 }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+                <thead>
+                  <tr style={{ borderBottom: '2px solid var(--border)' }}>
+                    {['Product', 'Code', 'Quantity', 'Unit', 'Weight (kg)', 'Supplier', 'Port of Origin', 'Approved On'].map(h => (
+                      <th key={h} style={{ textAlign: 'left', padding: '10px 12px', fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredCargo.map(c => (
+                    <tr key={c.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                      <td style={{ padding: '11px 12px', fontWeight: 600, color: 'var(--text-primary)' }}>{c.productName}</td>
+                      <td style={{ padding: '11px 12px', color: 'var(--text-muted)', fontFamily: 'monospace', fontSize: 12 }}>{c.goodsCode}</td>
+                      <td style={{ padding: '11px 12px', fontWeight: 700, color: '#3b82f6' }}>{c.quantity.toLocaleString()}</td>
+                      <td style={{ padding: '11px 12px', color: 'var(--text-secondary)' }}>{c.unit}</td>
+                      <td style={{ padding: '11px 12px', color: 'var(--text-secondary)' }}>{Number(c.weight).toLocaleString()}</td>
+                      <td style={{ padding: '11px 12px', color: 'var(--text-secondary)' }}>{c.supplier}</td>
+                      <td style={{ padding: '11px 12px', color: 'var(--text-secondary)' }}>{c.portOfOrigin}</td>
+                      <td style={{ padding: '11px 12px', color: 'var(--text-muted)', fontSize: 12, whiteSpace: 'nowrap' }}>{fmtDate(c.approvedAt)}</td>
+                    </tr>
                   ))}
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map(s => {
+                </tbody>
+              </table>
+              {filteredCargo.length === 0 && (
+                <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--text-muted)' }}>
+                  <Package size={32} style={{ margin: '0 auto 8px', opacity: 0.3, display: 'block' }} />
+                  <p style={{ fontSize: 14, fontWeight: 600 }}>No approved port goods yet</p>
+                  <p style={{ fontSize: 12, marginTop: 4 }}>Goods approved by Management will appear here</p>
+                </div>
+              )}
+            </div>
+          </>
+        ) : activeTab === 'PRODUCTS' ? (
+          <>
+            <h2 style={{ margin: '0 0 16px', fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>Company Products — Finished Goods ({filteredStock.length})</h2>
+            {filteredStock.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
+                {filteredStock.map(s => {
+                  const pct = s.capacity > 0 ? Math.round((s.current / s.capacity) * 100) : 0;
                   const st = stockStatus(s.current, s.capacity);
                   return (
-                    <tr key={s.id} style={{ borderBottom: '1px solid var(--border)', cursor: 'pointer' }} onClick={() => setSelectedStockItem(s)}>
-                      <td style={{ padding: '12px 12px', fontWeight: 600, color: 'var(--text-primary)' }}>{s.name}</td>
-                      <td style={{ padding: '12px 12px', color: 'var(--text-secondary)', fontFamily: 'monospace', fontSize: 13 }}>{s.sku}</td>
-                      <td style={{ padding: '12px 12px', color: 'var(--text-secondary)' }}>{s.category}</td>
-                      <td style={{ padding: '12px 12px', fontWeight: 700, color: barColor(s.current, s.capacity) }}>{(Number(s.current ?? 0)).toLocaleString()}</td>
-                      <td style={{ padding: '12px 12px', color: 'var(--text-muted)' }}>{(Number(s.capacity ?? 0)).toLocaleString()}</td>
-                      <td style={{ padding: '12px 12px', color: 'var(--text-muted)', fontSize: 13, whiteSpace: 'nowrap' }}>{fmt(s.updatedAt)}</td>
-                      <td style={{ padding: '12px 12px' }}>
-                        <span style={{ background: st.bg, color: st.color, borderRadius: 99, padding: '2px 10px', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' }}>{st.label}</span>
-                      </td>
-                      <td style={{ padding: '12px 12px', position: 'relative' }} onClick={e => e.stopPropagation()}>
-                        <button onClick={() => setOpenMenu(openMenu === s.id ? null : s.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4, borderRadius: 6 }}>
-                           <MoreVertical size={16} />
+                    <div key={s.id}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4, gap: 8, flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: 13 }}>{s.name}</span>
+                          <span style={{ background: st.bg, color: st.color, borderRadius: 99, padding: '1px 8px', fontSize: 11, fontWeight: 600 }}>{st.label}</span>
+                        </div>
+                        <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>{(Number(s.current ?? 0)).toLocaleString()} / {(Number(s.capacity ?? 0)).toLocaleString()} units</span>
+                      </div>
+                      <div style={{ height: 8, background: 'var(--bg)', borderRadius: 99, overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: `${pct}%`, background: barColor(s.current, s.capacity), borderRadius: 99 }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+                <thead>
+                  <tr style={{ borderBottom: '2px solid var(--border)' }}>
+                    {['Product', 'SKU', 'Category', 'Current', 'Capacity', 'Last Updated', 'Status'].map(h => (
+                      <th key={h} style={{ textAlign: 'left', padding: '10px 12px', fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredStock.map(s => {
+                    const st = stockStatus(s.current, s.capacity);
+                    return (
+                      <tr key={s.id} style={{ borderBottom: '1px solid var(--border)', cursor: 'pointer' }} onClick={() => setSelectedStockItem(s)}>
+                        <td style={{ padding: '11px 12px', fontWeight: 600, color: 'var(--text-primary)' }}>{s.name}</td>
+                        <td style={{ padding: '11px 12px', color: 'var(--text-secondary)', fontFamily: 'monospace', fontSize: 12 }}>{s.sku}</td>
+                        <td style={{ padding: '11px 12px', color: 'var(--text-secondary)' }}>{s.category}</td>
+                        <td style={{ padding: '11px 12px', fontWeight: 700, color: barColor(s.current, s.capacity) }}>{(Number(s.current ?? 0)).toLocaleString()}</td>
+                        <td style={{ padding: '11px 12px', color: 'var(--text-muted)' }}>{(Number(s.capacity ?? 0)).toLocaleString()}</td>
+                        <td style={{ padding: '11px 12px', color: 'var(--text-muted)', fontSize: 12, whiteSpace: 'nowrap' }}>{fmt(s.updatedAt)}</td>
+                        <td style={{ padding: '11px 12px' }}>
+                          <span style={{ background: st.bg, color: st.color, borderRadius: 99, padding: '2px 10px', fontSize: 12, fontWeight: 600 }}>{st.label}</span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              {filteredStock.length === 0 && (
+                <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--text-muted)' }}>
+                  <Package size={32} style={{ margin: '0 auto 8px', opacity: 0.3, display: 'block' }} />
+                  <p style={{ fontSize: 14, fontWeight: 600 }}>No company products in stock</p>
+                  <p style={{ fontSize: 12, marginTop: 4 }}>Finished goods from production will appear here</p>
+                </div>
+              )}
+            </div>
+          </>
+        ) : (
+          <>
+            <h2 style={{ margin: '0 0 16px', fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>General Purchased Items ({filteredGP.length})</h2>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+                <thead>
+                  <tr style={{ borderBottom: '2px solid var(--border)' }}>
+                    {['Item Name', 'Item Code', 'Category', 'Quantity', 'Cost (GHS)', 'Date Received', ''].map(h => (
+                      <th key={h} style={{ textAlign: 'left', padding: '10px 12px', fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredGP.map(gp => (
+                    <tr key={gp.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                      <td style={{ padding: '11px 12px', fontWeight: 600, color: 'var(--text-primary)' }}>{gp.itemName}</td>
+                      <td style={{ padding: '11px 12px', color: 'var(--text-secondary)', fontFamily: 'monospace', fontSize: 12 }}>{gp.itemCode}</td>
+                      <td style={{ padding: '11px 12px', color: 'var(--text-secondary)' }}>{gp.category}</td>
+                      <td style={{ padding: '11px 12px', fontWeight: 700, color: 'var(--text-primary)' }}>{(Number(gp.quantity ?? 0)).toLocaleString()}</td>
+                      <td style={{ padding: '11px 12px', color: 'var(--text-secondary)', fontWeight: 600 }}>₵{Number(gp.cost ?? 0).toLocaleString('en-GH', { minimumFractionDigits: 2 })}</td>
+                      <td style={{ padding: '11px 12px', color: 'var(--text-muted)', fontSize: 12, whiteSpace: 'nowrap' }}>{gp.dateReceived}</td>
+                      <td style={{ padding: '11px 12px', position: 'relative' }} onClick={e => e.stopPropagation()}>
+                        <button onClick={() => setOpenMenu(openMenu === gp.id ? null : gp.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4, borderRadius: 6 }}>
+                          <MoreVertical size={16} />
                         </button>
-                        {openMenu === s.id && (
+                        {openMenu === gp.id && (
                           <div style={{ position: 'absolute', right: 0, top: 36, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.15)', zIndex: 10, minWidth: 140 }}>
-                            <button type="button" onClick={() => { setAdjustForm(f => ({ ...f, productId: s.id })); setShowAdjust(true); setOpenMenu(null); }} style={{ display: 'block', width: '100%', padding: '10px 16px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: 'var(--text-primary)', textAlign: 'left', fontWeight: 500 }}>Adjust Stock</button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSearch(s.name);
-                                setOpenMenu(null);
-                                document.getElementById('movement-history')?.scrollIntoView({ behavior: 'smooth' });
-                              }}
-                              style={{ display: 'block', width: '100%', padding: '10px 16px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: 'var(--text-primary)', textAlign: 'left', fontWeight: 500 }}
-                            >
-                              View History
-                            </button>
-                            <button
-                              type="button"
-                              onClick={async () => {
-                                if (confirm(`Are you sure you want to delete ${s.name}?`)) {
-                                  try {
-                                    await stockApi.deleteStock(s.id);
-                                    addNotification(`Stock item ${s.name} deleted.`);
-                                    loadData();
-                                  } catch (err: any) {
-                                    alert(err.message || 'Failed to delete stock.');
-                                  }
-                                }
-                                setOpenMenu(null);
-                              }}
-                              style={{ display: 'block', width: '100%', padding: '10px 16px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: '#f43f5e', textAlign: 'left', fontWeight: 500 }}
-                            >
-                              Delete Product
+                            <button type="button" onClick={() => { setAdjustTarget(gp); setShowAdjust(true); setOpenMenu(null); }}
+                              style={{ display: 'block', width: '100%', padding: '10px 16px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: 'var(--text-primary)', textAlign: 'left', fontWeight: 500 }}>
+                              Adjust Quantity
                             </button>
                           </div>
                         )}
                       </td>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-            {filtered.length === 0 && (
-              <div style={{ textAlign: 'center', padding: '24px 0' }}>
-                <Package className="w-10 h-10 mx-auto mb-3 opacity-40" />
-                <p className="font-semibold text-sm" style={{ color: 'var(--text-muted)' }}>No stock items yet</p>
-                <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>They will appear here once added</p>
-              </div>
-            )}
-          </div>
-        ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
-              <thead>
-                <tr style={{ borderBottom: '2px solid var(--border)' }}>
-                  {['Item Name', 'Item Code', 'Category', 'Quantity', 'Cost (GHS)', 'Date Received', ''].map(h => (
-                    <th key={h} style={{ textAlign: 'left', padding: '10px 12px', fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>{h}</th>
                   ))}
-                </tr>
-              </thead>
-              <tbody>
-                {filteredGeneralPurchases.map(gp => {
-                  return (
-                    <tr key={gp.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                      <td style={{ padding: '12px 12px', fontWeight: 600, color: 'var(--text-primary)' }}>{gp.itemName}</td>
-                      <td style={{ padding: '12px 12px', color: 'var(--text-secondary)', fontFamily: 'monospace', fontSize: 13 }}>{gp.itemCode}</td>
-                      <td style={{ padding: '12px 12px', color: 'var(--text-secondary)' }}>{gp.category}</td>
-                      <td style={{ padding: '12px 12px', fontWeight: 750, color: 'var(--text-primary)' }}>{(Number(gp.quantity ?? 0)).toLocaleString()}</td>
-                      <td style={{ padding: '12px 12px', color: 'var(--text-secondary)', fontWeight: 600 }}>₵{gp.cost.toLocaleString('en-GH', { minimumFractionDigits: 2 })}</td>
-                      <td style={{ padding: '12px 12px', color: 'var(--text-muted)', fontSize: 13, whiteSpace: 'nowrap' }}>{gp.dateReceived}</td>
-                      <td style={{ padding: '12px 12px', position: 'relative' }}></td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-            {filteredGeneralPurchases.length === 0 && (
-              <div style={{ textAlign: 'center', padding: '24px 0' }}>
-                <Package className="w-10 h-10 mx-auto mb-3 opacity-40" />
-                <p className="font-semibold text-sm" style={{ color: 'var(--text-muted)' }}>No general purchases yet</p>
-                <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>They will appear here once approved by Management</p>
-              </div>
-            )}
-          </div>
+                </tbody>
+              </table>
+              {filteredGP.length === 0 && (
+                <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--text-muted)' }}>
+                  <Package size={32} style={{ margin: '0 auto 8px', opacity: 0.3, display: 'block' }} />
+                  <p style={{ fontSize: 14, fontWeight: 600 }}>No general purchases yet</p>
+                  <p style={{ fontSize: 12, marginTop: 4 }}>Approved purchases from Management will appear here</p>
+                </div>
+              )}
+            </div>
+          </>
         )}
       </div>
 
+      {/* Stock Movement History */}
       <div id="movement-history" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 20, padding: '20px 24px', boxShadow: 'var(--box-shadow)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
           <History size={18} style={{ color: 'var(--accent)' }} />
@@ -453,20 +477,22 @@ export default function StockView({ incomingGoodsList: _incomingGoodsList, addNo
             <thead>
               <tr style={{ borderBottom: '2px solid var(--border)' }}>
                 {['Date', 'Product', 'Change', 'Reason', 'Updated By'].map(h => (
-                  <th key={h} style={{ textAlign: 'left', padding: '10px 12px', fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>{h}</th>
+                  <th key={h} style={{ textAlign: 'left', padding: '10px 12px', fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {filteredMovements.map(m => (
+              {filteredMovements.length === 0 ? (
+                <tr><td colSpan={5} style={{ textAlign: 'center', padding: '24px 0', color: 'var(--text-muted)', fontSize: 13 }}>No movement history yet</td></tr>
+              ) : filteredMovements.map(m => (
                 <tr key={m.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                  <td style={{ padding: '11px 12px', color: 'var(--text-muted)', fontSize: 13, whiteSpace: 'nowrap' }}>{fmt(m.date)}</td>
+                  <td style={{ padding: '11px 12px', color: 'var(--text-muted)', fontSize: 12, whiteSpace: 'nowrap' }}>{fmt(m.date)}</td>
                   <td style={{ padding: '11px 12px', fontWeight: 600, color: 'var(--text-primary)' }}>{m.productName}</td>
                   <td style={{ padding: '11px 12px' }}>
                     <span style={{ fontWeight: 700, fontSize: 14, color: m.change > 0 ? '#10b981' : '#f43f5e' }}>{m.change > 0 ? `+${m.change}` : m.change}</span>
                   </td>
                   <td style={{ padding: '11px 12px', color: 'var(--text-secondary)' }}>{m.reason}</td>
-                  <td style={{ padding: '11px 12px', color: 'var(--text-muted)', fontSize: 13 }}>{m.updatedBy}</td>
+                  <td style={{ padding: '11px 12px', color: 'var(--text-muted)', fontSize: 12 }}>{m.updatedBy}</td>
                 </tr>
               ))}
             </tbody>
@@ -474,41 +500,54 @@ export default function StockView({ incomingGoodsList: _incomingGoodsList, addNo
         </div>
       </div>
 
+      {/* Adjust General Purchase Modal */}
       {showAdjust && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
           <div style={{ background: 'var(--bg-card)', borderRadius: 20, padding: 32, width: '100%', maxWidth: 460, boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-              <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: 'var(--text-primary)' }}>Adjust Stock</h2>
-              <button onClick={() => setShowAdjust(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={20} /></button>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: 'var(--text-primary)' }}>Adjust Quantity</h2>
+              <button onClick={() => { setShowAdjust(false); setAdjustTarget(null); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={20} /></button>
             </div>
-            <div style={{ marginBottom: 14 }}>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 5 }}>Product</label>
-              <select value={adjustForm.productId} onChange={e => setAdjustForm(f => ({ ...f, productId: e.target.value }))} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'var(--text-primary)', fontSize: 14 }}>
-                <option value="">Select product...</option>
-                {stock.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-              </select>
-            </div>
+            {!adjustTarget && (
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 5 }}>Select Item</label>
+                <select onChange={e => { const gp = generalPurchases.find(x => x.id === e.target.value); setAdjustTarget(gp || null); }}
+                  style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'var(--text-primary)', fontSize: 14 }}>
+                  <option value="">Select item…</option>
+                  {generalPurchases.map(gp => <option key={gp.id} value={gp.id}>{gp.itemName} (current: {gp.quantity})</option>)}
+                </select>
+              </div>
+            )}
+            {adjustTarget && (
+              <div style={{ background: 'var(--bg-input)', borderRadius: 10, padding: '10px 14px', marginBottom: 14, fontSize: 13, color: 'var(--text-secondary)' }}>
+                <strong style={{ color: 'var(--text-primary)' }}>{adjustTarget.itemName}</strong> — Current qty: <strong>{adjustTarget.quantity}</strong>
+              </div>
+            )}
             <div style={{ marginBottom: 14 }}>
               <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 5 }}>Adjustment Type</label>
               <div style={{ display: 'flex', gap: 10 }}>
                 {['Add', 'Remove'].map(t => (
-                  <button type="button" key={t} onClick={() => setAdjustForm(f => ({ ...f, type: t }))} style={{ flex: 1, padding: '10px', borderRadius: 10, border: `2px solid ${adjustForm.type === t ? 'var(--accent)' : 'var(--border)'}`, background: adjustForm.type === t ? 'var(--accent-light)' : 'var(--bg-input)', color: adjustForm.type === t ? 'var(--accent)' : 'var(--text-secondary)', fontWeight: 600, cursor: 'pointer', fontSize: 14 }}>{t}</button>
+                  <button type="button" key={t} onClick={() => setAdjustForm(f => ({ ...f, type: t }))}
+                    style={{ flex: 1, padding: '10px', borderRadius: 10, border: `2px solid ${adjustForm.type === t ? 'var(--accent)' : 'var(--border)'}`, background: adjustForm.type === t ? 'var(--accent-light)' : 'var(--bg-input)', color: adjustForm.type === t ? 'var(--accent)' : 'var(--text-secondary)', fontWeight: 600, cursor: 'pointer', fontSize: 14 }}>{t}</button>
                 ))}
               </div>
             </div>
             {[
               { label: 'Quantity', key: 'quantity', placeholder: 'e.g. 50', type: 'number' },
-              { label: 'Reason', key: 'reason', placeholder: 'e.g. Received shipment' },
-              { label: 'Notes (optional)', key: 'notes', placeholder: 'Any additional notes...' },
+              { label: 'Reason', key: 'reason', placeholder: 'e.g. Received extra shipment' },
+              { label: 'Notes (optional)', key: 'notes', placeholder: 'Any additional notes…' },
             ].map(f => (
               <div key={f.key} style={{ marginBottom: 14 }}>
                 <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 5 }}>{f.label}</label>
-                <input type={f.type ?? 'text'} value={(adjustForm as Record<string, string>)[f.key]} onChange={e => setAdjustForm(p => ({ ...p, [f.key]: e.target.value }))} placeholder={f.placeholder} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'var(--text-primary)', fontSize: 14, boxSizing: 'border-box' }} />
+                <input type={f.type ?? 'text'} value={(adjustForm as Record<string, string>)[f.key]} onChange={e => setAdjustForm(p => ({ ...p, [f.key]: e.target.value }))} placeholder={f.placeholder}
+                  style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'var(--text-primary)', fontSize: 14, boxSizing: 'border-box' }} />
               </div>
             ))}
             <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
-              <button onClick={() => setShowAdjust(false)} style={{ flex: 1, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 12, padding: '12px', fontWeight: 600, color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 14 }}>Cancel</button>
-              <button onClick={doAdjust} style={{ flex: 1, background: 'var(--accent)', border: 'none', borderRadius: 12, padding: '12px', fontWeight: 600, color: '#fff', cursor: 'pointer', fontSize: 14 }}>Apply</button>
+              <button onClick={() => { setShowAdjust(false); setAdjustTarget(null); setAdjustForm({ type: 'Add', quantity: '', reason: '', notes: '' }); }}
+                style={{ flex: 1, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 12, padding: '12px', fontWeight: 600, color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 14 }}>Cancel</button>
+              <button onClick={doAdjustGP} disabled={!adjustTarget || !adjustForm.quantity}
+                style={{ flex: 1, background: 'var(--accent)', border: 'none', borderRadius: 12, padding: '12px', fontWeight: 600, color: '#fff', cursor: 'pointer', fontSize: 14, opacity: (!adjustTarget || !adjustForm.quantity) ? 0.5 : 1 }}>Apply</button>
             </div>
           </div>
         </div>
@@ -541,10 +580,7 @@ export default function StockView({ incomingGoodsList: _incomingGoodsList, addNo
             ]}
             onClose={() => setSelectedStockItem(null)}
             actions={
-              <>
-                <button onClick={() => { setAdjustForm(f => ({ ...f, productId: selectedStockItem.id })); setShowAdjust(true); setSelectedStockItem(null); }} style={{ padding: '8px 16px', background: 'var(--accent-light)', border: '1px solid var(--border)', borderRadius: 10, color: 'var(--accent)', fontWeight: 600, cursor: 'pointer', fontSize: 13 }}>Adjust Stock</button>
-                <button onClick={() => setSelectedStockItem(null)} style={{ padding: '8px 16px', background: 'var(--accent)', border: 'none', borderRadius: 10, color: '#fff', fontWeight: 600, cursor: 'pointer', fontSize: 13 }}>Close</button>
-              </>
+              <button onClick={() => setSelectedStockItem(null)} style={{ padding: '8px 16px', background: 'var(--accent)', border: 'none', borderRadius: 10, color: '#fff', fontWeight: 600, cursor: 'pointer', fontSize: 13 }}>Close</button>
             }
           >
             {itemMovements.length > 0 && (
