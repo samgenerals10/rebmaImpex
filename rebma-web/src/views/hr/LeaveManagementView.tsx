@@ -125,7 +125,7 @@ const mapToUI = (db: any): LeaveRequest => ({
   endDate: db.end_date || '',
   days: db.days_count || 0,
   reason: db.reason || '',
-  status: (db.status || 'Pending') as LeaveRequest['status'],
+  status: (db.status || 'PENDING') as LeaveRequest['status'],
   rejectionReason: db.rejection_reason
 });
 
@@ -250,7 +250,7 @@ export default function LeaveManagementView({ currentUser, addNotification }: Pr
     }
   };
 
-  const totalPending = leaves.filter(l => l.status === 'Pending').length;
+  const totalPending = leaves.filter(l => l.status === 'PENDING').length;
   const totalApproved = leaves.filter(l => l.status === 'APPROVED').length;
   const onLeaveNow = leaves.filter(l => l.status === 'APPROVED' && l.startDate <= '2026-06-12' && l.endDate >= '2026-06-12').length;
 
@@ -348,7 +348,7 @@ export default function LeaveManagementView({ currentUser, addNotification }: Pr
                     <p style={{ margin: '6px 0 0', fontSize: 12, color: '#ef4444' }}>Rejection reason: {leave.rejectionReason}</p>
                   )}
                 </div>
-                {canApprove && leave.status === 'Pending' && (
+                {canApprove && leave.status === 'PENDING' && (
                   <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }} onClick={e => e.stopPropagation()}>
                     <button onClick={() => handleApprove(leave.id)}
                       style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0.4rem 1rem', background: 'rgba(16,185,129,0.12)', color: '#10b981', border: '1px solid rgba(16,185,129,0.3)', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 13 }}>
@@ -465,7 +465,7 @@ export default function LeaveManagementView({ currentUser, addNotification }: Pr
             onClose={() => setViewLeave(null)}
             actions={
               <>
-                {canApprove && viewLeave.status === 'Pending' && (
+                {canApprove && viewLeave.status === 'PENDING' && (
                   <>
                     <button onClick={() => { handleApprove(viewLeave.id); setViewLeave(null); }} style={{ padding: '8px 16px', background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: 10, color: '#10b981', fontWeight: 600, cursor: 'pointer', fontSize: 13 }}>Approve</button>
                     <button onClick={() => { setRejectId(viewLeave.id); setViewLeave(null); }} style={{ padding: '8px 16px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 10, color: '#ef4444', fontWeight: 600, cursor: 'pointer', fontSize: 13 }}>Reject</button>
@@ -579,7 +579,7 @@ export default function LeaveManagementView({ currentUser, addNotification }: Pr
                 <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Status</label>
                 <select value={editForm.status} onChange={e => setEditForm(p => p ? ({ ...p, status: e.target.value as LeaveRequest['status'] }) : null)}
                   style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.75rem', color: 'var(--text-primary)', fontSize: 14 }}>
-                  {['Pending', 'Approved', 'Rejected'].map(s => <option key={s}>{s}</option>)}
+                  {['PENDING', 'APPROVED', 'REJECTED'].map(s => <option key={s}>{s}</option>)}
                 </select>
               </div>
               {editForm.status === 'REJECTED' && (
