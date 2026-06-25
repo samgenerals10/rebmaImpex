@@ -63,12 +63,25 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
   const [form, setForm] = useState({ clientName: '', productName: '', destination: '', totalAmount: '', paymentMode: 'CASH' as Order['paymentMode'] });
   const [availableProducts, setAvailableProducts] = useState<string[]>([]);
 
+  const mapOrder = (r: any): Order => ({
+    id: r.id,
+    ticketNumber: r.ticket_number || r.ticketNumber || r.id,
+    clientName: r.client_name || r.clientName || '',
+    productName: r.product_name || r.productName || '',
+    destination: r.destination || '',
+    totalAmount: Number(r.total_amount ?? r.totalAmount ?? 0),
+    paymentMode: r.payment_mode || r.paymentMode || 'CASH',
+    status: r.status || 'PENDING_FINANCE',
+    createdAt: r.created_at || r.createdAt || new Date().toISOString(),
+  });
+
   useEffect(() => {
     const load = async () => {
       setLoading(true);
       try {
         const { data } = await supabase.from('orders').select('*').order('created_at', { ascending: false }).limit(300);
-        setOrders(data && data.length > 0 ? data : ordersList.length > 0 ? ordersList : []);
+        const mapped = (data || []).map(mapOrder);
+        setOrders(mapped.length > 0 ? mapped : ordersList.length > 0 ? ordersList : []);
       } catch {
         setOrders(ordersList.length > 0 ? ordersList : []);
       }
@@ -103,24 +116,33 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
   const pending = orders.filter(o => o.status === 'PENDING_FINANCE' || o.status === 'PENDING_MANAGEMENT').length;
   const active = orders.filter(o => o.status === 'PROCESSING' || o.status === 'DELIVERED').length;
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.clientName || !form.totalAmount) { addNotification('Fill required fields.'); return; }
-    const newOrder: Partial<Order> = {
-      id: `ord-${Date.now()}`,
-      ticketNumber: `RBM-${Date.now().toString().slice(-4)}`,
-      clientName: form.clientName,
-      productName: form.productName,
-      destination: form.destination,
-      totalAmount: parseFloat(form.totalAmount),
-      paymentMode: form.paymentMode,
+    const ticketNumber = `TKT-${Math.floor(10000 + Math.random() * 90000)}`;
+    const now = new Date().toISOString();
+    const { data: inserted, error } = await supabase.from('orders').insert({
+      ticket_number: ticketNumber,
+      client_name: form.clientName,
+      product_name: form.productName || null,
+      destination: form.destination || null,
+      payment_mode: form.paymentMode,
+      total_amount: parseFloat(form.totalAmount),
       status: 'PENDING_FINANCE',
-      createdAt: new Date().toISOString(),
-    };
+      created_at: now,
+      updated_at: now,
+    }).select().single();
+    if (error) { addNotification(`Failed to create order: ${error.message}`); return; }
+    const newOrder = mapOrder(inserted || {
+      id: `ord-${Date.now()}`, ticket_number: ticketNumber,
+      client_name: form.clientName, product_name: form.productName,
+      destination: form.destination, payment_mode: form.paymentMode,
+      total_amount: parseFloat(form.totalAmount), status: 'PENDING_FINANCE', created_at: now,
+    });
     onCreateOrder(newOrder);
-    setOrders(prev => [newOrder as Order, ...prev]);
+    setOrders(prev => [newOrder, ...prev]);
     setShowNewModal(false);
     setForm({ clientName: '', productName: '', destination: '', totalAmount: '', paymentMode: 'CASH' });
-    addNotification('Order created successfully.');
+    addNotification('Order created successfully. Routed to Finance.');
   };
 
   const exportCSV = () => {

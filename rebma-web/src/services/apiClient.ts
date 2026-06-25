@@ -176,8 +176,8 @@ const mapPriceToFrontend = (db: any): any => {
     category: db.category,
     unitPrice: db.unit_price || db.unitPrice,
     currency: db.currency,
-    setBy: db.set_by || db.setBy,
-    setAt: db.set_at || db.setAt
+    setBy: db.updated_by || db.set_by || db.setBy,
+    setAt: db.updated_at || db.set_at || db.setAt
   };
 };
 
@@ -617,7 +617,7 @@ export const management = {
     const { data, error } = await supabase
       .from('goods_prices')
       .select('*')
-      .order('set_at', { ascending: false });
+      .order('updated_at', { ascending: false });
     if (error) throw new Error(error.message);
     return (data || []).map(mapPriceToFrontend);
   },
@@ -635,9 +635,8 @@ export const management = {
         category: data.category || 'INCOMING_GOODS',
         unit_price: Number(data.unitPrice),
         currency: data.currency || 'GHS',
-        set_by: performedBy,
-        set_at: new Date().toISOString(),
-        metadata: data.metadata || null
+        updated_by: performedBy,
+        updated_at: new Date().toISOString()
       }).select();
     if (error) throw new Error(error.message);
     return price ? mapPriceToFrontend(price[0]) : null;

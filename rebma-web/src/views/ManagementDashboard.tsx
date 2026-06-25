@@ -174,8 +174,8 @@ export default function ManagementDashboard({
 
     (async () => {
       try {
-        const { data } = await supabase.from('stock_items').select('name, sku, quantity, max_quantity').order('quantity', { ascending: true }).limit(4);
-        if (data) setStockAlerts(data.map((d: any) => ({ name: d.name, sku: d.sku || '—', current: d.quantity || 0, capacity: d.max_quantity || 100 })));
+        const { data } = await supabase.from('stock').select('product_name, product_code, quantity, maximum_level').order('quantity', { ascending: true }).limit(4);
+        if (data) setStockAlerts(data.map((d: any) => ({ name: d.product_name || '—', sku: d.product_code || '—', current: Number(d.quantity || 0), capacity: Number(d.maximum_level || 100) })));
       } catch { /* silent */ }
     })();
   }, []);

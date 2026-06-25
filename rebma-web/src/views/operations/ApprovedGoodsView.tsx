@@ -42,8 +42,8 @@ export default function ApprovedGoodsView({ addNotification }: Props) {
           productName: String(row.product_name || 'Unknown Product'),
           quantity: typeof row.quantity === 'number' ? row.quantity : 0,
           unit: String(row.unit || 'units'),
-          supplier: String(row.supplier_name || row.supplier || '—'),
-          portOfOrigin: String(row.port_of_origin || row.port || '—'),
+          supplier: String(row.company || row.supplier_name || row.supplier || '—'),
+          portOfOrigin: String(row.country || row.port_of_origin || row.port || '—'),
           approvedAt: String(row.updated_at || row.created_at || '').slice(0, 10),
           department: String(row.department || '—'),
         })));

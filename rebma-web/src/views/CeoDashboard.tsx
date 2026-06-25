@@ -102,11 +102,20 @@ export default function CeoDashboard({
     const load = async () => {
       try {
         const { data } = await supabase
-          .from('supplier_orders')
-          .select('id,order_number,supplier_name,supplier_country,total_amount,currency,total_amount_ghs,status,created_at')
+          .from('cargo_intake')
+          .select('id,goods_code,product_name,company,country,weight,status,created_at')
           .order('created_at', { ascending: false })
           .limit(5);
-        setRecentOrders(data ?? []);
+        setRecentOrders((data ?? []).map((r: any) => ({
+          id: r.id,
+          order_number: r.goods_code || r.id,
+          supplier_name: r.company || '—',
+          supplier_country: r.country || '—',
+          total_amount: r.weight || 0,
+          currency: 'Tons',
+          status: r.status,
+          created_at: r.created_at,
+        })));
       } catch {
         setRecentOrders([]);
       } finally {
@@ -116,11 +125,20 @@ export default function CeoDashboard({
     const loadPending = async () => {
       try {
         const { data } = await supabase
-          .from('supplier_orders')
-          .select('id,order_number,supplier_name,supplier_country,total_amount,currency,total_amount_ghs,status,created_at')
-          .eq('payment_authorised', false)
+          .from('cargo_intake')
+          .select('id,goods_code,product_name,company,country,weight,status,created_at')
+          .eq('status', 'PENDING_MANAGEMENT_APPROVAL')
           .order('created_at', { ascending: false });
-        setPendingOrders(data ?? []);
+        setPendingOrders((data ?? []).map((r: any) => ({
+          id: r.id,
+          order_number: r.goods_code || r.id,
+          supplier_name: r.company || '—',
+          supplier_country: r.country || '—',
+          total_amount: r.weight || 0,
+          currency: 'Tons',
+          status: r.status,
+          created_at: r.created_at,
+        })));
       } catch {
         setPendingOrders([]);
       } finally {
@@ -143,9 +161,9 @@ export default function CeoDashboard({
 
         // Active fleet
         const { count: fleetCount } = await supabase
-          .from('drivers')
+          .from('delivery_logs')
           .select('id', { count: 'exact', head: true })
-          .eq('status', 'ACTIVE');
+          .eq('status', 'IN_TRANSIT');
         setKpiFleet(fleetCount ?? 0);
 
         // Total staff
