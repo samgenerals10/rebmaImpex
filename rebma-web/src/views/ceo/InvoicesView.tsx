@@ -16,6 +16,30 @@ interface InvoiceRow {
   status: 'paid' | 'pending' | 'overdue';
 }
 
+
+function orderToInvoice(r: any): InvoiceRow {
+  const createdAt = r.created_at || r.createdAt || new Date().toISOString();
+  const dateStr = createdAt.split('T')[0];
+  const due = new Date(createdAt);
+  due.setDate(due.getDate() + 30);
+  const dueDateStr = due.toISOString().split('T')[0];
+  const today = new Date().toISOString().split('T')[0];
+  const orderStatus = r.status || '';
+  const invoiceStatus: InvoiceRow['status'] =
+    orderStatus === 'DELIVERED' ? 'paid' :
+    dueDateStr < today ? 'overdue' : 'pending';
+  return {
+    id: String(r.id),
+    invoice_no: `INV-${String(r.id).slice(0, 8).toUpperCase()}`,
+    customer: r.client_name || r.clientName || 'Unknown',
+    department: 'MARKETING',
+    amount: Number(r.total_amount ?? r.totalAmount ?? 0),
+    date: dateStr,
+    due_date: dueDateStr,
+    status: invoiceStatus,
+  };
+}
+
 const STATUS_STYLES = {
   paid:    'bg-emerald-100 text-emerald-700',
   pending: 'bg-amber-100 text-amber-700',
@@ -38,15 +62,16 @@ export default function InvoicesView({ addNotification }: Props) {
     setLoading(true);
     try {
       const { data, error } = await supabase
-        .from('invoices')
+        .from('orders')
         .select('*')
-        .order('date', { ascending: false })
+        .in('status', ['APPROVED', 'PROCESSING', 'OUT_FOR_DELIVERY', 'DELIVERED'])
+        .order('created_at', { ascending: false })
         .limit(200);
 
       if (error) {
-        console.error('Error loading invoices:', error);
+        console.error('Error loading orders for invoices:', error);
       }
-      setRows(data || []);
+      setRows((data || []).map(orderToInvoice));
     } catch (e) {
       console.error(e);
       setRows([]);

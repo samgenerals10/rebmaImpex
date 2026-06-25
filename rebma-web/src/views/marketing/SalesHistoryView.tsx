@@ -48,6 +48,22 @@ interface Props {
   addNotification: (msg: string) => void;
 }
 
+function mapOrder(r: any): Order {
+  return {
+    id: String(r.id || ''),
+    ticketNumber: r.ticket_number || r.ticketNumber || r.id,
+    clientName: r.client_name || r.clientName || '',
+    productName: r.product_name || r.productName || '',
+    destination: r.destination || '',
+    paymentMode: r.payment_mode || r.paymentMode || 'CASH',
+    totalAmount: Number(r.total_amount ?? r.totalAmount ?? 0),
+    status: r.status || 'PENDING_FINANCE',
+    createdAt: r.created_at || r.createdAt || '',
+    products: r.product_name || r.productName || r.products || '',
+    submittedBy: r.created_by || r.submittedBy || '',
+  };
+}
+
 export default function SalesHistoryView({ ordersList, addNotification }: Props) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -58,7 +74,8 @@ export default function SalesHistoryView({ ordersList, addNotification }: Props)
       setLoading(true);
       try {
         const { data } = await supabase.from('orders').select('*').order('created_at', { ascending: false }).limit(500);
-        setOrders(data && data.length > 0 ? data : ordersList.length > 0 ? ordersList : []);
+        const mapped = (data ?? []).map(mapOrder);
+        setOrders(mapped.length > 0 ? mapped : ordersList.length > 0 ? ordersList : []);
       } catch {
         setOrders(ordersList.length > 0 ? ordersList : []);
       }
@@ -165,9 +182,9 @@ export default function SalesHistoryView({ ordersList, addNotification }: Props)
                       <td className="py-3 px-3 font-mono text-xs text-[var(--text-secondary)]">{o.ticketNumber || o.id}</td>
                       <td className="py-3 px-3 font-medium text-[var(--text-primary)] whitespace-nowrap">{o.clientName}</td>
                       <td className="py-3 px-3 text-[var(--text-secondary)]">{o.productName || '—'}</td>
-                      <td className="py-3 px-3 font-semibold text-emerald-600 whitespace-nowrap">GHS {o.totalAmount.toLocaleString()}</td>
+                      <td className="py-3 px-3 font-semibold text-emerald-600 whitespace-nowrap">GHS {(Number(o.totalAmount ?? 0)).toLocaleString()}</td>
                       <td className="py-3 px-3 text-[var(--text-secondary)]">{o.paymentMode}</td>
-                      <td className="py-3 px-3 text-[var(--text-muted)] whitespace-nowrap">{o.createdAt.split('T')[0]}</td>
+                      <td className="py-3 px-3 text-[var(--text-muted)] whitespace-nowrap">{(o.createdAt || '').split('T')[0]}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -206,11 +223,11 @@ export default function SalesHistoryView({ ordersList, addNotification }: Props)
                           <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_CREDIT_STYLES[o.status] || 'bg-gray-100 text-gray-600'}`}>{CREDIT_LABEL[o.status] || o.status}</span>
                         </div>
                         <p className="font-semibold text-sm text-[var(--text-primary)] truncate mt-0.5">{o.clientName}</p>
-                        <p className="text-xs text-[var(--text-muted)]">Submitted {o.createdAt.split('T')[0]}</p>
+                        <p className="text-xs text-[var(--text-muted)]">Submitted {(o.createdAt || '').split('T')[0]}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-3 flex-shrink-0">
-                      <span className="font-bold text-emerald-600 text-sm whitespace-nowrap">GHS {o.totalAmount.toLocaleString()}</span>
+                      <span className="font-bold text-emerald-600 text-sm whitespace-nowrap">GHS {(Number(o.totalAmount ?? 0)).toLocaleString()}</span>
                       <button onClick={() => addNotification(`Tracking order ${o.ticketNumber || o.id}.`)}
                         className="px-3 py-1.5 rounded-xl border border-[var(--accent)] text-[var(--accent)] text-xs font-semibold hover:bg-[var(--accent-light)] transition-colors whitespace-nowrap">
                         Track
