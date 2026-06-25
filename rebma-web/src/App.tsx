@@ -3538,6 +3538,8 @@ export default function App() {
         notifications={notifications}
         setNotifications={setNotifications}
         addNotification={addNotification}
+        activeToastIds={activeToastIds}
+        setActiveToastIds={setActiveToastIds}
         renderDashboard={renderDashboard}
         renderAlertModal={renderAlertModal}
         renderPromptModal={renderPromptModal}
