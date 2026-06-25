@@ -232,7 +232,7 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
                   <td className="py-3 px-3 font-mono text-xs text-[var(--text-secondary)]">{o.ticketNumber || o.id}</td>
                   <td className="py-3 px-3 font-medium text-[var(--text-primary)] whitespace-nowrap">{o.clientName}</td>
                   <td className="py-3 px-3 text-[var(--text-secondary)]">{o.productName || '—'}</td>
-                  <td className="py-3 px-3 font-semibold text-emerald-600 whitespace-nowrap">GHS {o.totalAmount.toLocaleString()}</td>
+                  <td className="py-3 px-3 font-semibold text-emerald-600 whitespace-nowrap">GHS {(o.totalAmount ?? 0).toLocaleString()}</td>
                   <td className="py-3 px-3 text-[var(--text-secondary)]">{o.paymentMode}</td>
                   <td className="py-3 px-3">
                     <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_STYLES[o.status]}`}>{STATUS_LABEL[o.status]}</span>

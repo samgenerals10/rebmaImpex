@@ -420,7 +420,7 @@ export const operations = {
   getIncomingGoods: async () => {
     const { data, error } = await supabase
       .from('cargo_intake')
-      .select('*, approvedBy:profiles(full_name)')
+      .select('*')
       .order('created_at', { ascending: false });
     if (error) throw new Error(error.message);
     return (data || []).map(mapCargoToFrontend);
@@ -828,7 +828,7 @@ export const marketing = {
   getOrders: async () => {
     const { data, error } = await supabase
       .from('orders')
-      .select('*, createdBy:profiles(full_name)')
+      .select('*')
       .order('created_at', { ascending: false });
     if (error) throw new Error(error.message);
     return (data || []).map(mapOrderToFrontend);
