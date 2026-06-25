@@ -399,7 +399,7 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
           {selectedItem.amount !== null && (
             <div className="bg-[var(--bg-input)] rounded-xl p-4">
               <p className="text-xs text-[var(--text-muted)] mb-1">Transaction Amount</p>
-              <p className="text-2xl font-bold" style={{ color: 'var(--accent)' }}>GHS {selectedItem.amount.toLocaleString()}</p>
+              <p className="text-2xl font-bold" style={{ color: 'var(--accent)' }}>GHS {(Number(selectedItem.amount ?? 0)).toLocaleString()}</p>
             </div>
           )}
 
@@ -547,7 +547,7 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
                       </td>
                       <td className="px-4 py-3 text-[var(--text-secondary)] whitespace-nowrap">{item.department}</td>
                       <td className="px-4 py-3 font-bold text-[var(--text-primary)] whitespace-nowrap">
-                        {item.amount !== null ? `GHS ${item.amount.toLocaleString()}` : '—'}
+                        {item.amount !== null ? `GHS ${(Number(item.amount ?? 0)).toLocaleString()}` : '—'}
                       </td>
                       <td className="px-4 py-3 text-[var(--text-muted)] whitespace-nowrap">{item.date}</td>
                       <td className="px-4 py-3 whitespace-nowrap">

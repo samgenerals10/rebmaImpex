@@ -170,7 +170,7 @@ export default function TransactionsView({ addNotification }: Props) {
                   <td className="px-4 py-2.5 text-[var(--text-primary)] font-medium">{row.description}</td>
                   <td className="px-4 py-2.5 text-[var(--text-secondary)]">{row.department}</td>
                   <td className="px-4 py-2.5 font-bold whitespace-nowrap" style={{ color: row.type === 'in' ? 'var(--accent)' : '#ef4444' }}>
-                    {row.type === 'in' ? '+' : '-'} GHS {row.amount.toLocaleString()}
+                    {row.type === 'in' ? '+' : '-'} GHS {(Number(row.amount ?? 0)).toLocaleString()}
                   </td>
                   <td className="px-4 py-2.5">
                     <span className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[9px] font-bold ${row.type === 'in' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-600'}`}>

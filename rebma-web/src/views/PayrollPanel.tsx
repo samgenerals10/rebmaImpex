@@ -175,7 +175,7 @@ export default function PayrollPanel({ currentUser, addNotification }: PayrollPa
                     <p className="text-xs text-[var(--text-muted)]">{batch?.period_start} — {batch?.period_end}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-lg font-bold text-[var(--accent)]">GHS {item.net_amount.toLocaleString()}</p>
+                    <p className="text-lg font-bold text-[var(--accent)]">GHS {(Number(item.net_amount ?? 0)).toLocaleString()}</p>
                     <p className="text-[10px] text-[var(--text-muted)]">Net pay</p>
                   </div>
                 </div>
@@ -254,7 +254,7 @@ export default function PayrollPanel({ currentUser, addNotification }: PayrollPa
                     </p>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className="text-base font-bold text-[var(--accent)]">GHS {batch.total_amount.toLocaleString()}</p>
+                    <p className="text-base font-bold text-[var(--accent)]">GHS {(Number(batch.total_amount ?? 0)).toLocaleString()}</p>
                     <p className="text-[10px] text-[var(--text-muted)]">{canManage ? 'Total net' : 'Total'}</p>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
@@ -304,9 +304,9 @@ export default function PayrollPanel({ currentUser, addNotification }: PayrollPa
                               <tr key={item.id} className="border-t border-[var(--border)] hover:bg-[var(--accent-light)] transition-colors">
                                 <td className="px-4 py-2 font-medium text-[var(--text-primary)]">{item.employee_name}</td>
                                 <td className="px-4 py-2 text-[var(--text-secondary)]">{item.department}</td>
-                                <td className="px-4 py-2 text-right text-[var(--text-secondary)]">GHS {item.gross_amount.toLocaleString()}</td>
-                                <td className="px-4 py-2 text-right text-rose-500">GHS {item.deductions.toLocaleString()}</td>
-                                <td className="px-4 py-2 text-right font-bold text-[var(--accent)]">GHS {item.net_amount.toLocaleString()}</td>
+                                <td className="px-4 py-2 text-right text-[var(--text-secondary)]">GHS {(Number(item.gross_amount ?? 0)).toLocaleString()}</td>
+                                <td className="px-4 py-2 text-right text-rose-500">GHS {(Number(item.deductions ?? 0)).toLocaleString()}</td>
+                                <td className="px-4 py-2 text-right font-bold text-[var(--accent)]">GHS {(Number(item.net_amount ?? 0)).toLocaleString()}</td>
                               </tr>
                             ))}
                           </tbody>

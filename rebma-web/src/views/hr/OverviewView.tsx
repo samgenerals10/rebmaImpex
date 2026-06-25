@@ -429,7 +429,7 @@ export default function HrOverviewView({ currentUser, addNotification, setActive
                   <div key={row.dept} className="flex items-center justify-between py-1.5 border-b border-[var(--border)] last:border-0">
                     <span className="text-xs text-[var(--text-secondary)] font-medium">{row.dept}</span>
                     <span className="text-xs font-bold text-[var(--text-primary)] font-mono">
-                      {canSeeAmount ? `GHS ${row.amount.toLocaleString()}` : '••••••'}
+                      {canSeeAmount ? `GHS ${(Number(row.amount ?? 0)).toLocaleString()}` : '••••••'}
                     </span>
                   </div>
                 );

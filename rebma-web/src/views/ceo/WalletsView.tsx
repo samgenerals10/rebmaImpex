@@ -132,7 +132,7 @@ export default function WalletsView({ setActiveSubTab }: WalletsViewProps) {
             {loading ? (
               <div className="animate-pulse h-7 w-32 bg-white/20 rounded mt-2" />
             ) : (
-              <p className="text-2xl font-extrabold text-white mt-1">{acct.currency} {acct.balance.toLocaleString()}</p>
+              <p className="text-2xl font-extrabold text-white mt-1">{acct.currency} {(Number(acct.balance ?? 0)).toLocaleString()}</p>
             )}
             <p className="text-[10px] text-white/50 mt-3">{acct.sub}</p>
           </button>

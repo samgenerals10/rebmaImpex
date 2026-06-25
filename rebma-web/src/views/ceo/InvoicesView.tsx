@@ -157,7 +157,7 @@ export default function InvoicesView({ addNotification }: Props) {
                       <td className="px-4 py-2.5 font-mono font-semibold text-[var(--accent)]">{row.invoice_no}</td>
                       <td className="px-4 py-2.5 text-[var(--text-primary)] font-medium whitespace-nowrap">{row.customer}</td>
                       <td className="px-4 py-2.5 text-[var(--text-secondary)]">{row.department}</td>
-                      <td className="px-4 py-2.5 font-bold text-[var(--text-primary)] whitespace-nowrap">GHS {row.amount.toLocaleString()}</td>
+                      <td className="px-4 py-2.5 font-bold text-[var(--text-primary)] whitespace-nowrap">GHS {(Number(row.amount ?? 0)).toLocaleString()}</td>
                       <td className="px-4 py-2.5 text-[var(--text-secondary)] whitespace-nowrap">{row.date}</td>
                       <td className="px-4 py-2.5 text-[var(--text-secondary)] whitespace-nowrap">{row.due_date}</td>
                       <td className="px-4 py-2.5">
@@ -196,7 +196,7 @@ export default function InvoicesView({ addNotification }: Props) {
         }
         fields={[
           { label: 'Invoice No',  value: selectedInvoice.invoice_no, highlight: true },
-          { label: 'Amount',      value: `GHS ${selectedInvoice.amount.toLocaleString()}`, highlight: true },
+          { label: 'Amount',      value: `GHS ${(Number(selectedInvoice.amount ?? 0)).toLocaleString()}`, highlight: true },
           { label: 'Customer',    value: selectedInvoice.customer },
           { label: 'Department',  value: selectedInvoice.department },
           { label: 'Issue Date',  value: selectedInvoice.date },

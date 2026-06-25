@@ -233,7 +233,7 @@ export default function PayrollView({ currentUser, staffList, addNotification }:
                       </td>
                       <td className="py-3 px-4 text-right text-[var(--text-secondary)]">{batch.staffCount}</td>
                       <td className="py-3 px-4 text-right font-bold font-mono text-[var(--text-primary)]">
-                        {(showAmounts || canSeeFullAmounts) ? `GHS ${batch.totalAmount.toLocaleString()}` : '•••••'}
+                        {(showAmounts || canSeeFullAmounts) ? `GHS ${(Number(batch.totalAmount ?? 0)).toLocaleString()}` : '•••••'}
                       </td>
                       <td className="py-3 px-4 text-[var(--text-muted)] hidden sm:table-cell">{batch.processedAt || '—'}</td>
                       <td className="py-3 px-4 text-center" onClick={e => e.stopPropagation()}>
@@ -353,7 +353,7 @@ export default function PayrollView({ currentUser, staffList, addNotification }:
             ].map(item => (
               <div key={item.label} className="bg-[var(--bg)] rounded-xl p-3 border border-[var(--border)]">
                 <p className="text-xs text-[var(--text-muted)] mb-1">{item.label}</p>
-                <p className="text-lg font-bold font-mono" style={{ color: item.color }}>GHS {item.value.toLocaleString()}</p>
+                <p className="text-lg font-bold font-mono" style={{ color: item.color }}>GHS {(Number(item.value ?? 0)).toLocaleString()}</p>
               </div>
             ))}
           </div>

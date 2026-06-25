@@ -189,8 +189,8 @@ export default function StockView({ incomingGoodsList: _incomingGoodsList, addNo
         name: s.name,
         sku: s.sku,
         category: s.category,
-        current: s.current.toLocaleString(),
-        capacity: s.capacity.toLocaleString(),
+        current: (Number(s.current ?? 0)).toLocaleString(),
+        capacity: (Number(s.capacity ?? 0)).toLocaleString(),
         updatedAt: fmt(s.updatedAt)
       })),
       ['id', 'name', 'sku', 'category', 'current', 'capacity', 'updatedAt']
@@ -281,7 +281,7 @@ export default function StockView({ incomingGoodsList: _incomingGoodsList, addNo
                         <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: 14 }}>{s.name}</span>
                         <span style={{ background: st.bg, color: st.color, borderRadius: 99, padding: '1px 8px', fontSize: 11, fontWeight: 600 }}>{st.label}</span>
                       </div>
-                      <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>{s.current.toLocaleString()} / {s.capacity.toLocaleString()} units</span>
+                      <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>{(Number(s.current ?? 0)).toLocaleString()} / {(Number(s.capacity ?? 0)).toLocaleString()} units</span>
                     </div>
                     <div style={{ height: 10, background: 'var(--bg)', borderRadius: 99, overflow: 'hidden' }}>
                       <div style={{ height: '100%', width: `${pct}%`, background: barColor(s.current, s.capacity), borderRadius: 99, transition: 'width 0.4s ease' }} />
@@ -348,8 +348,8 @@ export default function StockView({ incomingGoodsList: _incomingGoodsList, addNo
                       <td style={{ padding: '12px 12px', fontWeight: 600, color: 'var(--text-primary)' }}>{s.name}</td>
                       <td style={{ padding: '12px 12px', color: 'var(--text-secondary)', fontFamily: 'monospace', fontSize: 13 }}>{s.sku}</td>
                       <td style={{ padding: '12px 12px', color: 'var(--text-secondary)' }}>{s.category}</td>
-                      <td style={{ padding: '12px 12px', fontWeight: 700, color: barColor(s.current, s.capacity) }}>{s.current.toLocaleString()}</td>
-                      <td style={{ padding: '12px 12px', color: 'var(--text-muted)' }}>{s.capacity.toLocaleString()}</td>
+                      <td style={{ padding: '12px 12px', fontWeight: 700, color: barColor(s.current, s.capacity) }}>{(Number(s.current ?? 0)).toLocaleString()}</td>
+                      <td style={{ padding: '12px 12px', color: 'var(--text-muted)' }}>{(Number(s.capacity ?? 0)).toLocaleString()}</td>
                       <td style={{ padding: '12px 12px', color: 'var(--text-muted)', fontSize: 13, whiteSpace: 'nowrap' }}>{fmt(s.updatedAt)}</td>
                       <td style={{ padding: '12px 12px' }}>
                         <span style={{ background: st.bg, color: st.color, borderRadius: 99, padding: '2px 10px', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' }}>{st.label}</span>
@@ -423,7 +423,7 @@ export default function StockView({ incomingGoodsList: _incomingGoodsList, addNo
                       <td style={{ padding: '12px 12px', fontWeight: 600, color: 'var(--text-primary)' }}>{gp.itemName}</td>
                       <td style={{ padding: '12px 12px', color: 'var(--text-secondary)', fontFamily: 'monospace', fontSize: 13 }}>{gp.itemCode}</td>
                       <td style={{ padding: '12px 12px', color: 'var(--text-secondary)' }}>{gp.category}</td>
-                      <td style={{ padding: '12px 12px', fontWeight: 750, color: 'var(--text-primary)' }}>{gp.quantity.toLocaleString()}</td>
+                      <td style={{ padding: '12px 12px', fontWeight: 750, color: 'var(--text-primary)' }}>{(Number(gp.quantity ?? 0)).toLocaleString()}</td>
                       <td style={{ padding: '12px 12px', color: 'var(--text-secondary)', fontWeight: 600 }}>₵{gp.cost.toLocaleString('en-GH', { minimumFractionDigits: 2 })}</td>
                       <td style={{ padding: '12px 12px', color: 'var(--text-muted)', fontSize: 13, whiteSpace: 'nowrap' }}>{gp.dateReceived}</td>
                       <td style={{ padding: '12px 12px', position: 'relative' }}></td>
@@ -533,9 +533,9 @@ export default function StockView({ incomingGoodsList: _incomingGoodsList, addNo
             badgeStyle={{ background: st.bg, color: st.color }}
             fields={[
               { label: 'SKU', value: selectedStockItem.sku, highlight: true },
-              { label: 'Current Stock', value: `${selectedStockItem.current.toLocaleString()} units`, highlight: true },
+              { label: 'Current Stock', value: `${(Number(selectedStockItem.current ?? 0)).toLocaleString()} units`, highlight: true },
               { label: 'Category', value: selectedStockItem.category },
-              { label: 'Capacity', value: `${selectedStockItem.capacity.toLocaleString()} units` },
+              { label: 'Capacity', value: `${(Number(selectedStockItem.capacity ?? 0)).toLocaleString()} units` },
               { label: 'Fill Level', value: `${pct}%` },
               { label: 'Last Updated', value: fmt(selectedStockItem.updatedAt) },
             ]}

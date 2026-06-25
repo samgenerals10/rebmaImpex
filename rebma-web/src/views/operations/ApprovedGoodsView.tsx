@@ -136,7 +136,7 @@ export default function ApprovedGoodsView({ addNotification }: Props) {
                     </div>
                   </td>
                   <td className="px-4 py-2.5 font-bold text-[var(--text-primary)]">
-                    {g.quantity.toLocaleString()} <span className="font-normal text-[var(--text-muted)]">{g.unit}</span>
+                    {(Number(g.quantity ?? 0)).toLocaleString()} <span className="font-normal text-[var(--text-muted)]">{g.unit}</span>
                   </td>
                   <td className="px-4 py-2.5 text-[var(--text-secondary)] whitespace-nowrap">{g.supplier}</td>
                   <td className="px-4 py-2.5 text-[var(--text-secondary)] whitespace-nowrap">{g.portOfOrigin}</td>
