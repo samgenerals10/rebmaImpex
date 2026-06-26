@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Plus, X, MoreVertical, Package, TrendingDown, TrendingUp, History, Download, Printer, Lock } from 'lucide-react';
+import { Search, Plus, X, MoreVertical, Package, TrendingDown, TrendingUp, History, Download, Printer, Lock, ChevronUp, ChevronDown, ArrowUpRight } from 'lucide-react';
 import EntityDetailPanel from '../../components/global/EntityDetailPanel';
 import { stockApi, operations } from '../../services/apiClient';
 import { exportToCSV, exportToPDF } from '../../utils/export';
@@ -84,6 +84,8 @@ export default function StockView({ incomingGoodsList: _incomingGoodsList, addNo
 
   const [showAddProduct, setShowAddProduct] = useState(false);
   const [selectedStockItem, setSelectedStockItem] = useState<StockItem | null>(null);
+  const [selectedCargo, setSelectedCargo] = useState<ApprovedCargo | null>(null);
+  const [cargoSort, setCargoSort] = useState<{ field: keyof ApprovedCargo; dir: 'asc' | 'desc' }>({ field: 'approvedAt', dir: 'desc' });
 
   const loadData = async () => {
     setLoading(true);
@@ -126,14 +128,30 @@ export default function StockView({ incomingGoodsList: _incomingGoodsList, addNo
 
   useEffect(() => { loadData(); }, []);
 
-  // KPI counts across all tabs
-  const totalApprovedCargo = approvedCargo.length;
+  // KPI values
+  const totalApprovedQty = approvedCargo.reduce((sum, c) => sum + c.quantity, 0);
   const totalProducts = stock.length;
   const lowStock = stock.filter(s => s.current > 0 && s.capacity > 0 && s.current / s.capacity < 0.2).length;
   const inStock = stock.filter(s => s.current > 0).length;
 
+  // Sorted cargo
+  const sortedCargo = [...approvedCargo].sort((a, b) => {
+    const va = a[cargoSort.field], vb = b[cargoSort.field];
+    const cmp = typeof va === 'number' ? va - (vb as number) : String(va).localeCompare(String(vb));
+    return cargoSort.dir === 'asc' ? cmp : -cmp;
+  });
+
+  const toggleCargoSort = (field: keyof ApprovedCargo) => {
+    setCargoSort(s => s.field === field ? { field, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { field, dir: 'asc' });
+  };
+
+  const SortIcon = ({ field }: { field: keyof ApprovedCargo }) => {
+    if (cargoSort.field !== field) return <span style={{ color: 'var(--text-muted)', opacity: 0.4, fontSize: 10 }}>↕</span>;
+    return cargoSort.dir === 'asc' ? <ChevronUp size={12} style={{ color: 'var(--accent)' }} /> : <ChevronDown size={12} style={{ color: 'var(--accent)' }} />;
+  };
+
   // Filtered lists
-  const filteredCargo = approvedCargo.filter(c => {
+  const filteredCargo = sortedCargo.filter(c => {
     const q = search.toLowerCase();
     return !search || c.productName.toLowerCase().includes(q) || c.goodsCode.toLowerCase().includes(q) || c.supplier.toLowerCase().includes(q);
   });
@@ -192,7 +210,7 @@ export default function StockView({ incomingGoodsList: _incomingGoodsList, addNo
   };
 
   const TABS: { key: ActiveTab; label: string; count: number }[] = [
-    { key: 'APPROVED_CARGO', label: 'Approved Port Stock', count: totalApprovedCargo },
+    { key: 'APPROVED_CARGO', label: 'Approved Port Stock', count: approvedCargo.length },
     { key: 'PRODUCTS', label: 'Company Products (Finished Goods)', count: totalProducts },
     { key: 'GENERAL_PURCHASES', label: 'General Purchased Items', count: filteredGP.length },
   ];
@@ -230,20 +248,25 @@ export default function StockView({ incomingGoodsList: _incomingGoodsList, addNo
         )}
       </div>
 
-      {/* KPI Cards — no Total Value */}
+      {/* KPI Cards — all clickable */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 24 }}>
-        {[
-          { label: 'Port Approved Goods', value: totalApprovedCargo, color: '#3b82f6', icon: <Package size={18} /> },
-          { label: 'Company Product SKUs', value: totalProducts, color: 'var(--accent)', icon: <Package size={18} /> },
-          { label: 'Low Stock Items', value: lowStock, color: '#f59e0b', icon: <TrendingDown size={18} /> },
-          { label: 'In Stock (Products)', value: inStock, color: '#10b981', icon: <TrendingUp size={18} /> },
-        ].map(c => (
-          <div key={c.label} style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, padding: '20px', boxShadow: 'var(--box-shadow)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+        {([
+          { label: 'Port Approved Goods', value: totalApprovedQty.toLocaleString(), sub: `${approvedCargo.length} product${approvedCargo.length !== 1 ? 's' : ''} approved`, color: '#3b82f6', icon: <Package size={18} />, tab: 'APPROVED_CARGO' as ActiveTab },
+          { label: 'Company Product SKUs', value: totalProducts, sub: 'Finished goods in stock', color: 'var(--accent)', icon: <Package size={18} />, tab: 'PRODUCTS' as ActiveTab },
+          { label: 'Low Stock Items', value: lowStock, sub: 'Below 20% capacity', color: '#f59e0b', icon: <TrendingDown size={18} />, tab: 'PRODUCTS' as ActiveTab, filter: 'Low Stock' },
+          { label: 'In Stock (Products)', value: inStock, sub: 'Products with stock', color: '#10b981', icon: <TrendingUp size={18} />, tab: 'PRODUCTS' as ActiveTab, filter: 'In Stock' },
+        ] as { label: string; value: string | number; sub: string; color: string; icon: React.ReactNode; tab: ActiveTab; filter?: string }[]).map(c => (
+          <div key={c.label} onClick={() => { setActiveTab(c.tab); if (c.filter) setStatusFilter(c.filter); setSearch(''); }}
+            style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, padding: '20px', boxShadow: 'var(--box-shadow)', cursor: 'pointer', transition: 'box-shadow 0.2s, border-color 0.2s', position: 'relative', overflow: 'hidden' }}
+            onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.borderColor = c.color; (e.currentTarget as HTMLDivElement).style.boxShadow = `0 4px 20px ${c.color}22`; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--border)'; (e.currentTarget as HTMLDivElement).style.boxShadow = 'var(--box-shadow)'; }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
               <p style={{ color: 'var(--text-muted)', fontSize: 12, margin: 0 }}>{c.label}</p>
               <div style={{ color: c.color, opacity: 0.7 }}>{c.icon}</div>
             </div>
-            <p style={{ fontSize: 28, fontWeight: 700, color: c.color, margin: 0 }}>{c.value}</p>
+            <p style={{ fontSize: 28, fontWeight: 700, color: c.color, margin: '0 0 4px' }}>{c.value}</p>
+            <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: 0 }}>{c.sub}</p>
+            <ArrowUpRight size={12} style={{ position: 'absolute', bottom: 12, right: 12, color: c.color, opacity: 0.5 }} />
           </div>
         ))}
       </div>
@@ -325,14 +348,29 @@ export default function StockView({ incomingGoodsList: _incomingGoodsList, addNo
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
                 <thead>
                   <tr style={{ borderBottom: '2px solid var(--border)' }}>
-                    {['Product', 'Code', 'Quantity', 'Unit', 'Weight (kg)', 'Supplier', 'Port of Origin', 'Approved On'].map(h => (
-                      <th key={h} style={{ textAlign: 'left', padding: '10px 12px', fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>{h}</th>
+                    {([
+                      { label: 'Product', field: 'productName' as keyof ApprovedCargo },
+                      { label: 'Code', field: 'goodsCode' as keyof ApprovedCargo },
+                      { label: 'Quantity', field: 'quantity' as keyof ApprovedCargo },
+                      { label: 'Unit', field: 'unit' as keyof ApprovedCargo },
+                      { label: 'Weight (kg)', field: 'weight' as keyof ApprovedCargo },
+                      { label: 'Supplier', field: 'supplier' as keyof ApprovedCargo },
+                      { label: 'Port of Origin', field: 'portOfOrigin' as keyof ApprovedCargo },
+                      { label: 'Approved On', field: 'approvedAt' as keyof ApprovedCargo },
+                    ]).map(h => (
+                      <th key={h.label} onClick={() => toggleCargoSort(h.field)}
+                        style={{ textAlign: 'left', padding: '10px 12px', fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>{h.label} <SortIcon field={h.field} /></span>
+                      </th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {filteredCargo.map(c => (
-                    <tr key={c.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                    <tr key={c.id} onClick={() => setSelectedCargo(c)}
+                      style={{ borderBottom: '1px solid var(--border)', cursor: 'pointer', transition: 'background 0.15s' }}
+                      onMouseEnter={e => (e.currentTarget as HTMLTableRowElement).style.background = 'var(--accent-light)'}
+                      onMouseLeave={e => (e.currentTarget as HTMLTableRowElement).style.background = 'transparent'}>
                       <td style={{ padding: '11px 12px', fontWeight: 600, color: 'var(--text-primary)' }}>{c.productName}</td>
                       <td style={{ padding: '11px 12px', color: 'var(--text-muted)', fontFamily: 'monospace', fontSize: 12 }}>{c.goodsCode}</td>
                       <td style={{ padding: '11px 12px', fontWeight: 700, color: '#3b82f6' }}>{c.quantity.toLocaleString()}</td>
@@ -559,6 +597,27 @@ export default function StockView({ incomingGoodsList: _incomingGoodsList, addNo
         addNotification={addNotification}
         onSuccess={loadData}
       />
+
+      {selectedCargo && (
+        <EntityDetailPanel
+          title={selectedCargo.productName}
+          subtitle={selectedCargo.supplier}
+          badgeText="APPROVED"
+          badgeStyle={{ background: '#d1fae5', color: '#065f46' }}
+          fields={[
+            { label: 'Goods Code', value: selectedCargo.goodsCode, highlight: true },
+            { label: 'Quantity', value: `${selectedCargo.quantity.toLocaleString()} ${selectedCargo.unit}`, highlight: true },
+            { label: 'Weight', value: `${Number(selectedCargo.weight).toLocaleString()} kg` },
+            { label: 'Supplier', value: selectedCargo.supplier },
+            { label: 'Port of Origin', value: selectedCargo.portOfOrigin },
+            { label: 'Approved On', value: fmtDate(selectedCargo.approvedAt) },
+          ]}
+          onClose={() => setSelectedCargo(null)}
+          actions={
+            <button onClick={() => setSelectedCargo(null)} style={{ padding: '8px 16px', background: 'var(--accent)', border: 'none', borderRadius: 10, color: '#fff', fontWeight: 600, cursor: 'pointer', fontSize: 13 }}>Close</button>
+          }
+        />
+      )}
 
       {selectedStockItem && (() => {
         const st = stockStatus(selectedStockItem.current, selectedStockItem.capacity);
