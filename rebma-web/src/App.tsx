@@ -3600,7 +3600,7 @@ function AppInner({
   renderMobileProfilePage, renderMobileChatPage, renderWithShell,
   accentColor, isMobileSearchActive, isMobileNotificationsActive, navStyle,
   setIsQuickActionOpen, isQuickActionOpen, handleQuickAction,
-  activeToastIds, setActiveToastIds,
+  activeToastIds, setActiveToastIds, navBadges,
 }: any) {
   const { getSetting } = useCeoSettings();
   const isCeo = currentUser?.isCeo || currentUser?.department === 'CEO';
