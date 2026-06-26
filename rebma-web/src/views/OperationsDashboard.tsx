@@ -286,14 +286,6 @@ export default function OperationsDashboard({
     return () => window.removeEventListener('click', handleOutsideClick);
   }, []);
 
-  const kpiSnapshotData = [
-    { name: 'Cargo Weight', value: parseFloat(totalTons.toFixed(1)), unit: 'T', color: '#3b82f6' },
-    { name: 'Awaiting Release', value: pendingReleaseCount, unit: 'orders', color: '#10b981' },
-    { name: 'Pending Approval', value: pendingMgmtApprovalCount, unit: 'batches', color: '#f59e0b' },
-    { name: 'Discrepancy Notes', value: discrepancyCount, unit: 'flags', color: '#f43f5e' },
-    { name: 'Total Stock Qty', value: totalStockQty, unit: 'units', color: '#8b5cf6' },
-  ];
-
   const totalTons = localCargo.reduce((acc, item) => acc + item.weight, 0);
   const pendingReleaseCount = localOrders.filter(o => o.status === 'PROCESSING').length;
   const pendingMgmtApprovalCount = localCargo.filter(item => item.status === 'PENDING_MANAGEMENT_APPROVAL').length;
@@ -301,6 +293,14 @@ export default function OperationsDashboard({
 
   const approvedOrders = localOrders.filter(o => ['APPROVED', 'PROCESSING', 'OUT_FOR_DELIVERY', 'DELIVERED'].includes(o.status));
   const approvedGoods = localCargo.filter(i => i.status === 'APPROVED');
+
+  const kpiSnapshotData = [
+    { name: 'Cargo Weight', value: parseFloat(totalTons.toFixed(1)), unit: 'T', color: '#3b82f6' },
+    { name: 'Awaiting Release', value: pendingReleaseCount, unit: 'orders', color: '#10b981' },
+    { name: 'Pending Approval', value: pendingMgmtApprovalCount, unit: 'batches', color: '#f59e0b' },
+    { name: 'Discrepancy Notes', value: discrepancyCount, unit: 'flags', color: '#f43f5e' },
+    { name: 'Total Stock Qty', value: totalStockQty, unit: 'units', color: '#8b5cf6' },
+  ];
 
   const stats = [
     { title: 'Total Cargo Weight', value: `${totalTons.toFixed(1)} Tons`, sub: 'Accumulated cargo intake', icon: Layers, color: 'text-blue-500' },
