@@ -3579,6 +3579,7 @@ export default function App() {
         setIsQuickActionOpen={setIsQuickActionOpen}
         isQuickActionOpen={isQuickActionOpen}
         handleQuickAction={handleQuickAction}
+        navBadges={navBadges}
       />
     </CeoSettingsProvider>
   );
