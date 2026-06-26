@@ -145,7 +145,7 @@ export default function Sidebar({
     ],
     OPERATIONS: [
       { id: 'Overview',        label: 'Dashboard',            icon: LayoutDashboard },
-      { id: 'PortIngestion',   label: 'Cargo Intake',          icon: Package },
+      { id: 'PortIngestion',   label: 'Stock Intake',          icon: Package },
       { id: 'ApprovedGoods',   label: 'Approved Goods',        icon: PackageCheck },
       { id: 'Stock',           label: 'Stock',                 icon: Layers },
       { id: 'OpsHistory',      label: 'Discrepancy Reports',   icon: AlertTriangle },

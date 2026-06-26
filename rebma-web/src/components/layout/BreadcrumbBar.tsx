@@ -19,7 +19,7 @@ const SUBTAB_LABELS: Record<string, string> = {
   Registrations: 'Registrations', LeaveManagement: 'Leave Management',
   DepartmentManager: 'Department Manager', PerformanceAlerts: 'Performance Alerts',
   CreateOrder: 'Orders', RegisterCustomer: 'Customers', SalesHistory: 'Sales History',
-  PortIngestion: 'Cargo Intake', Stock: 'Stock', OpsHistory: 'Discrepancy Reports',
+  PortIngestion: 'Stock Intake', Stock: 'Stock', OpsHistory: 'Discrepancy Reports',
   Releases: 'Fulfillment', Deliveries: 'Dashboard', ActiveDeliveries: 'Deliveries',
   Drivers: 'Drivers', ProofOfDelivery: 'Proof of Delivery', FleetOverview: 'Fleet Overview',
   FuelManagement: 'Fuel Management', Maintenance: 'Maintenance Schedule',

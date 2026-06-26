@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import MiniSparkline from '../components/MiniSparkline';
 import KpiDetailView from '../components/KpiDetailView';
-import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
+import { ResponsiveContainer, BarChart, Bar, Cell, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import type { Order, IncomingGoods } from '../types/erp';
 import { exportToCSV, exportToPDF } from '../utils/export';
 import { supabase } from '../lib/supabaseClient';
@@ -60,6 +60,9 @@ export default function OperationsDashboard({
   const [localOrders, setLocalOrders] = useState<Order[]>(ordersList);
   const [localCargo, setLocalCargo] = useState<IncomingGoods[]>(incomingGoodsList);
   const [lowStockItems, setLowStockItems] = useState<any[]>([]);
+  const [totalStockQty, setTotalStockQty] = useState(0);
+  const [editingOrder, setEditingOrder] = useState<Order | null>(null);
+  const [editForm, setEditForm] = useState({ clientName: '', destination: '' });
   const [activeMobileDetail, setActiveMobileDetail] = useState<{
     type: 'order' | 'cargo';
     data: Order | IncomingGoods;
@@ -255,6 +258,23 @@ export default function OperationsDashboard({
     };
   }, []);
 
+  useEffect(() => {
+    const fetchTotalQty = async () => {
+      try {
+        const [{ data: cargoD }, { data: stockD }, { data: gpD }] = await Promise.all([
+          supabase.from('cargo_intake').select('quantity').eq('status', 'APPROVED'),
+          supabase.from('stock').select('current_quantity'),
+          supabase.from('general_purchases').select('quantity').eq('status', 'APPROVED'),
+        ]);
+        const cq = (cargoD || []).reduce((s: number, r: any) => s + Number(r.quantity ?? 0), 0);
+        const sq = (stockD || []).reduce((s: number, r: any) => s + Number(r.current_quantity ?? 0), 0);
+        const gq = (gpD || []).reduce((s: number, r: any) => s + Number(r.quantity ?? 0), 0);
+        setTotalStockQty(cq + sq + gq);
+      } catch { /* ignore */ }
+    };
+    fetchTotalQty();
+  }, []);
+
   // Click outside to close menus
   useEffect(() => {
     const handleOutsideClick = () => {
@@ -266,18 +286,13 @@ export default function OperationsDashboard({
     return () => window.removeEventListener('click', handleOutsideClick);
   }, []);
 
-  const lineChartData = (() => {
-    const today = new Date();
-    return Array.from({ length: 5 }, (_, i) => {
-      const d = new Date(today);
-      d.setDate(d.getDate() - (4 - i));
-      const dayStr = d.toISOString().slice(0, 10);
-      const label = d.toLocaleDateString('en', { weekday: 'short' });
-      const ingested = localCargo.filter(c => String(c.createdAt || '').startsWith(dayStr)).length;
-      const released = localOrders.filter(o => o.status === 'DELIVERED' && String(o.createdAt || '').startsWith(dayStr)).length;
-      return { name: label, Ingested: ingested, Released: released };
-    });
-  })();
+  const kpiSnapshotData = [
+    { name: 'Cargo Weight', value: parseFloat(totalTons.toFixed(1)), unit: 'T', color: '#3b82f6' },
+    { name: 'Awaiting Release', value: pendingReleaseCount, unit: 'orders', color: '#10b981' },
+    { name: 'Pending Approval', value: pendingMgmtApprovalCount, unit: 'batches', color: '#f59e0b' },
+    { name: 'Discrepancy Notes', value: discrepancyCount, unit: 'flags', color: '#f43f5e' },
+    { name: 'Total Stock Qty', value: totalStockQty, unit: 'units', color: '#8b5cf6' },
+  ];
 
   const totalTons = localCargo.reduce((acc, item) => acc + item.weight, 0);
   const pendingReleaseCount = localOrders.filter(o => o.status === 'PROCESSING').length;
@@ -453,21 +468,25 @@ export default function OperationsDashboard({
   };
 
   // Row Action Handlers
-  const handleEditOrder = async (order: Order) => {
-    const newClient = window.prompt('Edit client name:', order.clientName);
-    if (!newClient) return;
-    const newDest = window.prompt('Edit destination:', order.destination || '');
+  const handleEditOrder = (order: Order) => {
+    setEditingOrder(order);
+    setEditForm({ clientName: order.clientName, destination: order.destination || '' });
+  };
+
+  const handleSaveOrder = async () => {
+    if (!editingOrder) return;
     try {
       const { error } = await supabase
         .from('orders')
-        .update({ client_name: newClient, destination: newDest })
-        .eq('id', order.id);
+        .update({ client_name: editForm.clientName, destination: editForm.destination })
+        .eq('id', editingOrder.id);
       if (error) throw error;
-      setLocalOrders(prev => prev.map(o => o.id === order.id ? { ...o, clientName: newClient, destination: newDest || undefined } : o));
-      addNotification(`Updated order ${order.id}`);
+      setLocalOrders(prev => prev.map(o => o.id === editingOrder.id ? { ...o, clientName: editForm.clientName, destination: editForm.destination } : o));
+      addNotification(`Updated order ${editingOrder.id}`);
     } catch (err: any) {
       addNotification(`Error updating order: ${err.message}`);
     }
+    setEditingOrder(null);
   };
 
   const handleDuplicateOrder = (order: Order) => {
@@ -971,47 +990,35 @@ export default function OperationsDashboard({
                       </div>
                     </div>
                     <p className="text-lg sm:text-xl font-bold text-[var(--text-primary)] font-mono">
-                      {localCargo.filter(c => c.status === 'APPROVED').length} <span className="text-xs font-normal text-[var(--text-muted)]">approved</span>
+                      {totalStockQty.toLocaleString()} <span className="text-xs font-normal text-[var(--text-muted)]">units</span>
                     </p>
                     <p className="text-[9px] text-[var(--text-muted)] mt-1">Port + Products + Purchases</p>
                     <span className="absolute bottom-3 right-3 text-[9px] font-bold text-[var(--accent)] opacity-0 group-hover:opacity-100 transition-opacity">View Stock →</span>
                   </div>
                 </div>
 
-                {/* Processing Dynamics Chart */}
+                {/* KPI Snapshot Chart */}
                 <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <h3 className="font-semibold text-[var(--text-primary)] text-xs sm:text-sm">Cargo Processing Dynamics</h3>
-                      <p className="text-[10px] text-[var(--text-muted)] font-medium">Weekly Ingestion vs Releases</p>
-                    </div>
-                    <div className="flex items-center gap-3 text-[10px]">
-                      <span className="flex items-center gap-1 font-medium text-[var(--text-secondary)]">
-                        <span className="w-2 h-2 rounded-full bg-blue-500 inline-block" /> Ingested
-                      </span>
-                      <span className="flex items-center gap-1 font-medium text-[var(--text-secondary)]">
-                        <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" /> Released
-                      </span>
-                    </div>
+                  <div className="mb-4">
+                    <h3 className="font-semibold text-[var(--text-primary)] text-xs sm:text-sm">Operations KPI Snapshot</h3>
+                    <p className="text-[10px] text-[var(--text-muted)] font-medium">Live view of all key performance indicators</p>
                   </div>
-                  <div className="h-60 w-full">
+                  <div className="h-52 w-full">
                     <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={lineChartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                      <BarChart data={kpiSnapshotData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }} barSize={32}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
-                        <XAxis dataKey="name" tick={{ fill: 'var(--text-muted)', fontSize: 10 }} axisLine={false} tickLine={false} />
-                        <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 10 }} axisLine={false} tickLine={false} />
+                        <XAxis dataKey="name" tick={{ fill: 'var(--text-muted)', fontSize: 9 }} axisLine={false} tickLine={false} />
+                        <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 9 }} axisLine={false} tickLine={false} />
                         <Tooltip
-                          contentStyle={{
-                            backgroundColor: 'var(--bg-card)',
-                            borderColor: 'var(--border)',
-                            borderRadius: '12px',
-                            fontSize: '11px',
-                            color: 'var(--text-primary)'
-                          }}
+                          contentStyle={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)', borderRadius: '10px', fontSize: '11px', color: 'var(--text-primary)' }}
+                          formatter={(v: any, n: any, p: any) => [`${Number(v).toLocaleString()} ${p.payload.unit}`, '']}
                         />
-                        <Line type="monotone" dataKey="Ingested" name="Ingested" stroke="#3b82f6" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} />
-                        <Line type="monotone" dataKey="Released" name="Released" stroke="#10b981" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} />
-                      </LineChart>
+                        <Bar dataKey="value" radius={[6, 6, 0, 0]}>
+                          {kpiSnapshotData.map((entry, index) => (
+                            <Cell key={index} fill={entry.color} />
+                          ))}
+                        </Bar>
+                      </BarChart>
                     </ResponsiveContainer>
                   </div>
                 </div>
@@ -1881,7 +1888,7 @@ export default function OperationsDashboard({
                     </thead>
                     <tbody className="divide-y divide-[var(--border)]">
                       {sortedOrders.map(order => (
-                        <tr key={order.id} className="theme-table-row hover:bg-[var(--accent-light)] transition-colors group cursor-pointer text-[var(--text-primary)]" onClick={() => setActiveMobileDetail({ type: 'order', data: order })}>
+                        <tr key={order.id} className="theme-table-row hover:bg-[var(--accent-light)] transition-colors group text-[var(--text-primary)]">
                           <td className="py-3 px-5" onClick={e => e.stopPropagation()}>
                             <input
                               type="checkbox"
@@ -1937,34 +1944,51 @@ export default function OperationsDashboard({
             </div>
           )}
 
-          {/* Approved Goods Section — shown on all tabs except PortIngestion (where it appears above the form) */}
-          {approvedGoods.length > 0 && activeSubTab !== 'PortIngestion' && (
-            <div className="p-6 bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] border border-[var(--border)] space-y-3">
-              <div className="flex items-center gap-2">
-                <PackageCheck className="w-5 h-5 text-[var(--accent)]" />
-                <h3 className="text-lg font-bold text-[var(--text-primary)]">Approved Incoming Goods</h3>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {approvedGoods.map(item => (
-                  <div key={item.id} className="p-4 bg-[var(--bg)] border border-[var(--border)] rounded-xl space-y-2 text-[var(--text-primary)]">
-                    {item.productImage && (
-                      <img src={item.productImage} alt={item.productName} className="w-full h-24 object-cover rounded-lg border border-[var(--border)]" />
-                    )}
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <p className="text-xs font-bold text-[var(--text-primary)]">{item.productName || 'Unnamed Product'}</p>
-                        <p className="text-[10px] text-[var(--text-muted)]">Code: <code>{item.goodsCode || item.id}</code></p>
-                      </div>
-                      <span className="px-2 py-0.5 rounded font-bold text-[9px] bg-emerald-500/10 text-emerald-500">APPROVED</span>
-                    </div>
-                    <p className="text-[10px] text-[var(--text-muted)]">From: <strong className="text-[var(--text-primary)]">{item.country}</strong> via {item.company}</p>
-                    <p className="text-[10px] text-[var(--text-muted)]">Destination: <strong className="text-[var(--text-primary)]">{item.destination || 'Accra Warehouse'}</strong></p>
-                    <p className="text-[10px] text-[var(--text-muted)]">Qty: <strong className="text-[var(--text-primary)]">{item.quantity}</strong> | Weight: <strong className="text-[var(--text-primary)]">{item.weight}T</strong> | Unit: <strong className="text-[var(--text-primary)]">GHS {item.unitPrice || '—'}</strong></p>
+          {/* Approved Goods Section — compact table */}
+          {approvedGoods.length > 0 && activeSubTab !== 'PortIngestion' && (() => {
+            const [showAllGoods, setShowAllGoods] = [false, (_: boolean) => {}];
+            const visible = approvedGoods.slice(0, 8);
+            return (
+              <div className="bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] border border-[var(--border)] overflow-hidden">
+                <div className="flex items-center gap-2 px-5 py-4 border-b border-[var(--border)]">
+                  <PackageCheck className="w-4 h-4 text-[var(--accent)]" />
+                  <h3 className="text-sm font-bold text-[var(--text-primary)]">Approved Incoming Goods</h3>
+                  <span className="ml-auto text-xs font-mono text-[var(--text-muted)] bg-[var(--accent-light)] px-2 py-0.5 rounded-full">{approvedGoods.length} items</span>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead><tr className="border-b border-[var(--border)] text-[var(--text-muted)] text-[10px] uppercase font-semibold">
+                      <th className="px-4 py-2.5 text-left">Product</th>
+                      <th className="px-4 py-2.5 text-left hidden sm:table-cell">Code</th>
+                      <th className="px-4 py-2.5 text-left hidden md:table-cell">Origin / Carrier</th>
+                      <th className="px-4 py-2.5 text-right">Qty</th>
+                      <th className="px-4 py-2.5 text-right hidden sm:table-cell">Weight</th>
+                      <th className="px-4 py-2.5 text-center">Status</th>
+                    </tr></thead>
+                    <tbody className="divide-y divide-[var(--border)]">
+                      {visible.map(item => (
+                        <tr key={item.id} className="hover:bg-[var(--accent-light)] transition-colors">
+                          <td className="px-4 py-3 font-semibold text-[var(--text-primary)]">{item.productName || 'Unnamed'}</td>
+                          <td className="px-4 py-3 font-mono text-[var(--text-muted)] text-[10px] hidden sm:table-cell">{item.goodsCode || item.id}</td>
+                          <td className="px-4 py-3 text-[var(--text-muted)] hidden md:table-cell">{item.country} / {item.company}</td>
+                          <td className="px-4 py-3 text-right font-bold text-blue-500 font-mono">{Number(item.quantity).toLocaleString()}</td>
+                          <td className="px-4 py-3 text-right text-[var(--text-muted)] hidden sm:table-cell">{item.weight}T</td>
+                          <td className="px-4 py-3 text-center"><span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/10 text-emerald-500">APPROVED</span></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {approvedGoods.length > 8 && (
+                  <div className="px-5 py-3 border-t border-[var(--border)] text-center">
+                    <button onClick={() => setActiveSubTab?.('Stock')} className="text-xs text-[var(--accent)] font-semibold hover:underline cursor-pointer bg-transparent border-none">
+                      View all {approvedGoods.length} items in Stock →
+                    </button>
                   </div>
-                ))}
+                )}
               </div>
-            </div>
-          )}
+            );
+          })()}
 
         </div>
 
@@ -2130,6 +2154,39 @@ export default function OperationsDashboard({
       )}
       </div>
       </div>
+
+      {/* Edit Order Modal */}
+      {editingOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-[var(--bg-card)] rounded-2xl shadow-2xl border border-[var(--border)] w-full max-w-md">
+            <div className="flex items-center justify-between p-5 border-b border-[var(--border)]">
+              <h3 className="font-bold text-[var(--text-primary)] text-sm">Edit Order Details</h3>
+              <button onClick={() => setEditingOrder(null)} className="p-1.5 rounded-lg hover:bg-[var(--accent-light)] cursor-pointer">
+                <X className="w-4 h-4 text-[var(--text-muted)]" />
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div className="p-3 bg-[var(--accent-light)] rounded-xl text-xs text-[var(--text-muted)]">
+                <span className="font-mono font-bold text-[var(--accent)]">{editingOrder.ticketNumber || editingOrder.id}</span> · {editingOrder.productName}
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Client Name</label>
+                <input value={editForm.clientName} onChange={e => setEditForm(f => ({ ...f, clientName: e.target.value }))}
+                  className="w-full px-3 py-2 bg-[var(--bg)] text-[var(--text-primary)] border border-[var(--border)] focus:border-[var(--accent)] rounded-xl text-xs focus:outline-none" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Destination</label>
+                <input value={editForm.destination} onChange={e => setEditForm(f => ({ ...f, destination: e.target.value }))}
+                  className="w-full px-3 py-2 bg-[var(--bg)] text-[var(--text-primary)] border border-[var(--border)] focus:border-[var(--accent)] rounded-xl text-xs focus:outline-none" />
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button onClick={() => setEditingOrder(null)} className="flex-1 py-2 border border-[var(--border)] rounded-xl text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--accent-light)] cursor-pointer">Cancel</button>
+                <button onClick={handleSaveOrder} className="flex-1 py-2 bg-[var(--accent)] text-white rounded-xl text-xs font-bold hover:opacity-90 cursor-pointer shadow">Save Changes</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

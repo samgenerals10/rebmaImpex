@@ -210,7 +210,7 @@ export default function StockView({ incomingGoodsList: _incomingGoodsList, addNo
   };
 
   const TABS: { key: ActiveTab; label: string; count: number }[] = [
-    { key: 'APPROVED_CARGO', label: 'Approved Port Stock', count: approvedCargo.length },
+    { key: 'APPROVED_CARGO', label: 'Approved Port Stock', count: totalApprovedQty },
     { key: 'PRODUCTS', label: 'Company Products (Finished Goods)', count: totalProducts },
     { key: 'GENERAL_PURCHASES', label: 'General Purchased Items', count: filteredGP.length },
   ];
