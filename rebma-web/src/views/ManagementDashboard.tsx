@@ -6,6 +6,7 @@ import { FileSpreadsheet, FileText, Clipboard, Activity, ShieldCheck, DollarSign
 import { supabase } from '../lib/supabaseClient';
 import { operations, management } from '../services/apiClient';
 import MiniSparkline from '../components/MiniSparkline';
+import ActivityFeed from '../components/global/ActivityFeed';
 import KpiDetailView from '../components/KpiDetailView';
 import { exportToCSV, exportToPDF } from '../utils/export';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
@@ -1389,6 +1390,15 @@ export default function ManagementDashboard({
         )}
       </div>
       </div>
+
+      {/* Cross-department Activity Feed */}
+      <div className="mt-6">
+        <ActivityFeed
+          title="Organisation Activity Feed"
+          limit={25}
+        />
+      </div>
+
       </div>
     </>
   );

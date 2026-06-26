@@ -12,6 +12,7 @@ import type { Order, FinancePayment, ProductionRequest } from '../types/erp';
 import { exportToCSV, exportToPDF } from '../utils/export';
 import { stockApi, operations } from '../services/apiClient';
 import { supabase } from '../lib/supabaseClient';
+import ActivityFeed from '../components/global/ActivityFeed';
 
 interface FinanceDashboardProps {
   ordersList: Order[];
@@ -1485,6 +1486,16 @@ export default function FinanceDashboard({
           </div>
         </div>
       </div>
+
+      {/* Finance + Operations Activity Feed */}
+      <div className="mt-6">
+        <ActivityFeed
+          title="Finance & Operations Activity"
+          departments={['FINANCE', 'OPERATIONS']}
+          limit={20}
+        />
+      </div>
+
     </>
   );
 }

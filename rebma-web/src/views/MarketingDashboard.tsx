@@ -8,6 +8,7 @@ import KpiDetailView from '../components/KpiDetailView';
 import { exportToCSV, exportToPDF } from '../utils/export';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { useCeoSettings } from '../contexts/CeoSettingsContext';
+import ActivityFeed from '../components/global/ActivityFeed';
 
 interface MarketingDashboardProps {
   ordersList: Order[];
@@ -1304,6 +1305,16 @@ export default function MarketingDashboard({
         </div>
       </div>
       </div>
+
+      {/* Orders & Marketing Activity Feed */}
+      <div className="mt-6">
+        <ActivityFeed
+          title="Sales & Order Activity"
+          departments={['MARKETING', 'FINANCE', 'OPERATIONS']}
+          limit={20}
+        />
+      </div>
+
       </div>
     </>
   );

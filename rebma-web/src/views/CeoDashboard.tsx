@@ -5,6 +5,7 @@ import { Layers, DollarSign, Truck, Users, FileSpreadsheet, FileText, MoreVertic
 import { supabase } from '../lib/supabaseClient';
 import MiniSparkline from '../components/MiniSparkline';
 import PendingApprovalsAlert from '../components/global/PendingApprovalsAlert';
+import ActivityFeed from '../components/global/ActivityFeed';
 import { 
   ResponsiveContainer, 
   LineChart, 
@@ -719,6 +720,15 @@ export default function CeoDashboard({
   
           </div>
         </div>
+
+        {/* Full organisation activity — CEO sees everything */}
+        <div className="mt-6">
+          <ActivityFeed
+            title="Live Organisation Activity"
+            limit={30}
+          />
+        </div>
+
       </div>
     </>
   );
