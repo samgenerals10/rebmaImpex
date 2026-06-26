@@ -29,6 +29,7 @@ interface SidebarProps {
   sidebarCollapsed?: boolean;
   setSidebarCollapsed?: (val: boolean) => void;
   unreadEmailCount?: number;
+  navBadges?: Record<string, number>;
 }
 
 export default function Sidebar({
@@ -45,7 +46,8 @@ export default function Sidebar({
   onClose,
   sidebarCollapsed = false,
   setSidebarCollapsed,
-  unreadEmailCount = 0
+  unreadEmailCount = 0,
+  navBadges = {}
 }: SidebarProps) {
   const [isSwitcherOpen, setIsSwitcherOpen] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
@@ -253,9 +255,10 @@ export default function Sidebar({
   const showLogisticsSection = isCeo || isManagement || currentUser?.department === 'HR';
 
   // Render nav button for a tab
-  const renderNavBtn = (tab: { id: string; label: string; icon: any }, badge = 0) => {
+  const renderNavBtn = (tab: { id: string; label: string; icon: any }, _badge = 0) => {
     const Icon = tab.icon;
     const isActive = activeSubTab === tab.id;
+    const badge = (navBadges[tab.id] ?? 0) || _badge;
 
     if (isLiamFinance) {
       return (
@@ -272,7 +275,7 @@ export default function Sidebar({
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
             <Icon style={{ width: 18, height: 18, color: isActive ? '#fff' : 'var(--text-secondary)' }} />
-            {badge > 0 && <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-500 text-white text-[8px] font-bold flex items-center justify-center">{badge > 9 ? '9+' : badge}</span>}
+            {badge > 0 && <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-500 text-white text-[8px] font-bold flex items-center justify-center animate-[badge-pulse_1.4s_ease-in-out_infinite]">{badge > 9 ? '9+' : badge}</span>}
           </span>
           {!lfCollapsed && (
             <span className="nav-label truncate text-xs font-semibold" style={{ color: isActive ? 'var(--accent)' : 'var(--text-secondary)' }}>
@@ -293,11 +296,11 @@ export default function Sidebar({
       >
         <span className="nav-icon flex-shrink-0 relative">
           <Icon className="w-4 h-4" style={{ color: isActive ? '#ffffff' : undefined }} />
-          {badge > 0 && <span className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 rounded-full bg-rose-500 text-white text-[8px] font-bold flex items-center justify-center">{badge > 9 ? '9+' : badge}</span>}
+          {badge > 0 && <span className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 rounded-full bg-rose-500 text-white text-[8px] font-bold flex items-center justify-center animate-[badge-pulse_1.4s_ease-in-out_infinite]">{badge > 9 ? '9+' : badge}</span>}
         </span>
         <span className={`nav-label truncate transition-all duration-300 ${isActualCollapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100'}`}>{tab.label}</span>
         {badge > 0 && !isActualCollapsed && !isActive && (
-          <span className="ml-auto text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-rose-500 text-white">{badge > 9 ? '9+' : badge}</span>
+          <span className="ml-auto text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-rose-500 text-white animate-[badge-pulse_1.4s_ease-in-out_infinite]">{badge > 9 ? '9+' : badge}</span>
         )}
       </button>
     );

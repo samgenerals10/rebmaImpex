@@ -14,8 +14,11 @@ interface InvoiceRow {
   date: string;
   due_date: string;
   status: 'paid' | 'pending' | 'overdue';
+  product: string;
+  payment_mode: string;
+  issued_by: string;
+  issued_by_email: string;
 }
-
 
 function orderToInvoice(r: any): InvoiceRow {
   const createdAt = r.created_at || r.createdAt || new Date().toISOString();
@@ -37,6 +40,10 @@ function orderToInvoice(r: any): InvoiceRow {
     date: dateStr,
     due_date: dueDateStr,
     status: invoiceStatus,
+    product: r.product_name || r.productName || '—',
+    payment_mode: r.payment_mode || r.paymentMode || 'CASH',
+    issued_by: r.created_by || r.submittedBy || 'Finance Department',
+    issued_by_email: r.issuer_email || 'finance@rebmaimpex.com',
   };
 }
 
@@ -70,72 +77,91 @@ function printInvoices(rows: InvoiceRow[]) {
 }
 
 async function printSingleInvoice(r: InvoiceRow, notes?: string) {
-  // Generate QR code as data URL
   let qrDataUrl = '';
   try {
     const QRCode = await import('qrcode');
     qrDataUrl = await QRCode.toDataURL(
-      `REBMA IMPEX GHANA LIMITED\nInvoice: ${r.invoice_no}\nCustomer: ${r.customer}\nAmount: GHS ${Number(r.amount??0).toLocaleString()}\nDate: ${r.date}\nDue: ${r.due_date}\nStatus: ${r.status.toUpperCase()}`,
-      { width: 120, margin: 1, color: { dark: '#1e293b', light: '#ffffff' } }
+      `REBMA IMPEX GHANA LIMITED\nInvoice: ${r.invoice_no}\nCustomer: ${r.customer}\nProduct: ${r.product}\nAmount: GHS ${Number(r.amount??0).toLocaleString()}\nPayment: ${r.payment_mode}\nDate: ${r.date}\nDue: ${r.due_date}\nStatus: ${r.status.toUpperCase()}\nIssued by: ${r.issued_by}`,
+      { width: 140, margin: 1, color: { dark: '#1e293b', light: '#ffffff' } }
     );
   } catch { qrDataUrl = ''; }
 
+  // SVG logo — R hexagon icon
+  const logoSvg = `<svg width="48" height="48" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><polygon points="24,2 44,13 44,35 24,46 4,35 4,13" fill="#e91e8c" opacity="0.12"/><polygon points="24,6 40,15 40,33 24,42 8,33 8,15" fill="none" stroke="#e91e8c" stroke-width="1.5"/><text x="24" y="30" font-family="Arial Black,sans-serif" font-size="18" font-weight="900" fill="#e91e8c" text-anchor="middle">R</text></svg>`;
+
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>Invoice ${r.invoice_no} — REBMA IMPEX Ghana Limited</title><style>
     *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:'Segoe UI',Arial,sans-serif;background:#f8fafc;color:#1e293b;padding:0}
-    .page{background:#fff;max-width:760px;margin:32px auto;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.10);position:relative}
-    .watermark{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-35deg);font-size:72px;font-weight:900;color:rgba(0,0,0,0.04);white-space:nowrap;pointer-events:none;z-index:0;letter-spacing:4px}
-    .content{position:relative;z-index:1;padding:40px 48px}
-    .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:36px}
-    .logo-block .company{font-size:22px;font-weight:800;color:#1e293b;letter-spacing:.5px}
-    .logo-block .tagline{font-size:11px;color:#64748b;margin-top:2px;letter-spacing:.5px}
-    .logo-block .address{font-size:10px;color:#94a3b8;margin-top:6px;line-height:1.6}
-    .inv-meta{text-align:right}
-    .inv-meta .inv-label{font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px}
-    .inv-meta .inv-no{font-size:24px;font-weight:800;color:var(--accent,#e91e8c)}
-    .inv-meta .inv-date{font-size:11px;color:#64748b;margin-top:4px}
-    .divider{height:2px;background:linear-gradient(90deg,#e91e8c,#7c3aed,transparent);margin:0 0 28px;border:none;border-radius:99px}
-    .bill-section{display:flex;justify-content:space-between;margin-bottom:32px;gap:24px}
-    .bill-box{flex:1;background:#f8fafc;border-radius:10px;padding:16px 20px}
-    .bill-box .blabel{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#94a3b8;margin-bottom:8px}
-    .bill-box .bname{font-size:15px;font-weight:700;color:#1e293b;margin-bottom:2px}
-    .bill-box .bsub{font-size:11px;color:#64748b}
-    .amount-hero{background:linear-gradient(135deg,#1e293b 0%,#334155 100%);border-radius:12px;padding:24px 28px;margin-bottom:28px;display:flex;justify-content:space-between;align-items:center}
-    .amount-hero .alabel{font-size:11px;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px}
-    .amount-hero .avalue{font-size:36px;font-weight:800;color:#fff;letter-spacing:-1px}
-    .badge{display:inline-block;padding:5px 14px;border-radius:99px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em}
+    body{font-family:'Segoe UI',Arial,sans-serif;background:#f1f5f9;color:#1e293b}
+    .page{background:#fff;max-width:780px;margin:28px auto;border-radius:14px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.12);position:relative}
+    .watermark{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-35deg);font-size:80px;font-weight:900;color:rgba(233,30,140,0.04);white-space:nowrap;pointer-events:none;z-index:0;letter-spacing:6px;user-select:none}
+    .stripe{height:6px;background:linear-gradient(90deg,#e91e8c,#7c3aed,#3b82f6)}
+    .content{position:relative;z-index:1;padding:40px 52px 48px}
+    .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:32px;gap:20px}
+    .logo-wrap{display:flex;align-items:center;gap:14px}
+    .logo-wrap svg{flex-shrink:0}
+    .logo-block .company{font-size:20px;font-weight:900;color:#1e293b;letter-spacing:1px;line-height:1}
+    .logo-block .tagline{font-size:10px;color:#e91e8c;margin-top:2px;font-weight:700;letter-spacing:2px;text-transform:uppercase}
+    .logo-block .address{font-size:9.5px;color:#94a3b8;margin-top:8px;line-height:1.7}
+    .inv-meta{text-align:right;flex-shrink:0}
+    .inv-meta .inv-label{font-size:9px;color:#94a3b8;text-transform:uppercase;letter-spacing:.12em;margin-bottom:3px}
+    .inv-meta .inv-no{font-size:22px;font-weight:900;color:#e91e8c;letter-spacing:1px}
+    .inv-meta .inv-date{font-size:10px;color:#64748b;margin-top:4px}
+    .badge{display:inline-block;padding:5px 16px;border-radius:99px;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;margin-top:8px}
     .paid{background:#d1fae5;color:#065f46}.pending{background:#fef3c7;color:#92400e}.overdue{background:#fee2e2;color:#991b1b}
-    .fields{border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;margin-bottom:24px}
-    .field-row{display:flex;justify-content:space-between;padding:11px 18px;border-bottom:1px solid #f1f5f9;font-size:13px}
+    .divider{height:2px;background:linear-gradient(90deg,#e91e8c,#7c3aed,transparent);margin:0 0 28px;border:none;border-radius:99px}
+    .bill-section{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:28px}
+    .bill-box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:16px 18px}
+    .blabel{font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#94a3b8;margin-bottom:8px}
+    .bname{font-size:14px;font-weight:700;color:#1e293b;margin-bottom:3px}
+    .bsub{font-size:10px;color:#64748b;line-height:1.5}
+    .amount-hero{background:linear-gradient(135deg,#1e293b 0%,#334155 100%);border-radius:12px;padding:22px 28px;margin-bottom:28px;display:flex;justify-content:space-between;align-items:center}
+    .alabel{font-size:10px;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:.1em;margin-bottom:5px}
+    .avalue{font-size:34px;font-weight:900;color:#fff;letter-spacing:-1px}
+    .seal{border:2px solid rgba(233,30,140,0.5);border-radius:10px;padding:8px 16px;font-size:10px;font-weight:800;color:#e91e8c;text-transform:uppercase;letter-spacing:.12em;text-align:center}
+    .seal small{display:block;font-size:8px;color:rgba(255,255,255,0.4);font-weight:500;letter-spacing:0;margin-top:2px;text-transform:none}
+    .items-table{width:100%;border-collapse:collapse;margin-bottom:24px;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden}
+    .items-table th{background:#f8fafc;padding:10px 16px;text-align:left;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#64748b;border-bottom:1px solid #e2e8f0}
+    .items-table td{padding:12px 16px;font-size:13px;border-bottom:1px solid #f1f5f9;color:#1e293b}
+    .items-table tr:last-child td{border-bottom:none}
+    .items-table .subtotal{background:#f8fafc}
+    .items-table .total{background:#1e293b;color:#fff;font-weight:700;font-size:14px}
+    .items-table .total td{color:#fff}
+    .fields{border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;margin-bottom:24px;font-size:12.5px}
+    .field-row{display:flex;justify-content:space-between;padding:10px 18px;border-bottom:1px solid #f1f5f9}
     .field-row:last-child{border-bottom:none}
-    .field-row .fl{color:#64748b}.field-row .fv{font-weight:600;color:#1e293b}
+    .fl{color:#64748b}.fv{font-weight:600;color:#1e293b}
     .notes-box{background:#fefce8;border:1px solid #fde68a;border-radius:10px;padding:14px 18px;margin-bottom:24px;font-size:12px;color:#92400e}
-    .notes-box strong{display:block;margin-bottom:4px;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#b45309}
-    .footer{display:flex;justify-content:space-between;align-items:flex-end;margin-top:8px;padding-top:20px;border-top:1px solid #f1f5f9}
-    .footer .legal{font-size:9px;color:#94a3b8;line-height:1.7;max-width:400px}
-    .qr-block{text-align:right}
-    .qr-block img{width:90px;height:90px;border:2px solid #e2e8f0;border-radius:8px}
-    .qr-block .qlabel{font-size:8px;color:#94a3b8;margin-top:4px;text-align:center}
-    .seal{display:inline-block;border:2px solid rgba(233,30,140,0.3);border-radius:8px;padding:6px 12px;font-size:10px;font-weight:700;color:#e91e8c;text-transform:uppercase;letter-spacing:.1em;margin-top:8px}
-    @media print{body{background:white}.page{margin:0;box-shadow:none;border-radius:0}button{display:none!important}}
+    .notes-box strong{display:block;margin-bottom:4px;font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:#b45309}
+    .issuer-box{display:flex;align-items:center;gap:12px;padding:12px 18px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;margin-bottom:24px;font-size:12px}
+    .issuer-box .ilabel{font-size:8.5px;text-transform:uppercase;letter-spacing:.1em;color:#94a3b8;margin-bottom:3px}
+    .issuer-box .iname{font-weight:700;color:#1e293b}
+    .issuer-box .iemail{color:#e91e8c;font-size:11px}
+    .footer{display:flex;justify-content:space-between;align-items:flex-end;padding-top:20px;border-top:1px solid #f1f5f9}
+    .legal{font-size:8.5px;color:#94a3b8;line-height:1.8;max-width:420px}
+    .qr-block{text-align:center}
+    .qr-block img{width:96px;height:96px;border:2px solid #e2e8f0;border-radius:8px}
+    .qlabel{font-size:8px;color:#94a3b8;margin-top:4px}
+    @media print{body{background:#fff}.page{margin:0;box-shadow:none;border-radius:0}.stripe{-webkit-print-color-adjust:exact;print-color-adjust:exact}.amount-hero{-webkit-print-color-adjust:exact;print-color-adjust:exact}button{display:none!important}}
   </style></head><body>
   <div class="page">
+    <div class="stripe"></div>
     <div class="watermark">REBMA IMPEX</div>
     <div class="content">
       <div class="header">
-        <div class="logo-block">
-          <div class="company">REBMA IMPEX</div>
-          <div class="tagline">GHANA LIMITED</div>
-          <div class="address">
-            Accra, Ghana &bull; Tel: +233 XX XXX XXXX<br/>
-            Email: info@rebmaimpex.com
+        <div class="logo-wrap">
+          ${logoSvg}
+          <div class="logo-block">
+            <div class="company">REBMA IMPEX</div>
+            <div class="tagline">Ghana Limited</div>
+            <div class="address">Accra Business District, Accra, Ghana<br/>Tel: +233 XX XXX XXXX &bull; info@rebmaimpex.com<br/>VAT Reg: GH-XXXXXXXXX</div>
           </div>
         </div>
         <div class="inv-meta">
-          <div class="inv-label">Invoice</div>
+          <div class="inv-label">Official Invoice</div>
           <div class="inv-no">${r.invoice_no}</div>
-          <div class="inv-date">Issued: ${r.date} &bull; Due: ${r.due_date}</div>
-          <div style="margin-top:8px"><span class="badge ${r.status}">${r.status.toUpperCase()}</span></div>
+          <div class="inv-date">Issued: ${r.date}</div>
+          <div class="inv-date" style="margin-top:2px">Due: ${r.due_date}</div>
+          <span class="badge ${r.status}">${r.status === 'paid' ? '✓ PAID' : r.status === 'overdue' ? '⚠ OVERDUE' : '⏳ PENDING'}</span>
         </div>
       </div>
       <hr class="divider"/>
@@ -146,47 +172,72 @@ async function printSingleInvoice(r: InvoiceRow, notes?: string) {
           <div class="bsub">${r.department} Department</div>
         </div>
         <div class="bill-box">
-          <div class="blabel">From</div>
-          <div class="bname">REBMA IMPEX Ghana Limited</div>
-          <div class="bsub">Authorized Finance Department</div>
+          <div class="blabel">Issued By</div>
+          <div class="bname">${r.issued_by}</div>
+          <div class="bsub" style="color:#e91e8c">${r.issued_by_email}</div>
+          <div class="bsub" style="margin-top:4px">Finance Department</div>
+        </div>
+        <div class="bill-box">
+          <div class="blabel">Payment Info</div>
+          <div class="bname">${r.payment_mode}</div>
+          <div class="bsub">Mode of payment</div>
+          <div class="bsub" style="margin-top:4px;font-weight:700;color:${r.status==='paid'?'#065f46':r.status==='overdue'?'#991b1b':'#92400e'}">${r.status.toUpperCase()}</div>
         </div>
       </div>
       <div class="amount-hero">
         <div>
-          <div class="alabel">Total Amount Due</div>
+          <div class="alabel">Total Amount</div>
           <div class="avalue">GHS ${Number(r.amount??0).toLocaleString()}</div>
         </div>
-        <div class="seal">Finance Verified</div>
+        <div class="seal">Finance Verified<small>REBMA IMPEX Ghana Limited</small></div>
       </div>
+      <table class="items-table">
+        <thead><tr><th>Description</th><th>Product / Service</th><th style="text-align:right">Amount (GHS)</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Order ${r.invoice_no}</td>
+            <td>${r.product || 'Goods &amp; Services'}</td>
+            <td style="text-align:right;font-weight:700">${Number(r.amount??0).toLocaleString()}</td>
+          </tr>
+          <tr class="total">
+            <td colspan="2" style="font-size:12px;letter-spacing:.05em;text-transform:uppercase;opacity:0.8">Total Due</td>
+            <td style="text-align:right;font-size:18px">GHS ${Number(r.amount??0).toLocaleString()}</td>
+          </tr>
+        </tbody>
+      </table>
       <div class="fields">
         ${[
           ['Invoice Number', r.invoice_no],
           ['Customer', r.customer],
-          ['Department', r.department],
+          ['Product / Service', r.product || '—'],
+          ['Payment Mode', r.payment_mode || 'CASH'],
           ['Issue Date', r.date],
           ['Due Date', r.due_date],
           ['Payment Status', r.status.toUpperCase()],
+          ['Issued By', `${r.issued_by} (${r.issued_by_email})`],
         ].map(([l,v])=>`<div class="field-row"><span class="fl">${l}</span><span class="fv">${v}</span></div>`).join('')}
       </div>
       ${notes ? `<div class="notes-box"><strong>Finance Notes</strong>${notes}</div>` : ''}
       <div class="footer">
-        <div>
-          <div class="legal">
-            This invoice is issued by REBMA IMPEX Ghana Limited and is subject to the company's standard terms and conditions.
-            Payment is due by ${r.due_date}. For queries contact the Finance Department.<br/>
-            <em>This document is system-generated and valid without a physical signature when verified by QR code.</em>
-          </div>
+        <div class="legal">
+          This invoice is officially issued by <strong>REBMA IMPEX Ghana Limited</strong> and is subject to standard terms and conditions.<br/>
+          Payment is due by <strong>${r.due_date}</strong>. For queries contact the Finance Department at <span style="color:#e91e8c">${r.issued_by_email}</span>.<br/>
+          <em>System-generated document — valid without physical signature when verified by QR code.</em>
         </div>
         <div class="qr-block">
-          ${qrDataUrl ? `<img src="${qrDataUrl}" alt="Invoice QR"/>` : '<div style="width:90px;height:90px;border:2px dashed #e2e8f0;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:9px;color:#94a3b8">QR</div>'}
-          <div class="qlabel">Scan to verify</div>
+          ${qrDataUrl ? `<img src="${qrDataUrl}" alt="Invoice QR"/>` : '<div style="width:96px;height:96px;border:2px dashed #e2e8f0;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:9px;color:#94a3b8">QR</div>'}
+          <div class="qlabel">Scan to verify authenticity</div>
         </div>
       </div>
     </div>
+    <div style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:10px 52px;display:flex;justify-content:space-between;align-items:center">
+      <span style="font-size:9px;color:#94a3b8">REBMA IMPEX Ghana Limited &bull; ${r.invoice_no} &bull; ${r.date}</span>
+      <span style="font-size:9px;color:#e91e8c;font-weight:700">rebmaimpex.com</span>
+    </div>
   </div>
-  <div style="text-align:center;margin:16px 0">
-    <button onclick="window.print()" style="background:#1e293b;color:#fff;border:none;padding:10px 28px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;margin-right:8px">Print Invoice</button>
-    <button onclick="window.close()" style="background:#f1f5f9;color:#334155;border:none;padding:10px 28px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">Close</button>
+  <div style="text-align:center;margin:16px 0 32px">
+    <button onclick="window.print()" style="background:#e91e8c;color:#fff;border:none;padding:11px 32px;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer;margin-right:10px;letter-spacing:.3px">🖨 Print Invoice</button>
+    <button onclick="window.close()" style="background:#f1f5f9;color:#334155;border:1px solid #e2e8f0;padding:11px 28px;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer">Close</button>
   </div>
   </body></html>`;
   const w = window.open('','_blank','width=860,height=900');

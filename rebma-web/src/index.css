@@ -1657,3 +1657,8 @@ body.theme-foodie .foodie-date-chip {
   color: #7c3aed;
   white-space: nowrap;
 }
+
+@keyframes badge-pulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239,68,68,0.7); }
+  50% { transform: scale(1.15); box-shadow: 0 0 0 4px rgba(239,68,68,0); }
+}

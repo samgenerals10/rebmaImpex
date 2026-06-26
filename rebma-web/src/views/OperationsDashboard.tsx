@@ -919,36 +919,6 @@ export default function OperationsDashboard({
             </div>
           )}
 
-          {/* Approved Goods — shown FIRST on the PortIngestion page, above the form */}
-          {activeSubTab === 'PortIngestion' && approvedGoods.length > 0 && (
-            <div className="p-6 bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] border border-[var(--border)] space-y-3">
-              <div className="flex items-center gap-2">
-                <PackageCheck className="w-5 h-5 text-[var(--accent)]" />
-                <h3 className="text-lg font-bold text-[var(--text-primary)]">Approved Incoming Goods</h3>
-                <span className="ml-auto text-xs font-mono text-[var(--text-muted)] bg-[var(--accent-light)] px-2 py-0.5 rounded-full">{approvedGoods.length} items</span>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {approvedGoods.map(item => (
-                  <div key={item.id} className="p-4 bg-[var(--bg)] border border-[var(--border)] rounded-xl space-y-2 text-[var(--text-primary)]">
-                    {item.productImage && (
-                      <img src={item.productImage} alt={item.productName} className="w-full h-24 object-cover rounded-lg border border-[var(--border)]" />
-                    )}
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <p className="text-xs font-bold text-[var(--text-primary)]">{item.productName || 'Unnamed Product'}</p>
-                        <p className="text-[10px] text-[var(--text-muted)]">Code: <code>{item.goodsCode || item.id}</code></p>
-                      </div>
-                      <span className="px-2 py-0.5 rounded font-bold text-[9px] bg-emerald-500/10 text-emerald-500">APPROVED</span>
-                    </div>
-                    <p className="text-[10px] text-[var(--text-muted)]">From: <strong className="text-[var(--text-primary)]">{item.country}</strong> via {item.company}</p>
-                    <p className="text-[10px] text-[var(--text-muted)]">Destination: <strong className="text-[var(--text-primary)]">{item.destination || 'Accra Warehouse'}</strong></p>
-                    <p className="text-[10px] text-[var(--text-muted)]">Qty: <strong className="text-[var(--text-primary)]">{item.quantity}</strong> | Weight: <strong className="text-[var(--text-primary)]">{item.weight}T</strong> | Unit: <strong className="text-[var(--text-primary)]">GHS {item.unitPrice || '—'}</strong></p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
           {/* Active Sub-tab views */}
           <div>
             {/* DASHBOARD OVERVIEW */}
@@ -1746,249 +1716,26 @@ export default function OperationsDashboard({
             )}
           </div>
 
-          {/* Approved Orders Section — always visible */}
+          {/* Approved Orders & Goods — moved to Approved Goods page */}
           {approvedOrders.length > 0 && (
-            <div className="theme-table-wrapper border border-[var(--border)] bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)]">
-              {/* Toolbar */}
-              <div className="theme-table-toolbar flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-5 py-4 border-b border-[var(--border)] bg-[var(--bg)]">
-                <div className="flex items-center gap-2">
+            <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4 shadow-[var(--box-shadow)] flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-[var(--accent-light)] flex items-center justify-center flex-shrink-0">
                   <TicketCheck className="w-5 h-5 text-[var(--accent)]" />
-                  <h3 className="text-sm font-bold text-[var(--text-primary)]">Approved Orders (with Ticket Numbers)</h3>
-                  <span className="text-xs font-mono text-[var(--text-muted)] bg-[var(--accent-light)] px-2 py-0.5 rounded-full">{filteredOrders.length} orders</span>
                 </div>
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
-                  {/* Search */}
-                  <div className="relative flex items-center w-full sm:w-auto">
-                    <span className="absolute left-3 text-[var(--text-muted)] text-xs pointer-events-none">🔍</span>
-                    <input
-                      type="text"
-                      placeholder="Search orders…"
-                      value={ordersSearch}
-                      onChange={e => setOrdersSearch(e.target.value)}
-                      className="pl-8 pr-3 py-1.5 text-xs rounded-lg outline-none border border-[var(--border)] transition w-full sm:w-40 bg-[var(--bg-card)] text-[var(--text-primary)] focus:border-[var(--accent)]"
-                    />
-                  </div>
-                  {/* Status dropdown */}
-                  <div className="relative w-full sm:w-auto">
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setIsOrdersFilterOpen(!isOrdersFilterOpen); }}
-                      className="flex items-center justify-between sm:justify-start gap-1.5 text-xs text-[var(--text-primary)] bg-[var(--bg-card)] hover:bg-[var(--accent-light)] px-3 py-1.5 rounded-lg transition-colors border border-[var(--border)] w-full sm:w-auto"
-                    >
-                      <span>Status: {ordersStatusFilter === 'ALL' ? 'All' : ordersStatusFilter.replace(/_/g, ' ')}</span>
-                      <span className="text-[10px]">▼</span>
-                    </button>
-                    {isOrdersFilterOpen && (
-                      <div className="absolute right-0 top-full mt-1.5 w-full sm:w-48 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl z-20 p-1 flex flex-col text-left">
-                        {(['ALL', 'PROCESSING', 'APPROVED', 'OUT_FOR_DELIVERY', 'DELIVERED'] as const).map(st => (
-                          <button
-                            key={st}
-                            onClick={() => { setOrdersStatusFilter(st); setIsOrdersFilterOpen(false); }}
-                            className="flex items-center gap-2 px-3 py-2 text-xs rounded-lg hover:bg-[var(--accent-light)] text-left transition-colors text-[var(--text-primary)]"
-                          >
-                            <span className={`w-2 h-2 rounded-full ${st === 'APPROVED' || st === 'DELIVERED' ? 'bg-emerald-500' : st === 'PROCESSING' ? 'bg-indigo-500' : 'bg-slate-450'}`} />
-                            {st === 'ALL' ? 'All Status' : st.replace(/_/g, ' ')}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                <div>
+                  <p className="text-sm font-bold text-[var(--text-primary)]">Approved Orders with Ticket Numbers</p>
+                  <p className="text-xs text-[var(--text-muted)]">{approvedOrders.length} orders approved — view details in Approved Goods</p>
                 </div>
               </div>
-
-              {/* Scrollable table / Mobile Card List */}
-              <div>
-                {/* Mobile Card List */}
-                <div className="lg:hidden space-y-3 p-4">
-                  {sortedOrders.map(order => (
-                    <div 
-                      key={order.id} 
-                      onClick={() => setActiveMobileDetail({ type: 'order', data: order })}
-                      className="bg-[var(--bg-card)] rounded-2xl shadow-card p-4 border border-[var(--border)] flex items-center justify-between cursor-pointer"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-[var(--accent-light)] text-[var(--accent)] flex items-center justify-center font-bold text-base shrink-0">
-                          {order.clientName[0]}
-                        </div>
-                        <div>
-                          <h4 className="text-sm font-bold text-[var(--text-primary)]">{order.clientName}</h4>
-                          <p className="text-xs text-[var(--text-secondary)] font-semibold">{order.productName || '—'}</p>
-                          <p className="text-[10px] text-[var(--text-muted)] mt-0.5 font-mono">{order.ticketNumber || order.id}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${statusBadge(order.status)}`}>
-                          {order.status.replace(/_/g, ' ')}
-                        </span>
-                        <ChevronRight className="w-4 h-4 text-[var(--text-muted)]" />
-                      </div>
-                    </div>
-                  ))}
-                  {filteredOrders.length === 0 && (
-                    <div className="p-8 text-center text-[var(--text-muted)] text-xs bg-[var(--bg-card)] rounded-2xl border border-[var(--border)]">No orders found.</div>
-                  )}
-                </div>
-
-                {/* Desktop Table View */}
-                <div className="hidden lg:block overflow-x-auto w-full">
-                  <table className="w-full text-xs text-left">
-                    <thead>
-                      <tr className="theme-table-header-row text-[var(--text-muted)] uppercase font-semibold text-[10px] border-b border-[var(--border)]">
-                        <th className="py-3 px-5 whitespace-nowrap">
-                          <input
-                            type="checkbox"
-                            checked={filteredOrders.length > 0 && selectedOrdersRows.size === filteredOrders.length}
-                            onChange={handleSelectAllOrders}
-                            className="accent-[var(--accent)] w-3.5 h-3.5"
-                          />
-                        </th>
-                        <th onClick={() => handleSort('ticketNumber', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none text-[var(--text-primary)]">
-                          <div className="flex items-center gap-1">
-                            <span>Ticket #</span>
-                            <span className="text-[9px] opacity-70">{ordersSortField === 'ticketNumber' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
-                          </div>
-                        </th>
-                        <th onClick={() => handleSort('id', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none hidden sm:table-cell text-[var(--text-primary)]">
-                          <div className="flex items-center gap-1">
-                            <span>Order ID</span>
-                            <span className="text-[9px] opacity-70">{ordersSortField === 'id' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
-                          </div>
-                        </th>
-                        <th onClick={() => handleSort('clientName', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none text-[var(--text-primary)]">
-                          <div className="flex items-center gap-1">
-                            <span>Client</span>
-                            <span className="text-[9px] opacity-70">{ordersSortField === 'clientName' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
-                          </div>
-                        </th>
-                        <th onClick={() => handleSort('productName', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none hidden md:table-cell text-[var(--text-primary)]">
-                          <div className="flex items-center gap-1">
-                            <span>Product</span>
-                            <span className="text-[9px] opacity-70">{ordersSortField === 'productName' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
-                          </div>
-                        </th>
-                        <th onClick={() => handleSort('destination', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none hidden lg:table-cell text-[var(--text-primary)]">
-                          <div className="flex items-center gap-1">
-                            <span>Destination</span>
-                            <span className="text-[9px] opacity-70">{ordersSortField === 'destination' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
-                          </div>
-                        </th>
-                        <th onClick={() => handleSort('totalAmount', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 text-right whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none text-[var(--text-primary)]">
-                          <div className="flex items-center justify-end gap-1">
-                            <span>Amount</span>
-                            <span className="text-[9px] opacity-70">{ordersSortField === 'totalAmount' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
-                          </div>
-                        </th>
-                        <th onClick={() => handleSort('status', ordersSortField, setOrdersSortField, ordersSortDir, setOrdersSortDir)} className="py-3 px-3 text-center whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none text-[var(--text-primary)]">
-                          <div className="flex items-center justify-center gap-1">
-                            <span>Status</span>
-                            <span className="text-[9px] opacity-70">{ordersSortField === 'status' ? (ordersSortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
-                          </div>
-                        </th>
-                        <th className="py-3 px-5 text-center whitespace-nowrap text-[var(--text-primary)]">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[var(--border)]">
-                      {sortedOrders.map(order => (
-                        <tr key={order.id} className="theme-table-row hover:bg-[var(--accent-light)] transition-colors group text-[var(--text-primary)]">
-                          <td className="py-3 px-5" onClick={e => e.stopPropagation()}>
-                            <input
-                              type="checkbox"
-                              checked={selectedOrdersRows.has(order.id)}
-                              onChange={() => handleSelectOrdersRow(order.id)}
-                              className="accent-[var(--accent)] w-3.5 h-3.5"
-                            />
-                          </td>
-                          <td className="py-3.5 px-3 font-mono font-bold text-emerald-500">{order.ticketNumber || '—'}</td>
-                          <td className="py-3.5 px-3 font-mono font-semibold hidden sm:table-cell text-[var(--text-primary)]">{order.id}</td>
-                          <td className="py-3.5 px-3 font-semibold text-[13px]">{order.clientName}</td>
-                          <td className="py-3.5 px-3 text-[var(--text-muted)] hidden md:table-cell">{order.productName || '—'}</td>
-                          <td className="py-3.5 px-3 text-[var(--text-muted)] hidden lg:table-cell">{order.destination || '—'}</td>
-                          <td className="py-3.5 px-3 text-right font-bold font-mono text-[13px] text-[var(--text-primary)]">GHS {order.totalAmount.toLocaleString()}</td>
-                          <td className="py-3.5 px-3 text-center">
-                            <span className={`px-2.5 py-0.5 rounded text-[9px] font-bold ${statusBadge(order.status)}`}>
-                              {order.status.replace(/_/g, ' ')}
-                            </span>
-                          </td>
-                          <td className="py-3.5 px-5 text-center relative" onClick={(e) => e.stopPropagation()}>
-                            <button
-                              onClick={() => setActiveOrdersMenu(activeOrdersMenu === order.id ? null : order.id)}
-                              className="w-8 h-8 inline-flex items-center justify-center bg-[var(--bg)] hover:bg-[var(--accent-light)] rounded-lg text-[var(--text-secondary)] transition-colors select-none border border-[var(--border)]"
-                            >
-                              ···
-                            </button>
-                            {activeOrdersMenu === order.id && (
-                              <div className="absolute right-5 mt-1 w-44 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl z-30 p-1 flex flex-col text-left">
-                                <button onClick={() => handleEditOrder(order)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left">✏ Edit Details</button>
-                                <button onClick={() => handleDuplicateOrder(order)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left">📋 Duplicate</button>
-                                <button onClick={() => handleShareOrder(order)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left">🔗 Share Link</button>
-                                <div className="h-px bg-[var(--border)] my-1"></div>
-                                <button onClick={() => handleDeleteOrder(order.id)} className="flex items-center gap-2 px-3 py-2 text-xs text-rose-500 hover:bg-rose-50 rounded-lg transition-colors text-left">🗑 Delete</button>
-                              </div>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Footer */}
-                <div className="theme-table-footer flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-4 border-t border-[var(--border)] bg-[var(--bg)]">
-                  <p className="text-xs text-[var(--text-muted)] font-mono">Showing {filteredOrders.length} of {approvedOrders.length} shipments</p>
-                  <div className="flex items-center gap-1">
-                    <button className="w-8 h-8 flex items-center justify-center text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-[var(--bg-card)] hover:bg-[var(--accent-light)] rounded-lg transition-colors border border-[var(--border)] disabled:opacity-30" disabled>‹</button>
-                    <button className="w-8 h-8 flex items-center justify-center text-xs text-white bg-[var(--accent)] rounded-lg font-bold">1</button>
-                    <button className="w-8 h-8 flex items-center justify-center text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-[var(--bg-card)] hover:bg-[var(--accent-light)] rounded-lg transition-colors border border-[var(--border)] disabled:opacity-30" disabled>›</button>
-                  </div>
-                </div>
-              </div>
+              <button onClick={() => setActiveSubTab?.('ApprovedGoods')}
+                className="flex items-center gap-1.5 px-4 py-2 bg-[var(--accent)] text-white text-xs font-bold rounded-xl hover:opacity-90 cursor-pointer whitespace-nowrap">
+                View All →
+              </button>
             </div>
           )}
 
-          {/* Approved Goods Section — compact table */}
-          {approvedGoods.length > 0 && activeSubTab !== 'PortIngestion' && (() => {
-            const [showAllGoods, setShowAllGoods] = [false, (_: boolean) => {}];
-            const visible = approvedGoods.slice(0, 8);
-            return (
-              <div className="bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] border border-[var(--border)] overflow-hidden">
-                <div className="flex items-center gap-2 px-5 py-4 border-b border-[var(--border)]">
-                  <PackageCheck className="w-4 h-4 text-[var(--accent)]" />
-                  <h3 className="text-sm font-bold text-[var(--text-primary)]">Approved Incoming Goods</h3>
-                  <span className="ml-auto text-xs font-mono text-[var(--text-muted)] bg-[var(--accent-light)] px-2 py-0.5 rounded-full">{approvedGoods.length} items</span>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-xs">
-                    <thead><tr className="border-b border-[var(--border)] text-[var(--text-muted)] text-[10px] uppercase font-semibold">
-                      <th className="px-4 py-2.5 text-left">Product</th>
-                      <th className="px-4 py-2.5 text-left hidden sm:table-cell">Code</th>
-                      <th className="px-4 py-2.5 text-left hidden md:table-cell">Origin / Carrier</th>
-                      <th className="px-4 py-2.5 text-right">Qty</th>
-                      <th className="px-4 py-2.5 text-right hidden sm:table-cell">Weight</th>
-                      <th className="px-4 py-2.5 text-center">Status</th>
-                    </tr></thead>
-                    <tbody className="divide-y divide-[var(--border)]">
-                      {visible.map(item => (
-                        <tr key={item.id} className="hover:bg-[var(--accent-light)] transition-colors">
-                          <td className="px-4 py-3 font-semibold text-[var(--text-primary)]">{item.productName || 'Unnamed'}</td>
-                          <td className="px-4 py-3 font-mono text-[var(--text-muted)] text-[10px] hidden sm:table-cell">{item.goodsCode || item.id}</td>
-                          <td className="px-4 py-3 text-[var(--text-muted)] hidden md:table-cell">{item.country} / {item.company}</td>
-                          <td className="px-4 py-3 text-right font-bold text-blue-500 font-mono">{Number(item.quantity).toLocaleString()}</td>
-                          <td className="px-4 py-3 text-right text-[var(--text-muted)] hidden sm:table-cell">{item.weight}T</td>
-                          <td className="px-4 py-3 text-center"><span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/10 text-emerald-500">APPROVED</span></td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                {approvedGoods.length > 8 && (
-                  <div className="px-5 py-3 border-t border-[var(--border)] text-center">
-                    <button onClick={() => setActiveSubTab?.('Stock')} className="text-xs text-[var(--accent)] font-semibold hover:underline cursor-pointer bg-transparent border-none">
-                      View all {approvedGoods.length} items in Stock →
-                    </button>
-                  </div>
-                )}
-              </div>
-            );
-          })()}
+          
 
         </div>
 

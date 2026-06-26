@@ -57,6 +57,7 @@ import CeoControlCenter from './views/ceo/CeoControlCenter';
 import MaintenancePage from './components/MaintenancePage';
 import { CeoSettingsProvider, useCeoSettings } from './contexts/CeoSettingsContext';
 import { playNotificationSound, getSavedSound, getSavedVolume, stopAlertSound } from './utils/notificationSound';
+import { useNavBadges } from './hooks/useNavBadges';
 
 // Finance dedicated pages
 import FinanceWalletsView from './views/finance/WalletsView';
@@ -315,6 +316,7 @@ export default function App() {
     () => sessionStorage.getItem('rebma-last-tab') || 'Overview'
   );
   const isInitialLoad = useRef(true);
+  const navBadges = useNavBadges(activeSubTab);
 
   const setActiveDepartment = (department: string) => {
     setActiveDepartmentRaw(department);
@@ -3633,6 +3635,7 @@ function AppInner({
           sidebarCollapsed={sidebarCollapsed}
           setSidebarCollapsed={setSidebarCollapsed}
           unreadEmailCount={unreadEmailCount}
+          navBadges={navBadges}
         />
 
         {/* Backdrop overlay for mobile/tablet */}
