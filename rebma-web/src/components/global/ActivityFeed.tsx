@@ -1,7 +1,7 @@
 // Cross-department real-time activity feed reading from global_audit_history
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../lib/supabaseClient';
-import { Activity, Filter, RefreshCw, User, Clock } from 'lucide-react';
+import { Activity, RefreshCw, User, Clock } from 'lucide-react';
 
 interface AuditEntry {
   id: string;
@@ -69,6 +69,9 @@ export default function ActivityFeed({ departments, limit = 30, compact = false,
   const [deptFilter, setDeptFilter] = useState('ALL');
   const [lastRefresh, setLastRefresh] = useState(new Date());
 
+  // Stable string key so inline array literals don't trigger infinite re-renders
+  const deptsKey = departments ? [...departments].sort().join(',') : '';
+
   const loadEntries = useCallback(async () => {
     setLoading(true);
     try {
@@ -78,8 +81,8 @@ export default function ActivityFeed({ departments, limit = 30, compact = false,
         .order('timestamp', { ascending: false })
         .limit(limit * 2);
 
-      if (departments && departments.length > 0) {
-        q = q.in('department', departments);
+      if (deptsKey) {
+        q = q.in('department', deptsKey.split(','));
       }
 
       const { data } = await q;
@@ -98,17 +101,18 @@ export default function ActivityFeed({ departments, limit = 30, compact = false,
       console.error('ActivityFeed load error', e);
     }
     setLoading(false);
-  }, [departments, limit]);
+  }, [deptsKey, limit]);
 
   useEffect(() => { loadEntries(); }, [loadEntries]);
 
-  // Real-time subscription
+  // Real-time subscription — unique channel name per filter so multiple instances coexist
   useEffect(() => {
+    const channelName = `activity-feed-${deptsKey || 'all'}-${limit}`;
     const ch = supabase
-      .channel('activity-feed-rt')
+      .channel(channelName)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'global_audit_history' }, payload => {
         const r = payload.new as any;
-        if (departments && !departments.includes(r.department)) return;
+        if (deptsKey && !deptsKey.split(',').includes(r.department)) return;
         const entry: AuditEntry = {
           id: String(r.id),
           action: r.action || '',
@@ -122,7 +126,7 @@ export default function ActivityFeed({ departments, limit = 30, compact = false,
       })
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, [departments, limit]);
+  }, [deptsKey, limit]);
 
   const allDepts = ['ALL', ...Array.from(new Set(entries.map(e => e.department))).sort()];
 
