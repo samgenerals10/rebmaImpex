@@ -1,5 +1,5 @@
 // Cross-department real-time activity feed reading from global_audit_history
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { Activity, RefreshCw, User, Clock } from 'lucide-react';
 
@@ -72,6 +72,9 @@ export default function ActivityFeed({ departments, limit = 30, compact = false,
   // Stable string key so inline array literals don't trigger infinite re-renders
   const deptsKey = departments ? [...departments].sort().join(',') : '';
 
+  // Unique ID per component instance so Supabase never reuses an already-subscribed channel
+  const instanceId = useRef(Math.random().toString(36).slice(2)).current;
+
   const loadEntries = useCallback(async () => {
     setLoading(true);
     try {
@@ -107,7 +110,7 @@ export default function ActivityFeed({ departments, limit = 30, compact = false,
 
   // Real-time subscription — unique channel name per filter so multiple instances coexist
   useEffect(() => {
-    const channelName = `activity-feed-${deptsKey || 'all'}-${limit}`;
+    const channelName = `activity-feed-${instanceId}-${deptsKey || 'all'}-${limit}`;
     const ch = supabase
       .channel(channelName)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'global_audit_history' }, payload => {
