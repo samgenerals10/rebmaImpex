@@ -1,6 +1,6 @@
 // src/views/ceo/TransactionsView.tsx
 import { useState, useEffect } from 'react';
-import { Download, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
+import { Download, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownLeft, RefreshCw } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { exportToCSV, exportToPDF } from '../../utils/export';
 
@@ -12,41 +12,132 @@ interface Transaction {
   amount: number;
   type: 'in' | 'out';
   account: string;
-  status: 'completed' | 'pending' | 'failed';
+  status: string;
+  source: string;
 }
 
-const STATUS_STYLES = {
+const STATUS_STYLES: Record<string, string> = {
   completed: 'bg-emerald-100 text-emerald-700',
+  Approved:  'bg-emerald-100 text-emerald-700',
+  APPROVED:  'bg-emerald-100 text-emerald-700',
   pending:   'bg-amber-100 text-amber-700',
+  Pending:   'bg-amber-100 text-amber-700',
   failed:    'bg-rose-100 text-rose-700',
+  Rejected:  'bg-rose-100 text-rose-700',
+  REJECTED:  'bg-rose-100 text-rose-700',
+};
+
+const normaliseStatus = (s: string) => {
+  if (!s) return 'pending';
+  const l = s.toLowerCase();
+  if (l === 'approved' || l === 'completed') return 'completed';
+  if (l === 'rejected' || l === 'failed') return 'failed';
+  return 'pending';
 };
 
 interface Props { addNotification: (msg: string) => void }
 
 export default function TransactionsView({ addNotification }: Props) {
-  const [rows, setRows]           = useState<Transaction[]>([]);
-  const [loading, setLoading]     = useState(true);
-  const [fromDate, setFromDate]   = useState('');
-  const [toDate, setToDate]       = useState('');
+  const [rows, setRows]             = useState<Transaction[]>([]);
+  const [loading, setLoading]       = useState(true);
+  const [fromDate, setFromDate]     = useState('');
+  const [toDate, setToDate]         = useState('');
   const [typeFilter, setTypeFilter] = useState<'all' | 'in' | 'out'>('all');
   const [deptFilter, setDeptFilter] = useState('all');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [page, setPage]           = useState(0);
-  const PAGE_SIZE = 15;
+  const [sourceFilter, setSourceFilter] = useState('all');
+  const [page, setPage]             = useState(0);
+  const PAGE_SIZE = 20;
 
   const load = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('transactions')
-        .select('*')
-        .order('date', { ascending: false })
-        .limit(200);
+      const [paymentsRes, expensesRes, purchasesRes, ordersRes] = await Promise.all([
+        supabase.from('finance_payments')
+          .select('id, client_name, amount, payment_mode, created_at, status, recorded_by, order_id')
+          .order('created_at', { ascending: false })
+          .limit(300),
+        supabase.from('finance_expenses')
+          .select('id, category, description, amount, created_at, status, submitted_by')
+          .order('created_at', { ascending: false })
+          .limit(300),
+        supabase.from('general_purchases')
+          .select('id, item_name, cost, created_at, status, supplier')
+          .order('created_at', { ascending: false })
+          .limit(200),
+        supabase.from('orders')
+          .select('id, ticket_number, client_name, total_amount, created_at, status, payment_mode')
+          .in('status', ['DELIVERED', 'APPROVED', 'OUT_FOR_DELIVERY'])
+          .order('created_at', { ascending: false })
+          .limit(200),
+      ]);
 
-      if (error) {
-        console.error('Error loading transactions:', error);
+      const txns: Transaction[] = [];
+
+      // Money IN — finance_payments
+      for (const p of (paymentsRes.data || []) as any[]) {
+        txns.push({
+          id: `pay-${p.id}`,
+          date: (p.created_at || '').slice(0, 10),
+          description: `Payment from ${p.client_name || 'Client'}`,
+          department: 'FINANCE',
+          amount: Number(p.amount || 0),
+          type: 'in',
+          account: (p.payment_mode || 'CASH').replace(/_/g, ' '),
+          status: normaliseStatus(p.status || 'completed'),
+          source: 'Payments',
+        });
       }
-      setRows(data || []);
+
+      // Money IN — delivered/approved orders not yet in finance_payments (value recognition)
+      const paymentOrderIds = new Set((paymentsRes.data || []).map((p: any) => p.order_id).filter(Boolean));
+      for (const o of (ordersRes.data || []) as any[]) {
+        if (paymentOrderIds.has(o.id)) continue; // already counted via payment
+        txns.push({
+          id: `ord-${o.id}`,
+          date: (o.created_at || '').slice(0, 10),
+          description: `Order ${o.ticket_number || o.id} — ${o.client_name || ''}`,
+          department: 'MARKETING',
+          amount: Number(o.total_amount || 0),
+          type: 'in',
+          account: (o.payment_mode || 'CASH').replace(/_/g, ' '),
+          status: o.status === 'DELIVERED' ? 'completed' : 'pending',
+          source: 'Orders',
+        });
+      }
+
+      // Money OUT — finance_expenses
+      for (const e of (expensesRes.data || []) as any[]) {
+        txns.push({
+          id: `exp-${e.id}`,
+          date: (e.created_at || '').slice(0, 10),
+          description: e.description || e.category || 'Expense',
+          department: 'FINANCE',
+          amount: Number(e.amount || 0),
+          type: 'out',
+          account: e.category || 'Expense',
+          status: normaliseStatus(e.status || 'pending'),
+          source: 'Expenses',
+        });
+      }
+
+      // Money OUT — general_purchases
+      for (const p of (purchasesRes.data || []) as any[]) {
+        txns.push({
+          id: `gp-${p.id}`,
+          date: (p.created_at || '').slice(0, 10),
+          description: `Purchase: ${p.item_name || 'Item'}${p.supplier ? ` from ${p.supplier}` : ''}`,
+          department: 'OPERATIONS',
+          amount: Number(p.cost || 0),
+          type: 'out',
+          account: 'Purchase',
+          status: normaliseStatus(p.status || 'pending'),
+          source: 'Purchases',
+        });
+      }
+
+      // Sort newest first
+      txns.sort((a, b) => b.date.localeCompare(a.date));
+      setRows(txns);
     } catch (e) {
       console.error(e);
       setRows([]);
@@ -55,14 +146,12 @@ export default function TransactionsView({ addNotification }: Props) {
     }
   };
 
-  useEffect(() => {
-    load();
-  }, []);
+  useEffect(() => { load(); }, []);
 
   const filtered = rows.filter(r => {
     if (typeFilter !== 'all' && r.type !== typeFilter) return false;
     if (deptFilter !== 'all' && r.department !== deptFilter) return false;
-    if (statusFilter !== 'all' && r.status !== statusFilter) return false;
+    if (sourceFilter !== 'all' && r.source !== sourceFilter) return false;
     if (fromDate && r.date < fromDate) return false;
     if (toDate   && r.date > toDate)   return false;
     return true;
@@ -75,43 +164,58 @@ export default function TransactionsView({ addNotification }: Props) {
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const paginated  = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
-  const departments = Array.from(new Set(rows.map(r => r.department)));
+  const departments = Array.from(new Set(rows.map(r => r.department))).sort();
+  const sources     = Array.from(new Set(rows.map(r => r.source))).sort();
 
   return (
     <div className="space-y-5">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-bold text-[var(--text-primary)]">All Transactions</h2>
-          <p className="text-xs text-[var(--text-muted)]">Complete transaction ledger across all departments</p>
+          <p className="text-xs text-[var(--text-muted)]">
+            Live ledger — payments, expenses &amp; purchases · {rows.length} records
+          </p>
         </div>
         <div className="flex gap-2">
-          <button onClick={() => { exportToCSV(filtered, ['id','date','description','department','amount','type','account','status'], 'transactions'); addNotification('Exported CSV.'); }}
+          <button onClick={load} className="flex items-center gap-1 px-3 py-1.5 bg-[var(--bg-card)] border border-[var(--border)] text-[var(--text-secondary)] text-xs font-semibold rounded-xl cursor-pointer hover:bg-[var(--accent-light)]">
+            <RefreshCw className="w-3.5 h-3.5" /> Refresh
+          </button>
+          <button
+            onClick={() => { exportToCSV(filtered, ['id','date','description','department','amount','type','account','status','source'], 'transactions'); addNotification('Exported CSV.'); }}
             className="flex items-center gap-1 px-3 py-1.5 bg-[var(--accent-light)] text-[var(--accent)] text-xs font-semibold rounded-xl cursor-pointer hover:opacity-90">
             <Download className="w-3.5 h-3.5" /> CSV
           </button>
-          <button onClick={() => { exportToPDF('All Transactions', filtered, ['ID','Date','Description','Amount','Type','Status']); addNotification('Exported PDF.'); }}
+          <button
+            onClick={() => { exportToPDF('All Transactions', filtered, ['id','date','description','amount','type','status']); addNotification('Exported PDF.'); }}
             className="flex items-center gap-1 px-3 py-1.5 bg-[var(--accent)] text-white text-xs font-semibold rounded-xl cursor-pointer hover:opacity-90">
             <Download className="w-3.5 h-3.5" /> PDF
           </button>
         </div>
       </div>
 
-      {/* Summary */}
+      {/* Summary cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Total In',    value: `GHS ${totalIn.toLocaleString()}`,  icon: ArrowDownLeft,  cls: 'text-emerald-600' },
-          { label: 'Total Out',   value: `GHS ${totalOut.toLocaleString()}`, icon: ArrowUpRight,   cls: 'text-rose-500' },
-          { label: 'Net',         value: `GHS ${net.toLocaleString()}`,      icon: net >= 0 ? TrendingUp : TrendingDown, cls: net >= 0 ? 'text-emerald-600' : 'text-rose-500' },
-          { label: 'This Period', value: `${filtered.length} txns`,          icon: TrendingUp,     cls: 'text-[var(--accent)]' },
+          { label: 'Total In',    value: `GHS ${totalIn.toLocaleString()}`,  icon: ArrowDownLeft,  cls: 'text-emerald-600', bg: 'bg-emerald-50' },
+          { label: 'Total Out',   value: `GHS ${totalOut.toLocaleString()}`, icon: ArrowUpRight,   cls: 'text-rose-500',    bg: 'bg-rose-50' },
+          { label: 'Net Balance', value: `GHS ${Math.abs(net).toLocaleString()}`, icon: net >= 0 ? TrendingUp : TrendingDown, cls: net >= 0 ? 'text-emerald-600' : 'text-rose-500', bg: net >= 0 ? 'bg-emerald-50' : 'bg-rose-50' },
+          { label: 'Transactions',value: `${filtered.length} records`,       icon: TrendingUp,     cls: 'text-[var(--accent)]', bg: 'bg-[var(--accent-light)]' },
         ].map((s, i) => {
           const Icon = s.icon;
           return (
             <div key={i} className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4 shadow-[var(--box-shadow)]">
               <div className="flex items-center justify-between mb-2">
                 <p className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wide">{s.label}</p>
-                <Icon className={`w-4 h-4 ${s.cls}`} />
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${s.bg}`}>
+                  <Icon className={`w-4 h-4 ${s.cls}`} />
+                </div>
               </div>
-              <p className={`text-xl font-bold ${s.cls}`}>{s.value}</p>
+              {loading
+                ? <div className="animate-pulse h-6 w-28 bg-[var(--bg-input)] rounded" />
+                : <p className={`text-xl font-bold ${s.cls}`}>{s.value}</p>}
+              {i === 2 && !loading && (
+                <p className="text-[10px] text-[var(--text-muted)] mt-0.5">{net >= 0 ? 'Surplus' : 'Deficit'}</p>
+              )}
             </div>
           );
         })}
@@ -134,12 +238,10 @@ export default function TransactionsView({ addNotification }: Props) {
           <option value="all">All Departments</option>
           {departments.map(d => <option key={d} value={d}>{d}</option>)}
         </select>
-        <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(0); }}
+        <select value={sourceFilter} onChange={e => { setSourceFilter(e.target.value); setPage(0); }}
           className="px-3 py-1.5 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] outline-none cursor-pointer">
-          <option value="all">All Statuses</option>
-          <option value="completed">Completed</option>
-          <option value="pending">Pending</option>
-          <option value="failed">Failed</option>
+          <option value="all">All Sources</option>
+          {sources.map(s => <option key={s} value={s}>{s}</option>)}
         </select>
       </div>
 
@@ -147,29 +249,37 @@ export default function TransactionsView({ addNotification }: Props) {
       <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl overflow-hidden shadow-[var(--box-shadow)]">
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
-            <thead><tr className="bg-[var(--bg-input)] border-b border-[var(--border)]">
-              {['ID','Date','Description','Department','Amount','Type','Account','Status'].map(h => (
-                <th key={h} className="px-4 py-2.5 text-left font-semibold text-[var(--text-muted)] whitespace-nowrap">{h}</th>
-              ))}
-            </tr></thead>
+            <thead>
+              <tr className="bg-[var(--bg-input)] border-b border-[var(--border)]">
+                {['Date', 'Description', 'Department', 'Source', 'Amount', 'Type', 'Account', 'Status'].map(h => (
+                  <th key={h} className="px-4 py-2.5 text-left font-semibold text-[var(--text-muted)] whitespace-nowrap">{h}</th>
+                ))}
+              </tr>
+            </thead>
             <tbody>
               {loading ? (
-                Array.from({ length: 5 }).map((_, i) => (
-                  <tr key={i}><td colSpan={8} className="px-4 py-3"><div className="h-4 bg-[var(--bg-input)] rounded animate-pulse" /></td></tr>
+                Array.from({ length: 6 }).map((_, i) => (
+                  <tr key={i}>
+                    <td colSpan={8} className="px-4 py-3">
+                      <div className="h-4 bg-[var(--bg-input)] rounded animate-pulse" />
+                    </td>
+                  </tr>
                 ))
               ) : paginated.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-10 text-center text-[var(--text-muted)]">
-                    No transactions recorded. Create a transaction to test this view.
+                  <td colSpan={8} className="px-4 py-12 text-center text-[var(--text-muted)]">
+                    No transactions found for the selected filters.
                   </td>
                 </tr>
               ) : paginated.map(row => (
                 <tr key={row.id} className="border-b border-[var(--border)] hover:bg-[var(--accent-light)] transition-colors">
-                  <td className="px-4 py-2.5 font-mono font-semibold text-[var(--accent)]">{row.id}</td>
-                  <td className="px-4 py-2.5 text-[var(--text-secondary)] whitespace-nowrap">{row.date}</td>
-                  <td className="px-4 py-2.5 text-[var(--text-primary)] font-medium">{row.description}</td>
-                  <td className="px-4 py-2.5 text-[var(--text-secondary)]">{row.department}</td>
-                  <td className="px-4 py-2.5 font-bold whitespace-nowrap" style={{ color: row.type === 'in' ? 'var(--accent)' : '#ef4444' }}>
+                  <td className="px-4 py-2.5 text-[var(--text-secondary)] whitespace-nowrap font-mono">{row.date}</td>
+                  <td className="px-4 py-2.5 text-[var(--text-primary)] font-medium max-w-[200px] truncate">{row.description}</td>
+                  <td className="px-4 py-2.5 text-[var(--text-secondary)]">
+                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[var(--accent-light)] text-[var(--accent)]">{row.department}</span>
+                  </td>
+                  <td className="px-4 py-2.5 text-[var(--text-muted)] text-[10px]">{row.source}</td>
+                  <td className="px-4 py-2.5 font-bold whitespace-nowrap" style={{ color: row.type === 'in' ? '#059669' : '#ef4444' }}>
                     {row.type === 'in' ? '+' : '-'} GHS {(Number(row.amount ?? 0)).toLocaleString()}
                   </td>
                   <td className="px-4 py-2.5">
@@ -180,16 +290,21 @@ export default function TransactionsView({ addNotification }: Props) {
                   </td>
                   <td className="px-4 py-2.5 text-[var(--text-secondary)] whitespace-nowrap">{row.account}</td>
                   <td className="px-4 py-2.5">
-                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold capitalize ${STATUS_STYLES[row.status]}`}>{row.status}</span>
+                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold capitalize ${STATUS_STYLES[row.status] || 'bg-slate-100 text-slate-500'}`}>
+                      {row.status}
+                    </span>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+
         {totalPages > 1 && (
           <div className="flex items-center justify-between px-4 py-3 border-t border-[var(--border)]">
-            <span className="text-[10px] text-[var(--text-muted)]">Page {page + 1} of {totalPages} · {filtered.length} records</span>
+            <span className="text-[10px] text-[var(--text-muted)]">
+              Page {page + 1} of {totalPages} · {filtered.length} records
+            </span>
             <div className="flex gap-1">
               <button disabled={page === 0} onClick={() => setPage(p => p - 1)}
                 className="px-2.5 py-1 text-xs rounded-lg border border-[var(--border)] disabled:opacity-40 cursor-pointer hover:bg-[var(--accent-light)]">Prev</button>
