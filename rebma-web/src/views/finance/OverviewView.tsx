@@ -55,6 +55,33 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
   const [cashflowData, setCashflowData] = useState<CashflowPoint[]>([]);
   const [paymentPie, setPaymentPie] = useState<PaymentSlice[]>([]);
 
+  // Live wallet totals from finance_payments (not dependent on ordersList prop)
+  const [walletCash, setWalletCash] = useState(0);
+  const [walletMomo, setWalletMomo] = useState(0);
+  const [walletCheque, setWalletCheque] = useState(0);
+  const [walletTotal, setWalletTotal] = useState(0);
+  const [totalExpenses, setTotalExpenses] = useState(0);
+
+  // Self-fetch payments for wallet section
+  useEffect(() => {
+    supabase.from('finance_payments').select('amount, payment_mode').then(({ data }) => {
+      if (!data) return;
+      let total = 0, cash = 0, momo = 0, cheque = 0;
+      for (const p of data as any[]) {
+        const amt = Number(p.amount || 0);
+        total += amt;
+        const m = (p.payment_mode || '').toUpperCase().replace(/[\s_-]/g, '');
+        if (m === 'CASH') cash += amt;
+        else if (m === 'MOBILEMONEY' || m === 'MOMO') momo += amt;
+        else if (m === 'CHEQUE' || m === 'CHECK') cheque += amt;
+      }
+      setWalletTotal(total); setWalletCash(cash); setWalletMomo(momo); setWalletCheque(cheque);
+    }, () => {});
+    supabase.from('finance_expenses').select('amount').eq('status', 'Approved').then(({ data }) => {
+      if (data) setTotalExpenses((data as any[]).reduce((s, e) => s + Number(e.amount || 0), 0));
+    }, () => {});
+  }, []);
+
   const firstName = currentUser?.fullName?.split(' ')[0] || 'Finance';
   const pendingOrders = ordersList.filter(o => o.status === 'PENDING_FINANCE');
 
@@ -293,9 +320,9 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {[
-            { name: 'Total Revenue', num: 'Confirmed orders', balance: `GHS ${totalRevenue.toLocaleString()}`, trend: 'Approved & delivered', color: 'var(--accent)' },
-            { name: 'Credit Outstanding', num: 'Credit orders', balance: `GHS ${creditOutstanding.toLocaleString()}`, trend: 'On credit terms', color: '#6366f1' },
-            { name: 'Pending Review', num: `${pendingCount} orders`, balance: `${pendingCount} Pending`, trend: 'Awaiting finance', color: '#f59e0b' },
+            { name: 'Total Payments Received', num: `Cash: GHS ${walletCash.toLocaleString()} · MoMo: GHS ${walletMomo.toLocaleString()}`, balance: `GHS ${walletTotal.toLocaleString()}`, trend: 'Live from payment records', color: 'var(--accent)' },
+            { name: 'Expenses Paid', num: 'Approved expense records', balance: `GHS ${totalExpenses.toLocaleString()}`, trend: 'Approved only', color: '#6366f1' },
+            { name: 'Net Balance', num: `In: GHS ${walletTotal.toLocaleString()} · Out: GHS ${totalExpenses.toLocaleString()}`, balance: `GHS ${Math.abs(walletTotal - totalExpenses).toLocaleString()}`, trend: walletTotal - totalExpenses >= 0 ? 'Surplus' : 'Deficit', color: walletTotal - totalExpenses >= 0 ? '#10b981' : '#ef4444' },
           ].map(acc => (
             <div key={acc.name} className="rounded-2xl p-4 text-white" style={{ background: `linear-gradient(135deg, ${acc.color}CC, ${acc.color})` }}>
               <p className="text-xs text-white/70 mb-1">{acc.name}</p>
