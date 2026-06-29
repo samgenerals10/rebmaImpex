@@ -64,7 +64,14 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
       setProductPrices(priceMap);
     }, () => {});
     supabase.from('customers').select('id, name').order('name').then(({ data }) => {
-      setCustomers((data || []).map((r: any) => ({ id: String(r.id), name: String(r.name) })));
+      const seen = new Set<string>();
+      const unique = (data || []).filter((r: any) => {
+        const n = String(r.name || '').trim().toLowerCase();
+        if (!n || seen.has(n)) return false;
+        seen.add(n);
+        return true;
+      });
+      setCustomers(unique.map((r: any) => ({ id: String(r.id), name: String(r.name).trim() })));
     }, () => {});
   };
 
