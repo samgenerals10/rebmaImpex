@@ -59,6 +59,31 @@ export default function FinanceDashboard({
   const momoEnabled = getSetting('momo_payments_enabled', true);
   const dataExportEnabled = getSetting('data_export_enabled', true);
 
+  // Self-fetch orders so Finance always has live data (App.tsx fetch may be stale)
+  const [liveOrders, setLiveOrders] = useState<Order[]>([]);
+  useEffect(() => {
+    supabase.from('orders').select('*').order('created_at', { ascending: false }).limit(500)
+      .then(({ data }) => {
+        if (data && data.length > 0) {
+          setLiveOrders(data.map((r: any) => ({
+            id: r.id,
+            ticketNumber: r.ticket_number || r.id,
+            clientName: r.client_name || '',
+            productName: r.product_name || '',
+            destination: r.destination || '',
+            paymentMode: r.payment_mode || 'CASH',
+            totalAmount: Number(r.total_amount ?? 0),
+            status: r.status || 'PENDING_FINANCE',
+            createdAt: r.created_at || new Date().toISOString(),
+            ghanaCard: r.metadata?.ghanaCard || r.ghana_card || undefined,
+          })));
+        }
+      }, () => {});
+  }, []);
+
+  // Use live fetch if available, fall back to prop
+  const effectiveOrders = liveOrders.length > 0 ? liveOrders : ordersList;
+
   // Local state copies to support inline dynamic table additions, updates and deletes
   const [localPayments, setLocalPayments] = useState<FinancePayment[]>(paymentsList);
   const [localRequisitions, setLocalRequisitions] = useState<ProductionRequest[]>(productionRequests);
@@ -145,7 +170,7 @@ export default function FinanceDashboard({
     };
   });
 
-  ordersList.forEach(o => {
+  effectiveOrders.forEach(o => {
     if (['DELIVERED', 'APPROVED', 'PROCESSING', 'OUT_FOR_DELIVERY'].includes(o.status)) {
       const dStr = new Date(o.createdAt).toDateString();
       const dayItem = last5Days.find(item => item.dateStr === dStr);
@@ -176,13 +201,13 @@ export default function FinanceDashboard({
   });
 
   const sparkTotalRevenue = last7DaysArr.map(dStr => {
-    return ordersList
+    return effectiveOrders
       .filter(o => new Date(o.createdAt).toDateString() === dStr && ['DELIVERED', 'APPROVED', 'PROCESSING', 'OUT_FOR_DELIVERY'].includes(o.status))
       .reduce((sum, o) => sum + o.totalAmount, 0);
   });
 
   const sparkPendingOrders = last7DaysArr.map(dStr => {
-    return ordersList.filter(o => new Date(o.createdAt).toDateString() === dStr && o.status === 'PENDING_FINANCE').length;
+    return effectiveOrders.filter(o => new Date(o.createdAt).toDateString() === dStr && o.status === 'PENDING_FINANCE').length;
   });
 
   const sparkInvoicesGenerated = last7DaysArr.map(dStr => {
@@ -193,10 +218,10 @@ export default function FinanceDashboard({
     return localPayments.filter(p => new Date(p.createdAt).toDateString() === dStr).reduce((sum, p) => sum + p.amount, 0);
   });
 
-  const totalRevenueVal = ordersList.reduce((acc, o) =>
+  const totalRevenueVal = effectiveOrders.reduce((acc, o) =>
     acc + (['DELIVERED', 'APPROVED', 'PROCESSING', 'OUT_FOR_DELIVERY'].includes(o.status) ? o.totalAmount : 0), 0
   );
-  const pendingFinanceCount = ordersList.filter(o => o.status === 'PENDING_FINANCE').length;
+  const pendingFinanceCount = effectiveOrders.filter(o => o.status === 'PENDING_FINANCE').length;
   const recordedPaymentsCount = localPayments.length;
   const liquidCashVal = localPayments.reduce((acc, p) => acc + p.amount, 0);
 
@@ -242,11 +267,12 @@ export default function FinanceDashboard({
         alert('Please select a credit order to settle');
         return;
       }
-      const order = ordersList.find(o => o.id === selectedOrderId);
+      const order = effectiveOrders.find(o => o.id === selectedOrderId);
       if (!order) return;
+      const paidAmount = amount && parseFloat(amount) > 0 ? parseFloat(amount) : order.totalAmount;
       const { data: inserted, error } = await supabase.from('finance_payments').insert({
         client_name: order.clientName,
-        amount: order.totalAmount,
+        amount: paidAmount,
         payment_mode: payMode,
         payment_type: 'CREDIT_SETTLEMENT',
         order_id: selectedOrderId,
@@ -257,7 +283,7 @@ export default function FinanceDashboard({
       const newPayment: FinancePayment = {
         id: inserted?.id || `PAY-${Date.now().toString().slice(-4)}`,
         clientName: order.clientName,
-        amount: order.totalAmount,
+        amount: paidAmount,
         paymentMode: payMode,
         paymentType: 'CREDIT_SETTLEMENT',
         orderId: selectedOrderId,
@@ -269,6 +295,7 @@ export default function FinanceDashboard({
       setOrdersList(prev => prev.map(o => o.id === selectedOrderId ? { ...o, status: 'APPROVED' } : o));
       addNotification(`Credit settlement recorded for ${order.clientName} (Order ${selectedOrderId}) — Status set to APPROVED.`);
       setSelectedOrderId('');
+      setAmount('');
     }
   };
 
@@ -464,11 +491,11 @@ export default function FinanceDashboard({
         { name: 'Thu', value: 7 }, { name: 'Fri', value: pendingFinanceCount || 4 }, { name: 'Sat', value: 4 }, { name: 'Sun', value: 6 },
       ],
       breakdownData: [
-        { name: 'Cash',   value: ordersList.filter(o => o.paymentMode === 'CASH').length },
-        { name: 'Credit', value: ordersList.filter(o => o.paymentMode === 'CREDIT').length },
-        { name: 'Mobile Money', value: ordersList.filter(o => o.paymentMode === 'MOBILE_MONEY').length },
+        { name: 'Cash',   value: effectiveOrders.filter(o => o.paymentMode === 'CASH').length },
+        { name: 'Credit', value: effectiveOrders.filter(o => o.paymentMode === 'CREDIT').length },
+        { name: 'Mobile Money', value: effectiveOrders.filter(o => o.paymentMode === 'MOBILE_MONEY').length },
       ],
-      tableData: ordersList.filter(o => o.status === 'PENDING_FINANCE').map(o => ({
+      tableData: effectiveOrders.filter(o => o.status === 'PENDING_FINANCE').map(o => ({
         order: o.id, customer: o.clientName, amount: `GHS ${o.totalAmount.toLocaleString()}`,
         dept: o.destination || '—', payment_mode: o.paymentMode, submitted: o.createdAt,
       })),
@@ -509,7 +536,7 @@ export default function FinanceDashboard({
         { name: 'Mobile',   value: localPayments.filter(p => p.paymentMode === 'MOBILE_MONEY').length },
         { name: 'Credit',   value: localPayments.filter(p => p.paymentMode === 'CREDIT').length },
       ],
-      tableData: ordersList.filter(o => o.paymentMode === 'CREDIT').map(o => ({
+      tableData: effectiveOrders.filter(o => o.paymentMode === 'CREDIT').map(o => ({
         customer: o.clientName, amount: `GHS ${o.totalAmount.toLocaleString()}`,
         due_date: o.createdAt, days_overdue: '0', status: o.status,
       })),
@@ -837,10 +864,10 @@ export default function FinanceDashboard({
               <p className="text-xs sm:text-sm text-[var(--text-secondary)] opacity-80">Clear cash invoice payments, verify credit requests, and issue receipt tickets.</p>
             </div>
             <div className="flex gap-2 w-full sm:w-auto justify-end">
-              {dataExportEnabled && <button onClick={() => exportToCSV(ordersList, ['id', 'ticketNumber', 'clientName', 'productName', 'destination', 'paymentMode', 'totalAmount', 'status', 'createdAt'], 'finance_orders_ledger')} className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--bg)] hover:bg-[var(--accent-light)] text-[var(--text-primary)] rounded-lg text-xs font-semibold cursor-pointer border border-[var(--border)] transition-colors">
+              {dataExportEnabled && <button onClick={() => exportToCSV(effectiveOrders, ['id', 'ticketNumber', 'clientName', 'productName', 'destination', 'paymentMode', 'totalAmount', 'status', 'createdAt'], 'finance_orders_ledger')} className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--bg)] hover:bg-[var(--accent-light)] text-[var(--text-primary)] rounded-lg text-xs font-semibold cursor-pointer border border-[var(--border)] transition-colors">
                 <FileSpreadsheet className="w-3.5 h-3.5" /><span>Ledgers (CSV)</span>
               </button>}
-              <button onClick={() => exportToPDF('Finance Ledger Statement', ordersList, ['id', 'ticketNumber', 'clientName', 'productName', 'paymentMode', 'totalAmount', 'status', 'createdAt'])} className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--bg)] hover:bg-[var(--accent-light)] text-[var(--text-primary)] rounded-lg text-xs font-semibold cursor-pointer border border-[var(--border)] transition-colors">
+              <button onClick={() => exportToPDF('Finance Ledger Statement', effectiveOrders, ['id', 'ticketNumber', 'clientName', 'productName', 'paymentMode', 'totalAmount', 'status', 'createdAt'])} className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--bg)] hover:bg-[var(--accent-light)] text-[var(--text-primary)] rounded-lg text-xs font-semibold cursor-pointer border border-[var(--border)] transition-colors">
                 <FileText className="w-3.5 h-3.5" /><span>Ledgers (PDF)</span>
               </button>
             </div>
@@ -937,7 +964,7 @@ export default function FinanceDashboard({
               <div className="p-4 md:p-6 bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-[var(--box-shadow)] space-y-4">
                 <h3 className="text-base md:text-lg font-bold text-[var(--text-primary)]">Workflow B: Order Payment Terms Evaluation Queue</h3>
                 <div className="space-y-3">
-                  {ordersList.filter(o => o.status === 'PENDING_FINANCE').map(order => (
+                  {effectiveOrders.filter(o => o.status === 'PENDING_FINANCE').map(order => (
                     <div key={order.id} className="p-4 bg-[var(--bg)] border border-[var(--border)] rounded-xl">
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div>
@@ -959,7 +986,7 @@ export default function FinanceDashboard({
                       </div>
                     </div>
                   ))}
-                  {ordersList.filter(o => o.status === 'PENDING_FINANCE').length === 0 && (
+                  {effectiveOrders.filter(o => o.status === 'PENDING_FINANCE').length === 0 && (
                     <p className="text-xs text-[var(--text-secondary)] text-center py-6">No order payment checks pending clearance.</p>
                   )}
                 </div>
@@ -971,7 +998,7 @@ export default function FinanceDashboard({
               <div className="p-4 md:p-6 bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-[var(--box-shadow)] space-y-4">
                 <h3 className="text-base md:text-lg font-bold text-[var(--text-primary)]">Invoice Inception Portal</h3>
                 <div className="space-y-3">
-                  {ordersList.filter(o => o.status === 'APPROVED').map(order => (
+                  {effectiveOrders.filter(o => o.status === 'APPROVED').map(order => (
                     <div key={order.id} className="p-4 bg-[var(--bg)] border border-[var(--border)] rounded-xl">
                       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                         <div className="space-y-1">
@@ -996,7 +1023,7 @@ export default function FinanceDashboard({
                       </div>
                     </div>
                   ))}
-                  {ordersList.filter(o => o.status === 'APPROVED').length === 0 && (
+                  {effectiveOrders.filter(o => o.status === 'APPROVED').length === 0 && (
                     <p className="text-xs text-[var(--text-secondary)] text-center py-6">No approved order invoices pending.</p>
                   )}
                 </div>
@@ -1032,22 +1059,50 @@ export default function FinanceDashboard({
                         <input type="text" value={clientName} onChange={e => setClientName(e.target.value)} placeholder="E.g., Kumasi Foods Distributor" className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />
                       </div>
                       <div>
-                        <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Amount (GHS)</label>
+                        <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Amount Paid (GHS)</label>
                         <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="E.g., 2500" className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />
                       </div>
                     </>
                   ) : (
-                    <div>
-                      <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Select Unsettled Credit Order</label>
-                      <select value={selectedOrderId} onChange={e => setSelectedOrderId(e.target.value)} className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]">
-                        <option value="" className="bg-[var(--bg-card)]">-- Choose Credit Order --</option>
-                        {ordersList.filter(o => o.paymentMode === 'CREDIT' && o.status === 'PENDING_FINANCE').map(o => (
-                          <option key={o.id} value={o.id} className="bg-[var(--bg-card)]">{o.id} - {o.clientName} (GHS {o.totalAmount.toLocaleString()}) [{o.status}]</option>
-                        ))}
-                      </select>
-                      {ordersList.filter(o => o.paymentMode === 'CREDIT' && o.status === 'PENDING_FINANCE').length === 0 && (
-                        <p className="text-[10px] text-amber-500 mt-1">No pending credit orders found. Check Finance queue first.</p>
-                      )}
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Select Unsettled Credit Order</label>
+                        <select value={selectedOrderId} onChange={e => setSelectedOrderId(e.target.value)} className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]">
+                          <option value="" className="bg-[var(--bg-card)]">-- Choose Credit Order --</option>
+                          {effectiveOrders.filter(o => o.paymentMode === 'CREDIT' && o.status === 'PENDING_FINANCE').map(o => (
+                            <option key={o.id} value={o.id} className="bg-[var(--bg-card)]">{o.id} - {o.clientName} (GHS {o.totalAmount.toLocaleString()}) [{o.status}]</option>
+                          ))}
+                        </select>
+                        {effectiveOrders.filter(o => o.paymentMode === 'CREDIT' && o.status === 'PENDING_FINANCE').length === 0 && (
+                          <p className="text-[10px] text-amber-500 mt-1">No pending credit orders found. Check Finance queue first.</p>
+                        )}
+                      </div>
+                      {selectedOrderId && (() => {
+                        const selOrder = effectiveOrders.find(o => o.id === selectedOrderId);
+                        const amountRequired = selOrder?.totalAmount || 0;
+                        const amountPaidNum = parseFloat(amount) || 0;
+                        const balance = amountRequired - amountPaidNum;
+                        return (
+                          <div className="space-y-2">
+                            <div className="bg-[var(--bg)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs">
+                              <p className="text-[var(--text-muted)]">Amount Required</p>
+                              <p className="font-bold text-[var(--text-primary)] text-sm">GHS {amountRequired.toLocaleString()}</p>
+                            </div>
+                            <div>
+                              <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Amount Paid (GHS)</label>
+                              <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="Enter amount paid…"
+                                className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />
+                            </div>
+                            {amount && (
+                              <div className={`rounded-xl px-3 py-2 text-xs font-semibold ${balance <= 0 ? 'bg-emerald-500/10 text-emerald-600' : 'bg-rose-500/10 text-rose-600'}`}>
+                                {balance <= 0
+                                  ? `Full payment — GHS ${Math.abs(balance).toLocaleString()} ${balance < 0 ? 'overpaid' : 'settled'}`
+                                  : `Partial payment — GHS ${balance.toLocaleString()} remaining`}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </div>
                   )}
 

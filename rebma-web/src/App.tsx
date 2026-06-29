@@ -317,10 +317,15 @@ export default function App() {
   );
   const isInitialLoad = useRef(true);
   const navBadges = useNavBadges(activeSubTab);
+  // Per-department alert counters for tab blinking dots
+  const [tabAlerts, setTabAlerts] = useState<Record<string, number>>({});
+  const addTabAlert = (dept: string) => setTabAlerts(prev => ({ ...prev, [dept]: (prev[dept] || 0) + 1 }));
+  const clearTabAlert = (dept: string) => setTabAlerts(prev => ({ ...prev, [dept]: 0 }));
 
   const setActiveDepartment = (department: string) => {
     setActiveDepartmentRaw(department);
     sessionStorage.setItem('rebma-last-dept', department);
+    clearTabAlert(department);
   };
 
   const setActiveSubTab = (tab: string) => {
@@ -688,7 +693,7 @@ export default function App() {
         totalAmount: o.totalAmount,
         ghanaCard: o.ghanaCard || undefined,
         status: o.status,
-        createdAt: new Date(o.createdAt).toLocaleString()
+        createdAt: o.createdAt || new Date().toISOString()
       })));
     } catch (e) {
       console.log('Skipping orders fetch (unauthorized/error)');
@@ -1118,6 +1123,25 @@ export default function App() {
               addNotification(`Price catalog updated`);
               refreshAllData();
             }
+          }
+        )
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'orders' },
+          (payload) => {
+            const newRecord = payload.new as any;
+            if (payload.eventType === 'INSERT') {
+              addNotification(`New order: ${newRecord.ticket_number || 'new order'}`);
+              addTabAlert('MARKETING');
+              addTabAlert('FINANCE');
+            } else if (payload.eventType === 'UPDATE') {
+              const status = newRecord.status;
+              if (status === 'OUT_FOR_DELIVERY' || status === 'APPROVED') {
+                addNotification(`Order ${newRecord.ticket_number || ''} → ${status.replace(/_/g, ' ')}`);
+                addTabAlert('OPERATIONS');
+              }
+            }
+            refreshAllData();
           }
         )
         .on(
@@ -3637,6 +3661,7 @@ function AppInner({
           setSidebarCollapsed={setSidebarCollapsed}
           unreadEmailCount={unreadEmailCount}
           navBadges={navBadges}
+          tabAlerts={tabAlerts}
         />
 
         {/* Backdrop overlay for mobile/tablet */}

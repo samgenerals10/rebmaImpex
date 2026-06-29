@@ -51,16 +51,32 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const [showNewModal, setShowNewModal] = useState(false);
 
+  const [productPrices, setProductPrices] = useState<Record<string, number>>({});
+  const [customers, setCustomers] = useState<{ id: string; name: string }[]>([]);
+
   const openNewOrderModal = () => {
     setShowNewModal(true);
-    supabase.from('goods_prices').select('product_name').order('product_name').then(({ data }) => {
+    setPricePerUnit(null);
+    supabase.from('goods_prices').select('product_name, unit_price').order('product_name').then(({ data }) => {
       setAvailableProducts((data || []).map((r: any) => String(r.product_name)));
+      const priceMap: Record<string, number> = {};
+      (data || []).forEach((r: any) => { priceMap[r.product_name] = Number(r.unit_price ?? 0); });
+      setProductPrices(priceMap);
     }, () => {});
+    supabase.from('customers').select('id, name').order('name').then(({ data }) => {
+      setCustomers((data || []).map((r: any) => ({ id: String(r.id), name: String(r.name) })));
+    }, () => {});
+  };
+
+  const handleProductChange = (productName: string) => {
+    setForm(prev => ({ ...prev, productName }));
+    setPricePerUnit(productPrices[productName] ?? null);
   };
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  const [form, setForm] = useState({ clientName: '', productName: '', destination: '', totalAmount: '', paymentMode: 'CASH' as Order['paymentMode'] });
+  const [form, setForm] = useState({ clientName: '', productName: '', destination: '', quantity: '1', paymentMode: 'CASH' as Order['paymentMode'] });
+  const [pricePerUnit, setPricePerUnit] = useState<number | null>(null);
   const [availableProducts, setAvailableProducts] = useState<string[]>([]);
 
   const mapOrder = (r: any): Order => ({
@@ -117,7 +133,9 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
   const active = orders.filter(o => o.status === 'PROCESSING' || o.status === 'DELIVERED').length;
 
   const handleSave = async () => {
-    if (!form.clientName || !form.totalAmount) { addNotification('Fill required fields.'); return; }
+    if (!form.clientName) { addNotification('Customer name is required.'); return; }
+    const qty = Math.max(1, parseInt(form.quantity) || 1);
+    const computedAmount = pricePerUnit != null ? pricePerUnit * qty : 0;
     const ticketNumber = `TKT-${Math.floor(10000 + Math.random() * 90000)}`;
     const now = new Date().toISOString();
     const { data: inserted, error } = await supabase.from('orders').insert({
@@ -126,22 +144,24 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
       product_name: form.productName || null,
       destination: form.destination || null,
       payment_mode: form.paymentMode,
-      total_amount: parseFloat(form.totalAmount),
+      total_amount: computedAmount,
       status: 'PENDING_FINANCE',
       created_at: now,
       updated_at: now,
+      metadata: { quantity: qty, unit_price: pricePerUnit ?? 0 },
     }).select().single();
     if (error) { addNotification(`Failed to create order: ${error.message}`); return; }
     const newOrder = mapOrder(inserted || {
       id: `ord-${Date.now()}`, ticket_number: ticketNumber,
       client_name: form.clientName, product_name: form.productName,
       destination: form.destination, payment_mode: form.paymentMode,
-      total_amount: parseFloat(form.totalAmount), status: 'PENDING_FINANCE', created_at: now,
+      total_amount: computedAmount, status: 'PENDING_FINANCE', created_at: now,
     });
     onCreateOrder(newOrder);
     setOrders(prev => [newOrder, ...prev]);
     setShowNewModal(false);
-    setForm({ clientName: '', productName: '', destination: '', totalAmount: '', paymentMode: 'CASH' });
+    setForm({ clientName: '', productName: '', destination: '', quantity: '1', paymentMode: 'CASH' });
+    setPricePerUnit(null);
     addNotification('Order created successfully. Routed to Finance.');
   };
 
@@ -283,21 +303,34 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
               <h3 className="font-bold text-[var(--text-primary)]">New Sales Order</h3>
               <button onClick={() => setShowNewModal(false)} className="p-1 rounded-lg hover:bg-[var(--bg-input)]"><X className="w-4 h-4 text-[var(--text-muted)]" /></button>
             </div>
-            {[
-              { label: 'Customer Name *', key: 'clientName', type: 'text' },
-              { label: 'Destination', key: 'destination', type: 'text' },
-              { label: 'Amount (GHS) *', key: 'totalAmount', type: 'number' },
-            ].map(f => (
-              <div key={f.key}>
-                <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">{f.label}</label>
-                <input type={f.type} value={(form as any)[f.key]} onChange={e => setForm(prev => ({ ...prev, [f.key]: e.target.value }))}
-                  className="w-full px-3 py-2 text-sm rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />
-              </div>
-            ))}
+            <datalist id="customer-names-list">
+              {customers.map(c => <option key={c.id} value={c.name} />)}
+            </datalist>
+            <div>
+              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Customer Name *</label>
+              <input
+                type="text"
+                list="customer-names-list"
+                value={form.clientName}
+                onChange={e => setForm(prev => ({ ...prev, clientName: e.target.value }))}
+                placeholder="Type or select customer name..."
+                className="w-full px-3 py-2 text-sm rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Destination</label>
+              <input
+                type="text"
+                value={form.destination}
+                onChange={e => setForm(prev => ({ ...prev, destination: e.target.value }))}
+                placeholder="e.g. Accra, Tema, Kumasi..."
+                className="w-full px-3 py-2 text-sm rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
+              />
+            </div>
             <div>
               <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Product</label>
               {availableProducts.length > 0 ? (
-                <select value={form.productName} onChange={e => setForm(prev => ({ ...prev, productName: e.target.value }))}
+                <select value={form.productName} onChange={e => handleProductChange(e.target.value)}
                   className="w-full px-3 py-2 text-sm rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]">
                   <option value="">— Select product —</option>
                   {availableProducts.map(p => <option key={p} value={p}>{p}</option>)}
@@ -308,6 +341,23 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
                   className="w-full px-3 py-2 text-sm rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />
               )}
             </div>
+            <div>
+              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Quantity</label>
+              <input type="number" min="1" value={form.quantity} onChange={e => setForm(prev => ({ ...prev, quantity: e.target.value }))}
+                placeholder="Enter quantity..."
+                className="w-full px-3 py-2 text-sm rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />
+            </div>
+            {pricePerUnit != null && (
+              <div className="rounded-xl bg-[var(--accent-light)] border border-[var(--border)] px-3 py-3 text-xs text-[var(--text-secondary)] space-y-1">
+                <p>Management set price: <span className="font-bold text-[var(--accent)] text-sm">GHS {pricePerUnit.toLocaleString()}</span> per unit</p>
+                <p>Order Total: <span className="font-bold text-[var(--accent)] text-sm">GHS {(pricePerUnit * Math.max(1, parseInt(form.quantity) || 1)).toLocaleString()}</span></p>
+              </div>
+            )}
+            {pricePerUnit == null && form.productName && (
+              <div className="rounded-xl bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-700">
+                No price set for this product yet. Management must set a price before the order can be invoiced.
+              </div>
+            )}
             <div>
               <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Payment Mode</label>
               <select value={form.paymentMode} onChange={e => setForm(prev => ({ ...prev, paymentMode: e.target.value as Order['paymentMode'] }))}

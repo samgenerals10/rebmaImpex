@@ -29,15 +29,22 @@ interface Props {
 
 const ORDERED_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-function MiniBar({ data }: { data: number[] }) {
+function MiniLine({ data }: { data: number[] }) {
   const max = Math.max(...data, 1);
+  const min = Math.min(...data, 0);
+  const range = Math.max(max - min, 1);
+  const w = 64, h = 32, pad = 2;
+  const points = data.map((v, i) => {
+    const x = pad + (i / Math.max(data.length - 1, 1)) * (w - pad * 2);
+    const y = h - pad - ((v - min) / range) * (h - pad * 2);
+    return `${x},${y}`;
+  }).join(' ');
   return (
-    <div className="flex items-end gap-0.5 h-8 w-16 shrink-0">
-      {data.map((v, i) => (
-        <div key={i} className="flex-1 rounded-sm bg-[var(--accent)] opacity-60"
-          style={{ height: `${(v / max) * 100}%` }} />
-      ))}
-    </div>
+    <svg width={w} height={h} className="shrink-0" viewBox={`0 0 ${w} ${h}`}>
+      {data.length > 1 && (
+        <polyline points={points} fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      )}
+    </svg>
   );
 }
 
@@ -218,7 +225,7 @@ export default function ProductionOverviewView({ currentUser, productionRequests
                   <p className="text-[10px] text-[var(--text-muted)]">{card.sub}</p>
                 </div>
               </div>
-              <MiniBar data={card.spark.map(Number)} />
+              <MiniLine data={card.spark.map(Number)} />
             </div>
           </button>
         ))}

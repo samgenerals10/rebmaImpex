@@ -115,7 +115,7 @@ const mapOrderToFrontend = (db: any): any => {
     destination: db.destination,
     ghanaCard: db.metadata?.ghanaCard || db.ghana_card || db.ghanaCard,
     paymentMode: db.payment_mode || db.paymentMode,
-    totalAmount: db.total_amount || db.totalAmount,
+    totalAmount: Number(db.total_amount ?? db.totalAmount ?? 0),
     status: db.status,
     createdById: db.created_by || db.created_by_id || db.createdById,
     createdAt: db.created_at || db.createdAt,
@@ -855,7 +855,7 @@ export const marketing = {
         total_amount: Number(data.totalAmount),
         status: 'PENDING_FINANCE',
         created_by: performerId,
-        timestamp: new Date().toISOString(),
+        created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         metadata: {
           clientName: data.clientName,

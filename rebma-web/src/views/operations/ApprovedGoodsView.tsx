@@ -247,7 +247,7 @@ export default function ApprovedGoodsView({ addNotification, setActiveSubTab: _s
 
   // Dispatch modal
   const [dispatchTarget, setDispatchTarget] = useState<ApprovedOrder | null>(null);
-  const [dispatchForm, setDispatchForm] = useState({ vehicleId: '', driverName: '', quantity: '' });
+  const [dispatchForm, setDispatchForm] = useState({ vehicleId: '', driverName: '' });
   const [dispatching, setDispatching] = useState(false);
 
   // Get current logged-in user once
@@ -307,7 +307,7 @@ export default function ApprovedGoodsView({ addNotification, setActiveSubTab: _s
   const handleDispatch = async () => {
     if (!dispatchTarget) return;
     setDispatching(true);
-    const qty = parseInt(dispatchForm.quantity) || 1;
+    const qty = Number((dispatchTarget as any).quantity || (dispatchTarget as any).metadata?.quantity || 1);
 
     try {
       // 1. Create delivery_log
@@ -356,7 +356,7 @@ export default function ApprovedGoodsView({ addNotification, setActiveSubTab: _s
 
       addNotification?.(`Order ${dispatchTarget.ticketNumber} loaded to Dispatch — stock ledger updated.`);
       setDispatchTarget(null);
-      setDispatchForm({ vehicleId: '', driverName: '', quantity: '' });
+      setDispatchForm({ vehicleId: '', driverName: '' });
     } catch (e: any) {
       alert(e.message || 'Failed to send to dispatch.');
     }
@@ -522,13 +522,13 @@ export default function ApprovedGoodsView({ addNotification, setActiveSubTab: _s
                           <td className="px-4 py-3 text-[var(--text-muted)] whitespace-nowrap">{o.createdAt}</td>
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-2">
-                              <button onClick={() => printOperationsTicket(o, undefined, currentUserEmail)}
+                              <button onClick={() => printOperationsTicket(o, Number((o as any).quantity || (o as any).metadata?.quantity) || undefined, currentUserEmail)}
                                 title="Print Operations Ticket"
                                 className="flex items-center gap-1 px-2.5 py-1.5 bg-[var(--bg)] border border-[var(--border)] rounded-lg text-[10px] font-semibold text-[var(--text-secondary)] hover:bg-[var(--accent-light)] cursor-pointer whitespace-nowrap transition-colors">
                                 <Printer size={11} /> Ticket
                               </button>
                               {o.status === 'APPROVED' && (
-                                <button onClick={() => { setDispatchTarget(o); setDispatchForm({ vehicleId: '', driverName: '', quantity: '' }); }}
+                                <button onClick={() => { setDispatchTarget(o); setDispatchForm({ vehicleId: '', driverName: '' }); }}
                                   className="flex items-center gap-1 px-2.5 py-1.5 text-white rounded-lg text-[10px] font-bold hover:opacity-90 cursor-pointer whitespace-nowrap transition-opacity"
                                   style={{ background: BRAND.green }}>
                                   <Truck size={11} /> Dispatch
@@ -643,12 +643,15 @@ export default function ApprovedGoodsView({ addNotification, setActiveSubTab: _s
             </div>
 
             <div className="space-y-3 mb-5">
-              <div>
-                <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Quantity Being Dispatched <span className="text-red-500">*</span></label>
-                <input type="number" min="1" value={dispatchForm.quantity} onChange={e => setDispatchForm(f => ({ ...f, quantity: e.target.value }))}
-                  placeholder="e.g. 500"
-                  className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg)] border border-[var(--border)] text-xs text-[var(--text-primary)] focus:outline-none" />
-                <p className="text-[10px] text-[var(--text-muted)] mt-1">This will be recorded as OUT in the stock ledger</p>
+              {/* Read-only order quantity */}
+              <div className="bg-[var(--accent-light)] border border-[var(--border)] rounded-xl px-4 py-3 space-y-1">
+                <div className="flex justify-between text-xs">
+                  <span className="text-[var(--text-muted)]">Quantity (from order)</span>
+                  <span className="font-bold" style={{ color: BRAND.green }}>
+                    {Number((dispatchTarget as any)?.quantity || (dispatchTarget as any)?.metadata?.quantity || 'N/A').toLocaleString()} units
+                  </span>
+                </div>
+                <p className="text-[10px] text-[var(--text-muted)]">This quantity will be recorded as OUT in the stock ledger</p>
               </div>
               <div>
                 <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Vehicle ID / Plate Number</label>
@@ -673,7 +676,7 @@ export default function ApprovedGoodsView({ addNotification, setActiveSubTab: _s
             <div className="flex gap-3">
               <button onClick={() => setDispatchTarget(null)}
                 className="flex-1 py-2.5 border border-[var(--border)] rounded-xl text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg)] cursor-pointer">Cancel</button>
-              <button onClick={handleDispatch} disabled={dispatching || !dispatchForm.quantity}
+              <button onClick={handleDispatch} disabled={dispatching}
                 className="flex-1 py-2.5 text-white rounded-xl text-xs font-bold hover:opacity-90 cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
                 style={{ background: BRAND.green }}>
                 <Truck size={13} /> {dispatching ? 'Sending…' : 'Confirm & Load to Dispatch'}

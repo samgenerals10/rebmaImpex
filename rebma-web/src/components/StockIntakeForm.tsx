@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { X, Calendar, Package, Info, CheckCircle, Factory, ClipboardList, DollarSign } from 'lucide-react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { X, Package, Info, Factory, DollarSign, Camera, RefreshCw } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { operations } from '../services/apiClient';
 
@@ -8,6 +8,105 @@ interface StockIntakeFormProps {
   onClose: () => void;
   addNotification: (msg: string) => void;
   onSuccess?: () => void;
+}
+
+const TODAY = new Date().toISOString().slice(0, 10);
+
+// Camera capture component
+function CameraCapture({ onCapture }: { onCapture: (base64: string | null) => void }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [streaming, setStreaming] = useState(false);
+  const [captured, setCaptured] = useState<string | null>(null);
+  const [hasGetUserMedia] = useState(() => !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia));
+  const streamRef = useRef<MediaStream | null>(null);
+
+  const startCamera = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play();
+      }
+      setStreaming(true);
+    } catch {
+      setStreaming(false);
+    }
+  }, []);
+
+  const stopCamera = useCallback(() => {
+    streamRef.current?.getTracks().forEach(t => t.stop());
+    streamRef.current = null;
+    setStreaming(false);
+  }, []);
+
+  const capture = useCallback(() => {
+    if (!videoRef.current || !canvasRef.current) return;
+    const v = videoRef.current;
+    const c = canvasRef.current;
+    c.width = v.videoWidth;
+    c.height = v.videoHeight;
+    c.getContext('2d')?.drawImage(v, 0, 0);
+    const base64 = c.toDataURL('image/jpeg', 0.8);
+    setCaptured(base64);
+    onCapture(base64);
+    stopCamera();
+  }, [onCapture, stopCamera]);
+
+  const retake = useCallback(() => {
+    setCaptured(null);
+    onCapture(null);
+    startCamera();
+  }, [onCapture, startCamera]);
+
+  useEffect(() => { return () => stopCamera(); }, [stopCamera]);
+
+  if (!hasGetUserMedia) {
+    return (
+      <div>
+        <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Photo of Goods</label>
+        <input type="file" accept="image/*" capture="environment"
+          onChange={e => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = ev => onCapture(ev.target?.result as string);
+            reader.readAsDataURL(file);
+          }}
+          className="w-full px-3 py-2 bg-[var(--bg)] text-[var(--text-primary)] border border-[var(--border)] rounded-xl text-xs" />
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Photo of Goods</label>
+      {captured ? (
+        <div className="space-y-2">
+          <img src={captured} alt="Captured" className="w-full max-h-40 object-cover rounded-xl border border-[var(--border)]" />
+          <button type="button" onClick={retake}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold border border-[var(--border)] rounded-lg text-[var(--text-secondary)] hover:bg-[var(--accent-light)] cursor-pointer">
+            <RefreshCw className="w-3 h-3" /> Retake
+          </button>
+        </div>
+      ) : streaming ? (
+        <div className="space-y-2">
+          <video ref={videoRef} className="w-full rounded-xl border border-[var(--border)] max-h-40 object-cover" autoPlay playsInline muted />
+          <canvas ref={canvasRef} className="hidden" />
+          <button type="button" onClick={capture}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold bg-[var(--accent)] text-white rounded-lg cursor-pointer hover:opacity-90">
+            <Camera className="w-3 h-3" /> Capture
+          </button>
+        </div>
+      ) : (
+        <button type="button" onClick={startCamera}
+          className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border border-[var(--border)] rounded-xl text-[var(--text-secondary)] hover:bg-[var(--accent-light)] cursor-pointer w-full justify-center">
+          <Camera className="w-4 h-4" /> Open Camera
+        </button>
+      )}
+    </div>
+  );
 }
 
 export default function StockIntakeForm({
@@ -25,9 +124,10 @@ export default function StockIntakeForm({
   const [ihUnits, setIhUnits] = useState('');
   const [ihWeight, setIhWeight] = useState('');
   const [ihGoodsType, setIhGoodsType] = useState('');
-  const [ihDate, setIhDate] = useState('');
+  const [ihDate, setIhDate] = useState(TODAY);
   const [ihProductionReqId, setIhProductionReqId] = useState('');
   const [productionOutputs, setProductionOutputs] = useState<any[]>([]);
+  const [ihPhoto, setIhPhoto] = useState<string | null>(null);
 
   // General purchase state
   const [gpItemName, setGpItemName] = useState('');
@@ -35,23 +135,36 @@ export default function StockIntakeForm({
   const [gpCategory, setGpCategory] = useState('');
   const [gpQuantity, setGpQuantity] = useState('');
   const [gpCost, setGpCost] = useState('');
-  const [gpDate, setGpDate] = useState('');
+  const [gpDate, setGpDate] = useState(TODAY);
+  const [gpPhoto, setGpPhoto] = useState<string | null>(null);
 
-  // Fetch production batches for dropdown
+  // Known product names for datalist
+  const [knownProducts, setKnownProducts] = useState<string[]>([]);
+
+  // Fetch production batches and known products
   useEffect(() => {
-    if (isOpen && classification === 'COMPANY_PRODUCT') {
+    if (!isOpen) return;
+    if (classification === 'COMPANY_PRODUCT') {
       supabase
         .from('production_requests')
         .select('id, items, status, produced_goods, created_at')
         .in('status', ['COMPLETED', 'TICKETS_ISSUED'])
         .order('created_at', { ascending: false })
-        .then(
-          ({ data }) => {
-            if (data) setProductionOutputs(data);
-          },
-          () => {}
-        );
+        .then(({ data }) => { if (data) setProductionOutputs(data); }, () => {});
     }
+    // Fetch known products from goods_prices and cargo_intake
+    Promise.all([
+      supabase.from('goods_prices').select('product_name').order('product_name'),
+      supabase.from('cargo_intake').select('product_name').order('product_name'),
+    ]).then(([priceRes, cargoRes]) => {
+      const names = new Set<string>();
+      (priceRes.data || []).forEach((r: any) => r.product_name && names.add(String(r.product_name)));
+      (cargoRes.data || []).forEach((r: any) => r.product_name && names.add(String(r.product_name)));
+      setKnownProducts([...names].sort());
+    }, () => {});
+    // Reset dates to today when form opens
+    setIhDate(TODAY);
+    setGpDate(TODAY);
   }, [isOpen, classification]);
 
   if (!isOpen) return null;
@@ -84,15 +197,16 @@ export default function StockIntakeForm({
         } as any);
 
         addNotification(`Company product stock intake logged: ${ihProductName} (${code})`);
-        
+
         // Reset form
         setIhProductName('');
         setIhGoodsCode('');
         setIhUnits('');
         setIhWeight('');
         setIhGoodsType('');
-        setIhDate('');
+        setIhDate(TODAY);
         setIhProductionReqId('');
+        setIhPhoto(null);
       } else {
         const code = gpItemCode.trim() || autoGpCode();
         // Log general purchase
@@ -102,7 +216,7 @@ export default function StockIntakeForm({
           category: gpCategory,
           quantity: parseInt(gpQuantity) || 0,
           cost: parseFloat(gpCost) || 0,
-          dateReceived: gpDate || new Date().toISOString().split('T')[0]
+          dateReceived: gpDate || TODAY
         });
 
         addNotification(`General purchase logged: ${gpItemName} (${code})`);
@@ -113,7 +227,8 @@ export default function StockIntakeForm({
         setGpCategory('');
         setGpQuantity('');
         setGpCost('');
-        setGpDate('');
+        setGpDate(TODAY);
+        setGpPhoto(null);
       }
 
       if (onSuccess) onSuccess();
@@ -211,6 +326,9 @@ export default function StockIntakeForm({
               )}
 
               {/* PRODUCT NAME & CODE */}
+              <datalist id="known-products-list">
+                {knownProducts.map(p => <option key={p} value={p} />)}
+              </datalist>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">
@@ -218,10 +336,11 @@ export default function StockIntakeForm({
                   </label>
                   <input
                     type="text"
+                    list="known-products-list"
                     value={ihProductName}
                     onChange={(e) => setIhProductName(e.target.value)}
                     required
-                    placeholder="E.g., Refined Palm Oil Barrels"
+                    placeholder="Type or select product name…"
                     className="w-full px-3 py-2 bg-[var(--bg)] text-[var(--text-primary)] border border-[var(--border)] focus:border-[var(--accent)] rounded-xl text-xs focus:outline-none"
                   />
                 </div>
@@ -302,6 +421,10 @@ export default function StockIntakeForm({
                 />
               </div>
 
+              {/* CAMERA */}
+              <CameraCapture onCapture={setIhPhoto} />
+              {ihPhoto && <p className="text-[10px] text-[var(--text-muted)]">Photo attached — will be saved with intake record.</p>}
+
               {/* NOTE INFO */}
               <div className="p-3.5 bg-[var(--accent-light)] border border-[var(--border)] rounded-xl text-xs text-[var(--accent)] flex items-start gap-2.5">
                 <Info className="w-4 h-4 mt-0.5 shrink-0" />
@@ -320,10 +443,11 @@ export default function StockIntakeForm({
                   </label>
                   <input
                     type="text"
+                    list="known-products-list"
                     value={gpItemName}
                     onChange={(e) => setGpItemName(e.target.value)}
                     required
-                    placeholder="E.g., Office Printer Paper"
+                    placeholder="Type or select item name…"
                     className="w-full px-3 py-2 bg-[var(--bg)] text-[var(--text-primary)] border border-[var(--border)] focus:border-[var(--accent)] rounded-xl text-xs focus:outline-none"
                   />
                 </div>
@@ -403,6 +527,10 @@ export default function StockIntakeForm({
                   className="w-full px-3 py-2 bg-[var(--bg)] text-[var(--text-primary)] border border-[var(--border)] focus:border-[var(--accent)] rounded-xl text-xs focus:outline-none"
                 />
               </div>
+
+              {/* CAMERA */}
+              <CameraCapture onCapture={setGpPhoto} />
+              {gpPhoto && <p className="text-[10px] text-[var(--text-muted)]">Photo attached — will be saved with intake record.</p>}
 
               {/* NOTE INFO */}
               <div className="p-3.5 bg-[var(--accent-light)] border border-[var(--border)] rounded-xl text-xs text-[var(--accent)] flex items-start gap-2.5">

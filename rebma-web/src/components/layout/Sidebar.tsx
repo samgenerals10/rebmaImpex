@@ -30,6 +30,7 @@ interface SidebarProps {
   setSidebarCollapsed?: (val: boolean) => void;
   unreadEmailCount?: number;
   navBadges?: Record<string, number>;
+  tabAlerts?: Record<string, number>;
 }
 
 export default function Sidebar({
@@ -47,7 +48,8 @@ export default function Sidebar({
   sidebarCollapsed = false,
   setSidebarCollapsed,
   unreadEmailCount = 0,
-  navBadges = {}
+  navBadges = {},
+  tabAlerts = {}
 }: SidebarProps) {
   const [isSwitcherOpen, setIsSwitcherOpen] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
@@ -452,12 +454,14 @@ export default function Sidebar({
                   {availableDepts.map(dept => {
                     const isSelected = dept.value === activeDepartment;
                     const DI = getIconForDept(dept.value);
+                    const hasAlert = (tabAlerts[dept.value] || 0) > 0;
                     return (
                       <button key={dept.value} type="button" onClick={() => { setActiveDepartment(dept.value); setIsSwitcherOpen(false); }}
                         className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${isSelected ? 'bg-[var(--accent)] text-white shadow-card' : 'text-[var(--text-primary)] hover:bg-[var(--accent-light)]'}`}>
                         <div className="flex items-center gap-2">
                           <DI className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-white' : 'text-[var(--accent)]'}`} />
                           <span>{dept.label}</span>
+                          {hasAlert && !isSelected && <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse shrink-0" />}
                         </div>
                         {isSelected && <span className="text-white font-extrabold">✓</span>}
                       </button>

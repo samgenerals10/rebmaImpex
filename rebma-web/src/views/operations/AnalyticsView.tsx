@@ -3,11 +3,62 @@ import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from 'recharts';
-import { TrendingUp, TrendingDown, Package, PackageCheck, AlertTriangle, BarChart2, Download, Clock } from 'lucide-react';
+import { Package, PackageCheck, AlertTriangle, BarChart2, Download, Clock, X } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { exportToCSV } from '../../utils/export';
 
 interface AddNotificationProps { addNotification: (msg: string) => void; }
+
+// KPI detail modal row types
+interface CargoRow { date: string; product: string; quantity: number; supplier: string; status: string; }
+
+function KpiDetailModal({ title, rows, onClose }: { title: string; rows: CargoRow[]; onClose: () => void }) {
+  const [search, setSearch] = useState('');
+  const filtered = rows.filter(r =>
+    !search || r.product.toLowerCase().includes(search.toLowerCase()) ||
+    r.supplier.toLowerCase().includes(search.toLowerCase()) || r.status.toLowerCase().includes(search.toLowerCase())
+  );
+  return (
+    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
+          <h3 className="font-bold text-[var(--text-primary)]">{title}</h3>
+          <button onClick={onClose} className="p-1.5 hover:bg-[var(--bg)] rounded-lg cursor-pointer"><X className="w-4 h-4 text-[var(--text-muted)]" /></button>
+        </div>
+        <div className="px-5 py-3 border-b border-[var(--border)]">
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Filter records…"
+            className="w-full px-3 py-2 rounded-xl bg-[var(--bg)] border border-[var(--border)] text-xs text-[var(--text-primary)] focus:outline-none" />
+        </div>
+        <div className="overflow-auto flex-1">
+          <table className="w-full text-xs">
+            <thead className="sticky top-0 bg-[var(--bg)] border-b border-[var(--border)]">
+              <tr>{['Date','Product','Quantity','Supplier','Status'].map(h => (
+                <th key={h} className="px-4 py-2.5 text-left text-[10px] font-semibold text-[var(--text-muted)] uppercase whitespace-nowrap">{h}</th>
+              ))}</tr>
+            </thead>
+            <tbody className="divide-y divide-[var(--border)]">
+              {filtered.length === 0
+                ? <tr><td colSpan={5} className="px-4 py-8 text-center text-[var(--text-muted)]">No records found.</td></tr>
+                : filtered.map((r, i) => (
+                  <tr key={i} className="hover:bg-[var(--accent-light)] transition-colors">
+                    <td className="px-4 py-2.5 text-[var(--text-muted)]">{r.date}</td>
+                    <td className="px-4 py-2.5 font-semibold text-[var(--text-primary)]">{r.product}</td>
+                    <td className="px-4 py-2.5 font-mono text-[var(--accent)]">{r.quantity.toLocaleString()}</td>
+                    <td className="px-4 py-2.5 text-[var(--text-secondary)]">{r.supplier}</td>
+                    <td className="px-4 py-2.5">
+                      <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${r.status === 'APPROVED' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>{r.status}</span>
+                    </td>
+                  </tr>
+                ))
+              }
+            </tbody>
+          </table>
+        </div>
+        <div className="px-5 py-3 border-t border-[var(--border)] text-xs text-[var(--text-muted)]">{filtered.length} records</div>
+      </div>
+    </div>
+  );
+}
 
 const COLORS = ['#6366f1','#10b981','#f59e0b','#f43f5e','#8b5cf6','#06b6d4','#ec4899','#14b8a6'];
 
@@ -31,7 +82,9 @@ export default function AnalyticsView({ addNotification }: AddNotificationProps)
   const [cargoInflow, setCargoInflow] = useState<{ month: string; inflow: number; released: number }[]>([]);
   const [stockTrend, setStockTrend] = useState<{ month: string; inStock: number; lowStock: number; outOfStock: number }[]>([]);
   const [categoryBreakdown, setCategoryBreakdown] = useState<{ name: string; value: number; color: string }[]>([]);
-  const [topProducts, setTopProducts] = useState<{ rank: number; name: string; received: number; released: number; status: string }[]>([]);
+  const [topProducts, setTopProducts] = useState<{ rank: number; name: string; received: number; receivedCount: number; releasedQty: number; releasedCount: number; status: string }[]>([]);
+  const [allCargoRows, setAllCargoRows] = useState<CargoRow[]>([]);
+  const [activeKpi, setActiveKpi] = useState<string | null>(null);
 
   const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
@@ -115,18 +168,30 @@ export default function AnalyticsView({ addNotification }: AddNotificationProps)
           );
         }
 
-        // Top products by volume from cargo_intake
+        // Top products by volume from cargo_intake — use actual quantities
         const { data: productRows } = await supabase
           .from('cargo_intake')
-          .select('product_name, status');
+          .select('product_name, status, quantity, created_at, supplier_name, company, discrepancies');
         if (productRows && productRows.length > 0) {
-          const prodMap: Record<string, { received: number; released: number }> = {};
-          for (const r of productRows as { product_name: string; status: string }[]) {
+          const rows = productRows as { product_name: string; status: string; quantity: any; created_at: string; supplier_name?: string; company?: string; discrepancies?: string }[];
+          const prodMap: Record<string, { received: number; receivedCount: number; releasedQty: number; releasedCount: number }> = {};
+          const cargoRowsArr: CargoRow[] = [];
+          for (const r of rows) {
             const name = r.product_name || 'Unknown';
-            if (!prodMap[name]) prodMap[name] = { received: 0, released: 0 };
-            prodMap[name].received++;
-            if (r.status === 'APPROVED') prodMap[name].released++;
+            const qty = Number(r.quantity || 1);
+            if (!prodMap[name]) prodMap[name] = { received: 0, receivedCount: 0, releasedQty: 0, releasedCount: 0 };
+            prodMap[name].received += qty;
+            prodMap[name].receivedCount++;
+            if (r.status === 'APPROVED') { prodMap[name].releasedQty += qty; prodMap[name].releasedCount++; }
+            cargoRowsArr.push({
+              date: (r.created_at || '').slice(0, 10),
+              product: name,
+              quantity: qty,
+              supplier: r.supplier_name || r.company || '—',
+              status: r.status || '—',
+            });
           }
+          setAllCargoRows(cargoRowsArr);
           const sorted = Object.entries(prodMap)
             .sort((a, b) => b[1].received - a[1].received)
             .slice(0, 10)
@@ -134,8 +199,10 @@ export default function AnalyticsView({ addNotification }: AddNotificationProps)
               rank: i + 1,
               name,
               received: d.received,
-              released: d.released,
-              status: d.released === d.received ? 'Healthy' : d.released === 0 ? 'Out of Stock' : 'Low Stock',
+              receivedCount: d.receivedCount,
+              releasedQty: d.releasedQty,
+              releasedCount: d.releasedCount,
+              status: d.releasedQty >= d.received ? 'Healthy' : d.releasedQty === 0 ? 'Out of Stock' : 'Low Stock',
             }));
           setTopProducts(sorted);
         }
@@ -154,11 +221,25 @@ export default function AnalyticsView({ addNotification }: AddNotificationProps)
   };
 
   const kpiCards = [
-    { label: 'Total Cargo Intakes', value: totalCargo, icon: Package, color: 'var(--accent)' },
-    { label: 'Released to Dispatch', value: totalReleased, icon: PackageCheck, color: '#10b981' },
-    { label: 'Discrepancies Reported', value: totalDiscrepancies, icon: AlertTriangle, color: '#f59e0b' },
-    { label: 'Avg. Processing Time', value: '—', icon: Clock, color: '#8b5cf6' },
+    { label: 'Total Cargo Intakes', value: totalCargo, icon: Package, color: 'var(--accent)', kpiKey: 'all' },
+    { label: 'Released to Dispatch', value: totalReleased, icon: PackageCheck, color: '#10b981', kpiKey: 'released' },
+    { label: 'Discrepancies Reported', value: totalDiscrepancies, icon: AlertTriangle, color: '#f59e0b', kpiKey: 'discrepancies' },
+    { label: 'Avg. Processing Time', value: '—', icon: Clock, color: '#8b5cf6', kpiKey: null },
   ];
+
+  const getModalRows = (kpiKey: string | null): CargoRow[] => {
+    if (kpiKey === 'all') return allCargoRows;
+    if (kpiKey === 'released') return allCargoRows.filter(r => r.status === 'APPROVED');
+    if (kpiKey === 'discrepancies') return allCargoRows.filter(r => r.status !== 'APPROVED' && r.status !== '—');
+    return [];
+  };
+
+  const getModalTitle = (kpiKey: string | null): string => {
+    if (kpiKey === 'all') return 'All Cargo Intakes';
+    if (kpiKey === 'released') return 'Released to Dispatch';
+    if (kpiKey === 'discrepancies') return 'Discrepancies Reported';
+    return '';
+  };
 
   return (
     <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
@@ -181,8 +262,11 @@ export default function AnalyticsView({ addNotification }: AddNotificationProps)
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {kpiCards.map((card) => {
           const Icon = card.icon;
+          const clickable = card.kpiKey !== null;
           return (
-            <div key={card.label} className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5 shadow-[var(--box-shadow)]">
+            <button key={card.label}
+              onClick={() => clickable && setActiveKpi(card.kpiKey)}
+              className={`bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5 shadow-[var(--box-shadow)] text-left w-full transition-colors ${clickable ? 'hover:border-[var(--accent)] cursor-pointer' : 'cursor-default'}`}>
               <div className="flex items-center justify-between mb-3">
                 <p className="text-xs text-[var(--text-muted)] font-semibold uppercase tracking-wide">{card.label}</p>
                 <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${card.color}18` }}>
@@ -194,10 +278,20 @@ export default function AnalyticsView({ addNotification }: AddNotificationProps)
               ) : (
                 <p className="text-2xl font-bold text-[var(--text-primary)]">{typeof card.value === 'number' ? card.value.toLocaleString() : card.value}</p>
               )}
-            </div>
+              {clickable && !loading && <p className="text-[10px] text-[var(--text-muted)] mt-1">Click to view details</p>}
+            </button>
           );
         })}
       </div>
+
+      {/* KPI detail modal */}
+      {activeKpi && (
+        <KpiDetailModal
+          title={getModalTitle(activeKpi)}
+          rows={getModalRows(activeKpi)}
+          onClose={() => setActiveKpi(null)}
+        />
+      )}
 
       {/* Cargo Inflow vs Release Velocity */}
       <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-6 shadow-[var(--box-shadow)]">
@@ -305,7 +399,7 @@ export default function AnalyticsView({ addNotification }: AddNotificationProps)
           <h2 className="text-sm font-bold text-[var(--text-primary)]">Top Products by Volume</h2>
           {topProducts.length > 0 && (
             <button
-              onClick={() => exportToCSV(topProducts.map(r => ({ Rank: r.rank, Product: r.name, Received: r.received, Released: r.released, Status: r.status })), ['Rank','Product','Received','Released','Status'], 'top_products_by_volume')}
+              onClick={() => exportToCSV(topProducts.map(r => ({ Rank: r.rank, Product: r.name, 'Qty Received': r.received, 'Deliveries': r.receivedCount, 'Qty Released': r.releasedQty, 'Releases': r.releasedCount, Status: r.status })), ['Rank','Product','Qty Received','Deliveries','Qty Released','Releases','Status'], 'top_products_by_volume')}
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold border border-[var(--border)] rounded-xl text-[var(--text-secondary)] hover:bg-[var(--accent-light)] cursor-pointer"
             >
               <Download className="w-3.5 h-3.5" /> Export
@@ -337,8 +431,8 @@ export default function AnalyticsView({ addNotification }: AddNotificationProps)
                   <tr key={row.rank} className="hover:bg-[var(--accent-light)] transition-colors">
                     <td className="py-3.5 px-5 font-mono font-bold text-[var(--text-muted)]">#{row.rank}</td>
                     <td className="py-3.5 px-5 font-semibold text-[var(--text-primary)]">{row.name}</td>
-                    <td className="py-3.5 px-5 font-mono font-bold text-[var(--accent)]">{row.received.toLocaleString()}</td>
-                    <td className="py-3.5 px-5 font-mono font-bold text-emerald-500">{row.released.toLocaleString()}</td>
+                    <td className="py-3.5 px-5 font-mono font-bold text-[var(--accent)]">{row.received.toLocaleString()} <span className="font-normal text-[var(--text-muted)] text-[10px]">(x{row.receivedCount})</span></td>
+                    <td className="py-3.5 px-5 font-mono font-bold text-emerald-500">{row.releasedQty.toLocaleString()} <span className="font-normal text-[var(--text-muted)] text-[10px]">(x{row.releasedCount})</span></td>
                     <td className="py-3.5 px-5">
                       <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
                         row.status === 'Healthy' ? 'bg-emerald-500/10 text-emerald-600' :

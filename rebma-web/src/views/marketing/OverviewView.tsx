@@ -134,6 +134,34 @@ export default function MarketingOverviewView({ addNotification, setActiveSubTab
   const pendingFinance = orders.filter(o => o.status === 'PENDING_FINANCE').length;
   const revenue = orders.filter(o => ['APPROVED', 'PROCESSING', 'DELIVERED'].includes(o.status)).reduce((s, o) => s + o.totalAmount, 0);
 
+  // Compute change badges based on real data
+  const nowMs = Date.now();
+  const oneDay = 86400000;
+  const thisWeekStart = nowMs - 7 * oneDay;
+  const lastWeekStart = nowMs - 14 * oneDay;
+  const thisMonthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime();
+  const lastMonthStart = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1).getTime();
+
+  const thisWeekOrders = orders.filter(o => new Date(o.createdAt).getTime() >= thisWeekStart).length;
+  const lastWeekOrders = orders.filter(o => { const t = new Date(o.createdAt).getTime(); return t >= lastWeekStart && t < thisWeekStart; }).length;
+  const ordersChange = lastWeekOrders === 0 ? (thisWeekOrders > 0 ? 100 : 0) : Math.round(((thisWeekOrders - lastWeekOrders) / lastWeekOrders) * 100);
+  const ordersUp = ordersChange >= 0;
+
+  const thisMonthRevenue = orders.filter(o => ['APPROVED','PROCESSING','DELIVERED'].includes(o.status) && new Date(o.createdAt).getTime() >= thisMonthStart).reduce((s, o) => s + o.totalAmount, 0);
+  const lastMonthRevenue = orders.filter(o => ['APPROVED','PROCESSING','DELIVERED'].includes(o.status) && new Date(o.createdAt).getTime() >= lastMonthStart && new Date(o.createdAt).getTime() < thisMonthStart).reduce((s, o) => s + o.totalAmount, 0);
+  const revenueChange = lastMonthRevenue === 0 ? (thisMonthRevenue > 0 ? 100 : 0) : Math.round(((thisMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100);
+  const revenueUp = revenueChange >= 0;
+
+  const thisMonthCustomers = customers.filter(c => new Date(c.registeredAt).getTime() >= thisMonthStart).length;
+  const lastMonthCustomers = customers.filter(c => { const t = new Date(c.registeredAt).getTime(); return t >= lastMonthStart && t < thisMonthStart; }).length;
+  const customersUp = thisMonthCustomers >= lastMonthCustomers;
+
+  const sevenDaysAgo = nowMs - 7 * oneDay;
+  const pendingNow = orders.filter(o => o.status === 'PENDING_FINANCE').length;
+  const pendingLastWeek = orders.filter(o => o.status === 'PENDING_FINANCE' && new Date(o.createdAt).getTime() < sevenDaysAgo).length;
+  const pendingChange = pendingNow - pendingLastWeek;
+  const pendingUp = pendingChange <= 0;
+
   // SALES_DATA: sales of the last 7 days grouped by day
   const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const last7Days = Array.from({ length: 7 }).map((_, i) => {
@@ -356,10 +384,10 @@ export default function MarketingOverviewView({ addNotification, setActiveSubTab
       {/* KPI Cards */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
         {[
-          { label: 'Total Orders', value: totalOrders, change: '+12%', up: true, sub: 'vs last week', tab: 'CreateOrder' },
-          { label: 'Total Customers', value: totalCustomers, change: '+3 new', up: true, sub: 'this month', tab: 'RegisterCustomer' },
-          { label: 'Pending Finance', value: pendingFinance, change: pendingFinance > 5 ? '! high' : 'normal', up: pendingFinance <= 5, sub: 'awaiting review', tab: 'CreateOrder' },
-          { label: 'Revenue Generated', value: `GHS ${(revenue / 1000).toFixed(0)}K`, change: '+8.2%', up: true, sub: 'approved orders', tab: 'MktAnalytics' },
+          { label: 'Total Orders', value: totalOrders, change: `${ordersUp ? '+' : ''}${ordersChange}%`, up: ordersUp, sub: 'vs last week', tab: 'CreateOrder' },
+          { label: 'Total Customers', value: totalCustomers, change: `+${thisMonthCustomers} new`, up: customersUp, sub: 'this month', tab: 'RegisterCustomer' },
+          { label: 'Pending Finance', value: pendingFinance, change: pendingChange === 0 ? 'no change' : `${pendingChange > 0 ? '+' : ''}${pendingChange} orders`, up: pendingUp, sub: 'vs 7 days ago', tab: 'CreateOrder' },
+          { label: 'Revenue Generated', value: `GHS ${(revenue / 1000).toFixed(0)}K`, change: `${revenueUp ? '+' : ''}${revenueChange}%`, up: revenueUp, sub: 'vs last month', tab: 'MktAnalytics' },
         ].map(({ label, value, change, up, sub, tab }) => (
           <div key={label} className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4 cursor-pointer hover:border-[var(--accent)] transition-colors" onClick={() => setActiveSubTab?.(tab)}>
             <p className="text-xs text-[var(--text-muted)] mb-1">{label}</p>
