@@ -1,136 +1,314 @@
 // src/views/ceo/AccountsView.tsx
-import { useState, useEffect } from 'react';
-import { Wallet, PieChart as PieIcon } from 'lucide-react';
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
+import { useState, useEffect, useCallback } from 'react';
+import {
+  Wallet, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownLeft,
+  RefreshCw, CreditCard, Banknote, Smartphone, Receipt, ShoppingCart, BarChart2
+} from 'lucide-react';
+import {
+  ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid,
+  AreaChart, Area, PieChart, Pie, Cell, Legend,
+} from 'recharts';
 import { supabase } from '../../lib/supabaseClient';
 
-const COLORS = ['#10b981','#6366f1','#f59e0b','#ef4444','#8b5cf6'];
+const PIE_COLORS = ['#1a5c32', '#29a9dc', '#7fc241', '#f59e0b', '#8b5cf6', '#ef4444'];
 
-interface ExpenseSlice { name: string; value: number; }
+interface AccountsViewProps { setActiveSubTab?: (tab: string) => void; }
 
-interface AccountsViewProps {
-  setActiveSubTab?: (tab: string) => void;
-}
+interface ModeBreak { mode: string; amount: number; count: number; }
+interface MonthPoint { month: string; income: number; expenses: number; net: number; }
 
-const QUICK_ACTIONS = [
-  { label: 'Send Money',     color: 'bg-[var(--accent)] text-white' },
-  { label: 'Receive',        color: 'bg-[var(--accent-light)] text-[var(--accent)]' },
-  { label: 'Pay Bill',       color: 'bg-[var(--accent-light)] text-[var(--accent)]' },
-  { label: 'Create Invoice', color: 'bg-[var(--accent-light)] text-[var(--accent)]' },
-];
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs shadow-lg">
+      <p className="text-[var(--text-muted)] mb-1">{label}</p>
+      {payload.map((p: any, i: number) => (
+        <p key={i} style={{ color: p.color }} className="font-semibold">{p.name}: GHS {Number(p.value).toLocaleString()}</p>
+      ))}
+    </div>
+  );
+};
 
 export default function AccountsView({ setActiveSubTab }: AccountsViewProps) {
-  const [spending, setSpending] = useState<ExpenseSlice[]>([]);
-  const [loadingSpending, setLoadingSpending] = useState(true);
+  const [loading, setLoading] = useState(true);
+  const [totalIn, setTotalIn] = useState(0);
+  const [totalOut, setTotalOut] = useState(0);
+  const [totalPurchases, setTotalPurchases] = useState(0);
+  const [totalRevenue, setTotalRevenue] = useState(0);
+  const [pendingOrders, setPendingOrders] = useState(0);
+  const [creditOutstanding, setCreditOutstanding] = useState(0);
+  const [modeBreaks, setModeBreaks] = useState<ModeBreak[]>([]);
+  const [expenseCategories, setExpenseCategories] = useState<{ name: string; value: number }[]>([]);
+  const [monthlyData, setMonthlyData] = useState<MonthPoint[]>([]);
+  const [recentPayments, setRecentPayments] = useState<any[]>([]);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const { data } = await supabase
-          .from('finance_expenses')
-          .select('category, amount');
-        if (data && data.length > 0) {
-          const map: Record<string, number> = {};
-          for (const row of data as { category: string; amount: number }[]) {
-            const cat = row.category || 'Other';
-            map[cat] = (map[cat] || 0) + (row.amount || 0);
-          }
-          setSpending(Object.entries(map).map(([name, value]) => ({ name, value })));
-        }
-      } catch {
-        setSpending([]);
-      } finally {
-        setLoadingSpending(false);
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [paymentsRes, expensesRes, purchasesRes, ordersRes] = await Promise.all([
+        supabase.from('finance_payments').select('amount, payment_mode, client_name, created_at').order('created_at', { ascending: false }).limit(500),
+        supabase.from('finance_expenses').select('amount, category, created_at').limit(500),
+        supabase.from('general_purchases').select('cost, created_at').limit(200),
+        supabase.from('orders').select('total_amount, status, payment_mode, created_at').limit(500),
+      ]);
+
+      const payments  = (paymentsRes.data  || []) as any[];
+      const expenses  = (expensesRes.data  || []) as any[];
+      const purchases = (purchasesRes.data || []) as any[];
+      const orders    = (ordersRes.data    || []) as any[];
+
+      // ── Totals ──────────────────────────────────────────────────────────────
+      const tIn  = payments.reduce((s: number, p: any) => s + Number(p.amount || 0), 0);
+      const tOut = expenses.reduce((s: number, e: any) => s + Number(e.amount || 0), 0);
+      const tPurch = purchases.reduce((s: number, p: any) => s + Number(p.cost || 0), 0);
+      const tRev = orders
+        .filter((o: any) => ['APPROVED', 'DELIVERED', 'PROCESSING'].includes(o.status))
+        .reduce((s: number, o: any) => s + Number(o.total_amount || 0), 0);
+      const tPend = orders.filter((o: any) => o.status === 'PENDING_FINANCE').length;
+      const tCredit = orders
+        .filter((o: any) => o.payment_mode === 'CREDIT' && !['DELIVERED'].includes(o.status))
+        .reduce((s: number, o: any) => s + Number(o.total_amount || 0), 0);
+
+      setTotalIn(tIn); setTotalOut(tOut); setTotalPurchases(tPurch);
+      setTotalRevenue(tRev); setPendingOrders(tPend); setCreditOutstanding(tCredit);
+
+      // ── Payment mode breakdown ───────────────────────────────────────────────
+      const modeMap: Record<string, { amount: number; count: number }> = {};
+      for (const p of payments) {
+        const m = (p.payment_mode || 'CASH').replace(/_/g, ' ');
+        if (!modeMap[m]) modeMap[m] = { amount: 0, count: 0 };
+        modeMap[m].amount += Number(p.amount || 0);
+        modeMap[m].count  += 1;
       }
-    })();
+      setModeBreaks(Object.entries(modeMap).map(([mode, v]) => ({ mode, ...v })).sort((a, b) => b.amount - a.amount));
+
+      // ── Expense categories ───────────────────────────────────────────────────
+      const catMap: Record<string, number> = {};
+      for (const e of expenses) { const c = e.category || 'Other'; catMap[c] = (catMap[c] || 0) + Number(e.amount || 0); }
+      setExpenseCategories(Object.entries(catMap).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value).slice(0, 6));
+
+      // ── Monthly trend (last 6 months) ────────────────────────────────────────
+      const months: MonthPoint[] = Array.from({ length: 6 }, (_, i) => {
+        const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - (5 - i));
+        return { month: d.toLocaleDateString('en-GB', { month: 'short' }), income: 0, expenses: 0, net: 0 };
+      });
+      const monthKey = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { month: 'short' });
+      for (const p of payments) { const m = months.find(x => x.month === monthKey(p.created_at)); if (m) m.income += Number(p.amount || 0); }
+      for (const e of expenses) { const m = months.find(x => x.month === monthKey(e.created_at)); if (m) m.expenses += Number(e.amount || 0); }
+      for (const p of purchases) { const m = months.find(x => x.month === monthKey(p.created_at)); if (m) m.expenses += Number(p.cost || 0); }
+      months.forEach(m => { m.net = m.income - m.expenses; });
+      setMonthlyData(months);
+
+      // ── Recent ────────────────────────────────────────────────────────────────
+      setRecentPayments(payments.slice(0, 8));
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const net = totalIn - totalOut - totalPurchases;
+  const modeIcons: Record<string, any> = { CASH: Banknote, 'MOBILE MONEY': Smartphone, CHEQUE: CreditCard, CREDIT: Receipt };
 
   return (
     <div className="space-y-5">
-      <div>
-        <h2 className="text-lg font-bold text-[var(--text-primary)]">Accounts Overview</h2>
-        <p className="text-xs text-[var(--text-muted)]">All company financial accounts</p>
-      </div>
-
-      {/* Quick Actions */}
-      <div className="flex flex-wrap gap-2">
-        {QUICK_ACTIONS.map((a, i) => (
-          <button key={i} className={`px-4 py-2 rounded-full text-xs font-bold cursor-pointer hover:opacity-90 transition-opacity ${a.color}`}>{a.label}</button>
-        ))}
-      </div>
-
-      {/* Account balances — managed by Finance */}
-      <div className="flex flex-col items-center justify-center py-12 text-center bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-[var(--box-shadow)]">
-        <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-4">
-          <Wallet className="w-8 h-8 text-gray-400" />
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-bold text-[var(--text-primary)]">Company Accounts</h2>
+          <p className="text-xs text-[var(--text-muted)]">Live financial overview across all departments</p>
         </div>
-        <h3 className="font-semibold text-gray-600 dark:text-gray-400 mb-1">No account data yet</h3>
-        <p className="text-sm text-gray-400 dark:text-gray-500">Finance will update account balances</p>
-        <button
-          onClick={() => setActiveSubTab?.('Wallets')}
-          className="mt-4 px-4 py-2 rounded-full bg-[var(--accent-light)] text-[var(--accent)] text-xs font-bold hover:opacity-90 transition-opacity cursor-pointer"
-        >
-          View Wallets →
-        </button>
+        <div className="flex gap-2">
+          <button onClick={load} className="flex items-center gap-1 px-3 py-1.5 bg-[var(--bg-card)] border border-[var(--border)] text-[var(--text-secondary)] text-xs font-semibold rounded-xl cursor-pointer hover:bg-[var(--accent-light)]">
+            <RefreshCw className="w-3.5 h-3.5" /> Refresh
+          </button>
+          <button onClick={() => setActiveSubTab?.('Wallets')} className="flex items-center gap-1 px-3 py-1.5 bg-[var(--accent)] text-white text-xs font-semibold rounded-xl cursor-pointer hover:opacity-90">
+            <Wallet className="w-3.5 h-3.5" /> Wallets
+          </button>
+        </div>
       </div>
 
-      {/* Spending breakdown */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4 shadow-[var(--box-shadow)]">
-          <h3 className="text-sm font-bold text-[var(--text-primary)] mb-4">Spending Breakdown</h3>
-          {loadingSpending ? (
-            <div className="animate-pulse h-48 bg-slate-100 dark:bg-slate-800 rounded-xl" />
-          ) : spending.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-10 text-center">
-              <div className="w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-3">
-                <PieIcon className="w-6 h-6 text-gray-400" />
-              </div>
-              <p className="text-sm font-semibold text-gray-600 dark:text-gray-400">No expense data yet</p>
-              <p className="text-xs text-gray-400 mt-1">Finance will record expenses as they occur</p>
-            </div>
-          ) : (
-            <ResponsiveContainer width="100%" height={200}>
-              <PieChart>
-                <Pie data={spending} cx="50%" cy="50%" innerRadius={55} outerRadius={85} dataKey="value"
-                  label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`} labelLine={false}>
-                  {spending.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                </Pie>
-                <Tooltip contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 11 }} />
-              </PieChart>
-            </ResponsiveContainer>
-          )}
-        </div>
-
-        <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4 shadow-[var(--box-shadow)]">
-          <h3 className="text-sm font-bold text-[var(--text-primary)] mb-3">Expense Categories</h3>
-          {loadingSpending ? (
-            <div className="space-y-2">
-              {Array.from({ length: 4 }).map((_, i) => <div key={i} className="animate-pulse h-8 bg-slate-100 dark:bg-slate-800 rounded" />)}
-            </div>
-          ) : spending.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-8 text-center">
-              <p className="text-sm text-gray-400">No expense categories recorded</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {spending.map((s, i) => (
-                <div key={i} className="flex items-center justify-between py-2 border-b border-[var(--border)] last:border-0">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2.5 h-2.5 rounded-full" style={{ background: COLORS[i % COLORS.length] }} />
-                    <span className="text-xs font-semibold text-[var(--text-secondary)]">{s.name}</span>
-                  </div>
-                  <span className="text-xs font-bold text-[var(--text-primary)]">GHS {s.value.toLocaleString()}</span>
+      {/* Hero KPI strip */}
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+        {[
+          { label: 'Total Received',     value: totalIn,       icon: ArrowDownLeft, color: '#10b981', bg: 'bg-emerald-50', sub: 'From all payments' },
+          { label: 'Total Expenses',     value: totalOut + totalPurchases, icon: ArrowUpRight, color: '#ef4444', bg: 'bg-rose-50', sub: 'Expenses + purchases' },
+          { label: 'Net Balance',        value: Math.abs(net), icon: net >= 0 ? TrendingUp : TrendingDown, color: net >= 0 ? '#10b981' : '#ef4444', bg: net >= 0 ? 'bg-emerald-50' : 'bg-rose-50', sub: net >= 0 ? 'Surplus' : 'Deficit' },
+          { label: 'Order Revenue',      value: totalRevenue,  icon: BarChart2, color: '#1a5c32', bg: 'bg-[var(--accent-light)]', sub: `${pendingOrders} pending review` },
+        ].map((k, i) => {
+          const Icon = k.icon;
+          return (
+            <div key={i} className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4 shadow-[var(--box-shadow)]">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wide">{k.label}</p>
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${k.bg}`}>
+                  <Icon className="w-4 h-4" style={{ color: k.color }} />
                 </div>
-              ))}
-              <div className="flex items-center justify-between pt-2">
-                <span className="text-xs font-bold text-[var(--text-primary)]">Total</span>
-                <span className="text-sm font-extrabold text-[var(--accent)]">
-                  GHS {spending.reduce((s, a) => s + a.value, 0).toLocaleString()}
-                </span>
               </div>
+              {loading
+                ? <div className="animate-pulse h-7 w-32 bg-[var(--bg-input)] rounded" />
+                : <p className="text-xl font-bold" style={{ color: k.color }}>GHS {k.value.toLocaleString()}</p>}
+              <p className="text-[10px] text-[var(--text-muted)] mt-1">{k.sub}</p>
             </div>
-          )}
+          );
+        })}
+      </div>
+
+      {/* Credit outstanding banner */}
+      {creditOutstanding > 0 && (
+        <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3">
+          <CreditCard className="w-4 h-4 text-amber-600 flex-shrink-0" />
+          <p className="text-xs font-semibold text-amber-700">
+            Credit outstanding: <span className="font-extrabold">GHS {creditOutstanding.toLocaleString()}</span> from credit orders not yet delivered
+          </p>
+          <button onClick={() => setActiveSubTab?.('Transactions')} className="ml-auto text-xs text-amber-700 underline cursor-pointer whitespace-nowrap">View →</button>
         </div>
+      )}
+
+      {/* Monthly cash flow chart */}
+      <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5 shadow-[var(--box-shadow)]">
+        <h3 className="text-sm font-bold text-[var(--text-primary)] mb-4">6-Month Cash Flow</h3>
+        {loading
+          ? <div className="animate-pulse h-52 bg-[var(--bg-input)] rounded-xl" />
+          : <ResponsiveContainer width="100%" height={210}>
+              <BarChart data={monthlyData} barGap={4}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                <XAxis dataKey="month" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={v => `${(v/1000).toFixed(0)}K`} />
+                <Tooltip content={<CustomTooltip />} />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
+                <Bar dataKey="income"   name="Income"   fill="#10b981" radius={[4,4,0,0]} />
+                <Bar dataKey="expenses" name="Expenses" fill="#ef4444" radius={[4,4,0,0]} />
+                <Bar dataKey="net"      name="Net"      fill="#29a9dc" radius={[4,4,0,0]} />
+              </BarChart>
+            </ResponsiveContainer>}
+      </div>
+
+      {/* Payment mode breakdown + Expense categories */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Payment mode cards */}
+        <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5 shadow-[var(--box-shadow)]">
+          <h3 className="text-sm font-bold text-[var(--text-primary)] mb-4">Payment Mode Breakdown</h3>
+          {loading
+            ? <div className="space-y-3">{Array.from({length:3}).map((_,i)=><div key={i} className="animate-pulse h-12 bg-[var(--bg-input)] rounded-xl"/>)}</div>
+            : modeBreaks.length === 0
+              ? <p className="text-xs text-[var(--text-muted)] text-center py-8">No payments recorded yet</p>
+              : <div className="space-y-3">
+                  {modeBreaks.map((m, i) => {
+                    const Icon = modeIcons[m.mode] || Banknote;
+                    const pct = totalIn > 0 ? Math.round((m.amount / totalIn) * 100) : 0;
+                    return (
+                      <div key={i} className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-[var(--accent-light)] flex-shrink-0">
+                          <Icon className="w-4 h-4 text-[var(--accent)]" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex justify-between mb-1">
+                            <span className="text-xs font-semibold text-[var(--text-primary)] capitalize">{m.mode.toLowerCase()}</span>
+                            <span className="text-xs font-bold text-[var(--text-primary)]">GHS {m.amount.toLocaleString()}</span>
+                          </div>
+                          <div className="h-1.5 bg-[var(--bg-input)] rounded-full overflow-hidden">
+                            <div className="h-full rounded-full" style={{ width: `${pct}%`, background: PIE_COLORS[i % PIE_COLORS.length] }} />
+                          </div>
+                          <p className="text-[10px] text-[var(--text-muted)] mt-0.5">{m.count} transactions · {pct}%</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <div className="flex items-center justify-between pt-2 border-t border-[var(--border)]">
+                    <span className="text-xs font-bold text-[var(--text-primary)]">Total Received</span>
+                    <span className="text-sm font-extrabold text-emerald-600">GHS {totalIn.toLocaleString()}</span>
+                  </div>
+                </div>}
+        </div>
+
+        {/* Expense categories pie + list */}
+        <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5 shadow-[var(--box-shadow)]">
+          <h3 className="text-sm font-bold text-[var(--text-primary)] mb-4">Expense Categories</h3>
+          {loading
+            ? <div className="animate-pulse h-48 bg-[var(--bg-input)] rounded-xl" />
+            : expenseCategories.length === 0
+              ? <p className="text-xs text-[var(--text-muted)] text-center py-8">No expense records yet</p>
+              : <>
+                  <ResponsiveContainer width="100%" height={160}>
+                    <PieChart>
+                      <Pie data={expenseCategories} cx="50%" cy="50%" innerRadius={45} outerRadius={70} dataKey="value" strokeWidth={0}>
+                        {expenseCategories.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
+                      </Pie>
+                      <Tooltip contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 11 }} formatter={(v: any) => [`GHS ${Number(v).toLocaleString()}`, '']} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="space-y-2 mt-2">
+                    {expenseCategories.map((c, i) => (
+                      <div key={i} className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: PIE_COLORS[i % PIE_COLORS.length] }} />
+                          <span className="text-xs text-[var(--text-secondary)]">{c.name}</span>
+                        </div>
+                        <span className="text-xs font-bold text-[var(--text-primary)]">GHS {c.value.toLocaleString()}</span>
+                      </div>
+                    ))}
+                    <div className="flex items-center justify-between pt-2 border-t border-[var(--border)]">
+                      <span className="text-xs font-bold text-[var(--text-primary)]">Total Expenses</span>
+                      <span className="text-sm font-extrabold text-rose-500">GHS {totalOut.toLocaleString()}</span>
+                    </div>
+                  </div>
+                </>}
+        </div>
+      </div>
+
+      {/* Net balance area chart */}
+      <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5 shadow-[var(--box-shadow)]">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-bold text-[var(--text-primary)]">Net Balance Trend</h3>
+          <span className={`text-xs font-bold px-2 py-1 rounded-full ${net >= 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-600'}`}>
+            {net >= 0 ? 'Surplus' : 'Deficit'} · GHS {Math.abs(net).toLocaleString()}
+          </span>
+        </div>
+        {loading
+          ? <div className="animate-pulse h-36 bg-[var(--bg-input)] rounded-xl" />
+          : <ResponsiveContainer width="100%" height={140}>
+              <AreaChart data={monthlyData}>
+                <defs>
+                  <linearGradient id="netGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%"  stopColor="#29a9dc" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#29a9dc" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <XAxis dataKey="month" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={v => `${(v/1000).toFixed(0)}K`} />
+                <Tooltip content={<CustomTooltip />} />
+                <Area type="monotone" dataKey="net" name="Net" stroke="#29a9dc" strokeWidth={2} fill="url(#netGrad)" />
+              </AreaChart>
+            </ResponsiveContainer>}
+      </div>
+
+      {/* Recent payments */}
+      <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5 shadow-[var(--box-shadow)]">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-bold text-[var(--text-primary)]">Recent Payments</h3>
+          <button onClick={() => setActiveSubTab?.('Transactions')} className="text-xs font-semibold text-[var(--accent)] hover:underline cursor-pointer">View All →</button>
+        </div>
+        {loading
+          ? <div className="space-y-2">{Array.from({length:5}).map((_,i)=><div key={i} className="animate-pulse h-10 bg-[var(--bg-input)] rounded-xl"/>)}</div>
+          : recentPayments.length === 0
+            ? <p className="text-xs text-[var(--text-muted)] text-center py-8">No payments recorded yet</p>
+            : <div className="space-y-2">
+                {recentPayments.map((p, i) => (
+                  <div key={i} className="flex items-center gap-3 p-3 bg-[var(--bg-input)] rounded-xl">
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-emerald-100 flex-shrink-0">
+                      <ArrowDownLeft className="w-4 h-4 text-emerald-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-[var(--text-primary)] truncate">{p.client_name || 'Client'}</p>
+                      <p className="text-[10px] text-[var(--text-muted)]">{(p.payment_mode || 'CASH').replace(/_/g,' ')} · {(p.created_at || '').slice(0,10)}</p>
+                    </div>
+                    <span className="text-xs font-bold text-emerald-600 whitespace-nowrap">+ GHS {Number(p.amount || 0).toLocaleString()}</span>
+                  </div>
+                ))}
+              </div>}
       </div>
     </div>
   );
