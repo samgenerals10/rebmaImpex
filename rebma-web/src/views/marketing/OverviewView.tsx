@@ -191,7 +191,6 @@ export default function MarketingOverviewView({ addNotification, setActiveSubTab
     { week: 'W4', revenue: 0 },
   ];
   const now = Date.now();
-  const oneDay = 24 * 60 * 60 * 1000;
   orders.forEach(o => {
     const diffDays = (now - new Date(o.createdAt).getTime()) / oneDay;
     if (diffDays >= 0 && diffDays < 28) {
