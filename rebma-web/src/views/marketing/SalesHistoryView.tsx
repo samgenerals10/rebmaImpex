@@ -73,10 +73,11 @@ export default function SalesHistoryView({ ordersList, addNotification }: Props)
       .then(({ data }) => {
         const mapped = (data ?? []).map(mapOrder);
         setOrders(mapped.length > 0 ? mapped : ordersList);
+        setLoading(false);
       }, () => {
         setOrders(ordersList);
-      })
-      .finally(() => setLoading(false));
+        setLoading(false);
+      });
   }, [ordersList]);
 
   useEffect(() => { load(); }, [load]);
