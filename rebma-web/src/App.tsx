@@ -982,6 +982,17 @@ export default function App() {
 
     const initializeAuth = async () => {
       setIsAuthLoading(true);
+
+      // Safety net: never stay on loading screen beyond 8 s
+      const authTimeout = setTimeout(() => {
+        if (isMounted) {
+          console.warn('Auth init timed out — forcing login screen');
+          setIsAuthenticated(false);
+          setCurrentUser(null);
+          setIsAuthLoading(false);
+        }
+      }, 8000);
+
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (session && isMounted) {
@@ -998,6 +1009,8 @@ export default function App() {
           setIsAuthenticated(false);
           setIsAuthLoading(false);
         }
+      } finally {
+        clearTimeout(authTimeout);
       }
     };
 
