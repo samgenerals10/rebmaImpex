@@ -82,6 +82,7 @@ export default function ProductionOverviewView({ currentUser, productionRequests
   const [output, setOutput] = useState<OutputRecord[]>([]);
   const [wip, setWip] = useState<WipItem[]>([]);
   const [goodsReceived, setGoodsReceived] = useState(0);
+  const [receivedByDay, setReceivedByDay] = useState<Record<string, number>>({});
   const [orderMenu, setOrderMenu] = useState<string | null>(null);
   const [kpiMenu, setKpiMenu] = useState<number | null>(null);
   const [outputTab, setOutputTab] = useState<'boxes' | 'sachets' | 'both'>('both');
@@ -94,8 +95,20 @@ export default function ProductionOverviewView({ currentUser, productionRequests
     supabase.from('wip_stock').select('*').order('updatedAt', { ascending: false }).then(({ data }) => {
       if (data && data.length > 0) setWip(data as WipItem[]);
     });
-    supabase.from('stock_ledger').select('quantity').eq('movement_type', 'ADD').then(({ data }) => {
-      if (data) setGoodsReceived(data.reduce((s: number, r: any) => s + (Number(r.quantity) || 0), 0));
+    supabase.from('stock_ledger').select('quantity, created_at').eq('movement_type', 'ADD').then(({ data }) => {
+      if (data) {
+        setGoodsReceived(data.reduce((s: number, r: any) => s + (Number(r.quantity) || 0), 0));
+        const byDay: Record<string, number> = {};
+        ORDERED_DAYS.forEach(d => { byDay[d] = 0; });
+        data.forEach((r: any) => {
+          const d = new Date(r.created_at);
+          if (!isNaN(d.getTime())) {
+            const dayName = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()];
+            if (dayName in byDay) byDay[dayName] += Number(r.quantity) || 0;
+          }
+        });
+        setReceivedByDay(byDay);
+      }
     });
   }, []);
 
@@ -138,10 +151,10 @@ export default function ProductionOverviewView({ currentUser, productionRequests
     ].filter(d => d.value > 0);
   })();
 
-  // Input vs output by day of week
+  // Input vs output by day of week — received from real stock_ledger ADD movements
   const inputOutputData = outputChartData.map(d => ({
     day: d.day,
-    received: d.boxes > 0 ? d.boxes * 5 : 0,
+    received: receivedByDay[d.day] ?? 0,
     produced: d.boxes,
   })).filter(d => d.produced > 0 || d.received > 0).slice(0, 6);
 
@@ -301,7 +314,7 @@ export default function ProductionOverviewView({ currentUser, productionRequests
               </BarChart>
             </ResponsiveContainer>
           </div>
-          <p className="text-[10px] text-[var(--text-muted)] mt-1">Efficiency: <strong className="text-emerald-600">~20%</strong> (boxes per raw unit)</p>
+          <p className="text-[10px] text-[var(--text-muted)] mt-1">Efficiency: <strong className="text-emerald-600">{goodsReceived > 0 ? `${((weekBoxes / goodsReceived) * 100).toFixed(1)}%` : weekBoxes > 0 ? '100%' : '—'}</strong> (boxes per raw unit)</p>
         </div>
       </div>
 

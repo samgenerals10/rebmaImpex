@@ -389,9 +389,9 @@ function DataResetSection({ addNotification }: { addNotification: (m: string) =>
         const ready = confirmText === 'CONFIRM DELETE';
         return (
           <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/70 p-4">
-            <div className="bg-[var(--bg-card)] rounded-2xl border border-rose-400 shadow-2xl max-w-lg w-full p-6 space-y-5">
-              {/* Header */}
-              <div className="flex items-center gap-3">
+            <div className="bg-[var(--bg-card)] rounded-2xl border border-rose-400 shadow-2xl max-w-lg w-full flex flex-col max-h-[85vh]">
+              {/* Header — always visible */}
+              <div className="flex items-center gap-3 p-6 pb-4 shrink-0">
                 <div className="w-10 h-10 rounded-xl bg-rose-100 flex items-center justify-center shrink-0">
                   <AlertTriangle className="w-5 h-5 text-rose-500" />
                 </div>
@@ -408,33 +408,51 @@ function DataResetSection({ addNotification }: { addNotification: (m: string) =>
                 </button>
               </div>
 
-              {!done ? (
-                <>
-                  {/* What will be deleted */}
-                  <div className="bg-rose-50 border border-rose-200 rounded-xl p-4 space-y-2">
-                    <p className="text-xs font-bold text-rose-700 uppercase tracking-wide">Tables that will be cleared:</p>
-                    {cfg.tables.map(t => (
-                      <div key={t.name} className="flex items-center gap-2 text-xs text-rose-600">
-                        <div className="w-1.5 h-1.5 rounded-full bg-rose-400 shrink-0" />
-                        <span className="font-mono">{t.name}</span>
+              {/* Scrollable body */}
+              <div className="overflow-y-auto flex-1 px-6 space-y-4">
+                {!done ? (
+                  <>
+                    {/* What will be deleted */}
+                    <div className="bg-rose-50 border border-rose-200 rounded-xl p-4 space-y-2">
+                      <p className="text-xs font-bold text-rose-700 uppercase tracking-wide">Tables that will be cleared:</p>
+                      {cfg.tables.map(t => (
+                        <div key={t.name} className="flex items-center gap-2 text-xs text-rose-600">
+                          <div className="w-1.5 h-1.5 rounded-full bg-rose-400 shrink-0" />
+                          <span className="font-mono">{t.name}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Type to confirm */}
+                    <div className="space-y-2">
+                      <p className="text-xs text-[var(--text-secondary)]">
+                        Type <strong className="text-rose-600 font-mono">CONFIRM DELETE</strong> to unlock the reset button:
+                      </p>
+                      <input
+                        value={confirmText}
+                        onChange={e => setConfirmText(e.target.value)}
+                        placeholder="CONFIRM DELETE"
+                        className="w-full px-3 py-2 rounded-xl border border-[var(--border)] bg-[var(--bg)] text-sm font-mono text-[var(--text-primary)] focus:outline-none focus:border-rose-400"
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <div className="space-y-2">
+                    {results.map(r => (
+                      <div key={r.table} className={`flex items-center justify-between px-4 py-2.5 rounded-xl text-xs font-semibold ${r.error ? 'bg-rose-50 border border-rose-200' : 'bg-emerald-50 border border-emerald-200'}`}>
+                        <span className={`font-mono ${r.error ? 'text-rose-600' : 'text-emerald-700'}`}>{r.table}</span>
+                        <span className={r.error ? 'text-rose-500' : 'text-emerald-600'}>
+                          {r.error ? `Error: ${r.error}` : `✓ Cleared`}
+                        </span>
                       </div>
                     ))}
                   </div>
+                )}
+              </div>
 
-                  {/* Type to confirm */}
-                  <div className="space-y-2">
-                    <p className="text-xs text-[var(--text-secondary)]">
-                      Type <strong className="text-rose-600 font-mono">CONFIRM DELETE</strong> to unlock the reset button:
-                    </p>
-                    <input
-                      value={confirmText}
-                      onChange={e => setConfirmText(e.target.value)}
-                      placeholder="CONFIRM DELETE"
-                      className="w-full px-3 py-2 rounded-xl border border-[var(--border)] bg-[var(--bg)] text-sm font-mono text-[var(--text-primary)] focus:outline-none focus:border-rose-400"
-                    />
-                  </div>
-
-                  {/* Actions */}
+              {/* Footer buttons — always visible at bottom */}
+              <div className="p-6 pt-4 shrink-0">
+                {!done ? (
                   <div className="flex gap-3">
                     <button onClick={close} disabled={running}
                       className="flex-1 py-2 rounded-xl border border-[var(--border)] text-xs font-bold text-[var(--text-primary)] hover:bg-[var(--accent-light)] cursor-pointer disabled:opacity-40">
@@ -446,26 +464,13 @@ function DataResetSection({ addNotification }: { addNotification: (m: string) =>
                       {running ? 'Deleting…' : `Delete ${cfg.label} Data`}
                     </button>
                   </div>
-                </>
-              ) : (
-                <>
-                  {/* Results */}
-                  <div className="space-y-2">
-                    {results.map(r => (
-                      <div key={r.table} className={`flex items-center justify-between px-4 py-2.5 rounded-xl text-xs font-semibold ${r.error ? 'bg-rose-50 border border-rose-200' : 'bg-emerald-50 border border-emerald-200'}`}>
-                        <span className={`font-mono ${r.error ? 'text-rose-600' : 'text-emerald-700'}`}>{r.table}</span>
-                        <span className={r.error ? 'text-rose-500' : 'text-emerald-600'}>
-                          {r.error ? `Error: ${r.error}` : `✓ Cleared`}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
+                ) : (
                   <button onClick={close}
                     className="w-full py-2.5 rounded-xl bg-[var(--accent)] text-white text-xs font-bold cursor-pointer hover:opacity-90">
                     Done — Start Fresh Workflow
                   </button>
-                </>
-              )}
+                )}
+              </div>
             </div>
           </div>
         );

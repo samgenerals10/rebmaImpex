@@ -15,7 +15,7 @@ interface PettyCashEntry {
   type: 'disbursement' | 'replenishment';
 }
 
-const INITIAL_FLOAT = 15000;
+const INITIAL_FLOAT = 0;
 
 const CATEGORIES = ['Admin', 'Transport', 'Maintenance', 'Utilities', 'Other'];
 
