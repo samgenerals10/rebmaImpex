@@ -54,6 +54,7 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
   const [earningData, setEarningData] = useState<MonthlyRevenue[]>([]);
   const [cashflowData, setCashflowData] = useState<CashflowPoint[]>([]);
   const [paymentPie, setPaymentPie] = useState<PaymentSlice[]>([]);
+  const [liveOrders, setLiveOrders] = useState<typeof ordersList>([]);
 
   // Live wallet totals from finance_payments (not dependent on ordersList prop)
   const [walletCash, setWalletCash] = useState(0);
@@ -64,8 +65,24 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
   const [goodsPrices, setGoodsPrices] = useState<any[]>([]);
   const [cargoForInventory, setCargoForInventory] = useState<any[]>([]);
 
-  // Self-fetch payments for wallet section
-  useEffect(() => {
+  // Master fetch — called on mount and by Refresh button
+  const fetchAllData = async () => {
+    // Orders — live fetch so KPI cards don't depend on stale prop
+    supabase.from('orders').select('*').order('created_at', { ascending: false }).limit(500).then(({ data }) => {
+      if (!data) return;
+      const mapped = (data as any[]).map(r => ({
+        id: r.id,
+        clientName: r.client_name || '',
+        productName: r.product_name || '',
+        totalAmount: Number(r.total_amount || 0),
+        status: r.status || 'PENDING_FINANCE',
+        paymentMode: r.payment_mode || 'CASH',
+        createdAt: r.created_at || '',
+      }));
+      setLiveOrders(mapped as any);
+    }, () => {});
+
+    // Payments / wallets
     supabase.from('finance_payments').select('amount, payment_mode').then(({ data }) => {
       if (!data) return;
       let total = 0, cash = 0, momo = 0, cheque = 0;
@@ -79,6 +96,7 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
       }
       setWalletTotal(total); setWalletCash(cash); setWalletMomo(momo); setWalletCheque(cheque);
     }, () => {});
+
     supabase.from('finance_expenses').select('amount').eq('status', 'Approved').then(({ data }) => {
       if (data) setTotalExpenses((data as any[]).reduce((s, e) => s + Number(e.amount || 0), 0));
     }, () => {});
@@ -88,71 +106,67 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
     supabase.from('cargo_intake').select('product_name, quantity').eq('status', 'APPROVED').then(({ data }) => {
       if (data) setCargoForInventory(data as any[]);
     }, () => {});
-  }, []);
 
-  const firstName = currentUser?.fullName?.split(' ')[0] || 'Finance';
-  const pendingOrders = ordersList.filter(o => o.status === 'PENDING_FINANCE');
+    // Upcoming bills + earning / cashflow charts
+    try {
+      const { data: bills } = await supabase.from('finance_expenses')
+        .select('id, description, amount, due_date, status')
+        .gte('due_date', new Date().toISOString().split('T')[0])
+        .order('due_date', { ascending: true }).limit(5);
+      if (bills) {
+        setUpcomingBills(bills.map((b: any) => ({
+          id: b.id, desc: b.description, amount: b.amount, due: b.due_date,
+          status: new Date(b.due_date) < new Date() ? 'Overdue' : b.status === 'PENDING' ? 'Due Soon' : 'Scheduled',
+        })));
+      }
 
+      const { data: orders } = await supabase.from('orders').select('total_amount, created_at').in('status', ['APPROVED', 'PROCESSING', 'DELIVERED', 'OUT_FOR_DELIVERY']);
+      const { data: payments } = await supabase.from('finance_payments').select('amount, created_at');
+      const { data: expenses } = await supabase.from('finance_expenses').select('amount, created_at');
+
+      const monthKey = (iso: string) => { const d = new Date(iso); return d.toLocaleDateString('en-GB', { month: 'short' }); };
+      const nMonths = earnPeriod === '3M' ? 3 : earnPeriod === '12M' ? 12 : 6;
+      const last = Array.from({ length: nMonths }, (_, i) => {
+        const d = new Date(); d.setMonth(d.getMonth() - (nMonths - 1 - i));
+        return d.toLocaleDateString('en-GB', { month: 'short' });
+      });
+
+      const revenueMap: Record<string, number> = {};
+      const paymentMap: Record<string, number> = {};
+      const expenseMap: Record<string, number> = {};
+      for (const o of (orders || []) as any[]) { const k = monthKey(o.created_at); revenueMap[k] = (revenueMap[k] || 0) + Number(o.total_amount || 0); }
+      for (const p of (payments || []) as any[]) { const k = monthKey(p.created_at); paymentMap[k] = (paymentMap[k] || 0) + Number(p.amount || 0); }
+      for (const e of (expenses || []) as any[]) { const k = monthKey(e.created_at); expenseMap[k] = (expenseMap[k] || 0) + Number(e.amount || 0); }
+
+      // Income = payments received (actual cash) + order revenue; expense = finance_expenses
+      const earning = last.map(k => ({ month: k, value: (paymentMap[k] || 0) + (revenueMap[k] || 0) }));
+      setEarningData(earning);
+      setCashflowData(earning.map(p => ({ month: p.month, income: p.value, expense: expenseMap[p.month] || 0 })));
+    } catch { /* silent */ }
+  };
+
+  useEffect(() => { fetchAllData(); }, []);
+
+  // Recompute KPI cards whenever liveOrders updates
   useEffect(() => {
-    const rev = ordersList.reduce((s, o) => s + (['DELIVERED', 'APPROVED', 'PROCESSING'].includes(o.status) ? o.totalAmount : 0), 0);
+    const effective = liveOrders.length > 0 ? liveOrders : ordersList;
+    const rev = effective.reduce((s, o) => s + (['DELIVERED', 'APPROVED', 'PROCESSING', 'OUT_FOR_DELIVERY'].includes(o.status) ? o.totalAmount : 0), 0);
     setTotalRevenue(rev || 0);
-    setPendingCount(ordersList.filter(o => o.status === 'PENDING_FINANCE').length || 0);
-    setInvoiceCount(ordersList.filter(o => ['APPROVED', 'DELIVERED'].includes(o.status)).length || 0);
-    setCreditOutstanding(ordersList.filter(o => o.paymentMode === 'CREDIT').reduce((s, o) => s + o.totalAmount, 0) || 0);
+    setPendingCount(effective.filter(o => o.status === 'PENDING_FINANCE').length || 0);
+    setInvoiceCount(effective.filter(o => ['APPROVED', 'DELIVERED', 'OUT_FOR_DELIVERY'].includes(o.status)).length || 0);
+    setCreditOutstanding(effective.filter(o => o.paymentMode === 'CREDIT').reduce((s, o) => s + o.totalAmount, 0) || 0);
 
-    // Build payment pie from real orders
-    const total = ordersList.length || 1;
+    const total = effective.length || 1;
     const modeGroups: Record<string, number> = {};
-    for (const o of ordersList) { modeGroups[o.paymentMode || 'CASH'] = (modeGroups[o.paymentMode || 'CASH'] || 0) + 1; }
+    for (const o of effective) { modeGroups[o.paymentMode || 'CASH'] = (modeGroups[o.paymentMode || 'CASH'] || 0) + 1; }
     const modeColors: Record<string, string> = { CASH: '#10b981', CHEQUE: '#3b82f6', MOBILE_MONEY: '#f59e0b', CREDIT: '#ef4444' };
     const modeLabels: Record<string, string> = { CASH: 'Cash', CHEQUE: 'Cheque', MOBILE_MONEY: 'Mobile Money', CREDIT: 'Credit' };
     setPaymentPie(Object.entries(modeGroups).map(([k, v]) => ({ name: modeLabels[k] || k, value: Math.round((v / total) * 100), color: modeColors[k] || '#94a3b8' })));
-  }, [ordersList]);
+  }, [liveOrders, ordersList]);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        // Load upcoming bills from finance_expenses
-        const { data: bills } = await supabase.from('finance_expenses')
-          .select('id, description, amount, due_date, status')
-          .gte('due_date', new Date().toISOString().split('T')[0])
-          .order('due_date', { ascending: true })
-          .limit(5);
-        if (bills) {
-          setUpcomingBills(bills.map((b: any) => ({
-            id: b.id, desc: b.description, amount: b.amount, due: b.due_date,
-            status: new Date(b.due_date) < new Date() ? 'Overdue' : b.status === 'PENDING' ? 'Due Soon' : 'Scheduled',
-          })));
-        }
-
-        // Build earning trend from orders — last 6 months
-        const { data: orders } = await supabase.from('orders').select('total_amount, created_at').in('status', ['APPROVED', 'PROCESSING', 'DELIVERED']);
-        if (orders) {
-          const monthMap: Record<string, number> = {};
-          for (const o of orders) {
-            const d = new Date(o.created_at);
-            const key = d.toLocaleDateString('en-GB', { month: 'short' });
-            monthMap[key] = (monthMap[key] || 0) + (o.total_amount || 0);
-          }
-          const last6 = Array.from({ length: 6 }, (_, i) => {
-            const d = new Date(); d.setMonth(d.getMonth() - (5 - i));
-            const k = d.toLocaleDateString('en-GB', { month: 'short' });
-            return { month: k, value: monthMap[k] || 0 };
-          });
-          setEarningData(last6);
-
-          const { data: expenses } = await supabase.from('finance_expenses').select('amount, created_at');
-          const expenseMap: Record<string, number> = {};
-          for (const e of (expenses || [])) {
-            const d = new Date(e.created_at);
-            const key = d.toLocaleDateString('en-GB', { month: 'short' });
-            expenseMap[key] = (expenseMap[key] || 0) + (e.amount || 0);
-          }
-          setCashflowData(last6.map(p => ({ month: p.month, income: p.value, expense: expenseMap[p.month] || 0 })));
-        }
-      } catch { /* silent */ }
-    })();
-  }, []);
+  const firstName = currentUser?.fullName?.split(' ')[0] || 'Finance';
+  const effective = liveOrders.length > 0 ? liveOrders : ordersList;
+  const pendingOrders = effective.filter(o => o.status === 'PENDING_FINANCE');
 
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-screen-2xl mx-auto">
@@ -162,7 +176,7 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
           <h1 className="text-2xl font-bold text-[var(--text-primary)]">{timeGreeting()}, {firstName} 👋</h1>
           <p className="text-sm text-[var(--text-secondary)]">Here's your financial overview today — {new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
         </div>
-        <button onClick={() => addNotification?.('Dashboard refreshed')} className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[var(--border)] text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-card)]">
+        <button onClick={() => { fetchAllData(); addNotification?.('Dashboard refreshed'); }} className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[var(--border)] text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-card)]">
           <RefreshCw size={14} /> Refresh
         </button>
       </div>
@@ -424,7 +438,7 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
           <div className="h-40">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={earningData}>
-                <XAxis dataKey="d" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} />
+                <XAxis dataKey="month" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `${(v / 1000).toFixed(0)}K`} />
                 <Tooltip content={<CustomTooltip />} />
                 <Line type="monotone" dataKey="value" name="Revenue" stroke="var(--accent)" strokeWidth={2} dot={false} />
@@ -497,7 +511,7 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
           <div className="flex items-center gap-6">
             <div className="relative" style={{ width: 130, height: 130 }}>
               {(() => {
-                const realTotal = ordersList.length;
+                const realTotal = effective.length;
                 if (realTotal === 0) {
                   return (
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
@@ -506,8 +520,8 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
                     </div>
                   );
                 }
-                const paid = ordersList.filter(o => ['DELIVERED', 'APPROVED'].includes(o.status)).length;
-                const pending = ordersList.filter(o => o.status.startsWith('PENDING')).length;
+                const paid = effective.filter(o => ['DELIVERED', 'APPROVED', 'OUT_FOR_DELIVERY'].includes(o.status)).length;
+                const pending = effective.filter(o => o.status.startsWith('PENDING')).length;
                 const rejected = realTotal - paid - pending;
                 const invData = [
                   { name: 'Paid', value: Math.round((paid / realTotal) * 100), color: '#10b981' },
@@ -553,7 +567,7 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
             </button>
           </div>
           {(() => {
-            const creditOrders = ordersList.filter(o => o.paymentMode === 'CREDIT');
+            const creditOrders = effective.filter(o => o.paymentMode === 'CREDIT');
             const totalExtended = creditOrders.reduce((s, o) => s + o.totalAmount, 0);
             const collected = creditOrders.filter(o => o.status === 'DELIVERED').reduce((s, o) => s + o.totalAmount, 0);
             const outstanding = totalExtended - collected;

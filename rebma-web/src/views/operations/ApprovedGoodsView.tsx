@@ -307,7 +307,12 @@ export default function ApprovedGoodsView({ addNotification, setActiveSubTab: _s
   const handleDispatch = async () => {
     if (!dispatchTarget) return;
     setDispatching(true);
-    const qty = Number((dispatchTarget as any).quantity || (dispatchTarget as any).metadata?.quantity || 1);
+    // Support both old (metadata.quantity) and new (metadata.items) order formats
+    const meta = (dispatchTarget as any).metadata || {};
+    const metaItems: { productName: string; quantity: number }[] = meta.items || [];
+    const totalQty = metaItems.length > 0
+      ? metaItems.reduce((s: number, i: any) => s + (Number(i.quantity) || 1), 0)
+      : Number(meta.quantity || (dispatchTarget as any).quantity || 1);
 
     try {
       // 1. Create delivery_log
@@ -326,12 +331,27 @@ export default function ApprovedGoodsView({ addNotification, setActiveSubTab: _s
         .eq('id', dispatchTarget.id)
         .then(() => {}, () => {});
 
-      // 3. Write stock REMOVE so StockView OUT column reflects this dispatch
-      if (dispatchTarget.productName) {
+      // 3. Write stock REMOVE entries so StockView OUT column reflects dispatch
+      // For multi-item orders: write one REMOVE per item using actual product names + quantities
+      if (metaItems.length > 0) {
+        for (const item of metaItems) {
+          if (!item.productName) continue;
+          await supabase.from('stock_ledger').insert({
+            product_name: item.productName,
+            movement_type: 'REMOVE',
+            quantity: Number(item.quantity) || 1,
+            reference: `Order Dispatched: ${dispatchTarget.ticketNumber}`,
+            notes: `Client: ${dispatchTarget.clientName} · Destination: ${dispatchTarget.destination} · Driver: ${dispatchForm.driverName || 'TBD'} · Vehicle: ${dispatchForm.vehicleId || 'TBD'}`,
+            performed_by: currentUserEmail,
+            created_at: new Date().toISOString(),
+          }).then(() => {}, () => {});
+        }
+      } else if (dispatchTarget.productName) {
+        // Single-product order (old format or simple order)
         await supabase.from('stock_ledger').insert({
           product_name: dispatchTarget.productName,
           movement_type: 'REMOVE',
-          quantity: qty,
+          quantity: totalQty,
           reference: `Order Dispatched: ${dispatchTarget.ticketNumber}`,
           notes: `Client: ${dispatchTarget.clientName} · Destination: ${dispatchTarget.destination} · Driver: ${dispatchForm.driverName || 'TBD'} · Vehicle: ${dispatchForm.vehicleId || 'TBD'}`,
           performed_by: currentUserEmail,
@@ -345,7 +365,7 @@ export default function ApprovedGoodsView({ addNotification, setActiveSubTab: _s
         department: 'OPERATIONS',
         performed_by: currentUserEmail,
         user_id: currentUserId,
-        details: `Order ${dispatchTarget.ticketNumber} loaded to dispatch. Product: ${dispatchTarget.productName}, Qty: ${qty}, Client: ${dispatchTarget.clientName}, Destination: ${dispatchTarget.destination}. Vehicle: ${dispatchForm.vehicleId || 'TBD'}, Driver: ${dispatchForm.driverName || 'TBD'}.`,
+        details: `Order ${dispatchTarget.ticketNumber} loaded to dispatch. Product: ${dispatchTarget.productName}, Qty: ${totalQty}, Client: ${dispatchTarget.clientName}, Destination: ${dispatchTarget.destination}. Vehicle: ${dispatchForm.vehicleId || 'TBD'}, Driver: ${dispatchForm.driverName || 'TBD'}.`,
         timestamp: new Date().toISOString(),
       }).then(() => {}, () => {});
 

@@ -228,15 +228,17 @@ export default function StockView({ incomingGoodsList: _ig, addNotification }: P
         .order('created_at', { ascending: false })
         .limit(1000);
 
-      const map: LedgerMap = {};
+      // Build ledger map keyed by lowercase product name for case-insensitive matching
+      const rawMap: Record<string, { totalIn: number; totalOut: number; entries: LedgerEntry[]; canonical: string }> = {};
       for (const r of (ledgerData || [])) {
-        const name: string = r.product_name || '';
-        if (!name) continue;
-        if (!map[name]) map[name] = { totalIn: 0, totalOut: 0, entries: [] };
+        const rawName: string = r.product_name || '';
+        if (!rawName) continue;
+        const key = rawName.toLowerCase().trim();
+        if (!rawMap[key]) rawMap[key] = { totalIn: 0, totalOut: 0, entries: [], canonical: rawName };
         const qty = Number(r.quantity ?? 0);
         const entry: LedgerEntry = {
           id: String(r.id),
-          productName: name,
+          productName: rawName,
           movementType: r.movement_type as 'ADD' | 'REMOVE',
           quantity: qty,
           reference: r.reference || '',
@@ -244,9 +246,15 @@ export default function StockView({ incomingGoodsList: _ig, addNotification }: P
           performedBy: r.performed_by || '',
           date: r.created_at || '',
         };
-        map[name].entries.push(entry);
-        if (r.movement_type === 'ADD') map[name].totalIn += qty;
-        else if (r.movement_type === 'REMOVE') map[name].totalOut += qty;
+        rawMap[key].entries.push(entry);
+        if (r.movement_type === 'ADD') rawMap[key].totalIn += qty;
+        else if (r.movement_type === 'REMOVE') rawMap[key].totalOut += qty;
+      }
+      // Re-index by canonical (original) name AND lowercase key for flexible lookup
+      const map: LedgerMap = {};
+      for (const [key, val] of Object.entries(rawMap)) {
+        map[val.canonical] = { totalIn: val.totalIn, totalOut: val.totalOut, entries: val.entries };
+        map[key] = { totalIn: val.totalIn, totalOut: val.totalOut, entries: val.entries };
       }
       setLedgerMap(map);
     } catch (err) {
@@ -259,15 +267,16 @@ export default function StockView({ incomingGoodsList: _ig, addNotification }: P
 
   // ── derived totals ───────────────────────────────────────────────────────
   const cargoTotalIn = approvedCargo.reduce((s, c) => s + c.quantity, 0);
-  const cargoTotalOut = approvedCargo.reduce((s, c) => s + (ledgerMap[c.productName]?.totalOut ?? 0), 0);
+  // Try both original and lowercase key for case-insensitive lookup
+  const getLedger = (name: string) => ledgerMap[name] ?? ledgerMap[name.toLowerCase().trim()] ?? { totalIn: 0, totalOut: 0, entries: [] };
+  const cargoTotalOut = approvedCargo.reduce((s, c) => s + (getLedger(c.productName).totalOut), 0);
 
-  const productsTotalIn = stock.reduce((s, p) => s + (ledgerMap[p.name]?.totalIn ?? 0), 0);
-  const productsTotalOut = stock.reduce((s, p) => s + (ledgerMap[p.name]?.totalOut ?? 0), 0);
+  const productsTotalIn = stock.reduce((s, p) => s + (getLedger(p.name).totalIn), 0);
+  const productsTotalOut = stock.reduce((s, p) => s + (getLedger(p.name).totalOut), 0);
   const productsRemaining = stock.reduce((s, p) => s + p.current, 0);
 
   const gpTotalIn = generalPurchases.reduce((s, gp) => s + Number(gp.quantity ?? 0), 0);
-  // GP "out" = what was removed via adjustments (REMOVE entries in ledger by item name)
-  const gpTotalOut = generalPurchases.reduce((s, gp) => s + (ledgerMap[gp.itemName]?.totalOut ?? 0), 0);
+  const gpTotalOut = generalPurchases.reduce((s, gp) => s + (getLedger(gp.itemName).totalOut), 0);
 
   // ── filter / sort ────────────────────────────────────────────────────────
   const toggleCargoSort = (field: keyof ApprovedCargo) =>
@@ -443,10 +452,10 @@ export default function StockView({ incomingGoodsList: _ig, addNotification }: P
           style={{ flex: '0 0 140px', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '8px 12px', color: 'var(--text-primary)', fontSize: 14 }} />
         <button onClick={() => {
           const data = activeTab === 'APPROVED_CARGO'
-            ? filteredCargo.map(c => ({ Product: c.productName, Code: c.goodsCode, IN: c.quantity, OUT: ledgerMap[c.productName]?.totalOut ?? 0, Remaining: c.quantity - (ledgerMap[c.productName]?.totalOut ?? 0), Unit: c.unit, Supplier: c.supplier, Origin: c.portOfOrigin, Destination: c.destination, 'Approved On': fmtDate(c.approvedAt) }))
+            ? filteredCargo.map(c => ({ Product: c.productName, Code: c.goodsCode, IN: c.quantity, OUT: getLedger(c.productName).totalOut, Remaining: c.quantity - (getLedger(c.productName).totalOut), Unit: c.unit, Supplier: c.supplier, Origin: c.portOfOrigin, Destination: c.destination, 'Approved On': fmtDate(c.approvedAt) }))
             : activeTab === 'PRODUCTS'
-              ? filteredStock.map(s => ({ Product: s.name, SKU: s.sku, Category: s.category, IN: ledgerMap[s.name]?.totalIn ?? 0, OUT: ledgerMap[s.name]?.totalOut ?? 0, Remaining: s.current, Capacity: s.capacity }))
-              : filteredGP.map(gp => ({ Item: gp.itemName, Code: gp.itemCode, Category: gp.category, IN: gp.quantity, OUT: ledgerMap[gp.itemName]?.totalOut ?? 0, Remaining: Number(gp.quantity) - (ledgerMap[gp.itemName]?.totalOut ?? 0), 'Date Received': gp.dateReceived }));
+              ? filteredStock.map(s => ({ Product: s.name, SKU: s.sku, Category: s.category, IN: getLedger(s.name).totalIn, OUT: getLedger(s.name).totalOut, Remaining: s.current, Capacity: s.capacity }))
+              : filteredGP.map(gp => ({ Item: gp.itemName, Code: gp.itemCode, Category: gp.category, IN: gp.quantity, OUT: getLedger(gp.itemName).totalOut, Remaining: Number(gp.quantity) - (getLedger(gp.itemName).totalOut), 'Date Received': gp.dateReceived }));
           exportToCSV(data as any[], Object.keys(data[0] || {}), `stock_${activeTab.toLowerCase()}`);
         }} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '8px 14px', color: 'var(--text-primary)', fontSize: 13, cursor: 'pointer', fontWeight: 600 }}>
           <Download size={13} /> Export CSV
@@ -479,7 +488,7 @@ export default function StockView({ incomingGoodsList: _ig, addNotification }: P
                 </thead>
                 <tbody>
                   {filteredCargo.map(c => {
-                    const out = ledgerMap[c.productName]?.totalOut ?? 0;
+                    const out = getLedger(c.productName).totalOut;
                     const remaining = Math.max(0, c.quantity - out);
                     return (
                       <tr key={c.id} onClick={() => setSelectedCargo(c)}
@@ -524,8 +533,8 @@ export default function StockView({ incomingGoodsList: _ig, addNotification }: P
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3, gap: 8 }}>
                         <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: 12 }}>{s.name}</span>
                         <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                          <span style={{ fontSize: 10, color: '#3b82f6' }}>IN {(ledgerMap[s.name]?.totalIn ?? 0).toLocaleString()}</span>
-                          <span style={{ fontSize: 10, color: '#ef4444' }}>OUT {(ledgerMap[s.name]?.totalOut ?? 0).toLocaleString()}</span>
+                          <span style={{ fontSize: 10, color: '#3b82f6' }}>IN {(getLedger(s.name).totalIn).toLocaleString()}</span>
+                          <span style={{ fontSize: 10, color: '#ef4444' }}>OUT {(getLedger(s.name).totalOut).toLocaleString()}</span>
                           <span style={{ fontSize: 10, background: st.bg, color: st.color, borderRadius: 99, padding: '1px 7px', fontWeight: 600 }}>{st.label}</span>
                           <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{s.current.toLocaleString()} / {s.capacity.toLocaleString()}</span>
                         </div>
@@ -555,8 +564,8 @@ export default function StockView({ incomingGoodsList: _ig, addNotification }: P
                 <tbody>
                   {filteredStock.map(s => {
                     const st = stockStatus(s.current, s.capacity);
-                    const totalIn = ledgerMap[s.name]?.totalIn ?? 0;
-                    const totalOut = ledgerMap[s.name]?.totalOut ?? 0;
+                    const totalIn = getLedger(s.name).totalIn;
+                    const totalOut = getLedger(s.name).totalOut;
                     return (
                       <tr key={s.id} onClick={() => setSelectedStock(s)}
                         style={{ borderBottom: '1px solid var(--border)', cursor: 'pointer', transition: 'background 0.15s' }}
@@ -608,7 +617,7 @@ export default function StockView({ incomingGoodsList: _ig, addNotification }: P
                 <tbody>
                   {filteredGP.map(gp => {
                     const gpIn = Number(gp.quantity ?? 0);
-                    const gpOut = ledgerMap[gp.itemName]?.totalOut ?? 0;
+                    const gpOut = getLedger(gp.itemName).totalOut;
                     const gpRemaining = Math.max(0, gpIn - gpOut);
                     return (
                       <tr key={gp.id} onClick={() => setSelectedGP(gp)}
@@ -660,9 +669,9 @@ export default function StockView({ incomingGoodsList: _ig, addNotification }: P
 
       {/* ── DETAIL PANELS ── */}
       {selectedCargo && (() => {
-        const out = ledgerMap[selectedCargo.productName]?.totalOut ?? 0;
+        const out = getLedger(selectedCargo.productName).totalOut;
         const remaining = Math.max(0, selectedCargo.quantity - out);
-        const entries = ledgerMap[selectedCargo.productName]?.entries ?? [];
+        const entries = getLedger(selectedCargo.productName).entries;
         return (
           <EntityDetailPanel
             title={selectedCargo.productName}
@@ -701,9 +710,9 @@ export default function StockView({ incomingGoodsList: _ig, addNotification }: P
       {selectedStock && (() => {
         const st = stockStatus(selectedStock.current, selectedStock.capacity);
         const pct = selectedStock.capacity > 0 ? Math.round((selectedStock.current / selectedStock.capacity) * 100) : 0;
-        const totalIn = ledgerMap[selectedStock.name]?.totalIn ?? 0;
-        const totalOut = ledgerMap[selectedStock.name]?.totalOut ?? 0;
-        const entries = ledgerMap[selectedStock.name]?.entries ?? [];
+        const totalIn = getLedger(selectedStock.name).totalIn;
+        const totalOut = getLedger(selectedStock.name).totalOut;
+        const entries = getLedger(selectedStock.name).entries;
         return (
           <EntityDetailPanel
             title={selectedStock.name}
@@ -733,9 +742,9 @@ export default function StockView({ incomingGoodsList: _ig, addNotification }: P
 
       {selectedGP && (() => {
         const gpIn = Number(selectedGP.quantity ?? 0);
-        const gpOut = ledgerMap[selectedGP.itemName]?.totalOut ?? 0;
+        const gpOut = getLedger(selectedGP.itemName).totalOut;
         const gpRemaining = Math.max(0, gpIn - gpOut);
-        const entries = ledgerMap[selectedGP.itemName]?.entries ?? [];
+        const entries = getLedger(selectedGP.itemName).entries;
         return (
           <EntityDetailPanel
             title={selectedGP.itemName}
