@@ -47,6 +47,7 @@ export default function MgmtPriceSettingView({ addNotification, currentUser }: P
   const [broadcastMarketing, setRadioMarketing] = useState(true);
   const [broadcastCeo, setRadioCeo] = useState(false);
 
+  const [deleteTarget, setDeleteTarget] = useState<PriceEntry | null>(null);
   const [approvedGoods, setApprovedGoods] = useState<string[]>([]);
   const [unpricedGoods, setUnpricedGoods] = useState<string[]>([]);
 
@@ -124,7 +125,7 @@ export default function MgmtPriceSettingView({ addNotification, currentUser }: P
           category: String(row.category || 'INCOMING_GOODS'),
           unitPrice,
           costPrice,
-          margin: costPrice > 0 ? ((unitPrice - costPrice) / costPrice) * 100 : 0,
+          margin: costPrice > 0 ? ((unitPrice - costPrice) / costPrice) * 100 : unitPrice > 0 ? 100 : 0,
           currency: (row.currency as 'GHS' | 'USD') || 'GHS',
           lastUpdated: String(row.updated_at || row.created_at || '').slice(0, 10),
           updatedBy: String(row.updated_by || 'Management'),
@@ -263,17 +264,23 @@ export default function MgmtPriceSettingView({ addNotification, currentUser }: P
   }
 
   async function handleDelete(id: string) {
+    const entry = prices.find(p => p.id === id);
+    if (!entry) return;
+    setDeleteTarget(entry);
+    setMenuOpen(null);
+  }
+
+  async function confirmDelete() {
+    if (!deleteTarget) return;
     try {
-      const entry = prices.find(p => p.id === id);
-      if (!entry) return;
-      await supabase.from('goods_prices').delete().eq('product_name', entry.productName);
-      setPrices(prev => prev.filter(p => p.id !== id));
-      addNotification?.('Price entry removed');
+      await supabase.from('goods_prices').delete().eq('id', deleteTarget.id);
+      setPrices(prev => prev.filter(p => p.id !== deleteTarget.id));
+      addNotification?.(`"${deleteTarget.productName}" removed from price catalog.`);
     } catch (e) {
       console.error(e);
       addNotification?.('Failed to delete price entry.');
     }
-    setMenuOpen(null);
+    setDeleteTarget(null);
   }
 
   if (showHistory) {
@@ -446,6 +453,30 @@ export default function MgmtPriceSettingView({ addNotification, currentUser }: P
           </table>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-sm rounded-2xl bg-[var(--bg-card)] border border-rose-300 shadow-xl p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-rose-100 flex items-center justify-center shrink-0">
+                <Trash2 className="w-5 h-5 text-rose-500" />
+              </div>
+              <div>
+                <h3 className="font-bold text-[var(--text-primary)]">Remove Price Entry</h3>
+                <p className="text-xs text-[var(--text-muted)]">This cannot be undone.</p>
+              </div>
+            </div>
+            <p className="text-sm text-[var(--text-secondary)]">
+              Remove <strong>{deleteTarget.productName}</strong> ({deleteTarget.currency} {deleteTarget.unitPrice.toFixed(2)}) from the price catalog?
+            </p>
+            <div className="flex gap-3">
+              <button onClick={() => setDeleteTarget(null)} className="flex-1 py-2 rounded-xl border border-[var(--border)] text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-input)] cursor-pointer">Cancel</button>
+              <button onClick={confirmDelete} className="flex-1 py-2 rounded-xl bg-rose-500 text-white text-sm font-semibold hover:bg-rose-600 cursor-pointer">Remove</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Price Form Modal */}
       {showForm && (

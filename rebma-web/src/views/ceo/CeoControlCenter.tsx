@@ -273,14 +273,15 @@ function Section({ title, icon: Icon, children, defaultOpen = true }: {
 
 // ── Data Reset Center ─────────────────────────────────────────────────────────
 const DEPT_TABLES: Record<string, { label: string; tables: { name: string; filter?: { col: string; val: string } }[] }> = {
-  MARKETING:   { label: 'Marketing',   tables: [{ name: 'orders' }, { name: 'customers' }] },
-  FINANCE:     { label: 'Finance',     tables: [{ name: 'finance_payments' }, { name: 'finance_expenses' }] },
-  OPERATIONS:  { label: 'Operations',  tables: [{ name: 'cargo_intake' }, { name: 'stock_ledger' }, { name: 'general_purchases' }] },
-  PRODUCTION:  { label: 'Production',  tables: [{ name: 'production_orders' }] },
-  ALL:         { label: 'ALL Departments', tables: [
+  MARKETING:    { label: 'Marketing',    tables: [{ name: 'orders' }, { name: 'customers' }] },
+  FINANCE:      { label: 'Finance',      tables: [{ name: 'finance_payments' }, { name: 'finance_expenses' }] },
+  OPERATIONS:   { label: 'Operations',   tables: [{ name: 'cargo_intake' }, { name: 'stock_ledger' }, { name: 'general_purchases' }] },
+  PRODUCTION:   { label: 'Production',   tables: [{ name: 'production_orders' }] },
+  MANAGEMENT:   { label: 'Management',   tables: [{ name: 'goods_prices' }] },
+  ALL:          { label: 'ALL Departments', tables: [
     { name: 'orders' }, { name: 'customers' }, { name: 'finance_payments' }, { name: 'finance_expenses' },
     { name: 'cargo_intake' }, { name: 'stock_ledger' }, { name: 'general_purchases' },
-    { name: 'production_orders' }, { name: 'global_audit_history' },
+    { name: 'production_orders' }, { name: 'goods_prices' }, { name: 'global_audit_history' },
   ]},
 };
 
