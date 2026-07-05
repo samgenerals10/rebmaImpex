@@ -351,7 +351,7 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
           const key = String(gp.product_name || '').toLowerCase().trim();
           const qty = cargoForInventory.filter((c: any) => String(c.product_name || '').toLowerCase().trim() === key).reduce((s: number, c: any) => s + (Number(c.quantity) || 0), 0);
           // Revenue earned from approved/delivered orders for this product
-          const soldRevenue = ordersList.filter(o => ['APPROVED','PROCESSING','DELIVERED'].includes(o.status) && String(o.productName || '').toLowerCase().trim() === key).reduce((s, o) => s + o.totalAmount, 0);
+          const soldRevenue = (ordersList as any[]).filter(o => ['APPROVED','PROCESSING','DELIVERED'].includes(o.status) && String(o.productName || o.product_name || '').toLowerCase().trim() === key).reduce((s: number, o: any) => s + (Number(o.totalAmount || o.total_amount) || 0), 0);
           return { name: gp.product_name, unitPrice: Number(gp.unit_price || 0), costPrice: Number(gp.cost_price || 0), currency: gp.currency || 'GHS', qty, sellingValue: Number(gp.unit_price || 0) * qty, costValue: Number(gp.cost_price || 0) * qty, soldRevenue };
         });
         const totalSell = items.reduce((s: number, i: any) => s + i.sellingValue, 0);
