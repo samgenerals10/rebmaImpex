@@ -274,7 +274,7 @@ function Section({ title, icon: Icon, children, defaultOpen = true }: {
 // ── Data Reset Center ─────────────────────────────────────────────────────────
 const DEPT_TABLES: Record<string, { label: string; tables: { name: string }[] }> = {
   MARKETING:   { label: 'Marketing',   tables: [{ name: 'orders' }, { name: 'customers' }] },
-  FINANCE:     { label: 'Finance',     tables: [{ name: 'finance_payments' }, { name: 'finance_expenses' }, { name: 'finance_cheques' }, { name: 'finance_petty_cash' }, { name: 'recurring_payments' }] },
+  FINANCE:     { label: 'Finance',     tables: [{ name: 'finance_payments' }, { name: 'recurring_payments' }] },
   OPERATIONS:  { label: 'Operations',  tables: [{ name: 'cargo_intake' }, { name: 'stock_ledger' }, { name: 'general_purchases' }, { name: 'stock' }, { name: 'wip_stock' }] },
   PRODUCTION:  { label: 'Production',  tables: [{ name: 'production_orders' }, { name: 'production_logs' }, { name: 'production_output' }, { name: 'production_requests' }] },
   MANAGEMENT:  { label: 'Management',  tables: [{ name: 'goods_prices' }, { name: 'supplier_orders' }, { name: 'suppliers' }] },
@@ -284,7 +284,7 @@ const DEPT_TABLES: Record<string, { label: string; tables: { name: string }[] }>
   LOGISTICS:   { label: 'Logistics',   tables: [{ name: 'fleet_vehicles' }, { name: 'fuel_logs' }, { name: 'maintenance_schedule' }] },
   ALL:         { label: 'ALL Departments', tables: [
     { name: 'orders' }, { name: 'customers' },
-    { name: 'finance_payments' }, { name: 'finance_expenses' }, { name: 'finance_cheques' }, { name: 'finance_petty_cash' }, { name: 'recurring_payments' },
+    { name: 'finance_payments' }, { name: 'recurring_payments' },
     { name: 'cargo_intake' }, { name: 'stock_ledger' }, { name: 'general_purchases' }, { name: 'stock' }, { name: 'wip_stock' },
     { name: 'production_orders' }, { name: 'production_logs' }, { name: 'production_output' }, { name: 'production_requests' },
     { name: 'goods_prices' }, { name: 'supplier_orders' }, { name: 'suppliers' },
