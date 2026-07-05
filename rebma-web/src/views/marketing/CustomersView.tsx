@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Search, ArrowLeft, X } from 'lucide-react';
+import { Plus, Search, ArrowLeft, X, Pencil, Trash2, Download } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import type { Customer, Order } from '../../types/erp';
 
@@ -22,6 +22,9 @@ export default function CustomersView({ customersList, onRegisterCustomer, addNo
   const [locationFilter, setLocationFilter] = useState('ALL');
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [editTarget, setEditTarget] = useState<Customer | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Customer | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [form, setForm] = useState({ name: '', companyName: '', phone: '', location: '', email: '', ghanaCard: '' });
 
   useEffect(() => {
@@ -115,6 +118,50 @@ export default function CustomersView({ customersList, onRegisterCustomer, addNo
     setShowModal(false);
     setForm({ name: '', companyName: '', phone: '', location: '', email: '', ghanaCard: '' });
     addNotification('Customer registered successfully.');
+  };
+
+  const openEdit = (c: Customer) => {
+    setEditTarget(c);
+    setForm({ name: c.name, companyName: c.companyName || '', phone: c.phone, location: c.location || '', email: c.email || '', ghanaCard: c.ghanaCard || '' });
+    setShowModal(true);
+  };
+
+  const handleEditSave = async () => {
+    if (!editTarget) return;
+    if (!form.name || !form.phone) { addNotification('Name and phone are required.'); return; }
+    const { error } = await supabase.from('customers').update({
+      name: form.name, company_name: form.companyName, phone: form.phone,
+      email: form.email || null, location: form.location || null,
+      ghana_card_id: form.ghanaCard || null, updated_at: new Date().toISOString(),
+    }).eq('id', editTarget.id);
+    if (error) { addNotification(`Update failed: ${error.message}`); return; }
+    setCustomers(prev => prev.map(c => c.id === editTarget.id ? { ...c, ...form, companyName: form.companyName } : c));
+    setShowModal(false); setEditTarget(null);
+    addNotification('Customer updated.');
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    const { error } = await supabase.from('customers').delete().eq('id', deleteTarget.id);
+    setDeleting(false);
+    if (error) { addNotification(`Delete failed: ${error.message}`); return; }
+    setCustomers(prev => prev.filter(c => c.id !== deleteTarget.id));
+    setDeleteTarget(null);
+    addNotification(`Customer "${deleteTarget.name}" deleted.`);
+  };
+
+  const exportCustomerCSV = (c: Customer) => {
+    const csv = `Name,Company,Phone,Email,Location,Ghana Card,Registered\n${c.name},${c.companyName || ''},${c.phone},${c.email || ''},${c.location || ''},${c.ghanaCard || ''},${(c.registeredAt || '').split('T')[0]}`;
+    const a = document.createElement('a'); a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv); a.download = `customer_${c.name.replace(/\s+/g,'_')}.csv`; a.click();
+    addNotification(`Exported ${c.name}.`);
+  };
+
+  const exportAllCSV = () => {
+    const rows = filtered.map(c => `${c.name},${c.companyName || ''},${c.phone},${c.email || ''},${c.location || ''},${(c.registeredAt || '').split('T')[0]}`);
+    const csv = `Name,Company,Phone,Email,Location,Registered\n${rows.join('\n')}`;
+    const a = document.createElement('a'); a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv); a.download = 'customers.csv'; a.click();
+    addNotification('All customers exported.');
   };
 
   if (selectedCustomer) {
@@ -239,9 +286,14 @@ export default function CustomersView({ customersList, onRegisterCustomer, addNo
           <h2 className="text-lg font-bold text-[var(--text-primary)]">Customer Directory</h2>
           <p className="text-xs text-[var(--text-muted)]">{customers.length} registered customers</p>
         </div>
-        <button onClick={() => setShowModal(true)} className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--accent)] text-white text-xs font-semibold rounded-xl cursor-pointer hover:opacity-90 self-start sm:self-auto">
-          <Plus className="w-3.5 h-3.5" /> Add Customer
-        </button>
+        <div className="flex gap-2">
+          <button onClick={exportAllCSV} className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--bg-card)] border border-[var(--border)] text-[var(--text-secondary)] text-xs font-semibold rounded-xl cursor-pointer hover:bg-[var(--accent-light)]">
+            <Download className="w-3.5 h-3.5" /> Export All
+          </button>
+          <button onClick={() => { setEditTarget(null); setForm({ name:'',companyName:'',phone:'',location:'',email:'',ghanaCard:'' }); setShowModal(true); }} className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--accent)] text-white text-xs font-semibold rounded-xl cursor-pointer hover:opacity-90">
+            <Plus className="w-3.5 h-3.5" /> Add Customer
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -293,9 +345,23 @@ export default function CustomersView({ customersList, onRegisterCustomer, addNo
                 <p>{c.location}</p>
                 <p className="text-[var(--text-muted)]">Registered {c.registeredAt.split('T')[0]}</p>
               </div>
-              <button onClick={() => setSelectedCustomer(c)}
-                className="mt-auto w-full py-1.5 rounded-xl border border-[var(--accent)] text-[var(--accent)] text-xs font-semibold hover:bg-[var(--accent-light)] transition-colors">
-                View Profile
+              <div className="mt-auto grid grid-cols-4 gap-1.5">
+                <button onClick={() => setSelectedCustomer(c)}
+                  className="col-span-2 py-1.5 rounded-xl border border-[var(--accent)] text-[var(--accent)] text-xs font-semibold hover:bg-[var(--accent-light)] transition-colors cursor-pointer">
+                  View Profile
+                </button>
+                <button onClick={() => openEdit(c)} title="Edit"
+                  className="py-1.5 rounded-xl border border-[var(--border)] text-[var(--text-secondary)] hover:bg-[var(--accent-light)] hover:text-[var(--accent)] transition-colors cursor-pointer flex items-center justify-center">
+                  <Pencil className="w-3.5 h-3.5" />
+                </button>
+                <button onClick={() => exportCustomerCSV(c)} title="Export"
+                  className="py-1.5 rounded-xl border border-[var(--border)] text-[var(--text-secondary)] hover:bg-[var(--accent-light)] hover:text-[var(--accent)] transition-colors cursor-pointer flex items-center justify-center">
+                  <Download className="w-3.5 h-3.5" />
+                </button>
+              </div>
+              <button onClick={() => setDeleteTarget(c)}
+                className="w-full py-1.5 rounded-xl border border-rose-200 text-rose-500 text-xs font-semibold hover:bg-rose-50 transition-colors cursor-pointer flex items-center justify-center gap-1">
+                <Trash2 className="w-3 h-3" /> Delete
               </button>
             </div>
           ))}
@@ -306,8 +372,8 @@ export default function CustomersView({ customersList, onRegisterCustomer, addNo
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-md rounded-2xl bg-[var(--bg-card)] border border-[var(--border)] shadow-xl p-6 space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="font-bold text-[var(--text-primary)]">Register New Customer</h3>
-              <button onClick={() => setShowModal(false)} className="p-1 rounded-lg hover:bg-[var(--bg-input)]"><X className="w-4 h-4 text-[var(--text-muted)]" /></button>
+              <h3 className="font-bold text-[var(--text-primary)]">{editTarget ? 'Edit Customer' : 'Register New Customer'}</h3>
+              <button onClick={() => { setShowModal(false); setEditTarget(null); }} className="p-1 rounded-lg hover:bg-[var(--bg-input)]"><X className="w-4 h-4 text-[var(--text-muted)]" /></button>
             </div>
             {[
               { label: 'Full Name *', key: 'name' },
@@ -324,8 +390,31 @@ export default function CustomersView({ customersList, onRegisterCustomer, addNo
               </div>
             ))}
             <div className="flex gap-3 pt-2">
-              <button onClick={() => setShowModal(false)} className="flex-1 py-2 rounded-xl border border-[var(--border)] text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-input)]">Cancel</button>
-              <button onClick={handleSave} className="flex-1 py-2 rounded-xl bg-[var(--accent)] text-white text-sm font-semibold hover:opacity-90">Register</button>
+              <button onClick={() => { setShowModal(false); setEditTarget(null); }} className="flex-1 py-2 rounded-xl border border-[var(--border)] text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-input)] cursor-pointer">Cancel</button>
+              <button onClick={editTarget ? handleEditSave : handleSave} className="flex-1 py-2 rounded-xl bg-[var(--accent)] text-white text-sm font-semibold hover:opacity-90 cursor-pointer">
+                {editTarget ? 'Save Changes' : 'Register'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-sm rounded-2xl bg-[var(--bg-card)] border border-rose-300 shadow-xl p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-rose-100 flex items-center justify-center"><Trash2 className="w-5 h-5 text-rose-500" /></div>
+              <div>
+                <h3 className="font-bold text-[var(--text-primary)]">Delete Customer</h3>
+                <p className="text-xs text-[var(--text-muted)]">This cannot be undone.</p>
+              </div>
+            </div>
+            <p className="text-sm text-[var(--text-secondary)]">Delete <strong>{deleteTarget.name}</strong> and all their records from the directory?</p>
+            <div className="flex gap-3">
+              <button onClick={() => setDeleteTarget(null)} disabled={deleting} className="flex-1 py-2 rounded-xl border border-[var(--border)] text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-input)] cursor-pointer">Cancel</button>
+              <button onClick={handleDelete} disabled={deleting} className="flex-1 py-2 rounded-xl bg-rose-500 text-white text-sm font-semibold hover:bg-rose-600 cursor-pointer disabled:opacity-50">
+                {deleting ? 'Deleting…' : 'Delete'}
+              </button>
             </div>
           </div>
         </div>

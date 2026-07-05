@@ -311,10 +311,8 @@ function DataResetSection({ addNotification }: { addNotification: (m: string) =>
     const res: typeof results = [];
     for (const t of cfg.tables) {
       try {
-        let q = supabase.from(t.name as any).delete();
-        // Supabase delete requires a filter — use neq on id to match all rows
-        (q as any) = (q as any).neq('id', '00000000-0000-0000-0000-000000000000');
-        const { error, count } = await (q as any);
+        // .not('id','is',null) matches every row regardless of id column type (int or uuid)
+        const { error, count } = await (supabase.from(t.name as any).delete() as any).not('id', 'is', null);
         res.push({ table: t.name, deleted: count ?? 0, error: error?.message });
       } catch (e: any) {
         res.push({ table: t.name, deleted: 0, error: e?.message || 'Unknown error' });
