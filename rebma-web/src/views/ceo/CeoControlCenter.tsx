@@ -271,6 +271,199 @@ function Section({ title, icon: Icon, children, defaultOpen = true }: {
   );
 }
 
+// ── Data Reset Center ─────────────────────────────────────────────────────────
+const DEPT_TABLES: Record<string, { label: string; tables: { name: string; filter?: { col: string; val: string } }[] }> = {
+  MARKETING:   { label: 'Marketing',   tables: [{ name: 'orders' }] },
+  FINANCE:     { label: 'Finance',     tables: [{ name: 'finance_payments' }, { name: 'finance_expenses' }] },
+  OPERATIONS:  { label: 'Operations',  tables: [{ name: 'cargo_intake' }, { name: 'stock_ledger' }, { name: 'general_purchases' }] },
+  PRODUCTION:  { label: 'Production',  tables: [{ name: 'production_orders' }] },
+  ALL:         { label: 'ALL Departments', tables: [
+    { name: 'orders' }, { name: 'finance_payments' }, { name: 'finance_expenses' },
+    { name: 'cargo_intake' }, { name: 'stock_ledger' }, { name: 'general_purchases' },
+    { name: 'production_orders' }, { name: 'global_audit_history' },
+  ]},
+};
+
+function DataResetSection({ addNotification }: { addNotification: (m: string) => void }) {
+  const [selectedDept, setSelectedDept] = useState('');
+  const [showModal, setShowModal]       = useState(false);
+  const [confirmText, setConfirmText]   = useState('');
+  const [running, setRunning]           = useState(false);
+  const [results, setResults]           = useState<{ table: string; deleted: number; error?: string }[]>([]);
+  const [done, setDone]                 = useState(false);
+
+  const open = (dept: string) => {
+    setSelectedDept(dept);
+    setConfirmText('');
+    setResults([]);
+    setDone(false);
+    setShowModal(true);
+  };
+
+  const close = () => { if (running) return; setShowModal(false); };
+
+  const run = async () => {
+    if (confirmText !== 'CONFIRM DELETE') return;
+    const cfg = DEPT_TABLES[selectedDept];
+    if (!cfg) return;
+    setRunning(true);
+    setResults([]);
+    const res: typeof results = [];
+    for (const t of cfg.tables) {
+      try {
+        let q = supabase.from(t.name as any).delete();
+        // Supabase delete requires a filter — use neq on id to match all rows
+        (q as any) = (q as any).neq('id', '00000000-0000-0000-0000-000000000000');
+        const { error, count } = await (q as any);
+        res.push({ table: t.name, deleted: count ?? 0, error: error?.message });
+      } catch (e: any) {
+        res.push({ table: t.name, deleted: 0, error: e?.message || 'Unknown error' });
+      }
+    }
+    // Log to audit history (best-effort)
+    supabase.from('global_audit_history').insert([{
+      action: 'DATA_RESET',
+      department: selectedDept,
+      performed_by: 'CEO',
+      details: `Cleared: ${cfg.tables.map(t => t.name).join(', ')}`,
+      timestamp: new Date().toISOString(),
+    }]).then(() => {}, () => {});
+
+    setResults(res);
+    setRunning(false);
+    setDone(true);
+    addNotification(`Data reset complete for ${cfg.label}.`);
+  };
+
+  const depts = Object.keys(DEPT_TABLES);
+
+  return (
+    <>
+      <div className="space-y-4 pt-2">
+        <p className="text-xs text-[var(--text-muted)] leading-relaxed">
+          Permanently delete operational data to start a fresh workflow cycle.
+          Staff accounts and system settings are <strong>not</strong> affected.
+          This action cannot be undone.
+        </p>
+
+        {/* Department grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {depts.filter(d => d !== 'ALL').map(d => {
+            const cfg = DEPT_TABLES[d];
+            return (
+              <button key={d} onClick={() => open(d)}
+                className="flex flex-col items-start gap-2 p-4 rounded-2xl border border-[var(--border)] bg-[var(--bg)] hover:border-rose-400 hover:bg-rose-50 transition-all cursor-pointer text-left group">
+                <div className="w-8 h-8 rounded-lg bg-rose-100 flex items-center justify-center">
+                  <Trash2 className="w-4 h-4 text-rose-500" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-[var(--text-primary)] group-hover:text-rose-600">{cfg.label}</p>
+                  <p className="text-[10px] text-[var(--text-muted)]">{cfg.tables.map(t => t.name).join(', ')}</p>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Clear all button */}
+        <button onClick={() => open('ALL')}
+          className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-2xl border-2 border-rose-400 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-sm cursor-pointer transition-all">
+          <Trash2 className="w-4 h-4" />
+          Clear All Data (Full Reset)
+        </button>
+      </div>
+
+      {/* Confirmation Modal */}
+      {showModal && (() => {
+        const cfg = DEPT_TABLES[selectedDept];
+        const ready = confirmText === 'CONFIRM DELETE';
+        return (
+          <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/70 p-4">
+            <div className="bg-[var(--bg-card)] rounded-2xl border border-rose-400 shadow-2xl max-w-lg w-full p-6 space-y-5">
+              {/* Header */}
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-rose-100 flex items-center justify-center shrink-0">
+                  <AlertTriangle className="w-5 h-5 text-rose-500" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-[var(--text-primary)]">
+                    {done ? 'Reset Complete' : `Clear ${cfg.label} Data`}
+                  </h3>
+                  <p className="text-xs text-[var(--text-muted)]">
+                    {done ? 'Review results below.' : 'This action is irreversible.'}
+                  </p>
+                </div>
+                <button onClick={close} className="ml-auto p-1.5 hover:bg-[var(--bg-input)] rounded-lg cursor-pointer">
+                  <X className="w-4 h-4 text-[var(--text-muted)]" />
+                </button>
+              </div>
+
+              {!done ? (
+                <>
+                  {/* What will be deleted */}
+                  <div className="bg-rose-50 border border-rose-200 rounded-xl p-4 space-y-2">
+                    <p className="text-xs font-bold text-rose-700 uppercase tracking-wide">Tables that will be cleared:</p>
+                    {cfg.tables.map(t => (
+                      <div key={t.name} className="flex items-center gap-2 text-xs text-rose-600">
+                        <div className="w-1.5 h-1.5 rounded-full bg-rose-400 shrink-0" />
+                        <span className="font-mono">{t.name}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Type to confirm */}
+                  <div className="space-y-2">
+                    <p className="text-xs text-[var(--text-secondary)]">
+                      Type <strong className="text-rose-600 font-mono">CONFIRM DELETE</strong> to unlock the reset button:
+                    </p>
+                    <input
+                      value={confirmText}
+                      onChange={e => setConfirmText(e.target.value)}
+                      placeholder="CONFIRM DELETE"
+                      className="w-full px-3 py-2 rounded-xl border border-[var(--border)] bg-[var(--bg)] text-sm font-mono text-[var(--text-primary)] focus:outline-none focus:border-rose-400"
+                    />
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex gap-3">
+                    <button onClick={close} disabled={running}
+                      className="flex-1 py-2 rounded-xl border border-[var(--border)] text-xs font-bold text-[var(--text-primary)] hover:bg-[var(--accent-light)] cursor-pointer disabled:opacity-40">
+                      Cancel
+                    </button>
+                    <button onClick={run} disabled={!ready || running}
+                      className="flex-1 py-2 rounded-xl text-xs font-bold text-white cursor-pointer transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                      style={{ background: ready ? '#ef4444' : '#fca5a5' }}>
+                      {running ? 'Deleting…' : `Delete ${cfg.label} Data`}
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* Results */}
+                  <div className="space-y-2">
+                    {results.map(r => (
+                      <div key={r.table} className={`flex items-center justify-between px-4 py-2.5 rounded-xl text-xs font-semibold ${r.error ? 'bg-rose-50 border border-rose-200' : 'bg-emerald-50 border border-emerald-200'}`}>
+                        <span className={`font-mono ${r.error ? 'text-rose-600' : 'text-emerald-700'}`}>{r.table}</span>
+                        <span className={r.error ? 'text-rose-500' : 'text-emerald-600'}>
+                          {r.error ? `Error: ${r.error}` : `✓ Cleared`}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  <button onClick={close}
+                    className="w-full py-2.5 rounded-xl bg-[var(--accent)] text-white text-xs font-bold cursor-pointer hover:opacity-90">
+                    Done — Start Fresh Workflow
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+    </>
+  );
+}
+
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function CeoControlCenter({ currentUser, addNotification }: Props) {
   const { getSetting, updateSetting } = useCeoSettings();
@@ -877,6 +1070,11 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
           label="Spreadsheets Enabled (Master)"
           description="Master switch for the Spreadsheets feature across all departments. When OFF no user can access Free Sheets or Data Sheets unless they have a specific email exception that overrides this toggle."
         />
+      </Section>
+
+      {/* ── SECTION 10: DATA RESET CENTER ────────────────────────────── */}
+      <Section title="Section 10 — Data Reset Center" icon={Trash2} defaultOpen={false}>
+        <DataResetSection addNotification={addNotification} />
       </Section>
 
       {/* ── USER MANAGEMENT MODAL ───────────────────────────────────────── */}
