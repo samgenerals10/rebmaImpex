@@ -1608,20 +1608,10 @@ export default function App() {
 
   // Workflow B action triggers
   const handleCreateOrder = async (data: Partial<Order>) => {
-    try {
-      await marketing.createOrder({
-        clientName: data.clientName || 'Unknown',
-        productName: data.productName,
-        destination: data.destination,
-        ghanaCard: data.ghanaCard,
-        paymentMode: data.paymentMode || 'CASH',
-        totalAmount: data.totalAmount || 0
-      });
-      addNotification(`Marketing created order successfully. Routed to Finance.`);
-      refreshAllData();
-    } catch (err: any) {
-      alert(err.message || 'Failed to create order.');
-    }
+    // OrdersView already inserts the order to Supabase directly.
+    // This callback only needs to update global state and refresh data.
+    addNotification(`Marketing created order successfully. Routed to Finance.`);
+    refreshAllData();
   };
 
   // Marketing Register Customer (now takes Partial<Customer> object from modal)

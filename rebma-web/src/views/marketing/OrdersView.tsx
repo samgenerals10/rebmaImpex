@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Plus, Download, Search, MoreVertical, X, ChevronLeft, ChevronRight, FileText } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
-import type { Order } from '../../types/erp';
+import type { Order, OrderLineItem } from '../../types/erp';
 
 
 const STATUS_STYLES: Record<Order['status'], string> = {
@@ -100,6 +100,7 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
     paymentMode: r.payment_mode || r.paymentMode || 'CASH',
     status: r.status || 'PENDING_FINANCE',
     createdAt: r.created_at || r.createdAt || new Date().toISOString(),
+    metadata: r.metadata || null,
   });
 
   useEffect(() => {
@@ -279,7 +280,20 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
                 <tr key={o.id} onClick={() => setSelectedOrder(o)} className="border-b border-[var(--border)] hover:bg-[var(--bg-input)] cursor-pointer transition-colors">
                   <td className="py-3 px-3 font-mono text-xs text-[var(--text-secondary)]">{o.ticketNumber || o.id}</td>
                   <td className="py-3 px-3 font-medium text-[var(--text-primary)] whitespace-nowrap">{o.clientName}</td>
-                  <td className="py-3 px-3 text-[var(--text-secondary)]">{o.productName || '—'}</td>
+                  <td className="py-3 px-3 text-[var(--text-secondary)]">
+                    {(() => {
+                      const items: OrderLineItem[] | undefined = o.metadata?.items;
+                      if (items && items.length > 1) {
+                        return (
+                          <span className="inline-flex items-center gap-1">
+                            <span className="truncate max-w-[100px]">{items[0].productName}</span>
+                            <span className="shrink-0 px-1.5 py-0.5 rounded-full bg-[var(--accent-light)] text-[var(--accent)] text-[10px] font-bold">+{items.length - 1} more</span>
+                          </span>
+                        );
+                      }
+                      return <span>{items?.[0]?.productName || o.productName || '—'}</span>;
+                    })()}
+                  </td>
                   <td className="py-3 px-3 font-semibold text-emerald-600 whitespace-nowrap">GHS {(o.totalAmount ?? 0).toLocaleString()}</td>
                   <td className="py-3 px-3 text-[var(--text-secondary)]">{o.paymentMode}</td>
                   <td className="py-3 px-3">
@@ -449,56 +463,118 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
         );
       })()}
 
-      {selectedOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-lg rounded-2xl bg-[var(--bg-card)] border border-[var(--border)] shadow-xl p-6 space-y-5">
-            <div className="flex items-center justify-between">
-              <h3 className="font-bold text-[var(--text-primary)]">Order Details</h3>
-              <button onClick={() => setSelectedOrder(null)} className="p-1 rounded-lg hover:bg-[var(--bg-input)]"><X className="w-4 h-4 text-[var(--text-muted)]" /></button>
-            </div>
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              {[
-                ['Order #', selectedOrder.ticketNumber || selectedOrder.id],
-                ['Customer', selectedOrder.clientName],
-                ['Product', selectedOrder.productName || '—'],
-                ['Destination', selectedOrder.destination || '—'],
-                ['Amount', `GHS ${(Number(selectedOrder.totalAmount ?? 0)).toLocaleString()}`],
-                ['Payment Mode', selectedOrder.paymentMode],
-                ['Date', (selectedOrder.createdAt || '').split('T')[0]],
-              ].map(([k, v]) => (
-                <div key={k}>
-                  <p className="text-xs text-[var(--text-muted)]">{k}</p>
-                  <p className="font-medium text-[var(--text-primary)]">{v}</p>
+      {selectedOrder && (() => {
+        const lineItems: OrderLineItem[] | undefined = selectedOrder.metadata?.items;
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+            <div className="w-full max-w-xl rounded-2xl bg-[var(--bg-card)] border border-[var(--border)] shadow-xl flex flex-col max-h-[90vh]">
+              {/* Header */}
+              <div className="flex items-center justify-between px-6 pt-5 pb-4 shrink-0 border-b border-[var(--border)]">
+                <div>
+                  <h3 className="font-bold text-[var(--text-primary)]">Order Details</h3>
+                  <p className="text-xs text-[var(--text-muted)] mt-0.5 font-mono">{selectedOrder.ticketNumber || selectedOrder.id}</p>
                 </div>
-              ))}
-            </div>
-            {selectedOrder.status !== 'REJECTED' && (
-              <div>
-                <p className="text-xs font-semibold text-[var(--text-muted)] mb-3">Order Progress</p>
-                <div className="flex items-center gap-1 overflow-x-auto pb-1">
-                  {STEPPER.map((step, idx) => {
-                    const current = stepperIndex(selectedOrder.status);
-                    const done = idx <= current;
-                    return (
-                      <div key={step.key} className="flex items-center gap-1 flex-shrink-0">
-                        <div className={`flex flex-col items-center gap-1`}>
-                          <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border-2 ${done ? 'bg-[var(--accent)] border-[var(--accent)] text-white' : 'border-[var(--border)] text-[var(--text-muted)] bg-[var(--bg-input)]'}`}>{idx + 1}</div>
-                          <span className={`text-[10px] whitespace-nowrap ${done ? 'text-[var(--accent)] font-semibold' : 'text-[var(--text-muted)]'}`}>{step.label}</span>
-                        </div>
-                        {idx < STEPPER.length - 1 && <div className={`w-6 h-0.5 mb-4 flex-shrink-0 ${idx < current ? 'bg-[var(--accent)]' : 'bg-[var(--border)]'}`} />}
-                      </div>
-                    );
-                  })}
-                </div>
+                <button onClick={() => setSelectedOrder(null)} className="p-1 rounded-lg hover:bg-[var(--bg-input)]"><X className="w-4 h-4 text-[var(--text-muted)]" /></button>
               </div>
-            )}
-            {selectedOrder.status === 'REJECTED' && (
-              <div className="rounded-xl bg-rose-50 border border-rose-200 px-4 py-3 text-sm text-rose-700 font-medium">Order Rejected</div>
-            )}
-            <button onClick={() => setSelectedOrder(null)} className="w-full py-2 rounded-xl bg-[var(--accent)] text-white text-sm font-semibold hover:opacity-90">Close</button>
+
+              <div className="overflow-y-auto flex-1 px-6 py-4 space-y-4">
+                {/* Order meta grid */}
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  {[
+                    ['Customer', selectedOrder.clientName],
+                    ['Destination', selectedOrder.destination || '—'],
+                    ['Payment Mode', selectedOrder.paymentMode],
+                    ['Date', (selectedOrder.createdAt || '').split('T')[0]],
+                  ].map(([k, v]) => (
+                    <div key={k}>
+                      <p className="text-xs text-[var(--text-muted)]">{k}</p>
+                      <p className="font-medium text-[var(--text-primary)]">{v}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Line items table */}
+                <div>
+                  <p className="text-xs font-semibold text-[var(--text-muted)] mb-2">
+                    {lineItems && lineItems.length > 0 ? `Order Items (${lineItems.length})` : 'Product'}
+                  </p>
+                  {lineItems && lineItems.length > 0 ? (
+                    <div className="rounded-xl border border-[var(--border)] overflow-hidden">
+                      <table className="w-full text-xs">
+                        <thead>
+                          <tr className="bg-[var(--bg-input)] border-b border-[var(--border)]">
+                            <th className="text-left py-2 px-3 font-semibold text-[var(--text-muted)]">Product</th>
+                            <th className="text-center py-2 px-3 font-semibold text-[var(--text-muted)]">Qty</th>
+                            <th className="text-right py-2 px-3 font-semibold text-[var(--text-muted)]">Unit Price</th>
+                            <th className="text-right py-2 px-3 font-semibold text-[var(--text-muted)]">Subtotal</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {lineItems.map((item, idx) => (
+                            <tr key={idx} className="border-b border-[var(--border)] last:border-0">
+                              <td className="py-2.5 px-3 font-medium text-[var(--text-primary)]">{item.productName}</td>
+                              <td className="py-2.5 px-3 text-center text-[var(--text-secondary)]">{item.quantity}</td>
+                              <td className="py-2.5 px-3 text-right text-[var(--text-secondary)]">
+                                {item.unitPrice > 0 ? `GHS ${item.unitPrice.toLocaleString()}` : <span className="text-amber-500 text-[10px]">No price set</span>}
+                              </td>
+                              <td className="py-2.5 px-3 text-right font-semibold text-emerald-600">
+                                {item.lineTotal > 0 ? `GHS ${item.lineTotal.toLocaleString()}` : '—'}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot>
+                          <tr className="bg-[var(--accent-light)] border-t border-[var(--border)]">
+                            <td colSpan={3} className="py-2.5 px-3 font-bold text-[var(--text-primary)]">Order Total</td>
+                            <td className="py-2.5 px-3 text-right font-bold text-[var(--accent)]">
+                              GHS {(Number(selectedOrder.totalAmount ?? 0)).toLocaleString()}
+                            </td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="rounded-xl border border-[var(--border)] px-4 py-3 flex items-center justify-between">
+                      <span className="font-medium text-[var(--text-primary)]">{selectedOrder.productName || '—'}</span>
+                      <span className="font-bold text-emerald-600">GHS {(Number(selectedOrder.totalAmount ?? 0)).toLocaleString()}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Progress stepper */}
+                {selectedOrder.status !== 'REJECTED' && (
+                  <div>
+                    <p className="text-xs font-semibold text-[var(--text-muted)] mb-3">Order Progress</p>
+                    <div className="flex items-center gap-1 overflow-x-auto pb-1">
+                      {STEPPER.map((step, idx) => {
+                        const current = stepperIndex(selectedOrder.status);
+                        const done = idx <= current;
+                        return (
+                          <div key={step.key} className="flex items-center gap-1 flex-shrink-0">
+                            <div className={`flex flex-col items-center gap-1`}>
+                              <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border-2 ${done ? 'bg-[var(--accent)] border-[var(--accent)] text-white' : 'border-[var(--border)] text-[var(--text-muted)] bg-[var(--bg-input)]'}`}>{idx + 1}</div>
+                              <span className={`text-[10px] whitespace-nowrap ${done ? 'text-[var(--accent)] font-semibold' : 'text-[var(--text-muted)]'}`}>{step.label}</span>
+                            </div>
+                            {idx < STEPPER.length - 1 && <div className={`w-6 h-0.5 mb-4 flex-shrink-0 ${idx < current ? 'bg-[var(--accent)]' : 'bg-[var(--border)]'}`} />}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+                {selectedOrder.status === 'REJECTED' && (
+                  <div className="rounded-xl bg-rose-50 border border-rose-200 px-4 py-3 text-sm text-rose-700 font-medium">Order Rejected</div>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="px-6 py-4 shrink-0 border-t border-[var(--border)]">
+                <button onClick={() => setSelectedOrder(null)} className="w-full py-2 rounded-xl bg-[var(--accent)] text-white text-sm font-semibold hover:opacity-90">Close</button>
+              </div>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }

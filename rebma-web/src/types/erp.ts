@@ -1,5 +1,12 @@
 // rebma-web/src/types/erp.ts
 
+export interface OrderLineItem {
+  productName: string;
+  quantity: number;
+  unitPrice: number;
+  lineTotal: number;
+}
+
 export interface Order {
   id: string;
   ticketNumber?: string;
@@ -13,6 +20,10 @@ export interface Order {
   createdAt: string;
   products?: string;
   submittedBy?: string;
+  metadata?: {
+    items?: OrderLineItem[];
+    [key: string]: any;
+  };
 }
 
 export interface IncomingGoods {

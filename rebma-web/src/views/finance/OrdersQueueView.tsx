@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { exportToCSV } from '../../utils/export';
 import type { Order } from '../../types/erp';
+import InvoiceLineItems, { getProductSummary } from '../../components/InvoiceLineItems';
 
 interface Props {
   addNotification?: (msg: string) => void;
@@ -81,6 +82,7 @@ function mapRow(r: any): Order {
     createdAt: r.created_at || r.createdAt || '',
     products: r.product_name || r.productName || r.products || '',
     submittedBy: r.created_by || r.submittedBy || '',
+    metadata: r.metadata || null,
   };
 }
 
@@ -219,10 +221,9 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
             </div>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-2">
             {[
               { label: 'Total Amount', value: `GHS ${(Number(selected.totalAmount ?? 0)).toLocaleString()}` },
-              { label: 'Products', value: selected.products || '—' },
               { label: 'Submitted By', value: selected.submittedBy || '—' },
               { label: 'Payment Mode', value: selected.paymentMode },
             ].map(({ label, value }) => (
@@ -231,6 +232,12 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
                 <p className="text-sm font-semibold text-[var(--text-primary)]">{value}</p>
               </div>
             ))}
+          </div>
+
+          {/* Invoice line-items breakdown */}
+          <div>
+            <p className="text-xs font-semibold text-[var(--text-muted)] mb-2">Invoice Items</p>
+            <InvoiceLineItems order={selected} />
           </div>
 
           {selected.status === 'PENDING_FINANCE' && (
@@ -399,7 +406,7 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
                 <tr key={order.id} className="hover:bg-[var(--bg-input)] cursor-pointer group" onClick={() => setSelected(order)}>
                   <td className="px-4 py-3 font-mono text-xs text-[var(--text-secondary)]">{order.id}</td>
                   <td className="px-4 py-3 font-medium text-[var(--text-primary)] whitespace-nowrap">{order.clientName}</td>
-                  <td className="px-4 py-3 text-[var(--text-secondary)] max-w-[160px]"><p className="truncate text-xs">{order.products || '—'}</p></td>
+                  <td className="px-4 py-3 max-w-[180px]"><InvoiceLineItems order={order} compact /></td>
                   <td className="px-4 py-3 font-semibold text-[var(--text-primary)] whitespace-nowrap">GHS {(Number(order.totalAmount ?? 0)).toLocaleString()}</td>
                   <td className="px-4 py-3"><span className={`text-xs px-2 py-1 rounded-full font-medium ${MODE_COLORS[order.paymentMode] || ''}`}>{order.paymentMode}</span></td>
                   <td className="px-4 py-3 text-[var(--text-muted)] whitespace-nowrap text-xs">{order.createdAt}</td>

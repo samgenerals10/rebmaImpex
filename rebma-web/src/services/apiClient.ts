@@ -117,6 +117,7 @@ const mapOrderToFrontend = (db: any): any => {
     paymentMode: db.payment_mode || db.paymentMode,
     totalAmount: Number(db.total_amount ?? db.totalAmount ?? 0),
     status: db.status,
+    metadata: db.metadata || null,
     createdById: db.created_by || db.created_by_id || db.createdById,
     createdAt: db.created_at || db.createdAt,
     updatedAt: db.updated_at || db.updatedAt,

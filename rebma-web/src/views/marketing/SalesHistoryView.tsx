@@ -1,11 +1,12 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Download, TrendingUp, Users, Package, RefreshCw, Search, Filter } from 'lucide-react';
+import { Download, TrendingUp, Users, Package, RefreshCw, Search, Filter, X } from 'lucide-react';
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend,
 } from 'recharts';
 import { supabase } from '../../lib/supabaseClient';
 import type { Order } from '../../types/erp';
+import InvoiceLineItems, { getLineItems } from '../../components/InvoiceLineItems';
 
 const STATUS_STYLES: Record<string, string> = {
   PENDING_FINANCE:     'bg-amber-100 text-amber-700',
@@ -37,6 +38,7 @@ function mapOrder(r: any): Order {
     createdAt: r.created_at || r.createdAt || '',
     products: r.product_name || r.productName || r.products || '',
     submittedBy: r.created_by || r.submittedBy || '',
+    metadata: r.metadata || null,
   };
 }
 
@@ -66,6 +68,7 @@ export default function SalesHistoryView({ ordersList, addNotification }: Props)
   const [search, setSearch]     = useState('');
   const [filterStatus, setFilterStatus] = useState('ALL');
   const [filterMode, setFilterMode]     = useState('ALL');
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -124,14 +127,26 @@ export default function SalesHistoryView({ ordersList, addNotification }: Props)
     return Object.entries(map).map(([name, v]) => ({ name, ...v })).sort((a, b) => b.revenue - a.revenue).slice(0, 5);
   }, [completed]);
 
-  // Top products
+  // Top products — expand metadata.items for multi-product orders
   const topProducts = useMemo(() => {
     const map: Record<string, { revenue: number; count: number }> = {};
     for (const o of completed) {
-      const k = o.productName || 'Unknown';
-      if (!map[k]) map[k] = { revenue: 0, count: 0 };
-      map[k].revenue += o.totalAmount;
-      map[k].count   += 1;
+      const items = getLineItems(o);
+      if (items && items.length > 0) {
+        // Multi-item order: attribute each product's lineTotal individually
+        for (const item of items) {
+          const k = item.productName || 'Unknown';
+          if (!map[k]) map[k] = { revenue: 0, count: 0 };
+          map[k].revenue += item.lineTotal || 0;
+          map[k].count += item.quantity || 1;
+        }
+      } else {
+        // Legacy order: use productName + totalAmount
+        const k = o.productName || 'Unknown';
+        if (!map[k]) map[k] = { revenue: 0, count: 0 };
+        map[k].revenue += o.totalAmount;
+        map[k].count += 1;
+      }
     }
     return Object.entries(map).map(([name, v]) => ({ name, ...v })).sort((a, b) => b.revenue - a.revenue).slice(0, 5);
   }, [completed]);
@@ -371,10 +386,13 @@ export default function SalesHistoryView({ ordersList, addNotification }: Props)
                   {tableRows.length === 0 ? (
                     <tr><td colSpan={7} className="text-center py-10 text-[var(--text-muted)] text-sm">No records match your filters.</td></tr>
                   ) : tableRows.map(o => (
-                    <tr key={o.id} className="border-b border-[var(--border)] hover:bg-[var(--bg-input)] transition-colors">
+                    <tr key={o.id}
+                      className="border-b border-[var(--border)] hover:bg-[var(--bg-input)] transition-colors cursor-pointer"
+                      onClick={() => setSelectedOrder(o)}
+                    >
                       <td className="py-3 px-3 font-mono text-[10px] text-[var(--text-secondary)]">{o.ticketNumber || o.id}</td>
                       <td className="py-3 px-3 font-semibold text-[var(--text-primary)] whitespace-nowrap">{o.clientName || '—'}</td>
-                      <td className="py-3 px-3 text-[var(--text-secondary)] max-w-[160px] truncate">{o.productName || '—'}</td>
+                      <td className="py-3 px-3 max-w-[180px]"><InvoiceLineItems order={o} compact /></td>
                       <td className="py-3 px-3 font-bold text-emerald-600 whitespace-nowrap">{Number(o.totalAmount ?? 0).toLocaleString()}</td>
                       <td className="py-3 px-3 text-[var(--text-secondary)] whitespace-nowrap text-xs">{(o.paymentMode || '').replace(/_/g,' ')}</td>
                       <td className="py-3 px-3 whitespace-nowrap">
@@ -442,6 +460,60 @@ export default function SalesHistoryView({ ordersList, addNotification }: Props)
             )}
           </div>
         </>
+      )}
+
+      {/* ── Order detail side-panel ── */}
+      {selectedOrder && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-4" onClick={() => setSelectedOrder(null)}>
+          <div
+            className="w-full max-w-xl rounded-2xl bg-[var(--bg-card)] border border-[var(--border)] shadow-2xl flex flex-col max-h-[90vh]"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 pt-5 pb-4 shrink-0 border-b border-[var(--border)]">
+              <div>
+                <h3 className="font-bold text-[var(--text-primary)]">Invoice Details</h3>
+                <p className="text-xs text-[var(--text-muted)] mt-0.5 font-mono">{selectedOrder.ticketNumber || selectedOrder.id}</p>
+              </div>
+              <button onClick={() => setSelectedOrder(null)} className="p-1.5 rounded-lg hover:bg-[var(--bg-input)]">
+                <X className="w-4 h-4 text-[var(--text-muted)]" />
+              </button>
+            </div>
+
+            <div className="overflow-y-auto flex-1 px-6 py-4 space-y-4">
+              {/* Meta */}
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                {[
+                  ['Customer', selectedOrder.clientName],
+                  ['Destination', selectedOrder.destination || '—'],
+                  ['Payment Mode', (selectedOrder.paymentMode || '').replace(/_/g,' ')],
+                  ['Date', (selectedOrder.createdAt || '').split('T')[0]],
+                  ['Status', selectedOrder.status],
+                ].map(([k, v]) => (
+                  <div key={k}>
+                    <p className="text-xs text-[var(--text-muted)]">{k}</p>
+                    <p className="font-semibold text-[var(--text-primary)]">{v}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Line items */}
+              <div>
+                <p className="text-xs font-semibold text-[var(--text-muted)] mb-2">Invoice Items</p>
+                <InvoiceLineItems order={selectedOrder} />
+              </div>
+            </div>
+
+            <div className="px-6 py-4 shrink-0 border-t border-[var(--border)]">
+              <button
+                onClick={() => setSelectedOrder(null)}
+                className="w-full py-2 rounded-xl bg-[var(--accent)] text-white text-sm font-semibold hover:opacity-90"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
