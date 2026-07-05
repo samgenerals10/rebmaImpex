@@ -147,42 +147,50 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
     if (!form.clientName.trim()) { addNotification('Customer name is required.'); return; }
     const validItems = lineItems.filter(item => item.productName.trim());
     if (validItems.length === 0) { addNotification('Add at least one product.'); return; }
-    const ticketBase = `TKT-${Math.floor(10000 + Math.random() * 90000)}`;
+
+    const ticketNumber = `TKT-${Math.floor(10000 + Math.random() * 90000)}`;
     const now = new Date().toISOString();
-    const newOrders: Order[] = [];
-    for (let i = 0; i < validItems.length; i++) {
-      const item = validItems[i];
+
+    // Build line items with pricing
+    const itemsWithPricing = validItems.map(item => {
       const unitPrice = productPrices[item.productName] ?? 0;
       const qty = Math.max(1, item.quantity);
-      const total = unitPrice * qty;
-      const ticketNumber = validItems.length === 1 ? ticketBase : `${ticketBase}-${i + 1}`;
-      const { data: inserted, error } = await supabase.from('orders').insert({
-        ticket_number: ticketNumber,
-        client_name: form.clientName.trim(),
-        product_name: item.productName,
-        destination: form.destination || null,
-        payment_mode: form.paymentMode,
-        total_amount: total,
-        status: 'PENDING_FINANCE',
-        created_at: now,
-        updated_at: now,
-        metadata: { quantity: qty, unit_price: unitPrice },
-      }).select().single();
-      if (error) { addNotification(`Failed to save item ${i + 1}: ${error.message}`); return; }
-      const newOrder = mapOrder(inserted || {
-        id: `ord-${Date.now()}-${i}`, ticket_number: ticketNumber,
-        client_name: form.clientName, product_name: item.productName,
-        destination: form.destination, payment_mode: form.paymentMode,
-        total_amount: total, status: 'PENDING_FINANCE', created_at: now,
-      });
-      newOrders.push(newOrder);
-      onCreateOrder(newOrder);
-    }
-    setOrders(prev => [...newOrders, ...prev]);
+      return { productName: item.productName, quantity: qty, unitPrice, lineTotal: unitPrice * qty };
+    });
+    const orderTotal = itemsWithPricing.reduce((s, i) => s + i.lineTotal, 0);
+
+    // Single product name display: one product → its name, multiple → "Product A + 2 more"
+    const primaryProduct = itemsWithPricing[0].productName;
+    const productDisplay = itemsWithPricing.length === 1
+      ? primaryProduct
+      : `${primaryProduct} + ${itemsWithPricing.length - 1} more`;
+
+    const { data: inserted, error } = await supabase.from('orders').insert({
+      ticket_number: ticketNumber,
+      client_name: form.clientName.trim(),
+      product_name: productDisplay,
+      destination: form.destination || null,
+      payment_mode: form.paymentMode,
+      total_amount: orderTotal,
+      status: 'PENDING_FINANCE',
+      created_at: now,
+      updated_at: now,
+      metadata: { items: itemsWithPricing },
+    }).select().single();
+
+    if (error) { addNotification(`Failed to create order: ${error.message}`); return; }
+    const newOrder = mapOrder(inserted || {
+      id: `ord-${Date.now()}`, ticket_number: ticketNumber,
+      client_name: form.clientName, product_name: productDisplay,
+      destination: form.destination, payment_mode: form.paymentMode,
+      total_amount: orderTotal, status: 'PENDING_FINANCE', created_at: now,
+    });
+    onCreateOrder(newOrder);
+    setOrders(prev => [newOrder, ...prev]);
     setShowNewModal(false);
     setLineItems([{ productName: '', quantity: 1 }]);
     setForm({ clientName: '', destination: '', paymentMode: 'CASH' });
-    addNotification(`${newOrders.length} order${newOrders.length > 1 ? 's' : ''} created. Routed to Finance.`);
+    addNotification('Order created successfully. Routed to Finance for review.');
   };
 
   const exportCSV = () => {
