@@ -41,6 +41,7 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
   const [cashflowTab, setCashflowTab] = useState<'income' | 'expense' | 'savings'>('income');
   const [earnPeriod, setEarnPeriod] = useState('6M');
   const [activities, setActivities] = useState<any[]>([]);
+  const [goodsPrices, setGoodsPrices] = useState<any[]>([]);
   const feedRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const firstName = currentUser?.fullName?.split(' ')[0] || 'Manager';
@@ -79,6 +80,11 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
       setGeneralPurchases((genPurch as any) || []);
       setAttendanceRecords((att as any) || []);
       setFinanceExpenses((expenses as any) || []);
+
+      // Goods prices — drives inventory value display
+      supabase.from('goods_prices').select('product_name, unit_price, cost_price, currency').then(({ data }) => {
+        if (data) setGoodsPrices(data);
+      }, () => {});
     } catch (e) {
       console.error('Error fetching dashboard stats:', e);
     } finally {
@@ -402,6 +408,26 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
     score: d.performance_score || 0
   }));
 
+  // Inventory: join goods_prices × approved cargo_intake by product name
+  const inventoryItems = goodsPrices.map(gp => {
+    const key = String(gp.product_name || '').toLowerCase().trim();
+    const qty = cargoIntake
+      .filter(c => String(c.product_name || '').toLowerCase().trim() === key)
+      .reduce((s: number, c: any) => s + (Number(c.quantity) || 0), 0);
+    return {
+      name: gp.product_name,
+      unitPrice: Number(gp.unit_price || 0),
+      costPrice: Number(gp.cost_price || 0),
+      currency: gp.currency || 'GHS',
+      qty,
+      sellingValue: Number(gp.unit_price || 0) * qty,
+      costValue: Number(gp.cost_price || 0) * qty,
+    };
+  });
+  const totalSellingValue = inventoryItems.reduce((s, i) => s + i.sellingValue, 0);
+  const totalCostValue = inventoryItems.reduce((s, i) => s + i.costValue, 0);
+  const potentialProfit = totalSellingValue - totalCostValue;
+
   const cashflowValue = cashflowData[cashflowData.length - 1] || { income: 0, expense: 0 };
   const cashflowDisplay = cashflowTab === 'income' ? cashflowValue.income : cashflowTab === 'expense' ? cashflowValue.expense : cashflowValue.income - cashflowValue.expense;
 
@@ -518,6 +544,54 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
           </div>
         ))}
       </div>
+
+      {/* Inventory Overview — from goods_prices × cargo_intake */}
+      {goodsPrices.length > 0 && (
+        <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="font-semibold text-[var(--text-primary)] flex items-center gap-2">
+                <Package size={16} className="text-[var(--accent)]" /> Goods Inventory Value
+              </h3>
+              <p className="text-xs text-[var(--text-muted)] mt-0.5">{goodsPrices.length} priced product{goodsPrices.length !== 1 ? 's' : ''} · based on cargo intake quantities</p>
+            </div>
+            <button onClick={() => setActiveSubTab?.('SetPrices')} className="text-xs font-semibold hover:underline" style={{ color: 'var(--accent)' }}>Manage Prices →</button>
+          </div>
+          <div className="grid grid-cols-3 gap-4 mb-4">
+            <div className="rounded-xl p-4" style={{ background: 'var(--accent-light)' }}>
+              <p className="text-[10px] text-[var(--text-muted)] uppercase font-semibold tracking-wide mb-1">Total Cost Value</p>
+              <p className="text-xl font-bold text-[var(--text-primary)]">{inventoryItems[0]?.currency || 'GHS'} {totalCostValue.toLocaleString()}</p>
+              <p className="text-xs text-[var(--text-muted)] mt-0.5">What goods cost us</p>
+            </div>
+            <div className="rounded-xl p-4 bg-emerald-500/10">
+              <p className="text-[10px] text-[var(--text-muted)] uppercase font-semibold tracking-wide mb-1">Selling Value</p>
+              <p className="text-xl font-bold text-emerald-600">{inventoryItems[0]?.currency || 'GHS'} {totalSellingValue.toLocaleString()}</p>
+              <p className="text-xs text-[var(--text-muted)] mt-0.5">At set prices</p>
+            </div>
+            <div className="rounded-xl p-4 bg-violet-500/10">
+              <p className="text-[10px] text-[var(--text-muted)] uppercase font-semibold tracking-wide mb-1">Potential Profit</p>
+              <p className={`text-xl font-bold ${potentialProfit >= 0 ? 'text-violet-600' : 'text-rose-600'}`}>{inventoryItems[0]?.currency || 'GHS'} {potentialProfit.toLocaleString()}</p>
+              <p className="text-xs text-[var(--text-muted)] mt-0.5">Selling − Cost</p>
+            </div>
+          </div>
+          <div className="space-y-2">
+            {inventoryItems.map(item => (
+              <div key={item.name} className="flex items-center justify-between px-3 py-2 rounded-xl bg-[var(--bg)] border border-[var(--border)]">
+                <span className="text-xs font-semibold text-[var(--text-primary)]">{item.name}</span>
+                <div className="flex items-center gap-6 text-xs text-[var(--text-muted)]">
+                  <span>Qty: <strong className="text-[var(--text-primary)]">{item.qty.toLocaleString()}</strong></span>
+                  <span>Cost: <strong className="text-[var(--text-primary)]">{item.currency} {item.costPrice}</strong></span>
+                  <span>Price: <strong className="text-emerald-600">{item.currency} {item.unitPrice}</strong></span>
+                  <span>Value: <strong className="text-emerald-600">{item.currency} {item.sellingValue.toLocaleString()}</strong></span>
+                </div>
+              </div>
+            ))}
+            {inventoryItems.length === 0 && (
+              <p className="text-xs text-[var(--text-muted)] text-center py-3">No matching cargo intake found for priced products yet</p>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ROW 2: Earning + Spending */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">

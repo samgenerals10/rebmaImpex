@@ -61,6 +61,8 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
   const [walletCheque, setWalletCheque] = useState(0);
   const [walletTotal, setWalletTotal] = useState(0);
   const [totalExpenses, setTotalExpenses] = useState(0);
+  const [goodsPrices, setGoodsPrices] = useState<any[]>([]);
+  const [cargoForInventory, setCargoForInventory] = useState<any[]>([]);
 
   // Self-fetch payments for wallet section
   useEffect(() => {
@@ -79,6 +81,12 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
     }, () => {});
     supabase.from('finance_expenses').select('amount').eq('status', 'Approved').then(({ data }) => {
       if (data) setTotalExpenses((data as any[]).reduce((s, e) => s + Number(e.amount || 0), 0));
+    }, () => {});
+    supabase.from('goods_prices').select('product_name, unit_price, cost_price, currency').then(({ data }) => {
+      if (data) setGoodsPrices(data as any[]);
+    }, () => {});
+    supabase.from('cargo_intake').select('product_name, quantity').then(({ data }) => {
+      if (data) setCargoForInventory(data as any[]);
     }, () => {});
   }, []);
 
@@ -336,6 +344,64 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
           ))}
         </div>
       </div>
+
+      {/* ROW 4b - Goods Inventory Value */}
+      {goodsPrices.length > 0 && (() => {
+        const items = goodsPrices.map((gp: any) => {
+          const key = String(gp.product_name || '').toLowerCase().trim();
+          const qty = cargoForInventory.filter((c: any) => String(c.product_name || '').toLowerCase().trim() === key).reduce((s: number, c: any) => s + (Number(c.quantity) || 0), 0);
+          return { name: gp.product_name, unitPrice: Number(gp.unit_price || 0), costPrice: Number(gp.cost_price || 0), currency: gp.currency || 'GHS', qty, sellingValue: Number(gp.unit_price || 0) * qty, costValue: Number(gp.cost_price || 0) * qty };
+        });
+        const totalSell = items.reduce((s: number, i: any) => s + i.sellingValue, 0);
+        const totalCost = items.reduce((s: number, i: any) => s + i.costValue, 0);
+        const currency = items[0]?.currency || 'GHS';
+        return (
+          <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="font-semibold text-[var(--text-primary)] flex items-center gap-2">
+                  <Building2 size={15} className="text-[var(--accent)]" /> Goods Inventory Value
+                </h3>
+                <p className="text-xs text-[var(--text-muted)] mt-0.5">Prices set by Management · quantities from cargo intake</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-4 mb-4">
+              <div className="rounded-xl p-4 bg-amber-500/10">
+                <p className="text-[10px] text-[var(--text-muted)] uppercase font-semibold tracking-wide mb-1">Inventory Cost</p>
+                <p className="text-xl font-bold text-amber-600">{currency} {totalCost.toLocaleString()}</p>
+                <p className="text-xs text-[var(--text-muted)] mt-0.5">What goods cost</p>
+              </div>
+              <div className="rounded-xl p-4 bg-emerald-500/10">
+                <p className="text-[10px] text-[var(--text-muted)] uppercase font-semibold tracking-wide mb-1">Potential Revenue</p>
+                <p className="text-xl font-bold text-emerald-600">{currency} {totalSell.toLocaleString()}</p>
+                <p className="text-xs text-[var(--text-muted)] mt-0.5">At selling prices</p>
+              </div>
+              <div className="rounded-xl p-4 bg-violet-500/10">
+                <p className="text-[10px] text-[var(--text-muted)] uppercase font-semibold tracking-wide mb-1">Gross Margin</p>
+                <p className="text-xl font-bold text-violet-600">{totalCost > 0 ? `${(((totalSell - totalCost) / totalCost) * 100).toFixed(1)}%` : '—'}</p>
+                <p className="text-xs text-[var(--text-muted)] mt-0.5">Avg across products</p>
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead><tr className="border-b border-[var(--border)]">{['Product','Qty','Cost Price','Selling Price','Cost Value','Potential Revenue'].map(h => <th key={h} className="px-3 py-2 text-left text-[10px] text-[var(--text-muted)] uppercase font-semibold whitespace-nowrap">{h}</th>)}</tr></thead>
+                <tbody className="divide-y divide-[var(--border)]">
+                  {items.map((item: any) => (
+                    <tr key={item.name} className="hover:bg-[var(--accent-light)]">
+                      <td className="px-3 py-2 font-semibold text-[var(--text-primary)]">{item.name}</td>
+                      <td className="px-3 py-2 text-[var(--text-secondary)]">{item.qty.toLocaleString()}</td>
+                      <td className="px-3 py-2 text-[var(--text-secondary)]">{item.currency} {item.costPrice}</td>
+                      <td className="px-3 py-2 text-emerald-600 font-semibold">{item.currency} {item.unitPrice}</td>
+                      <td className="px-3 py-2 text-amber-600">{item.currency} {item.costValue.toLocaleString()}</td>
+                      <td className="px-3 py-2 text-emerald-600 font-semibold">{item.currency} {item.sellingValue.toLocaleString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ROW 5 - Transaction Overview + Payments Breakdown */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">

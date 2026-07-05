@@ -78,6 +78,8 @@ export default function MarketingOverviewView({ addNotification, setActiveSubTab
   const [orders, setOrders] = useState<Order[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
+  const [goodsPrices, setGoodsPrices] = useState<any[]>([]);
+  const [cargoForInventory, setCargoForInventory] = useState<any[]>([]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -117,6 +119,14 @@ export default function MarketingOverviewView({ addNotification, setActiveSubTab
 
       setOrders(formattedOrders);
       setCustomers(formattedCustomers);
+
+      // Goods available to sell — prices set by Management
+      supabase.from('goods_prices').select('product_name, unit_price, cost_price, currency, category').then(({ data }) => {
+        if (data) setGoodsPrices(data as any[]);
+      }, () => {});
+      supabase.from('cargo_intake').select('product_name, quantity').then(({ data }) => {
+        if (data) setCargoForInventory(data as any[]);
+      }, () => {});
     } catch (e) {
       console.error(e);
     } finally {
@@ -399,6 +409,57 @@ export default function MarketingOverviewView({ addNotification, setActiveSubTab
           </div>
         ))}
       </div>
+
+      {/* Available Products — priced by Management, ready to sell */}
+      {goodsPrices.length > 0 && (() => {
+        const items = goodsPrices.map((gp: any) => {
+          const key = String(gp.product_name || '').toLowerCase().trim();
+          const qty = cargoForInventory.filter((c: any) => String(c.product_name || '').toLowerCase().trim() === key).reduce((s: number, c: any) => s + (Number(c.quantity) || 0), 0);
+          return { name: gp.product_name, unitPrice: Number(gp.unit_price || 0), currency: gp.currency || 'GHS', category: gp.category || '—', qty, potentialRevenue: Number(gp.unit_price || 0) * qty };
+        });
+        const totalPotential = items.reduce((s: number, i: any) => s + i.potentialRevenue, 0);
+        return (
+          <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="font-semibold text-[var(--text-primary)] flex items-center gap-2">
+                  <CheckCircle size={15} className="text-emerald-500" /> Available Products to Sell
+                </h3>
+                <p className="text-xs text-[var(--text-muted)] mt-0.5">
+                  {items.length} product{items.length !== 1 ? 's' : ''} priced by Management · Potential revenue: <strong className="text-emerald-600">{items[0]?.currency || 'GHS'} {totalPotential.toLocaleString()}</strong>
+                </p>
+              </div>
+              <button onClick={() => setActiveSubTab?.('CreateOrder')} className="px-3 py-1.5 rounded-xl text-xs font-bold text-white cursor-pointer" style={{ background: 'var(--accent)' }}>+ New Order</button>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {items.map((item: any) => (
+                <div key={item.name} className="rounded-xl border border-[var(--border)] p-4 bg-[var(--bg)] hover:border-emerald-400 transition-colors cursor-pointer" onClick={() => setActiveSubTab?.('CreateOrder')}>
+                  <div className="flex items-start justify-between mb-2">
+                    <p className="text-sm font-bold text-[var(--text-primary)] leading-tight">{item.name}</p>
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 shrink-0 ml-2">Available</span>
+                  </div>
+                  <p className="text-[10px] text-[var(--text-muted)] mb-3">{item.category}</p>
+                  <div className="flex items-end justify-between">
+                    <div>
+                      <p className="text-[10px] text-[var(--text-muted)]">Selling Price</p>
+                      <p className="text-base font-bold text-emerald-600">{item.currency} {item.unitPrice.toLocaleString()}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[10px] text-[var(--text-muted)]">Stock Qty</p>
+                      <p className="text-base font-bold text-[var(--text-primary)]">{item.qty.toLocaleString()}</p>
+                    </div>
+                  </div>
+                  {item.qty > 0 && (
+                    <p className="text-[10px] text-[var(--text-muted)] mt-2 border-t border-[var(--border)] pt-2">
+                      Potential: <strong className="text-emerald-600">{item.currency} {item.potentialRevenue.toLocaleString()}</strong>
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ROW 2 - Sales Overview + Orders by Category */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
