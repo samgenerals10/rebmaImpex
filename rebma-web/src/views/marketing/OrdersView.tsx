@@ -56,7 +56,8 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
 
   const openNewOrderModal = () => {
     setShowNewModal(true);
-    setPricePerUnit(null);
+    setLineItems([{ productName: '', quantity: 1 }]);
+    setForm({ clientName: '', destination: '', paymentMode: 'CASH' });
     supabase.from('goods_prices').select('product_name, unit_price').order('product_name').then(({ data }) => {
       setAvailableProducts((data || []).map((r: any) => String(r.product_name)));
       const priceMap: Record<string, number> = {};
@@ -75,15 +76,18 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
     }, () => {});
   };
 
-  const handleProductChange = (productName: string) => {
-    setForm(prev => ({ ...prev, productName }));
-    setPricePerUnit(productPrices[productName] ?? null);
+  const updateLineItem = (index: number, field: 'productName' | 'quantity', value: string | number) => {
+    setLineItems(prev => prev.map((item, i) => i === index ? { ...item, [field]: value } : item));
   };
+
+  const addLineItem = () => setLineItems(prev => [...prev, { productName: '', quantity: 1 }]);
+
+  const removeLineItem = (index: number) => setLineItems(prev => prev.length > 1 ? prev.filter((_, i) => i !== index) : prev);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  const [form, setForm] = useState({ clientName: '', productName: '', destination: '', quantity: '1', paymentMode: 'CASH' as Order['paymentMode'] });
-  const [pricePerUnit, setPricePerUnit] = useState<number | null>(null);
+  const [form, setForm] = useState({ clientName: '', destination: '', paymentMode: 'CASH' as Order['paymentMode'] });
+  const [lineItems, setLineItems] = useState<{ productName: string; quantity: number }[]>([{ productName: '', quantity: 1 }]);
   const [availableProducts, setAvailableProducts] = useState<string[]>([]);
 
   const mapOrder = (r: any): Order => ({
@@ -140,36 +144,45 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
   const active = orders.filter(o => o.status === 'PROCESSING' || o.status === 'DELIVERED').length;
 
   const handleSave = async () => {
-    if (!form.clientName) { addNotification('Customer name is required.'); return; }
-    const qty = Math.max(1, parseInt(form.quantity) || 1);
-    const computedAmount = pricePerUnit != null ? pricePerUnit * qty : 0;
-    const ticketNumber = `TKT-${Math.floor(10000 + Math.random() * 90000)}`;
+    if (!form.clientName.trim()) { addNotification('Customer name is required.'); return; }
+    const validItems = lineItems.filter(item => item.productName.trim());
+    if (validItems.length === 0) { addNotification('Add at least one product.'); return; }
+    const ticketBase = `TKT-${Math.floor(10000 + Math.random() * 90000)}`;
     const now = new Date().toISOString();
-    const { data: inserted, error } = await supabase.from('orders').insert({
-      ticket_number: ticketNumber,
-      client_name: form.clientName,
-      product_name: form.productName || null,
-      destination: form.destination || null,
-      payment_mode: form.paymentMode,
-      total_amount: computedAmount,
-      status: 'PENDING_FINANCE',
-      created_at: now,
-      updated_at: now,
-      metadata: { quantity: qty, unit_price: pricePerUnit ?? 0 },
-    }).select().single();
-    if (error) { addNotification(`Failed to create order: ${error.message}`); return; }
-    const newOrder = mapOrder(inserted || {
-      id: `ord-${Date.now()}`, ticket_number: ticketNumber,
-      client_name: form.clientName, product_name: form.productName,
-      destination: form.destination, payment_mode: form.paymentMode,
-      total_amount: computedAmount, status: 'PENDING_FINANCE', created_at: now,
-    });
-    onCreateOrder(newOrder);
-    setOrders(prev => [newOrder, ...prev]);
+    const newOrders: Order[] = [];
+    for (let i = 0; i < validItems.length; i++) {
+      const item = validItems[i];
+      const unitPrice = productPrices[item.productName] ?? 0;
+      const qty = Math.max(1, item.quantity);
+      const total = unitPrice * qty;
+      const ticketNumber = validItems.length === 1 ? ticketBase : `${ticketBase}-${i + 1}`;
+      const { data: inserted, error } = await supabase.from('orders').insert({
+        ticket_number: ticketNumber,
+        client_name: form.clientName.trim(),
+        product_name: item.productName,
+        destination: form.destination || null,
+        payment_mode: form.paymentMode,
+        total_amount: total,
+        status: 'PENDING_FINANCE',
+        created_at: now,
+        updated_at: now,
+        metadata: { quantity: qty, unit_price: unitPrice },
+      }).select().single();
+      if (error) { addNotification(`Failed to save item ${i + 1}: ${error.message}`); return; }
+      const newOrder = mapOrder(inserted || {
+        id: `ord-${Date.now()}-${i}`, ticket_number: ticketNumber,
+        client_name: form.clientName, product_name: item.productName,
+        destination: form.destination, payment_mode: form.paymentMode,
+        total_amount: total, status: 'PENDING_FINANCE', created_at: now,
+      });
+      newOrders.push(newOrder);
+      onCreateOrder(newOrder);
+    }
+    setOrders(prev => [...newOrders, ...prev]);
     setShowNewModal(false);
-    setForm({ clientName: '', productName: '', destination: '', quantity: '1', paymentMode: 'CASH' });
-    setPricePerUnit(null);
-    addNotification('Order created successfully. Routed to Finance.');
+    setLineItems([{ productName: '', quantity: 1 }]);
+    setForm({ clientName: '', destination: '', paymentMode: 'CASH' });
+    addNotification(`${newOrders.length} order${newOrders.length > 1 ? 's' : ''} created. Routed to Finance.`);
   };
 
   const exportCSV = () => {
@@ -303,85 +316,130 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
         </div>
       </div>
 
-      {showNewModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-2xl bg-[var(--bg-card)] border border-[var(--border)] shadow-xl p-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="font-bold text-[var(--text-primary)]">New Sales Order</h3>
-              <button onClick={() => setShowNewModal(false)} className="p-1 rounded-lg hover:bg-[var(--bg-input)]"><X className="w-4 h-4 text-[var(--text-muted)]" /></button>
-            </div>
-            <datalist id="customer-names-list">
-              {customers.map(c => <option key={c.id} value={c.name} />)}
-            </datalist>
-            <div>
-              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Customer Name *</label>
-              <input
-                type="text"
-                list="customer-names-list"
-                value={form.clientName}
-                onChange={e => setForm(prev => ({ ...prev, clientName: e.target.value }))}
-                placeholder="Type or select customer name..."
-                className="w-full px-3 py-2 text-sm rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Destination</label>
-              <input
-                type="text"
-                value={form.destination}
-                onChange={e => setForm(prev => ({ ...prev, destination: e.target.value }))}
-                placeholder="e.g. Accra, Tema, Kumasi..."
-                className="w-full px-3 py-2 text-sm rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Product</label>
-              {availableProducts.length > 0 ? (
-                <select value={form.productName} onChange={e => handleProductChange(e.target.value)}
-                  className="w-full px-3 py-2 text-sm rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]">
-                  <option value="">— Select product —</option>
-                  {availableProducts.map(p => <option key={p} value={p}>{p}</option>)}
-                </select>
-              ) : (
-                <input type="text" value={form.productName} onChange={e => setForm(prev => ({ ...prev, productName: e.target.value }))}
-                  placeholder="Type product name…"
-                  className="w-full px-3 py-2 text-sm rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />
-              )}
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Quantity</label>
-              <input type="number" min="1" value={form.quantity} onChange={e => setForm(prev => ({ ...prev, quantity: e.target.value }))}
-                placeholder="Enter quantity..."
-                className="w-full px-3 py-2 text-sm rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />
-            </div>
-            {pricePerUnit != null && (
-              <div className="rounded-xl bg-[var(--accent-light)] border border-[var(--border)] px-3 py-3 text-xs text-[var(--text-secondary)] space-y-1">
-                <p>Management set price: <span className="font-bold text-[var(--accent)] text-sm">GHS {pricePerUnit.toLocaleString()}</span> per unit</p>
-                <p>Order Total: <span className="font-bold text-[var(--accent)] text-sm">GHS {(pricePerUnit * Math.max(1, parseInt(form.quantity) || 1)).toLocaleString()}</span></p>
+      {showNewModal && (() => {
+        const orderTotal = lineItems.reduce((s, item) => {
+          const price = productPrices[item.productName] ?? 0;
+          return s + price * Math.max(1, item.quantity);
+        }, 0);
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+            <div className="w-full max-w-lg rounded-2xl bg-[var(--bg-card)] border border-[var(--border)] shadow-xl flex flex-col max-h-[90vh]">
+              {/* Header */}
+              <div className="flex items-center justify-between px-6 pt-5 pb-4 shrink-0">
+                <h3 className="font-bold text-[var(--text-primary)]">New Sales Order</h3>
+                <button onClick={() => setShowNewModal(false)} className="p-1 rounded-lg hover:bg-[var(--bg-input)]"><X className="w-4 h-4 text-[var(--text-muted)]" /></button>
               </div>
-            )}
-            {pricePerUnit == null && form.productName && (
-              <div className="rounded-xl bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-700">
-                No price set for this product yet. Management must set a price before the order can be invoiced.
+
+              {/* Scrollable body */}
+              <div className="overflow-y-auto flex-1 px-6 space-y-4 pb-2">
+                <datalist id="customer-names-list">
+                  {customers.map(c => <option key={c.id} value={c.name} />)}
+                </datalist>
+
+                {/* Customer + Destination */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="col-span-2">
+                    <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Customer Name *</label>
+                    <input type="text" list="customer-names-list" value={form.clientName}
+                      onChange={e => setForm(prev => ({ ...prev, clientName: e.target.value }))}
+                      placeholder="Type or select customer name..."
+                      className="w-full px-3 py-2 text-sm rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Destination</label>
+                    <input type="text" value={form.destination}
+                      onChange={e => setForm(prev => ({ ...prev, destination: e.target.value }))}
+                      placeholder="e.g. Accra, Tema, Kumasi..."
+                      className="w-full px-3 py-2 text-sm rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />
+                  </div>
+                </div>
+
+                {/* Line Items */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-xs font-medium text-[var(--text-secondary)]">Products *</label>
+                    <span className="text-[10px] text-[var(--text-muted)]">{lineItems.length} item{lineItems.length !== 1 ? 's' : ''}</span>
+                  </div>
+                  <div className="space-y-2">
+                    {lineItems.map((item, index) => {
+                      const unitPrice = productPrices[item.productName] ?? null;
+                      const lineTotal = unitPrice != null ? unitPrice * Math.max(1, item.quantity) : null;
+                      return (
+                        <div key={index} className="rounded-xl border border-[var(--border)] bg-[var(--bg)] p-3 space-y-2">
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1">
+                              {availableProducts.length > 0 ? (
+                                <select value={item.productName} onChange={e => updateLineItem(index, 'productName', e.target.value)}
+                                  className="w-full px-3 py-2 text-sm rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]">
+                                  <option value="">— Select product —</option>
+                                  {availableProducts.map(p => <option key={p} value={p}>{p}</option>)}
+                                </select>
+                              ) : (
+                                <input type="text" value={item.productName} onChange={e => updateLineItem(index, 'productName', e.target.value)}
+                                  placeholder="Product name…"
+                                  className="w-full px-3 py-2 text-sm rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />
+                              )}
+                            </div>
+                            <div className="w-24 shrink-0">
+                              <input type="number" min="1" value={item.quantity} onChange={e => updateLineItem(index, 'quantity', Math.max(1, parseInt(e.target.value) || 1))}
+                                className="w-full px-3 py-2 text-sm rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)] text-center" />
+                            </div>
+                            {lineItems.length > 1 && (
+                              <button onClick={() => removeLineItem(index)} className="p-1.5 rounded-lg hover:bg-rose-50 text-[var(--text-muted)] hover:text-rose-500 shrink-0">
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                          {unitPrice != null ? (
+                            <div className="flex items-center justify-between px-1 text-xs text-[var(--text-muted)]">
+                              <span>GHS {unitPrice.toLocaleString()} per unit</span>
+                              <span className="font-semibold text-[var(--accent)]">= GHS {lineTotal!.toLocaleString()}</span>
+                            </div>
+                          ) : item.productName ? (
+                            <p className="text-[10px] text-amber-600 px-1">No price set — Management must price this product</p>
+                          ) : null}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <button onClick={addLineItem}
+                    className="mt-2 w-full py-2 rounded-xl border border-dashed border-[var(--border)] text-xs text-[var(--accent)] hover:bg-[var(--accent-light)] flex items-center justify-center gap-1.5 transition-colors">
+                    <Plus className="w-3.5 h-3.5" /> Add another product
+                  </button>
+                </div>
+
+                {/* Order summary */}
+                {orderTotal > 0 && (
+                  <div className="rounded-xl bg-[var(--accent-light)] border border-[var(--border)] px-4 py-3 flex items-center justify-between">
+                    <span className="text-xs text-[var(--text-secondary)]">Order Total ({lineItems.filter(i => i.productName).length} item{lineItems.filter(i => i.productName).length !== 1 ? 's' : ''})</span>
+                    <span className="text-base font-bold text-[var(--accent)]">GHS {orderTotal.toLocaleString()}</span>
+                  </div>
+                )}
+
+                {/* Payment Mode */}
+                <div>
+                  <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Payment Mode</label>
+                  <select value={form.paymentMode} onChange={e => setForm(prev => ({ ...prev, paymentMode: e.target.value as Order['paymentMode'] }))}
+                    className="w-full px-3 py-2 text-sm rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]">
+                    <option value="CASH">Cash</option>
+                    <option value="MOBILE_MONEY">Mobile Money</option>
+                    <option value="CHEQUE">Cheque</option>
+                    <option value="CREDIT">Credit</option>
+                  </select>
+                </div>
               </div>
-            )}
-            <div>
-              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Payment Mode</label>
-              <select value={form.paymentMode} onChange={e => setForm(prev => ({ ...prev, paymentMode: e.target.value as Order['paymentMode'] }))}
-                className="w-full px-3 py-2 text-sm rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]">
-                <option value="CASH">Cash</option>
-                <option value="MOBILE_MONEY">Mobile Money</option>
-                <option value="CHEQUE">Cheque</option>
-                <option value="CREDIT">Credit</option>
-              </select>
-            </div>
-            <div className="flex gap-3 pt-2">
-              <button onClick={() => setShowNewModal(false)} className="flex-1 py-2 rounded-xl border border-[var(--border)] text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-input)]">Cancel</button>
-              <button onClick={handleSave} className="flex-1 py-2 rounded-xl bg-[var(--accent)] text-white text-sm font-semibold hover:opacity-90">Save Order</button>
+
+              {/* Footer */}
+              <div className="flex gap-3 px-6 py-4 shrink-0 border-t border-[var(--border)]">
+                <button onClick={() => setShowNewModal(false)} className="flex-1 py-2 rounded-xl border border-[var(--border)] text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-input)]">Cancel</button>
+                <button onClick={handleSave} className="flex-1 py-2 rounded-xl bg-[var(--accent)] text-white text-sm font-semibold hover:opacity-90">
+                  Save Order{lineItems.filter(i => i.productName).length > 1 ? `s (${lineItems.filter(i => i.productName).length})` : ''}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {selectedOrder && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
