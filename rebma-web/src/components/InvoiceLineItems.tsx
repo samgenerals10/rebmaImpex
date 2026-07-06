@@ -31,6 +31,20 @@ export function getProductSummary(order: Order): string {
   return `${items[0].productName} +${items.length - 1} more`;
 }
 
+/**
+ * Returns a display label showing product name and quantities.
+ * Multi-item: "FLOUR (x10), SMILE (x20)"   Single/Legacy: "FLOUR (x10)"
+ */
+export function getProductSummaryWithQty(order: Order): string {
+  const items = getLineItems(order);
+  if (!items) {
+    const qty = order.quantity;
+    const name = order.productName || '—';
+    return qty ? `${name} (x${qty})` : name;
+  }
+  return items.map(item => `${item.productName} (x${item.quantity})`).join(', ');
+}
+
 export default function InvoiceLineItems({ order, compact = false }: Props) {
   const items = getLineItems(order);
 

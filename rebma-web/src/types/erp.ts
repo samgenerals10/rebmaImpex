@@ -18,6 +18,7 @@ export interface Order {
   totalAmount: number;
   status: 'PENDING_FINANCE' | 'PENDING_MANAGEMENT' | 'APPROVED' | 'PROCESSING' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | 'REJECTED';
   createdAt: string;
+  quantity?: number;
   products?: string;
   submittedBy?: string;
   metadata?: {

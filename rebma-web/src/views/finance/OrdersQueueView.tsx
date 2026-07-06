@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { exportToCSV } from '../../utils/export';
 import type { Order } from '../../types/erp';
-import InvoiceLineItems, { getProductSummary } from '../../components/InvoiceLineItems';
+import InvoiceLineItems, { getProductSummary, getProductSummaryWithQty } from '../../components/InvoiceLineItems';
 
 interface Props {
   addNotification?: (msg: string) => void;
@@ -82,6 +82,7 @@ function mapRow(r: any): Order {
     createdAt: r.created_at || r.createdAt || '',
     products: r.product_name || r.productName || r.products || '',
     submittedBy: r.created_by || r.submittedBy || '',
+    quantity: Number(r.quantity ?? 0),
     metadata: r.metadata || null,
   };
 }
@@ -98,6 +99,23 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
   const [rejectReason, setRejectReason] = useState('');
   const [payForm, setPayForm] = useState<PaymentForm>({ ...EMPTY_FORM });
   const [allOrders, setAllOrders] = useState<Order[]>([]);
+  const [isPartPayment, setIsPartPayment] = useState(false);
+
+  useEffect(() => {
+    if (selected) {
+      setPayForm({
+        ...EMPTY_FORM,
+        amountReceived: String(selected.totalAmount),
+        creditAmount: String(selected.totalAmount),
+        receiptNumber: `RCT-${Date.now().toString().slice(-6)}`,
+        dateReceived: new Date().toISOString().slice(0, 10),
+      });
+      setIsPartPayment(false);
+    } else {
+      setPayForm({ ...EMPTY_FORM });
+      setIsPartPayment(false);
+    }
+  }, [selected]);
 
   useEffect(() => {
     if (propOrders && propOrders.length > 0) {
@@ -182,8 +200,9 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
     const paymentRecord = {
       order_id: order.id,
       client_name: order.clientName,
-      amount: order.totalAmount,
+      amount: Number(payForm.amountReceived || order.totalAmount),
       payment_mode: order.paymentMode,
+      payment_type: isPartPayment ? 'Part Payment' : 'Full Payment',
       cheque_number: payForm.chequeNumber || null,
       bank_name: payForm.bankName || null,
       momo_number: payForm.momoNumber || null,
@@ -203,6 +222,38 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
   const pMode = (selected?.paymentMode || 'CASH') as PaymentMode;
 
   if (selected) {
+    const enteredAmt = Number(payForm.amountReceived || 0);
+    const isAboveTotal = enteredAmt > selected.totalAmount;
+    const isBelowTotal = enteredAmt < selected.totalAmount;
+    const isPartPaymentRequired = isBelowTotal && !isPartPayment;
+    const isAmountInvalid = enteredAmt <= 0 || isAboveTotal || isPartPaymentRequired;
+
+    let amountFeedbackMsg = '';
+    let inputBorderClass = 'border-[var(--border)] focus:border-[var(--accent)]';
+    let feedbackColorClass = 'text-[var(--text-muted)]';
+    if (payForm.amountReceived !== '') {
+      if (isAboveTotal) {
+        amountFeedbackMsg = `Amount cannot exceed order total (GHS ${selected.totalAmount.toLocaleString()})`;
+        inputBorderClass = 'border-red-500 focus:border-red-500 focus:ring-red-500';
+        feedbackColorClass = 'text-red-500 font-medium';
+      } else if (isBelowTotal && !isPartPayment) {
+        amountFeedbackMsg = 'Please enable "Part Payment" to record a partial payment';
+        inputBorderClass = 'border-red-500 focus:border-red-500 focus:ring-red-500';
+        feedbackColorClass = 'text-red-500 font-medium';
+      } else if (isBelowTotal && isPartPayment) {
+        amountFeedbackMsg = '✓ Part Payment enabled';
+        inputBorderClass = 'border-amber-500 focus:border-amber-500 focus:ring-amber-500';
+        feedbackColorClass = 'text-amber-600 font-semibold';
+      } else if (enteredAmt === selected.totalAmount) {
+        amountFeedbackMsg = '✓ Matches total amount';
+        inputBorderClass = 'border-emerald-500 focus:border-emerald-500 focus:ring-emerald-500';
+        feedbackColorClass = 'text-emerald-600 font-semibold';
+      }
+    }
+
+    const isCashOrMoMoOrCheque = ['CASH', 'MOBILE_MONEY', 'CHEQUE'].includes(pMode);
+    const isSubmitDisabled = isCashOrMoMoOrCheque && isAmountInvalid;
+
     return (
       <div className="p-4 md:p-6 space-y-5">
         <button onClick={() => setSelected(null)} className="flex items-center gap-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] text-sm font-medium">
@@ -212,12 +263,17 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
         <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-6 space-y-5">
           <div className="flex items-start justify-between flex-wrap gap-4">
             <div>
-              <h2 className="text-xl font-bold text-[var(--text-primary)]">{selected.id}</h2>
-              <p className="text-sm text-[var(--text-secondary)]">{selected.clientName} · {selected.createdAt}</p>
+              <h2 className="text-xl font-bold text-[var(--text-primary)]">{getProductSummaryWithQty(selected)}</h2>
+              <p className="text-xs text-[var(--text-muted)] mt-1 font-mono">Order ID: {selected.id} · {selected.clientName} · {selected.createdAt}</p>
             </div>
-            <div className="flex items-center gap-2">
-              <span className={`text-xs px-2 py-1 rounded-full font-medium ${MODE_COLORS[selected.paymentMode] || ''}`}>{selected.paymentMode}</span>
-              <span className={`text-xs px-2 py-1 rounded-full font-medium ${STATUS_COLORS[selected.status] || ''}`}>{selected.status}</span>
+            <div className="text-right flex flex-col items-end gap-1.5">
+              <span className="text-xl font-extrabold text-emerald-500">
+                GHS {Number(selected.totalAmount ?? 0).toLocaleString()}
+              </span>
+              <div className="flex items-center gap-1.5">
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wide ${MODE_COLORS[selected.paymentMode] || ''}`}>{selected.paymentMode}</span>
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wide ${STATUS_COLORS[selected.status] || ''}`}>{selected.status}</span>
+              </div>
             </div>
           </div>
 
@@ -246,7 +302,30 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
 
               {pMode === 'CASH' && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Amount Received (GHS)</label><input type="number" value={payForm.amountReceived} onChange={e => setPayForm(f => ({ ...f, amountReceived: e.target.value }))} defaultValue={selected.totalAmount} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" /></div>
+                  <div>
+                    <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Amount Received (GHS)</label>
+                    <input
+                      type="number"
+                      value={payForm.amountReceived}
+                      onChange={e => setPayForm(f => ({ ...f, amountReceived: e.target.value }))}
+                      className={`w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border text-sm text-[var(--text-primary)] focus:outline-none ${inputBorderClass}`}
+                    />
+                    {amountFeedbackMsg && (
+                      <p className={`text-[10px] mt-1 ${feedbackColorClass}`}>{amountFeedbackMsg}</p>
+                    )}
+                    <div className="flex items-center gap-2 mt-2.5">
+                      <input
+                        type="checkbox"
+                        id="partPayment"
+                        checked={isPartPayment}
+                        onChange={e => setIsPartPayment(e.target.checked)}
+                        className="w-4 h-4 rounded border-[var(--border)] text-[var(--accent)] focus:ring-[var(--accent)] bg-[var(--bg-input)] cursor-pointer"
+                      />
+                      <label htmlFor="partPayment" className="text-xs font-medium text-[var(--text-secondary)] cursor-pointer select-none">
+                        This is a Part Payment (Partial Payment)
+                      </label>
+                    </div>
+                  </div>
                   <div><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Date Received</label><input type="date" value={payForm.dateReceived} onChange={e => setPayForm(f => ({ ...f, dateReceived: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" /></div>
                   <div><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Receipt Number</label><input value={payForm.receiptNumber} readOnly className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-muted)]" /></div>
                   <div><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Received By</label><input value={currentUser?.fullName || 'Finance'} readOnly className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-muted)]" /></div>
@@ -266,7 +345,36 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
                     { label: 'Expected Clearing Date', key: 'expectedClearing', type: 'date' },
                     { label: 'Amount', key: 'amountReceived', type: 'number' },
                   ].map(({ label, key, type }) => (
-                    <div key={key}><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">{label}</label><input type={type} value={(payForm as Record<string, string>)[key]} onChange={e => setPayForm(f => ({ ...f, [key]: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" /></div>
+                    <div key={key}>
+                      <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">{label}</label>
+                      <input
+                        type={type}
+                        value={(payForm as Record<string, string>)[key]}
+                        onChange={e => setPayForm(f => ({ ...f, [key]: e.target.value }))}
+                        className={`w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border text-sm text-[var(--text-primary)] focus:outline-none ${
+                          key === 'amountReceived' ? inputBorderClass : 'border-[var(--border)] focus:border-[var(--accent)]'
+                        }`}
+                      />
+                      {key === 'amountReceived' && (
+                        <>
+                          {amountFeedbackMsg && (
+                            <p className={`text-[10px] mt-1 ${feedbackColorClass}`}>{amountFeedbackMsg}</p>
+                          )}
+                          <div className="flex items-center gap-2 mt-2.5">
+                            <input
+                              type="checkbox"
+                              id="partPaymentCheque"
+                              checked={isPartPayment}
+                              onChange={e => setIsPartPayment(e.target.checked)}
+                              className="w-4 h-4 rounded border-[var(--border)] text-[var(--accent)] focus:ring-[var(--accent)] bg-[var(--bg-input)] cursor-pointer"
+                            />
+                            <label htmlFor="partPaymentCheque" className="text-xs font-medium text-[var(--text-secondary)] cursor-pointer select-none">
+                              This is a Part Payment (Partial Payment)
+                            </label>
+                          </div>
+                        </>
+                      )}
+                    </div>
                   ))}
                 </div>
               )}
@@ -274,6 +382,30 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
               {pMode === 'MOBILE_MONEY' && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Network</label><select value={payForm.network} onChange={e => setPayForm(f => ({ ...f, network: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"><option>MTN</option><option>Vodafone</option><option>AirtelTigo</option></select></div>
+                  <div>
+                    <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Amount Received (GHS)</label>
+                    <input
+                      type="number"
+                      value={payForm.amountReceived}
+                      onChange={e => setPayForm(f => ({ ...f, amountReceived: e.target.value }))}
+                      className={`w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border text-sm text-[var(--text-primary)] focus:outline-none ${inputBorderClass}`}
+                    />
+                    {amountFeedbackMsg && (
+                      <p className={`text-[10px] mt-1 ${feedbackColorClass}`}>{amountFeedbackMsg}</p>
+                    )}
+                    <div className="flex items-center gap-2 mt-2.5">
+                      <input
+                        type="checkbox"
+                        id="partPaymentMoMo"
+                        checked={isPartPayment}
+                        onChange={e => setIsPartPayment(e.target.checked)}
+                        className="w-4 h-4 rounded border-[var(--border)] text-[var(--accent)] focus:ring-[var(--accent)] bg-[var(--bg-input)] cursor-pointer"
+                      />
+                      <label htmlFor="partPaymentMoMo" className="text-xs font-medium text-[var(--text-secondary)] cursor-pointer select-none">
+                        This is a Part Payment (Partial Payment)
+                      </label>
+                    </div>
+                  </div>
                   {[
                     { label: 'MoMo Number *', key: 'momoNumber' },
                     { label: 'Account Name *', key: 'momoAccountName' },
@@ -332,7 +464,14 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
                 <button onClick={() => setRejectModal(selected.id)} className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-red-500 text-white text-sm font-medium hover:bg-red-600">
                   <XCircle size={16} /> Reject Order
                 </button>
-                <button onClick={() => savePaymentAndApprove(selected)} className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-white text-sm font-medium hover:opacity-90" style={{ background: 'var(--accent)' }}>
+                <button
+                  disabled={isSubmitDisabled}
+                  onClick={() => savePaymentAndApprove(selected)}
+                  className={`flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-white text-sm font-medium transition-all ${
+                    isSubmitDisabled ? 'bg-gray-400 cursor-not-allowed opacity-50' : 'hover:opacity-90'
+                  }`}
+                  style={!isSubmitDisabled ? { background: 'var(--accent)' } : undefined}
+                >
                   <CheckCircle size={16} /> Approve & Save Payment
                 </button>
               </div>

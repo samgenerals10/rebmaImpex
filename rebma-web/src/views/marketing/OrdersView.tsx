@@ -100,6 +100,7 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
     paymentMode: r.payment_mode || r.paymentMode || 'CASH',
     status: r.status || 'PENDING_FINANCE',
     createdAt: r.created_at || r.createdAt || new Date().toISOString(),
+    quantity: Number(r.quantity ?? 0),
     metadata: r.metadata || null,
   });
 

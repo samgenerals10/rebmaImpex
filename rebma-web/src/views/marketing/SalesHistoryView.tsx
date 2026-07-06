@@ -36,6 +36,7 @@ function mapOrder(r: any): Order {
     totalAmount: Number(r.total_amount ?? r.totalAmount ?? 0),
     status: r.status || 'PENDING_FINANCE',
     createdAt: r.created_at || r.createdAt || '',
+    quantity: Number(r.quantity ?? 0),
     products: r.product_name || r.productName || r.products || '',
     submittedBy: r.created_by || r.submittedBy || '',
     metadata: r.metadata || null,
