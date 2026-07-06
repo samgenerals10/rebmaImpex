@@ -25,7 +25,8 @@ function SettingToggle({
   const [pendingValue, setPendingValue] = useState<boolean | null>(null);
 
   const toggle = (next: boolean) => {
-    if (warning && !next) { setPendingValue(next); setShowWarn(true); return; }
+    const dangerousState = settingKey === 'maintenance_mode' ? true : false;
+    if (warning && next === dangerousState) { setPendingValue(next); setShowWarn(true); return; }
     updateSetting(settingKey, next);
   };
 
