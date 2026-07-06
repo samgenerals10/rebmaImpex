@@ -132,7 +132,7 @@ const mapRequisitionToFrontend = (db: any): any => {
   if (!db) return null;
   return {
     id: db.id,
-    items: db.items,
+    items: db.items || [{ materialName: db.product_name || 'Materials', quantity: Number(db.quantity || 0) }],
     notes: db.notes,
     status: db.status,
     createdAt: db.created_at || db.createdAt,

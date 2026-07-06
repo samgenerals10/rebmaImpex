@@ -58,6 +58,20 @@ const statusBadge = (status: string) => {
   return m[status] || 'bg-slate-500/10 text-slate-500';
 };
 
+const getDisplayStatus = (order: any, wipList: any[]) => {
+  if (order.status === 'COMPLETED' || order.status === 'REJECTED') {
+    return { text: order.status.replace(/_/g, ' '), style: statusBadge(order.status) };
+  }
+  const productName = order.items?.[0]?.materialName;
+  if (productName) {
+    const match = wipList.find(w => w.productName.toLowerCase().trim() === productName.toLowerCase().trim());
+    if (match) {
+      return { text: match.stage, style: stageBadge(match.stage) };
+    }
+  }
+  return { text: order.status.replace(/_/g, ' '), style: statusBadge(order.status) };
+};
+
 const stageBadge = (stage: string) => {
   const m: Record<string, string> = {
     'Processing': 'bg-blue-500/10 text-blue-600',
@@ -92,8 +106,18 @@ export default function ProductionOverviewView({ currentUser, productionRequests
     supabase.from('production_output').select('*').order('date', { ascending: false }).then(({ data }) => {
       if (data) setOutput(data as OutputRecord[]);
     });
-    supabase.from('wip_stock').select('*').order('updatedAt', { ascending: false }).then(({ data }) => {
-      if (data && data.length > 0) setWip(data as WipItem[]);
+    supabase.from('wip_stock').select('*').order('updated_at', { ascending: false }).then(({ data }) => {
+      if (data) {
+        setWip(data.map((row: any) => ({
+          id: row.id,
+          productName: row.product_name,
+          stage: row.stage,
+          qty: Number(row.qty || 0),
+          updatedAt: row.updated_at
+        })));
+      } else {
+        setWip([]);
+      }
     });
     supabase.from('stock_ledger').select('quantity, created_at').eq('movement_type', 'ADD').then(({ data }) => {
       if (data) {
@@ -339,9 +363,14 @@ export default function ProductionOverviewView({ currentUser, productionRequests
                   <p className="text-[10px] text-[var(--text-muted)] truncate">{order.items.map(i => i.materialName).join(', ')}</p>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
-                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${statusBadge(order.status)}`}>
-                    {order.status.replace(/_/g, ' ')}
-                  </span>
+                  {(() => {
+                    const disp = getDisplayStatus(order, wip);
+                    return (
+                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${disp.style}`}>
+                        {disp.text}
+                      </span>
+                    );
+                  })()}
                   <div className="relative" onClick={e => e.stopPropagation()}>
                     <button onClick={() => setOrderMenu(orderMenu === order.id ? null : order.id)}
                       className="w-5 h-5 flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--accent-light)] rounded cursor-pointer">

@@ -8,6 +8,12 @@ const STATUS_COLORS: Record<string, string> = {
   TICKETS_ISSUED: 'indigo',
   COMPLETED: 'emerald',
   REJECTED: 'red',
+  'Raw Materials': 'gray',
+  'Processing': 'blue',
+  'Quality Check': 'amber',
+  'Packaging': 'orange',
+  'Awaiting Dispatch': 'emerald',
+  'Completed': 'purple',
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -29,6 +35,8 @@ function StatusBadge({ status }: { status: string }) {
     emerald: 'background:rgba(16,185,129,0.15);color:#059669',
     red: 'background:rgba(239,68,68,0.15);color:#dc2626',
     gray: 'background:rgba(107,114,128,0.15);color:#6b7280',
+    orange: 'background:rgba(249,115,22,0.15);color:#ea580c',
+    purple: 'background:rgba(168,85,247,0.15);color:#9333ea',
   };
   return (
     <span style={{ ...Object.fromEntries(colorMap[color].split(';').map(s => s.split(':'))), padding: '2px 10px', borderRadius: 9999, fontSize: 12, fontWeight: 600 }}>
@@ -58,6 +66,29 @@ function ProgressSteps({ status }: { status: string }) {
   );
 }
 
+const getDisplayStatus = (order: any, wipList: any[]) => {
+  if (order.status === 'COMPLETED' || order.status === 'REJECTED') {
+    return { text: STATUS_LABELS[order.status] || order.status, statusVal: order.status };
+  }
+  const match = wipList.find(w => w.productName.toLowerCase().trim() === order.productName.toLowerCase().trim());
+  if (match) {
+    return { text: match.stage, statusVal: match.stage };
+  }
+  return { text: STATUS_LABELS[order.status] || order.status, statusVal: order.status };
+};
+
+const getProgressStatus = (status: string) => {
+  const map: Record<string, string> = {
+    'Raw Materials': 'APPROVED',
+    'Processing': 'APPROVED',
+    'Quality Check': 'APPROVED',
+    'Packaging': 'APPROVED',
+    'Awaiting Dispatch': 'TICKETS_ISSUED',
+    'Completed': 'COMPLETED',
+  };
+  return map[status] || status;
+};
+
 interface Props {
   productionRequests: any[];
   addNotification: (msg: string) => void;
@@ -65,11 +96,14 @@ interface Props {
 
 export default function InternalOrdersView({ productionRequests, addNotification }: Props) {
   const [orders, setOrders] = useState<any[]>([]);
+  const [wipItems, setWipItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
   
+  const selectedOrderDisp = selectedOrder ? getDisplayStatus(selectedOrder, wipItems) : null;
+
   const [showNewModal, setShowNewModal] = useState(false);
   const [newForm, setNewForm] = useState({
     productName: '',
@@ -87,6 +121,20 @@ export default function InternalOrdersView({ productionRequests, addNotification
   const loadData = async () => {
     setLoading(true);
     try {
+      // Load WIP items first
+      const { data: wipData } = await supabase.from('wip_stock').select('*');
+      if (wipData) {
+        setWipItems(wipData.map((row: any) => ({
+          id: row.id,
+          productName: row.product_name,
+          stage: row.stage,
+          qty: Number(row.qty || 0),
+          updatedAt: row.updated_at
+        })));
+      } else {
+        setWipItems([]);
+      }
+
       const { data, error } = await supabase.from('production_requests').select('*').order('created_at', { ascending: false });
       if (!error && data) {
         const mapped = data.map((row: any) => ({
@@ -289,20 +337,38 @@ export default function InternalOrdersView({ productionRequests, addNotification
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {loading && Array.from({ length: 5 }).map((_, i) => <div key={i} className="animate-pulse h-10 bg-slate-200 dark:bg-slate-700 rounded mb-2" />)}
-        {!loading && filtered.map(order => (
-          <div key={order.id} style={{ background: 'var(--bg-card)', borderRadius: 16, padding: '18px 20px', border: '1px solid var(--border)', boxShadow: 'var(--box-shadow)', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap', cursor: 'pointer' }} onClick={() => setSelectedOrder(order)}>
-            <div style={{ width: 12, height: 12, borderRadius: '50%', background: (STATUS_COLORS[order.status as keyof typeof STATUS_COLORS] ? { PENDING_MANAGEMENT: '#d97706', APPROVED: '#2563eb', TICKETS_ISSUED: '#4338ca', COMPLETED: '#059669', REJECTED: '#dc2626' }[order.status as keyof typeof STATUS_COLORS] : '#888') || '#888', flexShrink: 0 }} />
-            <div style={{ minWidth: 90 }}>
-              <p style={{ fontWeight: 700, color: 'var(--text-primary)', margin: 0, fontSize: 14 }}>Req #{order.requestNumber || order.id.slice(0, 8)}</p>
-              <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: 12 }}>{order.createdAt ? new Date(order.createdAt).toLocaleDateString() : '—'}</p>
-            </div>
-            <div style={{ flex: 1, minWidth: 200 }}>
-              <p style={{ color: 'var(--text-primary)', margin: 0, fontSize: 14, fontWeight: 600 }}>{order.productName}</p>
-              <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: 12 }}>Qty: {order.quantity} {order.unit} | Priority: {order.priority}</p>
-            </div>
-            <ProgressSteps status={order.status} />
-            <StatusBadge status={order.status} />
-            <div style={{ display: 'flex', gap: 8 }} onClick={e => e.stopPropagation()}>
+        {!loading && filtered.map(order => {
+          const disp = getDisplayStatus(order, wipItems);
+          return (
+            <div key={order.id} style={{ background: 'var(--bg-card)', borderRadius: 16, padding: '18px 20px', border: '1px solid var(--border)', boxShadow: 'var(--box-shadow)', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap', cursor: 'pointer' }} onClick={() => setSelectedOrder(order)}>
+              <div style={{
+                width: 12, height: 12, borderRadius: '50%',
+                background: ({
+                  PENDING_MANAGEMENT: '#d97706',
+                  APPROVED: '#2563eb',
+                  TICKETS_ISSUED: '#4338ca',
+                  COMPLETED: '#059669',
+                  REJECTED: '#dc2626',
+                  'Raw Materials': '#6b7280',
+                  'Processing': '#2563eb',
+                  'Quality Check': '#f59e0b',
+                  'Packaging': '#ea580c',
+                  'Awaiting Dispatch': '#10b981',
+                  'Completed': '#9333ea'
+                } as Record<string, string>)[disp.statusVal] || '#888',
+                flexShrink: 0
+              }} />
+              <div style={{ minWidth: 90 }}>
+                <p style={{ fontWeight: 700, color: 'var(--text-primary)', margin: 0, fontSize: 14 }}>Req #{order.requestNumber || order.id.slice(0, 8)}</p>
+                <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: 12 }}>{order.createdAt ? new Date(order.createdAt).toLocaleDateString() : '—'}</p>
+              </div>
+              <div style={{ flex: 1, minWidth: 200 }}>
+                <p style={{ color: 'var(--text-primary)', margin: 0, fontSize: 14, fontWeight: 600 }}>{order.productName}</p>
+                <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: 12 }}>Qty: {order.quantity} {order.unit} | Priority: {order.priority}</p>
+              </div>
+              <ProgressSteps status={getProgressStatus(disp.statusVal)} />
+              <StatusBadge status={disp.statusVal} />
+              <div style={{ display: 'flex', gap: 8 }} onClick={e => e.stopPropagation()}>
               <button onClick={() => setSelectedOrder(order)} style={{ background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 12px', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 13 }}>
                 <Eye size={14} /> View
               </button>
@@ -317,7 +383,8 @@ export default function InternalOrdersView({ productionRequests, addNotification
               </button>
             </div>
           </div>
-        ))}
+        );
+      })}
         {!loading && filtered.length === 0 && (
           <div className="text-center py-12 text-[var(--text-muted)]">
             <Package className="w-10 h-10 mx-auto mb-3 opacity-40" />
@@ -335,7 +402,7 @@ export default function InternalOrdersView({ productionRequests, addNotification
               <button onClick={() => setSelectedOrder(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={20} /></button>
             </div>
             <div style={{ display: 'flex', gap: 12, marginBottom: 16, alignItems: 'center', flexWrap: 'wrap' }}>
-              <StatusBadge status={selectedOrder.status} />
+              <StatusBadge status={selectedOrderDisp ? selectedOrderDisp.statusVal : selectedOrder.status} />
               <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>Created: {selectedOrder.createdAt ? new Date(selectedOrder.createdAt).toLocaleString() : '—'}</span>
             </div>
             
@@ -365,7 +432,7 @@ export default function InternalOrdersView({ productionRequests, addNotification
             <h3 style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: 14, marginBottom: 8 }}>Progress</h3>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
               {STEPS.map((step, i) => {
-                const current = STEPS.indexOf(selectedOrder.status);
+                const current = STEPS.indexOf(getProgressStatus(selectedOrderDisp ? selectedOrderDisp.statusVal : selectedOrder.status));
                 return (
                   <React.Fragment key={step}>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
