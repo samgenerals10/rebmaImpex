@@ -346,7 +346,7 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
         }, 0);
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-            <div className="w-full max-w-lg rounded-2xl bg-[var(--bg-card)] border border-[var(--border)] shadow-xl flex flex-col max-h-[90vh]">
+            <div className="w-full max-w-2xl rounded-2xl bg-[var(--bg-card)] border border-[var(--border)] shadow-xl flex flex-col max-h-[90vh]">
               {/* Header */}
               <div className="flex items-center justify-between px-6 pt-5 pb-4 shrink-0">
                 <h3 className="font-bold text-[var(--text-primary)]">New Sales Order</h3>

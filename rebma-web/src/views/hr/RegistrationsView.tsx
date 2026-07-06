@@ -288,7 +288,7 @@ export default function RegistrationsView({ pendingRegistrations, addNotificatio
       {/* Detail modal */}
       {detailReg && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5 w-full max-w-md">
+          <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5 w-full max-w-2xl">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-bold text-[var(--text-primary)]">Registration Detail</h3>
               <button onClick={() => setDetailReg(null)} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer">
@@ -338,7 +338,7 @@ export default function RegistrationsView({ pendingRegistrations, addNotificatio
       {/* Credentials Popup */}
       {credPopup?.show && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5 w-full max-w-md">
+          <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5 w-full max-w-2xl">
             <div className="flex items-center justify-between mb-4 border-b border-[var(--border)] pb-3">
               <h3 className="font-bold text-lg text-emerald-500">Account Credentials Generated</h3>
               <button onClick={() => setCredPopup(null)} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer">
@@ -385,7 +385,7 @@ export default function RegistrationsView({ pendingRegistrations, addNotificatio
       )}
       {showEdit && editForm && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5 w-full max-w-md">
+          <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5 w-full max-w-2xl">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-bold text-[var(--text-primary)]">Edit Registration Detail</h3>
               <button onClick={() => { setShowEdit(false); setEditForm(null); }} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer">

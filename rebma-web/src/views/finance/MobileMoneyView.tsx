@@ -234,7 +234,7 @@ export default function FinanceMobileMoneyView({ addNotification, currentUser }:
       {viewing && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setViewing(null)}>
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div className="relative bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-6 w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
+          <div className="relative bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-6 w-full max-w-2xl shadow-2xl" onClick={e => e.stopPropagation()}>
             <h3 className="text-base font-semibold text-[var(--text-primary)] mb-4">MoMo Transaction Details</h3>
             <div className="space-y-3">
               {[
@@ -263,7 +263,7 @@ export default function FinanceMobileMoneyView({ addNotification, currentUser }:
       {showEditForm && editTxn && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setShowEditForm(false)}>
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div className="relative bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-6 w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
+          <div className="relative bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-6 w-full max-w-2xl shadow-2xl" onClick={e => e.stopPropagation()}>
             <h3 className="text-base font-semibold text-[var(--text-primary)] mb-5">Edit MoMo Transaction</h3>
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3">

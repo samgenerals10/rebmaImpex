@@ -626,7 +626,7 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
       {showModal && selectedItem && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setShowModal(null)}>
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div className="relative bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-6 w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
+          <div className="relative bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-6 w-full max-w-2xl shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="flex items-center gap-3 mb-4">
               {showModal === 'approve' && <CheckCircle size={20} className="text-green-500" />}
               {showModal === 'reject' && <XCircle size={20} className="text-red-500" />}

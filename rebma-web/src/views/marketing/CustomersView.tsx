@@ -370,7 +370,7 @@ export default function CustomersView({ customersList, onRegisterCustomer, addNo
 
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-2xl bg-[var(--bg-card)] border border-[var(--border)] shadow-xl p-6 space-y-4">
+          <div className="w-full max-w-2xl rounded-2xl bg-[var(--bg-card)] border border-[var(--border)] shadow-xl p-6 space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="font-bold text-[var(--text-primary)]">{editTarget ? 'Edit Customer' : 'Register New Customer'}</h3>
               <button onClick={() => { setShowModal(false); setEditTarget(null); }} className="p-1 rounded-lg hover:bg-[var(--bg-input)]"><X className="w-4 h-4 text-[var(--text-muted)]" /></button>

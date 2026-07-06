@@ -48,7 +48,7 @@ function AssignDriverModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-      <div className="relative bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-6 w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
+      <div className="relative bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-6 w-full max-w-2xl shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-5">
           <div>
             <h3 className="text-base font-semibold text-[var(--text-primary)]">Assign Driver</h3>
@@ -655,7 +655,7 @@ export default function DeliveriesView({ addNotification, currentUser }: Props) 
       {showNew && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setShowNew(false)}>
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div className="relative bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-6 w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
+          <div className="relative bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-6 w-full max-w-2xl shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-lg font-bold text-[var(--text-primary)]">New Delivery</h2>
               <button onClick={() => setShowNew(false)} className="p-1.5 rounded-lg hover:bg-[var(--bg-input)]"><X size={16} className="text-[var(--text-muted)]" /></button>
@@ -704,7 +704,7 @@ export default function DeliveriesView({ addNotification, currentUser }: Props) 
       {showEdit && editingDelivery && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => { setShowEdit(false); setEditingDelivery(null); }}>
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div className="relative bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-6 w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
+          <div className="relative bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-6 w-full max-w-2xl shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-lg font-bold text-[var(--text-primary)]">Edit Delivery</h2>
               <button onClick={() => { setShowEdit(false); setEditingDelivery(null); }} className="p-1.5 rounded-lg hover:bg-[var(--bg-input)]"><X size={16} className="text-[var(--text-muted)]" /></button>

@@ -482,7 +482,7 @@ export default function MgmtPriceSettingView({ addNotification, currentUser }: P
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setShowForm(false)}>
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div className="relative bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-6 w-full max-w-lg shadow-2xl" onClick={e => e.stopPropagation()}>
+          <div className="relative bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-6 w-full max-w-2xl shadow-2xl" onClick={e => e.stopPropagation()}>
             <h3 className="text-base font-semibold text-[var(--text-primary)] mb-5">{editing ? 'Update Price' : 'Set New Price'}</h3>
 
             <div className="space-y-4">

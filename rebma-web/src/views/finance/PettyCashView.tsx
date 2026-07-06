@@ -245,7 +245,7 @@ export default function FinancePettyCashView({ addNotification, currentUser }: P
       {showDisbForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setShowDisbForm(false)}>
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div className="relative bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-6 w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
+          <div className="relative bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-6 w-full max-w-2xl shadow-2xl" onClick={e => e.stopPropagation()}>
             <h3 className="text-base font-semibold text-[var(--text-primary)] mb-1">Record Disbursement</h3>
             <p className="text-xs text-[var(--text-muted)] mb-5">Available float: <strong className="text-[var(--text-primary)]">GHS {currentFloat.toLocaleString()}</strong></p>
             <div className="space-y-4">
@@ -274,7 +274,7 @@ export default function FinancePettyCashView({ addNotification, currentUser }: P
       {showReplenForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setShowReplenForm(false)}>
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div className="relative bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-6 w-full max-w-sm shadow-2xl" onClick={e => e.stopPropagation()}>
+          <div className="relative bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-6 w-full max-w-2xl shadow-2xl" onClick={e => e.stopPropagation()}>
             <h3 className="text-base font-semibold text-[var(--text-primary)] mb-4">Request Replenishment</h3>
             <div className="space-y-4">
               <div><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Amount Needed (GHS)</label><input type="number" value={replenForm.amount} onChange={e => setReplenForm(f => ({ ...f, amount: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm focus:outline-none focus:border-[var(--accent)]" /></div>
@@ -291,7 +291,7 @@ export default function FinancePettyCashView({ addNotification, currentUser }: P
       {showEditForm && editEntry && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setShowEditForm(false)}>
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div className="relative bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-6 w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
+          <div className="relative bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-6 w-full max-w-2xl shadow-2xl" onClick={e => e.stopPropagation()}>
             <h3 className="text-base font-semibold text-[var(--text-primary)] mb-5">Edit Petty Cash Entry</h3>
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3">

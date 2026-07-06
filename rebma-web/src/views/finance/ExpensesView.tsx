@@ -255,7 +255,7 @@ export default function FinanceExpensesView({ addNotification, currentUser }: Pr
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setShowForm(false)}>
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div className="relative bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-6 w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
+          <div className="relative bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-6 w-full max-w-2xl shadow-2xl" onClick={e => e.stopPropagation()}>
             <h3 className="text-base font-semibold text-[var(--text-primary)] mb-5">Log Expense</h3>
             <div className="space-y-4">
               <div><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Category</label><select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]">{CATEGORIES.map(c => <option key={c}>{c}</option>)}</select></div>
@@ -284,7 +284,7 @@ export default function FinanceExpensesView({ addNotification, currentUser }: Pr
       {showEditForm && editExpense && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setShowEditForm(false)}>
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div className="relative bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-6 w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
+          <div className="relative bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-6 w-full max-w-2xl shadow-2xl" onClick={e => e.stopPropagation()}>
             <h3 className="text-base font-semibold text-[var(--text-primary)] mb-5">Edit Expense</h3>
             <div className="space-y-4">
               <div><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Category</label><select value={editForm.category} onChange={e => setEditForm(f => ({ ...f, category: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]">{CATEGORIES.map(c => <option key={c}>{c}</option>)}</select></div>
