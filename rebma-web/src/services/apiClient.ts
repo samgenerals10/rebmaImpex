@@ -924,19 +924,19 @@ export const marketing = {
 export const finance = {
   getPayments: async () => {
     const { data, error } = await supabase
-      .from('finance_ledger')
-      .select('*, order:orders(client_name, payment_mode)')
-      .order('issued_at', { ascending: false });
+      .from('finance_payments')
+      .select('*')
+      .order('created_at', { ascending: false });
     if (error) throw new Error(error.message);
     
     return (data || []).map((p: any) => ({
       id: p.id,
-      clientName: p.order?.client_name || 'N/A',
-      amount: p.amount,
-      paymentMode: p.order?.payment_mode || 'CASH',
-      paymentType: 'INVOICE',
-      orderId: p.order_id || p.orderId,
-      createdAt: p.issued_at || p.issuedAt
+      clientName: p.client_name || 'N/A',
+      amount: Number(p.amount || 0),
+      paymentMode: p.payment_mode || 'CASH',
+      paymentType: p.payment_type || 'DIRECT',
+      orderId: p.order_id || undefined,
+      createdAt: p.created_at
     }));
   },
 
@@ -1005,6 +1005,12 @@ export const finance = {
     const invoiceNo = `INV-${Date.now().toString().slice(-6)}`;
     const taxAmount = totalAmountVal * 0.15;
     const grandTotal = totalAmountVal + taxAmount;
+
+    const meta = order.metadata || {};
+    const metaItems = meta.items || [];
+    const totalQty = metaItems.length > 0
+      ? metaItems.reduce((s: number, i: any) => s + (Number(i.quantity) || 0), 0)
+      : Number(meta.quantity || order.quantity || 1);
     
     const { data: invoice, error: invErr } = await supabase
       .from('finance_ledger')
@@ -1026,8 +1032,9 @@ export const finance = {
         details: {
           clientName: order.client_name || order.clientName,
           productName: order.product_name || order.productName,
-          quantity: 1,
-          totalAmount: totalAmountVal
+          quantity: totalQty,
+          totalAmount: totalAmountVal,
+          items: metaItems
         },
         status: 'PENDING',
         created_at: new Date().toISOString(),

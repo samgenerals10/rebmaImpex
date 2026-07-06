@@ -25,6 +25,10 @@ interface ApprovedOrder {
   id: string; ticketNumber: string; clientName: string; productName: string;
   destination: string; totalAmount: number; status: string; paymentMode: string;
   createdAt: string; submittedBy: string; issuedBy: string; issuedByEmail: string;
+  metadata?: {
+    items?: Array<{ productName: string; quantity: number; unitPrice: number; lineTotal: number }>;
+    [key: string]: any;
+  } | null;
 }
 
 type GoodsSort = { field: keyof ApprovedGood; dir: 'asc' | 'desc' };
@@ -168,6 +172,28 @@ async function printOperationsTicket(order: ApprovedOrder, dispatchedQty?: numbe
           </div>
         </div>
 
+        ${order.metadata?.items && order.metadata.items.length > 0 ? `
+        <div class="field full" style="background: #fafdfb; border: 1px solid #d1fae5; border-radius: 8px; padding: 12px; margin-bottom: 14px;">
+          <div class="fl" style="color: ${BRAND.green}; font-weight: 800; font-size: 8.5px; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 6px;">Itemized Loading Dispatch List</div>
+          <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+            <thead>
+              <tr style="border-bottom: 1.5px solid #d1fae5; color: #2d7a50; font-weight: 700; text-transform: uppercase; font-size: 8px; letter-spacing: 0.05em;">
+                <th style="text-align: left; padding: 4px 0;">Item Description</th>
+                <th style="text-align: right; padding: 4px 0;">Qty to Load</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${order.metadata.items.map(item => `
+                <tr style="border-bottom: 1px solid #e6f7ed;">
+                  <td style="text-align: left; padding: 6px 0; font-weight: 650; color: #1e293b;">${item.productName}</td>
+                  <td style="text-align: right; padding: 6px 0; font-weight: 800; color: ${BRAND.green}; font-family: monospace; font-size: 12px;">${Number(item.quantity).toLocaleString()}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+        ` : ''}
+
         <div class="dispatch-box">
           <div>
             <div class="dl">Operations Action Required</div>
@@ -293,6 +319,7 @@ export default function ApprovedGoodsView({ addNotification, setActiveSubTab: _s
           submittedBy: r.created_by || r.submittedBy || '—',
           issuedBy: r.issued_by || r.created_by || 'Finance Department',
           issuedByEmail: r.issuer_email || 'finance@rebmaimpex.com',
+          metadata: r.metadata || null,
         })));
       } catch (e) {
         console.error(e);
@@ -542,7 +569,12 @@ export default function ApprovedGoodsView({ addNotification, setActiveSubTab: _s
                           <td className="px-4 py-3 text-[var(--text-muted)] whitespace-nowrap">{o.createdAt}</td>
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-2">
-                              <button onClick={() => printOperationsTicket(o, Number((o as any).quantity || (o as any).metadata?.quantity) || undefined, currentUserEmail)}
+                              <button onClick={() => {
+                                  const totalQty = o.metadata?.items && o.metadata.items.length > 0
+                                    ? o.metadata.items.reduce((sum: number, it: any) => sum + (Number(it.quantity) || 0), 0)
+                                    : Number(o.metadata?.quantity || (o as any).quantity || 1);
+                                  printOperationsTicket(o, totalQty, currentUserEmail);
+                                }}
                                 title="Print Operations Ticket"
                                 className="flex items-center gap-1 px-2.5 py-1.5 bg-[var(--bg)] border border-[var(--border)] rounded-lg text-[10px] font-semibold text-[var(--text-secondary)] hover:bg-[var(--accent-light)] cursor-pointer whitespace-nowrap transition-colors">
                                 <Printer size={11} /> Ticket

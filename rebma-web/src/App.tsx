@@ -693,7 +693,8 @@ export default function App() {
         totalAmount: o.totalAmount,
         ghanaCard: o.ghanaCard || undefined,
         status: o.status,
-        createdAt: o.createdAt || new Date().toISOString()
+        createdAt: o.createdAt || new Date().toISOString(),
+        metadata: o.metadata || null
       })));
     } catch (e) {
       console.log('Skipping orders fetch (unauthorized/error)');
