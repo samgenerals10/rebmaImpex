@@ -277,7 +277,7 @@ const DEPT_TABLES: Record<string, { label: string; tables: { name: string }[] }>
   FINANCE:     { label: 'Finance',     tables: [{ name: 'finance_payments' }, { name: 'finance_expenses' }, { name: 'finance_cheques' }, { name: 'finance_petty_cash' }, { name: 'recurring_payments' }] },
   OPERATIONS:  { label: 'Operations',  tables: [{ name: 'cargo_intake' }, { name: 'stock_ledger' }, { name: 'general_purchases' }, { name: 'stock' }, { name: 'wip_stock' }] },
   PRODUCTION:  { label: 'Production',  tables: [{ name: 'production_logs' }, { name: 'production_requests' }] },
-  MANAGEMENT:  { label: 'Management',  tables: [{ name: 'goods_prices' }, { name: 'supplier_orders' }, { name: 'suppliers' }] },
+  MANAGEMENT:  { label: 'Management',  tables: [{ name: 'goods_prices' }, { name: 'supplier_orders' }, { name: 'suppliers' }, { name: 'global_audit_history' }] },
   HR:          { label: 'HR',          tables: [{ name: 'payroll_batches' }, { name: 'payroll_entries' }, { name: 'payroll_items' }, { name: 'leave_requests' }, { name: 'attendance' }] },
   DISPATCH:    { label: 'Dispatch',    tables: [{ name: 'delivery_logs' }, { name: 'drivers' }] },
   RECEPTION:   { label: 'Reception',   tables: [{ name: 'visitors' }] },
