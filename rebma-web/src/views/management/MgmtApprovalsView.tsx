@@ -74,6 +74,8 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
   const [notifyCeo, setNotifyCeo] = useState(true);
   const [todayApproved, setTodayApproved] = useState(0);
   const [todayRejected, setTodayRejected] = useState(0);
+  const [confirmedDamages, setConfirmedDamages] = useState(0);
+  const [costPerUnit, setCostPerUnit] = useState(0);
 
   useEffect(() => {
     loadApprovals();
@@ -214,6 +216,20 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
     setShowModal(action);
     setModalNote('');
     setSellingPrice('');
+
+    const item = items.find(i => i.id === id);
+    if (item && item.type === 'Cargo Intake') {
+      let defaultDamages = 0;
+      const discText = String(item.raw?.discrepancies || '');
+      if (discText && discText.trim() !== '') {
+        const match = discText.match(/\d+/);
+        if (match) {
+          defaultDamages = parseInt(match[0]);
+        }
+      }
+      setConfirmedDamages(defaultDamages);
+      setCostPerUnit(Number(item.raw?.unit_price || 0));
+    }
   }
 
   async function confirmAction() {
@@ -224,25 +240,57 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
       if (selectedItem.type === 'Cargo Intake' && selectedItem.raw) {
         const newDbStatus = action === 'approve' ? 'APPROVED' : 'REJECTED';
         const rawId = String(selectedItem.raw.id);
-        await supabase.from('cargo_intake').update({ status: newDbStatus }).eq('id', rawId);
+        const cargoRow = selectedItem.raw as Record<string, any>;
+        const rawDiscrepancies = String(cargoRow.discrepancies || '');
+        const finalDiscrepancyNotes = confirmedDamages > 0 
+          ? `${rawDiscrepancies} (Confirmed: ${confirmedDamages} damaged units, cost loss of GHS ${(confirmedDamages * costPerUnit).toLocaleString()})`
+          : rawDiscrepancies;
+
+        await supabase.from('cargo_intake').update({ 
+          status: newDbStatus,
+          discrepancies: finalDiscrepancyNotes,
+          unit_price: costPerUnit,
+          is_fault_or_damaged: confirmedDamages > 0
+        }).eq('id', rawId);
 
         if (action === 'approve') {
           // Auto-populate stock table from approved cargo
-          const cargoRow = selectedItem.raw as Record<string, unknown>;
           const productName = String(cargoRow.product_name || 'Unknown Product');
           const productCode = String(cargoRow.goods_code || rawId.slice(0, 8).toUpperCase());
           const incomingQty = Number(cargoRow.quantity || cargoRow.qty_received || 0);
+          const finalQtyToAdd = Math.max(0, incomingQty - confirmedDamages);
+          const discrepancyCost = confirmedDamages * costPerUnit;
           const unit = String(cargoRow.goods_type || cargoRow.unit || 'units');
           const now = new Date().toISOString();
 
           const { data: existingStock } = await supabase.from('stock').select('id, quantity').eq('product_name', productName).maybeSingle().then(r => r, () => ({ data: null, error: null }));
           if (existingStock) {
-            await supabase.from('stock').update({ quantity: (Number(existingStock.quantity) || 0) + incomingQty, last_updated: now }).eq('id', existingStock.id).then(() => {}, () => {});
+            await supabase.from('stock').update({ quantity: (Number(existingStock.quantity) || 0) + finalQtyToAdd, last_updated: now }).eq('id', existingStock.id).then(() => {}, () => {});
           } else {
-            const { error: stockErr } = await supabase.from('stock').upsert([{ product_name: productName, product_code: productCode, category: 'INCOMING_GOODS', quantity: incomingQty, maximum_level: incomingQty * 2 || 1000, minimum_level: Math.round(incomingQty * 0.1) || 50, unit, last_updated: now }], { onConflict: 'product_name' });
+            const { error: stockErr } = await supabase.from('stock').upsert([{ product_name: productName, product_code: productCode, category: 'INCOMING_GOODS', quantity: finalQtyToAdd, maximum_level: finalQtyToAdd * 2 || 1000, minimum_level: Math.round(finalQtyToAdd * 0.1) || 50, unit, last_updated: now }], { onConflict: 'product_name' });
             if (stockErr) addNotification?.(`Stock table update failed: ${stockErr.message}. Please run the SQL migrations in supabase_schema.sql.`);
           }
-          await supabase.from('stock_ledger').insert({ product_name: productName, movement_type: 'ADD', quantity: incomingQty, reference: `Cargo approved: ${selectedItem.requestId}`, notes: selectedItem.description, created_at: now });
+          
+          await supabase.from('stock_ledger').insert({ 
+            product_name: productName, 
+            movement_type: 'ADD', 
+            quantity: finalQtyToAdd, 
+            reference: `Cargo approved: ${selectedItem.requestId}`, 
+            notes: `${selectedItem.description}${confirmedDamages > 0 ? ` (${confirmedDamages} units damaged/lost)` : ''}`, 
+            created_at: now 
+          });
+
+          if (discrepancyCost > 0) {
+            await supabase.from('finance_expenses').insert([{
+              category: 'Damaged Goods',
+              description: `Loss from damaged goods in Cargo Intake ${selectedItem.requestId} (${productName}: ${confirmedDamages} units)`,
+              amount: discrepancyCost,
+              date: now.slice(0, 10),
+              status: 'Approved',
+              submitted_by: 'Management (Auto-generated)',
+              notes: `Auto-generated from Cargo Intake approval. Discrepancy details: ${selectedItem.description}`
+            }]);
+          }
 
           if (notifyOps) {
             await supabase.from('supplier_order_notifications').insert([{ order_id: rawId, message: `Cargo intake APPROVED by Management: ${selectedItem.description}`, notified_department: 'OPERATIONS', read: false }]);
@@ -590,8 +638,56 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
             <p className="text-sm text-[var(--text-secondary)] mb-4">{selectedItem.description}</p>
 
             {showModal === 'approve' && selectedItem.type === 'Cargo Intake' && (
-              <div className="mb-4 space-y-3">
-                <div>
+              <div className="mb-4 space-y-3 p-4 rounded-2xl border border-[var(--border)] bg-[var(--bg)]">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider mb-1 block">Total Cargo In</label>
+                    <div className="text-xs font-semibold text-[var(--text-primary)] font-mono mt-1.5">
+                      {Number(selectedItem.raw?.quantity || selectedItem.raw?.qty_received || 0).toLocaleString()} units
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider mb-1 block">Cargo Unit Cost (GHS)</label>
+                    <input
+                      type="number"
+                      value={costPerUnit}
+                      onChange={e => setCostPerUnit(Number(e.target.value))}
+                      placeholder="Cost per unit"
+                      className="w-full px-3 py-1.5 bg-[var(--bg-input)] border border-[var(--border)] rounded-xl text-xs font-mono text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
+                    />
+                  </div>
+                </div>
+
+                {/* Discrepancy inputs */}
+                {(selectedItem.raw as any)?.discrepancies && (
+                  <div className="mt-2 border-t border-[var(--border)] pt-2 space-y-3">
+                    <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-2.5 text-[11px] text-amber-700 leading-relaxed">
+                      ⚠️ Discrepancy reported: <strong>{String((selectedItem.raw as any).discrepancies)}</strong>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider mb-1 block">Confirmed Damaged</label>
+                        <input
+                          type="number"
+                          value={confirmedDamages}
+                          onChange={e => setConfirmedDamages(Math.max(0, parseInt(e.target.value) || 0))}
+                          className="w-full px-3 py-1.5 bg-[var(--bg-input)] border border-[var(--border)] rounded-xl text-xs font-mono text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider mb-1 block">Net Stock to Add</label>
+                        <div className="text-xs font-semibold text-emerald-600 font-mono mt-2">
+                          {Math.max(0, Number(selectedItem.raw?.quantity || selectedItem.raw?.qty_received || 0) - confirmedDamages).toLocaleString()} units
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-[10px] text-[var(--text-muted)] leading-normal mt-1">
+                      The {confirmedDamages.toLocaleString()} damaged units will be recorded as a system loss expense of <strong className="text-rose-600 font-mono">GHS {(confirmedDamages * costPerUnit).toLocaleString()}</strong> and will NOT be added to inventory.
+                    </div>
+                  </div>
+                )}
+
+                <div className="mt-2 border-t border-[var(--border)] pt-2">
                   <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Selling Price (GHS) — optional</label>
                   <input
                     type="number"
@@ -601,16 +697,19 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
                     className="w-full px-3 py-2 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
                   />
                 </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-medium text-[var(--text-secondary)] block">Notify departments:</label>
-                  <label className="flex items-center gap-2 text-sm text-[var(--text-primary)] cursor-pointer">
-                    <input type="checkbox" checked={notifyOps} onChange={e => setNotifyOps(e.target.checked)} className="rounded" />
-                    Operations Department
-                  </label>
-                  <label className="flex items-center gap-2 text-sm text-[var(--text-primary)] cursor-pointer">
-                    <input type="checkbox" checked={notifyCeo} onChange={e => setNotifyCeo(e.target.checked)} className="rounded" />
-                    CEO / Director
-                  </label>
+
+                <div className="space-y-2 border-t border-[var(--border)] pt-2">
+                  <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider block">Notify departments:</label>
+                  <div className="flex gap-4">
+                    <label className="flex items-center gap-2 text-xs text-[var(--text-primary)] cursor-pointer">
+                      <input type="checkbox" checked={notifyOps} onChange={e => setNotifyOps(e.target.checked)} className="rounded" />
+                      Operations
+                    </label>
+                    <label className="flex items-center gap-2 text-xs text-[var(--text-primary)] cursor-pointer">
+                      <input type="checkbox" checked={notifyCeo} onChange={e => setNotifyCeo(e.target.checked)} className="rounded" />
+                      CEO
+                    </label>
+                  </div>
                 </div>
               </div>
             )}
