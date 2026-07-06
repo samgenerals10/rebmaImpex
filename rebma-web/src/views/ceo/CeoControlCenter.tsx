@@ -504,6 +504,26 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
     searchEmail: '', name: '', permissions: [] as string[], expiresAt: '',
   });
 
+  const [dbDepartments, setDbDepartments] = useState<any[]>([]);
+  const [editingDeptId, setEditingDeptId] = useState<string | null>(null);
+  const [editingDeptName, setEditingDeptName] = useState('');
+
+  const handleRenameDept = async (id: string, oldName: string, newName: string) => {
+    if (!newName.trim() || newName === oldName) {
+      setEditingDeptId(null);
+      return;
+    }
+    const { error } = await supabase.from('departments').update({ name: newName.trim() }).eq('id', id);
+    if (error) {
+      addNotification(`Failed to rename department: ${error.message}`);
+    } else {
+      setDbDepartments(prev => prev.map(d => d.id === id ? { ...d, name: newName.trim() } : d));
+      addNotification(`Department renamed to "${newName.trim()}" successfully.`);
+      supabase.from('profiles').update({ department: newName.trim() }).eq('department', oldName).then(() => {});
+    }
+    setEditingDeptId(null);
+  };
+
   const invitationOnly = getSetting('invitation_only', false);
   const systemOnline = getSetting('app_master_switch', true) && !getSetting('maintenance_mode', false);
 
@@ -531,6 +551,10 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
     // Security log (last 10 ceo_settings changes)
     supabase.from('ceo_settings').select('setting_key, description, updated_at').order('updated_at', { ascending: false }).limit(10)
       .then(({ data }) => { if (data) setSecurityLog(data); }, () => {});
+
+    // Departments
+    supabase.from('departments').select('*').order('name')
+      .then(({ data }) => { if (data) setDbDepartments(data); }, () => {});
   };
 
   const generateInviteLink = async () => {
@@ -618,11 +642,27 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
 
   return (
     <div className="space-y-6 pb-12">
+      <style>{`
+        @keyframes gradient-move {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+        .animate-control-center {
+          background: linear-gradient(270deg, var(--accent), #ef4444, #3b82f6, var(--accent));
+          background-size: 400% 400%;
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          animation: gradient-move 6s ease infinite;
+          display: inline-block;
+          font-weight: 800;
+        }
+      `}</style>
       {/* Breadcrumb */}
       <div className="text-xs text-[var(--text-muted)] flex items-center gap-1">
         <span>CEO Command</span>
         <span>/</span>
-        <span className="text-[var(--text-primary)] font-semibold">Control Center</span>
+        <span className="animate-control-center">Control Center</span>
       </div>
 
       {/* Header */}
@@ -632,7 +672,7 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
             <Shield className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-[var(--text-primary)]">CEO Control Center</h2>
+            <h2 className="text-lg font-bold text-[var(--text-primary)]">CEO <span className="animate-control-center">Control Center</span></h2>
             <p className="text-xs text-[var(--text-muted)]">System-wide security and access management</p>
           </div>
         </div>
@@ -1059,6 +1099,51 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
         <SettingSelect settingKey="account_deletion_authority" label="Account Deletion Authority"
           description="Control who can permanently delete staff accounts. This action cannot be undone."
           options={[{ value: 'ceo_only', label: 'CEO Only' }, { value: 'specific_user', label: 'Specific User' }]} />
+        
+        {/* Department Name Management */}
+        <div className="mt-6 border-t border-[var(--border)] pt-6">
+          <h4 className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wide mb-3">Department Settings</h4>
+          <p className="text-xs text-[var(--text-muted)] mb-4">Rename configured system departments. This updates dashboard headers and rosters.</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {dbDepartments.map(dept => (
+              <div key={dept.id} className="flex items-center justify-between p-3 rounded-xl border border-[var(--border)] bg-[var(--bg)]">
+                {editingDeptId === dept.id ? (
+                  <div className="flex items-center gap-2 w-full" onClick={e => e.stopPropagation()}>
+                    <input
+                      type="text"
+                      value={editingDeptName}
+                      onChange={e => setEditingDeptName(e.target.value)}
+                      className="flex-1 px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--bg-input)] text-xs text-[var(--text-primary)] focus:outline-none"
+                      autoFocus
+                    />
+                    <button
+                      onClick={() => handleRenameDept(dept.id, dept.name, editingDeptName)}
+                      className="px-2.5 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-xs font-semibold cursor-pointer shrink-0"
+                    >
+                      Save
+                    </button>
+                    <button
+                      onClick={() => setEditingDeptId(null)}
+                      className="px-2.5 py-1.5 bg-[var(--bg-input)] hover:bg-[var(--border)] text-[var(--text-secondary)] rounded-lg text-xs font-semibold cursor-pointer shrink-0"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <span className="text-xs font-semibold text-[var(--text-primary)]">{dept.name}</span>
+                    <button
+                      onClick={() => { setEditingDeptId(dept.id); setEditingDeptName(dept.name); }}
+                      className="text-xs text-[var(--accent)] hover:underline font-semibold cursor-pointer"
+                    >
+                      Rename
+                    </button>
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
       </Section>
 
       {/* ── SECTION 8: APPROVAL CONTROLS ─────────────────────────────── */}
