@@ -10,7 +10,7 @@ import { exportToCSV } from '../../utils/export';
 interface ApprovalItem {
   id: string;
   requestId: string;
-  type: 'Cargo Intake' | 'Credit Order' | 'Staff Registration' | 'Discrepancy' | 'Price Review' | 'Production Request' | 'General Purchase';
+  type: 'Cargo Intake' | 'Credit Order' | 'Staff Registration' | 'Price Review' | 'Production Request' | 'General Purchase';
   description: string;
   department: string;
   amount: number | null;
@@ -31,7 +31,6 @@ const TYPE_COLORS: Record<string, string> = {
   'Cargo Intake': 'bg-blue-100 text-blue-700',
   'Credit Order': 'bg-purple-100 text-purple-700',
   'Staff Registration': 'bg-green-100 text-green-700',
-  'Discrepancy': 'bg-orange-100 text-orange-700',
   'Price Review': 'bg-pink-100 text-pink-700',
   'Production Request': 'bg-cyan-100 text-cyan-700',
   'General Purchase': 'bg-amber-100 text-amber-700',
@@ -53,13 +52,12 @@ const TYPE_ICONS: Record<string, React.ElementType> = {
   'Cargo Intake': Package,
   'Credit Order': CreditCard,
   'Staff Registration': UserPlus,
-  'Discrepancy': AlertTriangle,
   'Price Review': Tag,
   'Production Request': ShoppingCart,
   'General Purchase': ShoppingCart,
 };
 
-const TABS = ['All', 'Cargo Intake', 'Credit Order', 'Staff Registration', 'Production Request', 'General Purchase', 'Discrepancy'] as const;
+const TABS = ['All', 'Cargo Intake', 'Credit Order', 'Staff Registration', 'Production Request', 'General Purchase'] as const;
 
 export default function MgmtApprovalsView({ addNotification, currentUser }: Props) {
   const [items, setItems] = useState<ApprovalItem[]>([]);
@@ -110,35 +108,25 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
         supabase.from('general_purchases').select('*').eq('status', 'PENDING_MANAGEMENT_APPROVAL').order('created_at', { ascending: false }).limit(50).then(r => r, () => ({ data: [] })),
       ]);
 
-      const mappedCargo: ApprovalItem[] = (cargoData || []).map((row: any) => ({
-        id: row.id,
-        requestId: `CARGO-${row.id.slice(-6).toUpperCase()}`,
-        type: 'Cargo Intake' as const,
-        description: `${row.product_name || 'Goods'} — ${row.qty_received || row.quantity || 0} ${row.goods_type || 'units'} from ${row.company || 'supplier'}`,
-        department: 'OPERATIONS',
-        amount: row.unit_price ? Number(row.unit_price) * (row.qty_received || row.quantity || 0) : null,
-        date: row.created_at?.slice(0, 10) || '',
-        priority: 'High' as const,
-        status: 'Pending' as ApprovalItem['status'],
-        submittedBy: row.company || 'Operations',
-        raw: row,
-      }));
-
-      const mappedDiscrepancies: ApprovalItem[] = (cargoData || [])
-        .filter((row: any) => row.discrepancies && row.discrepancies.trim() !== '')
-        .map((row: any) => ({
-          id: row.id + '-disc',
-          requestId: `DISC-${row.id.slice(-6).toUpperCase()}`,
-          type: 'Discrepancy' as const,
-          description: `Discrepancy: ${row.discrepancies}`,
+      const mappedCargo: ApprovalItem[] = (cargoData || []).map((row: any) => {
+        const baseDesc = `${row.product_name || 'Goods'} — ${row.qty_received || row.quantity || 0} ${row.goods_type || 'units'} from ${row.company || 'supplier'}`;
+        const description = row.discrepancies && row.discrepancies.trim() !== ''
+          ? `${baseDesc} (Discrepancy: ${row.discrepancies})`
+          : baseDesc;
+        return {
+          id: row.id,
+          requestId: `CARGO-${row.id.slice(-6).toUpperCase()}`,
+          type: 'Cargo Intake' as const,
+          description,
           department: 'OPERATIONS',
-          amount: null,
+          amount: row.unit_price ? Number(row.unit_price) * (row.qty_received || row.quantity || 0) : null,
           date: row.created_at?.slice(0, 10) || '',
-          priority: 'Medium' as const,
+          priority: 'High' as const,
           status: 'Pending' as ApprovalItem['status'],
           submittedBy: row.company || 'Operations',
           raw: row,
-        }));
+        };
+      });
 
       const mappedOrders: ApprovalItem[] = (ordersData || []).map((row: any) => ({
         id: row.id,
@@ -196,7 +184,7 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
         raw: row,
       }));
 
-      setItems([...mappedCargo, ...mappedDiscrepancies, ...mappedOrders, ...mappedProfiles, ...mappedProduction, ...mappedPurchases]);
+      setItems([...mappedCargo, ...mappedOrders, ...mappedProfiles, ...mappedProduction, ...mappedPurchases]);
     } catch (e) {
       console.error(e);
       setItems([]);
@@ -233,7 +221,7 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
     const action = showModal;
 
     try {
-      if ((selectedItem.type === 'Cargo Intake' || selectedItem.type === 'Discrepancy') && selectedItem.raw) {
+      if (selectedItem.type === 'Cargo Intake' && selectedItem.raw) {
         const newDbStatus = action === 'approve' ? 'APPROVED' : 'REJECTED';
         const rawId = String(selectedItem.raw.id);
         await supabase.from('cargo_intake').update({ status: newDbStatus }).eq('id', rawId);
