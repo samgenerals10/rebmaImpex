@@ -177,8 +177,18 @@ export default function ProductionAnalyticsView({ addNotification }: Props) {
 
   const fetchData = () => {
     setLoading(true);
-    supabase.from('production_output').select('date, product, boxes, sachets, quality').order('date', { ascending: false }).limit(2000)
-      .then(({ data }) => { if (data) setOutputRecords(data as OutputRecord[]); }, () => {});
+    supabase.from('production_logs').select('date, product_name, boxes_produced, total_sachets, quality_result').order('date', { ascending: false }).limit(2000)
+      .then(({ data }) => {
+        if (data) {
+          setOutputRecords(data.map((row: any) => ({
+            date: row.date || '',
+            product: row.product_name || '',
+            boxes: Number(row.boxes_produced || 0),
+            sachets: Number(row.total_sachets || 0),
+            quality: row.quality_result || 'Pass'
+          })));
+        }
+      }, () => {});
     supabase.from('stock_ledger').select('quantity, created_at').eq('movement_type', 'ADD')
       .then(({ data }) => {
         if (data) setLedgerRecords(data as LedgerRecord[]);

@@ -185,10 +185,10 @@ export default function AnalyticsDashboard({ department, currentUser, addNotific
       } else if (department === 'PRODUCTION') {
         const [{ count: reqC }, { data: outputRows }] = await Promise.all([
           supabase.from('production_requests').select('*', { count: 'exact', head: true }),
-          supabase.from('production_output').select('boxes, sachets'),
+          supabase.from('production_logs').select('boxes_produced, total_sachets'),
         ]);
-        const totalBoxes = (outputRows ?? []).reduce((s: number, r: any) => s + (r.boxes || 0), 0);
-        const totalSachets = (outputRows ?? []).reduce((s: number, r: any) => s + (r.sachets || 0), 0);
+        const totalBoxes = (outputRows ?? []).reduce((s: number, r: any) => s + (r.boxes_produced || 0), 0);
+        const totalSachets = (outputRows ?? []).reduce((s: number, r: any) => s + (r.total_sachets || 0), 0);
         setLiveStats([
           { label: 'Requests', value: `${reqC ?? 0}`, sub: 'Production orders', trend: 0, icon: Package },
           { label: 'Boxes Produced', value: `${totalBoxes}`, sub: 'Total output', trend: 0, icon: Package },

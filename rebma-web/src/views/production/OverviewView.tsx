@@ -103,8 +103,21 @@ export default function ProductionOverviewView({ currentUser, productionRequests
   const [outputPeriod, setOutputPeriod] = useState('Week');
 
   useEffect(() => {
-    supabase.from('production_output').select('*').order('date', { ascending: false }).then(({ data }) => {
-      if (data) setOutput(data as OutputRecord[]);
+    supabase.from('production_logs').select('*').order('date', { ascending: false }).then(({ data }) => {
+      if (data) {
+        setOutput(data.map((row: any) => ({
+          id: row.id,
+          date: row.date || '',
+          product: row.product_name || '',
+          received: Number(row.goods_received || 0),
+          boxes: Number(row.boxes_produced || 0),
+          sachets: Number(row.total_sachets || 0),
+          quality: row.quality_result || 'Pass',
+          notes: row.notes || '',
+        })));
+      } else {
+        setOutput([]);
+      }
     });
     supabase.from('wip_stock').select('*').order('updated_at', { ascending: false }).then(({ data }) => {
       if (data) {

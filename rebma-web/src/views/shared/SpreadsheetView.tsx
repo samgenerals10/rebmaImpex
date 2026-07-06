@@ -47,7 +47,7 @@ const DEPT_TABLES: Record<string, Array<{ id: string; label: string }>> = {
   DISPATCH:   [{ id: 'delivery_logs', label: 'Delivery Logs' }],
   HR:         [{ id: 'profiles', label: 'Staff Profiles' }, { id: 'attendance', label: 'Attendance Logs' }],
   RECEPTION:  [{ id: 'visitors', label: 'Visitor Log' }, { id: 'attendance', label: 'Attendance Logs' }],
-  PRODUCTION: [{ id: 'production_requests', label: 'Production Requests' }, { id: 'production_output', label: 'Production Output' }, { id: 'wip_stock', label: 'WIP Stock' }],
+  PRODUCTION: [{ id: 'production_requests', label: 'Production Requests' }, { id: 'production_logs', label: 'Production Output' }, { id: 'wip_stock', label: 'WIP Stock' }],
   LOGISTICS:  [{ id: 'delivery_logs', label: 'Delivery Logs' }, { id: 'drivers', label: 'Drivers' }],
 };
 
