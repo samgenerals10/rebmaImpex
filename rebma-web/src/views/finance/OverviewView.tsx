@@ -211,6 +211,12 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
       color: '#8b5cf6', bg: 'from-violet-500/10 to-violet-500/5',
       change: '-5.1%', up: true,
     },
+    {
+      label: 'Price Catalog', value: `${goodsPrices.length} Items`,
+      sub: 'Set by Management', icon: Tag, tab: 'PriceCatalog',
+      color: '#ec4899', bg: 'from-pink-500/10 to-pink-500/5',
+      change: 'Active', up: true,
+    },
   ];
 
   return (
@@ -250,6 +256,7 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
             { label: 'Orders Queue', tab: 'OrdersQueue', icon: ClipboardCheck },
             { label: 'Invoices', tab: 'Invoices', icon: FileText },
             { label: 'Credit Mgmt', tab: 'CreditMgmt', icon: CreditCard },
+            { label: 'New Items', tab: 'PriceCatalog', icon: Tag },
             { label: 'Reports', tab: 'FinReports', icon: BarChart2 },
             { label: 'Petty Cash', tab: 'PettyCash', icon: Receipt },
           ].map(({ label, tab, icon: Icon }) => (
@@ -265,7 +272,7 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
       <PendingApprovalsAlert department="FINANCE" onNavigate={setActiveSubTab} />
 
       {/* ══ KPI CARDS ══ */}
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 font-sans">
         {kpiCards.map(({ label, value, sub, icon: Icon, tab, color, bg, change, up }) => (
           <div
             key={label}
@@ -280,7 +287,7 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
                 {up ? <TrendingUp size={9} /> : <AlertTriangle size={9} />} {change}
               </span>
             </div>
-            <p className="text-2xl font-extrabold text-[var(--text-primary)] leading-none mb-1">{value}</p>
+            <p className="text-xl font-extrabold text-[var(--text-primary)] leading-none mb-1">{value}</p>
             <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-0.5">{label}</p>
             <p className="text-xs text-[var(--text-muted)] truncate">{sub}</p>
           </div>

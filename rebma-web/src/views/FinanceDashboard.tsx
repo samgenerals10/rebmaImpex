@@ -92,6 +92,31 @@ export default function FinanceDashboard({
   const [localRequisitions, setLocalRequisitions] = useState<ProductionRequest[]>(productionRequests);
   const [totalCapitalAssets, setTotalCapitalAssets] = useState(0);
 
+  // Price Catalog / E-commerce product states
+  const [goodsPrices, setGoodsPrices] = useState<any[]>([]);
+  const [cargoForInventory, setCargoForInventory] = useState<any[]>([]);
+  const [catalogSearch, setCatalogSearch] = useState('');
+  const [catalogCategory, setCatalogCategory] = useState('ALL');
+  const [catalogSort, setCatalogSort] = useState('name-asc');
+
+  const fetchCatalogData = async () => {
+    try {
+      supabase.from('goods_prices').select('*').then(({ data }) => {
+        if (data) setGoodsPrices(data);
+      });
+      supabase.from('cargo_intake').select('product_name, quantity').eq('status', 'APPROVED').then(({ data }) => {
+        if (data) setCargoForInventory(data);
+      });
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  useEffect(() => {
+    fetchCapitalMetrics();
+    fetchCatalogData();
+  }, []);
+
   const fetchCapitalMetrics = async () => {
     try {
       const [stockData, gpData] = await Promise.all([
@@ -1542,17 +1567,187 @@ export default function FinanceDashboard({
 
                 {/* Pagination Footer */}
                 <div className="theme-table-footer flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-4 border-t border-[var(--border)] bg-[var(--bg)] text-[var(--text-secondary)]">
-                  <p className="text-xs text-[var(--text-secondary)] font-mono">Showing {filteredWarehouse.length} of {localRequisitions.length} logs</p>
-                  <div className="flex items-center gap-1">
-                    <button className="w-8 h-8 flex items-center justify-center text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] bg-[var(--bg-card)] hover:bg-[var(--accent-light)] rounded-lg transition-colors border border-[var(--border)] disabled:opacity-30" disabled>‹</button>
-                    <button className="w-8 h-8 flex items-center justify-center text-xs text-white bg-[var(--accent)] rounded-lg font-bold">1</button>
-                    <button className="w-8 h-8 flex items-center justify-center text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] bg-[var(--bg-card)] hover:bg-[var(--accent-light)] rounded-lg transition-colors border border-[var(--border)] disabled:opacity-30" disabled>›</button>
-                  </div>
                 </div>
               </div>
             )}
+
+            {/* PRICE CATALOG STOREFRONT */}
+            {activeSubTab === 'PriceCatalog' && (() => {
+              const catalogItemsMapped = goodsPrices.map((gp: any) => {
+                const key = String(gp.product_name || '').toLowerCase().trim();
+                const qty = cargoForInventory
+                  .filter((c: any) => String(c.product_name || '').toLowerCase().trim() === key)
+                  .reduce((s: number, c: any) => s + (Number(c.quantity) || 0), 0);
+                const sold = effectiveOrders
+                  .filter((o: any) => ['APPROVED', 'PROCESSING', 'DELIVERED'].includes(o.status) && String(o.productName || o.product_name || '').toLowerCase().trim() === key)
+                  .reduce((s: number, o: any) => s + (Number(o.quantity) || 1), 0);
+                const finalStock = Math.max(0, qty - sold);
+                const sellingValue = finalStock * Number(gp.unit_price || 0);
+                const costValue = finalStock * Number(gp.cost_price || 0);
+                const margin = gp.cost_price > 0 ? (((gp.unit_price - gp.cost_price) / gp.cost_price) * 100).toFixed(0) : '0';
+                return {
+                  ...gp,
+                  stock: finalStock,
+                  sellingValue,
+                  costValue,
+                  margin
+                };
+              });
+
+              const filteredCatalogItems = catalogItemsMapped.filter(item => {
+                const matchesSearch = String(item.product_name || '').toLowerCase().includes(catalogSearch.toLowerCase()) ||
+                  String(item.category || '').toLowerCase().includes(catalogSearch.toLowerCase());
+                const matchesCategory = catalogCategory === 'ALL' || String(item.category || '').toUpperCase() === catalogCategory.toUpperCase();
+                return matchesSearch && matchesCategory;
+              });
+
+              const sortedCatalogItems = [...filteredCatalogItems].sort((a, b) => {
+                if (catalogSort === 'name-asc') return String(a.product_name).localeCompare(String(b.product_name));
+                if (catalogSort === 'name-desc') return String(b.product_name).localeCompare(String(a.product_name));
+                if (catalogSort === 'price-asc') return Number(a.unit_price) - Number(b.unit_price);
+                if (catalogSort === 'price-desc') return Number(b.unit_price) - Number(a.unit_price);
+                if (catalogSort === 'qty-desc') return b.stock - a.stock;
+                if (catalogSort === 'valuation-desc') return b.sellingValue - a.sellingValue;
+                return 0;
+              });
+
+              const catalogCategories = ['ALL', ...Array.from(new Set(goodsPrices.map(gp => gp.category || 'General').filter(Boolean)))];
+
+              return (
+                <div className="space-y-6">
+                  {/* Storefront Header */}
+                  <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 p-6 bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-sm">
+                    <div>
+                      <h2 className="text-xl font-bold text-[var(--text-primary)]">E-Commerce Product Catalog</h2>
+                      <p className="text-xs text-[var(--text-muted)] mt-1">Live active prices, quantities, and potential margins set by Management.</p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-3">
+                      {/* Search */}
+                      <div className="relative">
+                        <span className="absolute left-3 top-2.5 text-[var(--text-secondary)] text-xs">🔍</span>
+                        <input
+                          type="text"
+                          placeholder="Search products..."
+                          value={catalogSearch}
+                          onChange={e => setCatalogSearch(e.target.value)}
+                          className="pl-8 pr-3 py-2 text-xs rounded-xl outline-none transition bg-[var(--bg)] border border-[var(--border)] text-[var(--text-primary)] focus:border-[var(--accent)] w-full sm:w-48 font-medium"
+                        />
+                      </div>
+                      {/* Category Filter */}
+                      <select
+                        value={catalogCategory}
+                        onChange={e => setCatalogCategory(e.target.value)}
+                        className="px-3 py-2 text-xs rounded-xl outline-none transition bg-[var(--bg)] border border-[var(--border)] text-[var(--text-primary)] focus:border-[var(--accent)] font-semibold"
+                      >
+                        {catalogCategories.map(cat => (
+                          <option key={cat} value={cat}>{cat === 'ALL' ? 'All Categories' : cat}</option>
+                        ))}
+                      </select>
+                      {/* Sort Filter */}
+                      <select
+                        value={catalogSort}
+                        onChange={e => setCatalogSort(e.target.value)}
+                        className="px-3 py-2 text-xs rounded-xl outline-none transition bg-[var(--bg)] border border-[var(--border)] text-[var(--text-primary)] focus:border-[var(--accent)] font-semibold"
+                      >
+                        <option value="name-asc">Sort: A-Z</option>
+                        <option value="name-desc">Sort: Z-A</option>
+                        <option value="price-asc">Price: Low to High</option>
+                        <option value="price-desc">Price: High to Low</option>
+                        <option value="qty-desc">Stock: High to Low</option>
+                        <option value="valuation-desc">Valuation: High to Low</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Grid Cards list */}
+                  {sortedCatalogItems.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center p-12 bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl text-[var(--text-muted)] text-center">
+                      <span className="text-4xl mb-3">🛍️</span>
+                      <h4 className="font-bold text-sm text-[var(--text-primary)]">No products match filters</h4>
+                      <p className="text-xs text-[var(--text-muted)] mt-1">Try resetting your search query or choosing a different category.</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                      {sortedCatalogItems.map((item: any) => {
+                        const categoryColors: Record<string, string> = {
+                          Beverages: 'from-blue-500/20 to-blue-500/5 text-blue-600',
+                          Grains: 'from-amber-500/20 to-amber-500/5 text-amber-600',
+                          Cement: 'from-slate-500/20 to-slate-500/5 text-slate-600',
+                          General: 'from-indigo-500/20 to-indigo-500/5 text-indigo-600',
+                        };
+                        const catStyle = categoryColors[item.category] || categoryColors.General;
+                        return (
+                          <div key={item.id} className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl overflow-hidden hover:border-[var(--accent)] hover:shadow-lg transition-all group flex flex-col">
+                            {/* Card Banner */}
+                            <div className={`bg-gradient-to-br ${catStyle} p-6 h-28 relative flex items-center justify-center border-b border-[var(--border)]`}>
+                              <div className="w-14 h-14 rounded-full bg-[var(--bg-card)] shadow-md border border-[var(--border)] flex items-center justify-center text-[var(--accent)] font-extrabold text-xl uppercase">
+                                {item.product_name?.[0] || 'P'}
+                              </div>
+                              <span className="absolute top-3 right-3 text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-[var(--bg-card)] border border-[var(--border)] tracking-wider uppercase text-[var(--text-secondary)]">
+                                {item.category || 'General'}
+                              </span>
+                            </div>
+
+                            {/* Content */}
+                            <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
+                              <div>
+                                <h4 className="text-base font-extrabold text-[var(--text-primary)] group-hover:text-[var(--accent)] transition-colors line-clamp-1">{item.product_name}</h4>
+                                <p className="text-[10px] text-[var(--text-muted)] mt-0.5 font-mono">ID: {item.id.slice(0, 8)}...</p>
+                              </div>
+
+                              {/* Price Details */}
+                              <div className="grid grid-cols-2 gap-2 py-2 border-y border-[var(--border)]">
+                                <div>
+                                  <span className="text-[9px] font-bold uppercase tracking-wider text-[var(--text-muted)] block">Selling Price</span>
+                                  <span className="text-base font-extrabold text-[var(--text-primary)]">{item.currency} {Number(item.unit_price || 0).toLocaleString()}</span>
+                                </div>
+                                <div className="text-right">
+                                  <span className="text-[9px] font-bold uppercase tracking-wider text-[var(--text-muted)] block">Cost Price</span>
+                                  <span className="text-sm font-semibold text-[var(--text-secondary)]">{item.currency} {Number(item.cost_price || 0).toLocaleString()}</span>
+                                </div>
+                              </div>
+
+                              {/* Inventory Details */}
+                              <div className="space-y-2">
+                                <div className="flex items-center justify-between text-xs">
+                                  <span className="text-[var(--text-secondary)] font-medium">Quantity in Stock</span>
+                                  <span className="font-bold text-[var(--text-primary)]">{item.stock.toLocaleString()} units</span>
+                                </div>
+                                <div className="h-1.5 bg-[var(--bg-input)] rounded-full overflow-hidden">
+                                  <div
+                                    className={`h-full rounded-full transition-all ${item.stock > 1000 ? 'bg-emerald-500' : item.stock > 100 ? 'bg-amber-500' : 'bg-rose-500'}`}
+                                    style={{ width: `${Math.min(100, (item.stock / 5000) * 100)}%` }}
+                                  />
+                                </div>
+                              </div>
+
+                              {/* Valuation Metrics */}
+                              <div className="bg-[var(--bg-input)] rounded-xl p-3 space-y-1.5 text-[11px] font-medium border border-[var(--border)]">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[var(--text-secondary)]">Profit Margin:</span>
+                                  <span className="text-emerald-500 font-extrabold">+{item.margin}%</span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[var(--text-secondary)]">Capital Cost Value:</span>
+                                  <span className="text-[var(--text-primary)] font-semibold">{item.currency} {item.costValue.toLocaleString()}</span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[var(--text-secondary)]">Potential Revenue:</span>
+                                  <span className="text-[var(--text-primary)] font-semibold">{item.currency} {item.sellingValue.toLocaleString()}</span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         </div>
+
         )} {/* end activeSubTab !== 'Evaluation' */}
       </div>
 
