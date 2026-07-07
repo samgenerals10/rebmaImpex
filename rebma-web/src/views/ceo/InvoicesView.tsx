@@ -462,21 +462,83 @@ export default function InvoicesView({ addNotification }: Props) {
           { label: 'Issue Date',  value: selectedInvoice.date },
           { label: 'Due Date',    value: selectedInvoice.due_date },
           { label: 'Status',      value: selectedInvoice.status },
+          { label: 'Payment Mode', value: selectedInvoice.payment_mode },
         ]}
         onClose={() => setSelectedInvoice(null)}
-        actions={
-          <div className="flex gap-2 flex-wrap">
-            <button onClick={() => { if(selectedInvoice) { setGenerateModal(selectedInvoice); setInvoiceNotes(''); setSelectedInvoice(null); } }} className="px-4 py-2 rounded-xl text-white text-sm font-medium cursor-pointer flex items-center gap-1.5" style={{ background: 'var(--accent)' }}>
-              <FileCheck className="w-4 h-4" /> Generate Invoice
-            </button>
-            <button onClick={() => { if(selectedInvoice) printSingleInvoice(selectedInvoice); }} className="px-4 py-2 rounded-xl border border-[var(--border)] text-sm font-medium cursor-pointer flex items-center gap-1.5" style={{ color: 'var(--text-secondary)' }}>
-              <Printer className="w-4 h-4" /> Quick Print
-            </button>
-            <button onClick={() => setSelectedInvoice(null)} className="px-4 py-2 rounded-xl border border-[var(--border)] text-sm font-medium cursor-pointer" style={{ color: 'var(--text-secondary)' }}>Close</button>
+      >
+        {/* Line items breakdown */}
+        <div style={{ marginBottom: '1rem' }}>
+          <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
+            Order Items
+          </p>
+          <div style={{ border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+              <thead>
+                <tr style={{ background: 'var(--bg-input)', borderBottom: '1px solid var(--border)' }}>
+                  <th style={{ textAlign: 'left', padding: '7px 12px', fontWeight: 600, color: 'var(--text-muted)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Product</th>
+                  <th style={{ textAlign: 'center', padding: '7px 8px', fontWeight: 600, color: 'var(--text-muted)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Qty</th>
+                  <th style={{ textAlign: 'right', padding: '7px 12px', fontWeight: 600, color: 'var(--text-muted)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Unit Price</th>
+                  <th style={{ textAlign: 'right', padding: '7px 12px', fontWeight: 600, color: 'var(--text-muted)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Subtotal</th>
+                </tr>
+              </thead>
+              <tbody>
+                {selectedInvoice.lineItems && selectedInvoice.lineItems.length > 0
+                  ? selectedInvoice.lineItems.map((item, idx) => (
+                    <tr key={idx} style={{ borderBottom: idx < selectedInvoice.lineItems!.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                      <td style={{ padding: '9px 12px', fontWeight: 600, color: 'var(--text-primary)' }}>{item.productName}</td>
+                      <td style={{ padding: '9px 8px', textAlign: 'center', fontWeight: 700, color: 'var(--accent)' }}>×{item.quantity}</td>
+                      <td style={{ padding: '9px 12px', textAlign: 'right', color: 'var(--text-secondary)' }}>
+                        {item.unitPrice > 0 ? `GHS ${Number(item.unitPrice).toLocaleString()}` : <span style={{ color: '#f59e0b', fontSize: 10 }}>TBD</span>}
+                      </td>
+                      <td style={{ padding: '9px 12px', textAlign: 'right', fontWeight: 700, color: '#10b981' }}>
+                        {item.lineTotal > 0 ? `GHS ${Number(item.lineTotal).toLocaleString()}` : '—'}
+                      </td>
+                    </tr>
+                  ))
+                  : (
+                    <tr>
+                      <td style={{ padding: '9px 12px', fontWeight: 600, color: 'var(--text-primary)' }}>{selectedInvoice.product || 'Goods & Services'}</td>
+                      <td style={{ padding: '9px 8px', textAlign: 'center', color: 'var(--text-muted)' }}>—</td>
+                      <td style={{ padding: '9px 12px', textAlign: 'right', color: 'var(--text-muted)' }}>—</td>
+                      <td style={{ padding: '9px 12px', textAlign: 'right', fontWeight: 700, color: '#10b981' }}>GHS {Number(selectedInvoice.amount ?? 0).toLocaleString()}</td>
+                    </tr>
+                  )
+                }
+              </tbody>
+              <tfoot>
+                <tr style={{ background: 'var(--bg-input)', borderTop: '1px solid var(--border)' }}>
+                  <td colSpan={3} style={{ padding: '8px 12px', fontWeight: 700, color: 'var(--text-primary)', fontSize: 12 }}>Total</td>
+                  <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 800, color: 'var(--accent)', fontSize: 14 }}>GHS {Number(selectedInvoice.amount ?? 0).toLocaleString()}</td>
+                </tr>
+              </tfoot>
+            </table>
           </div>
-        }
-      />
+        </div>
+
+        {/* Action buttons */}
+        <div style={{ display: 'flex', gap: 8, paddingTop: 12, borderTop: '1px solid var(--border)', flexWrap: 'wrap' }}>
+          <button
+            onClick={() => { if(selectedInvoice) { setGenerateModal(selectedInvoice); setInvoiceNotes(''); setSelectedInvoice(null); } }}
+            style={{ background: 'var(--accent)', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+          >
+            <FileCheck size={15} /> Generate Invoice
+          </button>
+          <button
+            onClick={() => { if(selectedInvoice) printSingleInvoice(selectedInvoice); }}
+            style={{ background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--border)', padding: '8px 16px', borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+          >
+            <Printer size={15} /> Quick Print
+          </button>
+          <button
+            onClick={() => setSelectedInvoice(null)}
+            style={{ background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--border)', padding: '8px 16px', borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer', marginLeft: 'auto' }}
+          >
+            Close
+          </button>
+        </div>
+      </EntityDetailPanel>
     )}
+
 
     {/* Generate Invoice Modal */}
     {generateModal && (
