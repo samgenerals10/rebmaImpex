@@ -376,16 +376,17 @@ export default function CustomersView({ customersList, onRegisterCustomer, addNo
               <button onClick={() => { setShowModal(false); setEditTarget(null); }} className="p-1 rounded-lg hover:bg-[var(--bg-input)]"><X className="w-4 h-4 text-[var(--text-muted)]" /></button>
             </div>
             {[
-              { label: 'Full Name *', key: 'name' },
-              { label: 'Company Name', key: 'companyName' },
-              { label: 'Phone *', key: 'phone' },
-              { label: 'Location', key: 'location' },
-              { label: 'Email', key: 'email' },
-              { label: 'Ghana Card', key: 'ghanaCard' },
+              { label: 'Full Name *', key: 'name', placeholder: 'E.g., Kofi Owusu' },
+              { label: 'Company Name', key: 'companyName', placeholder: 'E.g., Owusu Retail Hub' },
+              { label: 'Phone *', key: 'phone', placeholder: 'E.g., +233 24 123 4567' },
+              { label: 'Location', key: 'location', placeholder: 'E.g., Kumasi' },
+              { label: 'Email', key: 'email', placeholder: 'client@company.com' },
+              { label: 'Ghana Card', key: 'ghanaCard', placeholder: 'E.g., GHA-721839210-9' },
             ].map(f => (
               <div key={f.key}>
                 <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">{f.label}</label>
                 <input value={(form as any)[f.key]} onChange={e => setForm(prev => ({ ...prev, [f.key]: e.target.value }))}
+                  placeholder={f.placeholder}
                   className="w-full px-3 py-2 text-sm rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />
               </div>
             ))}
