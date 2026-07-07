@@ -294,109 +294,6 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
         ))}
       </div>
 
-      {/* ══ CHARTS ROW ══ */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
-        {/* Earning Overview — 2/3 width */}
-        <div className="xl:col-span-2 bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h3 className="font-semibold text-[var(--text-primary)]">Earning Overview</h3>
-              <p className="text-xs text-[var(--text-muted)]">Revenue & payment flow trend</p>
-            </div>
-            <div className="flex items-center gap-1">
-              {(['3M', '6M', '12M'] as const).map(p => (
-                <button key={p} onClick={() => setEarnPeriod(p)}
-                  className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-colors ${earnPeriod === p ? 'text-white' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-input)]'}`}
-                  style={earnPeriod === p ? { background: 'var(--accent)' } : {}}>
-                  {p}
-                </button>
-              ))}
-            </div>
-          </div>
-          <p className="text-3xl font-extrabold text-[var(--text-primary)] mb-4">GHS {totalRevenue.toLocaleString()}</p>
-          <div className="h-44">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={earningData}>
-                <defs>
-                  <linearGradient id="earnFin" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="var(--accent)" stopOpacity={0.35} />
-                    <stop offset="95%" stopColor="var(--accent)" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <XAxis dataKey="month" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `${(v / 1000).toFixed(0)}K`} />
-                <Tooltip content={<CustomTooltip />} />
-                <Area type="monotone" dataKey="value" name="Revenue" stroke="var(--accent)" strokeWidth={2.5} fill="url(#earnFin)" dot={false} />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Payment Methods Breakdown — 1/3 width */}
-        <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
-          <h3 className="font-semibold text-[var(--text-primary)] mb-1">Payment Methods</h3>
-          <p className="text-xs text-[var(--text-muted)] mb-4">Breakdown by sales orders</p>
-          {paymentPie.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-48 text-[var(--text-muted)]">
-              <Activity size={28} className="opacity-30 mb-2" />
-              <p className="text-xs">No orders yet</p>
-            </div>
-          ) : (
-            <>
-              <div className="flex justify-center mb-4">
-                <div style={{ width: 130, height: 130 }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie data={paymentPie} dataKey="value" cx="50%" cy="50%" innerRadius={42} outerRadius={62} strokeWidth={0}>
-                        {paymentPie.map((e, i) => <Cell key={i} fill={e.color} />)}
-                      </Pie>
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-              <div className="space-y-2">
-                {paymentPie.map(item => (
-                  <div key={item.name} className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2.5 h-2.5 rounded-full" style={{ background: item.color }} />
-                      <span className="text-xs text-[var(--text-secondary)]">{item.name}</span>
-                    </div>
-                    <span className="text-xs font-bold text-[var(--text-primary)]">{item.value}%</span>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* ══ COMPANY ACCOUNTS / WALLETS ══ */}
-      <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold text-[var(--text-primary)]">Company Accounts</h3>
-          <button onClick={() => setActiveSubTab?.('Wallets')} className="flex items-center gap-1 text-xs font-medium hover:underline" style={{ color: 'var(--accent)' }}>
-            View All <ArrowRight size={12} />
-          </button>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {[
-            { name: 'Total Payments Received', num: `Cash: GHS ${walletCash.toLocaleString()} · MoMo: GHS ${walletMomo.toLocaleString()}`, balance: `GHS ${walletTotal.toLocaleString()}`, trend: 'Live from payment records', color: 'var(--accent)', tab: 'Wallets' },
-            { name: 'Expenses Paid', num: 'Approved expense records', balance: `GHS ${totalExpenses.toLocaleString()}`, trend: 'Approved only', color: '#6366f1', tab: 'Expenses' },
-            { name: 'Net Balance', num: `In: GHS ${walletTotal.toLocaleString()} · Out: GHS ${totalExpenses.toLocaleString()}`, balance: `GHS ${Math.abs(netBalance).toLocaleString()}`, trend: netBalance >= 0 ? 'Surplus ↑' : 'Deficit ↓', color: netBalance >= 0 ? '#10b981' : '#ef4444', tab: 'Transactions' },
-          ].map(acc => (
-            <div key={acc.name} className="rounded-2xl p-5 text-white" style={{ background: `linear-gradient(135deg, ${acc.color}CC, ${acc.color})` }}>
-              <p className="text-xs text-white/70 mb-1">{acc.name}</p>
-              <p className="text-[10px] text-white/60 mb-3 font-mono">{acc.num}</p>
-              <p className="text-2xl font-extrabold">{acc.balance}</p>
-              <div className="flex items-center justify-between mt-3">
-                <span className="text-xs text-white/70">{acc.trend}</span>
-                <button onClick={() => setActiveSubTab?.(acc.tab)} className="text-xs text-white/80 hover:text-white flex items-center gap-1">Details <ArrowRight size={10} /></button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
       {/* ══ GOODS INVENTORY + NEWLY PRICED CATALOG ══ */}
       {inventoryItems.length > 0 && (
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
@@ -509,6 +406,111 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
           </div>
         </div>
       )}
+
+      {/* ══ CHARTS ROW ══ */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
+        {/* Earning Overview — 2/3 width */}
+        <div className="xl:col-span-2 bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="font-semibold text-[var(--text-primary)]">Earning Overview</h3>
+              <p className="text-xs text-[var(--text-muted)]">Revenue & payment flow trend</p>
+            </div>
+            <div className="flex items-center gap-1">
+              {(['3M', '6M', '12M'] as const).map(p => (
+                <button key={p} onClick={() => setEarnPeriod(p)}
+                  className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-colors ${earnPeriod === p ? 'text-white' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-input)]'}`}
+                  style={earnPeriod === p ? { background: 'var(--accent)' } : {}}>
+                  {p}
+                </button>
+              ))}
+            </div>
+          </div>
+          <p className="text-3xl font-extrabold text-[var(--text-primary)] mb-4">GHS {totalRevenue.toLocaleString()}</p>
+          <div className="h-32">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={earningData}>
+                <defs>
+                  <linearGradient id="earnFin" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="var(--accent)" stopOpacity={0.35} />
+                    <stop offset="95%" stopColor="var(--accent)" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <XAxis dataKey="month" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `${(v / 1000).toFixed(0)}K`} />
+                <Tooltip content={<CustomTooltip />} />
+                <Area type="monotone" dataKey="value" name="Revenue" stroke="var(--accent)" strokeWidth={2.5} fill="url(#earnFin)" dot={false} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Payment Methods Breakdown — 1/3 width */}
+        <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5 flex flex-col justify-between">
+          <div>
+            <h3 className="font-semibold text-[var(--text-primary)] mb-1">Payment Methods</h3>
+            <p className="text-xs text-[var(--text-muted)] mb-4">Breakdown by sales orders</p>
+          </div>
+          {paymentPie.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-32 text-[var(--text-muted)]">
+              <Activity size={28} className="opacity-30 mb-2" />
+              <p className="text-xs">No orders yet</p>
+            </div>
+          ) : (
+            <>
+              <div className="flex justify-center mb-4">
+                <div style={{ width: 110, height: 110 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie data={paymentPie} dataKey="value" cx="50%" cy="50%" innerRadius={35} outerRadius={52} strokeWidth={0}>
+                        {paymentPie.map((e, i) => <Cell key={i} fill={e.color} />)}
+                      </Pie>
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                {paymentPie.map(item => (
+                  <div key={item.name} className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2.5 h-2.5 rounded-full" style={{ background: item.color }} />
+                      <span className="text-xs text-[var(--text-secondary)]">{item.name}</span>
+                    </div>
+                    <span className="text-xs font-bold text-[var(--text-primary)]">{item.value}%</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* ══ COMPANY ACCOUNTS / WALLETS ══ */}
+      <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold text-[var(--text-primary)]">Company Accounts</h3>
+          <button onClick={() => setActiveSubTab?.('Wallets')} className="flex items-center gap-1 text-xs font-medium hover:underline" style={{ color: 'var(--accent)' }}>
+            View All <ArrowRight size={12} />
+          </button>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[
+            { name: 'Total Payments Received', num: `Cash: GHS ${walletCash.toLocaleString()} · MoMo: GHS ${walletMomo.toLocaleString()}`, balance: `GHS ${walletTotal.toLocaleString()}`, trend: 'Live from payment records', color: 'var(--accent)', tab: 'Wallets' },
+            { name: 'Expenses Paid', num: 'Approved expense records', balance: `GHS ${totalExpenses.toLocaleString()}`, trend: 'Approved only', color: '#6366f1', tab: 'Expenses' },
+            { name: 'Net Balance', num: `In: GHS ${walletTotal.toLocaleString()} · Out: GHS ${totalExpenses.toLocaleString()}`, balance: `GHS ${Math.abs(netBalance).toLocaleString()}`, trend: netBalance >= 0 ? 'Surplus ↑' : 'Deficit ↓', color: netBalance >= 0 ? '#10b981' : '#ef4444', tab: 'Transactions' },
+          ].map(acc => (
+            <div key={acc.name} className="rounded-2xl p-5 text-white" style={{ background: `linear-gradient(135deg, ${acc.color}CC, ${acc.color})` }}>
+              <p className="text-xs text-white/70 mb-1">{acc.name}</p>
+              <p className="text-[10px] text-white/60 mb-3 font-mono">{acc.num}</p>
+              <p className="text-2xl font-extrabold">{acc.balance}</p>
+              <div className="flex items-center justify-between mt-3">
+                <span className="text-xs text-white/70">{acc.trend}</span>
+                <button onClick={() => setActiveSubTab?.(acc.tab)} className="text-xs text-white/80 hover:text-white flex items-center gap-1">Details <ArrowRight size={10} /></button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
 
       {/* ══ CASH FLOW + UPCOMING BILLS ══ */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">

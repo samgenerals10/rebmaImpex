@@ -98,6 +98,7 @@ export default function FinanceDashboard({
   const [catalogSearch, setCatalogSearch] = useState('');
   const [catalogCategory, setCatalogCategory] = useState('ALL');
   const [catalogSort, setCatalogSort] = useState('name-asc');
+  const [selectedCatalogProduct, setSelectedCatalogProduct] = useState<any | null>(null);
 
   const fetchCatalogData = async () => {
     try {
@@ -1687,6 +1688,186 @@ export default function FinanceDashboard({
                 );
               };
 
+              if (selectedCatalogProduct) {
+                // Compile transaction and log history for this product
+                const ledgerLogs: any[] = [];
+                const key = String(selectedCatalogProduct.product_name).toLowerCase().trim();
+
+                // Add cargo intake logs (Intakes)
+                cargoForInventory
+                  .filter((c: any) => String(c.product_name || '').toLowerCase().trim() === key)
+                  .forEach((c: any, idx: number) => {
+                    ledgerLogs.push({
+                      id: c.id || `intake-${idx}-${c.created_at}`,
+                      type: 'INTAKE',
+                      date: c.created_at || 'N/A',
+                      desc: `Cargo Intake batch approved & stocked`,
+                      qty: Number(c.quantity || 0),
+                      price: Number(selectedCatalogProduct.cost_price || 0),
+                      amount: Number(c.quantity || 0) * Number(selectedCatalogProduct.cost_price || 0),
+                      status: 'APPROVED',
+                      user: 'Operations',
+                    });
+                  });
+
+                // Add sales order logs (Sales)
+                effectiveOrders
+                  .filter((o: any) => String(o.productName || o.product_name || '').toLowerCase().trim() === key)
+                  .forEach((o: any) => {
+                    ledgerLogs.push({
+                      id: o.id,
+                      type: 'SALE',
+                      date: o.createdAt || 'N/A',
+                      desc: `Customer sales order checkout (${o.clientName || 'Cash Client'})`,
+                      qty: -Number(o.quantity || 1),
+                      price: Number(o.totalAmount || 0) / Math.max(1, Number(o.quantity || 1)),
+                      amount: Number(o.totalAmount || 0),
+                      status: o.status,
+                      user: o.clientName || 'Client',
+                    });
+                  });
+
+                // Add pricing log
+                ledgerLogs.push({
+                  id: `price-${selectedCatalogProduct.id}`,
+                  type: 'PRICING',
+                  date: selectedCatalogProduct.updated_at || 'N/A',
+                  desc: `Pricing entry set by Management`,
+                  qty: null,
+                  price: Number(selectedCatalogProduct.unit_price || 0),
+                  amount: null,
+                  status: 'Active',
+                  user: selectedCatalogProduct.updated_by || 'Management',
+                });
+
+                // Sort by date descending
+                const sortedLogs = [...ledgerLogs].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+                return (
+                  <div className="space-y-6 bg-white border border-slate-100 p-6 md:p-8 rounded-3xl shadow-sm text-slate-900 font-sans">
+                    
+                    {/* Header back navigation */}
+                    <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+                      <button
+                        onClick={() => setSelectedCatalogProduct(null)}
+                        className="flex items-center gap-2 px-4 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-bold rounded-xl border border-slate-100 transition-colors"
+                      >
+                        ← Back to Catalog Storefront
+                      </button>
+                      <span className="text-xs font-bold text-slate-400 font-mono">Product Details Dashboard</span>
+                    </div>
+
+                    {/* Product Summary Hero Header */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-6 bg-slate-50 border border-slate-100 rounded-2xl">
+                      <div className="flex items-center gap-4">
+                        <div className="w-16 h-16 rounded-2xl bg-white border border-slate-100 flex items-center justify-center text-[var(--accent)] shrink-0">
+                          {drawProductImg(selectedCatalogProduct.product_name, selectedCatalogProduct.category || 'General')}
+                        </div>
+                        <div>
+                          <h2 className="text-lg font-black text-slate-955">{selectedCatalogProduct.product_name}</h2>
+                          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">{selectedCatalogProduct.category || 'General'}</p>
+                          <p className="text-[10px] text-slate-400 font-mono mt-0.5">ID: {selectedCatalogProduct.id}</p>
+                        </div>
+                      </div>
+
+                      {/* Financial info summary columns */}
+                      <div className="grid grid-cols-2 gap-4 border-t md:border-t-0 md:border-x border-slate-200/60 px-0 md:px-6 py-4 md:py-0">
+                        <div>
+                          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide block">Selling Price</span>
+                          <span className="text-lg font-extrabold text-slate-900">{selectedCatalogProduct.currency} {Number(selectedCatalogProduct.unit_price || 0).toLocaleString()}</span>
+                        </div>
+                        <div>
+                          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide block">Cost Price</span>
+                          <span className="text-sm font-semibold text-slate-600 block mt-0.5">{selectedCatalogProduct.currency} {Number(selectedCatalogProduct.cost_price || 0).toLocaleString()}</span>
+                          <span className="text-[9px] text-emerald-500 font-black">+{selectedCatalogProduct.margin}% margin</span>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col justify-center">
+                        <div className="flex items-center justify-between text-xs mb-1">
+                          <span className="text-slate-500 font-medium">Quantity in Stock:</span>
+                          <span className="font-bold text-slate-900">{(selectedCatalogProduct.stock || 0).toLocaleString()} units</span>
+                        </div>
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-slate-500 font-medium">Fulfillment Valuation:</span>
+                          <span className="font-black text-slate-955">{(selectedCatalogProduct.currency || 'GHS')} {(selectedCatalogProduct.sellingValue || 0).toLocaleString()}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Detailed transaction log table */}
+                    <div className="space-y-3">
+                      <div>
+                        <h3 className="text-sm font-black text-slate-900">Historical Audit & Fulfillment Log Table</h3>
+                        <p className="text-[10px] text-slate-400">Chronological transaction history containing set prices, incoming cargo shipments, and sales orders.</p>
+                      </div>
+
+                      <div className="overflow-x-auto border border-slate-100 rounded-2xl bg-white shadow-sm">
+                        <table className="w-full text-xs text-left">
+                          <thead>
+                            <tr className="bg-slate-50 border-b border-slate-100 text-slate-400 uppercase font-semibold text-[9px] tracking-wider">
+                              <th className="py-3 px-4">Date / Time</th>
+                              <th className="py-3 px-4">Event Type</th>
+                              <th className="py-3 px-4">Description</th>
+                              <th className="py-3 px-4 text-right">Quantity</th>
+                              <th className="py-3 px-4 text-right">Unit Price</th>
+                              <th className="py-3 px-4 text-right">Total Amount</th>
+                              <th className="py-3 px-4">Actor</th>
+                              <th className="py-3 px-4">Status</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100 text-slate-700">
+                            {sortedLogs.length === 0 ? (
+                              <tr>
+                                <td colSpan={8} className="py-8 text-center text-slate-400 font-semibold">No logs recorded for this item.</td>
+                              </tr>
+                            ) : (
+                              sortedLogs.map((log, idx) => (
+                                <tr key={idx} className="hover:bg-slate-50/50 transition-colors font-medium">
+                                  <td className="py-3 px-4 text-[10px] text-slate-500 font-mono">
+                                    {log.date !== 'N/A' ? new Date(log.date).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'N/A'}
+                                  </td>
+                                  <td className="py-3 px-4">
+                                    <span className={`px-2 py-0.5 rounded-full text-[8px] font-black tracking-wider ${
+                                      log.type === 'INTAKE' ? 'bg-amber-100 text-amber-700' :
+                                      log.type === 'SALE' ? 'bg-emerald-100 text-emerald-700' :
+                                      'bg-sky-100 text-sky-700'
+                                    }`}>
+                                      {log.type}
+                                    </span>
+                                  </td>
+                                  <td className="py-3 px-4 text-slate-900">{log.desc}</td>
+                                  <td className="py-3 px-4 text-right font-mono font-bold text-[13px]">
+                                    {log.qty !== null ? (log.qty > 0 ? `+${log.qty.toLocaleString()}` : log.qty.toLocaleString()) : '—'}
+                                  </td>
+                                  <td className="py-3 px-4 text-right font-mono">
+                                    {selectedCatalogProduct.currency} {Number(log.price).toLocaleString()}
+                                  </td>
+                                  <td className="py-3 px-4 text-right font-mono font-bold text-slate-900">
+                                    {log.amount !== null ? `${selectedCatalogProduct.currency} ${Number(log.amount).toLocaleString()}` : '—'}
+                                  </td>
+                                  <td className="py-3 px-4 text-slate-500">{log.user}</td>
+                                  <td className="py-3 px-4">
+                                    <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
+                                      log.status === 'APPROVED' || log.status === 'DELIVERED' || log.status === 'Active' ? 'bg-emerald-500/10 text-emerald-600' :
+                                      log.status === 'PENDING' || log.status.startsWith('PENDING') ? 'bg-amber-500/10 text-amber-600' :
+                                      'bg-slate-100 text-slate-500'
+                                    }`}>
+                                      {log.status.replace(/_/g, ' ')}
+                                    </span>
+                                  </td>
+                                </tr>
+                              ))
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                  </div>
+                );
+              }
+
               return (
                 <div className="space-y-8 bg-[#f8fafc] p-4 md:p-8 rounded-3xl border border-[var(--border)] text-slate-900 font-sans">
                   
@@ -1813,7 +1994,11 @@ export default function FinanceDashboard({
                       {/* Products Grid (3 columns wide) */}
                       <div className="xl:col-span-3 grid grid-cols-1 sm:grid-cols-3 gap-6">
                         {sortedCatalogItems.slice(0, 6).map((item: any) => (
-                          <div key={item.id} className="bg-white border border-slate-100 rounded-3xl p-5 hover:shadow-xl transition-all group relative flex flex-col justify-between">
+                          <div
+                            key={item.id}
+                            onClick={() => setSelectedCatalogProduct(item)}
+                            className="bg-white border border-slate-100 rounded-3xl p-5 hover:shadow-xl transition-all group relative flex flex-col justify-between cursor-pointer"
+                          >
                             {/* Bestseller Badge */}
                             <span className="absolute top-4 left-4 text-[8px] font-black px-2.5 py-1 bg-amber-500 text-white uppercase rounded-md tracking-wider">
                               BESTSELLER
@@ -1884,18 +2069,25 @@ export default function FinanceDashboard({
                           { name: 'Galaxy Tab Pro Z10', cat: 'Electronics', price: 699, cost: 550, icon: 'tv' },
                           { name: 'PHX-900 Gaming Mouse', cat: 'Accessories', price: 99, cost: 70, icon: 'mouse' },
                           { name: 'EpoMax Bluetooth', cat: 'Speakers', price: 150, cost: 120, icon: 'speaker' }
-                        ].map((prod, idx) => (
-                          <div key={idx} className="bg-white border border-slate-100 rounded-3xl p-4 flex flex-col justify-between hover:shadow-md transition-all group">
-                            <div className="bg-slate-50/50 rounded-2xl py-4 flex items-center justify-center min-h-[90px] mb-3">
-                              {drawProductImg(prod.name, prod.cat)}
+                        ].map((prod, idx) => {
+                          const matchedRealProduct = goodsPrices.find((gp: any) => String(gp.product_name).toLowerCase().includes(prod.name.split(' ')[0].toLowerCase())) || { product_name: prod.name, category: prod.cat, unit_price: prod.price, cost_price: prod.cost, id: `mock-${idx}`, currency: 'GHS', stock: 120, margin: '25', sellingValue: prod.price * 120, costValue: prod.cost * 120 };
+                          return (
+                            <div
+                              key={idx}
+                              onClick={() => setSelectedCatalogProduct(matchedRealProduct)}
+                              className="bg-white border border-slate-100 rounded-3xl p-4 flex flex-col justify-between hover:shadow-md transition-all group cursor-pointer"
+                            >
+                              <div className="bg-slate-50/50 rounded-2xl py-4 flex items-center justify-center min-h-[90px] mb-3">
+                                {drawProductImg(prod.name, prod.cat)}
+                              </div>
+                              <div className="text-left space-y-1">
+                                <h4 className="text-[10px] font-black text-slate-800 truncate">{prod.name}</h4>
+                                <p className="text-[9px] text-slate-400 uppercase font-semibold">{prod.cat}</p>
+                                <p className="text-xs font-black text-slate-900">GHS {prod.price}</p>
+                              </div>
                             </div>
-                            <div className="text-left space-y-1">
-                              <h4 className="text-[10px] font-black text-slate-800 truncate">{prod.name}</h4>
-                              <p className="text-[9px] text-slate-400 uppercase font-semibold">{prod.cat}</p>
-                              <p className="text-xs font-black text-slate-900">GHS {prod.price}</p>
-                            </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
 
                       {/* Right Promo Card 2 (Save up to 35% replica) */}
