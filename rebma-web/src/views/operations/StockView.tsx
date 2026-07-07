@@ -366,12 +366,61 @@ export default function StockView({ incomingGoodsList: _ig, addNotification }: P
     <div style={{ padding: '24px 16px', maxWidth: 1200, margin: '0 auto' }}>
 
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Stock Management</h1>
           <p style={{ color: 'var(--text-muted)', margin: '4px 0 0', fontSize: 14 }}>Full IN / OUT / REMAINING tracking across all stock sources</p>
         </div>
-        <div style={{ display: 'flex', gap: 10 }}>
+        
+        {/* Navigation buttons + Action buttons group */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          {/* Navigation Pill Group */}
+          <div style={{ display: 'flex', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, padding: 3, gap: 3, boxShadow: 'var(--box-shadow)' }}>
+            {[
+              { key: 'APPROVED_CARGO' as ActiveTab, label: 'Port-Approved Goods', count: cargoTotalIn },
+              { key: 'PRODUCTS' as ActiveTab, label: 'Company Products — Finished Goods', count: productsRemaining },
+              { key: 'GENERAL_PURCHASES' as ActiveTab, label: 'General Purchased Items', count: gpTotalIn },
+            ].map(btn => {
+              const isSelected = activeTab === btn.key;
+              return (
+                <button
+                  key={btn.key}
+                  onClick={() => setActiveTab(btn.key)}
+                  style={{
+                    background: isSelected ? 'var(--accent)' : 'transparent',
+                    color: isSelected ? '#fff' : 'var(--text-secondary)',
+                    border: 'none',
+                    borderRadius: 9,
+                    padding: '8px 14px',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease-in-out',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  {btn.label}
+                  <span
+                    style={{
+                      background: isSelected ? 'rgba(255, 255, 255, 0.25)' : 'var(--bg-input)',
+                      color: isSelected ? '#fff' : 'var(--text-muted)',
+                      borderRadius: 99,
+                      padding: '1px 6px',
+                      fontSize: 10,
+                      fontWeight: 800
+                    }}
+                  >
+                    {Number(btn.count).toLocaleString()}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Action trigger button */}
           {activeTab === 'GENERAL_PURCHASES' && (
             <button onClick={() => setShowAdjust(true)}
               style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 12, padding: '10px 20px', fontWeight: 600, cursor: 'pointer', fontSize: 14 }}>
@@ -387,36 +436,30 @@ export default function StockView({ incomingGoodsList: _ig, addNotification }: P
         </div>
       </div>
 
-      {/* Top-level KPI summary cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14, marginBottom: 24 }}>
-        {[
-          { label: 'Port IN (Approved)', value: cargoTotalIn, color: '#3b82f6', icon: <ArrowDownLeft size={16} />, tab: 'APPROVED_CARGO' as ActiveTab },
-          { label: 'Port OUT (Dispatched)', value: cargoTotalOut, color: '#ef4444', icon: <ArrowUpRight size={16} />, tab: 'APPROVED_CARGO' as ActiveTab },
-          { label: 'Port Remaining', value: Math.max(0, cargoTotalIn - cargoTotalOut), color: '#10b981', icon: <Layers size={16} />, tab: 'APPROVED_CARGO' as ActiveTab },
-          { label: 'Products In Stock', value: productsRemaining, color: 'var(--accent)', icon: <Package size={16} />, tab: 'PRODUCTS' as ActiveTab },
-          { label: 'Low Stock Items', value: stock.filter(s => s.current > 0 && s.capacity > 0 && s.current / s.capacity < 0.2).length, color: '#f59e0b', icon: <TrendingDown size={16} />, tab: 'PRODUCTS' as ActiveTab },
-          { label: 'GP Remaining', value: Math.max(0, gpTotalIn - gpTotalOut), color: '#8b5cf6', icon: <TrendingUp size={16} />, tab: 'GENERAL_PURCHASES' as ActiveTab },
-        ].map(c => (
-          <div key={c.label} onClick={() => setActiveTab(c.tab)}
-            style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, padding: '16px', boxShadow: 'var(--box-shadow)', cursor: 'pointer', transition: 'box-shadow 0.2s, border-color 0.2s', position: 'relative', overflow: 'hidden' }}
-            onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.borderColor = c.color; (e.currentTarget as HTMLDivElement).style.boxShadow = `0 4px 16px ${c.color}22`; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--border)'; (e.currentTarget as HTMLDivElement).style.boxShadow = 'var(--box-shadow)'; }}>
+      {/* Top-level dynamic KPI summary cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14, marginBottom: 24 }}>
+        {(activeTab === 'APPROVED_CARGO' ? [
+          { label: 'Port IN (Approved)', value: cargoTotalIn, color: '#3b82f6', icon: <ArrowDownLeft size={16} /> },
+          { label: 'Port OUT (Dispatched)', value: cargoTotalOut, color: '#ef4444', icon: <ArrowUpRight size={16} /> },
+          { label: 'Port Remaining', value: Math.max(0, cargoTotalIn - cargoTotalOut), color: '#10b981', icon: <Layers size={16} /> },
+        ] : activeTab === 'PRODUCTS' ? [
+          { label: 'Products Total In', value: productsTotalIn, color: '#3b82f6', icon: <ArrowDownLeft size={16} /> },
+          { label: 'Products Total Out', value: productsTotalOut, color: '#ef4444', icon: <ArrowUpRight size={16} /> },
+          { label: 'Products Remaining', value: productsRemaining, color: '#10b981', icon: <Layers size={16} /> },
+          { label: 'Low Stock Items', value: stock.filter(s => s.current > 0 && s.capacity > 0 && s.current / s.capacity < 0.2).length, color: '#f59e0b', icon: <TrendingDown size={16} /> },
+        ] : [
+          { label: 'GP Total In', value: gpTotalIn, color: '#3b82f6', icon: <ArrowDownLeft size={16} /> },
+          { label: 'GP Total Out', value: gpTotalOut, color: '#ef4444', icon: <ArrowUpRight size={16} /> },
+          { label: 'GP Remaining', value: Math.max(0, gpTotalIn - gpTotalOut), color: '#10b981', icon: <Layers size={16} /> },
+        ]).map(c => (
+          <div key={c.label}
+            style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, padding: '16px', boxShadow: 'var(--box-shadow)', position: 'relative', overflow: 'hidden' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
               <p style={{ color: 'var(--text-muted)', fontSize: 11, margin: 0, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.04em' }}>{c.label}</p>
               <span style={{ color: c.color, opacity: 0.7 }}>{c.icon}</span>
             </div>
             <p style={{ fontSize: 24, fontWeight: 800, color: c.color, margin: 0 }}>{Number(c.value).toLocaleString()}</p>
           </div>
-        ))}
-      </div>
-
-      {/* Tabs */}
-      <div style={{ display: 'flex', gap: 0, marginBottom: 20, borderBottom: '1px solid var(--border)', overflowX: 'auto' }}>
-        {TABS.map(t => (
-          <button key={t.key} onClick={() => setActiveTab(t.key)} style={tabStyle(t.key)}>
-            {t.label}
-            <span style={{ marginLeft: 6, background: activeTab === t.key ? 'var(--accent)' : 'var(--bg-input)', color: activeTab === t.key ? '#fff' : 'var(--text-muted)', borderRadius: 99, padding: '1px 7px', fontSize: 11 }}>{Number(t.badge).toLocaleString()}</span>
-          </button>
         ))}
       </div>
 
@@ -470,7 +513,6 @@ export default function StockView({ incomingGoodsList: _ig, addNotification }: P
           <>
             <h2 style={{ margin: '0 0 4px', fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>Port-Approved Goods</h2>
             <p style={{ margin: '0 0 16px', fontSize: 12, color: 'var(--text-muted)' }}>Goods received from port and approved by Management. Click any row for history.</p>
-            <FlowBanner totalIn={cargoTotalIn} totalOut={cargoTotalOut} />
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
@@ -521,7 +563,6 @@ export default function StockView({ incomingGoodsList: _ig, addNotification }: P
           <>
             <h2 style={{ margin: '0 0 4px', fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>Company Products — Finished Goods</h2>
             <p style={{ margin: '0 0 16px', fontSize: 12, color: 'var(--text-muted)' }}>Goods produced by the company and added to stock. Click a row for full movement history.</p>
-            <FlowBanner totalIn={productsTotalIn} totalOut={productsTotalOut} />
             {/* Stock level bars */}
             {filteredStock.length > 0 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
@@ -598,7 +639,6 @@ export default function StockView({ incomingGoodsList: _ig, addNotification }: P
           <>
             <h2 style={{ margin: '0 0 4px', fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>General Purchased Items</h2>
             <p style={{ margin: '0 0 16px', fontSize: 12, color: 'var(--text-muted)' }}>Raw materials, consumables and misc. purchases. Click a row to trace usage history.</p>
-            <FlowBanner totalIn={gpTotalIn} totalOut={gpTotalOut} />
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
