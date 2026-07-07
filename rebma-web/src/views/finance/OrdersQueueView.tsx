@@ -186,7 +186,8 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
       { order_id: order.id, message: `Order ${order.ticketNumber || order.id} for ${order.clientName} is ready for delivery assignment.`, notified_department: 'DISPATCH', read: false },
     ]).then(() => {}, () => {});
     supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Order ${order.ticketNumber || order.id} APPROVED for ${order.clientName} — GHS ${(Number(order.totalAmount ?? 0)).toLocaleString()}`, performed_by: performedBy, timestamp: now }]).then(() => {}, () => {});
-    supabase.from('finance_payments').insert([{ client_name: order.clientName, amount: Number(order.totalAmount ?? 0), payment_mode: order.paymentMode || 'CASH', payment_type: 'Full Payment', status: 'APPROVED', recorded_by: performedBy, order_id: order.id, created_at: now }]).then(() => {}, () => {});
+    // NOTE: finance_payments is written by savePaymentAndApprove() with full payment details (receipt no., cheque/momo info, etc.)
+    // Do NOT insert a second record here — that would double-count revenue in cash flow & account summaries.
 
     // Write REMOVE stock_ledger entries and decrement stock for each sold item
     try {
