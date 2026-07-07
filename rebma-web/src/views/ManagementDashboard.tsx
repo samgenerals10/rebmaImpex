@@ -41,6 +41,16 @@ const handleSort = (
   }
 };
 
+function getOrderProductsDisplay(order: any): string {
+  const items = order.metadata?.items;
+  if (Array.isArray(items) && items.length > 0) {
+    return items.map((item: any) => `${item.productName} (x${item.quantity})`).join(', ');
+  }
+  const name = order.productName || '—';
+  const qty = order.quantity;
+  return qty ? `${name} (x${qty})` : name;
+}
+
 export default function ManagementDashboard({
   incomingGoodsList,
   ordersList,
@@ -887,7 +897,7 @@ export default function ManagementDashboard({
                       <div>
                         <p className="text-xs font-bold text-[var(--text-primary)]">{order.clientName}</p>
                         <p className="text-[10px] text-[var(--text-muted)] font-mono">Order: <code className="bg-[var(--bg-card)] px-1 rounded border border-[var(--border)] text-[var(--text-primary)]">{order.id}</code>{order.ticketNumber && <span className="ml-2 text-emerald-600 font-bold">🎫 {order.ticketNumber}</span>}</p>
-                        <p className="text-[10px] text-[var(--text-muted)]">Product: <strong>{order.productName || '—'}</strong> | Destination: <strong>{order.destination || '—'}</strong></p>
+                        <p className="text-[10px] text-[var(--text-muted)]">Products: <strong className="text-[var(--text-primary)]">{getOrderProductsDisplay(order)}</strong> | Destination: <strong>{order.destination || '—'}</strong></p>
                         <p className="text-[10px] text-[var(--text-muted)]">Amount: <strong className="text-[var(--text-primary)]">GHS {order.totalAmount.toLocaleString()}</strong> | Mode: <strong>{order.paymentMode}</strong> | Submitted: {order.createdAt}</p>
                         {order.ghanaCard && <p className="text-[10px] text-[var(--text-muted)] font-mono">Ghana Card: <code className="bg-[var(--bg-card)] px-1 rounded border border-[var(--border)] text-[var(--text-primary)]">{order.ghanaCard}</code></p>}
                       </div>

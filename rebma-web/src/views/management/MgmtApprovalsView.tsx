@@ -6,6 +6,7 @@ import {
   UserPlus, FileText, Tag, RefreshCw, Download, Eye, ShoppingCart
 } from 'lucide-react';
 import { exportToCSV } from '../../utils/export';
+import InvoiceLineItems from '../../components/InvoiceLineItems';
 
 interface ApprovalItem {
   id: string;
@@ -76,6 +77,7 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
   const [todayRejected, setTodayRejected] = useState(0);
   const [confirmedDamages, setConfirmedDamages] = useState(0);
   const [costPerUnit, setCostPerUnit] = useState(0);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     loadApprovals();
@@ -233,7 +235,8 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
   }
 
   async function confirmAction() {
-    if (!selectedItem || !showModal) return;
+    if (!selectedItem || !showModal || submitting) return;
+    setSubmitting(true);
     const action = showModal;
 
     try {
@@ -372,6 +375,8 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
     } catch (e) {
       console.error(e);
       addNotification?.('Action execution failed.');
+    } finally {
+      setSubmitting(false);
     }
 
     setShowModal(null);
@@ -436,6 +441,13 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
             <div className="bg-[var(--bg-input)] rounded-xl p-4">
               <p className="text-xs text-[var(--text-muted)] mb-1">Transaction Amount</p>
               <p className="text-2xl font-bold" style={{ color: 'var(--accent)' }}>GHS {(Number(selectedItem.amount ?? 0)).toLocaleString()}</p>
+            </div>
+          )}
+
+          {selectedItem.type === 'Credit Order' && selectedItem.raw && (
+            <div className="space-y-2">
+              <p className="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider">Order Items breakdown</p>
+              <InvoiceLineItems order={selectedItem.raw as any} />
             </div>
           )}
 
@@ -766,12 +778,13 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
             </div>
 
             <div className="flex items-center gap-3 justify-end">
-              <button onClick={() => setShowModal(null)} className="px-4 py-2 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-input)]">Cancel</button>
+              <button disabled={submitting} onClick={() => setShowModal(null)} className="px-4 py-2 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-input)] disabled:opacity-50">Cancel</button>
               <button
+                disabled={submitting}
                 onClick={confirmAction}
-                className={`px-4 py-2 rounded-xl text-white text-sm font-medium ${showModal === 'approve' ? 'bg-green-500 hover:bg-green-600' : 'bg-red-500 hover:bg-red-600'}`}
+                className={`px-4 py-2 rounded-xl text-white text-sm font-medium disabled:opacity-50 ${showModal === 'approve' ? 'bg-green-500 hover:bg-green-600' : 'bg-red-500 hover:bg-red-600'}`}
               >
-                {showModal === 'approve' ? 'Confirm Approval' : 'Confirm Rejection'}
+                {submitting ? 'Processing...' : (showModal === 'approve' ? 'Confirm Approval' : 'Confirm Rejection')}
               </button>
             </div>
           </div>

@@ -42,6 +42,7 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
   const [earnPeriod, setEarnPeriod] = useState('6M');
   const [activities, setActivities] = useState<any[]>([]);
   const [goodsPrices, setGoodsPrices] = useState<any[]>([]);
+  const [stockList, setStockList] = useState<any[]>([]);
   const feedRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const firstName = currentUser?.fullName?.split(' ')[0] || 'Manager';
@@ -58,7 +59,8 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
         { data: prodReqs },
         { data: genPurch },
         { data: att },
-        { data: expenses }
+        { data: expenses },
+        { data: stocks }
       ] = await Promise.all([
         supabase.from('orders').select('*'),
         Promise.resolve({ data: [] }),
@@ -69,6 +71,7 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
         supabase.from('general_purchases').select('*').then(r => r, () => ({ data: [] })),
         supabase.from('attendance').select('*').then(r => r, () => ({ data: [] })),
         supabase.from('finance_expenses').select('*').then(r => r, () => ({ data: [] })),
+        supabase.from('stock').select('*').then(r => r, () => ({ data: [] })),
       ]);
 
       setOrders(ords || []);
@@ -80,6 +83,7 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
       setGeneralPurchases((genPurch as any) || []);
       setAttendanceRecords((att as any) || []);
       setFinanceExpenses((expenses as any) || []);
+      setStockList(stocks || []);
 
       // Goods prices — drives inventory value display
       supabase.from('goods_prices').select('product_name, unit_price, cost_price, currency').then(({ data }) => {
@@ -339,20 +343,12 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
   }));
 
   // Low Stock Alert
-  const productQuantities: Record<string, { sku: string; current: number; capacity: number }> = {};
-  cargoIntake.filter(c => c.status === 'APPROVED').forEach(c => {
-    const name = c.product_name || 'Generic Goods';
-    if (!productQuantities[name]) {
-      productQuantities[name] = { sku: c.goods_code || 'SKU-TEMP', current: 0, capacity: 500 };
-    }
-    productQuantities[name].current += c.quantity || 0;
-  });
-  const lowStock = Object.entries(productQuantities)
-    .map(([name, item]) => ({
-      name,
-      sku: item.sku,
-      current: item.current,
-      capacity: item.capacity
+  const lowStock = stockList
+    .map(s => ({
+      name: s.product_name,
+      sku: s.product_code || 'SKU-TEMP',
+      current: Number(s.quantity || 0),
+      capacity: Number(s.maximum_level || 500)
     }))
     .filter(item => item.current < 100)
     .slice(0, 4);
@@ -411,9 +407,10 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
   // Inventory: join goods_prices × approved cargo_intake by product name, subtract sold orders
   const inventoryItems = goodsPrices.map(gp => {
     const key = String(gp.product_name || '').toLowerCase().trim();
-    const qty = cargoIntake
-      .filter(c => String(c.product_name || '').toLowerCase().trim() === key && (c as any).status === 'APPROVED')
-      .reduce((s: number, c: any) => s + (Number(c.quantity) || 0), 0);
+    // Get live quantity directly from the stock table instead of summing historical cargo intakes
+    const stockItem = stockList.find(s => String(s.product_name || '').toLowerCase().trim() === key);
+    const qty = stockItem ? Number(stockItem.quantity || 0) : 0;
+    
     const soldRevenue = (orders as any[])
       .filter(o => ['APPROVED','PROCESSING','DELIVERED'].includes(o.status) && String(o.product_name || '').toLowerCase().trim() === key)
       .reduce((s: number, o: any) => s + (Number(o.total_amount) || 0), 0);

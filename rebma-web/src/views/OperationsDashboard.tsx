@@ -43,6 +43,16 @@ const handleSort = (
   }
 };
 
+function getOrderProductsDisplay(order: any): string {
+  const items = order.metadata?.items;
+  if (Array.isArray(items) && items.length > 0) {
+    return items.map((item: any) => `${item.productName} (x${item.quantity})`).join(', ');
+  }
+  const name = order.productName || '—';
+  const qty = order.quantity;
+  return qty ? `${name} (x${qty})` : name;
+}
+
 export default function OperationsDashboard({
   ordersList,
   incomingGoodsList,
@@ -1317,7 +1327,7 @@ export default function OperationsDashboard({
                             <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-500 rounded text-[9px] font-bold">🎫 {order.ticketNumber}</span>
                           )}
                         </div>
-                        <p className="text-[10px] text-[var(--text-muted)] mt-0.5">Client: <strong>{order.clientName}</strong> | Product: <strong>{order.productName || 'N/A'}</strong></p>
+                        <p className="text-[10px] text-[var(--text-muted)] mt-0.5">Client: <strong>{order.clientName}</strong> | Products: <strong className="text-[var(--text-primary)]">{getOrderProductsDisplay(order)}</strong></p>
                         <p className="text-[10px] text-[var(--text-muted)]">Destination: <strong>{order.destination || '—'}</strong> | Value: <strong>GHS {order.totalAmount.toLocaleString()}</strong></p>
                         <p className="text-[10px] text-emerald-500 font-semibold mt-1">Invoice Generated. Release Authorized.</p>
                       </div>
