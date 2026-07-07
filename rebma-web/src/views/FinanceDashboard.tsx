@@ -1613,140 +1613,328 @@ export default function FinanceDashboard({
 
               const catalogCategories = ['ALL', ...Array.from(new Set(goodsPrices.map(gp => gp.category || 'General').filter(Boolean)))];
 
+              // Inline high-fidelity vector product SVG drawers
+              const drawProductImg = (name: string, category: string) => {
+                const n = name.toLowerCase();
+                const c = category.toLowerCase();
+                if (n.includes('headphone') || n.includes('ear') || n.includes('sound')) {
+                  return (
+                    <svg viewBox="0 0 100 100" className="w-24 h-24 text-slate-800 drop-shadow-md">
+                      <path d="M20,50 C20,30 35,15 50,15 C65,15 80,30 80,50" fill="none" stroke="currentColor" strokeWidth="6" strokeLinecap="round" />
+                      <rect x="15" y="45" width="12" height="22" rx="4" fill="currentColor" />
+                      <rect x="73" y="45" width="12" height="22" rx="4" fill="currentColor" />
+                      <path d="M20,55 L20,62" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+                      <path d="M80,55 L80,62" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+                    </svg>
+                  );
+                }
+                if (n.includes('watch') || n.includes('smart') || n.includes('clock') || n.includes('band')) {
+                  return (
+                    <svg viewBox="0 0 100 100" className="w-24 h-24 text-slate-800 drop-shadow-md">
+                      <rect x="38" y="10" width="24" height="80" rx="6" fill="currentColor" opacity="0.3" />
+                      <rect x="30" y="30" width="40" height="40" rx="10" fill="currentColor" />
+                      <circle cx="50" cy="50" r="14" fill="#38bdf8" />
+                      <path d="M50,42 L50,50 L56,53" stroke="white" strokeWidth="2.5" strokeLinecap="round" />
+                    </svg>
+                  );
+                }
+                if (n.includes('tv') || n.includes('monitor') || n.includes('screen') || n.includes('display') || n.includes('laptop') || n.includes('macbook') || n.includes('samsung')) {
+                  return (
+                    <svg viewBox="0 0 100 100" className="w-24 h-24 text-slate-800 drop-shadow-md">
+                      <rect x="10" y="20" width="80" height="50" rx="4" fill="currentColor" />
+                      <rect x="14" y="24" width="72" height="42" fill="#38bdf8" />
+                      <path d="M40,70 L60,70 L55,80 L45,80 Z" fill="currentColor" />
+                    </svg>
+                  );
+                }
+                if (c.includes('beverage') || n.includes('drink') || n.includes('soda') || n.includes('cola') || n.includes('juice') || n.includes('water')) {
+                  return (
+                    <svg viewBox="0 0 100 100" className="w-20 h-24 text-indigo-600 drop-shadow-md">
+                      <rect x="30" y="15" width="40" height="70" rx="8" fill="currentColor" />
+                      <ellipse cx="50" cy="15" rx="20" ry="5" fill="currentColor" opacity="0.8" />
+                      <rect x="35" y="30" width="30" height="40" rx="4" fill="white" opacity="0.2" />
+                      <line x1="50" y1="35" x2="50" y2="65" stroke="white" strokeWidth="4" strokeLinecap="round" opacity="0.4" />
+                    </svg>
+                  );
+                }
+                if (c.includes('grain') || n.includes('rice') || n.includes('grain') || n.includes('wheat') || n.includes('sugar') || n.includes('flour') || n.includes('corn')) {
+                  return (
+                    <svg viewBox="0 0 100 100" className="w-24 h-24 text-amber-500 drop-shadow-md">
+                      <path d="M30,30 C30,20 40,15 50,15 C60,15 70,20 70,30 C70,50 80,75 75,85 C73,88 27,88 25,85 C20,75 30,50 30,30 Z" fill="currentColor" />
+                      <path d="M25,80 L75,80" stroke="white" strokeWidth="2" opacity="0.3" />
+                      <path d="M30,40 Q50,45 70,40" stroke="white" strokeWidth="2" fill="none" opacity="0.3" />
+                    </svg>
+                  );
+                }
+                if (c.includes('cement') || n.includes('cement') || n.includes('brick') || n.includes('concrete')) {
+                  return (
+                    <svg viewBox="0 0 100 100" className="w-24 h-24 text-slate-500 drop-shadow-md">
+                      <rect x="25" y="20" width="50" height="60" rx="4" fill="currentColor" />
+                      <path d="M25,20 L75,80" stroke="white" strokeWidth="2.5" opacity="0.2" />
+                      <path d="M75,20 L25,80" stroke="white" strokeWidth="2.5" opacity="0.2" />
+                      <rect x="32" y="42" width="36" height="16" fill="white" opacity="0.9" rx="2" />
+                      <text x="50" y="52" fill="currentColor" fontSize="7" fontWeight="black" textAnchor="middle">CEMENT</text>
+                    </svg>
+                  );
+                }
+                // Fallback (Package/Box)
+                return (
+                  <svg viewBox="0 0 100 100" className="w-24 h-24 text-violet-500 drop-shadow-md">
+                    <path d="M50,15 L90,30 L90,70 L50,85 L10,70 L10,30 Z" fill="currentColor" />
+                    <path d="M50,15 L50,85" stroke="white" strokeWidth="1.5" opacity="0.3" />
+                    <path d="M10,30 L50,45 L90,30" stroke="white" strokeWidth="1.5" fill="none" opacity="0.3" />
+                  </svg>
+                );
+              };
+
               return (
-                <div className="space-y-6">
-                  {/* Storefront Header */}
-                  <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 p-6 bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-sm">
-                    <div>
-                      <h2 className="text-xl font-bold text-[var(--text-primary)]">E-Commerce Product Catalog</h2>
-                      <p className="text-xs text-[var(--text-muted)] mt-1">Live active prices, quantities, and potential margins set by Management.</p>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-3">
-                      {/* Search */}
-                      <div className="relative">
-                        <span className="absolute left-3 top-2.5 text-[var(--text-secondary)] text-xs">🔍</span>
-                        <input
-                          type="text"
-                          placeholder="Search products..."
-                          value={catalogSearch}
-                          onChange={e => setCatalogSearch(e.target.value)}
-                          className="pl-8 pr-3 py-2 text-xs rounded-xl outline-none transition bg-[var(--bg)] border border-[var(--border)] text-[var(--text-primary)] focus:border-[var(--accent)] w-full sm:w-48 font-medium"
-                        />
+                <div className="space-y-8 bg-[#f8fafc] p-4 md:p-8 rounded-3xl border border-[var(--border)] text-slate-900 font-sans">
+                  
+                  {/* ══ 1. TECHNOVA E-COMMERCE TOP BAR NAVBAR ══ */}
+                  <div className="flex items-center justify-between py-4 px-6 bg-white border border-slate-100 rounded-2xl shadow-sm">
+                    <div className="flex items-center gap-8">
+                      <span className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-1.5">
+                        <span className="w-3.5 h-3.5 rounded-full bg-[var(--accent)]" /> Technova
+                      </span>
+                      <div className="hidden md:flex items-center gap-6 text-xs font-bold text-slate-500">
+                        <span className="text-slate-900 cursor-pointer hover:text-[var(--accent)]">Home</span>
+                        <span className="cursor-pointer hover:text-[var(--accent)]">Shop ▼</span>
+                        <span className="cursor-pointer hover:text-[var(--accent)]">Blog ▼</span>
+                        <span className="cursor-pointer hover:text-[var(--accent)]">Contact</span>
                       </div>
-                      {/* Category Filter */}
-                      <select
-                        value={catalogCategory}
-                        onChange={e => setCatalogCategory(e.target.value)}
-                        className="px-3 py-2 text-xs rounded-xl outline-none transition bg-[var(--bg)] border border-[var(--border)] text-[var(--text-primary)] focus:border-[var(--accent)] font-semibold"
-                      >
-                        {catalogCategories.map(cat => (
-                          <option key={cat} value={cat}>{cat === 'ALL' ? 'All Categories' : cat}</option>
-                        ))}
-                      </select>
-                      {/* Sort Filter */}
-                      <select
-                        value={catalogSort}
-                        onChange={e => setCatalogSort(e.target.value)}
-                        className="px-3 py-2 text-xs rounded-xl outline-none transition bg-[var(--bg)] border border-[var(--border)] text-[var(--text-primary)] focus:border-[var(--accent)] font-semibold"
-                      >
-                        <option value="name-asc">Sort: A-Z</option>
-                        <option value="name-desc">Sort: Z-A</option>
-                        <option value="price-asc">Price: Low to High</option>
-                        <option value="price-desc">Price: High to Low</option>
-                        <option value="qty-desc">Stock: High to Low</option>
-                        <option value="valuation-desc">Valuation: High to Low</option>
-                      </select>
+                    </div>
+                    <div className="flex items-center gap-4 text-slate-700">
+                      <button className="p-2 hover:bg-slate-50 rounded-full transition-colors">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                      </button>
+                      <button className="p-2 hover:bg-slate-50 rounded-full transition-colors">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                      </button>
+                      <div className="relative cursor-pointer p-2 hover:bg-slate-50 rounded-full transition-colors">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                        <span className="absolute top-1 right-1 w-4 h-4 bg-orange-500 text-white text-[9px] font-black rounded-full flex items-center justify-center border border-white">
+                          {goodsPrices.length}
+                        </span>
+                      </div>
                     </div>
                   </div>
 
-                  {/* Grid Cards list */}
-                  {sortedCatalogItems.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center p-12 bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl text-[var(--text-muted)] text-center">
-                      <span className="text-4xl mb-3">🛍️</span>
-                      <h4 className="font-bold text-sm text-[var(--text-primary)]">No products match filters</h4>
-                      <p className="text-xs text-[var(--text-muted)] mt-1">Try resetting your search query or choosing a different category.</p>
+                  {/* ══ 2. HERO SLIDE BANNER ( desert monitor slider ) ══ */}
+                  <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-55 to-slate-100 dark:from-slate-800 dark:to-slate-900 border border-slate-200/60 dark:border-slate-800 p-8 md:p-12 flex flex-col md:flex-row items-center justify-between gap-8">
+                    <div className="space-y-4 max-w-md text-left z-10">
+                      <p className="text-xs font-extrabold uppercase tracking-widest text-[var(--accent)]">
+                        Hot Gadget Deals
+                      </p>
+                      <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 dark:text-white leading-tight">
+                        Up to <span className="text-[var(--accent)] font-black">25% margin</span> on stock inventory values
+                      </h1>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        The hottest updates from management. The coolest profit margins.
+                      </p>
+                      <button className="flex items-center gap-1.5 px-6 py-3 bg-[var(--accent)] text-white text-xs font-bold rounded-full hover:opacity-90 shadow-md transition-opacity">
+                        SHOP NOW <span className="font-sans">›</span>
+                      </button>
                     </div>
-                  ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                      {sortedCatalogItems.map((item: any) => {
-                        const categoryColors: Record<string, string> = {
-                          Beverages: 'from-blue-500/20 to-blue-500/5 text-blue-600',
-                          Grains: 'from-amber-500/20 to-amber-500/5 text-amber-600',
-                          Cement: 'from-slate-500/20 to-slate-500/5 text-slate-600',
-                          General: 'from-indigo-500/20 to-indigo-500/5 text-indigo-600',
-                        };
-                        const catStyle = categoryColors[item.category] || categoryColors.General;
-                        return (
-                          <div key={item.id} className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl overflow-hidden hover:border-[var(--accent)] hover:shadow-lg transition-all group flex flex-col">
-                            {/* Card Banner */}
-                            <div className={`bg-gradient-to-br ${catStyle} p-6 h-28 relative flex items-center justify-center border-b border-[var(--border)]`}>
-                              <div className="w-14 h-14 rounded-full bg-[var(--bg-card)] shadow-md border border-[var(--border)] flex items-center justify-center text-[var(--accent)] font-extrabold text-xl uppercase">
-                                {item.product_name?.[0] || 'P'}
-                              </div>
-                              <span className="absolute top-3 right-3 text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-[var(--bg-card)] border border-[var(--border)] tracking-wider uppercase text-[var(--text-secondary)]">
-                                {item.category || 'General'}
-                              </span>
+                    {/* High-Fidelity CSS Desk & Monitor Drawing */}
+                    <div className="w-full md:w-1/2 max-w-sm flex items-center justify-center relative">
+                      <div className="w-full aspect-[4/3] relative">
+                        <svg viewBox="0 0 200 150" className="w-full h-full drop-shadow-2xl">
+                          {/* Monitor Stand */}
+                          <path d="M80,110 L120,110 L112,138 L88,138 Z" fill="#cbd5e1" />
+                          <rect x="68" y="136" width="64" height="6" rx="2" fill="#94a3b8" />
+                          {/* Monitor Frame */}
+                          <rect x="15" y="10" width="170" height="105" rx="6" fill="#1e293b" />
+                          {/* Screen Content - Desert Sunset */}
+                          <rect x="20" y="15" width="160" height="90" fill="#f59e0b" />
+                          {/* Dunes */}
+                          <path d="M20,105 Q60,70 110,90 T180,60 L180,105 Z" fill="#d97706" />
+                          <path d="M20,105 Q70,95 130,102 T180,88 L180,105 Z" fill="#b45309" />
+                          {/* Screen Text overlay */}
+                          <rect x="30" y="30" width="75" height="30" rx="4" fill="white/20" className="backdrop-blur-sm" />
+                          <text x="35" y="42" fill="white" fontSize="5" fontWeight="bold">Our first ever</text>
+                          <text x="35" y="52" fill="white" fontSize="7" fontWeight="black">desktop mockup</text>
+                          {/* Accessories on desk */}
+                          <circle cx="25" cy="138" r="6" fill="#e2e8f0" />
+                          <ellipse cx="170" cy="138" rx="8" ry="4" fill="#cbd5e1" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ══ 3. SUB-BANNER CARDS ( 4 horizontal tabs ) ══ */}
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    {[
+                      { title: 'Best Sellers', iconBg: 'bg-amber-100 text-amber-600', val: 'Featured items' },
+                      { title: 'New Arrivals', iconBg: 'bg-sky-100 text-sky-600', val: `${goodsPrices.length} Items` },
+                      { title: 'Top Rated', iconBg: 'bg-blue-100 text-blue-600', val: 'Premium quality' },
+                      { title: 'On Sale', iconBg: 'bg-orange-100 text-orange-600', val: 'Approved catalog' }
+                    ].map(card => (
+                      <div key={card.title} className="bg-white border border-slate-100 rounded-2xl p-4 flex items-center gap-4 hover:shadow-md transition-shadow cursor-pointer">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${card.iconBg}`}>
+                          <span className="text-sm">★</span>
+                        </div>
+                        <div>
+                          <p className="text-xs font-black text-slate-800">{card.title}</p>
+                          <p className="text-[10px] text-slate-400 font-semibold uppercase mt-0.5">SHOP NOW ›</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* ══ 4. FEATURED PRODUCTS GRID + MACBOOK SIDE PROMO ══ */}
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h2 className="text-base font-extrabold text-slate-900 tracking-tight">Featured Products</h2>
+                      <div className="flex items-center gap-2">
+                        {/* Search & filters */}
+                        <div className="relative flex items-center">
+                          <input
+                            type="text"
+                            placeholder="Filter products..."
+                            value={catalogSearch}
+                            onChange={e => setCatalogSearch(e.target.value)}
+                            className="pl-3 pr-3 py-1.5 text-[11px] rounded-full outline-none transition bg-white border border-slate-200 text-slate-800 focus:border-[var(--accent)] w-36 font-semibold"
+                          />
+                        </div>
+                        <select
+                          value={catalogCategory}
+                          onChange={e => setCatalogCategory(e.target.value)}
+                          className="px-2 py-1.5 text-[11px] rounded-full outline-none transition bg-white border border-slate-200 text-slate-800 font-semibold"
+                        >
+                          {catalogCategories.map(cat => (
+                            <option key={cat} value={cat}>{cat === 'ALL' ? 'All categories' : cat}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
+                      
+                      {/* Products Grid (3 columns wide) */}
+                      <div className="xl:col-span-3 grid grid-cols-1 sm:grid-cols-3 gap-6">
+                        {sortedCatalogItems.slice(0, 6).map((item: any) => (
+                          <div key={item.id} className="bg-white border border-slate-100 rounded-3xl p-5 hover:shadow-xl transition-all group relative flex flex-col justify-between">
+                            {/* Bestseller Badge */}
+                            <span className="absolute top-4 left-4 text-[8px] font-black px-2.5 py-1 bg-amber-500 text-white uppercase rounded-md tracking-wider">
+                              BESTSELLER
+                            </span>
+                            {/* Like / Heart Icon */}
+                            <span className="absolute top-4 right-4 text-slate-300 hover:text-rose-500 cursor-pointer text-sm">
+                              ♥
+                            </span>
+
+                            {/* Center Product Graphic Box */}
+                            <div className="bg-slate-50/50 rounded-2xl py-6 flex items-center justify-center min-h-[140px] mb-4">
+                              {drawProductImg(item.product_name, item.category)}
                             </div>
 
-                            {/* Content */}
-                            <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
-                              <div>
-                                <h4 className="text-base font-extrabold text-[var(--text-primary)] group-hover:text-[var(--accent)] transition-colors line-clamp-1">{item.product_name}</h4>
-                                <p className="text-[10px] text-[var(--text-muted)] mt-0.5 font-mono">ID: {item.id.slice(0, 8)}...</p>
+                            {/* Product Info */}
+                            <div className="space-y-1">
+                              <h4 className="text-xs font-black text-slate-800 group-hover:text-[var(--accent)] transition-colors truncate">{item.product_name}</h4>
+                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">{item.category || 'General'}</p>
+                              
+                              {/* Price Row */}
+                              <div className="flex items-center gap-2 pt-2">
+                                <span className="text-sm font-extrabold text-slate-900">{item.currency} {Number(item.unit_price).toLocaleString()}</span>
+                                <span className="text-[10px] text-slate-300 line-through font-semibold">{item.currency} {Number(item.cost_price).toLocaleString()}</span>
                               </div>
+                            </div>
 
-                              {/* Price Details */}
-                              <div className="grid grid-cols-2 gap-2 py-2 border-y border-[var(--border)]">
-                                <div>
-                                  <span className="text-[9px] font-bold uppercase tracking-wider text-[var(--text-muted)] block">Selling Price</span>
-                                  <span className="text-base font-extrabold text-[var(--text-primary)]">{item.currency} {Number(item.unit_price || 0).toLocaleString()}</span>
-                                </div>
-                                <div className="text-right">
-                                  <span className="text-[9px] font-bold uppercase tracking-wider text-[var(--text-muted)] block">Cost Price</span>
-                                  <span className="text-sm font-semibold text-[var(--text-secondary)]">{item.currency} {Number(item.cost_price || 0).toLocaleString()}</span>
-                                </div>
-                              </div>
-
-                              {/* Inventory Details */}
-                              <div className="space-y-2">
-                                <div className="flex items-center justify-between text-xs">
-                                  <span className="text-[var(--text-secondary)] font-medium">Quantity in Stock</span>
-                                  <span className="font-bold text-[var(--text-primary)]">{item.stock.toLocaleString()} units</span>
-                                </div>
-                                <div className="h-1.5 bg-[var(--bg-input)] rounded-full overflow-hidden">
-                                  <div
-                                    className={`h-full rounded-full transition-all ${item.stock > 1000 ? 'bg-emerald-500' : item.stock > 100 ? 'bg-amber-500' : 'bg-rose-500'}`}
-                                    style={{ width: `${Math.min(100, (item.stock / 5000) * 100)}%` }}
-                                  />
-                                </div>
-                              </div>
-
-                              {/* Valuation Metrics */}
-                              <div className="bg-[var(--bg-input)] rounded-xl p-3 space-y-1.5 text-[11px] font-medium border border-[var(--border)]">
-                                <div className="flex items-center justify-between">
-                                  <span className="text-[var(--text-secondary)]">Profit Margin:</span>
-                                  <span className="text-emerald-500 font-extrabold">+{item.margin}%</span>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                  <span className="text-[var(--text-secondary)]">Capital Cost Value:</span>
-                                  <span className="text-[var(--text-primary)] font-semibold">{item.currency} {item.costValue.toLocaleString()}</span>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                  <span className="text-[var(--text-secondary)]">Potential Revenue:</span>
-                                  <span className="text-[var(--text-primary)] font-semibold">{item.currency} {item.sellingValue.toLocaleString()}</span>
-                                </div>
-                              </div>
+                            {/* Inventory status line inside card */}
+                            <div className="mt-4 pt-3 border-t border-slate-50 text-[10px] text-slate-500 flex justify-between items-center font-medium">
+                              <span>Stock: {item.stock.toLocaleString()}</span>
+                              <span className="text-emerald-500 font-extrabold">+{item.margin}% margin</span>
                             </div>
                           </div>
-                        );
-                      })}
+                        ))}
+                      </div>
+
+                      {/* Right Promo Card (MacBook Air replica) */}
+                      <div className="bg-gradient-to-br from-sky-400/90 to-blue-600 text-white rounded-3xl p-6 flex flex-col justify-between shadow-lg relative overflow-hidden min-h-[300px]">
+                        <div className="absolute -right-10 -bottom-10 opacity-20 w-44 h-44 bg-white rounded-full pointer-events-none" />
+                        <div className="space-y-2 z-10 text-left">
+                          <h3 className="text-lg font-black leading-tight">MacBook Air</h3>
+                          <p className="text-[10px] text-sky-100 uppercase tracking-widest font-extrabold">WITH M1 CHIP & LIQUID RETINA DISPLAY</p>
+                          <p className="text-[9px] text-sky-50 opacity-90 leading-relaxed pt-2">Sipping at GHS 950. High logistics speed and custom fleet delivery configurations.</p>
+                        </div>
+
+                        {/* Valuation info */}
+                        <div className="space-y-2 pt-4 z-10 text-left">
+                          <p className="text-[9px] text-sky-200 uppercase tracking-wider font-extrabold">Fulfillment Valuation</p>
+                          <p className="text-3xl font-black">GHS {Number(sortedCatalogItems.reduce((s,i)=>s+i.sellingValue, 0)).toLocaleString()}</p>
+                        </div>
+                      </div>
+
                     </div>
-                  )}
+                  </div>
+
+                  {/* ══ 5. JUST ARRIVED SECTION ══ */}
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                      <h2 className="text-base font-extrabold text-slate-900 tracking-tight">Just Arrived</h2>
+                      <span className="text-[10px] font-extrabold text-[var(--accent)] uppercase tracking-wider cursor-pointer hover:underline">VIEW ALL</span>
+                    </div>
+
+                    <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
+                      
+                      {/* 4 horizontal catalog items */}
+                      <div className="xl:col-span-3 grid grid-cols-1 sm:grid-cols-4 gap-4">
+                        {[
+                          { name: 'NOZO Smartwatch', cat: 'Accessories', price: 350, cost: 280, icon: 'watch' },
+                          { name: 'Galaxy Tab Pro Z10', cat: 'Electronics', price: 699, cost: 550, icon: 'tv' },
+                          { name: 'PHX-900 Gaming Mouse', cat: 'Accessories', price: 99, cost: 70, icon: 'mouse' },
+                          { name: 'EpoMax Bluetooth', cat: 'Speakers', price: 150, cost: 120, icon: 'speaker' }
+                        ].map((prod, idx) => (
+                          <div key={idx} className="bg-white border border-slate-100 rounded-3xl p-4 flex flex-col justify-between hover:shadow-md transition-all group">
+                            <div className="bg-slate-50/50 rounded-2xl py-4 flex items-center justify-center min-h-[90px] mb-3">
+                              {drawProductImg(prod.name, prod.cat)}
+                            </div>
+                            <div className="text-left space-y-1">
+                              <h4 className="text-[10px] font-black text-slate-800 truncate">{prod.name}</h4>
+                              <p className="text-[9px] text-slate-400 uppercase font-semibold">{prod.cat}</p>
+                              <p className="text-xs font-black text-slate-900">GHS {prod.price}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Right Promo Card 2 (Save up to 35% replica) */}
+                      <div className="bg-gradient-to-br from-indigo-500 to-indigo-700 text-white rounded-3xl p-6 flex flex-col justify-between shadow-lg relative overflow-hidden min-h-[200px]">
+                        <div className="space-y-1 text-left z-10">
+                          <h3 className="text-base font-black">Save up to 35%</h3>
+                          <p className="text-[9px] text-indigo-200">on Weekly Logistics Discounts</p>
+                        </div>
+                        <button className="z-10 w-fit px-4 py-1.5 bg-white text-indigo-700 text-[10px] font-bold rounded-full shadow hover:opacity-90 transition-opacity mt-4">
+                          SHOP NOW ›
+                        </button>
+                      </div>
+
+                    </div>
+                  </div>
+
+                  {/* ══ 6. CATEGORY BANNERS ROW ( Game Controllers, Smartphones, Smart Home ) ══ */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {[
+                      { title: 'Game Controllers', sub: 'Front GHS 160', color: 'from-orange-400 to-amber-500' },
+                      { title: 'Smartphones', sub: 'Front GHS 950', color: 'from-sky-400 to-blue-500' },
+                      { title: 'Smart Home', sub: 'Front GHS 160', color: 'from-violet-400 to-indigo-500' }
+                    ].map(banner => (
+                      <div key={banner.title} className={`bg-gradient-to-br ${banner.color} text-white rounded-3xl p-6 flex flex-col justify-between min-h-[130px] shadow-sm relative overflow-hidden group hover:scale-[1.01] transition-transform`}>
+                        <div className="text-left space-y-1">
+                          <h3 className="text-sm font-black">{banner.title}</h3>
+                          <p className="text-[10px] text-white/80">{banner.sub}</p>
+                        </div>
+                        <span className="text-[9px] font-black uppercase tracking-wider cursor-pointer underline mt-3 block">SHOP NOW ›</span>
+                      </div>
+                    ))}
+                  </div>
+
                 </div>
               );
             })()}
           </div>
         </div>
+
 
         )} {/* end activeSubTab !== 'Evaluation' */}
       </div>
