@@ -3,8 +3,9 @@ import { supabase } from '../../lib/supabaseClient';
 import PendingApprovalsAlert from '../../components/global/PendingApprovalsAlert';
 import {
   DollarSign, FileText, ClipboardCheck, BarChart2, CreditCard, Receipt,
-  TrendingUp, TrendingDown, ArrowRight, RefreshCw, MoreVertical,
-  Clock, CheckCircle, AlertTriangle, Building2
+  TrendingUp, TrendingDown, ArrowRight, RefreshCw, Tag,
+  Clock, CheckCircle, AlertTriangle, Building2, Package,
+  ShoppingCart, Wallet, Zap, Star, Activity
 } from 'lucide-react';
 import {
   ResponsiveContainer, AreaChart, Area, BarChart, Bar, LineChart, Line,
@@ -23,6 +24,7 @@ interface Bill { id: string; desc: string; amount: number; due: string; status: 
 interface MonthlyRevenue { month: string; value: number; }
 interface PaymentSlice { name: string; value: number; color: string; }
 interface CashflowPoint { month: string; income: number; expense: number; }
+interface RecentPrice { id: string; product_name: string; unit_price: number; cost_price: number; currency: string; updated_at: string; }
 
 function timeGreeting() {
   const h = new Date().getHours();
@@ -55,8 +57,6 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
   const [cashflowData, setCashflowData] = useState<CashflowPoint[]>([]);
   const [paymentPie, setPaymentPie] = useState<PaymentSlice[]>([]);
   const [liveOrders, setLiveOrders] = useState<typeof ordersList>([]);
-
-  // Live wallet totals from finance_payments (not dependent on ordersList prop)
   const [walletCash, setWalletCash] = useState(0);
   const [walletMomo, setWalletMomo] = useState(0);
   const [walletCheque, setWalletCheque] = useState(0);
@@ -64,20 +64,18 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
   const [totalExpenses, setTotalExpenses] = useState(0);
   const [goodsPrices, setGoodsPrices] = useState<any[]>([]);
   const [cargoForInventory, setCargoForInventory] = useState<any[]>([]);
+  const [recentPrices, setRecentPrices] = useState<RecentPrice[]>([]);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Master fetch — called on mount and by Refresh button
   const fetchAllData = async () => {
-    // Orders — live fetch so KPI cards don't depend on stale prop
+    setIsRefreshing(true);
+    // Orders live fetch
     supabase.from('orders').select('*').order('created_at', { ascending: false }).limit(500).then(({ data }) => {
       if (!data) return;
       const mapped = (data as any[]).map(r => ({
-        id: r.id,
-        clientName: r.client_name || '',
-        productName: r.product_name || '',
-        totalAmount: Number(r.total_amount || 0),
-        status: r.status || 'PENDING_FINANCE',
-        paymentMode: r.payment_mode || 'CASH',
-        createdAt: r.created_at || '',
+        id: r.id, clientName: r.client_name || '', productName: r.product_name || '',
+        totalAmount: Number(r.total_amount || 0), status: r.status || 'PENDING_FINANCE',
+        paymentMode: r.payment_mode || 'CASH', createdAt: r.created_at || '',
       }));
       setLiveOrders(mapped as any);
     }, () => {});
@@ -100,14 +98,21 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
     supabase.from('finance_expenses').select('amount').eq('status', 'Approved').then(({ data }) => {
       if (data) setTotalExpenses((data as any[]).reduce((s, e) => s + Number(e.amount || 0), 0));
     }, () => {});
+
     supabase.from('goods_prices').select('product_name, unit_price, cost_price, currency').then(({ data }) => {
       if (data) setGoodsPrices(data as any[]);
     }, () => {});
+
+    // Recently priced catalog items (newest first)
+    supabase.from('goods_prices').select('id, product_name, unit_price, cost_price, currency, updated_at')
+      .order('updated_at', { ascending: false }).limit(6).then(({ data }) => {
+        if (data) setRecentPrices(data as RecentPrice[]);
+      }, () => {});
+
     supabase.from('cargo_intake').select('product_name, quantity').eq('status', 'APPROVED').then(({ data }) => {
       if (data) setCargoForInventory(data as any[]);
     }, () => {});
 
-    // Upcoming bills + earning / cashflow charts
     try {
       const { data: bills } = await supabase.from('finance_expenses')
         .select('id, description, amount, due_date, status')
@@ -138,16 +143,16 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
       for (const p of (payments || []) as any[]) { const k = monthKey(p.created_at); paymentMap[k] = (paymentMap[k] || 0) + Number(p.amount || 0); }
       for (const e of (expenses || []) as any[]) { const k = monthKey(e.created_at); expenseMap[k] = (expenseMap[k] || 0) + Number(e.amount || 0); }
 
-      // Income = payments received (actual cash) + order revenue; expense = finance_expenses
       const earning = last.map(k => ({ month: k, value: (paymentMap[k] || 0) + (revenueMap[k] || 0) }));
       setEarningData(earning);
       setCashflowData(earning.map(p => ({ month: p.month, income: p.value, expense: expenseMap[p.month] || 0 })));
     } catch { /* silent */ }
+
+    setIsRefreshing(false);
   };
 
   useEffect(() => { fetchAllData(); }, []);
 
-  // Recompute KPI cards whenever liveOrders updates
   useEffect(() => {
     const effective = liveOrders.length > 0 ? liveOrders : ordersList;
     const rev = effective.reduce((s, o) => s + (['DELIVERED', 'APPROVED', 'PROCESSING', 'OUT_FOR_DELIVERY'].includes(o.status) ? o.totalAmount : 0), 0);
@@ -168,132 +173,355 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
   const effective = liveOrders.length > 0 ? liveOrders : ordersList;
   const pendingOrders = effective.filter(o => o.status === 'PENDING_FINANCE');
 
-  return (
-    <div className="p-4 md:p-6 space-y-6 max-w-screen-2xl mx-auto">
-      {/* Greeting */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-[var(--text-primary)]">{timeGreeting()}, {firstName} 👋</h1>
-          <p className="text-sm text-[var(--text-secondary)]">Here's your financial overview today — {new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
-        </div>
-        <button onClick={() => { fetchAllData(); addNotification?.('Dashboard refreshed'); }} className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[var(--border)] text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-card)]">
-          <RefreshCw size={14} /> Refresh
-        </button>
-      </div>
+  // Compute inventory valuation
+  const inventoryItems = goodsPrices.map((gp: any) => {
+    const key = String(gp.product_name || '').toLowerCase().trim();
+    const qty = cargoForInventory.filter((c: any) => String(c.product_name || '').toLowerCase().trim() === key).reduce((s: number, c: any) => s + (Number(c.quantity) || 0), 0);
+    const soldRevenue = (effective as any[]).filter(o => ['APPROVED','PROCESSING','DELIVERED'].includes(o.status) && String(o.productName || o.product_name || '').toLowerCase().trim() === key).reduce((s: number, o: any) => s + (Number(o.totalAmount || o.total_amount) || 0), 0);
+    return { name: gp.product_name, unitPrice: Number(gp.unit_price || 0), costPrice: Number(gp.cost_price || 0), currency: gp.currency || 'GHS', qty, sellingValue: Number(gp.unit_price || 0) * qty, costValue: Number(gp.cost_price || 0) * qty, soldRevenue };
+  });
+  const totalSell = inventoryItems.reduce((s, i) => s + i.sellingValue, 0);
+  const totalCost = inventoryItems.reduce((s, i) => s + i.costValue, 0);
+  const totalRevEarned = inventoryItems.reduce((s, i) => s + i.soldRevenue, 0);
 
-      {/* Quick Actions */}
-      <div className="flex items-center gap-2 flex-wrap">
-        {[
-          { label: 'Record Payment', tab: 'RecordPayment', icon: DollarSign },
-          { label: 'Orders Queue', tab: 'OrdersQueue', icon: ClipboardCheck },
-          { label: 'Invoices', tab: 'Invoices', icon: FileText },
-          { label: 'Credit Mgmt', tab: 'CreditMgmt', icon: CreditCard },
-          { label: 'Reports', tab: 'FinReports', icon: BarChart2 },
-          { label: 'Petty Cash', tab: 'PettyCash', icon: Receipt },
-        ].map(({ label, tab, icon: Icon }) => (
-          <button key={tab} onClick={() => setActiveSubTab?.(tab)} className="flex items-center gap-1.5 px-3 py-2 rounded-full border border-[var(--border)] text-sm font-medium text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)] hover:bg-[var(--accent-light)] transition-colors">
-            <Icon size={13} />{label}
-          </button>
-        ))}
+  const netBalance = walletTotal - totalExpenses;
+
+  const kpiCards = [
+    {
+      label: 'Total Revenue', value: `GHS ${totalRevenue.toLocaleString()}`,
+      sub: 'Approved & delivered sales', icon: DollarSign, tab: 'Transactions',
+      color: '#10b981', bg: 'from-emerald-500/10 to-emerald-500/5',
+      change: '+8.2%', up: true,
+    },
+    {
+      label: 'Pending Orders', value: `${pendingCount}`,
+      sub: 'Awaiting finance review', icon: ShoppingCart, tab: 'OrdersQueue',
+      color: '#f59e0b', bg: 'from-amber-500/10 to-amber-500/5',
+      change: `${pendingOrders.filter(o => (o.totalAmount || 0) > 50000).length} high-value`, up: false,
+    },
+    {
+      label: 'Invoices Issued', value: `${invoiceCount}`,
+      sub: 'Cleared & shipped orders', icon: FileText, tab: 'Invoices',
+      color: '#6366f1', bg: 'from-indigo-500/10 to-indigo-500/5',
+      change: '+12%', up: true,
+    },
+    {
+      label: 'Credit Outstanding', value: `GHS ${creditOutstanding.toLocaleString()}`,
+      sub: 'Receivables tracking', icon: CreditCard, tab: 'CreditMgmt',
+      color: '#8b5cf6', bg: 'from-violet-500/10 to-violet-500/5',
+      change: '-5.1%', up: true,
+    },
+  ];
+
+  return (
+    <div className="p-4 md:p-6 space-y-6 max-w-screen-2xl mx-auto text-[var(--text-primary)]">
+
+      {/* ══ HERO BANNER ══ */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg-card)] p-6">
+        <div
+          className="absolute inset-0 opacity-30 pointer-events-none"
+          style={{ background: 'radial-gradient(ellipse at 80% 50%, var(--accent) 0%, transparent 60%)' }}
+        />
+        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--accent)] bg-[var(--accent-light)] px-2 py-0.5 rounded-full">
+                Finance E-Commerce Portal
+              </span>
+            </div>
+            <h1 className="text-2xl font-bold text-[var(--text-primary)]">{timeGreeting()}, {firstName} 👋</h1>
+            <p className="text-sm text-[var(--text-secondary)] mt-0.5">
+              {new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={() => { fetchAllData(); addNotification?.('Dashboard refreshed'); }}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-[var(--border)] text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-input)] transition-colors"
+            >
+              <RefreshCw size={14} className={isRefreshing ? 'animate-spin' : ''} /> Refresh
+            </button>
+          </div>
+        </div>
+        {/* Quick Action Pills */}
+        <div className="relative z-10 flex items-center gap-2 flex-wrap mt-4">
+          {[
+            { label: 'Record Payment', tab: 'RecordPayment', icon: DollarSign },
+            { label: 'Orders Queue', tab: 'OrdersQueue', icon: ClipboardCheck },
+            { label: 'Invoices', tab: 'Invoices', icon: FileText },
+            { label: 'Credit Mgmt', tab: 'CreditMgmt', icon: CreditCard },
+            { label: 'Reports', tab: 'FinReports', icon: BarChart2 },
+            { label: 'Petty Cash', tab: 'PettyCash', icon: Receipt },
+          ].map(({ label, tab, icon: Icon }) => (
+            <button key={tab} onClick={() => setActiveSubTab?.(tab)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[var(--border)] text-xs font-semibold text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)] hover:bg-[var(--accent-light)] transition-all">
+              <Icon size={12} />{label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Pending approvals alert */}
       <PendingApprovalsAlert department="FINANCE" onNavigate={setActiveSubTab} />
 
-      {/* ROW 1 - KPI Cards */}
+      {/* ══ KPI CARDS ══ */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-        {[
-          { label: 'Total Revenue', value: `GHS ${(totalRevenue / 1000).toFixed(0)}K`, change: '+8.2%', up: true, sub: 'vs last month', tab: 'Transactions' },
-          { label: 'Pending Orders', value: pendingCount, change: `${pendingOrders.filter(o => (o.totalAmount || 0) > 50000).length} high value`, up: false, sub: 'needs review', tab: 'OrdersQueue' },
-          { label: 'Invoices Generated', value: invoiceCount, change: '+12%', up: true, sub: 'this month', tab: 'Invoices' },
-          { label: 'Credit Outstanding', value: `GHS ${(creditOutstanding / 1000).toFixed(0)}K`, change: '-5.1%', up: true, sub: 'being collected', tab: 'CreditMgmt' },
-        ].map(({ label, value, change, up, sub, tab }) => (
-          <div key={label} className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4 cursor-pointer hover:border-[var(--accent)] transition-colors" onClick={() => setActiveSubTab?.(tab)}>
-            <p className="text-xs text-[var(--text-muted)] mb-1">{label}</p>
-            <p className="text-2xl font-bold text-[var(--text-primary)]">{value}</p>
-            <div className="flex items-center gap-1 mt-1">
-              {up ? <TrendingUp size={11} className="text-green-500" /> : <AlertTriangle size={11} className="text-yellow-500" />}
-              <span className={`text-xs font-medium ${up ? 'text-green-500' : 'text-yellow-500'}`}>{change}</span>
-              <span className="text-xs text-[var(--text-muted)]">{sub}</span>
+        {kpiCards.map(({ label, value, sub, icon: Icon, tab, color, bg, change, up }) => (
+          <div
+            key={label}
+            onClick={() => setActiveSubTab?.(tab)}
+            className={`bg-gradient-to-br ${bg} bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5 cursor-pointer hover:border-[var(--accent)] hover:shadow-lg transition-all group`}
+          >
+            <div className="flex items-start justify-between mb-3">
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: `${color}20` }}>
+                <Icon size={17} style={{ color }} />
+              </div>
+              <span className={`flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full ${up ? 'bg-emerald-500/10 text-emerald-600' : 'bg-amber-500/10 text-amber-600'}`}>
+                {up ? <TrendingUp size={9} /> : <AlertTriangle size={9} />} {change}
+              </span>
             </div>
+            <p className="text-2xl font-extrabold text-[var(--text-primary)] leading-none mb-1">{value}</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-0.5">{label}</p>
+            <p className="text-xs text-[var(--text-muted)] truncate">{sub}</p>
           </div>
         ))}
       </div>
 
-      {/* ROW 2 - Earning + Spending */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
-        <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
+      {/* ══ CHARTS ROW ══ */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
+        {/* Earning Overview — 2/3 width */}
+        <div className="xl:col-span-2 bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
           <div className="flex items-center justify-between mb-4">
             <div>
               <h3 className="font-semibold text-[var(--text-primary)]">Earning Overview</h3>
-              <p className="text-xs text-[var(--text-muted)]">Total revenue trend</p>
+              <p className="text-xs text-[var(--text-muted)]">Revenue & payment flow trend</p>
             </div>
-            <select value={earnPeriod} onChange={e => setEarnPeriod(e.target.value)} className="text-xs px-2 py-1.5 rounded-lg bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-secondary)] focus:outline-none">
-              <option value="3M">3 Months</option>
-              <option value="6M">6 Months</option>
-              <option value="12M">12 Months</option>
-            </select>
+            <div className="flex items-center gap-1">
+              {(['3M', '6M', '12M'] as const).map(p => (
+                <button key={p} onClick={() => setEarnPeriod(p)}
+                  className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-colors ${earnPeriod === p ? 'text-white' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-input)]'}`}
+                  style={earnPeriod === p ? { background: 'var(--accent)' } : {}}>
+                  {p}
+                </button>
+              ))}
+            </div>
           </div>
-          <p className="text-2xl font-bold text-[var(--text-primary)] mb-4">GHS {(totalRevenue / 1000).toFixed(0)}K</p>
-          <div className="h-40">
+          <p className="text-3xl font-extrabold text-[var(--text-primary)] mb-4">GHS {totalRevenue.toLocaleString()}</p>
+          <div className="h-44">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={earningData}>
                 <defs>
                   <linearGradient id="earnFin" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="var(--accent)" stopOpacity={0.3} />
+                    <stop offset="5%" stopColor="var(--accent)" stopOpacity={0.35} />
                     <stop offset="95%" stopColor="var(--accent)" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <XAxis dataKey="month" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `${(v / 1000).toFixed(0)}K`} />
                 <Tooltip content={<CustomTooltip />} />
-                <Area type="monotone" dataKey="value" name="Revenue" stroke="var(--accent)" strokeWidth={2} fill="url(#earnFin)" />
+                <Area type="monotone" dataKey="value" name="Revenue" stroke="var(--accent)" strokeWidth={2.5} fill="url(#earnFin)" dot={false} />
               </AreaChart>
             </ResponsiveContainer>
           </div>
         </div>
 
+        {/* Payment Methods Breakdown — 1/3 width */}
         <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h3 className="font-semibold text-[var(--text-primary)]">Spending Overview</h3>
-              <p className="text-xs text-[var(--text-muted)]">By category</p>
+          <h3 className="font-semibold text-[var(--text-primary)] mb-1">Payment Methods</h3>
+          <p className="text-xs text-[var(--text-muted)] mb-4">Breakdown by sales orders</p>
+          {paymentPie.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-48 text-[var(--text-muted)]">
+              <Activity size={28} className="opacity-30 mb-2" />
+              <p className="text-xs">No orders yet</p>
             </div>
-            <div className="flex flex-wrap gap-2 text-xs text-[var(--text-muted)]">
-              {[{ label: 'Payroll', color: 'var(--accent)' }, { label: 'Ops', color: '#c084fc' }, { label: 'Logistics', color: '#60a5fa' }].map(i => (
-                <span key={i.label} className="flex items-center gap-1"><span className="w-2 h-2 rounded-full inline-block" style={{ background: i.color }} />{i.label}</span>
-              ))}
-            </div>
-          </div>
-          <div className="h-52">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={cashflowData}>
-                <XAxis dataKey="month" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `${(v / 1000).toFixed(0)}K`} />
-                <Tooltip content={<CustomTooltip />} />
-                <Bar dataKey="income" name="Income" fill="var(--accent)" stackId="a" />
-                <Bar dataKey="expense" name="Expenses" fill="#c084fc" stackId="a" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+          ) : (
+            <>
+              <div className="flex justify-center mb-4">
+                <div style={{ width: 130, height: 130 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie data={paymentPie} dataKey="value" cx="50%" cy="50%" innerRadius={42} outerRadius={62} strokeWidth={0}>
+                        {paymentPie.map((e, i) => <Cell key={i} fill={e.color} />)}
+                      </Pie>
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+              <div className="space-y-2">
+                {paymentPie.map(item => (
+                  <div key={item.name} className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2.5 h-2.5 rounded-full" style={{ background: item.color }} />
+                      <span className="text-xs text-[var(--text-secondary)]">{item.name}</span>
+                    </div>
+                    <span className="text-xs font-bold text-[var(--text-primary)]">{item.value}%</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </div>
       </div>
 
-      {/* ROW 3 - Cash Flow + Upcoming Bills */}
+      {/* ══ COMPANY ACCOUNTS / WALLETS ══ */}
+      <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold text-[var(--text-primary)]">Company Accounts</h3>
+          <button onClick={() => setActiveSubTab?.('Wallets')} className="flex items-center gap-1 text-xs font-medium hover:underline" style={{ color: 'var(--accent)' }}>
+            View All <ArrowRight size={12} />
+          </button>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[
+            { name: 'Total Payments Received', num: `Cash: GHS ${walletCash.toLocaleString()} · MoMo: GHS ${walletMomo.toLocaleString()}`, balance: `GHS ${walletTotal.toLocaleString()}`, trend: 'Live from payment records', color: 'var(--accent)', tab: 'Wallets' },
+            { name: 'Expenses Paid', num: 'Approved expense records', balance: `GHS ${totalExpenses.toLocaleString()}`, trend: 'Approved only', color: '#6366f1', tab: 'Expenses' },
+            { name: 'Net Balance', num: `In: GHS ${walletTotal.toLocaleString()} · Out: GHS ${totalExpenses.toLocaleString()}`, balance: `GHS ${Math.abs(netBalance).toLocaleString()}`, trend: netBalance >= 0 ? 'Surplus ↑' : 'Deficit ↓', color: netBalance >= 0 ? '#10b981' : '#ef4444', tab: 'Transactions' },
+          ].map(acc => (
+            <div key={acc.name} className="rounded-2xl p-5 text-white" style={{ background: `linear-gradient(135deg, ${acc.color}CC, ${acc.color})` }}>
+              <p className="text-xs text-white/70 mb-1">{acc.name}</p>
+              <p className="text-[10px] text-white/60 mb-3 font-mono">{acc.num}</p>
+              <p className="text-2xl font-extrabold">{acc.balance}</p>
+              <div className="flex items-center justify-between mt-3">
+                <span className="text-xs text-white/70">{acc.trend}</span>
+                <button onClick={() => setActiveSubTab?.(acc.tab)} className="text-xs text-white/80 hover:text-white flex items-center gap-1">Details <ArrowRight size={10} /></button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ══ GOODS INVENTORY + NEWLY PRICED CATALOG ══ */}
+      {inventoryItems.length > 0 && (
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+          {/* Inventory Valuation */}
+          <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <Building2 size={16} className="text-[var(--accent)]" />
+              <div>
+                <h3 className="font-semibold text-[var(--text-primary)]">Goods Inventory Value</h3>
+                <p className="text-xs text-[var(--text-muted)]">Approved cargo × current prices</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              {[
+                { label: 'Stock Cost Value', value: `GHS ${totalCost.toLocaleString()}`, color: 'text-amber-600', bg: 'bg-amber-500/10' },
+                { label: 'Stock Selling Value', value: `GHS ${totalSell.toLocaleString()}`, color: 'text-sky-600', bg: 'bg-sky-500/10' },
+                { label: 'Revenue Earned', value: `GHS ${totalRevEarned.toLocaleString()}`, color: 'text-emerald-600', bg: 'bg-emerald-500/10' },
+                { label: 'Gross Margin', value: totalCost > 0 ? `${(((totalSell - totalCost) / totalCost) * 100).toFixed(1)}%` : '—', color: 'text-violet-600', bg: 'bg-violet-500/10' },
+              ].map(({ label, value, color, bg }) => (
+                <div key={label} className={`rounded-xl p-3 ${bg}`}>
+                  <p className="text-[9px] text-[var(--text-muted)] uppercase font-bold tracking-wide mb-1">{label}</p>
+                  <p className={`text-lg font-extrabold ${color}`}>{value}</p>
+                </div>
+              ))}
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-[var(--border)]">
+                    {['Product', 'Qty', 'Cost', 'Selling', 'Margin'].map(h => (
+                      <th key={h} className="px-2 py-2 text-left text-[9px] text-[var(--text-muted)] uppercase font-bold whitespace-nowrap">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--border)]">
+                  {inventoryItems.map((item: any) => {
+                    const margin = item.costPrice > 0 ? (((item.unitPrice - item.costPrice) / item.costPrice) * 100).toFixed(0) : '—';
+                    return (
+                      <tr key={item.name} className="hover:bg-[var(--accent-light)]">
+                        <td className="px-2 py-2 font-semibold text-[var(--text-primary)] truncate max-w-[100px]">{item.name}</td>
+                        <td className="px-2 py-2 text-[var(--text-secondary)]">{item.qty.toLocaleString()}</td>
+                        <td className="px-2 py-2 text-amber-600">{item.currency} {item.costPrice.toLocaleString()}</td>
+                        <td className="px-2 py-2 text-sky-600 font-semibold">{item.currency} {item.unitPrice.toLocaleString()}</td>
+                        <td className="px-2 py-2">
+                          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${Number(margin) > 0 ? 'bg-emerald-500/10 text-emerald-600' : 'bg-[var(--bg-input)] text-[var(--text-muted)]'}`}>
+                            {margin !== '—' ? `${margin}%` : '—'}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Newly Priced Catalog Items */}
+          <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Tag size={15} className="text-[var(--accent)]" />
+                <div>
+                  <h3 className="font-semibold text-[var(--text-primary)]">Newly Priced Items</h3>
+                  <p className="text-xs text-[var(--text-muted)]">Recent catalog updates from Management</p>
+                </div>
+              </div>
+              <button onClick={() => setActiveSubTab?.('PriceCatalog')} className="flex items-center gap-1 text-xs font-medium hover:underline" style={{ color: 'var(--accent)' }}>
+                Full Catalog <ArrowRight size={11} />
+              </button>
+            </div>
+            {recentPrices.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-[var(--text-muted)]">
+                <Package size={28} className="opacity-30 mb-2" />
+                <p className="text-xs">No products priced yet</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {recentPrices.map((item, i) => {
+                  const margin = item.cost_price > 0 ? (((item.unit_price - item.cost_price) / item.cost_price) * 100).toFixed(1) : null;
+                  const isNew = i === 0;
+                  return (
+                    <div key={item.id} className="flex items-center gap-3 p-3 rounded-xl bg-[var(--bg-input)] hover:bg-[var(--accent-light)] transition-colors group">
+                      <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'var(--accent-light)' }}>
+                        <Tag size={15} style={{ color: 'var(--accent)' }} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="text-xs font-bold text-[var(--text-primary)] truncate">{item.product_name}</p>
+                          {isNew && (
+                            <span className="text-[8px] font-extrabold px-1.5 py-0.5 rounded-full bg-[var(--accent)] text-white uppercase tracking-wide shrink-0">New</span>
+                          )}
+                        </div>
+                        <p className="text-[10px] text-[var(--text-muted)] mt-0.5">
+                          {item.updated_at ? new Date(item.updated_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
+                        </p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-sm font-extrabold text-[var(--text-primary)]">{item.currency} {item.unit_price.toLocaleString()}</p>
+                        {margin && (
+                          <span className={`text-[9px] font-bold ${Number(margin) > 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                            {Number(margin) > 0 ? '↑' : '↓'} {margin}% margin
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ══ CASH FLOW + UPCOMING BILLS ══ */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
         <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
           <h3 className="font-semibold text-[var(--text-primary)] mb-3">Cash Flow</h3>
           <div className="flex items-center gap-2 mb-4">
             {(['income', 'expense', 'savings'] as const).map(t => (
-              <button key={t} onClick={() => setCashflowTab(t)} className={`px-3 py-1.5 rounded-full text-xs font-medium capitalize transition-colors ${cashflowTab === t ? 'text-white' : 'text-[var(--text-secondary)] bg-[var(--bg-input)]'}`} style={cashflowTab === t ? { background: 'var(--accent)' } : {}}>{t}</button>
+              <button key={t} onClick={() => setCashflowTab(t)}
+                className={`px-3 py-1.5 rounded-full text-xs font-bold capitalize transition-colors ${cashflowTab === t ? 'text-white' : 'text-[var(--text-secondary)] bg-[var(--bg-input)]'}`}
+                style={cashflowTab === t ? { background: 'var(--accent)' } : {}}>
+                {t}
+              </button>
             ))}
           </div>
-          <p className="text-2xl font-bold text-[var(--text-primary)] mb-4">
+          <p className="text-2xl font-extrabold text-[var(--text-primary)] mb-4">
             {cashflowTab === 'income'
-              ? `GHS ${((cashflowData.reduce((s, d) => s + d.income, 0)) / 1000).toFixed(0)}K`
+              ? `GHS ${cashflowData.reduce((s, d) => s + d.income, 0).toLocaleString()}`
               : cashflowTab === 'expense'
-              ? `GHS ${((cashflowData.reduce((s, d) => s + d.expense, 0)) / 1000).toFixed(0)}K`
-              : `GHS ${((cashflowData.reduce((s, d) => s + d.income - d.expense, 0)) / 1000).toFixed(0)}K`}
+              ? `GHS ${cashflowData.reduce((s, d) => s + d.expense, 0).toLocaleString()}`
+              : `GHS ${cashflowData.reduce((s, d) => s + d.income - d.expense, 0).toLocaleString()}`}
           </p>
           <div className="h-36">
             <ResponsiveContainer width="100%" height="100%">
@@ -309,22 +537,29 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
         <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-semibold text-[var(--text-primary)]">Upcoming & Overdue Payments</h3>
-            <button className="w-7 h-7 rounded-full flex items-center justify-center text-[var(--text-secondary)] hover:bg-[var(--bg-input)] text-xl leading-none">+</button>
+            <button onClick={() => setActiveSubTab?.('Expenses')} className="flex items-center gap-1 text-xs font-medium hover:underline" style={{ color: 'var(--accent)' }}>
+              View All <ArrowRight size={11} />
+            </button>
           </div>
           <div className="space-y-2">
-            {upcomingBills.length === 0 && <p className="text-xs text-[var(--text-muted)] text-center py-4">No upcoming bills scheduled</p>}
+            {upcomingBills.length === 0 && (
+              <div className="flex flex-col items-center py-8 text-[var(--text-muted)]">
+                <CheckCircle size={28} className="opacity-30 mb-2" />
+                <p className="text-xs">No upcoming bills scheduled</p>
+              </div>
+            )}
             {upcomingBills.map((bill, i) => (
-              <div key={i} className={`flex items-center gap-3 p-3 rounded-xl ${bill.status === 'Overdue' ? 'bg-red-50 border border-red-200' : 'bg-[var(--bg-input)]'}`}>
+              <div key={i} className={`flex items-center gap-3 p-3 rounded-xl ${bill.status === 'Overdue' ? 'bg-red-50 border border-red-200 dark:bg-red-950/20 dark:border-red-900' : 'bg-[var(--bg-input)]'}`}>
                 <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${bill.status === 'Overdue' ? 'bg-red-100' : bill.status === 'Due Soon' ? 'bg-yellow-100' : 'bg-[var(--accent-light)]'}`}>
                   <Receipt size={14} className={bill.status === 'Overdue' ? 'text-red-500' : bill.status === 'Due Soon' ? 'text-yellow-500' : ''} style={bill.status === 'Scheduled' ? { color: 'var(--accent)' } : {}} />
                 </div>
-                <div className="flex-1">
-                  <p className="text-xs font-medium text-[var(--text-primary)]">{bill.desc}</p>
-                  <p className="text-xs text-[var(--text-muted)]">Due: {bill.due}</p>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold text-[var(--text-primary)] truncate">{bill.desc}</p>
+                  <p className="text-[10px] text-[var(--text-muted)]">Due: {bill.due}</p>
                 </div>
-                <div className="text-right">
-                  <p className="text-xs font-semibold text-[var(--text-primary)]">GHS {bill.amount.toLocaleString()}</p>
-                  <span className={`text-xs font-medium ${bill.status === 'Overdue' ? 'text-red-500' : bill.status === 'Due Soon' ? 'text-yellow-500' : 'text-[var(--text-muted)]'}`}>{bill.status}</span>
+                <div className="text-right shrink-0">
+                  <p className="text-xs font-bold text-[var(--text-primary)]">GHS {Number(bill.amount).toLocaleString()}</p>
+                  <span className={`text-[9px] font-bold ${bill.status === 'Overdue' ? 'text-red-500' : bill.status === 'Due Soon' ? 'text-yellow-500' : 'text-[var(--text-muted)]'}`}>{bill.status}</span>
                 </div>
               </div>
             ))}
@@ -332,233 +567,103 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
         </div>
       </div>
 
-      {/* ROW 4 - Accounts */}
+      {/* ══ PENDING ORDERS QUEUE ══ */}
       <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold text-[var(--text-primary)]">Company Accounts</h3>
-          <button onClick={() => setActiveSubTab?.('Wallets')} className="flex items-center gap-1 text-xs font-medium hover:underline" style={{ color: 'var(--accent)' }}>
-            View All <ArrowRight size={12} />
-          </button>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {[
-            { name: 'Total Payments Received', num: `Cash: GHS ${walletCash.toLocaleString()} · MoMo: GHS ${walletMomo.toLocaleString()}`, balance: `GHS ${walletTotal.toLocaleString()}`, trend: 'Live from payment records', color: 'var(--accent)' },
-            { name: 'Expenses Paid', num: 'Approved expense records', balance: `GHS ${totalExpenses.toLocaleString()}`, trend: 'Approved only', color: '#6366f1' },
-            { name: 'Net Balance', num: `In: GHS ${walletTotal.toLocaleString()} · Out: GHS ${totalExpenses.toLocaleString()}`, balance: `GHS ${Math.abs(walletTotal - totalExpenses).toLocaleString()}`, trend: walletTotal - totalExpenses >= 0 ? 'Surplus' : 'Deficit', color: walletTotal - totalExpenses >= 0 ? '#10b981' : '#ef4444' },
-          ].map(acc => (
-            <div key={acc.name} className="rounded-2xl p-4 text-white" style={{ background: `linear-gradient(135deg, ${acc.color}CC, ${acc.color})` }}>
-              <p className="text-xs text-white/70 mb-1">{acc.name}</p>
-              <p className="text-xs text-white/60 mb-3 font-mono">{acc.num}</p>
-              <p className="text-xl font-bold">{acc.balance}</p>
-              <div className="flex items-center justify-between mt-2">
-                <span className="text-xs text-white/70">{acc.trend}</span>
-                <button onClick={() => setActiveSubTab?.('Wallets')} className="text-xs text-white/80 hover:text-white flex items-center gap-1">Details <ArrowRight size={10} /></button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* ROW 4b - Goods Inventory Value */}
-      {goodsPrices.length > 0 && (() => {
-        const items = goodsPrices.map((gp: any) => {
-          const key = String(gp.product_name || '').toLowerCase().trim();
-          const qty = cargoForInventory.filter((c: any) => String(c.product_name || '').toLowerCase().trim() === key).reduce((s: number, c: any) => s + (Number(c.quantity) || 0), 0);
-          // Revenue earned from approved/delivered orders for this product
-          const soldRevenue = (effective as any[]).filter(o => ['APPROVED','PROCESSING','DELIVERED'].includes(o.status) && String(o.productName || o.product_name || '').toLowerCase().trim() === key).reduce((s: number, o: any) => s + (Number(o.totalAmount || o.total_amount) || 0), 0);
-          return { name: gp.product_name, unitPrice: Number(gp.unit_price || 0), costPrice: Number(gp.cost_price || 0), currency: gp.currency || 'GHS', qty, sellingValue: Number(gp.unit_price || 0) * qty, costValue: Number(gp.cost_price || 0) * qty, soldRevenue };
-        });
-        const totalSell = items.reduce((s: number, i: any) => s + i.sellingValue, 0);
-        const totalCost = items.reduce((s: number, i: any) => s + i.costValue, 0);
-        const totalRevEarned = items.reduce((s: number, i: any) => s + i.soldRevenue, 0);
-        const currency = items[0]?.currency || 'GHS';
-        return (
-          <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className="font-semibold text-[var(--text-primary)] flex items-center gap-2">
-                  <Building2 size={15} className="text-[var(--accent)]" /> Goods Inventory &amp; Sales Value
-                </h3>
-                <p className="text-xs text-[var(--text-muted)] mt-0.5">Approved cargo only · prices set by Management · updates as sales are made</p>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-4">
-              <div className="rounded-xl p-4 bg-amber-500/10">
-                <p className="text-[10px] text-[var(--text-muted)] uppercase font-semibold tracking-wide mb-1">Stock Cost Value</p>
-                <p className="text-xl font-bold text-amber-600">{currency} {totalCost.toLocaleString()}</p>
-                <p className="text-xs text-[var(--text-muted)] mt-0.5">What goods cost us</p>
-              </div>
-              <div className="rounded-xl p-4 bg-sky-500/10">
-                <p className="text-[10px] text-[var(--text-muted)] uppercase font-semibold tracking-wide mb-1">Stock Selling Value</p>
-                <p className="text-xl font-bold text-sky-600">{currency} {totalSell.toLocaleString()}</p>
-                <p className="text-xs text-[var(--text-muted)] mt-0.5">At selling prices</p>
-              </div>
-              <div className="rounded-xl p-4 bg-emerald-500/10">
-                <p className="text-[10px] text-[var(--text-muted)] uppercase font-semibold tracking-wide mb-1">Revenue Earned</p>
-                <p className="text-xl font-bold text-emerald-600">{currency} {totalRevEarned.toLocaleString()}</p>
-                <p className="text-xs text-[var(--text-muted)] mt-0.5">From approved orders</p>
-              </div>
-              <div className="rounded-xl p-4 bg-violet-500/10">
-                <p className="text-[10px] text-[var(--text-muted)] uppercase font-semibold tracking-wide mb-1">Gross Margin</p>
-                <p className="text-xl font-bold text-violet-600">{totalCost > 0 ? `${(((totalSell - totalCost) / totalCost) * 100).toFixed(1)}%` : '—'}</p>
-                <p className="text-xs text-[var(--text-muted)] mt-0.5">Stock margin</p>
-              </div>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead><tr className="border-b border-[var(--border)]">{['Product','Stock Qty','Cost Price','Selling Price','Stock Cost Value','Stock Selling Value','Revenue Earned'].map(h => <th key={h} className="px-3 py-2 text-left text-[10px] text-[var(--text-muted)] uppercase font-semibold whitespace-nowrap">{h}</th>)}</tr></thead>
-                <tbody className="divide-y divide-[var(--border)]">
-                  {items.map((item: any) => (
-                    <tr key={item.name} className="hover:bg-[var(--accent-light)]">
-                      <td className="px-3 py-2 font-semibold text-[var(--text-primary)]">{item.name}</td>
-                      <td className="px-3 py-2 text-[var(--text-secondary)]">{item.qty.toLocaleString()}</td>
-                      <td className="px-3 py-2 text-[var(--text-secondary)]">{item.currency} {item.costPrice.toLocaleString()}</td>
-                      <td className="px-3 py-2 text-sky-600 font-semibold">{item.currency} {item.unitPrice.toLocaleString()}</td>
-                      <td className="px-3 py-2 text-amber-600">{item.currency} {item.costValue.toLocaleString()}</td>
-                      <td className="px-3 py-2 text-sky-600">{item.currency} {item.sellingValue.toLocaleString()}</td>
-                      <td className="px-3 py-2 text-emerald-600 font-semibold">{item.currency} {item.soldRevenue.toLocaleString()}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+          <div className="flex items-center gap-2">
+            <ShoppingCart size={16} className="text-[var(--accent)]" />
+            <h3 className="font-semibold text-[var(--text-primary)]">Orders Awaiting Review</h3>
+            {pendingOrders.length > 0 && (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600">{pendingOrders.length} pending</span>
+            )}
           </div>
-        );
-      })()}
-
-      {/* ROW 5 - Transaction Overview + Payments Breakdown */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
-        <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-[var(--text-primary)]">Transaction Overview</h3>
-            <span className="text-xs text-[var(--text-muted)]">This Month</span>
-          </div>
-          <p className="text-2xl font-bold text-[var(--text-primary)] mb-1">GHS {(totalRevenue / 1000).toFixed(0)}K</p>
-          <p className="text-xs text-green-500 mb-4 flex items-center gap-1"><TrendingUp size={11} />This period</p>
-          <div className="h-40">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={earningData}>
-                <XAxis dataKey="month" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `${(v / 1000).toFixed(0)}K`} />
-                <Tooltip content={<CustomTooltip />} />
-                <Line type="monotone" dataKey="value" name="Revenue" stroke="var(--accent)" strokeWidth={2} dot={false} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
-          <h3 className="font-semibold text-[var(--text-primary)] mb-4">Payment Methods Breakdown</h3>
-          <div className="flex items-center gap-6">
-            <div style={{ width: 130, height: 130 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={paymentPie} dataKey="value" cx="50%" cy="50%" innerRadius={40} outerRadius={60} strokeWidth={0}>
-                    {paymentPie.map((e, i) => <Cell key={i} fill={e.color} />)}
-                  </Pie>
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="flex-1 space-y-2">
-              {paymentPie.map(item => (
-                <div key={item.name} className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full" style={{ background: item.color }} />
-                    <span className="text-xs text-[var(--text-secondary)]">{item.name}</span>
-                  </div>
-                  <span className="text-xs font-semibold text-[var(--text-primary)]">{item.value}%</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ROW 7 - Orders Queue Preview */}
-      <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold text-[var(--text-primary)]">Orders Awaiting Review</h3>
           <button onClick={() => setActiveSubTab?.('OrdersQueue')} className="flex items-center gap-1 text-xs font-medium hover:underline" style={{ color: 'var(--accent)' }}>
             View All Orders <ArrowRight size={12} />
           </button>
         </div>
         {pendingOrders.length === 0 ? (
-          <div className="flex flex-col items-center py-8 text-[var(--text-muted)]">
+          <div className="flex flex-col items-center py-10 text-[var(--text-muted)]">
             <CheckCircle size={32} className="opacity-30 mb-2" />
-            <p className="text-sm">No pending orders 🎉</p>
+            <p className="text-sm font-semibold">All orders cleared 🎉</p>
+            <p className="text-xs mt-0.5">No pending orders awaiting finance review</p>
           </div>
         ) : (
           <div className="space-y-2">
-            {pendingOrders.slice(0, 5).map(order => (
-              <div key={order.id} className="flex items-center gap-3 p-3 bg-[var(--bg-input)] rounded-xl">
+            {pendingOrders.slice(0, 6).map(order => (
+              <div key={order.id} className="flex items-center gap-4 p-4 bg-[var(--bg-input)] rounded-xl hover:bg-[var(--accent-light)] transition-colors">
+                <div className="w-9 h-9 rounded-xl bg-amber-500/15 flex items-center justify-center shrink-0">
+                  <ShoppingCart size={15} className="text-amber-500" />
+                </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-[var(--text-primary)]">{order.id} — {order.clientName}</p>
-                  <p className="text-xs text-[var(--text-muted)]">GHS {order.totalAmount.toLocaleString()} · {order.paymentMode || 'CASH'}</p>
+                  <p className="text-xs font-bold text-[var(--text-primary)] truncate">{order.clientName}</p>
+                  <p className="text-[10px] text-[var(--text-muted)] font-mono">{order.id} · {order.paymentMode || 'CASH'}</p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <button onClick={() => setActiveSubTab?.('orders-queue')} className="px-3 py-1.5 rounded-lg text-white text-xs font-medium hover:opacity-90" style={{ background: 'var(--accent)' }}>Review in Queue</button>
-                </div>
+                <p className="text-sm font-extrabold text-[var(--text-primary)] shrink-0">GHS {order.totalAmount.toLocaleString()}</p>
+                <button
+                  onClick={() => setActiveSubTab?.('OrdersQueue')}
+                  className="px-3 py-1.5 rounded-lg text-white text-xs font-bold hover:opacity-90 shrink-0 transition-opacity"
+                  style={{ background: 'var(--accent)' }}
+                >
+                  Review
+                </button>
               </div>
             ))}
           </div>
         )}
       </div>
 
-      {/* ROW 8 - Invoice Status + Credit Overview */}
+      {/* ══ INVOICE STATUS + CREDIT MANAGEMENT ══ */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+        {/* Invoice Status */}
         <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
           <h3 className="font-semibold text-[var(--text-primary)] mb-4">Invoice Status</h3>
-          <div className="flex items-center gap-6">
-            <div className="relative" style={{ width: 130, height: 130 }}>
-              {(() => {
-                const realTotal = effective.length;
-                if (realTotal === 0) {
-                  return (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <p className="text-base font-bold text-[var(--text-primary)]">0</p>
-                      <p className="text-xs text-[var(--text-muted)]">No orders yet</p>
+          {(() => {
+            const realTotal = effective.length;
+            if (realTotal === 0) return (
+              <div className="flex items-center justify-center py-8 text-[var(--text-muted)] text-xs">
+                <p>No orders yet</p>
+              </div>
+            );
+            const paid = effective.filter(o => ['DELIVERED', 'APPROVED', 'OUT_FOR_DELIVERY'].includes(o.status)).length;
+            const pending = effective.filter(o => o.status.startsWith('PENDING')).length;
+            const rejected = realTotal - paid - pending;
+            const invData = [
+              { name: 'Cleared', value: Math.round((paid / realTotal) * 100), color: '#10b981' },
+              { name: 'Pending', value: Math.round((pending / realTotal) * 100), color: '#f59e0b' },
+              { name: 'Other', value: Math.max(0, Math.round((rejected / realTotal) * 100)), color: '#ef4444' },
+            ].filter(d => d.value > 0);
+            return (
+              <div className="flex items-center gap-6">
+                <div className="relative" style={{ width: 120, height: 120 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie data={invData} dataKey="value" cx="50%" cy="50%" innerRadius={38} outerRadius={56} strokeWidth={0}>
+                        {invData.map((e, i) => <Cell key={i} fill={e.color} />)}
+                      </Pie>
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <p className="text-lg font-extrabold text-[var(--text-primary)]">{invoiceCount}</p>
+                    <p className="text-[9px] text-[var(--text-muted)]">Total</p>
+                  </div>
+                </div>
+                <div className="flex-1 space-y-2">
+                  {invData.map(item => (
+                    <div key={item.name} className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2.5 h-2.5 rounded-full" style={{ background: item.color }} />
+                        <span className="text-xs text-[var(--text-secondary)]">{item.name}</span>
+                      </div>
+                      <span className="text-xs font-bold text-[var(--text-primary)]">{item.value}%</span>
                     </div>
-                  );
-                }
-                const paid = effective.filter(o => ['DELIVERED', 'APPROVED', 'OUT_FOR_DELIVERY'].includes(o.status)).length;
-                const pending = effective.filter(o => o.status.startsWith('PENDING')).length;
-                const rejected = realTotal - paid - pending;
-                const invData = [
-                  { name: 'Paid', value: Math.round((paid / realTotal) * 100), color: '#10b981' },
-                  { name: 'Pending', value: Math.round((pending / realTotal) * 100), color: '#f59e0b' },
-                  { name: 'Rejected', value: Math.round((rejected / realTotal) * 100), color: '#ef4444' },
-                ].filter(d => d.value > 0);
-                return (
-                  <>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie data={invData} dataKey="value" cx="50%" cy="50%" innerRadius={40} outerRadius={60} strokeWidth={0}>
-                          {invData.map((e, i) => <Cell key={i} fill={e.color} />)}
-                        </Pie>
-                      </PieChart>
-                    </ResponsiveContainer>
-                    <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <p className="text-base font-bold text-[var(--text-primary)]">{invoiceCount}</p>
-                      <p className="text-xs text-[var(--text-muted)]">Total</p>
-                    </div>
-                    <div className="absolute left-36 top-0 flex-1 space-y-2">
-                      {invData.map(item => (
-                        <div key={item.name} className="flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-2">
-                            <div className="w-2 h-2 rounded-full" style={{ background: item.color }} />
-                            <span className="text-xs text-[var(--text-secondary)]">{item.name}</span>
-                          </div>
-                          <span className="text-xs font-semibold text-[var(--text-primary)]">{item.value}%</span>
-                        </div>
-                      ))}
-                    </div>
-                  </>
-                );
-              })()}
-            </div>
-          </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
         </div>
 
+        {/* Credit Management */}
         <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-semibold text-[var(--text-primary)]">Credit Management</h3>
@@ -576,16 +681,16 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
               <>
                 {[
                   { label: 'Total Extended', value: `GHS ${totalExtended.toLocaleString()}`, color: 'text-[var(--text-primary)]' },
-                  { label: 'Total Collected', value: `GHS ${collected.toLocaleString()}`, color: 'text-green-500' },
-                  { label: 'Outstanding', value: `GHS ${outstanding.toLocaleString()}`, color: 'text-red-500' },
+                  { label: 'Total Collected', value: `GHS ${collected.toLocaleString()}`, color: 'text-emerald-500' },
+                  { label: 'Outstanding', value: `GHS ${outstanding.toLocaleString()}`, color: 'text-rose-500' },
                 ].map(({ label, value, color }) => (
-                  <div key={label} className="flex items-center justify-between py-2 border-b border-[var(--border)] last:border-0">
+                  <div key={label} className="flex items-center justify-between py-2.5 border-b border-[var(--border)] last:border-0">
                     <span className="text-xs text-[var(--text-muted)]">{label}</span>
-                    <span className={`text-sm font-semibold ${color}`}>{value}</span>
+                    <span className={`text-sm font-bold ${color}`}>{value}</span>
                   </div>
                 ))}
                 <div className="mt-3 h-2 bg-[var(--bg-input)] rounded-full overflow-hidden">
-                  <div className="h-full rounded-full bg-green-500" style={{ width: `${pct}%` }} />
+                  <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${pct}%` }} />
                 </div>
                 <p className="text-xs text-[var(--text-muted)] mt-1">{pct}% collected</p>
               </>

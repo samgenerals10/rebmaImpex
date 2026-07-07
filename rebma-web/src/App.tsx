@@ -2955,6 +2955,7 @@ export default function App() {
             onEvaluateOrder={handleEvaluateOrder}
             onFinalizeOrder={handleFinalizeOrder}
             activeSubTab={activeSubTab}
+            setActiveSubTab={setActiveSubTab}
             paymentsList={paymentsList}
             setPaymentsList={setPaymentsList}
             productionRequests={productionRequests}

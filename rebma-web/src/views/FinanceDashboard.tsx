@@ -13,6 +13,7 @@ import { exportToCSV, exportToPDF } from '../utils/export';
 import { stockApi, operations } from '../services/apiClient';
 import { supabase } from '../lib/supabaseClient';
 import ActivityFeed from '../components/global/ActivityFeed';
+import FinanceOverviewView from './finance/OverviewView';
 
 interface FinanceDashboardProps {
   ordersList: Order[];
@@ -20,6 +21,7 @@ interface FinanceDashboardProps {
   onEvaluateOrder: (id: string, approve: boolean) => void;
   onFinalizeOrder: (id: string) => void;
   activeSubTab: string;
+  setActiveSubTab?: (tab: string) => void;
   paymentsList: FinancePayment[];
   setPaymentsList: React.Dispatch<React.SetStateAction<FinancePayment[]>>;
   productionRequests: ProductionRequest[];
@@ -47,6 +49,7 @@ export default function FinanceDashboard({
   onEvaluateOrder,
   onFinalizeOrder,
   activeSubTab = 'Evaluation',
+  setActiveSubTab,
   paymentsList,
   setPaymentsList,
   productionRequests,
@@ -798,6 +801,16 @@ export default function FinanceDashboard({
 
       {/* ══ DESKTOP LAYOUT (lg+) — UNCHANGED ══ */}
       <div className="hidden lg:block">
+        {/* Premium e-commerce overview dashboard */}
+        {activeSubTab === 'Evaluation' && (
+          <FinanceOverviewView
+            addNotification={addNotification}
+            setActiveSubTab={setActiveSubTab as any}
+            ordersList={effectiveOrders as any}
+            onEvaluateOrder={onEvaluateOrder}
+          />
+        )}
+        {activeSubTab !== 'Evaluation' && (
         <div className="space-y-6">
           {/* Ticket Modal */}
           {selectedTicket && (
@@ -960,7 +973,7 @@ export default function FinanceDashboard({
           <div className="border-t border-[var(--border)] pt-6">
 
             {/* PAYMENT TERMS / ORDERS QUEUE */}
-            {(activeSubTab === 'Evaluation' || activeSubTab === 'OrdersQueue') && (
+            {(activeSubTab === 'OrdersQueue') && (
               <div className="p-4 md:p-6 bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-[var(--box-shadow)] space-y-4">
                 <h3 className="text-base md:text-lg font-bold text-[var(--text-primary)]">Workflow B: Order Payment Terms Evaluation Queue</h3>
                 <div className="space-y-3">
@@ -1540,6 +1553,7 @@ export default function FinanceDashboard({
             )}
           </div>
         </div>
+        )} {/* end activeSubTab !== 'Evaluation' */}
       </div>
 
       {/* Finance + Operations Activity Feed */}

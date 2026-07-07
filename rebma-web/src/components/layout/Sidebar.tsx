@@ -479,19 +479,67 @@ export default function Sidebar({
 
           {/* ── SCROLLABLE NAV AREA ── */}
           <div className="flex-1 overflow-y-auto min-h-0">
-            {/* MENU section */}
-            {sectionLabel('Menu')}
-            <div className="space-y-0.5">
-              {currentTabs.map(tab => renderNavBtn(tab))}
-            </div>
-
-            {/* LOGISTICS section (CEO / Management / HR only) */}
-            {showLogisticsSection && (
+            {/* FINANCE: Grouped E-Commerce Portal Navigation */}
+            {activeDepartment === 'FINANCE' ? (
               <>
-                {sectionLabel('Logistics & Fleet')}
+                {sectionLabel('E-Commerce Core')}
                 <div className="space-y-0.5">
-                  {departmentTabs['HR_LOGISTICS_VIEW'].map(tab => renderNavBtn(tab))}
+                  {[
+                    { id: 'Evaluation',    label: 'Dashboard',       icon: LayoutDashboard },
+                    { id: 'OrdersQueue',   label: 'Sales Orders',    icon: ClipboardList },
+                    { id: 'RecordPayment', label: 'Payments',        icon: DollarSign },
+                    { id: 'Invoices',      label: 'Invoices',        icon: FileText },
+                    { id: 'PriceCatalog',  label: 'Price Catalog',   icon: Tag },
+                  ].map(tab => renderNavBtn(tab))}
                 </div>
+
+                {sectionLabel('Treasury & Accounts')}
+                <div className="space-y-0.5">
+                  {[
+                    { id: 'Wallets',           label: 'Wallets & Bank',     icon: Wallet },
+                    { id: 'Transactions',      label: 'Transactions',        icon: ArrowLeftRight },
+                    { id: 'CreditMgmt',        label: 'Credit & Receivables',icon: CreditCard },
+                    { id: 'Cheques',           label: 'Cheques',             icon: FileText },
+                    { id: 'MobileMoney',       label: 'Mobile Money',        icon: Smartphone },
+                    { id: 'PettyCash',         label: 'Petty Cash',          icon: PiggyBank },
+                  ].map(tab => renderNavBtn(tab))}
+                </div>
+
+                {sectionLabel('Expenses & Liabilities')}
+                <div className="space-y-0.5">
+                  {[
+                    { id: 'Expenses',          label: 'Merchant Expenses',   icon: Receipt },
+                    { id: 'Payroll',           label: 'Payroll',             icon: Banknote },
+                    { id: 'RecurringPayments', label: 'Recurring Bills',     icon: RefreshCw },
+                  ].map(tab => renderNavBtn(tab))}
+                </div>
+
+                {sectionLabel('Reports & Auditing')}
+                <div className="space-y-0.5">
+                  {[
+                    { id: 'TaxVAT',       label: 'Tax & VAT',         icon: Calculator },
+                    { id: 'FinReports',   label: 'Financial Reports',  icon: BarChart2 },
+                    { id: 'Spreadsheets', label: 'Spreadsheets',       icon: FileSpreadsheet },
+                  ].map(tab => renderNavBtn(tab))}
+                </div>
+              </>
+            ) : (
+              <>
+                {/* Default flat MENU for all other departments */}
+                {sectionLabel('Menu')}
+                <div className="space-y-0.5">
+                  {currentTabs.map(tab => renderNavBtn(tab))}
+                </div>
+
+                {/* LOGISTICS section (CEO / Management / HR only) */}
+                {showLogisticsSection && (
+                  <>
+                    {sectionLabel('Logistics & Fleet')}
+                    <div className="space-y-0.5">
+                      {departmentTabs['HR_LOGISTICS_VIEW'].map(tab => renderNavBtn(tab))}
+                    </div>
+                  </>
+                )}
               </>
             )}
 
