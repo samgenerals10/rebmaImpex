@@ -69,6 +69,12 @@ export default function CustomersView({ customersList, onRegisterCustomer, addNo
     load();
   }, []);
 
+  useEffect(() => {
+    if (customersList && customersList.length > 0) {
+      setCustomers(customersList);
+    }
+  }, [customersList]);
+
   const locations = Array.from(new Set(customers.map(c => c.location)));
   const now = new Date();
   const thisMonth = customers.filter(c => {
@@ -90,21 +96,10 @@ export default function CustomersView({ customersList, onRegisterCustomer, addNo
   const handleSave = async () => {
     if (!form.name || !form.phone) { addNotification('Name and phone are required.'); return; }
     const now = new Date().toISOString();
-    const { data: inserted, error } = await supabase.from('customers').insert({
-      name: form.name,
-      company_name: form.companyName || form.name,
-      phone: form.phone,
-      email: form.email || null,
-      location: form.location || null,
-      ghana_card_id: form.ghanaCard || null,
-      registered_at: now,
-      updated_at: now,
-    }).select().single();
-    if (error) { addNotification(`Failed to register customer: ${error.message}`); return; }
     const newCust: Customer = {
-      id: inserted?.id || `cust-${Date.now()}`,
+      id: `cust-${Date.now()}`,
       name: form.name,
-      companyName: form.companyName,
+      companyName: form.companyName || form.name,
       phone: form.phone,
       location: form.location,
       email: form.email,
@@ -117,7 +112,6 @@ export default function CustomersView({ customersList, onRegisterCustomer, addNo
     setCustomers(prev => [newCust, ...prev]);
     setShowModal(false);
     setForm({ name: '', companyName: '', phone: '', location: '', email: '', ghanaCard: '' });
-    addNotification('Customer registered successfully.');
   };
 
   const openEdit = (c: Customer) => {
