@@ -5,6 +5,13 @@ import { supabase } from '../../lib/supabaseClient';
 import { exportToCSV, exportToPDF } from '../../utils/export';
 import EntityDetailPanel from '../../components/global/EntityDetailPanel';
 
+interface InvoiceLineItemRaw {
+  productName: string;
+  quantity: number;
+  unitPrice: number;
+  lineTotal: number;
+}
+
 interface InvoiceRow {
   id: string;
   invoice_no: string;
@@ -18,6 +25,8 @@ interface InvoiceRow {
   payment_mode: string;
   issued_by: string;
   issued_by_email: string;
+  /** Full line items from order metadata — used when printing detailed invoice */
+  lineItems?: InvoiceLineItemRaw[];
 }
 
 function orderToInvoice(r: any): InvoiceRow {
@@ -31,6 +40,20 @@ function orderToInvoice(r: any): InvoiceRow {
   const invoiceStatus: InvoiceRow['status'] =
     orderStatus === 'DELIVERED' ? 'paid' :
     dueDateStr < today ? 'overdue' : 'pending';
+  const rawItems: InvoiceLineItemRaw[] | undefined = Array.isArray(r.metadata?.items) && r.metadata.items.length > 0
+    ? r.metadata.items.map((item: any) => ({
+        productName: item.productName || item.product_name || '—',
+        quantity: Number(item.quantity ?? 1),
+        unitPrice: Number(item.unitPrice ?? item.unit_price ?? 0),
+        lineTotal: Number(item.lineTotal ?? item.line_total ?? 0),
+      }))
+    : undefined;
+
+  // Build a human-readable product summary (all items)
+  const productLabel = rawItems
+    ? rawItems.map(i => `${i.productName} ×${i.quantity}`).join(', ')
+    : (r.product_name || r.productName || '—');
+
   return {
     id: String(r.id),
     invoice_no: `INV-${String(r.id).slice(0, 8).toUpperCase()}`,
@@ -40,10 +63,11 @@ function orderToInvoice(r: any): InvoiceRow {
     date: dateStr,
     due_date: dueDateStr,
     status: invoiceStatus,
-    product: r.product_name || r.productName || '—',
+    product: productLabel,
     payment_mode: r.payment_mode || r.paymentMode || 'CASH',
     issued_by: r.created_by || r.submittedBy || 'Finance Department',
     issued_by_email: r.issuer_email || 'finance@rebmaimpex.com',
+    lineItems: rawItems,
   };
 }
 
@@ -188,15 +212,26 @@ async function printSingleInvoice(r: InvoiceRow, notes?: string) {
         <div class="seal">Finance Verified<small>REBMA IMPEX Ghana Limited</small></div>
       </div>
       <table class="items-table">
-        <thead><tr><th>Description</th><th>Product / Service</th><th style="text-align:right">Amount (GHS)</th></tr></thead>
+        <thead><tr><th>Product / Service</th><th style="text-align:center">Qty</th><th style="text-align:right">Unit Price (GHS)</th><th style="text-align:right">Amount (GHS)</th></tr></thead>
         <tbody>
-          <tr>
-            <td>Order ${r.invoice_no}</td>
-            <td>${r.product || 'Goods &amp; Services'}</td>
-            <td style="text-align:right;font-weight:700">${Number(r.amount??0).toLocaleString()}</td>
-          </tr>
+          ${r.lineItems && r.lineItems.length > 0
+            ? r.lineItems.map((item: any, idx: number) => `
+              <tr>
+                <td><strong>${item.productName}</strong></td>
+                <td style="text-align:center;font-weight:700">${item.quantity}</td>
+                <td style="text-align:right">${item.unitPrice > 0 ? Number(item.unitPrice).toLocaleString() : '<span style="color:#f59e0b;font-size:11px">TBD</span>'}</td>
+                <td style="text-align:right;font-weight:700">${item.lineTotal > 0 ? Number(item.lineTotal).toLocaleString() : '—'}</td>
+              </tr>
+            `).join('')
+            : `<tr>
+                <td>Order ${r.invoice_no}</td>
+                <td style="text-align:center">—</td>
+                <td style="text-align:right">—</td>
+                <td style="text-align:right;font-weight:700">${Number(r.amount??0).toLocaleString()}</td>
+              </tr>`
+          }
           <tr class="total">
-            <td colspan="2" style="font-size:12px;letter-spacing:.05em;text-transform:uppercase;opacity:0.8">Total Due</td>
+            <td colspan="3" style="font-size:12px;letter-spacing:.05em;text-transform:uppercase;opacity:0.8">Total Due</td>
             <td style="text-align:right;font-size:18px">GHS ${Number(r.amount??0).toLocaleString()}</td>
           </tr>
         </tbody>
@@ -205,7 +240,7 @@ async function printSingleInvoice(r: InvoiceRow, notes?: string) {
         ${[
           ['Invoice Number', r.invoice_no],
           ['Customer', r.customer],
-          ['Product / Service', r.product || '—'],
+          ['Items', r.lineItems && r.lineItems.length > 0 ? `${r.lineItems.length} line item${r.lineItems.length > 1 ? 's' : ''}` : (r.product || '—')],
           ['Payment Mode', r.payment_mode || 'CASH'],
           ['Issue Date', r.date],
           ['Due Date', r.due_date],

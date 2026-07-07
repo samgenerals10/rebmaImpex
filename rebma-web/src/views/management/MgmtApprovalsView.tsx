@@ -639,53 +639,85 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
 
             {showModal === 'approve' && selectedItem.type === 'Cargo Intake' && (
               <div className="mb-4 space-y-3 p-4 rounded-2xl border border-[var(--border)] bg-[var(--bg)]">
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider mb-1 block">Total Cargo In</label>
-                    <div className="text-xs font-semibold text-[var(--text-primary)] font-mono mt-1.5">
+                <div className="flex items-center gap-3 mb-1">
+                  <div className="bg-[var(--bg-input)] rounded-xl px-4 py-2.5 flex items-center gap-3">
+                    <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Total Cargo In</span>
+                    <span className="text-sm font-bold text-[var(--text-primary)] font-mono">
                       {Number(selectedItem.raw?.quantity || selectedItem.raw?.qty_received || 0).toLocaleString()} units
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider mb-1 block">Cargo Unit Cost (GHS)</label>
-                    <input
-                      type="number"
-                      value={costPerUnit}
-                      onChange={e => setCostPerUnit(Number(e.target.value))}
-                      placeholder="Cost per unit"
-                      className="w-full px-3 py-1.5 bg-[var(--bg-input)] border border-[var(--border)] rounded-xl text-xs font-mono text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
-                    />
+                    </span>
                   </div>
                 </div>
 
-                {/* Discrepancy inputs */}
-                {(selectedItem.raw as any)?.discrepancies && (
-                  <div className="mt-2 border-t border-[var(--border)] pt-2 space-y-3">
+
+                {/* Discrepancy section — always shown for cargo intakes so damaged qty can always be set */}
+                <div className="mt-2 border-t border-[var(--border)] pt-3 space-y-3">
+                  <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Quantity Verification</p>
+
+                  {/* Quantity summary */}
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="bg-[var(--bg-input)] rounded-xl p-2.5 text-center">
+                      <p className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider mb-1">Total Received</p>
+                      <p className="text-sm font-bold text-[var(--text-primary)] font-mono">
+                        {Number(selectedItem.raw?.quantity || selectedItem.raw?.qty_received || 0).toLocaleString()}
+                      </p>
+                      <p className="text-[9px] text-[var(--text-muted)]">units</p>
+                    </div>
+                    <div className="bg-rose-500/10 border border-rose-500/20 rounded-xl p-2.5 text-center">
+                      <p className="text-[9px] font-bold text-rose-500 uppercase tracking-wider mb-1">Confirmed Damaged</p>
+                      <p className="text-sm font-bold text-rose-600 font-mono">{confirmedDamages.toLocaleString()}</p>
+                      <p className="text-[9px] text-rose-400">excluded</p>
+                    </div>
+                    <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-2.5 text-center">
+                      <p className="text-[9px] font-bold text-emerald-600 uppercase tracking-wider mb-1">Net to Stock</p>
+                      <p className="text-sm font-bold text-emerald-600 font-mono">
+                        {Math.max(0, Number(selectedItem.raw?.quantity || selectedItem.raw?.qty_received || 0) - confirmedDamages).toLocaleString()}
+                      </p>
+                      <p className="text-[9px] text-emerald-500">approved qty</p>
+                    </div>
+                  </div>
+
+                  {/* Discrepancy note if present */}
+                  {(selectedItem.raw as any)?.discrepancies && String((selectedItem.raw as any).discrepancies).trim() && (
                     <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-2.5 text-[11px] text-amber-700 leading-relaxed">
                       ⚠️ Discrepancy reported: <strong>{String((selectedItem.raw as any).discrepancies)}</strong>
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider mb-1 block">Confirmed Damaged</label>
-                        <input
-                          type="number"
-                          value={confirmedDamages}
-                          onChange={e => setConfirmedDamages(Math.max(0, parseInt(e.target.value) || 0))}
-                          className="w-full px-3 py-1.5 bg-[var(--bg-input)] border border-[var(--border)] rounded-xl text-xs font-mono text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider mb-1 block">Net Stock to Add</label>
-                        <div className="text-xs font-semibold text-emerald-600 font-mono mt-2">
-                          {Math.max(0, Number(selectedItem.raw?.quantity || selectedItem.raw?.qty_received || 0) - confirmedDamages).toLocaleString()} units
-                        </div>
-                      </div>
+                  )}
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider mb-1 block">Confirmed Damaged Units</label>
+                      <input
+                        type="number"
+                        value={confirmedDamages}
+                        onChange={e => setConfirmedDamages(Math.max(0, parseInt(e.target.value) || 0))}
+                        placeholder="0"
+                        min={0}
+                        max={Number(selectedItem.raw?.quantity || selectedItem.raw?.qty_received || 0)}
+                        className="w-full px-3 py-1.5 bg-[var(--bg-input)] border border-[var(--border)] rounded-xl text-xs font-mono text-[var(--text-primary)] focus:outline-none focus:border-rose-500"
+                      />
+                      <p className="text-[9px] text-[var(--text-muted)] mt-1">These units are excluded from stock</p>
                     </div>
-                    <div className="text-[10px] text-[var(--text-muted)] leading-normal mt-1">
-                      The {confirmedDamages.toLocaleString()} damaged units will be recorded as a system loss expense of <strong className="text-rose-600 font-mono">GHS {(confirmedDamages * costPerUnit).toLocaleString()}</strong> and will NOT be added to inventory.
+                    <div>
+                      <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider mb-1 block">Damage Cost (per unit)</label>
+                      <input
+                        type="number"
+                        value={costPerUnit}
+                        onChange={e => setCostPerUnit(Number(e.target.value))}
+                        placeholder="Unit cost"
+                        className="w-full px-3 py-1.5 bg-[var(--bg-input)] border border-[var(--border)] rounded-xl text-xs font-mono text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
+                      />
+                      <p className="text-[9px] text-[var(--text-muted)] mt-1">Used to log the financial loss</p>
                     </div>
                   </div>
-                )}
+
+                  {confirmedDamages > 0 && (
+                    <div className="text-[10px] text-[var(--text-muted)] leading-normal bg-rose-500/5 border border-rose-500/10 rounded-xl px-3 py-2">
+                      The <strong className="text-rose-600 font-mono">{confirmedDamages.toLocaleString()}</strong> damaged units will be recorded as a system loss of{' '}
+                      <strong className="text-rose-600 font-mono">GHS {(confirmedDamages * costPerUnit).toLocaleString()}</strong>{' '}
+                      and will <strong>NOT</strong> be added to inventory.
+                    </div>
+                  )}
+                </div>
 
                 <div className="mt-2 border-t border-[var(--border)] pt-2">
                   <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Selling Price (GHS) — optional</label>
