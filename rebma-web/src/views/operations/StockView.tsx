@@ -421,12 +421,10 @@ export default function StockView({ incomingGoodsList: _ig, addNotification }: P
           </div>
 
           {/* Action trigger button */}
-          {activeTab === 'GENERAL_PURCHASES' && (
-            <button onClick={() => setShowAdjust(true)}
-              style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 12, padding: '10px 20px', fontWeight: 600, cursor: 'pointer', fontSize: 14 }}>
-              <Plus size={16} /> Adjust Stock
-            </button>
-          )}
+          <button onClick={() => { setAdjustTarget(null); setShowAdjust(true); }}
+            style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 12, padding: '10px 20px', fontWeight: 600, cursor: 'pointer', fontSize: 14 }}>
+            <Plus size={16} /> Adjust Stock
+          </button>
           {activeTab === 'PRODUCTS' && (
             <button onClick={() => setShowAddProduct(true)}
               style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-primary)', borderRadius: 12, padding: '10px 20px', fontWeight: 600, cursor: 'pointer', fontSize: 14 }}>
