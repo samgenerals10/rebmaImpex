@@ -504,6 +504,12 @@ export const operations = {
   releaseToDispatch: async (orderId: string, vehicleId: string, driverName?: string) => {
     const { data: orders, error: orderErr } = await supabase.from('orders').select('*').eq('id', orderId).limit(1);
     if (orderErr || !orders || orders.length === 0) throw new Error('Order not found');
+    const order = orders[0];
+
+    const { data: sessionData } = await supabase.auth.getSession();
+    const performerId = sessionData.session?.user?.id || 'unknown';
+    const { data: performers } = await supabase.from('profiles').select('full_name').eq('id', performerId).limit(1);
+    const performedBy = performers?.[0]?.full_name || 'Operations Staff';
 
     const { data: delivery, error: delErr } = await supabase
       .from('delivery_logs')
@@ -523,6 +529,62 @@ export const operations = {
       .eq('id', orderId)
       .select();
     if (updateErr) throw new Error(updateErr.message);
+
+    // Support both old (metadata.quantity) and new (metadata.items) order formats
+    const meta = order.metadata || {};
+    const metaItems: { productName: string; quantity: number }[] = meta.items || [];
+    const totalQty = metaItems.length > 0
+      ? metaItems.reduce((s: number, i: any) => s + (Number(i.quantity) || 1), 0)
+      : Number(meta.quantity || order.quantity || 1);
+
+    // Write stock REMOVE entries so StockView OUT column reflects dispatch
+    if (metaItems.length > 0) {
+      for (const item of metaItems) {
+        if (!item.productName) continue;
+        const qty = Number(item.quantity) || 1;
+        await supabase.from('stock_ledger').insert({
+          product_name: item.productName,
+          movement_type: 'REMOVE',
+          quantity: qty,
+          reference: `Order Dispatched: ${order.ticket_number || order.ticketNumber || `TKT-${order.id.slice(0, 6).toUpperCase()}`}`,
+          notes: `Client: ${order.client_name || order.clientName} · Destination: ${order.destination} · Driver: ${driverName || 'TBD'} · Vehicle: ${vehicleId || 'TBD'}`,
+          performed_by: performedBy,
+          created_at: new Date().toISOString()
+        }).then(() => {}, () => {});
+
+        // Reduce stock in stock table if it exists
+        try {
+          const { data: existing } = await supabase.from('stock').select('*').eq('product_name', item.productName).limit(1);
+          if (existing && existing.length > 0) {
+            const newQty = Math.max(0, (existing[0].quantity || 0) - qty);
+            await supabase.from('stock').update({ quantity: newQty, last_updated: new Date().toISOString(), updated_by: performerId }).eq('id', existing[0].id);
+          }
+        } catch (e) {
+          console.error('Error reducing stock quantity:', e);
+        }
+      }
+    } else if (order.product_name) {
+      await supabase.from('stock_ledger').insert({
+        product_name: order.product_name,
+        movement_type: 'REMOVE',
+        quantity: totalQty,
+        reference: `Order Dispatched: ${order.ticket_number || order.ticketNumber || `TKT-${order.id.slice(0, 6).toUpperCase()}`}`,
+        notes: `Client: ${order.client_name || order.clientName} · Destination: ${order.destination} · Driver: ${driverName || 'TBD'} · Vehicle: ${vehicleId || 'TBD'}`,
+        performed_by: performedBy,
+        created_at: new Date().toISOString()
+      }).then(() => {}, () => {});
+
+      // Reduce stock in stock table if it exists
+      try {
+        const { data: existing } = await supabase.from('stock').select('*').eq('product_name', order.product_name).limit(1);
+        if (existing && existing.length > 0) {
+          const newQty = Math.max(0, (existing[0].quantity || 0) - totalQty);
+          await supabase.from('stock').update({ quantity: newQty, last_updated: new Date().toISOString(), updated_by: performerId }).eq('id', existing[0].id);
+        }
+      } catch (e) {
+        console.error('Error reducing stock quantity:', e);
+      }
+    }
 
     return { 
       order: updatedOrder ? mapOrderToFrontend(updatedOrder[0]) : null, 
