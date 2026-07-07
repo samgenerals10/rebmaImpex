@@ -358,56 +358,8 @@ export default function ApprovedGoodsView({ addNotification, setActiveSubTab: _s
         .eq('id', dispatchTarget.id)
         .then(() => {}, () => {});
 
-      // 3. Write stock REMOVE entries so StockView OUT column reflects dispatch
-      // For multi-item orders: write one REMOVE per item using actual product names + quantities
-      if (metaItems.length > 0) {
-        for (const item of metaItems) {
-          if (!item.productName) continue;
-          const qty = Number(item.quantity) || 1;
-          await supabase.from('stock_ledger').insert({
-            product_name: item.productName,
-            movement_type: 'REMOVE',
-            quantity: qty,
-            reference: `Order Dispatched: ${dispatchTarget.ticketNumber}`,
-            notes: `Client: ${dispatchTarget.clientName} · Destination: ${dispatchTarget.destination} · Driver: ${dispatchForm.driverName || 'TBD'} · Vehicle: ${dispatchForm.vehicleId || 'TBD'}`,
-            performed_by: currentUserEmail,
-            created_at: new Date().toISOString(),
-          }).then(() => {}, () => {});
-
-          // Reduce stock in stock table if it exists
-          try {
-            const { data: existing } = await supabase.from('stock').select('*').eq('product_name', item.productName).limit(1);
-            if (existing && existing.length > 0) {
-              const newQty = Math.max(0, (existing[0].quantity || 0) - qty);
-              await supabase.from('stock').update({ quantity: newQty, last_updated: new Date().toISOString(), updated_by: currentUserId }).eq('id', existing[0].id);
-            }
-          } catch (e) {
-            console.error('Error reducing stock quantity:', e);
-          }
-        }
-      } else if (dispatchTarget.productName) {
-        // Single-product order (old format or simple order)
-        await supabase.from('stock_ledger').insert({
-          product_name: dispatchTarget.productName,
-          movement_type: 'REMOVE',
-          quantity: totalQty,
-          reference: `Order Dispatched: ${dispatchTarget.ticketNumber}`,
-          notes: `Client: ${dispatchTarget.clientName} · Destination: ${dispatchTarget.destination} · Driver: ${dispatchForm.driverName || 'TBD'} · Vehicle: ${dispatchForm.vehicleId || 'TBD'}`,
-          performed_by: currentUserEmail,
-          created_at: new Date().toISOString(),
-        }).then(() => {}, () => {});
-
-        // Reduce stock in stock table if it exists
-        try {
-          const { data: existing } = await supabase.from('stock').select('*').eq('product_name', dispatchTarget.productName).limit(1);
-          if (existing && existing.length > 0) {
-            const newQty = Math.max(0, (existing[0].quantity || 0) - totalQty);
-            await supabase.from('stock').update({ quantity: newQty, last_updated: new Date().toISOString(), updated_by: currentUserId }).eq('id', existing[0].id);
-          }
-        } catch (e) {
-          console.error('Error reducing stock quantity:', e);
-        }
-      }
+      // Note: Stock table and stock ledger are updated immediately upon Finance payment approval.
+      // Dispatch only updates delivery logs, global audits, and status to avoid double-deductions.
 
       // 4. Audit trail
       await supabase.from('global_audit_history').insert({
