@@ -5,8 +5,9 @@ import {
   DollarSign, FileText, ClipboardCheck, BarChart2, CreditCard, Receipt,
   TrendingUp, TrendingDown, ArrowRight, RefreshCw, Tag,
   Clock, CheckCircle, AlertTriangle, Building2, Package,
-  ShoppingCart, Wallet, Zap, Star, Activity
+  ShoppingCart, Wallet, Zap, Star, Activity, FileSpreadsheet, Share2, Printer, Search, ArrowUpRight, ArrowDownLeft, Eye, Trash2, Layers, X, History
 } from 'lucide-react';
+import { exportToCSV, exportToPDF } from '../../utils/export';
 import {
   ResponsiveContainer, AreaChart, Area, BarChart, Bar, LineChart, Line,
   XAxis, YAxis, Tooltip, PieChart, Pie, Cell
@@ -16,7 +17,7 @@ interface Props {
   addNotification?: (msg: string) => void;
   setActiveSubTab?: (tab: string) => void;
   currentUser?: { fullName: string; department: string } | null;
-  ordersList?: { id: string; clientName: string; totalAmount: number; status: string; paymentMode?: string; createdAt?: string }[];
+  ordersList?: { id: string; clientName: string; totalAmount: number; status: string; paymentMode?: string; createdAt?: string; productName?: string; quantity?: number }[];
   onEvaluateOrder?: (id: string, approve: boolean) => void;
 }
 
@@ -32,6 +33,12 @@ function timeGreeting() {
   if (h < 17) return 'Good afternoon';
   return 'Good evening';
 }
+
+const stockStatus = (current: number, capacity: number) => {
+  if (current === 0) return { label: 'Out of Stock', bg: '#ffe4e6', color: '#9f1239' };
+  if (capacity > 0 && current / capacity < 0.2) return { label: 'Low Stock', bg: '#fef3c7', color: '#92400e' };
+  return { label: 'In Stock', bg: '#d1fae5', color: '#065f46' };
+};
 
 const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?: { value: number; name: string; color: string }[]; label?: string }) => {
   if (!active || !payload) return null;
@@ -67,8 +74,48 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
   const [recentPrices, setRecentPrices] = useState<RecentPrice[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  // New stock and drill-down states
+  const [stock, setStock] = useState<any[]>([]);
+  const [stockLedger, setStockLedger] = useState<any[]>([]);
+  const [approvedCargo, setApprovedCargo] = useState<any[]>([]);
+  const [activeDrillDown, setActiveDrillDown] = useState<string | null>(null);
+  const [drillDownTab, setDrillDownTab] = useState<'raw' | 'finished'>('raw');
+  const [drillDownSubTab, setDrillDownSubTab] = useState<'a' | 'b'>('a');
+  const [drillDownSearch, setDrillDownSearch] = useState('');
+  const [selectedLedgerProduct, setSelectedLedgerProduct] = useState<any | null>(null);
+
   const fetchAllData = async () => {
     setIsRefreshing(true);
+
+    // Fetch stock live
+    supabase.from('stock').select('*').then(({ data }) => {
+      if (data) setStock(data);
+    }, () => {});
+
+    // Fetch stock ledger live
+    supabase.from('stock_ledger').select('*').order('created_at', { ascending: false }).then(({ data }) => {
+      if (data) setStockLedger(data);
+    }, () => {});
+
+    // Fetch cargo intake live
+    supabase.from('cargo_intake').select('*').eq('status', 'APPROVED').then(({ data }) => {
+      if (data) {
+        setApprovedCargo((data as any[]).map((r: any) => ({
+          id: String(r.id),
+          productName: r.description || r.product_name || r.productName || 'Unknown',
+          goodsCode: r.request_id || r.goods_code || String(r.id).slice(0, 8).toUpperCase(),
+          quantity: Number(r.quantity ?? 0),
+          unit: r.unit || 'units',
+          weight: Number(r.weight_kg ?? r.weight ?? 0),
+          supplier: r.supplier_name || r.company || '—',
+          portOfOrigin: r.port_of_origin || r.country || '—',
+          destination: r.destination || 'Accra Warehouse',
+          approvedBy: r.approved_by || r.updated_by || '—',
+          approvedAt: r.updated_at || r.created_at || '',
+        })));
+      }
+    }, () => {});
+
     // Orders live fetch
     supabase.from('orders').select('*').order('created_at', { ascending: false }).limit(500).then(({ data }) => {
       if (!data) return;
@@ -76,6 +123,7 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
         id: r.id, clientName: r.client_name || '', productName: r.product_name || '',
         totalAmount: Number(r.total_amount || 0), status: r.status || 'PENDING_FINANCE',
         paymentMode: r.payment_mode || 'CASH', createdAt: r.created_at || '',
+        quantity: Number(r.quantity || 1)
       }));
       setLiveOrders(mapped as any);
     }, () => {});
@@ -173,6 +221,72 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
   const effective = liveOrders.length > 0 ? liveOrders : ordersList;
   const pendingOrders = effective.filter(o => o.status === 'PENDING_FINANCE');
 
+  // Helper to categorize raw materials vs finished products
+  const isRawMaterial = (productName: string) => {
+    if (!productName) return true;
+    const nameLower = productName.toLowerCase().trim();
+    
+    // Check if item is explicitly set as INCOMING_GOODS in stock
+    const stockItem = stock.find(s => s.product_name.toLowerCase().trim() === nameLower);
+    if (stockItem) {
+      return stockItem.category === 'INCOMING_GOODS';
+    }
+    
+    // Check goods_prices category
+    const gp = goodsPrices.find(g => g.product_name.toLowerCase().trim() === nameLower);
+    if (gp) {
+      return gp.category === 'INCOMING_GOODS' || gp.category === 'RAW_MATERIALS';
+    }
+    
+    // Check approvedCargo
+    const isCargo = approvedCargo.some(c => c.productName.toLowerCase().trim() === nameLower);
+    if (isCargo) return true;
+    
+    // Default to raw material
+    return true;
+  };
+
+  const getPricesForProduct = (name: string) => {
+    const gp = goodsPrices.find(g => g.product_name.toLowerCase().trim() === name.toLowerCase().trim());
+    return {
+      unitPrice: Number(gp?.unit_price || 0),
+      costPrice: Number(gp?.cost_price || 0),
+      currency: gp?.currency || 'GHS'
+    };
+  };
+
+  // 1. Total Revenue (cleared orders only)
+  const clearedOrders = effective.filter(o => ['APPROVED', 'PROCESSING', 'DELIVERED', 'OUT_FOR_DELIVERY'].includes(o.status));
+  const rawRev = clearedOrders.filter(o => isRawMaterial(o.productName || '')).reduce((s, o) => s + (o.totalAmount || 0), 0);
+  const finRev = clearedOrders.filter(o => !isRawMaterial(o.productName || '')).reduce((s, o) => s + (o.totalAmount || 0), 0);
+  const calculatedTotalRevenue = rawRev + finRev;
+
+  // 2. Total Items Sold
+  const rawSoldQty = clearedOrders.filter(o => isRawMaterial(o.productName || '')).reduce((s, o) => s + Number(o.quantity || 1), 0);
+  const finSoldQty = clearedOrders.filter(o => !isRawMaterial(o.productName || '')).reduce((s, o) => s + Number(o.quantity || 1), 0);
+  const totalSoldQty = rawSoldQty + finSoldQty;
+
+  // 3. Unsold stock remaining value (selling price valuation)
+  const rawRemainingValue = stock.filter(s => s.category === 'INCOMING_GOODS').reduce((sum, s) => {
+    const p = getPricesForProduct(s.product_name);
+    return sum + (Number(s.quantity || s.current || 0) * p.unitPrice);
+  }, 0);
+  const finRemainingValue = stock.filter(s => s.category !== 'INCOMING_GOODS').reduce((sum, s) => {
+    const p = getPricesForProduct(s.product_name);
+    return sum + (Number(s.quantity || s.current || 0) * p.unitPrice);
+  }, 0);
+  const totalRemainingValue = rawRemainingValue + finRemainingValue;
+
+  // 4. Overall quantity of goods in stock
+  const rawStockQty = stock.filter(s => s.category === 'INCOMING_GOODS').reduce((sum, s) => sum + Number(s.quantity || s.current || 0), 0);
+  const finStockQty = stock.filter(s => s.category !== 'INCOMING_GOODS').reduce((sum, s) => sum + Number(s.quantity || s.current || 0), 0);
+  const totalStockQty = rawStockQty + finStockQty;
+
+  // 5. Overall remaining goods count (distinct products in stock with quantity > 0)
+  const rawRemainingGoodsCount = stock.filter(s => s.category === 'INCOMING_GOODS' && Number(s.quantity || s.current || 0) > 0).length;
+  const finRemainingGoodsCount = stock.filter(s => s.category !== 'INCOMING_GOODS' && Number(s.quantity || s.current || 0) > 0).length;
+  const totalRemainingGoodsCount = rawRemainingGoodsCount + finRemainingGoodsCount;
+
   // Compute inventory valuation
   const inventoryItems = goodsPrices.map((gp: any) => {
     const key = String(gp.product_name || '').toLowerCase().trim();
@@ -188,36 +302,243 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
 
   const kpiCards = [
     {
-      label: 'Total Revenue', value: `GHS ${totalRevenue.toLocaleString()}`,
-      sub: 'Approved & delivered sales', icon: DollarSign, tab: 'Transactions',
+      label: 'Total Revenue', value: `GHS ${calculatedTotalRevenue.toLocaleString()}`,
+      sub: 'Approved & delivered sales', icon: DollarSign, clickId: 'revenue',
       color: '#10b981', bg: 'from-emerald-500/10 to-emerald-500/5',
       change: '+8.2%', up: true,
     },
     {
-      label: 'Pending Orders', value: `${pendingCount}`,
-      sub: 'Awaiting finance review', icon: ShoppingCart, tab: 'OrdersQueue',
+      label: 'Total Items Sold', value: `${totalSoldQty.toLocaleString()} units`,
+      sub: 'Items sold from cleared orders', icon: ShoppingCart, clickId: 'sold',
+      color: '#3b82f6', bg: 'from-blue-500/10 to-blue-500/5',
+      change: 'Active', up: true,
+    },
+    {
+      label: 'Remaining Sales Value', value: `GHS ${totalRemainingValue.toLocaleString()}`,
+      sub: 'Unsold stock remaining value', icon: TrendingUp, clickId: 'remaining',
       color: '#f59e0b', bg: 'from-amber-500/10 to-amber-500/5',
-      change: `${pendingOrders.filter(o => (o.totalAmount || 0) > 50000).length} high-value`, up: false,
+      change: 'In Stock', up: true,
     },
     {
-      label: 'Invoices Issued', value: `${invoiceCount}`,
-      sub: 'Cleared & shipped orders', icon: FileText, tab: 'Invoices',
-      color: '#6366f1', bg: 'from-indigo-500/10 to-indigo-500/5',
-      change: '+12%', up: true,
-    },
-    {
-      label: 'Credit Outstanding', value: `GHS ${creditOutstanding.toLocaleString()}`,
-      sub: 'Receivables tracking', icon: CreditCard, tab: 'CreditMgmt',
+      label: 'Overall Goods in Stock', value: `${totalStockQty.toLocaleString()} units`,
+      sub: 'Total physical goods count', icon: Package, clickId: 'overall_qty',
       color: '#8b5cf6', bg: 'from-violet-500/10 to-violet-500/5',
-      change: '-5.1%', up: true,
+      change: 'Updated', up: true,
     },
     {
-      label: 'Price Catalog', value: `${goodsPrices.length} Items`,
-      sub: 'Set by Management', icon: Tag, tab: 'PriceCatalog',
+      label: 'Overall Remaining Goods', value: `${totalRemainingGoodsCount} Items`,
+      sub: 'Count of active distinct SKUs', icon: Activity, clickId: 'overall_rem',
       color: '#ec4899', bg: 'from-pink-500/10 to-pink-500/5',
       change: 'Active', up: true,
     },
   ];
+  // Helper calculations for Drill-downs
+  const rawRevOrdersGroup = Array.from(new Set(clearedOrders.filter(o => isRawMaterial(o.productName || '')).map(o => (o.productName || '').trim()))).map(name => {
+    const ordersForProduct = clearedOrders.filter(o => (o.productName || '').toLowerCase().trim() === name.toLowerCase().trim());
+    const totalQty = ordersForProduct.reduce((sum, o) => sum + Number(o.quantity || 1), 0);
+    const totalRevenue = ordersForProduct.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
+    const prices = getPricesForProduct(name);
+    return { name, unitPrice: prices.unitPrice, totalQty, totalRevenue };
+  });
+
+  const finRevOrdersGroup = Array.from(new Set(clearedOrders.filter(o => !isRawMaterial(o.productName || '')).map(o => (o.productName || '').trim()))).map(name => {
+    const ordersForProduct = clearedOrders.filter(o => (o.productName || '').toLowerCase().trim() === name.toLowerCase().trim());
+    const totalQty = ordersForProduct.reduce((sum, o) => sum + Number(o.quantity || 1), 0);
+    const totalRevenue = ordersForProduct.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
+    const prices = getPricesForProduct(name);
+    return { name, unitPrice: prices.unitPrice, totalQty, totalRevenue };
+  });
+
+  const rawRemainingGroup = stock.filter(s => s.category === 'INCOMING_GOODS').map(s => {
+    const name = s.product_name;
+    const prices = getPricesForProduct(name);
+    const qty = Number(s.quantity || s.current || 0);
+    return {
+      name,
+      qty,
+      unitPrice: prices.unitPrice,
+      costPrice: prices.costPrice,
+      sellingVal: qty * prices.unitPrice,
+      costVal: qty * prices.costPrice
+    };
+  });
+
+  const finRemainingGroup = stock.filter(s => s.category !== 'INCOMING_GOODS').map(s => {
+    const name = s.product_name;
+    const prices = getPricesForProduct(name);
+    const qty = Number(s.quantity || s.current || 0);
+    return {
+      name,
+      qty,
+      unitPrice: prices.unitPrice,
+      costPrice: prices.costPrice,
+      sellingVal: qty * prices.unitPrice,
+      costVal: qty * prices.costPrice
+    };
+  });
+
+  const rawCargoLotsDetail = approvedCargo.map(c => {
+    const name = c.productName;
+    const currentStockItem = stock.find(s => s.product_name.toLowerCase().trim() === name.toLowerCase().trim());
+    const totalStockQty = Number(currentStockItem?.quantity || 0);
+    return {
+      id: c.goodsCode || c.id,
+      name,
+      qtyReceived: c.quantity,
+      weight: c.weight,
+      supplier: c.supplier,
+      approvedAt: c.approvedAt,
+      remainingQty: totalStockQty
+    };
+  });
+
+  const rawStockSummary = stock.filter(s => s.category === 'INCOMING_GOODS').map(s => {
+    const qty = Number(s.quantity || s.current || 0);
+    const status = stockStatus(qty, Number(s.maximum_level || 1000));
+    return {
+      name: s.product_name,
+      code: s.product_code || s.id.slice(0, 8).toUpperCase(),
+      category: s.category,
+      unit: s.unit || 'units',
+      status,
+      qty
+    };
+  });
+
+  const finLedgerData = stockLedger.filter(l => !isRawMaterial(l.product_name || '')).slice(0, 100).map(l => ({
+    id: l.id,
+    date: l.created_at,
+    name: l.product_name,
+    type: l.movement_type,
+    qty: Number(l.quantity || 0),
+    notes: l.notes || '',
+    performedBy: l.performed_by || 'System'
+  }));
+
+  const finStockSummary = stock.filter(s => s.category !== 'INCOMING_GOODS').map(s => {
+    const qty = Number(s.quantity || s.current || 0);
+    const status = stockStatus(qty, Number(s.maximum_level || 1000));
+    return {
+      name: s.product_name,
+      code: s.product_code || s.id.slice(0, 8).toUpperCase(),
+      category: s.category,
+      unit: s.unit || 'units',
+      status,
+      qty
+    };
+  });
+
+  const getDrillDownData = () => {
+    let baseData: any[] = [];
+    if (activeDrillDown === 'revenue') {
+      baseData = drillDownTab === 'raw' ? rawRevOrdersGroup : finRevOrdersGroup;
+    } else if (activeDrillDown === 'sold') {
+      baseData = drillDownTab === 'raw' ? rawRevOrdersGroup : finRevOrdersGroup;
+    } else if (activeDrillDown === 'remaining') {
+      baseData = drillDownTab === 'raw' ? rawRemainingGroup : finRemainingGroup;
+    } else if (activeDrillDown === 'overall_qty') {
+      if (drillDownTab === 'raw') {
+        baseData = drillDownSubTab === 'a' ? rawCargoLotsDetail : rawStockSummary;
+      } else {
+        baseData = drillDownSubTab === 'a' ? finLedgerData : finStockSummary;
+      }
+    } else if (activeDrillDown === 'overall_rem') {
+      baseData = (drillDownTab === 'raw' ? rawStockSummary : finStockSummary).filter(x => x.qty > 0);
+    }
+    
+    if (!drillDownSearch) return baseData;
+    const q = drillDownSearch.toLowerCase().trim();
+    return baseData.filter(item => 
+      String(item.name || item.product_name || item.itemName || '').toLowerCase().includes(q) ||
+      String(item.id || item.code || '').toLowerCase().includes(q) ||
+      String(item.supplier || '').toLowerCase().includes(q)
+    );
+  };
+
+  const getDrillDownHeaders = () => {
+    if (activeDrillDown === 'revenue') {
+      return ['name', 'unitPrice', 'totalQty', 'totalRevenue'];
+    }
+    if (activeDrillDown === 'sold') {
+      return ['name', 'totalQty', 'totalRevenue'];
+    }
+    if (activeDrillDown === 'remaining') {
+      return ['name', 'qty', 'unitPrice', 'sellingVal', 'costVal'];
+    }
+    if (activeDrillDown === 'overall_qty') {
+      if (drillDownTab === 'raw') {
+        return drillDownSubTab === 'a' 
+          ? ['id', 'name', 'qtyReceived', 'weight', 'supplier', 'approvedAt', 'remainingQty']
+          : ['name', 'code', 'category', 'unit', 'qty'];
+      } else {
+        return drillDownSubTab === 'a'
+          ? ['date', 'name', 'type', 'qty', 'notes', 'performedBy']
+          : ['name', 'code', 'category', 'unit', 'qty'];
+      }
+    }
+    if (activeDrillDown === 'overall_rem') {
+      return ['name', 'code', 'category', 'unit', 'qty'];
+    }
+    return [];
+  };
+
+  const renderDrillDownTable = () => {
+    const data = getDrillDownData();
+    const headers = getDrillDownHeaders();
+    if (data.length === 0) {
+      return <div className="p-8 text-center text-xs text-[var(--text-muted)]">No items found matching the filter criteria.</div>;
+    }
+    
+    return (
+      <table className="w-full text-xs text-left">
+        <thead className="bg-[var(--bg-input)] border-b border-[var(--border)] text-[var(--text-muted)] uppercase font-semibold text-[10px]">
+          <tr>
+            {headers.map(h => (
+              <th key={h} className="px-4 py-3">{h.replace(/([A-Z])/g, ' $1').trim()}</th>
+            ))}
+            <th className="px-4 py-3 text-right">Statement & History</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-[var(--border)] text-[var(--text-primary)]">
+          {data.map((item, idx) => (
+            <tr key={idx} className="hover:bg-[var(--accent-light)] transition-all">
+              {headers.map(col => {
+                const val = item[col];
+                let displayed = String(val ?? '—');
+                if (['unitPrice', 'totalRevenue', 'sellingVal', 'costVal', 'costPrice'].includes(col)) {
+                  displayed = `GHS ${Number(val || 0).toLocaleString()}`;
+                } else if (['qty', 'qtyReceived', 'totalQty', 'remainingQty'].includes(col)) {
+                  displayed = Number(val || 0).toLocaleString();
+                } else if (col === 'approvedAt' || col === 'date') {
+                  displayed = val ? new Date(val).toLocaleDateString('en-GB') : '—';
+                }
+                
+                return (
+                  <td key={col} className={`px-4 py-3 font-medium ${col === 'name' || col === 'id' || col === 'code' ? 'font-semibold' : ''}`}>
+                    {col === 'status' && typeof val === 'object' ? (
+                      <span className="px-2 py-0.5 rounded-full font-bold text-[9px]" style={{ background: val.bg, color: val.color }}>
+                        {val.label}
+                      </span>
+                    ) : displayed}
+                  </td>
+                );
+              })}
+              <td className="px-4 py-3 text-right">
+                <button
+                  onClick={() => setSelectedLedgerProduct(item)}
+                  className="p-1 rounded-lg hover:bg-[var(--accent-light)] hover:text-[var(--accent)] text-[var(--text-secondary)] transition-all inline-flex items-center gap-1 cursor-pointer border border-[var(--border)]"
+                  title="View statement and complete transaction history"
+                >
+                  <History size={13} className="shrink-0 text-[var(--accent)]" />
+                  <span className="text-[10px] font-semibold">Statement</span>
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    );
+  };
 
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-screen-2xl mx-auto text-[var(--text-primary)]">
@@ -273,26 +594,306 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
 
       {/* ══ KPI CARDS ══ */}
       <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 font-sans">
-        {kpiCards.map(({ label, value, sub, icon: Icon, tab, color, bg, change, up }) => (
-          <div
-            key={label}
-            onClick={() => setActiveSubTab?.(tab)}
-            className={`bg-gradient-to-br ${bg} bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5 cursor-pointer hover:border-[var(--accent)] hover:shadow-lg transition-all group`}
-          >
-            <div className="flex items-start justify-between mb-3">
-              <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: `${color}20` }}>
-                <Icon size={17} style={{ color }} />
+        {kpiCards.map(({ label, value, sub, icon: Icon, clickId, color, bg, change, up }) => {
+          const isActive = activeDrillDown === clickId;
+          return (
+            <div
+              key={label}
+              onClick={() => {
+                setActiveDrillDown(isActive ? null : clickId);
+                setDrillDownTab('raw');
+                setDrillDownSubTab('a');
+                setDrillDownSearch('');
+              }}
+              className={`bg-gradient-to-br ${bg} bg-[var(--bg-card)] border rounded-2xl p-5 cursor-pointer hover:shadow-lg transition-all group ${
+                isActive ? 'border-[var(--accent)] ring-2 ring-[var(--accent)]/20 scale-[1.02]' : 'border-[var(--border)]'
+              }`}
+            >
+              <div className="flex items-start justify-between mb-3">
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: `${color}20` }}>
+                  <Icon size={17} style={{ color }} />
+                </div>
+                <span className={`flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full ${up ? 'bg-emerald-500/10 text-emerald-600' : 'bg-amber-500/10 text-amber-600'}`}>
+                  {up ? <TrendingUp size={9} /> : <AlertTriangle size={9} />} {change}
+                </span>
               </div>
-              <span className={`flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full ${up ? 'bg-emerald-500/10 text-emerald-600' : 'bg-amber-500/10 text-amber-600'}`}>
-                {up ? <TrendingUp size={9} /> : <AlertTriangle size={9} />} {change}
-              </span>
+              <p className="text-xl font-extrabold text-[var(--text-primary)] leading-none mb-1">{value}</p>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-0.5">{label}</p>
+              <p className="text-xs text-[var(--text-muted)] truncate">{sub}</p>
             </div>
-            <p className="text-xl font-extrabold text-[var(--text-primary)] leading-none mb-1">{value}</p>
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-0.5">{label}</p>
-            <p className="text-xs text-[var(--text-muted)] truncate">{sub}</p>
-          </div>
-        ))}
+          );
+        })}
       </div>
+
+      {/* ══ DRILL DOWN DETAILED REPORT ══ */}
+      {activeDrillDown && (
+        <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-6 shadow-xl animate-fade-in space-y-6">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-4 border-b border-[var(--border)]">
+            <div>
+              <h3 className="text-lg font-bold text-[var(--text-primary)] capitalize">
+                {activeDrillDown.replace('_', ' ')} Details
+              </h3>
+              <p className="text-xs text-[var(--text-muted)] mt-1">
+                Detailed live breakdown for audit, statement generation and reporting.
+              </p>
+            </div>
+            
+            {/* Search + Action Buttons */}
+            <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+              <div className="relative flex-1 md:flex-initial">
+                <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
+                <input
+                  type="text"
+                  placeholder="Search item..."
+                  value={drillDownSearch}
+                  onChange={e => setDrillDownSearch(e.target.value)}
+                  className="pl-8 pr-3 py-1.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)] w-full md:w-48"
+                />
+              </div>
+
+              <button
+                onClick={() => {
+                  const dataToExport = getDrillDownData();
+                  const headers = getDrillDownHeaders();
+                  exportToCSV(dataToExport, headers, `${activeDrillDown}_drilldown`);
+                  addNotification?.('CSV report downloaded');
+                }}
+                className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl border border-[var(--border)] text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-input)] transition-all cursor-pointer"
+              >
+                <FileSpreadsheet size={13} /> Export CSV
+              </button>
+
+              <button
+                onClick={() => {
+                  const dataToExport = getDrillDownData();
+                  const headers = getDrillDownHeaders();
+                  exportToPDF(`${activeDrillDown.toUpperCase().replace('_', ' ')} Detailed Statement`, dataToExport, headers);
+                  addNotification?.('PDF statement printed');
+                }}
+                className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl border border-[var(--border)] text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-input)] transition-all cursor-pointer"
+              >
+                <Printer size={13} /> PDF Report
+              </button>
+
+              <button
+                onClick={() => {
+                  const dataToExport = getDrillDownData();
+                  const summary = `REBMA Impex - ${activeDrillDown} Details:\n` + dataToExport.slice(0, 5).map(item => `- ${item.name || item.product_name || item.itemName || ''}: ${item.qty || item.quantity || item.totalQty || ''}`).join('\n');
+                  navigator.clipboard.writeText(summary).then(() => {
+                    addNotification?.('Statement summary link copied');
+                  }).catch(() => alert(summary));
+                }}
+                className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl border border-[var(--border)] text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-input)] transition-all cursor-pointer"
+              >
+                <Share2 size={13} /> Share
+              </button>
+
+              <button
+                onClick={() => setActiveDrillDown(null)}
+                className="px-3 py-1.5 rounded-xl border border-red-500/20 text-red-500 text-xs hover:bg-red-500/15 transition-all cursor-pointer font-bold"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+
+          {/* Drill-down main tabs */}
+          <div className="flex border-b border-[var(--border)] mb-4">
+            <button
+              onClick={() => { setDrillDownTab('raw'); setDrillDownSubTab('a'); }}
+              className={`px-4 py-2 text-xs font-semibold border-b-2 transition-all ${
+                drillDownTab === 'raw' ? 'border-[var(--accent)] text-[var(--text-primary)]' : 'border-transparent text-[var(--text-muted)]'
+              }`}
+            >
+              Raw Materials (Cargo Goods)
+            </button>
+            <button
+              onClick={() => { setDrillDownTab('finished'); setDrillDownSubTab('a'); }}
+              className={`px-4 py-2 text-xs font-semibold border-b-2 transition-all ${
+                drillDownTab === 'finished' ? 'border-[var(--accent)] text-[var(--text-primary)]' : 'border-transparent text-[var(--text-muted)]'
+              }`}
+            >
+              Finished Products (Company Produce)
+            </button>
+          </div>
+
+          {/* Sub-tabs for Overall Quantity card */}
+          {activeDrillDown === 'overall_qty' && (
+            <div className="flex gap-2 mb-4 bg-[var(--bg-input)] p-1 rounded-xl w-fit">
+              <button
+                onClick={() => setDrillDownSubTab('a')}
+                className={`px-3 py-1 rounded-lg text-[10px] font-bold transition-all ${
+                  drillDownSubTab === 'a' ? 'bg-[var(--bg-card)] text-[var(--text-primary)] shadow-sm' : 'text-[var(--text-muted)]'
+                }`}
+              >
+                {drillDownTab === 'raw' ? 'By Cargo Lots (Lots In/Remaining)' : 'Production Ledger (History)'}
+              </button>
+              <button
+                onClick={() => setDrillDownSubTab('b')}
+                className={`px-3 py-1 rounded-lg text-[10px] font-bold transition-all ${
+                  drillDownSubTab === 'b' ? 'bg-[var(--bg-card)] text-[var(--text-primary)] shadow-sm' : 'text-[var(--text-muted)]'
+                }`}
+              >
+                Product Stock Summary
+              </button>
+            </div>
+          )}
+
+          {/* Data Tables */}
+          <div className="overflow-x-auto border border-[var(--border)] rounded-xl">
+            {renderDrillDownTable()}
+          </div>
+        </div>
+      )}
+
+      {/* ══ LEDGER STATEMENT MODAL ══ */}
+      {selectedLedgerProduct && (() => {
+        const productName = selectedLedgerProduct.name || selectedLedgerProduct.productName || selectedLedgerProduct.itemName || '';
+        const currentPrices = getPricesForProduct(productName);
+        
+        // Filter ledger entries for this specific product
+        const entries = stockLedger.filter(l => (l.product_name || '').toLowerCase().trim() === productName.toLowerCase().trim());
+        const totalIn = entries.filter(e => e.movement_type === 'ADD').reduce((s, e) => s + Number(e.quantity || 0), 0);
+        const totalOut = entries.filter(e => e.movement_type === 'REMOVE').reduce((s, e) => s + Number(e.quantity || 0), 0);
+        const netQty = stock.find(s => s.product_name.toLowerCase().trim() === productName.toLowerCase().trim())?.quantity || (totalIn - totalOut);
+        
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={() => setSelectedLedgerProduct(null)}>
+            <div className="relative bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl w-full max-w-3xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden font-sans" onClick={e => e.stopPropagation()}>
+              
+              {/* Header */}
+              <div className="bg-gradient-to-r from-[var(--accent)] to-[#0298d0] p-6 text-white shrink-0">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <span className="text-[9px] font-extrabold uppercase tracking-widest bg-white/25 px-2 py-0.5 rounded-full">
+                      Ledger statement & Audit report
+                    </span>
+                    <h2 className="font-extrabold text-xl mt-1.5">{productName}</h2>
+                    <p className="text-white/80 text-xs mt-1">Full statement of stocks, purchases, releases, and movement history</p>
+                  </div>
+                  <button onClick={() => setSelectedLedgerProduct(null)} className="p-1.5 hover:bg-white/10 rounded-full cursor-pointer text-white shrink-0">
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Stats Summary Area */}
+              <div className="p-6 bg-[var(--bg-input)] border-b border-[var(--border)] shrink-0 grid grid-cols-3 gap-4">
+                <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-xl p-3 text-center">
+                  <div className="flex items-center justify-center gap-1 text-[var(--accent)] mb-1">
+                    <ArrowDownLeft size={13} />
+                    <span className="text-[9px] font-bold uppercase tracking-wider">Total Received (IN)</span>
+                  </div>
+                  <p className="text-lg font-extrabold text-[var(--text-primary)] font-mono">{totalIn.toLocaleString()}</p>
+                </div>
+                <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-xl p-3 text-center">
+                  <div className="flex items-center justify-center gap-1 text-red-500 mb-1">
+                    <ArrowUpRight size={13} />
+                    <span className="text-[9px] font-bold uppercase tracking-wider">Total Released (OUT)</span>
+                  </div>
+                  <p className="text-lg font-extrabold text-[var(--text-primary)] font-mono">{totalOut.toLocaleString()}</p>
+                </div>
+                <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-xl p-3 text-center">
+                  <div className="flex items-center justify-center gap-1 text-emerald-500 mb-1">
+                    <Layers size={13} />
+                    <span className="text-[9px] font-bold uppercase tracking-wider">Remaining Stock</span>
+                  </div>
+                  <p className="text-lg font-extrabold text-emerald-500 font-mono">{Number(netQty).toLocaleString()}</p>
+                </div>
+              </div>
+
+              {/* Actions Area */}
+              <div className="px-6 py-3 border-b border-[var(--border)] flex items-center justify-between shrink-0 bg-[var(--bg-card)] flex-wrap gap-2">
+                <span className="text-[10px] font-bold text-[var(--text-secondary)] uppercase">
+                  Statement Logs ({entries.length} records)
+                </span>
+                
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      exportToCSV(
+                        entries.map(e => ({ Date: e.created_at, Product: e.product_name, Movement: e.movement_type, Quantity: e.quantity, Reference: e.reference, Notes: e.notes, PerformedBy: e.performed_by })),
+                        ['Date', 'Product', 'Movement', 'Quantity', 'Reference', 'Notes', 'PerformedBy'],
+                        `${productName}_ledger_statement`
+                      );
+                      addNotification?.('Ledger statement CSV downloaded');
+                    }}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-xl border border-[var(--border)] text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-input)] transition-all cursor-pointer"
+                  >
+                    <FileSpreadsheet size={12} /> CSV
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      exportToPDF(
+                        `${productName} Ledger Statement & Stock Movements`,
+                        entries.map(e => ({ Date: new Date(e.created_at).toLocaleString(), Movement: e.movement_type, Quantity: Number(e.quantity).toLocaleString(), Reference: e.reference || '—', Notes: e.notes || '—', PerformedBy: e.performed_by || 'System' })),
+                        ['Date', 'Movement', 'Quantity', 'Reference', 'Notes', 'PerformedBy']
+                      );
+                      addNotification?.('Ledger statement PDF printed');
+                    }}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-xl border border-[var(--border)] text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-input)] transition-all cursor-pointer"
+                  >
+                    <Printer size={12} /> PDF
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      const msg = `REBMA Impex Statement: Product: ${productName} | Qty In: ${totalIn} | Qty Out: ${totalOut} | Net Stock: ${netQty} | Total valuation: GHS ${(netQty * currentPrices.unitPrice).toLocaleString()}`;
+                      navigator.clipboard.writeText(msg).then(() => {
+                        addNotification?.('Statement link copied to clipboard');
+                      });
+                    }}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-xl border border-[var(--border)] text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-input)] transition-all cursor-pointer"
+                  >
+                    <Share2 size={12} /> Share
+                  </button>
+                </div>
+              </div>
+
+              {/* Table Logs */}
+              <div className="flex-1 overflow-y-auto p-6 min-h-[250px]">
+                {entries.length === 0 ? (
+                  <div className="text-center text-xs text-[var(--text-muted)] py-12">No movement logs found for this product.</div>
+                ) : (
+                  <table className="w-full text-xs text-left">
+                    <thead className="bg-[var(--bg-input)] text-[var(--text-muted)] uppercase font-semibold text-[9px] border-b border-[var(--border)]">
+                      <tr>
+                        <th className="px-3 py-2.5">Date</th>
+                        <th className="px-3 py-2.5">Movement</th>
+                        <th className="px-3 py-2.5 text-right">Quantity</th>
+                        <th className="px-3 py-2.5">Reference</th>
+                        <th className="px-3 py-2.5">Notes</th>
+                        <th className="px-3 py-2.5">Performed By</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[var(--border)] text-[var(--text-secondary)]">
+                      {entries.map(e => (
+                        <tr key={e.id} className="hover:bg-[var(--accent-light)]">
+                          <td className="px-3 py-2 whitespace-nowrap font-mono">{new Date(e.created_at).toLocaleDateString('en-GB')} {new Date(e.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</td>
+                          <td className="px-3 py-2 font-bold">
+                            <span className={`px-2 py-0.5 rounded text-[8px] uppercase tracking-wide ${
+                              e.movement_type === 'ADD' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-red-500/10 text-red-500'
+                            }`}>
+                              {e.movement_type}
+                            </span>
+                          </td>
+                          <td className={`px-3 py-2 text-right font-bold font-mono ${e.movement_type === 'ADD' ? 'text-blue-500' : 'text-red-500'}`}>
+                            {e.movement_type === 'ADD' ? '+' : '-'}{Number(e.quantity).toLocaleString()}
+                          </td>
+                          <td className="px-3 py-2 font-medium truncate max-w-[120px]" title={e.reference}>{e.reference || '—'}</td>
+                          <td className="px-3 py-2 truncate max-w-[180px]" title={e.notes}>{e.notes || '—'}</td>
+                          <td className="px-3 py-2 font-semibold">{e.performed_by || 'System'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ══ GOODS INVENTORY + NEWLY PRICED CATALOG ══ */}
       {inventoryItems.length > 0 && (

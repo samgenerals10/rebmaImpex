@@ -50,6 +50,7 @@ const mapToDB = (ui: Partial<OutputRecord>) => {
 export default function OutputRecordingView({ addNotification }: Props) {
   const [records, setRecords] = useState<OutputRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({ date: new Date().toISOString().split('T')[0], product: '', received: '', boxes: '', sachets: '', quality: 'Pass' as 'Pass' | 'Fail', notes: '' });
   const [showEdit, setShowEdit] = useState(false);
   const [editForm, setEditForm] = useState<OutputRecord | null>(null);
@@ -80,27 +81,35 @@ export default function OutputRecordingView({ addNotification }: Props) {
 
   const handleSubmit = async () => {
     if (!form.product || !form.boxes || !form.sachets) return;
-    const newRecord: OutputRecord = {
-      id: String(Date.now()),
-      date: form.date,
-      product: form.product,
-      received: Number(form.received),
-      boxes: Number(form.boxes),
-      sachets: Number(form.sachets),
-      quality: form.quality,
-      notes: form.notes,
-    };
-    
-    const dbData = mapToDB(newRecord);
-    dbData.record_number = `REC-${Date.now().toString().slice(-6)}`;
-    
-    const { error } = await supabase.from('production_logs').insert([dbData]);
-    if (!error) {
-      setRecords(prev => [newRecord, ...prev]);
-      addNotification(`Output recorded for ${form.product}`);
-      setForm({ date: new Date().toISOString().split('T')[0], product: '', received: '', boxes: '', sachets: '', quality: 'Pass', notes: '' });
-    } else {
-      alert(error.message || 'Failed to insert output record');
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      const newRecord: OutputRecord = {
+        id: String(Date.now()),
+        date: form.date,
+        product: form.product,
+        received: Number(form.received),
+        boxes: Number(form.boxes),
+        sachets: Number(form.sachets),
+        quality: form.quality,
+        notes: form.notes,
+      };
+      
+      const dbData = mapToDB(newRecord);
+      dbData.record_number = `REC-${Date.now().toString().slice(-6)}`;
+      
+      const { error } = await supabase.from('production_logs').insert([dbData]);
+      if (!error) {
+        setRecords(prev => [newRecord, ...prev]);
+        addNotification(`Output recorded for ${form.product}`);
+        setForm({ date: new Date().toISOString().split('T')[0], product: '', received: '', boxes: '', sachets: '', quality: 'Pass', notes: '' });
+      } else {
+        alert(error.message || 'Failed to insert output record');
+      }
+    } catch (e: any) {
+      alert(e.message || 'Error inserting record');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -111,26 +120,42 @@ export default function OutputRecordingView({ addNotification }: Props) {
 
   const handleEditSave = async () => {
     if (!editForm) return;
-    const dbData = mapToDB(editForm);
-    const { error } = await supabase.from('production_logs').update(dbData).eq('id', editForm.id);
-    if (!error) {
-      setRecords(prev => prev.map(r => r.id === editForm.id ? editForm : r));
-      addNotification(`Output record updated for ${editForm.product}`);
-      setShowEdit(false);
-      setEditForm(null);
-    } else {
-      alert(error.message || 'Failed to update record');
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      const dbData = mapToDB(editForm);
+      const { error } = await supabase.from('production_logs').update(dbData).eq('id', editForm.id);
+      if (!error) {
+        setRecords(prev => prev.map(r => r.id === editForm.id ? editForm : r));
+        addNotification(`Output record updated for ${editForm.product}`);
+        setShowEdit(false);
+        setEditForm(null);
+      } else {
+        alert(error.message || 'Failed to update record');
+      }
+    } catch (e: any) {
+      alert(e.message || 'Error updating record');
+    } finally {
+      setSubmitting(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this production record?')) return;
-    const { error } = await supabase.from('production_logs').delete().eq('id', id);
-    if (!error) {
-      setRecords(prev => prev.filter(r => r.id !== id));
-      addNotification('Record deleted');
-    } else {
-      alert(error.message || 'Failed to delete record');
+    if (submitting) return;
+    if (!await confirm('Are you sure you want to delete this production record?')) return;
+    setSubmitting(true);
+    try {
+      const { error } = await supabase.from('production_logs').delete().eq('id', id);
+      if (!error) {
+        setRecords(prev => prev.filter(r => r.id !== id));
+        addNotification('Record deleted');
+      } else {
+        alert(error.message || 'Failed to delete record');
+      }
+    } catch (e: any) {
+      alert(e.message || 'Error deleting record');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -204,7 +229,7 @@ export default function OutputRecordingView({ addNotification }: Props) {
           <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Notes (optional)</label>
           <textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="Any observations..." rows={2} style={{ ...inputStyle, resize: 'vertical' }} />
         </div>
-        <button onClick={handleSubmit} style={{ marginTop: 16, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 12, padding: '12px 28px', fontWeight: 700, cursor: 'pointer', fontSize: 15 }}>Submit Record</button>
+        <button onClick={handleSubmit} disabled={submitting} style={{ marginTop: 16, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 12, padding: '12px 28px', fontWeight: 700, cursor: submitting ? 'not-allowed' : 'pointer', fontSize: 15, opacity: submitting ? 0.7 : 1 }}>{submitting ? 'Submitting...' : 'Submit Record'}</button>
       </div>
 
       <div style={{ background: 'var(--bg-card)', borderRadius: 20, padding: 24, border: '1px solid var(--border)', boxShadow: 'var(--box-shadow)' }}>
@@ -315,7 +340,7 @@ export default function OutputRecordingView({ addNotification }: Props) {
             </div>
             <div style={{ display: 'flex', gap: '12px', marginTop: '20px', justifyContent: 'flex-end' }}>
               <button onClick={() => { setShowEdit(false); setEditForm(null); }} style={{ padding: '10px 20px', borderRadius: 10, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 14 }}>Cancel</button>
-              <button onClick={handleEditSave} style={{ padding: '10px 24px', borderRadius: 10, border: 'none', background: 'var(--accent)', color: '#fff', cursor: 'pointer', fontWeight: 600, fontSize: 14 }}>Save Changes</button>
+              <button onClick={handleEditSave} disabled={submitting} style={{ padding: '10px 24px', borderRadius: 10, border: 'none', background: 'var(--accent)', color: '#fff', cursor: submitting ? 'not-allowed' : 'pointer', fontWeight: 600, fontSize: 14, opacity: submitting ? 0.7 : 1 }}>{submitting ? 'Saving...' : 'Save Changes'}</button>
             </div>
           </div>
         </div>

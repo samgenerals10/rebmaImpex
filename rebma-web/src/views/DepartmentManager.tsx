@@ -77,11 +77,18 @@ export default function DepartmentManager({ currentUser, addNotification }: Depa
   };
 
   const confirmDelete = async () => {
-    if (!deleteId) return;
-    await supabase.from('departments').delete().eq('id', deleteId);
-    setDeleteId(null);
-    addNotification('Department removed.');
-    load();
+    if (!deleteId || saving) return;
+    setSaving(true);
+    try {
+      await supabase.from('departments').delete().eq('id', deleteId);
+      setDeleteId(null);
+      addNotification('Department removed.');
+      load();
+    } catch (err: any) {
+      addNotification(`Failed to delete department: ${err.message}`);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const addNavItem = () => {
@@ -275,8 +282,8 @@ export default function DepartmentManager({ currentUser, addNotification }: Depa
             <h3 className="font-bold text-sm text-[var(--text-primary)] mb-2">Delete department?</h3>
             <p className="text-xs text-[var(--text-muted)] mb-4">This cannot be undone. Staff in this department will not be automatically reassigned.</p>
             <div className="flex justify-end gap-2">
-              <button onClick={() => setDeleteId(null)} className="px-4 py-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-input)] rounded-lg cursor-pointer">Cancel</button>
-              <button onClick={confirmDelete} className="px-4 py-1.5 bg-rose-500 text-white text-xs font-semibold rounded-lg hover:bg-rose-600 cursor-pointer">Delete</button>
+              <button onClick={() => setDeleteId(null)} disabled={saving} className="px-4 py-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-input)] rounded-lg cursor-pointer disabled:opacity-50">Cancel</button>
+              <button onClick={confirmDelete} disabled={saving} className="px-4 py-1.5 bg-rose-500 text-white text-xs font-semibold rounded-lg hover:bg-rose-600 cursor-pointer disabled:opacity-50">{saving ? 'Deleting...' : 'Delete'}</button>
             </div>
           </div>
         </div>

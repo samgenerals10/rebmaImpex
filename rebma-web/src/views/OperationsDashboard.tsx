@@ -518,7 +518,7 @@ export default function OperationsDashboard({
   };
 
   const handleDeleteOrder = async (id: string) => {
-    if (!window.confirm(`Delete order entry ${id}?`)) return;
+    if (!await window.confirm(`Delete order entry ${id}?`)) return;
     try {
       const { error } = await supabase
         .from('orders')
@@ -533,9 +533,9 @@ export default function OperationsDashboard({
   };
 
   const handleEditCargo = async (cargo: IncomingGoods) => {
-    const newName = window.prompt('Edit product name:', cargo.productName);
+    const newName = await window.prompt('Edit product name:', cargo.productName);
     if (!newName) return;
-    const newCarrier = window.prompt('Edit shipping carrier:', cargo.company);
+    const newCarrier = await window.prompt('Edit shipping carrier:', cargo.company);
     if (!newCarrier) return;
     try {
       const { error } = await supabase
@@ -569,7 +569,7 @@ export default function OperationsDashboard({
   };
 
   const handleDeleteCargo = async (id: string) => {
-    if (!window.confirm(`Delete cargo intake record CARGO-${id}?`)) return;
+    if (!await window.confirm(`Delete cargo intake record CARGO-${id}?`)) return;
     try {
       const { error } = await supabase
         .from('cargo_intake')

@@ -308,7 +308,7 @@ export default function FinanceDashboard({
         created_at: now,
       }).select().single();
       if (error) { addNotification(`Payment save failed: ${error.message}`); return; }
-      await supabase.from('orders').update({ status: 'APPROVED', updated_at: now }).eq('id', selectedOrderId).then(() => {}, () => {});
+      await supabase.from('orders').update({ status: 'APPROVED', updated_at: now }).eq('id', selectedOrderId);
       const newPayment: FinancePayment = {
         id: inserted?.id || `PAY-${Date.now().toString().slice(-4)}`,
         clientName: order.clientName,

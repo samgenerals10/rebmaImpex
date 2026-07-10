@@ -268,7 +268,7 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
 
           const { data: existingStock } = await supabase.from('stock').select('id, quantity').eq('product_name', productName).maybeSingle().then(r => r, () => ({ data: null, error: null }));
           if (existingStock) {
-            await supabase.from('stock').update({ quantity: (Number(existingStock.quantity) || 0) + finalQtyToAdd, last_updated: now }).eq('id', existingStock.id).then(() => {}, () => {});
+            await supabase.from('stock').update({ quantity: (Number(existingStock.quantity) || 0) + finalQtyToAdd, last_updated: now }).eq('id', existingStock.id);
           } else {
             const { error: stockErr } = await supabase.from('stock').upsert([{ product_name: productName, product_code: productCode, category: 'INCOMING_GOODS', quantity: finalQtyToAdd, maximum_level: finalQtyToAdd * 2 || 1000, minimum_level: Math.round(finalQtyToAdd * 0.1) || 50, unit, last_updated: now }], { onConflict: 'product_name' });
             if (stockErr) addNotification?.(`Stock table update failed: ${stockErr.message}. Please run the SQL migrations in supabase_schema.sql.`);
@@ -302,7 +302,7 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
             await supabase.from('supplier_order_notifications').insert([{ order_id: rawId, message: `Cargo intake APPROVED by Management: ${selectedItem.description}`, notified_department: 'CEO', read: false }]);
           }
           if (sellingPrice) {
-            await supabase.from('goods_prices').upsert([{ product_name: productName, unit_price: parseFloat(sellingPrice) }], { onConflict: 'product_name' }).then(() => {}, () => {});
+            await supabase.from('goods_prices').upsert([{ product_name: productName, unit_price: parseFloat(sellingPrice) }], { onConflict: 'product_name' });
           }
           await supabase.from('supplier_order_notifications').insert([{ order_id: rawId, message: `Cargo intake APPROVED by Management: ${selectedItem.description}`, notified_department: 'FINANCE', read: false }]);
           await supabase.from('supplier_order_notifications').insert([{ order_id: rawId, message: `New stock approved: ${selectedItem.description}. Update pricing in Marketing.`, notified_department: 'MARKETING', read: false }]);
@@ -349,19 +349,19 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
 
       if (selectedItem.type === 'Production Request' && selectedItem.raw) {
         const newDbStatus = action === 'approve' ? 'APPROVED' : 'REJECTED';
-        await supabase.from('production_requests').update({ status: newDbStatus }).eq('id', selectedItem.id).then(() => {}, () => {});
+        await supabase.from('production_requests').update({ status: newDbStatus }).eq('id', selectedItem.id);
 
         if (action === 'approve') {
-          await supabase.from('supplier_order_notifications').insert([{ order_id: selectedItem.id, message: `Production request APPROVED by Management: ${selectedItem.description}`, notified_department: 'PRODUCTION', read: false }]).then(() => {}, () => {});
+          await supabase.from('supplier_order_notifications').insert([{ order_id: selectedItem.id, message: `Production request APPROVED by Management: ${selectedItem.description}`, notified_department: 'PRODUCTION', read: false }]);
         }
       }
 
       if (selectedItem.type === 'General Purchase' && selectedItem.raw) {
         const newDbStatus = action === 'approve' ? 'APPROVED' : 'REJECTED';
-        await supabase.from('general_purchases').update({ status: newDbStatus }).eq('id', selectedItem.id).then(() => {}, () => {});
+        await supabase.from('general_purchases').update({ status: newDbStatus }).eq('id', selectedItem.id);
 
         if (action === 'approve') {
-          await supabase.from('supplier_order_notifications').insert([{ order_id: selectedItem.id, message: `General purchase APPROVED by Management: ${selectedItem.description}`, notified_department: action === 'approve' ? (String(selectedItem.raw.department || 'OPERATIONS')) : 'OPERATIONS', read: false }]).then(() => {}, () => {});
+          await supabase.from('supplier_order_notifications').insert([{ order_id: selectedItem.id, message: `General purchase APPROVED by Management: ${selectedItem.description}`, notified_department: action === 'approve' ? (String(selectedItem.raw.department || 'OPERATIONS')) : 'OPERATIONS', read: false }]);
         }
       }
 

@@ -47,6 +47,7 @@ export default function AttendanceView({ addNotification }: Props) {
   const [gpsError, setGpsError] = useState('');
   const [gpsDistance, setGpsDistance] = useState<number|null>(null);
   const [form, setForm] = useState({ fullName: '', department: 'HR', virtual: false });
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -88,33 +89,49 @@ export default function AttendanceView({ addNotification }: Props) {
     }
   };
 
-  const doCheckIn = (type: string, gpsVerified: boolean) => {
-    const now = new Date();
-    const h = now.getHours(), m = now.getMinutes();
-    const time = `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}`;
-    const isLate = h > 9 || (h === 9 && m > 0);
-    const rec: AttendanceRow = {
-      id: `ATT-${Date.now().toString().slice(-4)}`,
-      fullName: form.fullName,
-      checkInTime: time,
-      status: isLate ? 'LATE' : 'PRESENT',
-      date: filterDate,
-      type,
-      gpsVerified,
-    };
-    setRows(prev => [rec, ...prev]);
-    supabase.from('attendance').insert({ ...rec, department: form.department }).then(() => {}, () => {});
-    addNotification(`${form.fullName} checked in${isLate ? ' (late)' : ''} — ${type}`);
-    setForm({ fullName: '', department: 'HR', virtual: false });
-    setGpsStatus('idle');
-    setGpsDistance(null);
-    setModal(false);
+  const doCheckIn = async (type: string, gpsVerified: boolean) => {
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      const now = new Date();
+      const h = now.getHours(), m = now.getMinutes();
+      const time = `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}`;
+      const isLate = h > 9 || (h === 9 && m > 0);
+      const rec: AttendanceRow = {
+        id: `ATT-${Date.now().toString().slice(-4)}`,
+        fullName: form.fullName,
+        checkInTime: time,
+        status: isLate ? 'LATE' : 'PRESENT',
+        date: filterDate,
+        type,
+        gpsVerified,
+      };
+      setRows(prev => [rec, ...prev]);
+      await supabase.from('attendance').insert({ ...rec, department: form.department });
+      addNotification(`${form.fullName} checked in${isLate ? ' (late)' : ''} — ${type}`);
+      setForm({ fullName: '', department: 'HR', virtual: false });
+      setGpsStatus('idle');
+      setGpsDistance(null);
+      setModal(false);
+    } catch {
+      addNotification('Failed to record check-in. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const handleMarkAbsent = (id: string, name: string) => {
-    setRows(prev => prev.map(r => r.id === id ? { ...r, status: 'ABSENT' as any } : r));
-    supabase.from('attendance').update({ status: 'ABSENT' }).eq('id', id).then(() => {}, () => {});
-    addNotification(`${name} marked absent`);
+  const handleMarkAbsent = async (id: string, name: string) => {
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      setRows(prev => prev.map(r => r.id === id ? { ...r, status: 'ABSENT' as any } : r));
+      await supabase.from('attendance').update({ status: 'ABSENT' }).eq('id', id);
+      addNotification(`${name} marked absent`);
+    } catch {
+      addNotification('Failed to mark absent.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const filtered = rows.filter(r => {
@@ -251,8 +268,21 @@ export default function AttendanceView({ addNotification }: Props) {
                               className="flex items-center gap-2 w-full px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg cursor-pointer">
                               <Download className="w-3.5 h-3.5" /> Export PDF
                             </button>
-                            <button onClick={() => { supabase.from('attendance').delete().eq('id', r.id).then(() => {}, () => {}); setRows(prev => prev.filter(x => x.id !== r.id)); addNotification(`${r.fullName} record removed`); setMenuOpen(null); }}
-                              className="flex items-center gap-2 w-full px-3 py-2 text-xs text-rose-500 hover:bg-rose-500/10 rounded-lg cursor-pointer">
+                            <button onClick={async () => {
+                                if (submitting) return;
+                                setSubmitting(true);
+                                try {
+                                  await supabase.from('attendance').delete().eq('id', r.id);
+                                  setRows(prev => prev.filter(x => x.id !== r.id));
+                                  addNotification(`${r.fullName} record removed`);
+                                } catch {
+                                  addNotification('Failed to delete record.');
+                                } finally {
+                                  setSubmitting(false);
+                                  setMenuOpen(null);
+                                }
+                              }}
+                              className="flex items-center gap-2 w-full px-3 py-2 text-xs text-rose-500 hover:bg-rose-500/10 rounded-lg cursor-pointer disabled:opacity-50">
                               <UserMinus className="w-3.5 h-3.5" /> Delete Log
                             </button>
                           </div>
@@ -333,10 +363,10 @@ export default function AttendanceView({ addNotification }: Props) {
               )}
             </div>
             <div className="flex justify-end gap-2 mt-4">
-              <button onClick={() => setModal(false)} className="px-4 py-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-input)] rounded-lg cursor-pointer">Cancel</button>
-              <button onClick={handleCheckIn} disabled={!form.fullName.trim() || gpsStatus === 'locating'}
+              <button onClick={() => setModal(false)} disabled={submitting} className="px-4 py-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-input)] rounded-lg cursor-pointer disabled:opacity-50">Cancel</button>
+              <button onClick={handleCheckIn} disabled={!form.fullName.trim() || gpsStatus === 'locating' || submitting}
                 className="flex items-center gap-1.5 px-4 py-1.5 bg-[var(--accent)] text-white text-xs font-semibold rounded-lg hover:opacity-90 disabled:opacity-50 cursor-pointer">
-                <UserCheck className="w-3.5 h-3.5" /> {gpsStatus === 'locating' ? 'Locating…' : 'Check In'}
+                <UserCheck className="w-3.5 h-3.5" /> {submitting ? 'Saving...' : gpsStatus === 'locating' ? 'Locating…' : 'Check In'}
               </button>
             </div>
           </div>

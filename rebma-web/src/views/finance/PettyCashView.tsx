@@ -72,6 +72,8 @@ export default function FinancePettyCashView({ addNotification, currentUser }: P
 
   const filtered = entries.filter(e => !search || e.description.toLowerCase().includes(search.toLowerCase()) || e.disbursedTo.toLowerCase().includes(search.toLowerCase()));
 
+  const [submitting, setSubmitting] = useState(false);
+
   function openEditForm(e: PettyCashEntry) {
     setEditEntry(e);
     setEditForm({
@@ -87,6 +89,8 @@ export default function FinancePettyCashView({ addNotification, currentUser }: P
 
   async function updateEntry() {
     if (!editEntry || !editForm.amount || !editForm.description || !editForm.disbursedTo) return;
+    if (submitting) return;
+    setSubmitting(true);
     try {
       const updatedAmount = parseFloat(editForm.amount) || 0;
       const diff = updatedAmount - editEntry.amount;
@@ -105,57 +109,83 @@ export default function FinancePettyCashView({ addNotification, currentUser }: P
       if (error) throw error;
       setEntries(prev => prev.map(e => e.id === editEntry.id ? { ...e, amount: updatedAmount, description: editForm.description, disbursedTo: editForm.disbursedTo, category: editForm.category, balanceAfter: updatedBalance } : e));
       addNotification?.('Petty cash entry updated successfully.');
-      supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Petty cash ${editEntry.id} updated`, performed_by: currentUser?.fullName || 'Finance', timestamp: new Date().toISOString() }]).then(() => {}, () => {});
+      await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Petty cash ${editEntry.id} updated`, performed_by: currentUser?.fullName || 'Finance', timestamp: new Date().toISOString() }]);
+      setShowEditForm(false);
+      setEditEntry(null);
     } catch (err: any) {
       alert(err.message || 'Failed to update entry.');
+    } finally {
+      setSubmitting(false);
     }
-    setShowEditForm(false);
-    setEditEntry(null);
   }
 
   async function deleteEntry(id: string) {
-    if (!window.confirm('Are you sure you want to delete this entry?')) return;
+    if (submitting) return;
+    if (!await window.confirm('Are you sure you want to delete this entry?')) return;
+    setSubmitting(true);
     try {
       const { error } = await supabase.from('finance_petty_cash').delete().eq('id', id);
       if (error) throw error;
       setEntries(prev => prev.filter(e => e.id !== id));
       addNotification?.('Entry deleted successfully.');
-      supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Petty cash ${id} deleted`, performed_by: currentUser?.fullName || 'Finance', timestamp: new Date().toISOString() }]).then(() => {}, () => {});
+      await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Petty cash ${id} deleted`, performed_by: currentUser?.fullName || 'Finance', timestamp: new Date().toISOString() }]);
     } catch (err: any) {
       alert(err.message || 'Failed to delete entry.');
+    } finally {
+      setSubmitting(false);
+      setMenuOpen(null);
     }
-    setMenuOpen(null);
   }
 
-  function disburse() {
+  async function disburse() {
     if (!form.amount || !form.description || !form.disbursedTo) return;
+    if (submitting) return;
     const amount = parseFloat(form.amount);
     if (amount > currentFloat) { addNotification?.('Insufficient float balance'); return; }
-    const newBalance = currentFloat - amount;
-    const entry: PettyCashEntry = { id: Date.now().toString(), date: new Date().toISOString().slice(0, 10), description: form.description, amount, disbursedTo: form.disbursedTo, category: form.category, receipt: false, balanceAfter: newBalance, type: 'disbursement' };
-    setEntries(prev => [entry, ...prev]);
-    supabase.from('finance_petty_cash').insert([{
-      description: form.description,
-      amount,
-      disbursed_to: form.disbursedTo,
-      category: form.category,
-      notes: form.notes,
-      balance_after: newBalance,
-      type: 'disbursement',
-      recorded_by: currentUser?.fullName || 'Finance',
-      timestamp: new Date().toISOString()
-    }]).then(() => {}, () => {});
-    addNotification?.(`Petty cash disbursed: GHS ${amount.toLocaleString()} to ${form.disbursedTo}`);
-    setShowDisbForm(false);
-    setForm({ amount: '', description: '', disbursedTo: '', category: 'Admin', notes: '' });
+    setSubmitting(true);
+    try {
+      const newBalance = currentFloat - amount;
+      const { data, error } = await supabase.from('finance_petty_cash').insert([{
+        description: form.description,
+        amount,
+        disbursed_to: form.disbursedTo,
+        category: form.category,
+        notes: form.notes,
+        balance_after: newBalance,
+        type: 'disbursement',
+        recorded_by: currentUser?.fullName || 'Finance',
+        timestamp: new Date().toISOString()
+      }]).select();
+      if (error) throw error;
+      
+      const newId = data?.[0]?.id || Date.now().toString();
+      const entry: PettyCashEntry = { id: newId, date: new Date().toISOString().slice(0, 10), description: form.description, amount, disbursedTo: form.disbursedTo, category: form.category, receipt: false, balanceAfter: newBalance, type: 'disbursement' };
+      setEntries(prev => [entry, ...prev]);
+      addNotification?.(`Petty cash disbursed: GHS ${amount.toLocaleString()} to ${form.disbursedTo}`);
+      setShowDisbForm(false);
+      setForm({ amount: '', description: '', disbursedTo: '', category: 'Admin', notes: '' });
+    } catch (e: any) {
+      alert(e.message || 'Failed to disburse petty cash.');
+    } finally {
+      setSubmitting(false);
+    }
   }
 
-  function requestReplenishment() {
+  async function requestReplenishment() {
     if (!replenForm.amount || !replenForm.reason) return;
-    supabase.from('supplier_order_notifications').insert([{ order_id: 'petty_cash', message: `Petty cash replenishment request: GHS ${replenForm.amount} needed. Reason: ${replenForm.reason}`, notified_department: 'MANAGEMENT', read: false }]).then(() => {}, () => {});
-    addNotification?.(`Replenishment request sent to Management: GHS ${replenForm.amount}`);
-    setShowReplenForm(false);
-    setReplenForm({ amount: '', reason: '' });
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      const { error } = await supabase.from('supplier_order_notifications').insert([{ order_id: 'petty_cash', message: `Petty cash replenishment request: GHS ${replenForm.amount} needed. Reason: ${replenForm.reason}`, notified_department: 'MANAGEMENT', read: false }]);
+      if (error) throw error;
+      addNotification?.(`Replenishment request sent to Management: GHS ${replenForm.amount}`);
+      setShowReplenForm(false);
+      setReplenForm({ amount: '', reason: '' });
+    } catch (e: any) {
+      alert(e.message || 'Failed to request replenishment.');
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -264,8 +294,8 @@ export default function FinancePettyCashView({ addNotification, currentUser }: P
               </div>
             </div>
             <div className="flex items-center gap-3 justify-end mt-5">
-              <button onClick={() => setShowDisbForm(false)} className="px-4 py-2 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--text-secondary)]">Cancel</button>
-              <button onClick={disburse} className="px-4 py-2 rounded-xl text-white text-sm font-medium" style={{ background: 'var(--accent)' }}>Save Disbursement</button>
+              <button onClick={() => setShowDisbForm(false)} disabled={submitting} className="px-4 py-2 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--text-secondary)] disabled:opacity-50">Cancel</button>
+              <button onClick={disburse} disabled={submitting} className="px-4 py-2 rounded-xl text-white text-sm font-medium disabled:opacity-50 hover:opacity-90" style={{ background: 'var(--accent)' }}>{submitting ? 'Saving...' : 'Save Disbursement'}</button>
             </div>
           </div>
         </div>
@@ -281,8 +311,8 @@ export default function FinancePettyCashView({ addNotification, currentUser }: P
               <div><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Reason</label><textarea value={replenForm.reason} onChange={e => setReplenForm(f => ({ ...f, reason: e.target.value }))} rows={3} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm focus:outline-none focus:border-[var(--accent)] resize-none" /></div>
             </div>
             <div className="flex items-center gap-3 justify-end mt-4">
-              <button onClick={() => setShowReplenForm(false)} className="px-4 py-2 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--text-secondary)]">Cancel</button>
-              <button onClick={requestReplenishment} className="px-4 py-2 rounded-xl text-white text-sm font-medium" style={{ background: 'var(--accent)' }}>Send Request</button>
+              <button onClick={() => setShowReplenForm(false)} disabled={submitting} className="px-4 py-2 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--text-secondary)] disabled:opacity-50">Cancel</button>
+              <button onClick={requestReplenishment} disabled={submitting} className="px-4 py-2 rounded-xl text-white text-sm font-medium disabled:opacity-50 hover:opacity-90" style={{ background: 'var(--accent)' }}>{submitting ? 'Sending...' : 'Send Request'}</button>
             </div>
           </div>
         </div>
@@ -303,8 +333,8 @@ export default function FinancePettyCashView({ addNotification, currentUser }: P
               <div><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Notes (optional)</label><textarea value={editForm.notes} onChange={e => setEditForm(f => ({ ...f, notes: e.target.value }))} rows={2} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm focus:outline-none focus:border-[var(--accent)] resize-none" /></div>
             </div>
             <div className="flex items-center gap-3 justify-end mt-5">
-              <button onClick={() => setShowEditForm(false)} className="px-4 py-2 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--text-secondary)]">Cancel</button>
-              <button onClick={updateEntry} className="px-4 py-2 rounded-xl text-white text-sm font-medium hover:opacity-90" style={{ background: 'var(--accent)' }}>Save Changes</button>
+              <button onClick={() => setShowEditForm(false)} disabled={submitting} className="px-4 py-2 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--text-secondary)] disabled:opacity-50">Cancel</button>
+              <button onClick={updateEntry} disabled={submitting} className="px-4 py-2 rounded-xl text-white text-sm font-medium hover:opacity-90 disabled:opacity-50" style={{ background: 'var(--accent)' }}>{submitting ? 'Saving...' : 'Save Changes'}</button>
             </div>
           </div>
         </div>

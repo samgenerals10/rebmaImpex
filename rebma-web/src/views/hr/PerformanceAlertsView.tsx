@@ -59,6 +59,7 @@ export default function PerformanceAlertsView({ currentUser, addNotification }: 
   const [statusFilter, setStatusFilter] = useState<'All' | AlertStatus>('All');
   const [selected, setSelected] = useState<PerformanceAlert | null>(null);
   const [notes, setNotes] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -110,6 +111,8 @@ export default function PerformanceAlertsView({ currentUser, addNotification }: 
   };
 
   const handleUpdateStatus = async (alert: PerformanceAlert, status: AlertStatus) => {
+    if (submitting) return;
+    setSubmitting(true);
     const isResolved = status === 'RESOLVED';
     try {
       const { error } = await supabase
@@ -142,6 +145,8 @@ export default function PerformanceAlertsView({ currentUser, addNotification }: 
       setNotes('');
     } catch (err: any) {
       addNotification(`Error updating alert status: ${err.message}`);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -302,18 +307,18 @@ export default function PerformanceAlertsView({ currentUser, addNotification }: 
             {selected.status !== 'RESOLVED' && (
               <div className="space-y-2">
                 <label className="block text-xs text-[var(--text-secondary)] font-semibold">Add Notes</label>
-                <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} placeholder="Add resolution notes..."
-                  className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-[var(--text-primary)] text-sm resize-none outline-none" />
+                <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} placeholder="Add resolution notes..." disabled={submitting}
+                  className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-[var(--text-primary)] text-sm resize-none outline-none disabled:opacity-50" />
                 <div className="flex gap-2">
                   {selected.status === 'OPEN' && (
-                    <button onClick={() => handleUpdateStatus(selected, 'IN_REVIEW')}
-                      className="flex-1 py-2 bg-[var(--accent-light)] text-[var(--accent)] rounded-xl text-xs font-semibold cursor-pointer hover:opacity-80">
+                    <button onClick={() => handleUpdateStatus(selected, 'IN_REVIEW')} disabled={submitting}
+                      className="flex-1 py-2 bg-[var(--accent-light)] text-[var(--accent)] rounded-xl text-xs font-semibold cursor-pointer hover:opacity-80 disabled:opacity-50">
                       Mark In Review
                     </button>
                   )}
-                  <button onClick={() => handleUpdateStatus(selected, 'RESOLVED')}
-                    className="flex-1 py-2 bg-emerald-500/10 text-emerald-500 border border-emerald-500/30 rounded-xl text-xs font-semibold cursor-pointer hover:bg-emerald-500/20">
-                    Mark Resolved
+                  <button onClick={() => handleUpdateStatus(selected, 'RESOLVED')} disabled={submitting}
+                    className="flex-1 py-2 bg-emerald-500/10 text-emerald-500 border border-emerald-500/30 rounded-xl text-xs font-semibold cursor-pointer hover:bg-emerald-500/20 disabled:opacity-50">
+                    {submitting ? 'Updating...' : 'Mark Resolved'}
                   </button>
                 </div>
               </div>

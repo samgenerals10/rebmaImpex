@@ -36,6 +36,7 @@ export default function StaffView({ staffList: propStaff, addNotification }: Pro
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const [form, setForm] = useState({ fullName: '', email: '', department: 'Operations', role: '', phone: '', ghanaCard: '' });
   const [totalOnLeave, setTotalOnLeave] = useState(0);
+  const [submitting, setSubmitting] = useState(false);
 
   // Detail loading state
   const [attendance, setAttendance] = useState<any[]>([]);
@@ -139,6 +140,8 @@ export default function StaffView({ staffList: propStaff, addNotification }: Pro
   };
 
   const handleSaveAdd = async () => {
+    if (submitting) return;
+    setSubmitting(true);
     const tempUuid = '00000000-0000-0000-0000-' + Math.floor(Math.random() * 1000000000000).toString().padStart(12, '0');
     try {
       const { error } = await supabase.from('profiles').insert({
@@ -170,11 +173,14 @@ export default function StaffView({ staffList: propStaff, addNotification }: Pro
       setForm({ fullName: '', email: '', department: 'Operations', role: '', phone: '', ghanaCard: '' });
     } catch (err: any) {
       addNotification(`Error adding staff member: ${err.message}`);
+    } finally {
+      setSubmitting(false);
     }
   };
 
   const handleSaveEdit = async () => {
-    if (!editTarget) return;
+    if (!editTarget || submitting) return;
+    setSubmitting(true);
     try {
       const { error } = await supabase
         .from('profiles')
@@ -196,10 +202,14 @@ export default function StaffView({ staffList: propStaff, addNotification }: Pro
       setEditTarget(null);
     } catch (err: any) {
       addNotification(`Error updating staff member: ${err.message}`);
+    } finally {
+      setSubmitting(false);
     }
   };
 
   const handleSuspend = async (s: StaffMember) => {
+    if (submitting) return;
+    setSubmitting(true);
     const newStatus = s.status === 'SUSPENDED' ? 'ACTIVE' : 'SUSPENDED';
     try {
       const { error } = await supabase
@@ -214,6 +224,8 @@ export default function StaffView({ staffList: propStaff, addNotification }: Pro
       setMenuOpen(null);
     } catch (err: any) {
       addNotification(`Error updating status: ${err.message}`);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -222,7 +234,7 @@ export default function StaffView({ staffList: propStaff, addNotification }: Pro
       <div style={{ background: 'var(--bg-card)', borderRadius: 12, padding: '1.5rem', width: '100%', maxWidth: 500, border: '1px solid var(--border)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
           <h3 style={{ margin: 0, color: 'var(--text-primary)', fontWeight: 600 }}>{title}</h3>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={20} /></button>
+          <button onClick={onClose} disabled={submitting} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', opacity: submitting ? 0.5 : 1 }}><X size={20} /></button>
         </div>
         <div style={{ display: 'grid', gap: '0.75rem' }}>
           {(['fullName', 'email', 'role', 'phone', 'ghanaCard'] as const).map(field => (
@@ -232,22 +244,23 @@ export default function StaffView({ staffList: propStaff, addNotification }: Pro
               </label>
               <input
                 value={form[field]}
+                disabled={submitting}
                 onChange={e => setForm(p => ({ ...p, [field]: e.target.value }))}
-                style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.75rem', color: 'var(--text-primary)', fontSize: 14, boxSizing: 'border-box' }}
+                style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.75rem', color: 'var(--text-primary)', fontSize: 14, boxSizing: 'border-box', opacity: submitting ? 0.5 : 1 }}
               />
             </div>
           ))}
           <div>
             <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Department</label>
-            <select value={form.department} onChange={e => setForm(p => ({ ...p, department: e.target.value }))}
-              style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.75rem', color: 'var(--text-primary)', fontSize: 14 }}>
+            <select value={form.department} onChange={e => setForm(p => ({ ...p, department: e.target.value }))} disabled={submitting}
+              style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.75rem', color: 'var(--text-primary)', fontSize: 14, opacity: submitting ? 0.5 : 1 }}>
               {DEPARTMENTS.filter(d => d !== 'All').map(d => <option key={d}>{d}</option>)}
             </select>
           </div>
         </div>
         <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.25rem', justifyContent: 'flex-end' }}>
-          <button onClick={onClose} style={{ padding: '0.5rem 1.25rem', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer' }}>Cancel</button>
-          <button onClick={onSave} style={{ padding: '0.5rem 1.25rem', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#fff', cursor: 'pointer', fontWeight: 600 }}>Save</button>
+          <button onClick={onClose} disabled={submitting} style={{ padding: '0.5rem 1.25rem', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer', opacity: submitting ? 0.5 : 1 }}>Cancel</button>
+          <button onClick={onSave} disabled={submitting} style={{ padding: '0.5rem 1.25rem', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#fff', cursor: 'pointer', fontWeight: 600, opacity: submitting ? 0.5 : 1 }}>{submitting ? 'Saving...' : 'Save'}</button>
         </div>
       </div>
     </div>

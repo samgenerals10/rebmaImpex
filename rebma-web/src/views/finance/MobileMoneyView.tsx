@@ -74,13 +74,24 @@ export default function FinanceMobileMoneyView({ addNotification, currentUser }:
   const byNetwork = ['MTN', 'Vodafone', 'AirtelTigo'].map(n => ({ name: n, value: txns.filter(t => t.network === n).reduce((s, t) => s + t.amount, 0), color: NETWORK_COLORS[n] }));
   const totalMoMo = txns.reduce((s, t) => s + t.amount, 0);
 
+  const [submitting, setSubmitting] = useState(false);
+
   async function verify(id: string) {
-    setTxns(prev => prev.map(t => t.id === id ? { ...t, status: 'Verified' } : t));
-    const txn = txns.find(t => t.id === id);
-    await supabase.from('finance_payments').update({ status: 'Verified' }).eq('id', id);
-    supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `MoMo transaction ${id} verified — ${txn?.transactionId}`, performed_by: currentUser?.fullName || 'Finance', timestamp: new Date().toISOString() }]).then(() => {}, () => {});
-    addNotification?.(`MoMo transaction verified: ${txn?.transactionId}`);
-    setMenuOpen(null);
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      const txn = txns.find(t => t.id === id);
+      const { error } = await supabase.from('finance_payments').update({ status: 'Verified' }).eq('id', id);
+      if (error) throw error;
+      setTxns(prev => prev.map(t => t.id === id ? { ...t, status: 'Verified' } : t));
+      await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `MoMo transaction ${id} verified — ${txn?.transactionId}`, performed_by: currentUser?.fullName || 'Finance', timestamp: new Date().toISOString() }]);
+      addNotification?.(`MoMo transaction verified: ${txn?.transactionId}`);
+    } catch (e: any) {
+      alert(e.message || 'Failed to verify transaction.');
+    } finally {
+      setSubmitting(false);
+      setMenuOpen(null);
+    }
   }
 
   function openEditForm(t: MomoTxn) {
@@ -99,6 +110,8 @@ export default function FinanceMobileMoneyView({ addNotification, currentUser }:
 
   async function updateTxn() {
     if (!editTxn || !editForm.transactionId || !editForm.customerName || !editForm.amount) return;
+    if (submitting) return;
+    setSubmitting(true);
     try {
       const updatedAmount = parseFloat(editForm.amount) || 0;
       const { error } = await supabase.from('finance_payments')
@@ -114,26 +127,32 @@ export default function FinanceMobileMoneyView({ addNotification, currentUser }:
       if (error) throw error;
       setTxns(prev => prev.map(t => t.id === editTxn.id ? { ...t, transactionId: editForm.transactionId, network: editForm.network, customerName: editForm.customerName, momoNumber: editForm.momoNumber, amount: updatedAmount, date: editForm.date } : t));
       addNotification?.('MoMo transaction updated successfully.');
-      supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `MoMo transaction ${editTxn.id} updated`, performed_by: currentUser?.fullName || 'Finance', timestamp: new Date().toISOString() }]).then(() => {}, () => {});
+      await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `MoMo transaction ${editTxn.id} updated`, performed_by: currentUser?.fullName || 'Finance', timestamp: new Date().toISOString() }]);
+      setShowEditForm(false);
+      setEditTxn(null);
     } catch (err: any) {
       alert(err.message || 'Failed to update transaction.');
+    } finally {
+      setSubmitting(false);
     }
-    setShowEditForm(false);
-    setEditTxn(null);
   }
 
   async function deleteTxn(id: string) {
-    if (!window.confirm('Are you sure you want to delete this transaction record?')) return;
+    if (submitting) return;
+    if (!await window.confirm('Are you sure you want to delete this transaction record?')) return;
+    setSubmitting(true);
     try {
       const { error } = await supabase.from('finance_payments').delete().eq('id', id);
       if (error) throw error;
       setTxns(prev => prev.filter(t => t.id !== id));
       addNotification?.('Transaction record deleted successfully.');
-      supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `MoMo transaction ${id} deleted`, performed_by: currentUser?.fullName || 'Finance', timestamp: new Date().toISOString() }]).then(() => {}, () => {});
+      await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `MoMo transaction ${id} deleted`, performed_by: currentUser?.fullName || 'Finance', timestamp: new Date().toISOString() }]);
     } catch (err: any) {
       alert(err.message || 'Failed to delete transaction.');
+    } finally {
+      setSubmitting(false);
+      setMenuOpen(null);
     }
-    setMenuOpen(null);
   }
 
 
@@ -278,8 +297,8 @@ export default function FinanceMobileMoneyView({ addNotification, currentUser }:
               <div><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Date</label><input type="date" value={editForm.date} onChange={e => setEditForm(f => ({ ...f, date: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm focus:outline-none focus:border-[var(--accent)]" /></div>
             </div>
             <div className="flex items-center gap-3 justify-end mt-5">
-              <button onClick={() => setShowEditForm(false)} className="px-4 py-2 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--text-secondary)]">Cancel</button>
-              <button onClick={updateTxn} className="px-4 py-2 rounded-xl text-white text-sm font-medium hover:opacity-90" style={{ background: 'var(--accent)' }}>Save Changes</button>
+              <button onClick={() => setShowEditForm(false)} disabled={submitting} className="px-4 py-2 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--text-secondary)] disabled:opacity-50">Cancel</button>
+              <button onClick={updateTxn} disabled={submitting} className="px-4 py-2 rounded-xl text-white text-sm font-medium hover:opacity-90 disabled:opacity-50" style={{ background: 'var(--accent)' }}>{submitting ? 'Saving...' : 'Save Changes'}</button>
             </div>
           </div>
         </div>

@@ -80,6 +80,7 @@ export default function VisitorsView({ addNotification }: Props) {
   });
   const [showEdit, setShowEdit] = useState(false);
   const [editForm, setEditForm] = useState<VisitorRecord | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   const mapToUI = (db: any): VisitorRecord => ({
     id: db.id,
@@ -118,55 +119,75 @@ export default function VisitorsView({ addNotification }: Props) {
   });
 
   const handleCheckOut = async (id: string) => {
-    const now = new Date().toISOString();
-    await supabase.from('visitors').update({ check_out_time: now }).eq('id', id);
-    setVisitors(prev => prev.map(v => v.id === id ? { ...v, checkOutTime: now } : v));
-    addNotification('Visitor checked out');
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      const now = new Date().toISOString();
+      const { error } = await supabase.from('visitors').update({ check_out_time: now }).eq('id', id);
+      if (!error) {
+        setVisitors(prev => prev.map(v => v.id === id ? { ...v, checkOutTime: now } : v));
+        addNotification('Visitor checked out');
+      } else {
+        alert(error.message || 'Failed to check out visitor');
+      }
+    } catch (e: any) {
+      alert(e.message || 'Error checking out visitor');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleAdd = async () => {
-    if (!form.fullName.trim()) return;
-    const newVisitor: VisitorRecord = {
-      id: Date.now().toString(),
-      fullName: form.fullName,
-      company: form.company,
-      purpose: form.purpose,
-      hostName: form.hostName,
-      checkInTime: new Date().toISOString(),
-      expectedTime: form.expectedTime || undefined,
-      badgeNumber: `V-${String(visitors.length + 1).padStart(3, '0')}`,
-      idType: form.idType,
-      idNumber: form.idNumber,
-      notes: form.notes,
-    };
-    
-    const dbVisitor = {
-      id: newVisitor.id,
-      full_name: newVisitor.fullName,
-      company: newVisitor.company,
-      purpose: newVisitor.purpose,
-      host_name: newVisitor.hostName,
-      check_in_time: newVisitor.checkInTime,
-      badge_number: newVisitor.badgeNumber,
-      notes: newVisitor.notes,
-      status: 'inside'
-    };
+    if (!form.fullName.trim() || submitting) return;
+    setSubmitting(true);
+    try {
+      const newVisitor: VisitorRecord = {
+        id: Date.now().toString(),
+        fullName: form.fullName,
+        company: form.company,
+        purpose: form.purpose,
+        hostName: form.hostName,
+        checkInTime: new Date().toISOString(),
+        expectedTime: form.expectedTime || undefined,
+        badgeNumber: `V-${String(visitors.length + 1).padStart(3, '0')}`,
+        idType: form.idType,
+        idNumber: form.idNumber,
+        notes: form.notes,
+      };
+      
+      const dbVisitor = {
+        id: newVisitor.id,
+        full_name: newVisitor.fullName,
+        company: newVisitor.company,
+        purpose: newVisitor.purpose,
+        host_name: newVisitor.hostName,
+        check_in_time: newVisitor.checkInTime,
+        badge_number: newVisitor.badgeNumber,
+        notes: newVisitor.notes,
+        status: 'inside'
+      };
 
-    const { error } = await supabase.from('visitors').insert([dbVisitor]);
-    if (!error) {
-      setVisitors(prev => [newVisitor, ...prev]);
-      supabase.from('supplier_order_notifications').insert([{
-        order_id: newVisitor.id,
-        message: `Visitor ${form.fullName} (${form.purpose}) has arrived to see ${form.hostName}. Badge: ${newVisitor.badgeNumber}`,
-        notified_department: 'ALL',
-        read: false,
-        created_at: new Date().toISOString(),
-      }]).then(() => {}, () => {});
-      addNotification(`Visitor ${form.fullName} checked in — Badge: ${newVisitor.badgeNumber}`);
-      setShowAdd(false);
-      setForm({ fullName: '', company: '', purpose: 'Business Meeting', hostName: '', expectedTime: '', idType: 'Ghana Card', idNumber: '', notes: '' });
-    } else {
-      alert(error.message || 'Failed to check in visitor');
+      const { error } = await supabase.from('visitors').insert([dbVisitor]);
+      if (!error) {
+        setVisitors(prev => [newVisitor, ...prev]);
+        await supabase.from('supplier_order_notifications').insert([{
+          order_id: newVisitor.id,
+          message: `Visitor ${form.fullName} (${form.purpose}) has arrived to see ${form.hostName}. Badge: ${newVisitor.badgeNumber}`,
+          notified_department: 'ALL',
+          read: false,
+          created_at: new Date().toISOString(),
+        }]);
+        addNotification(`Visitor ${form.fullName} checked in — Badge: ${newVisitor.badgeNumber}`);
+        setShowAdd(false);
+        setForm({ fullName: '', company: '', purpose: 'Business Meeting', hostName: '', expectedTime: '', idType: 'Ghana Card', idNumber: '', notes: '' });
+      } else {
+        alert(error.message || 'Failed to check in visitor');
+      }
+    } catch (e: any) {
+      console.error(e);
+      alert(e.message || 'Failed to check in visitor');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -177,34 +198,50 @@ export default function VisitorsView({ addNotification }: Props) {
 
   const handleEditSave = async () => {
     if (!editForm) return;
-    const { error } = await supabase.from('visitors').update({
-      full_name: editForm.fullName,
-      company: editForm.company,
-      purpose: editForm.purpose,
-      host_name: editForm.hostName,
-      check_in_time: editForm.checkInTime,
-      check_out_time: editForm.checkOutTime || null,
-      notes: editForm.notes
-    }).eq('id', editForm.id);
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      const { error } = await supabase.from('visitors').update({
+        full_name: editForm.fullName,
+        company: editForm.company,
+        purpose: editForm.purpose,
+        host_name: editForm.hostName,
+        check_in_time: editForm.checkInTime,
+        check_out_time: editForm.checkOutTime || null,
+        notes: editForm.notes
+      }).eq('id', editForm.id);
 
-    if (!error) {
-      setVisitors(prev => prev.map(v => v.id === editForm.id ? editForm : v));
-      addNotification(`Visitor ${editForm.fullName} updated`);
-      setShowEdit(false);
-      setEditForm(null);
-    } else {
-      alert(error.message || 'Failed to update visitor');
+      if (!error) {
+        setVisitors(prev => prev.map(v => v.id === editForm.id ? editForm : v));
+        addNotification(`Visitor ${editForm.fullName} updated`);
+        setShowEdit(false);
+        setEditForm(null);
+      } else {
+        alert(error.message || 'Failed to update visitor');
+      }
+    } catch (e: any) {
+      alert(e.message || 'Error updating visitor');
+    } finally {
+      setSubmitting(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this visitor record?')) return;
-    const { error } = await supabase.from('visitors').delete().eq('id', id);
-    if (!error) {
-      setVisitors(prev => prev.filter(v => v.id !== id));
-      addNotification('Visitor record deleted');
-    } else {
-      alert(error.message || 'Failed to delete visitor record');
+    if (submitting) return;
+    if (!await confirm('Are you sure you want to delete this visitor record?')) return;
+    setSubmitting(true);
+    try {
+      const { error } = await supabase.from('visitors').delete().eq('id', id);
+      if (!error) {
+        setVisitors(prev => prev.filter(v => v.id !== id));
+        addNotification('Visitor record deleted');
+      } else {
+        alert(error.message || 'Failed to delete visitor record');
+      }
+    } catch (e: any) {
+      alert(e.message || 'Error deleting visitor record');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -405,10 +442,10 @@ export default function VisitorsView({ addNotification }: Props) {
               </div>
             </div>
             <div className="flex gap-2 mt-4 justify-end">
-              <button onClick={() => setShowAdd(false)} className="px-4 py-2 border border-[var(--border)] rounded-xl text-xs text-[var(--text-secondary)] cursor-pointer">Cancel</button>
-              <button onClick={handleAdd} disabled={!form.fullName.trim() || !form.hostName.trim()}
-                className="px-4 py-2 bg-[var(--accent)] text-white rounded-xl text-xs font-bold cursor-pointer hover:opacity-90 disabled:opacity-50">
-                Check In
+              <button disabled={submitting} onClick={() => setShowAdd(false)} className="px-4 py-2 border border-[var(--border)] rounded-xl text-xs text-[var(--text-secondary)] cursor-pointer disabled:opacity-50">Cancel</button>
+              <button onClick={handleAdd} disabled={!form.fullName.trim() || !form.hostName.trim() || submitting}
+                className="px-4 py-2 bg-[var(--accent)] text-white rounded-xl text-xs font-bold cursor-pointer hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed">
+                {submitting ? 'Checking in...' : 'Check In'}
               </button>
             </div>
           </div>
@@ -531,13 +568,13 @@ export default function VisitorsView({ addNotification }: Props) {
               </div>
             </div>
             <div className="flex gap-2 mt-5 justify-end">
-              <button onClick={() => { setShowEdit(false); setEditForm(null); }}
-                className="px-4 py-2 text-xs border border-[var(--border)] rounded-xl text-[var(--text-secondary)] hover:bg-[var(--accent-light)] cursor-pointer">
+              <button onClick={() => { setShowEdit(false); setEditForm(null); }} disabled={submitting}
+                className="px-4 py-2 text-xs border border-[var(--border)] rounded-xl text-[var(--text-secondary)] hover:bg-[var(--accent-light)] cursor-pointer disabled:opacity-50">
                 Cancel
               </button>
-              <button onClick={handleEditSave}
-                className="px-4 py-2 text-xs bg-[var(--accent)] text-white rounded-xl font-semibold hover:opacity-90 cursor-pointer">
-                Save Changes
+              <button onClick={handleEditSave} disabled={submitting}
+                className="px-4 py-2 text-xs bg-[var(--accent)] text-white rounded-xl font-semibold hover:opacity-90 cursor-pointer disabled:opacity-50">
+                {submitting ? 'Saving...' : 'Save Changes'}
               </button>
             </div>
           </div>

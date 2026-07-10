@@ -350,13 +350,12 @@ export default function ApprovedGoodsView({ addNotification, setActiveSubTab: _s
         status: 'ASSIGNED',
         timestamp: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-      }).then(() => {}, () => {});
+      });
 
       // 2. Move order to OUT_FOR_DELIVERY
       await supabase.from('orders')
         .update({ status: 'OUT_FOR_DELIVERY', updated_at: new Date().toISOString() })
-        .eq('id', dispatchTarget.id)
-        .then(() => {}, () => {});
+        .eq('id', dispatchTarget.id);
 
       // Note: Stock table and stock ledger are updated immediately upon Finance payment approval.
       // Dispatch only updates delivery logs, global audits, and status to avoid double-deductions.
@@ -369,7 +368,7 @@ export default function ApprovedGoodsView({ addNotification, setActiveSubTab: _s
         user_id: currentUserId,
         details: `Order ${dispatchTarget.ticketNumber} loaded to dispatch. Product: ${dispatchTarget.productName}, Qty: ${totalQty}, Client: ${dispatchTarget.clientName}, Destination: ${dispatchTarget.destination}. Vehicle: ${dispatchForm.vehicleId || 'TBD'}, Driver: ${dispatchForm.driverName || 'TBD'}.`,
         timestamp: new Date().toISOString(),
-      }).then(() => {}, () => {});
+      });
 
       // 5. Update local state
       setOrders(prev => prev.map(o =>

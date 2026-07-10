@@ -89,6 +89,7 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
   const [form, setForm] = useState({ clientName: '', destination: '', paymentMode: 'CASH' as Order['paymentMode'] });
   const [lineItems, setLineItems] = useState<{ productName: string; quantity: number }[]>([{ productName: '', quantity: 1 }]);
   const [availableProducts, setAvailableProducts] = useState<string[]>([]);
+  const [submitting, setSubmitting] = useState(false);
 
   const mapOrder = (r: any): Order => ({
     id: r.id,
@@ -146,53 +147,62 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
   const active = orders.filter(o => o.status === 'PROCESSING' || o.status === 'DELIVERED').length;
 
   const handleSave = async () => {
+    if (submitting) return;
     if (!form.clientName.trim()) { addNotification('Customer name is required.'); return; }
     const validItems = lineItems.filter(item => item.productName.trim());
     if (validItems.length === 0) { addNotification('Add at least one product.'); return; }
 
-    const ticketNumber = `TKT-${Math.floor(10000 + Math.random() * 90000)}`;
-    const now = new Date().toISOString();
+    setSubmitting(true);
+    try {
+      const ticketNumber = `TKT-${Math.floor(10000 + Math.random() * 90000)}`;
+      const now = new Date().toISOString();
 
-    // Build line items with pricing
-    const itemsWithPricing = validItems.map(item => {
-      const unitPrice = productPrices[item.productName] ?? 0;
-      const qty = Math.max(1, item.quantity);
-      return { productName: item.productName, quantity: qty, unitPrice, lineTotal: unitPrice * qty };
-    });
-    const orderTotal = itemsWithPricing.reduce((s, i) => s + i.lineTotal, 0);
+      // Build line items with pricing
+      const itemsWithPricing = validItems.map(item => {
+        const unitPrice = productPrices[item.productName] ?? 0;
+        const qty = Math.max(1, item.quantity);
+        return { productName: item.productName, quantity: qty, unitPrice, lineTotal: unitPrice * qty };
+      });
+      const orderTotal = itemsWithPricing.reduce((s, i) => s + i.lineTotal, 0);
 
-    // Single product name display: one product → its name, multiple → "Product A + 2 more"
-    const primaryProduct = itemsWithPricing[0].productName;
-    const productDisplay = itemsWithPricing.length === 1
-      ? primaryProduct
-      : `${primaryProduct} + ${itemsWithPricing.length - 1} more`;
+      // Single product name display: one product → its name, multiple → "Product A + 2 more"
+      const primaryProduct = itemsWithPricing[0].productName;
+      const productDisplay = itemsWithPricing.length === 1
+        ? primaryProduct
+        : `${primaryProduct} + ${itemsWithPricing.length - 1} more`;
 
-    const { data: inserted, error } = await supabase.from('orders').insert({
-      ticket_number: ticketNumber,
-      client_name: form.clientName.trim(),
-      product_name: productDisplay,
-      destination: form.destination || null,
-      payment_mode: form.paymentMode,
-      total_amount: orderTotal,
-      status: 'PENDING_FINANCE',
-      created_at: now,
-      updated_at: now,
-      metadata: { items: itemsWithPricing },
-    }).select().single();
+      const { data: inserted, error } = await supabase.from('orders').insert({
+        ticket_number: ticketNumber,
+        client_name: form.clientName.trim(),
+        product_name: productDisplay,
+        destination: form.destination || null,
+        payment_mode: form.paymentMode,
+        total_amount: orderTotal,
+        status: 'PENDING_FINANCE',
+        created_at: now,
+        updated_at: now,
+        metadata: { items: itemsWithPricing },
+      }).select().single();
 
-    if (error) { addNotification(`Failed to create order: ${error.message}`); return; }
-    const newOrder = mapOrder(inserted || {
-      id: `ord-${Date.now()}`, ticket_number: ticketNumber,
-      client_name: form.clientName, product_name: productDisplay,
-      destination: form.destination, payment_mode: form.paymentMode,
-      total_amount: orderTotal, status: 'PENDING_FINANCE', created_at: now,
-    });
-    onCreateOrder(newOrder);
-    setOrders(prev => [newOrder, ...prev]);
-    setShowNewModal(false);
-    setLineItems([{ productName: '', quantity: 1 }]);
-    setForm({ clientName: '', destination: '', paymentMode: 'CASH' });
-    addNotification('Order created successfully. Routed to Finance for review.');
+      if (error) { addNotification(`Failed to create order: ${error.message}`); return; }
+      const newOrder = mapOrder(inserted || {
+        id: `ord-${Date.now()}`, ticket_number: ticketNumber,
+        client_name: form.clientName, product_name: productDisplay,
+        destination: form.destination, payment_mode: form.paymentMode,
+        total_amount: orderTotal, status: 'PENDING_FINANCE', created_at: now,
+      });
+      onCreateOrder(newOrder);
+      setOrders(prev => [newOrder, ...prev]);
+      setShowNewModal(false);
+      setLineItems([{ productName: '', quantity: 1 }]);
+      setForm({ clientName: '', destination: '', paymentMode: 'CASH' });
+      addNotification('Order created successfully. Routed to Finance for review.');
+    } catch (e: any) {
+      console.error(e);
+      addNotification(`Error creating order: ${e.message}`);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const exportCSV = () => {
@@ -454,9 +464,13 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
 
               {/* Footer */}
               <div className="flex gap-3 px-6 py-4 shrink-0 border-t border-[var(--border)]">
-                <button onClick={() => setShowNewModal(false)} className="flex-1 py-2 rounded-xl border border-[var(--border)] text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-input)]">Cancel</button>
-                <button onClick={handleSave} className="flex-1 py-2 rounded-xl bg-[var(--accent)] text-white text-sm font-semibold hover:opacity-90">
-                  Save Order{lineItems.filter(i => i.productName).length > 1 ? `s (${lineItems.filter(i => i.productName).length})` : ''}
+                <button disabled={submitting} onClick={() => setShowNewModal(false)} className="flex-1 py-2 rounded-xl border border-[var(--border)] text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-input)] disabled:opacity-50">Cancel</button>
+                <button
+                  disabled={submitting}
+                  onClick={handleSave}
+                  className="flex-1 py-2 rounded-xl bg-[var(--accent)] text-white text-sm font-semibold hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {submitting ? 'Saving...' : `Save Order${lineItems.filter(i => i.productName).length > 1 ? `s (${lineItems.filter(i => i.productName).length})` : ''}`}
                 </button>
               </div>
             </div>

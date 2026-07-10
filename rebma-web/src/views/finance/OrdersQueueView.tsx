@@ -103,6 +103,7 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
   const [payForm, setPayForm] = useState<PaymentForm>({ ...EMPTY_FORM });
   const [allOrders, setAllOrders] = useState<Order[]>([]);
   const [isPartPayment, setIsPartPayment] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (selected) {
@@ -159,129 +160,151 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
   const approvedValue = approved.reduce((s, o) => s + o.totalAmount, 0);
   const deliveredValue = delivered.reduce((s, o) => s + o.totalAmount, 0);
 
-  async function approveOrder(order: Order) {
-    const updatedStatus = 'APPROVED' as const;
-    const updateLocal = (prev: Order[]) => prev.map(o => o.id === order.id ? { ...o, status: updatedStatus } : o);
-    setAllOrders(updateLocal);
-    setOrdersList?.(prev => prev.map(o => o.id === order.id ? { ...o, status: updatedStatus } : o));
-    onEvaluateOrder?.(order.id, true);
-
-    // Get current user for audit trail
-    const { data: sessionData } = await supabase.auth.getSession();
-    const userId = sessionData?.session?.user?.id || '';
-    const performedBy = currentUser?.fullName || 'Finance';
-    const now = new Date().toISOString();
-
-    supabase.from('orders').update({ status: updatedStatus }).eq('id', order.id).then(() => {}, () => {});
-    supabase.from('delivery_logs').insert([{
-      order_id: order.id,
-      customer_name: order.clientName,
-      delivery_address: order.destination || order.clientName,
-      status: 'PENDING_ASSIGNMENT',
-      created_at: now,
-    }]).then(() => {}, () => {});
-    supabase.from('supplier_order_notifications').insert([
-      { order_id: order.id, message: `Finance approved order ${order.ticketNumber || order.id} for ${order.clientName}. Please prepare goods for dispatch.`, notified_department: 'OPERATIONS', read: false },
-      { order_id: order.id, message: `Your order ${order.ticketNumber || order.id} has been approved by Finance. Operations is preparing your goods.`, notified_department: 'MARKETING', read: false },
-      { order_id: order.id, message: `Order ${order.ticketNumber || order.id} for ${order.clientName} is ready for delivery assignment.`, notified_department: 'DISPATCH', read: false },
-    ]).then(() => {}, () => {});
-    supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Order ${order.ticketNumber || order.id} APPROVED for ${order.clientName} — GHS ${(Number(order.totalAmount ?? 0)).toLocaleString()}`, performed_by: performedBy, timestamp: now }]).then(() => {}, () => {});
-    // NOTE: finance_payments is written by savePaymentAndApprove() with full payment details (receipt no., cheque/momo info, etc.)
-    // Do NOT insert a second record here — that would double-count revenue in cash flow & account summaries.
-
-    // Write REMOVE stock_ledger entries and decrement stock for each sold item
+  async function approveOrder(order: Order, updatedStatus: Order['status'] = 'APPROVED') {
+    if (submitting) return;
+    setSubmitting(true);
     try {
-      const metaItems: { productName: string; quantity: number }[] = order.metadata?.items || [];
-      const ticketRef = order.ticketNumber || `ORD-${order.id.slice(0, 6).toUpperCase()}`;
-      const notesBase = `Sold to: ${order.clientName} · Finance Approved`;
+      const updateLocal = (prev: Order[]) => prev.map(o => o.id === order.id ? { ...o, status: updatedStatus } : o);
+      setAllOrders(updateLocal);
+      setOrdersList?.(prev => prev.map(o => o.id === order.id ? { ...o, status: updatedStatus } : o));
+      onEvaluateOrder?.(order.id, true);
 
-      if (metaItems.length > 0) {
-        for (const item of metaItems) {
-          if (!item.productName) continue;
-          const qty = Number(item.quantity) || 1;
+      // Get current user for audit trail
+      const { data: sessionData } = await supabase.auth.getSession();
+      const userId = sessionData?.session?.user?.id || '';
+      const performedBy = currentUser?.fullName || 'Finance';
+      const now = new Date().toISOString();
 
-          // Stock ledger REMOVE
-          supabase.from('stock_ledger').insert({
-            product_name: item.productName,
+      await supabase.from('orders').update({ status: updatedStatus }).eq('id', order.id);
+      await supabase.from('delivery_logs').insert([{
+        order_id: order.id,
+        customer_name: order.clientName,
+        delivery_address: order.destination || order.clientName,
+        status: 'PENDING_ASSIGNMENT',
+        created_at: now,
+      }]);
+      await supabase.from('supplier_order_notifications').insert([
+        { order_id: order.id, message: `Finance approved order ${order.ticketNumber || order.id} for ${order.clientName}. Please prepare goods for dispatch.`, notified_department: 'OPERATIONS', read: false },
+        { order_id: order.id, message: `Your order ${order.ticketNumber || order.id} has been approved by Finance. Operations is preparing your goods.`, notified_department: 'MARKETING', read: false },
+        { order_id: order.id, message: `Order ${order.ticketNumber || order.id} for ${order.clientName} is ready for delivery assignment.`, notified_department: 'DISPATCH', read: false },
+      ]);
+      await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Order ${order.ticketNumber || order.id} APPROVED for ${order.clientName} — GHS ${(Number(order.totalAmount ?? 0)).toLocaleString()}`, performed_by: performedBy, timestamp: now }]);
+
+      // Write REMOVE stock_ledger entries and decrement stock for each sold item
+      try {
+        const metaItems: { productName: string; quantity: number }[] = order.metadata?.items || [];
+        const ticketRef = order.ticketNumber || `ORD-${order.id.slice(0, 6).toUpperCase()}`;
+        const notesBase = `Sold to: ${order.clientName} · Finance Approved`;
+
+        if (metaItems.length > 0) {
+          for (const item of metaItems) {
+            if (!item.productName) continue;
+            const qty = Number(item.quantity) || 1;
+
+            // Stock ledger REMOVE
+            await supabase.from('stock_ledger').insert({
+              product_name: item.productName,
+              movement_type: 'REMOVE',
+              quantity: qty,
+              reference: `Order Approved: ${ticketRef}`,
+              notes: notesBase,
+              performed_by: performedBy,
+              created_at: now,
+            });
+
+            // Decrement stock table
+            const { data: existing } = await supabase.from('stock').select('id, quantity').eq('product_name', item.productName).limit(1);
+            if (existing && existing.length > 0) {
+              const newQty = Math.max(0, (existing[0].quantity || 0) - qty);
+              await supabase.from('stock').update({ quantity: newQty, last_updated: now, updated_by: userId }).eq('id', existing[0].id);
+            }
+          }
+        } else if (order.productName) {
+          // Legacy single-item order
+          const qty = order.quantity || 1;
+          await supabase.from('stock_ledger').insert({
+            product_name: order.productName,
             movement_type: 'REMOVE',
             quantity: qty,
             reference: `Order Approved: ${ticketRef}`,
             notes: notesBase,
             performed_by: performedBy,
             created_at: now,
-          }).then(() => {}, () => {});
+          });
 
-          // Decrement stock table
-          const { data: existing } = await supabase.from('stock').select('id, quantity').eq('product_name', item.productName).limit(1);
+          const { data: existing } = await supabase.from('stock').select('id, quantity').eq('product_name', order.productName).limit(1);
           if (existing && existing.length > 0) {
             const newQty = Math.max(0, (existing[0].quantity || 0) - qty);
-            supabase.from('stock').update({ quantity: newQty, last_updated: now, updated_by: userId }).eq('id', existing[0].id).then(() => {}, () => {});
+            await supabase.from('stock').update({ quantity: newQty, last_updated: now, updated_by: userId }).eq('id', existing[0].id);
           }
         }
-      } else if (order.productName) {
-        // Legacy single-item order
-        const qty = order.quantity || 1;
-        supabase.from('stock_ledger').insert({
-          product_name: order.productName,
-          movement_type: 'REMOVE',
-          quantity: qty,
-          reference: `Order Approved: ${ticketRef}`,
-          notes: notesBase,
-          performed_by: performedBy,
-          created_at: now,
-        }).then(() => {}, () => {});
-
-        const { data: existing } = await supabase.from('stock').select('id, quantity').eq('product_name', order.productName).limit(1);
-        if (existing && existing.length > 0) {
-          const newQty = Math.max(0, (existing[0].quantity || 0) - qty);
-          supabase.from('stock').update({ quantity: newQty, last_updated: now, updated_by: userId }).eq('id', existing[0].id).then(() => {}, () => {});
-        }
+      } catch (e) {
+        console.error('Stock ledger update failed during approval:', e);
       }
+
+      addNotification?.(`Order ${order.ticketNumber || order.id} approved. Stock updated. Operations notified.`);
+      setSelected(null);
     } catch (e) {
-      console.error('Stock ledger update failed during approval:', e);
+      console.error(e);
+    } finally {
+      setSubmitting(false);
     }
-
-    addNotification?.(`Order ${order.ticketNumber || order.id} approved. Stock updated. Operations notified.`);
-    setSelected(null);
   }
 
-  function rejectOrder(id: string) {
-    const updateLocal = (prev: Order[]) => prev.map(o => o.id === id ? { ...o, status: 'REJECTED' as const } : o);
-    setAllOrders(updateLocal);
-    setOrdersList?.(prev => prev.map(o => o.id === id ? { ...o, status: 'REJECTED' as const } : o));
-    onEvaluateOrder?.(id, false);
+  async function rejectOrder(id: string) {
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      const updateLocal = (prev: Order[]) => prev.map(o => o.id === id ? { ...o, status: 'REJECTED' as const } : o);
+      setAllOrders(updateLocal);
+      setOrdersList?.(prev => prev.map(o => o.id === id ? { ...o, status: 'REJECTED' as const } : o));
+      onEvaluateOrder?.(id, false);
 
-    supabase.from('orders').update({ status: 'REJECTED', reject_reason: rejectReason }).eq('id', id).then(() => {}, () => {});
-    supabase.from('supplier_order_notifications').insert([{ order_id: id, message: `Order ${id} rejected by Finance. Reason: ${rejectReason}`, notified_department: 'MARKETING', read: false }]).then(() => {}, () => {});
-    supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Order ${id} REJECTED. Reason: ${rejectReason}`, performed_by: currentUser?.fullName || 'Finance', timestamp: new Date().toISOString() }]).then(() => {}, () => {});
+      await supabase.from('orders').update({ status: 'REJECTED', reject_reason: rejectReason }).eq('id', id);
+      await supabase.from('supplier_order_notifications').insert([{ order_id: id, message: `Order ${id} rejected by Finance. Reason: ${rejectReason}`, notified_department: 'MARKETING', read: false }]);
+      await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Order ${id} REJECTED. Reason: ${rejectReason}`, performed_by: currentUser?.fullName || 'Finance', timestamp: new Date().toISOString() }]);
 
-    addNotification?.(`Order ${id} rejected.`);
-    setRejectModal(null);
-    setRejectReason('');
-    setSelected(null);
+      addNotification?.(`Order ${id} rejected.`);
+      setRejectModal(null);
+      setRejectReason('');
+      setSelected(null);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setSubmitting(false);
+    }
   }
 
-  function savePaymentAndApprove(order: Order) {
-    const paymentRecord = {
-      order_id: order.id,
-      client_name: order.clientName,
-      amount: Number(payForm.amountReceived || order.totalAmount),
-      payment_mode: order.paymentMode,
-      payment_type: isPartPayment ? 'Part Payment' : 'Full Payment',
-      cheque_number: payForm.chequeNumber || null,
-      bank_name: payForm.bankName || null,
-      momo_number: payForm.momoNumber || null,
-      transaction_id: payForm.transactionId || null,
-      ghana_card_number: payForm.ghanaCardNumber || null,
-      due_date: payForm.dueDate || null,
-      receipt_number: payForm.receiptNumber,
-      notes: payForm.notes,
-      recorded_by: currentUser?.fullName || 'Finance',
-      created_at: new Date().toISOString(),
-      status: 'CONFIRMED',
-    };
-    supabase.from('finance_payments').insert([paymentRecord]).then(() => {}, () => {});
-    approveOrder(order);
+  async function savePaymentAndApprove(order: Order) {
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      const paymentRecord = {
+        order_id: order.id,
+        client_name: order.clientName,
+        amount: Number(payForm.amountReceived || order.totalAmount),
+        payment_mode: order.paymentMode,
+        payment_type: isPartPayment ? 'Part Payment' : 'Full Payment',
+        cheque_number: payForm.chequeNumber || null,
+        bank_name: payForm.bankName || null,
+        momo_number: payForm.momoNumber || null,
+        transaction_id: payForm.transactionId || null,
+        ghana_card_number: payForm.ghanaCardNumber || null,
+        due_date: payForm.dueDate || null,
+        receipt_number: payForm.receiptNumber,
+        notes: payForm.notes,
+        recorded_by: currentUser?.fullName || 'Finance',
+        created_at: new Date().toISOString(),
+        status: 'CONFIRMED',
+      };
+      await supabase.from('finance_payments').insert([paymentRecord]);
+      // Note: approveOrder sets submitting to false upon completion
+      setSubmitting(false);
+      await approveOrder(order);
+    } catch (e) {
+      console.error(e);
+      setSubmitting(false);
+    }
   }
 
   const pMode = (selected?.paymentMode || 'CASH') as PaymentMode;
@@ -317,7 +340,7 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
     }
 
     const isCashOrMoMoOrCheque = ['CASH', 'MOBILE_MONEY', 'CHEQUE'].includes(pMode);
-    const isSubmitDisabled = isCashOrMoMoOrCheque && isAmountInvalid;
+    const isSubmitDisabled = (isCashOrMoMoOrCheque && isAmountInvalid) || submitting;
 
     return (
       <div className="p-4 md:p-6 space-y-5">
@@ -526,7 +549,11 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
               )}
 
               <div className="flex items-center gap-3 pt-2">
-                <button onClick={() => setRejectModal(selected.id)} className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-red-500 text-white text-sm font-medium hover:bg-red-600">
+                <button
+                  disabled={submitting}
+                  onClick={() => setRejectModal(selected.id)}
+                  className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-red-500 text-white text-sm font-medium hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
                   <XCircle size={16} /> Reject Order
                 </button>
                 <button
@@ -537,7 +564,7 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
                   }`}
                   style={!isSubmitDisabled ? { background: 'var(--accent)' } : undefined}
                 >
-                  <CheckCircle size={16} /> Approve & Save Payment
+                  <CheckCircle size={16} /> {submitting ? 'Approving...' : 'Approve & Save Payment'}
                 </button>
               </div>
             </div>

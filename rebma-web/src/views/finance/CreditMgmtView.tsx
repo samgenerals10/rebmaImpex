@@ -102,11 +102,22 @@ export default function FinanceCreditMgmtView({ addNotification, currentUser }: 
     setReminderMsg(`Dear ${item.customerName},\n\nYour payment of GHS ${item.outstanding.toLocaleString()} for order ${item.orderRef} was due on ${item.dueDate}. Please make payment at your earliest convenience.\n\nREBMA IMPEX Finance Department.`);
   }
 
-  function sendReminder() {
+  const [submitting, setSubmitting] = useState(false);
+
+  async function sendReminder() {
     if (!reminderModal) return;
-    supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Payment reminder sent to ${reminderModal.customerName} via ${reminderType} for order ${reminderModal.orderRef}`, performed_by: currentUser?.fullName || 'Finance', timestamp: new Date().toISOString() }]).then(() => {}, () => {});
-    addNotification?.(`Reminder sent to ${reminderModal.customerName} via ${reminderType}`);
-    setReminderModal(null);
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      const { error } = await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Payment reminder sent to ${reminderModal.customerName} via ${reminderType} for order ${reminderModal.orderRef}`, performed_by: currentUser?.fullName || 'Finance', timestamp: new Date().toISOString() }]);
+      if (error) throw error;
+      addNotification?.(`Reminder sent to ${reminderModal.customerName} via ${reminderType}`);
+      setReminderModal(null);
+    } catch (e: any) {
+      alert(e.message || 'Failed to send reminder.');
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   function openEditForm(item: CreditEntry) {
@@ -124,6 +135,8 @@ export default function FinanceCreditMgmtView({ addNotification, currentUser }: 
 
   async function updateCredit() {
     if (!editItem || !editForm.clientName || !editForm.totalAmount) return;
+    if (submitting) return;
+    setSubmitting(true);
     try {
       const totalAmt = parseFloat(editForm.totalAmount) || 0;
       const amtPaid = parseFloat(editForm.amountPaid) || 0;
@@ -163,41 +176,57 @@ export default function FinanceCreditMgmtView({ addNotification, currentUser }: 
         };
       }));
       addNotification?.('Credit order updated successfully.');
-      supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Credit order ${editItem.id} updated`, performed_by: currentUser?.fullName || 'Finance', timestamp: new Date().toISOString() }]).then(() => {}, () => {});
+      await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Credit order ${editItem.id} updated`, performed_by: currentUser?.fullName || 'Finance', timestamp: new Date().toISOString() }]);
+      setShowEditForm(false);
+      setEditItem(null);
     } catch (err: any) {
       alert(err.message || 'Failed to update credit order.');
+    } finally {
+      setSubmitting(false);
     }
-    setShowEditForm(false);
-    setEditItem(null);
   }
 
   async function deleteCredit(id: string) {
-    if (!window.confirm('Are you sure you want to delete this credit order record?')) return;
+    if (submitting) return;
+    if (!await window.confirm('Are you sure you want to delete this credit order record?')) return;
+    setSubmitting(true);
     try {
       const { error } = await supabase.from('orders').delete().eq('id', id);
       if (error) throw error;
       setItems(prev => prev.filter(i => i.id !== id));
       addNotification?.('Credit order deleted successfully.');
-      supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Credit order ${id} deleted`, performed_by: currentUser?.fullName || 'Finance', timestamp: new Date().toISOString() }]).then(() => {}, () => {});
+      await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Credit order ${id} deleted`, performed_by: currentUser?.fullName || 'Finance', timestamp: new Date().toISOString() }]);
     } catch (err: any) {
       alert(err.message || 'Failed to delete credit order.');
+    } finally {
+      setSubmitting(false);
+      setMenuOpen(null);
     }
-    setMenuOpen(null);
   }
 
-  function recordPayment() {
+  async function recordPayment() {
     if (!payModal || !payAmount) return;
-    const amount = parseFloat(payAmount);
-    setItems(prev => prev.map(i => {
-      if (i.id !== payModal.id) return i;
-      const newPaid = i.amountPaid + amount;
-      const newOutstanding = Math.max(0, i.outstanding - amount);
-      return { ...i, amountPaid: newPaid, outstanding: newOutstanding, status: newOutstanding === 0 ? 'Paid' : i.status };
-    }));
-    supabase.from('finance_payments').insert([{ client_name: payModal.customerName, amount, payment_mode: 'CASH', order_ref: payModal.orderRef, payment_type: 'CREDIT_SETTLEMENT', recorded_by: currentUser?.fullName || 'Finance', timestamp: payDate }]).then(() => {}, () => {});
-    addNotification?.(`Payment of GHS ${amount.toLocaleString()} recorded for ${payModal.customerName}`);
-    setPayModal(null);
-    setPayAmount('');
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      const amount = parseFloat(payAmount);
+      const { error } = await supabase.from('finance_payments').insert([{ client_name: payModal.customerName, amount, payment_mode: 'CASH', order_ref: payModal.orderRef, payment_type: 'CREDIT_SETTLEMENT', recorded_by: currentUser?.fullName || 'Finance', timestamp: payDate }]);
+      if (error) throw error;
+      
+      setItems(prev => prev.map(i => {
+        if (i.id !== payModal.id) return i;
+        const newPaid = i.amountPaid + amount;
+        const newOutstanding = Math.max(0, i.outstanding - amount);
+        return { ...i, amountPaid: newPaid, outstanding: newOutstanding, status: newOutstanding === 0 ? 'Paid' : i.status };
+      }));
+      addNotification?.(`Payment of GHS ${amount.toLocaleString()} recorded for ${payModal.customerName}`);
+      setPayModal(null);
+      setPayAmount('');
+    } catch (e: any) {
+      alert(e.message || 'Failed to record payment.');
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   if (selected) {
@@ -354,8 +383,8 @@ export default function FinanceCreditMgmtView({ addNotification, currentUser }: 
             </div>
             <textarea value={reminderMsg} onChange={e => setReminderMsg(e.target.value)} rows={6} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)] resize-none mb-4" />
             <div className="flex items-center gap-3 justify-end">
-              <button onClick={() => setReminderModal(null)} className="px-4 py-2 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--text-secondary)]">Cancel</button>
-              <button onClick={sendReminder} className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-white text-sm font-medium hover:opacity-90" style={{ background: 'var(--accent)' }}><Send size={14} /> Send</button>
+              <button onClick={() => setReminderModal(null)} disabled={submitting} className="px-4 py-2 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--text-secondary)] disabled:opacity-50">Cancel</button>
+              <button onClick={sendReminder} disabled={submitting} className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-white text-sm font-medium disabled:opacity-50 hover:opacity-90" style={{ background: 'var(--accent)' }}><Send size={14} /> {submitting ? 'Sending...' : 'Send'}</button>
             </div>
           </div>
         </div>
@@ -372,8 +401,8 @@ export default function FinanceCreditMgmtView({ addNotification, currentUser }: 
               <div><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Date</label><input type="date" value={payDate} onChange={e => setPayDate(e.target.value)} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm focus:outline-none focus:border-[var(--accent)]" /></div>
             </div>
             <div className="flex items-center gap-3 justify-end mt-4">
-              <button onClick={() => setPayModal(null)} className="px-4 py-2 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--text-secondary)]">Cancel</button>
-              <button onClick={recordPayment} className="px-4 py-2 rounded-xl text-white text-sm font-medium hover:opacity-90" style={{ background: 'var(--accent)' }}>Save Payment</button>
+              <button onClick={() => setPayModal(null)} disabled={submitting} className="px-4 py-2 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--text-secondary)] disabled:opacity-50">Cancel</button>
+              <button onClick={recordPayment} disabled={submitting} className="px-4 py-2 rounded-xl text-white text-sm font-medium hover:opacity-90 disabled:opacity-50" style={{ background: 'var(--accent)' }}>{submitting ? 'Saving...' : 'Save Payment'}</button>
             </div>
           </div>
         </div>
@@ -395,8 +424,8 @@ export default function FinanceCreditMgmtView({ addNotification, currentUser }: 
               </div>
             </div>
             <div className="flex items-center gap-3 justify-end mt-5">
-              <button onClick={() => setShowEditForm(false)} className="px-4 py-2 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--text-secondary)]">Cancel</button>
-              <button onClick={updateCredit} className="px-4 py-2 rounded-xl text-white text-sm font-medium hover:opacity-90" style={{ background: 'var(--accent)' }}>Save Changes</button>
+              <button onClick={() => setShowEditForm(false)} disabled={submitting} className="px-4 py-2 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--text-secondary)] disabled:opacity-50">Cancel</button>
+              <button onClick={updateCredit} disabled={submitting} className="px-4 py-2 rounded-xl text-white text-sm font-medium hover:opacity-90 disabled:opacity-50" style={{ background: 'var(--accent)' }}>{submitting ? 'Saving...' : 'Save Changes'}</button>
             </div>
           </div>
         </div>

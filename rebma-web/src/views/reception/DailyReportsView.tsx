@@ -37,6 +37,7 @@ export default function DailyReportsView({ addNotification }: Props) {
   const [emailMessage, setEmailMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [editingVisitor, setEditingVisitor] = useState<any | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   // Dynamic states replacing hardcoded constants
   const [visitorsToday, setVisitorsToday] = useState<VisitorToday[]>([]);
@@ -62,6 +63,8 @@ export default function DailyReportsView({ addNotification }: Props) {
 
   const handleSaveVisitor = async () => {
     if (!editingVisitor) return;
+    if (submitting) return;
+    setSubmitting(true);
     try {
       const { error } = await supabase.from('visitors').update({
         full_name: editingVisitor.fullName,
@@ -83,11 +86,15 @@ export default function DailyReportsView({ addNotification }: Props) {
       }
     } catch (e: any) {
       alert(e.message || 'Failed to update visitor.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
   const handleDeleteVisitor = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this visitor log?')) return;
+    if (submitting) return;
+    if (!await window.confirm('Are you sure you want to delete this visitor log?')) return;
+    setSubmitting(true);
     try {
       const { error } = await supabase.from('visitors').delete().eq('id', id);
       if (!error) {
@@ -98,6 +105,8 @@ export default function DailyReportsView({ addNotification }: Props) {
       }
     } catch (e: any) {
       alert(e.message || 'Failed to delete visitor log.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -537,8 +546,8 @@ export default function DailyReportsView({ addNotification }: Props) {
               </div>
             </div>
             <div className="flex gap-2 mt-5 justify-end">
-              <button onClick={() => setEditingVisitor(null)} className="px-4 py-2 border border-[var(--border)] rounded-xl text-xs text-[var(--text-secondary)] cursor-pointer">Cancel</button>
-              <button onClick={handleSaveVisitor} className="px-4 py-2 bg-[var(--accent)] text-white rounded-xl text-xs font-bold cursor-pointer hover:opacity-90">Save Changes</button>
+              <button onClick={() => setEditingVisitor(null)} disabled={submitting} className="px-4 py-2 border border-[var(--border)] rounded-xl text-xs text-[var(--text-secondary)] cursor-pointer disabled:opacity-50">Cancel</button>
+              <button onClick={handleSaveVisitor} disabled={submitting} className="px-4 py-2 bg-[var(--accent)] text-white rounded-xl text-xs font-bold cursor-pointer hover:opacity-90 disabled:opacity-50">{submitting ? 'Saving...' : 'Save Changes'}</button>
             </div>
           </div>
         </div>

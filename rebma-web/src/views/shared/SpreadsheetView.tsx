@@ -413,6 +413,7 @@ function DataSheetEditor({ tableName, tableLabel, onBack, addNotification }: {
 
   const commitEdit = async () => {
     if (!editCell) return;
+    if (saving) return;
     const { rowId, col } = editCell;
     const originalRow = rows.find(r => r.id === rowId);
     const originalVal = originalRow?.[col];
@@ -627,43 +628,62 @@ export default function SpreadsheetView({ currentUser, department, addNotificati
 
   useEffect(() => { loadSheets(); }, [loadSheets]);
 
+  const [submitting, setSubmitting] = useState(false);
+
   // Save a free sheet
   const saveSheet = async (title: string, cells: Record<string, string>, id?: string) => {
-    const now = new Date().toISOString();
-    if (id) {
-      await supabase
-        .from('spreadsheets')
-        .update({ title, cell_data: cells, updated_at: now })
-        .eq('id', id);
-    } else {
-      const { data } = await supabase
-        .from('spreadsheets')
-        .insert([{
-          title,
-          mode: 'FREE',
-          department,
-          cell_data: cells,
-          created_by_id: currentUser?.id,
-          created_by_name: currentUser?.fullName,
-          created_at: now,
-          updated_at: now,
-        }])
-        .select('id')
-        .single();
-      if (data && activeSheet === null) {
-        setActiveSheet(prev => prev ? { ...prev, id: data.id } : null);
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      const now = new Date().toISOString();
+      if (id) {
+        await supabase
+          .from('spreadsheets')
+          .update({ title, cell_data: cells, updated_at: now })
+          .eq('id', id);
+      } else {
+        const { data } = await supabase
+          .from('spreadsheets')
+          .insert([{
+            title,
+            mode: 'FREE',
+            department,
+            cell_data: cells,
+            created_by_id: currentUser?.id,
+            created_by_name: currentUser?.fullName,
+            created_at: now,
+            updated_at: now,
+          }])
+          .select('id')
+          .single();
+        if (data && activeSheet === null) {
+          setActiveSheet(prev => prev ? { ...prev, id: data.id } : null);
+        }
       }
+      addNotification?.(`Saved "${title}"`);
+      await loadSheets();
+    } catch (e: any) {
+      alert(e.message || 'Failed to save spreadsheet');
+    } finally {
+      setSubmitting(false);
     }
-    addNotification?.(`Saved "${title}"`);
-    loadSheets();
   };
 
   // Delete a sheet
   const deleteSheet = async (id: string) => {
-    if (!confirm('Delete this sheet? This cannot be undone.')) return;
-    await supabase.from('spreadsheets').delete().eq('id', id);
-    setSheets(prev => prev.filter(s => s.id !== id));
-    addNotification?.('Sheet deleted.');
+    if (submitting) return;
+    if (!await confirm('Delete this sheet? This cannot be undone.')) return;
+    setSubmitting(true);
+    try {
+      const { error } = await supabase.from('spreadsheets').delete().eq('id', id);
+      if (error) throw error;
+      setSheets(prev => prev.filter(s => s.id !== id));
+      addNotification?.('Sheet deleted.');
+    } catch (e: any) {
+      alert(e.message || 'Failed to delete spreadsheet');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   // Create new free sheet from modal

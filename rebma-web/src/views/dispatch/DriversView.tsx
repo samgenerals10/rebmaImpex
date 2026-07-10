@@ -49,17 +49,18 @@ const mapToDB = (ui: Partial<Driver>) => {
 interface DriverFormModalProps {
   title: string;
   form: Record<string, string>;
+  submitting?: boolean;
   onClose: () => void;
   onSave: () => void;
   onChange: (key: string, val: string) => void;
 }
-function DriverFormModal({ title, form, onClose, onSave, onChange }: DriverFormModalProps) {
+function DriverFormModal({ title, form, submitting, onClose, onSave, onChange }: DriverFormModalProps) {
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
       <div style={{ background: 'var(--bg-card)', borderRadius: 20, padding: 32, width: '100%', maxWidth: 460, boxShadow: '0 20px 60px rgba(0,0,0,0.3)', border: '1px solid var(--border)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
           <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: 'var(--text-primary)' }}>{title}</h2>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={20} /></button>
+          <button onClick={onClose} disabled={submitting} style={{ background: 'none', border: 'none', cursor: submitting ? 'not-allowed' : 'pointer', color: 'var(--text-muted)' }}><X size={20} /></button>
         </div>
         {[
           { label: 'Full Name', key: 'fullName', placeholder: 'e.g. Kwesi Asante' },
@@ -74,13 +75,14 @@ function DriverFormModal({ title, form, onClose, onSave, onChange }: DriverFormM
               value={form[f.key] || ''}
               onChange={e => onChange(f.key, e.target.value)}
               placeholder={f.placeholder}
+              disabled={submitting}
               style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'var(--text-primary)', fontSize: 14, boxSizing: 'border-box' }}
             />
           </div>
         ))}
         <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
-          <button onClick={onClose} style={{ flex: 1, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 12, padding: '12px', fontWeight: 600, color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 14 }}>Cancel</button>
-          <button onClick={onSave} style={{ flex: 1, background: 'var(--accent)', border: 'none', borderRadius: 12, padding: '12px', fontWeight: 600, color: '#fff', cursor: 'pointer', fontSize: 14 }}>Save</button>
+          <button onClick={onClose} disabled={submitting} style={{ flex: 1, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 12, padding: '12px', fontWeight: 600, color: 'var(--text-secondary)', cursor: submitting ? 'not-allowed' : 'pointer', fontSize: 14, opacity: submitting ? 0.6 : 1 }}>Cancel</button>
+          <button onClick={onSave} disabled={submitting} style={{ flex: 1, background: 'var(--accent)', border: 'none', borderRadius: 12, padding: '12px', fontWeight: 600, color: '#fff', cursor: submitting ? 'not-allowed' : 'pointer', fontSize: 14, opacity: submitting ? 0.6 : 1 }}>{submitting ? 'Saving...' : 'Save'}</button>
         </div>
       </div>
     </div>
@@ -90,6 +92,7 @@ function DriverFormModal({ title, form, onClose, onSave, onChange }: DriverFormM
 export default function DriversView({ addNotification }: Props) {
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | Driver['status']>('ALL');
   const [profileDriver, setProfileDriver] = useState<Driver | null>(null);
@@ -142,57 +145,60 @@ export default function DriversView({ addNotification }: Props) {
       alert('Full Name and Phone are required.');
       return;
     }
-    if (editDriver) {
-      const updatedDbRow = mapToDB(form);
-      try {
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      if (editDriver) {
+        const updatedDbRow = mapToDB(form);
         const { error } = await supabase.from('drivers').update(updatedDbRow).eq('id', editDriver.id);
         if (!error) {
           addNotification(`Driver ${form.fullName} updated.`);
-          loadData();
+          await loadData();
           setEditDriver(null);
           // If viewing profile of this driver, reload profile state too
           if (profileDriver?.id === editDriver.id) {
             setProfileDriver({ ...profileDriver, ...form });
           }
+          setForm(emptyForm);
         } else {
           alert(error.message);
         }
-      } catch (e: any) {
-        alert(e.message || 'Failed to update driver.');
-      }
-    } else {
-      const generatedId = `DRV-${String(drivers.length + 1).padStart(3, '0')}`;
-      const newDbRow = mapToDB({
-        driverId: generatedId,
-        fullName: form.fullName,
-        phone: form.phone,
-        ghanaCard: form.ghanaCard,
-        licenseNumber: form.licenseNumber,
-        truckId: form.truckId,
-        status: 'ACTIVE'
-      });
-      try {
+      } else {
+        const generatedId = `DRV-${String(drivers.length + 1).padStart(3, '0')}`;
+        const newDbRow = mapToDB({
+          driverId: generatedId,
+          fullName: form.fullName,
+          phone: form.phone,
+          ghanaCard: form.ghanaCard,
+          licenseNumber: form.licenseNumber,
+          truckId: form.truckId,
+          status: 'ACTIVE'
+        });
         const { error } = await supabase.from('drivers').insert([newDbRow]);
         if (!error) {
           addNotification(`Driver ${form.fullName} added.`);
-          loadData();
+          await loadData();
           setShowAdd(false);
+          setForm(emptyForm);
         } else {
           alert(error.message);
         }
-      } catch (e: any) {
-        alert(e.message || 'Failed to add driver.');
       }
+    } catch (e: any) {
+      alert(e.message || 'Failed to save driver.');
+    } finally {
+      setSubmitting(false);
     }
-    setForm(emptyForm);
   };
 
   const deactivate = async (id: string) => {
+    if (submitting) return;
+    setSubmitting(true);
     try {
       const { error } = await supabase.from('drivers').update({ status: 'OFFLINE' }).eq('id', id);
       if (!error) {
         addNotification(`Driver deactivated.`);
-        loadData();
+        await loadData();
         if (profileDriver?.id === id) {
           setProfileDriver(p => p ? { ...p, status: 'OFFLINE' } : p);
         }
@@ -201,16 +207,20 @@ export default function DriversView({ addNotification }: Props) {
       }
     } catch (e: any) {
       alert(e.message || 'Failed to deactivate driver.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
   const handleDelete = async (d: Driver) => {
-    if (!window.confirm(`Are you sure you want to delete driver ${d.fullName}?`)) return;
+    if (submitting) return;
+    if (!await window.confirm(`Are you sure you want to delete driver ${d.fullName}?`)) return;
+    setSubmitting(true);
     try {
       const { error } = await supabase.from('drivers').delete().eq('id', d.id);
       if (!error) {
         addNotification(`Deleted driver ${d.fullName}`);
-        loadData();
+        await loadData();
         if (profileDriver?.id === d.id) {
           setProfileDriver(null);
         }
@@ -219,6 +229,8 @@ export default function DriversView({ addNotification }: Props) {
       }
     } catch (e: any) {
       alert(e.message || 'Failed to delete driver.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -407,6 +419,7 @@ export default function DriversView({ addNotification }: Props) {
         <DriverFormModal
           title={editDriver ? 'Edit Driver' : 'Add Driver'}
           form={form as Record<string, string>}
+          submitting={submitting}
           onClose={() => { setShowAdd(false); setEditDriver(null); setForm(emptyForm); }}
           onSave={saveDriver}
           onChange={(key, val) => setForm(p => ({ ...p, [key]: val }))}

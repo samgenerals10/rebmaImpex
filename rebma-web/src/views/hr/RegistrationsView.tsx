@@ -50,6 +50,7 @@ export default function RegistrationsView({ pendingRegistrations, addNotificatio
   const [search, setSearch] = useState('');
   const [deptFilter, setDeptFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
+  const [submitting, setSubmitting] = useState(false);
   const [denyId, setDenyId] = useState<string | null>(null);
   const [denyReason, setDenyReason] = useState('');
   const [credPopup, setCredPopup] = useState<CredPopup | null>(null);
@@ -76,24 +77,40 @@ export default function RegistrationsView({ pendingRegistrations, addNotificatio
   const approved = registrations.filter(r => r.status === 'APPROVED').length;
   const rejected = registrations.filter(r => r.status === 'REJECTED').length;
 
-  const handleApprove = (reg: PendingRegistration) => {
-    const pw = generatePassword();
-    const token = `https://rebma.app/magic?token=${Math.random().toString(36).slice(2)}`;
-    onApprove(reg, pw, token);
-    setCredPopup({ show: true, fullName: reg.fullName, email: reg.email, password: pw, magicLink: token });
-    addNotification(`${reg.fullName} approved and credentials generated`);
-    setMenuOpen(null);
+  const handleApprove = async (reg: PendingRegistration) => {
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      const pw = generatePassword();
+      const token = `https://rebma.app/magic?token=${Math.random().toString(36).slice(2)}`;
+      await onApprove(reg, pw, token);
+      setCredPopup({ show: true, fullName: reg.fullName, email: reg.email, password: pw, magicLink: token });
+      addNotification(`${reg.fullName} approved and credentials generated`);
+    } catch (e: any) {
+      alert(e.message || 'Failed to approve registration');
+    } finally {
+      setSubmitting(false);
+      setMenuOpen(null);
+    }
   };
 
-  const handleDeny = () => {
+  const handleDeny = async () => {
     if (!denyId) return;
+    if (submitting) return;
     const reg = registrations.find(r => r.id === denyId);
     if (!reg) return;
-    onDeny(reg);
-    addNotification(`${reg.fullName} registration denied`);
-    setDenyId(null);
-    setDenyReason('');
-    setMenuOpen(null);
+    setSubmitting(true);
+    try {
+      await onDeny(reg);
+      addNotification(`${reg.fullName} registration denied`);
+      setDenyId(null);
+      setDenyReason('');
+    } catch (e: any) {
+      alert(e.message || 'Failed to deny registration');
+    } finally {
+      setSubmitting(false);
+      setMenuOpen(null);
+    }
   };
 
   const handleEditClick = (reg: PendingRegistration) => {
@@ -103,33 +120,49 @@ export default function RegistrationsView({ pendingRegistrations, addNotificatio
 
   const handleEditSave = async () => {
     if (!editForm) return;
-    const role = deptToRole(editForm.department);
-    const { error } = await supabase.from('profiles').update({
-      full_name: editForm.fullName,
-      email: editForm.email,
-      role: role,
-      ghana_card_id: editForm.ghanaCard,
-      phone: editForm.phone || null
-    }).eq('id', editForm.id);
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      const role = deptToRole(editForm.department);
+      const { error } = await supabase.from('profiles').update({
+        full_name: editForm.fullName,
+        email: editForm.email,
+        role: role,
+        ghana_card_id: editForm.ghanaCard,
+        phone: editForm.phone || null
+      }).eq('id', editForm.id);
 
-    if (!error) {
-      setRegistrations(prev => prev.map(r => r.id === editForm.id ? editForm : r));
-      addNotification(`Updated registration for ${editForm.fullName}`);
-      setShowEdit(false);
-      setEditForm(null);
-    } else {
-      alert(error.message || 'Failed to update registration');
+      if (!error) {
+        setRegistrations(prev => prev.map(r => r.id === editForm.id ? editForm : r));
+        addNotification(`Updated registration for ${editForm.fullName}`);
+        setShowEdit(false);
+        setEditForm(null);
+      } else {
+        alert(error.message || 'Failed to update registration');
+      }
+    } catch (e: any) {
+      alert(e.message || 'Error updating registration');
+    } finally {
+      setSubmitting(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this registration request?')) return;
-    const { error } = await supabase.from('profiles').delete().eq('id', id);
-    if (!error) {
-      setRegistrations(prev => prev.filter(r => r.id !== id));
-      addNotification('Registration request deleted');
-    } else {
-      alert(error.message || 'Failed to delete registration');
+    if (submitting) return;
+    if (!await confirm('Are you sure you want to delete this registration request?')) return;
+    setSubmitting(true);
+    try {
+      const { error } = await supabase.from('profiles').delete().eq('id', id);
+      if (!error) {
+        setRegistrations(prev => prev.filter(r => r.id !== id));
+        addNotification('Registration request deleted');
+      } else {
+        alert(error.message || 'Failed to delete registration');
+      }
+    } catch (e: any) {
+      alert(e.message || 'Error deleting registration');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -272,13 +305,13 @@ export default function RegistrationsView({ pendingRegistrations, addNotificatio
             <textarea value={denyReason} onChange={e => setDenyReason(e.target.value)} rows={3} placeholder="Reason..."
               className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-[var(--text-primary)] text-sm resize-none outline-none" />
             <div className="flex gap-2 mt-3 justify-end">
-              <button onClick={() => setDenyId(null)}
-                className="px-4 py-2 text-xs border border-[var(--border)] rounded-xl text-[var(--text-secondary)] hover:bg-[var(--accent-light)] cursor-pointer">
+              <button onClick={() => setDenyId(null)} disabled={submitting}
+                className="px-4 py-2 text-xs border border-[var(--border)] rounded-xl text-[var(--text-secondary)] hover:bg-[var(--accent-light)] cursor-pointer disabled:opacity-50">
                 Cancel
               </button>
-              <button onClick={handleDeny}
-                className="px-4 py-2 text-xs bg-rose-500 text-white rounded-xl font-semibold hover:bg-rose-600 cursor-pointer">
-                Confirm Deny
+              <button onClick={handleDeny} disabled={submitting}
+                className="px-4 py-2 text-xs bg-rose-500 text-white rounded-xl font-semibold hover:bg-rose-600 cursor-pointer disabled:opacity-50">
+                {submitting ? 'Denying...' : 'Confirm Deny'}
               </button>
             </div>
           </div>
@@ -321,12 +354,12 @@ export default function RegistrationsView({ pendingRegistrations, addNotificatio
             </div>
             {detailReg.status === 'PENDING' && (
               <div className="flex gap-2 mt-4">
-                <button onClick={() => { handleApprove(detailReg); setDetailReg(null); }}
-                  className="flex-1 flex items-center justify-center gap-2 py-2 bg-emerald-500/10 text-emerald-500 border border-emerald-500/30 rounded-xl text-sm font-semibold cursor-pointer hover:bg-emerald-500/20">
+                <button onClick={() => { handleApprove(detailReg); setDetailReg(null); }} disabled={submitting}
+                  className="flex-1 flex items-center justify-center gap-2 py-2 bg-emerald-500/10 text-emerald-500 border border-emerald-500/30 rounded-xl text-sm font-semibold cursor-pointer hover:bg-emerald-500/20 disabled:opacity-50">
                   <CheckCircle className="w-4 h-4" /> Approve
                 </button>
-                <button onClick={() => { setDetailReg(null); setDenyId(detailReg.id); }}
-                  className="flex-1 flex items-center justify-center gap-2 py-2 bg-rose-500/10 text-rose-500 border border-rose-500/30 rounded-xl text-sm font-semibold cursor-pointer hover:bg-rose-500/20">
+                <button onClick={() => { setDetailReg(null); setDenyId(detailReg.id); }} disabled={submitting}
+                  className="flex-1 flex items-center justify-center gap-2 py-2 bg-rose-500/10 text-rose-500 border border-rose-500/30 rounded-xl text-sm font-semibold cursor-pointer hover:bg-rose-500/20 disabled:opacity-50">
                   <XCircle className="w-4 h-4" /> Deny
                 </button>
               </div>
@@ -422,13 +455,13 @@ export default function RegistrationsView({ pendingRegistrations, addNotificatio
               </div>
             </div>
             <div className="flex gap-2 mt-5 justify-end">
-              <button onClick={() => { setShowEdit(false); setEditForm(null); }}
-                className="px-4 py-2 text-xs border border-[var(--border)] rounded-xl text-[var(--text-secondary)] hover:bg-[var(--accent-light)] cursor-pointer">
+              <button onClick={() => { setShowEdit(false); setEditForm(null); }} disabled={submitting}
+                className="px-4 py-2 text-xs border border-[var(--border)] rounded-xl text-[var(--text-secondary)] hover:bg-[var(--accent-light)] cursor-pointer disabled:opacity-50">
                 Cancel
               </button>
-              <button onClick={handleEditSave}
-                className="px-4 py-2 text-xs bg-[var(--accent)] text-white rounded-xl font-semibold hover:opacity-90 cursor-pointer">
-                Save Changes
+              <button onClick={handleEditSave} disabled={submitting}
+                className="px-4 py-2 text-xs bg-[var(--accent)] text-white rounded-xl font-semibold hover:opacity-90 cursor-pointer disabled:opacity-50">
+                {submitting ? 'Saving...' : 'Save Changes'}
               </button>
             </div>
           </div>

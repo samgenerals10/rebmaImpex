@@ -185,6 +185,7 @@ export default function StockView({ incomingGoodsList: _ig, addNotification }: P
   const [showAdjust, setShowAdjust] = useState(false);
   const [adjustTarget, setAdjustTarget] = useState<GeneralPurchase | null>(null);
   const [adjustForm, setAdjustForm] = useState({ type: 'Add', quantity: '', reason: '', notes: '' });
+  const [submitting, setSubmitting] = useState(false);
 
   const [showAddProduct, setShowAddProduct] = useState(false);
 
@@ -318,11 +319,12 @@ export default function StockView({ incomingGoodsList: _ig, addNotification }: P
 
   // ── GP adjust ────────────────────────────────────────────────────────────
   const doAdjustGP = async () => {
-    if (!adjustTarget || !adjustForm.quantity) return;
+    if (!adjustTarget || !adjustForm.quantity || submitting) return;
+    setSubmitting(true);
     const delta = adjustForm.type === 'Add' ? parseInt(adjustForm.quantity) : -parseInt(adjustForm.quantity);
     const newQty = Math.max(0, Number(adjustTarget.quantity) + delta);
     try {
-      await supabase.from('general_purchases').update({ quantity: newQty }).eq('id', adjustTarget.id).then(() => {}, () => {});
+      await supabase.from('general_purchases').update({ quantity: newQty }).eq('id', adjustTarget.id);
       await supabase.from('stock_ledger').insert({
         product_name: adjustTarget.itemName,
         movement_type: adjustForm.type === 'Add' ? 'ADD' : 'REMOVE',
@@ -330,12 +332,15 @@ export default function StockView({ incomingGoodsList: _ig, addNotification }: P
         reference: adjustForm.reason || 'Manual Adjustment',
         notes: adjustForm.notes || '',
         created_at: new Date().toISOString(),
-      }).then(() => {}, () => {});
+      });
       addNotification(`${adjustTarget.itemName} adjusted by ${delta > 0 ? '+' : ''}${delta}.`);
       loadData();
     } catch (err: any) { alert(err.message || 'Failed to adjust.'); }
-    setShowAdjust(false); setAdjustTarget(null);
-    setAdjustForm({ type: 'Add', quantity: '', reason: '', notes: '' });
+    finally {
+      setSubmitting(false);
+      setShowAdjust(false); setAdjustTarget(null);
+      setAdjustForm({ type: 'Add', quantity: '', reason: '', notes: '' });
+    }
   };
 
   // ── tab config ───────────────────────────────────────────────────────────
@@ -860,10 +865,10 @@ export default function StockView({ incomingGoodsList: _ig, addNotification }: P
               </div>
             ))}
             <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
-              <button onClick={() => { setShowAdjust(false); setAdjustTarget(null); setAdjustForm({ type: 'Add', quantity: '', reason: '', notes: '' }); }}
-                style={{ flex: 1, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 12, padding: '12px', fontWeight: 600, color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 14 }}>Cancel</button>
-              <button onClick={doAdjustGP} disabled={!adjustTarget || !adjustForm.quantity}
-                style={{ flex: 1, background: 'var(--accent)', border: 'none', borderRadius: 12, padding: '12px', fontWeight: 600, color: '#fff', cursor: 'pointer', fontSize: 14, opacity: (!adjustTarget || !adjustForm.quantity) ? 0.5 : 1 }}>Apply</button>
+              <button onClick={() => { setShowAdjust(false); setAdjustTarget(null); setAdjustForm({ type: 'Add', quantity: '', reason: '', notes: '' }); }} disabled={submitting}
+                style={{ flex: 1, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 12, padding: '12px', fontWeight: 600, color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 14, opacity: submitting ? 0.5 : 1 }}>Cancel</button>
+              <button onClick={doAdjustGP} disabled={!adjustTarget || !adjustForm.quantity || submitting}
+                style={{ flex: 1, background: 'var(--accent)', border: 'none', borderRadius: 12, padding: '12px', fontWeight: 600, color: '#fff', cursor: 'pointer', fontSize: 14, opacity: (!adjustTarget || !adjustForm.quantity || submitting) ? 0.5 : 1 }}>{submitting ? 'Applying...' : 'Apply'}</button>
             </div>
           </div>
         </div>

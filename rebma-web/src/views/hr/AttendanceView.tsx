@@ -32,6 +32,7 @@ export default function AttendanceView({ attendanceList, addNotification }: Prop
   const [records, setRecords] = useState<Attendance[]>(attendanceList);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
+  const [submitting, setSubmitting] = useState(false);
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [settings, setSettings] = useState<WorkplaceSettings>(DEFAULT_SETTINGS);
@@ -52,7 +53,7 @@ export default function AttendanceView({ attendanceList, addNotification }: Prop
         fullName: a.user?.full_name || a.fullName || 'Unknown',
         checkInTime: a.check_in_time ? new Date(a.check_in_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
         status: a.status as 'PRESENT' | 'LATE',
-        date: a.date || (a.check_in_time ? new Date(a.check_in_time).toLocaleDateString() : '')
+        date: a.date || (a.check_in_time ? new Date(a.check_in_time).toLocaleString() : '')
       })));
     }
   };
@@ -74,61 +75,77 @@ export default function AttendanceView({ attendanceList, addNotification }: Prop
 
   const handleEditSave = async () => {
     if (!editRec) return;
-    const recordDate = editRec.date || new Date().toISOString().slice(0, 10);
-    const [hours, minutes] = editTime.split(':');
-    const checkInDate = new Date(recordDate);
-    if (hours && minutes) {
-      checkInDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
-    }
-    const checkInTimeISO = checkInDate.toISOString();
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      const recordDate = editRec.date || new Date().toISOString().slice(0, 10);
+      const [hours, minutes] = editTime.split(':');
+      const checkInDate = new Date(recordDate);
+      if (hours && minutes) {
+        checkInDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+      }
+      const checkInTimeISO = checkInDate.toISOString();
 
-    const { error } = await supabase
-      .from('attendance')
-      .update({
-        status: editStatus,
-        check_in_time: checkInTimeISO
-      })
-      .eq('id', editRec.id);
+      const { error } = await supabase
+        .from('attendance')
+        .update({
+          status: editStatus,
+          check_in_time: checkInTimeISO
+        })
+        .eq('id', editRec.id);
 
-    if (!error) {
-      const updated = { ...editRec, status: editStatus, checkInTime: editTime };
-      setRecords(prev => prev.map(r => r.id === editRec.id ? updated : r));
-      addNotification(`${editRec.fullName} attendance updated`);
-      setEditRec(null);
-    } else {
-      alert(error.message || 'Failed to update attendance');
+      if (!error) {
+        const updated = { ...editRec, status: editStatus, checkInTime: editTime };
+        setRecords(prev => prev.map(r => r.id === editRec.id ? updated : r));
+        addNotification(`${editRec.fullName} attendance updated`);
+        setEditRec(null);
+      } else {
+        alert(error.message || 'Failed to update attendance');
+      }
+    } catch (e: any) {
+      alert(e.message || 'Error updating attendance');
+    } finally {
+      setSubmitting(false);
+      setMenuOpen(null);
     }
-    setMenuOpen(null);
   };
 
   const handleDuplicate = async (r: Attendance) => {
-    const dupId = `ATT-${Date.now().toString().slice(-6)}`;
-    const { data: prof } = await supabase.from('profiles').select('id').ilike('full_name', r.fullName).limit(1);
-    const userId = prof && prof[0] ? prof[0].id : null;
-    
-    // Default time is now
-    const nowISO = new Date().toISOString();
-    const { error } = await supabase.from('attendance').insert([{
-      id: dupId,
-      user_id: userId,
-      status: r.status,
-      check_in_time: nowISO,
-      date: nowISO.slice(0, 10)
-    }]);
-
-    if (!error) {
-      const dup: Attendance = {
-        ...r,
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      const dupId = `ATT-${Date.now().toString().slice(-6)}`;
+      const { data: prof } = await supabase.from('profiles').select('id').ilike('full_name', r.fullName).limit(1);
+      const userId = prof && prof[0] ? prof[0].id : null;
+      
+      // Default time is now
+      const nowISO = new Date().toISOString();
+      const { error } = await supabase.from('attendance').insert([{
         id: dupId,
-        checkInTime: new Date(nowISO).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        date: new Date(nowISO).toLocaleDateString()
-      };
-      setRecords(prev => [dup, ...prev]);
-      addNotification(`Duplicated log for ${r.fullName}`);
-    } else {
-      alert(error.message || 'Failed to duplicate attendance log');
+        user_id: userId,
+        status: r.status,
+        check_in_time: nowISO,
+        date: nowISO.slice(0, 10)
+      }]);
+
+      if (!error) {
+        const dup: Attendance = {
+          ...r,
+          id: dupId,
+          checkInTime: new Date(nowISO).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          date: new Date(nowISO).toLocaleDateString()
+        };
+        setRecords(prev => [dup, ...prev]);
+        addNotification(`Duplicated log for ${r.fullName}`);
+      } else {
+        alert(error.message || 'Failed to duplicate attendance log');
+      }
+    } catch (e: any) {
+      alert(e.message || 'Error duplicating attendance log');
+    } finally {
+      setSubmitting(false);
+      setMenuOpen(null);
     }
-    setMenuOpen(null);
   };
 
   const handleShare = (r: Attendance) => {
@@ -138,52 +155,68 @@ export default function AttendanceView({ attendanceList, addNotification }: Prop
   };
 
   const handleDelete = async (id: string) => {
+    if (submitting) return;
     const rec = records.find(r => r.id === id);
-    if (!confirm(`Are you sure you want to delete this log?`)) return;
-    const { error } = await supabase.from('attendance').delete().eq('id', id);
-    if (!error) {
-      setRecords(prev => prev.filter(r => r.id !== id));
-      addNotification(`Log deleted${rec ? ` for ${rec.fullName}` : ''}`);
-    } else {
-      alert(error.message || 'Failed to delete attendance log');
+    if (!await confirm(`Are you sure you want to delete this log?`)) return;
+    setSubmitting(true);
+    try {
+      const { error } = await supabase.from('attendance').delete().eq('id', id);
+      if (!error) {
+        setRecords(prev => prev.filter(r => r.id !== id));
+        addNotification(`Log deleted${rec ? ` for ${rec.fullName}` : ''}`);
+      } else {
+        alert(error.message || 'Failed to delete attendance log');
+      }
+    } catch (e: any) {
+      alert(e.message || 'Error deleting log');
+    } finally {
+      setSubmitting(false);
+      setMenuOpen(null);
     }
-    setMenuOpen(null);
   };
 
   const handleAdd = async () => {
     if (!addForm.fullName) return;
-    const { data: prof } = await supabase.from('profiles').select('id').ilike('full_name', addForm.fullName).limit(1);
-    const userId = prof && prof[0] ? prof[0].id : null;
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      const { data: prof } = await supabase.from('profiles').select('id').ilike('full_name', addForm.fullName).limit(1);
+      const userId = prof && prof[0] ? prof[0].id : null;
 
-    const checkInDate = new Date();
-    if (addForm.checkInTime) {
-      const [hours, minutes] = addForm.checkInTime.split(':');
-      checkInDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
-    }
-    
-    const newRecId = `ATT-${Date.now().toString().slice(-6)}`;
-    const { error } = await supabase.from('attendance').insert([{
-      id: newRecId,
-      user_id: userId,
-      status: addForm.status,
-      check_in_time: checkInDate.toISOString(),
-      date: checkInDate.toISOString().slice(0, 10)
-    }]);
-
-    if (!error) {
-      const newRec: Attendance = {
+      const checkInDate = new Date();
+      if (addForm.checkInTime) {
+        const [hours, minutes] = addForm.checkInTime.split(':');
+        checkInDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+      }
+      
+      const newRecId = `ATT-${Date.now().toString().slice(-6)}`;
+      const { error } = await supabase.from('attendance').insert([{
         id: newRecId,
-        fullName: addForm.fullName,
-        checkInTime: addForm.checkInTime || checkInDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        user_id: userId,
         status: addForm.status,
-        date: checkInDate.toLocaleDateString()
-      };
-      setRecords(prev => [newRec, ...prev]);
-      addNotification(`Attendance added for ${addForm.fullName}`);
-      setShowAdd(false);
-      setAddForm({ fullName: '', checkInTime: '', status: 'PRESENT' });
-    } else {
-      alert(error.message || 'Failed to add attendance log');
+        check_in_time: checkInDate.toISOString(),
+        date: checkInDate.toISOString().slice(0, 10)
+      }]);
+
+      if (!error) {
+        const newRec: Attendance = {
+          id: newRecId,
+          fullName: addForm.fullName,
+          checkInTime: addForm.checkInTime || checkInDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          status: addForm.status,
+          date: checkInDate.toLocaleDateString()
+        };
+        setRecords(prev => [newRec, ...prev]);
+        addNotification(`Attendance added for ${addForm.fullName}`);
+        setShowAdd(false);
+        setAddForm({ fullName: '', checkInTime: '', status: 'PRESENT' });
+      } else {
+        alert(error.message || 'Failed to add attendance log');
+      }
+    } catch (e: any) {
+      alert(e.message || 'Error adding attendance log');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -374,8 +407,8 @@ export default function AttendanceView({ attendanceList, addNotification }: Prop
               </div>
             </div>
             <div className="flex gap-2 mt-4 justify-end">
-              <button onClick={() => setEditRec(null)} className="px-4 py-2 text-xs border border-[var(--border)] rounded-xl text-[var(--text-secondary)] cursor-pointer">Cancel</button>
-              <button onClick={handleEditSave} className="px-4 py-2 text-xs bg-[var(--accent)] text-white rounded-xl font-semibold cursor-pointer">Save Changes</button>
+              <button onClick={() => setEditRec(null)} disabled={submitting} className="px-4 py-2 text-xs border border-[var(--border)] rounded-xl text-[var(--text-secondary)] cursor-pointer disabled:opacity-50">Cancel</button>
+              <button onClick={handleEditSave} disabled={submitting} className="px-4 py-2 text-xs bg-[var(--accent)] text-white rounded-xl font-semibold cursor-pointer disabled:opacity-50">{submitting ? 'Saving...' : 'Save Changes'}</button>
             </div>
           </div>
         </div>
@@ -413,8 +446,8 @@ export default function AttendanceView({ attendanceList, addNotification }: Prop
               </div>
             </div>
             <div className="flex gap-2 mt-4 justify-end">
-              <button onClick={() => setShowAdd(false)} className="px-4 py-2 text-xs border border-[var(--border)] rounded-xl text-[var(--text-secondary)] cursor-pointer">Cancel</button>
-              <button onClick={handleAdd} className="px-4 py-2 text-xs bg-[var(--accent)] text-white rounded-xl font-semibold cursor-pointer">Add</button>
+              <button onClick={() => setShowAdd(false)} disabled={submitting} className="px-4 py-2 text-xs border border-[var(--border)] rounded-xl text-[var(--text-secondary)] cursor-pointer disabled:opacity-50">Cancel</button>
+              <button onClick={handleAdd} disabled={submitting} className="px-4 py-2 text-xs bg-[var(--accent)] text-white rounded-xl font-semibold cursor-pointer disabled:opacity-50">{submitting ? 'Adding...' : 'Add'}</button>
             </div>
           </div>
         </div>

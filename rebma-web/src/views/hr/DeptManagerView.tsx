@@ -29,6 +29,7 @@ export default function DeptManagerView({ staffList, addNotification }: Props) {
   const [selected, setSelected] = useState<Department | null>(null);
   const [editDept, setEditDept] = useState<Department | null>(null);
   const [editForm, setEditForm] = useState({ headName: '', headRole: '', budget: 0, activeProjects: 0 });
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     const fetchDepts = async () => {
@@ -72,7 +73,8 @@ export default function DeptManagerView({ staffList, addNotification }: Props) {
   };
 
   const handleSaveEdit = async () => {
-    if (!editDept) return;
+    if (!editDept || submitting) return;
+    setSubmitting(true);
     try {
       const { error } = await supabase
         .from('departments')
@@ -93,6 +95,8 @@ export default function DeptManagerView({ staffList, addNotification }: Props) {
       setEditDept(null);
     } catch (err: any) {
       addNotification(`Error saving department changes: ${err.message}`);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -273,7 +277,7 @@ export default function DeptManagerView({ staffList, addNotification }: Props) {
           <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5 w-full max-w-sm">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-bold text-[var(--text-primary)]">Edit {editDept.name}</h3>
-              <button onClick={() => setEditDept(null)} className="text-[var(--text-muted)] cursor-pointer"><X className="w-5 h-5" /></button>
+              <button onClick={() => setEditDept(null)} disabled={submitting} className="text-[var(--text-muted)] cursor-pointer disabled:opacity-50"><X className="w-5 h-5" /></button>
             </div>
             <div className="space-y-3">
               {[
@@ -284,15 +288,15 @@ export default function DeptManagerView({ staffList, addNotification }: Props) {
               ].map(field => (
                 <div key={field.key}>
                   <label className="block text-xs text-[var(--text-secondary)] mb-1">{field.label}</label>
-                  <input type={field.type} value={editForm[field.key]}
+                  <input type={field.type} value={editForm[field.key]} disabled={submitting}
                     onChange={e => setEditForm(p => ({ ...p, [field.key]: field.type === 'number' ? parseInt(e.target.value) || 0 : e.target.value }))}
-                    className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-[var(--text-primary)] text-sm outline-none" />
+                    className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-[var(--text-primary)] text-sm outline-none disabled:opacity-50" />
                 </div>
               ))}
             </div>
             <div className="flex gap-2 mt-4 justify-end">
-              <button onClick={() => setEditDept(null)} className="px-4 py-2 text-xs border border-[var(--border)] rounded-xl text-[var(--text-secondary)] cursor-pointer">Cancel</button>
-              <button onClick={handleSaveEdit} className="px-4 py-2 text-xs bg-[var(--accent)] text-white rounded-xl font-semibold cursor-pointer">Save</button>
+              <button onClick={() => setEditDept(null)} disabled={submitting} className="px-4 py-2 text-xs border border-[var(--border)] rounded-xl text-[var(--text-secondary)] cursor-pointer disabled:opacity-50">Cancel</button>
+              <button onClick={handleSaveEdit} disabled={submitting} className="px-4 py-2 text-xs bg-[var(--accent)] text-white rounded-xl font-semibold cursor-pointer disabled:opacity-50">{submitting ? 'Saving...' : 'Save'}</button>
             </div>
           </div>
         </div>

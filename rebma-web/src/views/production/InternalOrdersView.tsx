@@ -105,6 +105,7 @@ export default function InternalOrdersView({ productionRequests, addNotification
   const selectedOrderDisp = selectedOrder ? getDisplayStatus(selectedOrder, wipItems) : null;
 
   const [showNewModal, setShowNewModal] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [newForm, setNewForm] = useState({
     productName: '',
     quantity: 0,
@@ -184,6 +185,8 @@ export default function InternalOrdersView({ productionRequests, addNotification
   };
 
   const handleDuplicate = async (order: any) => {
+    if (submitting) return;
+    setSubmitting(true);
     try {
       const { data, error } = await supabase.from('production_requests').insert([{
         product_name: order.productName,
@@ -197,10 +200,12 @@ export default function InternalOrdersView({ productionRequests, addNotification
       }]).select();
       if (!error && data) {
         addNotification(`Duplicated request ${order.requestNumber || order.id}`);
-        loadData();
+        await loadData();
       }
     } catch (e) {
       console.error(e);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -209,6 +214,8 @@ export default function InternalOrdersView({ productionRequests, addNotification
       alert('Product Name is required.');
       return;
     }
+    if (submitting) return;
+    setSubmitting(true);
     
     try {
       const { data, error } = await supabase.from('production_requests').insert([{
@@ -223,23 +230,25 @@ export default function InternalOrdersView({ productionRequests, addNotification
       }]).select();
       if (!error && data) {
         addNotification('New production request submitted');
-        loadData();
+        await loadData();
+        setShowNewModal(false);
+        setNewForm({
+          productName: '',
+          quantity: 0,
+          unit: 'kg',
+          requiredByDate: '',
+          purpose: '',
+          priority: 'Medium',
+          notes: ''
+        });
       } else {
         alert(error?.message || 'Failed to submit production request.');
       }
     } catch (e: any) {
       alert(e.message || 'Failed to submit production request.');
+    } finally {
+      setSubmitting(false);
     }
-    setShowNewModal(false);
-    setNewForm({
-      productName: '',
-      quantity: 0,
-      unit: 'kg',
-      requiredByDate: '',
-      purpose: '',
-      priority: 'Medium',
-      notes: ''
-    });
   };
 
   const handleEditSave = async () => {
@@ -247,6 +256,8 @@ export default function InternalOrdersView({ productionRequests, addNotification
       alert('Product Name is required.');
       return;
     }
+    if (submitting) return;
+    setSubmitting(true);
 
     try {
       const { error } = await supabase.from('production_requests')
@@ -266,7 +277,7 @@ export default function InternalOrdersView({ productionRequests, addNotification
 
       if (!error) {
         addNotification(`Updated request ${editForm.requestNumber || editForm.id}`);
-        loadData();
+        await loadData();
         setShowEditModal(false);
         setEditForm(null);
       } else {
@@ -274,21 +285,27 @@ export default function InternalOrdersView({ productionRequests, addNotification
       }
     } catch (e: any) {
       alert(e.message || 'Failed to update request.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
   const handleDelete = async (order: any) => {
-    if (!window.confirm(`Are you sure you want to delete production request ${order.requestNumber || order.id}?`)) return;
+    if (submitting) return;
+    if (!await window.confirm(`Are you sure you want to delete production request ${order.requestNumber || order.id}?`)) return;
+    setSubmitting(true);
     try {
       const { error } = await supabase.from('production_requests').delete().eq('id', order.id);
       if (!error) {
         addNotification(`Deleted request ${order.requestNumber || order.id}`);
-        loadData();
+        await loadData();
       } else {
         alert(error.message);
       }
     } catch (e: any) {
       alert(e.message || 'Failed to delete request.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -514,8 +531,10 @@ export default function InternalOrdersView({ productionRequests, addNotification
             </div>
 
             <div style={{ display: 'flex', gap: 12 }}>
-              <button onClick={() => setShowNewModal(false)} style={{ flex: 1, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 12, padding: '12px', color: 'var(--text-secondary)', cursor: 'pointer', fontWeight: 600 }}>Cancel</button>
-              <button onClick={handleSubmitNew} style={{ flex: 2, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 12, padding: '12px', fontWeight: 600, cursor: 'pointer', fontSize: 15 }}>Submit Request</button>
+              <button disabled={submitting} onClick={() => setShowNewModal(false)} style={{ flex: 1, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 12, padding: '12px', color: 'var(--text-secondary)', cursor: 'pointer', fontWeight: 600, opacity: submitting ? 0.5 : 1 }}>Cancel</button>
+              <button disabled={submitting} onClick={handleSubmitNew} style={{ flex: 2, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 12, padding: '12px', fontWeight: 600, cursor: 'pointer', fontSize: 15, opacity: submitting ? 0.5 : 1 }}>
+                {submitting ? 'Submitting...' : 'Submit Request'}
+              </button>
             </div>
           </div>
         </div>
@@ -591,8 +610,10 @@ export default function InternalOrdersView({ productionRequests, addNotification
             </div>
 
             <div style={{ display: 'flex', gap: 12 }}>
-              <button onClick={() => { setShowEditModal(false); setEditForm(null); }} style={{ flex: 1, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 12, padding: '12px', color: 'var(--text-secondary)', cursor: 'pointer', fontWeight: 600 }}>Cancel</button>
-              <button onClick={handleEditSave} style={{ flex: 2, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 12, padding: '12px', fontWeight: 600, cursor: 'pointer', fontSize: 15 }}>Save Changes</button>
+               <button disabled={submitting} onClick={() => { setShowEditModal(false); setEditForm(null); }} style={{ flex: 1, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 12, padding: '12px', color: 'var(--text-secondary)', cursor: 'pointer', fontWeight: 600, opacity: submitting ? 0.5 : 1 }}>Cancel</button>
+               <button disabled={submitting} onClick={handleEditSave} style={{ flex: 2, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 12, padding: '12px', fontWeight: 600, cursor: 'pointer', fontSize: 15, opacity: submitting ? 0.5 : 1 }}>
+                 {submitting ? 'Saving...' : 'Save Changes'}
+               </button>
             </div>
           </div>
         </div>

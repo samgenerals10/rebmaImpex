@@ -288,6 +288,7 @@ export default function DeliveriesView({ addNotification, currentUser }: Props) 
   const [deliveries, setDeliveries] = useState<DeliveryRecord[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
   const [driverFilter, setDriverFilter] = useState('');
@@ -339,6 +340,8 @@ export default function DeliveriesView({ addNotification, currentUser }: Props) 
       alert('Customer Name and Order ID are required.');
       return;
     }
+    if (submitting) return;
+    setSubmitting(true);
     const driver = drivers.find(d => d.id === editingDelivery.driverId);
     try {
       const { error } = await supabase.from('delivery_logs')
@@ -359,7 +362,7 @@ export default function DeliveriesView({ addNotification, currentUser }: Props) 
 
       if (!error) {
         addNotification(`Updated delivery log ${editingDelivery.id}`);
-        loadData();
+        await loadData();
         setShowEdit(false);
         setEditingDelivery(null);
       } else {
@@ -367,21 +370,27 @@ export default function DeliveriesView({ addNotification, currentUser }: Props) 
       }
     } catch (e: any) {
       alert(e.message || 'Failed to update delivery log.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
   const handleDeleteDelivery = async (id: string) => {
-    if (!window.confirm(`Are you sure you want to delete delivery log ${id}?`)) return;
+    if (submitting) return;
+    if (!await window.confirm(`Are you sure you want to delete delivery log ${id}?`)) return;
+    setSubmitting(true);
     try {
       const { error } = await supabase.from('delivery_logs').delete().eq('id', id);
       if (!error) {
         addNotification(`Deleted delivery log ${id}`);
-        loadData();
+        await loadData();
       } else {
         alert(error.message);
       }
     } catch (e: any) {
       alert(e.message || 'Failed to delete delivery log.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -408,70 +417,118 @@ export default function DeliveriesView({ addNotification, currentUser }: Props) 
   });
 
   const markDelivered = async (id: string) => {
-    const now = new Date().toISOString();
-    setDeliveries(prev => prev.map(d => d.id === id ? { ...d, status: 'DELIVERED', deliveredAt: now } : d));
-    supabase.from('delivery_logs').update({ status: 'DELIVERED', delivered_at: now }).eq('id', id).then(() => {}, () => {});
-    const delivery = deliveries.find(d => d.id === id);
-    if (delivery?.orderId) {
-      supabase.from('orders').update({ status: 'DELIVERED' }).eq('id', delivery.orderId).then(() => {}, () => {});
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      const now = new Date().toISOString();
+      const { error } = await supabase.from('delivery_logs').update({ status: 'DELIVERED', delivered_at: now }).eq('id', id);
+      if (error) throw error;
+
+      setDeliveries(prev => prev.map(d => d.id === id ? { ...d, status: 'DELIVERED', deliveredAt: now } : d));
+      
+      const delivery = deliveries.find(d => d.id === id);
+      if (delivery?.orderId) {
+        await supabase.from('orders').update({ status: 'DELIVERED' }).eq('id', delivery.orderId);
+      }
+      
+      await supabase.from('global_audit_history').insert({ department: 'DISPATCH', action: `Delivery ${id} marked as delivered`, performed_by: currentUser?.fullName || 'Dispatch', timestamp: now });
+      
+      addNotification(`Delivery ${id} marked as delivered.`);
+      if (detailRecord?.id === id) setDetailRecord(prev => prev ? { ...prev, status: 'DELIVERED', deliveredAt: now } : prev);
+      setMenuOpen(null);
+    } catch (e: any) {
+      alert(e.message || 'Failed to mark as delivered.');
+    } finally {
+      setSubmitting(false);
     }
-    supabase.from('global_audit_history').insert({ department: 'DISPATCH', action: `Delivery ${id} marked as delivered`, performed_by: currentUser?.fullName || 'Dispatch', timestamp: now }).then(() => {}, () => {});
-    addNotification(`Delivery ${id} marked as delivered.`);
-    if (detailRecord?.id === id) setDetailRecord(prev => prev ? { ...prev, status: 'DELIVERED', deliveredAt: now } : prev);
-    setMenuOpen(null);
   };
 
   const markFailed = async (id: string) => {
-    setDeliveries(prev => prev.map(d => d.id === id ? { ...d, status: 'FAILED' } : d));
-    supabase.from('delivery_logs').update({ status: 'FAILED' }).eq('id', id).then(() => {}, () => {});
-    addNotification(`Delivery ${id} marked as failed.`);
-    setMenuOpen(null);
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      const { error } = await supabase.from('delivery_logs').update({ status: 'FAILED' }).eq('id', id);
+      if (error) throw error;
+
+      setDeliveries(prev => prev.map(d => d.id === id ? { ...d, status: 'FAILED' } : d));
+      addNotification(`Delivery ${id} marked as failed.`);
+      setMenuOpen(null);
+    } catch (e: any) {
+      alert(e.message || 'Failed to mark as failed.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const createDelivery = () => {
+  const createDelivery = async () => {
     if (!form.clientName || !form.orderId || !form.destination) return;
-    const driver = drivers.find(d => d.id === form.driverId);
-    const rec: DeliveryRecord = {
-      id: `DEL-${String(deliveries.length + 1).padStart(3, '0')}`,
-      orderId: form.orderId, clientName: form.clientName,
-      destination: form.destination, driverName: driver?.fullName ?? '',
-      driverId: form.driverId, dispatchedAt: new Date().toISOString(),
-      status: form.driverId ? 'ASSIGNED' : 'PENDING_ASSIGNMENT',
-      vehicleId: driver?.truckId,
-    };
-    setDeliveries(prev => [rec, ...prev]);
-    const dbRec = {
-      id: rec.id,
-      order_id: rec.orderId,
-      customer_name: rec.clientName,
-      delivery_address: rec.destination,
-      driver_name: rec.driverName,
-      driver_id: rec.driverId || null,
-      vehicle_id: rec.vehicleId || null,
-      status: rec.status,
-      created_at: rec.dispatchedAt
-    };
-    supabase.from('delivery_logs').insert([dbRec]).then(() => {}, () => {});
-    supabase.from('supplier_order_notifications').insert({ order_id: rec.orderId, message: `New delivery ${rec.id} created`, notified_department: 'OPERATIONS', read: false, created_at: rec.dispatchedAt }).then(() => {}, () => {});
-    addNotification(`New delivery ${rec.id} dispatched.`);
-    setShowNew(false);
-    setForm({ clientName: '', orderId: '', destination: '', driverId: '' });
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      const driver = drivers.find(d => d.id === form.driverId);
+      const rec: DeliveryRecord = {
+        id: `DEL-${String(deliveries.length + 1).padStart(3, '0')}`,
+        orderId: form.orderId, clientName: form.clientName,
+        destination: form.destination, driverName: driver?.fullName ?? '',
+        driverId: form.driverId, dispatchedAt: new Date().toISOString(),
+        status: form.driverId ? 'ASSIGNED' : 'PENDING_ASSIGNMENT',
+        vehicleId: driver?.truckId,
+      };
+
+      const dbRec = {
+        id: rec.id,
+        order_id: rec.orderId,
+        customer_name: rec.clientName,
+        delivery_address: rec.destination,
+        driver_name: rec.driverName,
+        driver_id: rec.driverId || null,
+        vehicle_id: rec.vehicleId || null,
+        status: rec.status,
+        created_at: rec.dispatchedAt
+      };
+
+      const { error } = await supabase.from('delivery_logs').insert([dbRec]);
+      if (error) throw error;
+
+      setDeliveries(prev => [rec, ...prev]);
+
+      await supabase.from('supplier_order_notifications').insert({ order_id: rec.orderId, message: `New delivery ${rec.id} created`, notified_department: 'OPERATIONS', read: false, created_at: rec.dispatchedAt });
+      addNotification(`New delivery ${rec.id} dispatched.`);
+      setShowNew(false);
+      setForm({ clientName: '', orderId: '', destination: '', driverId: '' });
+    } catch (e: any) {
+      alert(e.message || 'Failed to dispatch delivery.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const handleAssignDriver = (delivery: DeliveryRecord, driverId: string, notes: string) => {
+  const handleAssignDriver = async (delivery: DeliveryRecord, driverId: string, notes: string) => {
     const driver = drivers.find(d => d.id === driverId);
     if (!driver) return;
-    const now = new Date().toISOString();
-    setDeliveries(prev => prev.map(d => d.id === delivery.id
-      ? { ...d, driverId, driverName: driver.fullName, vehicleId: driver.truckId, status: 'ASSIGNED', deliveryNotes: notes || d.deliveryNotes }
-      : d
-    ));
-    supabase.from('delivery_logs').update({ driver_id: driverId, driver_name: driver.fullName, vehicle_id: driver.truckId, status: 'ASSIGNED', notes: notes || null }).eq('id', delivery.id).then(() => {}, () => {});
-    supabase.from('supplier_order_notifications').insert({ order_id: delivery.orderId, message: `Driver ${driver.fullName} assigned to ${delivery.orderId}`, notified_department: 'OPERATIONS', read: false, created_at: now }).then(() => {}, () => {});
-    supabase.from('global_audit_history').insert({ department: 'DISPATCH', action: `Driver ${driver.fullName} assigned to ${delivery.id}`, performed_by: currentUser?.fullName || 'Dispatch', timestamp: now }).then(() => {}, () => {});
-    addNotification(`Driver ${driver.fullName} assigned to ${delivery.id}`);
-    setAssignTarget(null);
-    if (detailRecord?.id === delivery.id) setDetailRecord(prev => prev ? { ...prev, driverId, driverName: driver.fullName, vehicleId: driver.truckId, status: 'ASSIGNED' } : prev);
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      const now = new Date().toISOString();
+      const { error } = await supabase.from('delivery_logs').update({ driver_id: driverId, driver_name: driver.fullName, vehicle_id: driver.truckId, status: 'ASSIGNED', notes: notes || null }).eq('id', delivery.id);
+      if (error) throw error;
+
+      setDeliveries(prev => prev.map(d => d.id === delivery.id
+        ? { ...d, driverId, driverName: driver.fullName, vehicleId: driver.truckId, status: 'ASSIGNED', deliveryNotes: notes || d.deliveryNotes }
+        : d
+      ));
+
+      await supabase.from('supplier_order_notifications').insert({ order_id: delivery.orderId, message: `Driver ${driver.fullName} assigned to ${delivery.orderId}`, notified_department: 'OPERATIONS', read: false, created_at: now });
+      await supabase.from('global_audit_history').insert({ department: 'DISPATCH', action: `Driver ${driver.fullName} assigned to ${delivery.id}`, performed_by: currentUser?.fullName || 'Dispatch', timestamp: now });
+      
+      addNotification(`Driver ${driver.fullName} assigned to ${delivery.id}`);
+      setAssignTarget(null);
+      if (detailRecord?.id === delivery.id) setDetailRecord(prev => prev ? { ...prev, driverId, driverName: driver.fullName, vehicleId: driver.truckId, status: 'ASSIGNED' } : prev);
+    } catch (e: any) {
+      alert(e.message || 'Failed to assign driver.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (detailRecord) {
@@ -684,8 +741,8 @@ export default function DeliveriesView({ addNotification, currentUser }: Props) 
               </div>
             </div>
             <div className="flex items-center gap-3 mt-5">
-              <button onClick={() => setShowNew(false)} className="flex-1 py-2.5 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-input)]">Cancel</button>
-              <button onClick={createDelivery} className="flex-1 py-2.5 rounded-xl text-white text-sm font-semibold" style={{ background: 'var(--accent)' }}>Dispatch</button>
+              <button onClick={() => setShowNew(false)} disabled={submitting} className="flex-1 py-2.5 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-input)] disabled:opacity-50">Cancel</button>
+              <button onClick={createDelivery} disabled={submitting} className="flex-1 py-2.5 rounded-xl text-white text-sm font-semibold disabled:opacity-50" style={{ background: 'var(--accent)' }}>{submitting ? 'Dispatching...' : 'Dispatch'}</button>
             </div>
           </div>
         </div>
@@ -753,8 +810,8 @@ export default function DeliveriesView({ addNotification, currentUser }: Props) 
               </div>
             </div>
             <div className="flex items-center gap-3 mt-5">
-              <button onClick={() => { setShowEdit(false); setEditingDelivery(null); }} className="flex-1 py-2.5 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-input)]">Cancel</button>
-              <button onClick={handleEditSave} className="flex-1 py-2.5 rounded-xl text-white text-sm font-semibold" style={{ background: 'var(--accent)' }}>Save Changes</button>
+              <button onClick={() => { setShowEdit(false); setEditingDelivery(null); }} disabled={submitting} className="flex-1 py-2.5 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-input)] disabled:opacity-50">Cancel</button>
+              <button onClick={handleEditSave} disabled={submitting} className="flex-1 py-2.5 rounded-xl text-white text-sm font-semibold disabled:opacity-50" style={{ background: 'var(--accent)' }}>{submitting ? 'Saving...' : 'Save Changes'}</button>
             </div>
           </div>
         </div>

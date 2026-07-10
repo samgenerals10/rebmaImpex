@@ -56,6 +56,7 @@ const mapToDB = (ui: Partial<FuelLog>) => {
 export default function FuelManagementView({ addNotification }: Props) {
   const [logs, setLogs] = useState<FuelLog[]>([]);
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editForm, setEditForm] = useState<FuelLog | null>(null);
@@ -102,6 +103,8 @@ export default function FuelManagementView({ addNotification }: Props) {
       alert('Vehicle ID, Liters, and Cost are required.');
       return;
     }
+    if (submitting) return;
+    setSubmitting(true);
     const newDbRow = mapToDB({
       date: form.date,
       vehicleId: form.vehicleId,
@@ -116,7 +119,7 @@ export default function FuelManagementView({ addNotification }: Props) {
       const { data, error } = await supabase.from('fuel_logs').insert([newDbRow]).select();
       if (!error && data) {
         addNotification(`Fuel entry logged for ${form.vehicleId}`);
-        loadData();
+        await loadData();
         setShowModal(false);
         setForm({ vehicleId: 'GR-1234-22', driver: '', liters: '', cost: '', station: '', odometer: '', date: new Date().toISOString().split('T')[0] });
       } else {
@@ -124,6 +127,8 @@ export default function FuelManagementView({ addNotification }: Props) {
       }
     } catch (e: any) {
       alert(e.message || 'Failed to log fuel entry.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -132,6 +137,8 @@ export default function FuelManagementView({ addNotification }: Props) {
       alert('Vehicle ID, Liters, and Cost are required.');
       return;
     }
+    if (submitting) return;
+    setSubmitting(true);
     const updatedDbRow = mapToDB(editForm);
     delete updatedDbRow.id; // Avoid overriding primary key in update
 
@@ -145,7 +152,7 @@ export default function FuelManagementView({ addNotification }: Props) {
 
       if (!error) {
         addNotification(`Fuel log updated for ${editForm.vehicleId}`);
-        loadData();
+        await loadData();
         setShowEditModal(false);
         setEditForm(null);
       } else {
@@ -153,21 +160,27 @@ export default function FuelManagementView({ addNotification }: Props) {
       }
     } catch (e: any) {
       alert(e.message || 'Failed to update fuel log.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
   const handleDelete = async (log: FuelLog) => {
-    if (!window.confirm(`Are you sure you want to delete the fuel log for ${log.vehicleId} on ${log.date}?`)) return;
+    if (submitting) return;
+    if (!await window.confirm(`Are you sure you want to delete the fuel log for ${log.vehicleId} on ${log.date}?`)) return;
+    setSubmitting(true);
     try {
       const { error } = await supabase.from('fuel_logs').delete().eq('id', log.id);
       if (!error) {
         addNotification(`Deleted fuel log for ${log.vehicleId}`);
-        loadData();
+        await loadData();
       } else {
         alert(error.message);
       }
     } catch (e: any) {
       alert(e.message || 'Failed to delete fuel log.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -298,8 +311,8 @@ export default function FuelManagementView({ addNotification }: Props) {
               </div>
             </div>
             <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
-              <button onClick={() => setShowModal(false)} style={{ flex: 1, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 12, padding: 12, color: 'var(--text-secondary)', cursor: 'pointer', fontWeight: 600 }}>Cancel</button>
-              <button onClick={handleSubmit} style={{ flex: 2, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 12, padding: 12, fontWeight: 700, cursor: 'pointer', fontSize: 15 }}>Log Entry</button>
+              <button onClick={() => setShowModal(false)} disabled={submitting} style={{ flex: 1, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 12, padding: 12, color: 'var(--text-secondary)', cursor: submitting ? 'not-allowed' : 'pointer', fontWeight: 600, opacity: submitting ? 0.7 : 1 }}>Cancel</button>
+              <button onClick={handleSubmit} disabled={submitting} style={{ flex: 2, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 12, padding: 12, fontWeight: 700, cursor: submitting ? 'not-allowed' : 'pointer', fontSize: 15, opacity: submitting ? 0.7 : 1 }}>{submitting ? 'Logging...' : 'Log Entry'}</button>
             </div>
           </div>
         </div>
@@ -334,8 +347,8 @@ export default function FuelManagementView({ addNotification }: Props) {
               </div>
             </div>
             <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
-              <button onClick={() => { setShowEditModal(false); setEditForm(null); }} style={{ flex: 1, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 12, padding: 12, color: 'var(--text-secondary)', cursor: 'pointer', fontWeight: 600 }}>Cancel</button>
-              <button onClick={handleEditSave} style={{ flex: 2, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 12, padding: 12, fontWeight: 700, cursor: 'pointer', fontSize: 15 }}>Save Changes</button>
+              <button onClick={() => { setShowEditModal(false); setEditForm(null); }} disabled={submitting} style={{ flex: 1, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 12, padding: 12, color: 'var(--text-secondary)', cursor: submitting ? 'not-allowed' : 'pointer', fontWeight: 600, opacity: submitting ? 0.7 : 1 }}>Cancel</button>
+              <button onClick={handleEditSave} disabled={submitting} style={{ flex: 2, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 12, padding: 12, fontWeight: 700, cursor: submitting ? 'not-allowed' : 'pointer', fontSize: 15, opacity: submitting ? 0.7 : 1 }}>{submitting ? 'Saving...' : 'Save Changes'}</button>
             </div>
           </div>
         </div>

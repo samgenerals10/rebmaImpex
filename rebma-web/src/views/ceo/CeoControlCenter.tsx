@@ -508,6 +508,7 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
   const [dbDepartments, setDbDepartments] = useState<any[]>([]);
   const [editingDeptId, setEditingDeptId] = useState<string | null>(null);
   const [editingDeptName, setEditingDeptName] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   const handleRenameDept = async (id: string, oldName: string, newName: string) => {
     if (!newName.trim() || newName === oldName) {
@@ -559,68 +560,109 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
   };
 
   const generateInviteLink = async () => {
-    const token = Math.random().toString(36).substring(2) + Date.now().toString(36);
-    const expiryHours: Record<string, number> = { '24h': 24, '48h': 48, '7d': 168 };
-    const hours = expiryHours[inviteForm.expiry] ?? 24;
-    const expiresAt = new Date(Date.now() + hours * 3600000).toISOString();
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      const token = Math.random().toString(36).substring(2) + Date.now().toString(36);
+      const expiryHours: Record<string, number> = { '24h': 24, '48h': 48, '7d': 168 };
+      const hours = expiryHours[inviteForm.expiry] ?? 24;
+      const expiresAt = new Date(Date.now() + hours * 3600000).toISOString();
 
-    supabase.from('staff_invites').insert([{
-      token,
-      email: inviteForm.email || null,
-      full_name: inviteForm.fullName || null,
-      department: inviteForm.department,
-      role: inviteForm.role,
-      auto_approve: inviteForm.autoApprove,
-      expires_at: expiresAt,
-      status: 'pending',
-    }]).then(() => {
+      await supabase.from('staff_invites').insert([{
+        token,
+        email: inviteForm.email || null,
+        full_name: inviteForm.fullName || null,
+        department: inviteForm.department,
+        role: inviteForm.role,
+        auto_approve: inviteForm.autoApprove,
+        expires_at: expiresAt,
+        status: 'pending',
+      }]);
       const link = `${window.location.origin}/register?token=${token}`;
       setGeneratedLink(link);
       addNotification(`Invite link generated for ${inviteForm.department}.`);
       loadData();
-    }, () => {});
+    } catch (err: any) {
+      addNotification(`Failed to generate invite: ${err.message}`);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const revokeInvite = (id: string) => {
-    supabase.from('staff_invites').update({ status: 'revoked' }).eq('id', id).then(() => {
+  const revokeInvite = async (id: string) => {
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      await supabase.from('staff_invites').update({ status: 'revoked' }).eq('id', id);
       setInvites(prev => prev.filter(i => i.id !== id));
-    }, () => {});
+    } catch (err: any) {
+      addNotification(`Failed to revoke invite: ${err.message}`);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const revokeDelegate = (id: string) => {
-    supabase.from('ceo_delegations').update({ active: false }).eq('id', id).then(() => {
+  const revokeDelegate = async (id: string) => {
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      await supabase.from('ceo_delegations').update({ active: false }).eq('id', id);
       setDelegates(prev => prev.filter(d => d.id !== id));
-    }, () => {});
+    } catch (err: any) {
+      addNotification(`Failed to revoke delegation: ${err.message}`);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const grantDelegate = async () => {
-    if (!delegateForm.searchEmail) return;
-    supabase.from('ceo_delegations').insert([{
-      delegated_to_email: delegateForm.searchEmail,
-      delegated_to_name: delegateForm.name || delegateForm.searchEmail,
-      permissions: delegateForm.permissions,
-      expires_at: delegateForm.expiresAt || null,
-      active: true,
-    }]).then(() => {
+    if (!delegateForm.searchEmail || submitting) return;
+    setSubmitting(true);
+    try {
+      await supabase.from('ceo_delegations').insert([{
+        delegated_to_email: delegateForm.searchEmail,
+        delegated_to_name: delegateForm.name || delegateForm.searchEmail,
+        permissions: delegateForm.permissions,
+        expires_at: delegateForm.expiresAt || null,
+        active: true,
+      }]);
       addNotification(`Control access granted to ${delegateForm.searchEmail}.`);
       setShowDelegateForm(false);
       setDelegateForm({ searchEmail: '', name: '', permissions: [], expiresAt: '' });
       loadData();
-    }, () => {});
+    } catch (err: any) {
+      addNotification(`Failed to grant access: ${err.message}`);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const suspendUser = (userId: string, name: string) => {
-    supabase.from('profiles').update({ status: 'SUSPENDED' }).eq('id', userId).then(() => {
+  const suspendUser = async (userId: string, name: string) => {
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      await supabase.from('profiles').update({ status: 'SUSPENDED' }).eq('id', userId);
       addNotification(`User ${name} suspended.`);
       loadData();
-    }, () => {});
+    } catch (err: any) {
+      addNotification(`Failed to suspend user: ${err.message}`);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const reactivateUser = (userId: string, name: string) => {
-    supabase.from('profiles').update({ status: 'ACTIVE' }).eq('id', userId).then(() => {
+  const reactivateUser = async (userId: string, name: string) => {
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      await supabase.from('profiles').update({ status: 'ACTIVE' }).eq('id', userId);
       addNotification(`User ${name} reactivated.`);
       loadData();
-    }, () => {});
+    } catch (err: any) {
+      addNotification(`Failed to reactivate user: ${err.message}`);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const copyLink = () => {

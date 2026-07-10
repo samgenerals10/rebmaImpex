@@ -109,6 +109,7 @@ export default function SupplierOrdersView({ currentUser, addNotification }: Pro
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [searchText, setSearchText] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   // ── Load orders ──
@@ -176,10 +177,18 @@ export default function SupplierOrdersView({ currentUser, addNotification }: Pro
     }
   };
 
-  const updateStatus = (id: string, status: SupplierOrder['status']) => {
-    setOrders(prev => prev.map(o => o.id === id ? { ...o, status } : o));
-    supabase.from('supplier_orders').update({ status }).eq('id', id).then(() => {}, () => {});
-    addNotification(`Order status updated to ${STATUS_CONFIG[status]?.label || status}.`);
+  const updateStatus = async (id: string, status: SupplierOrder['status']) => {
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      setOrders(prev => prev.map(o => o.id === id ? { ...o, status } : o));
+      await supabase.from('supplier_orders').update({ status }).eq('id', id);
+      addNotification(`Order status updated to ${STATUS_CONFIG[status]?.label || status}.`);
+    } catch (err: any) {
+      addNotification(`Failed to update status: ${err.message}`);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -348,29 +357,37 @@ export default function SupplierOrdersView({ currentUser, addNotification }: Pro
           order={selectedOrder}
           currentUser={currentUser}
           onClose={() => { setShowAuthModal(false); setSelectedOrder(null); }}
-          onAuthorise={(ref, bank, date) => {
-            const updated: SupplierOrder = {
-              ...selectedOrder,
-              status: 'payment_authorised',
-              payment_authorised: true,
-              payment_authorised_at: new Date().toISOString(),
-              payment_reference: ref,
-            };
-            setOrders(prev => prev.map(o => o.id === selectedOrder.id ? updated : o));
-            supabase.from('supplier_orders').update({
-              status: 'payment_authorised',
-              payment_authorised: true,
-              payment_authorised_at: new Date().toISOString(),
-              payment_reference: ref,
-            }).eq('id', selectedOrder.id).then(() => {}, () => {});
-            supabase.from('global_audit_history').insert([{
-              action: 'PAYMENT_AUTHORISED',
-              details: `Order ${selectedOrder.order_number} | ${selectedOrder.supplier_name} | ${selectedOrder.currency} ${selectedOrder.total_amount} | Ref: ${ref}`,
-              performed_by: currentUser?.fullName || 'CEO',
-            }]).then(() => {}, () => {});
-            addNotification(`Payment authorised for ${selectedOrder.order_number}. Supplier notified.`);
-            setShowAuthModal(false);
-            setSelectedOrder(null);
+          onAuthorise={async (ref, bank, date) => {
+            if (submitting) return;
+            setSubmitting(true);
+            try {
+              const updated: SupplierOrder = {
+                ...selectedOrder,
+                status: 'payment_authorised',
+                payment_authorised: true,
+                payment_authorised_at: new Date().toISOString(),
+                payment_reference: ref,
+              };
+              setOrders(prev => prev.map(o => o.id === selectedOrder.id ? updated : o));
+              await supabase.from('supplier_orders').update({
+                status: 'payment_authorised',
+                payment_authorised: true,
+                payment_authorised_at: new Date().toISOString(),
+                payment_reference: ref,
+              }).eq('id', selectedOrder.id);
+              await supabase.from('global_audit_history').insert([{
+                action: 'PAYMENT_AUTHORISED',
+                details: `Order ${selectedOrder.order_number} | ${selectedOrder.supplier_name} | ${selectedOrder.currency} ${selectedOrder.total_amount} | Ref: ${ref}`,
+                performed_by: currentUser?.fullName || 'CEO',
+              }]);
+              addNotification(`Payment authorised for ${selectedOrder.order_number}. Supplier notified.`);
+              setShowAuthModal(false);
+              setSelectedOrder(null);
+            } catch (err: any) {
+              addNotification(`Failed to authorise payment: ${err.message}`);
+            } finally {
+              setSubmitting(false);
+            }
           }}
         />
       )}
@@ -381,26 +398,34 @@ export default function SupplierOrdersView({ currentUser, addNotification }: Pro
           order={selectedOrder}
           onClose={() => { setShowNotifyModal(false); setSelectedOrder(null); }}
           currentUser={currentUser}
-          onSend={(msg, dept, userId) => {
-            const targetDept = dept || 'MANAGEMENT';
-            supabase.from('supplier_order_notifications').insert([{
-              order_id: selectedOrder.id,
-              notified_department: targetDept,
-              notified_user_id: userId || null,
-              message: msg,
-              sent_by: currentUser?.fullName || 'CEO',
-              read: false,
-            }]).then(() => {}, () => {});
-            // Also flag the order as notified
-            const updatePayload: Record<string, any> = {};
-            if (targetDept === 'MANAGEMENT') updatePayload.management_notified = true;
-            if (targetDept === 'OPERATIONS') updatePayload.operations_notified = true;
-            if (Object.keys(updatePayload).length > 0) {
-              supabase.from('supplier_orders').update(updatePayload).eq('id', selectedOrder.id).then(() => {}, () => {});
+          onSend={async (msg, dept, userId) => {
+            if (submitting) return;
+            setSubmitting(true);
+            try {
+              const targetDept = dept || 'MANAGEMENT';
+              await supabase.from('supplier_order_notifications').insert([{
+                order_id: selectedOrder.id,
+                notified_department: targetDept,
+                notified_user_id: userId || null,
+                message: msg,
+                sent_by: currentUser?.fullName || 'CEO',
+                read: false,
+              }]);
+              // Also flag the order as notified
+              const updatePayload: Record<string, any> = {};
+              if (targetDept === 'MANAGEMENT') updatePayload.management_notified = true;
+              if (targetDept === 'OPERATIONS') updatePayload.operations_notified = true;
+              if (Object.keys(updatePayload).length > 0) {
+                await supabase.from('supplier_orders').update(updatePayload).eq('id', selectedOrder.id);
+              }
+              addNotification(`${targetDept.charAt(0) + targetDept.slice(1).toLowerCase()} notified about ${selectedOrder.order_number}.`);
+              setShowNotifyModal(false);
+              setSelectedOrder(null);
+            } catch (err: any) {
+              addNotification(`Failed to send notification: ${err.message}`);
+            } finally {
+              setSubmitting(false);
             }
-            addNotification(`${targetDept.charAt(0) + targetDept.slice(1).toLowerCase()} notified about ${selectedOrder.order_number}.`);
-            setShowNotifyModal(false);
-            setSelectedOrder(null);
           }}
         />
       )}
@@ -500,15 +525,15 @@ function NewOrderForm({ orders, currentUser, onClose, onSave }: {
 
     // Save to Supabase
     if (isNewSupplier && supplierName) {
-      supabase.from('suppliers').insert([{
+      await supabase.from('suppliers').insert([{
         name: supplierName, country: supplierCountry,
         contact_name: supplierContact, contact_email: supplierEmail,
         currency,
-      }]).then(() => {}, () => {});
+      }]);
     }
-    supabase.from('supplier_orders').insert([{
+    await supabase.from('supplier_orders').insert([{
       ...order, id: undefined,
-    }]).then(() => {}, () => {});
+    }]);
 
     setSaving(false);
     onSave(order);
@@ -557,14 +582,14 @@ function NewOrderForm({ orders, currentUser, onClose, onSave }: {
     };
   };
 
-  const saveToSupabase = (order: SupplierOrder) => {
+  const saveToSupabase = async (order: SupplierOrder) => {
     if (isNewSupplier && supplierName) {
-      supabase.from('suppliers').insert([{
+      await supabase.from('suppliers').insert([{
         name: supplierName, country: supplierCountry,
         contact_name: supplierContact, contact_email: supplierEmail, currency,
-      }]).then(() => {}, () => {});
+      }]);
     }
-    supabase.from('supplier_orders').insert([{ ...order, id: undefined }]).then(() => {}, () => {});
+    await supabase.from('supplier_orders').insert([{ ...order, id: undefined }]);
   };
 
   const handleSendNow = async () => {

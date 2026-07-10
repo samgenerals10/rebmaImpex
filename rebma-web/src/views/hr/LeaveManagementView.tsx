@@ -148,6 +148,7 @@ export default function LeaveManagementView({ currentUser, addNotification }: Pr
   const [activeTab, setActiveTab] = useState<'requests' | 'calendar' | 'balances'>('requests');
   const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
   const [loadingLeaves, setLoadingLeaves] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [deptFilter, setDeptFilter] = useState('All');
   const [typeFilter, setTypeFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
@@ -189,32 +190,56 @@ export default function LeaveManagementView({ currentUser, addNotification }: Pr
   };
 
   const handleApprove = async (id: string) => {
-    await supabase.from('leave_requests').update({ status: 'APPROVED' }).eq('id', id);
-    setLeaves(prev => prev.map(l => l.id === id ? { ...l, status: 'APPROVED' } : l));
-    addNotification('Leave request approved');
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      await supabase.from('leave_requests').update({ status: 'APPROVED' }).eq('id', id);
+      setLeaves(prev => prev.map(l => l.id === id ? { ...l, status: 'APPROVED' } : l));
+      addNotification('Leave request approved');
+    } catch (e: any) {
+      alert(e.message || 'Failed to approve request');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleReject = async () => {
     if (!rejectId) return;
-    await supabase.from('leave_requests').update({ status: 'REJECTED', rejection_reason: rejectReason }).eq('id', rejectId);
-    setLeaves(prev => prev.map(l => l.id === rejectId ? { ...l, status: 'REJECTED', rejectionReason: rejectReason } : l));
-    addNotification('Leave request rejected');
-    setRejectId(null);
-    setRejectReason('');
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      await supabase.from('leave_requests').update({ status: 'REJECTED', rejection_reason: rejectReason }).eq('id', rejectId);
+      setLeaves(prev => prev.map(l => l.id === rejectId ? { ...l, status: 'REJECTED', rejectionReason: rejectReason } : l));
+      addNotification('Leave request rejected');
+      setRejectId(null);
+      setRejectReason('');
+    } catch (e: any) {
+      alert(e.message || 'Failed to reject request');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleAdd = async () => {
-    const days = calcDays(form.startDate, form.endDate);
-    const newLeave: LeaveRequest = { id: Date.now().toString(), ...form, days, status: 'PENDING' };
-    const dbData = mapToDB(newLeave);
-    const { error } = await supabase.from('leave_requests').insert([dbData]);
-    if (!error) {
-      setLeaves(prev => [newLeave, ...prev]);
-      addNotification(`Leave request submitted for ${form.employeeName}`);
-      setShowAdd(false);
-      setForm({ employeeName: '', department: 'Operations', leaveType: 'Annual', startDate: '', endDate: '', reason: '' });
-    } else {
-      alert(error.message || 'Failed to submit leave request');
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      const days = calcDays(form.startDate, form.endDate);
+      const newLeave: LeaveRequest = { id: Date.now().toString(), ...form, days, status: 'PENDING' };
+      const dbData = mapToDB(newLeave);
+      const { error } = await supabase.from('leave_requests').insert([dbData]);
+      if (!error) {
+        setLeaves(prev => [newLeave, ...prev]);
+        addNotification(`Leave request submitted for ${form.employeeName}`);
+        setShowAdd(false);
+        setForm({ employeeName: '', department: 'Operations', leaveType: 'Annual', startDate: '', endDate: '', reason: '' });
+      } else {
+        alert(error.message || 'Failed to submit leave request');
+      }
+    } catch (e: any) {
+      alert(e.message || 'Error submitting leave request');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -225,28 +250,44 @@ export default function LeaveManagementView({ currentUser, addNotification }: Pr
 
   const handleEditSave = async () => {
     if (!editForm) return;
-    const days = calcDays(editForm.startDate, editForm.endDate);
-    const updated = { ...editForm, days };
-    const dbData = mapToDB(updated);
-    const { error } = await supabase.from('leave_requests').update(dbData).eq('id', editForm.id);
-    if (!error) {
-      setLeaves(prev => prev.map(l => l.id === editForm.id ? updated : l));
-      addNotification(`Leave request updated for ${editForm.employeeName}`);
-      setShowEdit(false);
-      setEditForm(null);
-    } else {
-      alert(error.message || 'Failed to update leave request');
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      const days = calcDays(editForm.startDate, editForm.endDate);
+      const updated = { ...editForm, days };
+      const dbData = mapToDB(updated);
+      const { error } = await supabase.from('leave_requests').update(dbData).eq('id', editForm.id);
+      if (!error) {
+        setLeaves(prev => prev.map(l => l.id === editForm.id ? updated : l));
+        addNotification(`Leave request updated for ${editForm.employeeName}`);
+        setShowEdit(false);
+        setEditForm(null);
+      } else {
+        alert(error.message || 'Failed to update leave request');
+      }
+    } catch (e: any) {
+      alert(e.message || 'Error updating leave request');
+    } finally {
+      setSubmitting(false);
     }
   };
 
   const handleDeleteClick = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this leave request?')) return;
-    const { error } = await supabase.from('leave_requests').delete().eq('id', id);
-    if (!error) {
-      setLeaves(prev => prev.filter(l => l.id !== id));
-      addNotification('Leave request deleted');
-    } else {
-      alert(error.message || 'Failed to delete leave request');
+    if (submitting) return;
+    if (!await confirm('Are you sure you want to delete this leave request?')) return;
+    setSubmitting(true);
+    try {
+      const { error } = await supabase.from('leave_requests').delete().eq('id', id);
+      if (!error) {
+        setLeaves(prev => prev.filter(l => l.id !== id));
+        addNotification('Leave request deleted');
+      } else {
+        alert(error.message || 'Failed to delete leave request');
+      }
+    } catch (e: any) {
+      alert(e.message || 'Error deleting leave request');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -524,8 +565,8 @@ export default function LeaveManagementView({ currentUser, addNotification }: Pr
               </div>
             </div>
             <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.25rem', justifyContent: 'flex-end' }}>
-              <button onClick={() => setShowAdd(false)} style={{ padding: '0.5rem 1.25rem', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer' }}>Cancel</button>
-              <button onClick={handleAdd} style={{ padding: '0.5rem 1.25rem', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#fff', cursor: 'pointer', fontWeight: 600 }}>Submit</button>
+              <button onClick={() => setShowAdd(false)} disabled={submitting} style={{ padding: '0.5rem 1.25rem', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-secondary)', cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.6 : 1 }}>Cancel</button>
+              <button onClick={handleAdd} disabled={submitting} style={{ padding: '0.5rem 1.25rem', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#fff', cursor: submitting ? 'not-allowed' : 'pointer', fontWeight: 600, opacity: submitting ? 0.6 : 1 }}>{submitting ? 'Submitting...' : 'Submit'}</button>
             </div>
           </div>
         </div>
@@ -591,8 +632,8 @@ export default function LeaveManagementView({ currentUser, addNotification }: Pr
               )}
             </div>
             <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.25rem', justifyContent: 'flex-end' }}>
-              <button onClick={() => { setShowEdit(false); setEditForm(null); }} style={{ padding: '0.5rem 1.25rem', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer' }}>Cancel</button>
-              <button onClick={handleEditSave} style={{ padding: '0.5rem 1.25rem', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#fff', cursor: 'pointer', fontWeight: 600 }}>Save Changes</button>
+              <button onClick={() => { setShowEdit(false); setEditForm(null); }} disabled={submitting} style={{ padding: '0.5rem 1.25rem', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-secondary)', cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.6 : 1 }}>Cancel</button>
+              <button onClick={handleEditSave} disabled={submitting} style={{ padding: '0.5rem 1.25rem', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#fff', cursor: submitting ? 'not-allowed' : 'pointer', fontWeight: 600, opacity: submitting ? 0.6 : 1 }}>{submitting ? 'Saving...' : 'Save Changes'}</button>
             </div>
           </div>
         </div>

@@ -74,6 +74,7 @@ export default function FinanceExpensesView({ addNotification, currentUser }: Pr
   const [editExpense, setEditExpense] = useState<Expense | null>(null);
   const [showEditForm, setShowEditForm] = useState(false);
   const [editForm, setEditForm] = useState({ category: 'Rent', description: '', amount: '', date: '', notes: '' });
+  const [submitting, setSubmitting] = useState(false);
 
   const filtered = expenses.filter(e => {
     const matchSearch = !search || e.description.toLowerCase().includes(search.toLowerCase()) || e.category.toLowerCase().includes(search.toLowerCase());
@@ -88,11 +89,21 @@ export default function FinanceExpensesView({ addNotification, currentUser }: Pr
   const budget = 50000;
   const remaining = Math.max(0, budget - approved);
 
-  function updateStatus(id: string, status: 'Approved' | 'Rejected') {
-    setExpenses(prev => prev.map(e => e.id === id ? { ...e, status } : e));
-    addNotification?.(`Expense ${status.toLowerCase()}`);
-    supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Expense ${id} ${status}`, performed_by: currentUser?.fullName || 'Finance', timestamp: new Date().toISOString() }]).then(() => {}, () => {});
-    setMenuOpen(null);
+  async function updateStatus(id: string, status: 'Approved' | 'Rejected') {
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      const { error } = await supabase.from('finance_expenses').update({ status }).eq('id', id);
+      if (error) throw error;
+      setExpenses(prev => prev.map(e => e.id === id ? { ...e, status } : e));
+      addNotification?.(`Expense ${status.toLowerCase()}`);
+      await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Expense ${id} ${status}`, performed_by: currentUser?.fullName || 'Finance', timestamp: new Date().toISOString() }]);
+    } catch (e: any) {
+      alert(e.message || 'Failed to update expense status.');
+    } finally {
+      setSubmitting(false);
+      setMenuOpen(null);
+    }
   }
 
   function openEditForm(e: Expense) {
@@ -109,7 +120,8 @@ export default function FinanceExpensesView({ addNotification, currentUser }: Pr
   }
 
   async function updateExpense() {
-    if (!editExpense || !editForm.description || !editForm.amount) return;
+    if (!editExpense || !editForm.description || !editForm.amount || submitting) return;
+    setSubmitting(true);
     try {
       const updatedAmount = parseFloat(editForm.amount);
       const { error } = await supabase.from('finance_expenses')
@@ -125,36 +137,59 @@ export default function FinanceExpensesView({ addNotification, currentUser }: Pr
       if (error) throw error;
       setExpenses(prev => prev.map(e => e.id === editExpense.id ? { ...e, category: editForm.category, description: editForm.description, amount: updatedAmount, date: editForm.date } : e));
       addNotification?.('Expense updated successfully.');
-      supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Expense ${editExpense.id} updated`, performed_by: currentUser?.fullName || 'Finance', timestamp: new Date().toISOString() }]).then(() => {}, () => {});
+      await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Expense ${editExpense.id} updated`, performed_by: currentUser?.fullName || 'Finance', timestamp: new Date().toISOString() }]);
+      setShowEditForm(false);
+      setEditExpense(null);
     } catch (err: any) {
       alert(err.message || 'Failed to update expense.');
+    } finally {
+      setSubmitting(false);
     }
-    setShowEditForm(false);
-    setEditExpense(null);
   }
 
   async function deleteExpense(id: string) {
-    if (!window.confirm('Are you sure you want to delete this expense?')) return;
+    if (submitting) return;
+    if (!await window.confirm('Are you sure you want to delete this expense?')) return;
+    setSubmitting(true);
     try {
       const { error } = await supabase.from('finance_expenses').delete().eq('id', id);
       if (error) throw error;
       setExpenses(prev => prev.filter(e => e.id !== id));
       addNotification?.('Expense deleted successfully.');
-      supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Expense ${id} deleted`, performed_by: currentUser?.fullName || 'Finance', timestamp: new Date().toISOString() }]).then(() => {}, () => {});
+      await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Expense ${id} deleted`, performed_by: currentUser?.fullName || 'Finance', timestamp: new Date().toISOString() }]);
     } catch (err: any) {
       alert(err.message || 'Failed to delete expense.');
+    } finally {
+      setSubmitting(false);
+      setMenuOpen(null);
     }
-    setMenuOpen(null);
   }
 
-  function logExpense() {
-    if (!form.description || !form.amount) return;
-    const entry: Expense = { id: Date.now().toString(), category: form.category, description: form.description, amount: parseFloat(form.amount), date: form.date, receipt: false, submittedBy: currentUser?.fullName || 'Finance', status: 'Pending' };
-    setExpenses(prev => [entry, ...prev]);
-    supabase.from('finance_expenses').insert([{ ...form, amount: parseFloat(form.amount), submitted_by: currentUser?.fullName || 'Finance', status: 'Pending', timestamp: new Date().toISOString() }]).then(() => {}, () => {});
-    addNotification?.(`Expense logged: ${form.description} — GHS ${parseFloat(form.amount).toLocaleString()}`);
-    setShowForm(false);
-    setForm({ category: 'Rent', description: '', amount: '', date: new Date().toISOString().slice(0, 10), notes: '' });
+  async function logExpense() {
+    if (!form.description || !form.amount || submitting) return;
+    setSubmitting(true);
+    try {
+      const entry: Expense = { id: Date.now().toString(), category: form.category, description: form.description, amount: parseFloat(form.amount), date: form.date, receipt: false, submittedBy: currentUser?.fullName || 'Finance', status: 'Pending' };
+      setExpenses(prev => [entry, ...prev]);
+      const { error } = await supabase.from('finance_expenses').insert([{
+        category: form.category,
+        description: form.description,
+        amount: parseFloat(form.amount),
+        date: form.date,
+        notes: form.notes,
+        submitted_by: currentUser?.fullName || 'Finance',
+        status: 'Pending',
+      }]);
+      if (error) throw error;
+      addNotification?.(`Expense logged: ${form.description} — GHS ${parseFloat(form.amount).toLocaleString()}`);
+      setShowForm(false);
+      setForm({ category: 'Rent', description: '', amount: '', date: new Date().toISOString().slice(0, 10), notes: '' });
+    } catch (e: any) {
+      console.error(e);
+      alert(e.message || 'Failed to log expense.');
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -274,8 +309,10 @@ export default function FinanceExpensesView({ addNotification, currentUser }: Pr
               <div><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Notes</label><textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={2} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)] resize-none" /></div>
             </div>
             <div className="flex items-center gap-3 justify-end mt-5">
-              <button onClick={() => setShowForm(false)} className="px-4 py-2 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--text-secondary)]">Cancel</button>
-              <button onClick={logExpense} className="px-4 py-2 rounded-xl text-white text-sm font-medium hover:opacity-90" style={{ background: 'var(--accent)' }}>Submit for Approval</button>
+              <button disabled={submitting} onClick={() => setShowForm(false)} className="px-4 py-2 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--text-secondary)] disabled:opacity-50">Cancel</button>
+              <button disabled={submitting} onClick={logExpense} className="px-4 py-2 rounded-xl text-white text-sm font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed" style={{ background: 'var(--accent)' }}>
+                {submitting ? 'Submitting...' : 'Submit for Approval'}
+              </button>
             </div>
           </div>
         </div>
@@ -296,8 +333,10 @@ export default function FinanceExpensesView({ addNotification, currentUser }: Pr
               <div><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Notes (optional)</label><textarea value={editForm.notes} onChange={e => setEditForm(f => ({ ...f, notes: e.target.value }))} rows={2} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)] resize-none" /></div>
             </div>
             <div className="flex items-center gap-3 justify-end mt-5">
-              <button onClick={() => setShowEditForm(false)} className="px-4 py-2 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--text-secondary)]">Cancel</button>
-              <button onClick={updateExpense} className="px-4 py-2 rounded-xl text-white text-sm font-medium hover:opacity-90" style={{ background: 'var(--accent)' }}>Save Changes</button>
+              <button disabled={submitting} onClick={() => setShowEditForm(false)} className="px-4 py-2 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--text-secondary)] disabled:opacity-50">Cancel</button>
+              <button disabled={submitting} onClick={updateExpense} className="px-4 py-2 rounded-xl text-white text-sm font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed" style={{ background: 'var(--accent)' }}>
+                {submitting ? 'Saving...' : 'Save Changes'}
+              </button>
             </div>
           </div>
         </div>

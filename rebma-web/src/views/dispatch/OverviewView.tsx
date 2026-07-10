@@ -161,27 +161,38 @@ export default function DispatchOverviewView({ addNotification, setActiveSubTab,
       status: rec.status,
       created_at: rec.dispatchedAt
     };
-    supabase.from('delivery_logs').insert([dbRec]).then(() => {}, () => {});
-    supabase.from('supplier_order_notifications').insert({
-      order_id: assignOrderId, message: `Driver ${driver?.fullName} assigned to ${assignOrderId}`,
-      notified_department: 'OPERATIONS', read: false, created_at: now,
-    }).then(() => {}, () => {});
-    supabase.from('global_audit_history').insert({
-      department: 'DISPATCH', action: `Driver ${driver?.fullName} assigned to ${assignOrderId}`,
-      performed_by: currentUser?.fullName || 'Dispatch', timestamp: now,
-    }).then(() => {}, () => {});
-    addNotification?.(`Driver ${driver?.fullName} assigned to ${assignOrderId}`);
-    setAssignOrderId(''); setAssignDriverId('');
-    setAssigning(false);
+    try {
+      await supabase.from('delivery_logs').insert([dbRec]);
+      await supabase.from('supplier_order_notifications').insert({
+        order_id: assignOrderId, message: `Driver ${driver?.fullName} assigned to ${assignOrderId}`,
+        notified_department: 'OPERATIONS', read: false, created_at: now,
+      });
+      await supabase.from('global_audit_history').insert({
+        department: 'DISPATCH', action: `Driver ${driver?.fullName} assigned to ${assignOrderId}`,
+        performed_by: currentUser?.fullName || 'Dispatch', timestamp: now,
+      });
+      addNotification?.(`Driver ${driver?.fullName} assigned to ${assignOrderId}`);
+    } catch (err: any) {
+      addNotification?.(`Failed to assign driver: ${err.message}`);
+    } finally {
+      setAssignOrderId(''); setAssignDriverId('');
+      setAssigning(false);
+    }
   };
 
   // Mark delivered quick action
-  const handleMarkDelivered = (id: string) => {
+  const handleMarkDelivered = async (id: string) => {
+    if (assigning) return;
     const now = new Date().toISOString();
     setDeliveries(prev => prev.map(d => d.id === id ? { ...d, status: 'DELIVERED', deliveredAt: now } : d));
-    supabase.from('delivery_logs').update({ status: 'DELIVERED', delivered_at: now }).eq('id', id).then(() => {}, () => {});
-    addNotification?.(`Delivery ${id} marked as delivered.`);
-    setMenuOpen(null);
+    try {
+      await supabase.from('delivery_logs').update({ status: 'DELIVERED', delivered_at: now }).eq('id', id);
+      addNotification?.(`Delivery ${id} marked as delivered.`);
+    } catch (err: any) {
+      addNotification?.(`Failed to mark delivered: ${err.message}`);
+    } finally {
+      setMenuOpen(null);
+    }
   };
 
   return (

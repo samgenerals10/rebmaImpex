@@ -53,6 +53,7 @@ const mapToDB = (ui: Partial<MaintenanceRecord>) => {
 export default function MaintenanceView({ addNotification }: Props) {
   const [records, setRecords] = useState<MaintenanceRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editForm, setEditForm] = useState<MaintenanceRecord | null>(null);
@@ -99,6 +100,8 @@ export default function MaintenanceView({ addNotification }: Props) {
   };
 
   const handleMarkComplete = async (id: string) => {
+    if (submitting) return;
+    setSubmitting(true);
     try {
       const { error } = await supabase.from('maintenance_schedule').update({ status: 'Completed', updated_at: new Date().toISOString() }).eq('id', id);
       if (!error) {
@@ -109,6 +112,8 @@ export default function MaintenanceView({ addNotification }: Props) {
       }
     } catch (e: any) {
       alert(e.message || 'Failed to update status.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -117,6 +122,8 @@ export default function MaintenanceView({ addNotification }: Props) {
       alert('Vehicle, Date, and Description are required.');
       return;
     }
+    if (submitting) return;
+    setSubmitting(true);
     const newDbRow = mapToDB({
       vehicleId: form.vehicleId,
       type: form.type,
@@ -131,7 +138,7 @@ export default function MaintenanceView({ addNotification }: Props) {
       const { data, error } = await supabase.from('maintenance_schedule').insert([newDbRow]).select();
       if (!error && data) {
         addNotification(`Maintenance scheduled for ${form.vehicleId}`);
-        loadData();
+        await loadData();
         setShowModal(false);
         setForm({ vehicleId: 'GR-1234-22', type: 'Service', date: '', description: '', mechanic: '', cost: '' });
       } else {
@@ -139,6 +146,8 @@ export default function MaintenanceView({ addNotification }: Props) {
       }
     } catch (e: any) {
       alert(e.message || 'Failed to schedule maintenance.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -147,6 +156,8 @@ export default function MaintenanceView({ addNotification }: Props) {
       alert('Vehicle, Date, and Description are required.');
       return;
     }
+    if (submitting) return;
+    setSubmitting(true);
     const updatedDbRow = mapToDB(editForm);
     delete updatedDbRow.id; // Avoid overriding primary key in update
 
@@ -160,7 +171,7 @@ export default function MaintenanceView({ addNotification }: Props) {
 
       if (!error) {
         addNotification(`Maintenance record updated for ${editForm.vehicleId}`);
-        loadData();
+        await loadData();
         setShowEditModal(false);
         setEditForm(null);
       } else {
@@ -168,21 +179,27 @@ export default function MaintenanceView({ addNotification }: Props) {
       }
     } catch (e: any) {
       alert(e.message || 'Failed to update maintenance record.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
   const handleDelete = async (record: MaintenanceRecord) => {
-    if (!window.confirm(`Are you sure you want to delete the maintenance log for ${record.vehicleId} on ${record.date}?`)) return;
+    if (submitting) return;
+    if (!await window.confirm(`Are you sure you want to delete the maintenance log for ${record.vehicleId} on ${record.date}?`)) return;
+    setSubmitting(true);
     try {
       const { error } = await supabase.from('maintenance_schedule').delete().eq('id', record.id);
       if (!error) {
         addNotification(`Deleted maintenance log for ${record.vehicleId}`);
-        loadData();
+        await loadData();
       } else {
         alert(error.message);
       }
     } catch (e: any) {
       alert(e.message || 'Failed to delete maintenance record.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -358,8 +375,8 @@ export default function MaintenanceView({ addNotification }: Props) {
               </div>
             </div>
             <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
-              <button onClick={() => setShowModal(false)} style={{ flex: 1, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 12, padding: 12, color: 'var(--text-secondary)', cursor: 'pointer', fontWeight: 600 }}>Cancel</button>
-              <button onClick={handleSubmit} style={{ flex: 2, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 12, padding: 12, fontWeight: 700, cursor: 'pointer', fontSize: 15 }}>Schedule</button>
+              <button onClick={() => setShowModal(false)} disabled={submitting} style={{ flex: 1, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 12, padding: 12, color: 'var(--text-secondary)', cursor: submitting ? 'not-allowed' : 'pointer', fontWeight: 600, opacity: submitting ? 0.7 : 1 }}>Cancel</button>
+              <button onClick={handleSubmit} disabled={submitting} style={{ flex: 2, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 12, padding: 12, fontWeight: 700, cursor: submitting ? 'not-allowed' : 'pointer', fontSize: 15, opacity: submitting ? 0.7 : 1 }}>{submitting ? 'Scheduling...' : 'Schedule'}</button>
             </div>
           </div>
         </div>
@@ -413,8 +430,8 @@ export default function MaintenanceView({ addNotification }: Props) {
               </div>
             </div>
             <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
-              <button onClick={() => { setShowEditModal(false); setEditForm(null); }} style={{ flex: 1, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 12, padding: 12, color: 'var(--text-secondary)', cursor: 'pointer', fontWeight: 600 }}>Cancel</button>
-              <button onClick={handleEditSave} style={{ flex: 2, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 12, padding: 12, fontWeight: 700, cursor: 'pointer', fontSize: 15 }}>Save Changes</button>
+              <button onClick={() => { setShowEditModal(false); setEditForm(null); }} disabled={submitting} style={{ flex: 1, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 12, padding: 12, color: 'var(--text-secondary)', cursor: submitting ? 'not-allowed' : 'pointer', fontWeight: 600, opacity: submitting ? 0.7 : 1 }}>Cancel</button>
+              <button onClick={handleEditSave} disabled={submitting} style={{ flex: 2, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 12, padding: 12, fontWeight: 700, cursor: submitting ? 'not-allowed' : 'pointer', fontSize: 15, opacity: submitting ? 0.7 : 1 }}>{submitting ? 'Saving...' : 'Save Changes'}</button>
             </div>
           </div>
         </div>

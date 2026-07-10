@@ -45,6 +45,7 @@ export default function PayrollView({ currentUser, staffList, addNotification }:
   const [deptFilter, setDeptFilter] = useState('All');
   const [showNewBatch, setShowNewBatch] = useState(false);
   const [newPeriod, setNewPeriod] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -93,27 +94,42 @@ export default function PayrollView({ currentUser, staffList, addNotification }:
     return acc;
   }, {});
 
-  const handleProcessBatch = (batch: PayrollBatch) => {
-    const updated = { ...batch, status: 'PAID' as const, processedAt: new Date().toISOString().split('T')[0] };
-    supabase.from('payroll_batches').update({ status: 'PAID' }).eq('id', batch.id).then(() => {}, () => {});
-    supabase.from('global_audit_history').insert([{ department: 'HR', action: `Payroll processed: ${batch.period}`, performed_by: currentUser?.fullName || 'HR Admin', timestamp: new Date().toISOString() }]).then(() => {}, () => {});
-    setBatches(prev => prev.map(b => b.id === batch.id ? updated : b));
-    if (activeBatch?.id === batch.id) setActiveBatch(updated);
-    addNotification(`Payroll batch ${batch.period} processed`);
+  const handleProcessBatch = async (batch: PayrollBatch) => {
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      const updated = { ...batch, status: 'PAID' as const, processedAt: new Date().toISOString().split('T')[0] };
+      await supabase.from('payroll_batches').update({ status: 'PAID' }).eq('id', batch.id);
+      await supabase.from('global_audit_history').insert([{ department: 'HR', action: `Payroll processed: ${batch.period}`, performed_by: currentUser?.fullName || 'HR Admin', timestamp: new Date().toISOString() }]);
+      setBatches(prev => prev.map(b => b.id === batch.id ? updated : b));
+      if (activeBatch?.id === batch.id) setActiveBatch(updated);
+      addNotification(`Payroll batch ${batch.period} processed`);
+    } catch (err: any) {
+      addNotification(`Error processing batch: ${err.message}`);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const handleCreateBatch = () => {
-    if (!newPeriod) return;
-    const batch: PayrollBatch = {
-      id: `PAY-${Date.now()}`, period: newPeriod, status: 'DRAFT',
-      totalAmount: entries.reduce((s, e) => s + e.netPay, 0),
-      staffCount: entries.length, createdAt: new Date().toISOString().split('T')[0],
-    };
-    supabase.from('payroll_batches').insert([batch]).then(() => {}, () => {});
-    setBatches(prev => [batch, ...prev]);
-    addNotification(`Payroll batch created for ${newPeriod}`);
-    setShowNewBatch(false);
-    setNewPeriod('');
+  const handleCreateBatch = async () => {
+    if (!newPeriod || submitting) return;
+    setSubmitting(true);
+    try {
+      const batch: PayrollBatch = {
+        id: `PAY-${Date.now()}`, period: newPeriod, status: 'DRAFT',
+        totalAmount: entries.reduce((s, e) => s + e.netPay, 0),
+        staffCount: entries.length, createdAt: new Date().toISOString().split('T')[0],
+      };
+      await supabase.from('payroll_batches').insert([batch]);
+      setBatches(prev => [batch, ...prev]);
+      addNotification(`Payroll batch created for ${newPeriod}`);
+      setShowNewBatch(false);
+      setNewPeriod('');
+    } catch (err: any) {
+      addNotification(`Error creating batch: ${err.message}`);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const statusBadge = (s: PayrollBatch['status']) => {
@@ -143,8 +159,8 @@ export default function PayrollView({ currentUser, staffList, addNotification }:
                 {showAmounts ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                 {showAmounts ? 'Hide' : 'Show'} Amounts
               </button>
-              <button onClick={() => setShowNewBatch(true)}
-                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 bg-[var(--accent)] text-white rounded-xl hover:opacity-90 cursor-pointer">
+              <button onClick={() => setShowNewBatch(true)} disabled={submitting}
+                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 bg-[var(--accent)] text-white rounded-xl hover:opacity-90 cursor-pointer disabled:opacity-50">
                 <Plus className="w-3.5 h-3.5" /> New Batch
               </button>
             </>
@@ -238,9 +254,9 @@ export default function PayrollView({ currentUser, staffList, addNotification }:
                       <td className="py-3 px-4 text-[var(--text-muted)] hidden sm:table-cell">{batch.processedAt || '—'}</td>
                       <td className="py-3 px-4 text-center" onClick={e => e.stopPropagation()}>
                         {batch.status === 'DRAFT' && (
-                          <button onClick={() => handleProcessBatch(batch)}
-                            className="text-xs px-3 py-1.5 bg-[var(--accent)] text-white rounded-lg font-semibold hover:opacity-90 cursor-pointer">
-                            Process
+                          <button onClick={() => handleProcessBatch(batch)} disabled={submitting}
+                            className="text-xs px-3 py-1.5 bg-[var(--accent)] text-white rounded-lg font-semibold hover:opacity-90 cursor-pointer disabled:opacity-50">
+                            {submitting ? 'Processing...' : 'Process'}
                           </button>
                         )}
                         {batch.status === 'PAID' && (
@@ -366,16 +382,16 @@ export default function PayrollView({ currentUser, staffList, addNotification }:
           <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5 w-full max-w-sm">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-bold text-[var(--text-primary)]">New Payroll Batch</h3>
-              <button onClick={() => setShowNewBatch(false)} className="text-[var(--text-muted)] cursor-pointer"><X className="w-5 h-5" /></button>
+              <button onClick={() => setShowNewBatch(false)} disabled={submitting} className="text-[var(--text-muted)] cursor-pointer disabled:opacity-50"><X className="w-5 h-5" /></button>
             </div>
             <div>
               <label className="block text-xs text-[var(--text-secondary)] mb-1">Period (e.g. July 2026)</label>
-              <input value={newPeriod} onChange={e => setNewPeriod(e.target.value)} placeholder="Month YYYY"
-                className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-[var(--text-primary)] text-sm outline-none" />
+              <input value={newPeriod} onChange={e => setNewPeriod(e.target.value)} placeholder="Month YYYY" disabled={submitting}
+                className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-[var(--text-primary)] text-sm outline-none disabled:opacity-50" />
             </div>
             <div className="flex gap-2 mt-4 justify-end">
-              <button onClick={() => setShowNewBatch(false)} className="px-4 py-2 text-xs border border-[var(--border)] rounded-xl text-[var(--text-secondary)] cursor-pointer">Cancel</button>
-              <button onClick={handleCreateBatch} className="px-4 py-2 text-xs bg-[var(--accent)] text-white rounded-xl font-semibold cursor-pointer">Create</button>
+              <button onClick={() => setShowNewBatch(false)} disabled={submitting} className="px-4 py-2 text-xs border border-[var(--border)] rounded-xl text-[var(--text-secondary)] cursor-pointer disabled:opacity-50">Cancel</button>
+              <button onClick={handleCreateBatch} disabled={submitting} className="px-4 py-2 text-xs bg-[var(--accent)] text-white rounded-xl font-semibold cursor-pointer disabled:opacity-50">{submitting ? 'Creating...' : 'Create'}</button>
             </div>
           </div>
         </div>

@@ -79,21 +79,31 @@ export default function FinanceChequesView({ addNotification, currentUser }: Pro
     return matchSearch && matchStatus;
   });
 
-  function updateStatus(id: string, status: Cheque['status']) {
-    setCheques(prev => prev.map(c => c.id === id ? { ...c, status } : c));
-    const cheque = cheques.find(c => c.id === id);
-    if (status === 'Bounced' && cheque) {
-      supabase.from('supplier_order_notifications').insert([
-        { order_id: cheque.orderRef, message: `⚠️ CHEQUE BOUNCED: Cheque #${cheque.chequeNumber} from ${cheque.accountName} for GHS ${cheque.amount.toLocaleString()} has bounced. Immediate action required.`, notified_department: 'MANAGEMENT', read: false },
-        { order_id: cheque.orderRef, message: `⚠️ CHEQUE BOUNCED: Cheque #${cheque.chequeNumber} from ${cheque.accountName} for GHS ${cheque.amount.toLocaleString()} has bounced. Immediate action required.`, notified_department: 'CEO', read: false },
-      ]).then(() => {}, () => {});
-      addNotification?.(`⚠️ Cheque #${cheque.chequeNumber} marked as BOUNCED. Management and CEO notified.`);
-    } else {
-      addNotification?.(`Cheque #${cheques.find(c => c.id === id)?.chequeNumber} marked as ${status}`);
+  const [submitting, setSubmitting] = useState(false);
+
+  async function updateStatus(id: string, status: Cheque['status']) {
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      const cheque = cheques.find(c => c.id === id);
+      if (status === 'Bounced' && cheque) {
+        await supabase.from('supplier_order_notifications').insert([
+          { order_id: cheque.orderRef, message: `⚠️ CHEQUE BOUNCED: Cheque #${cheque.chequeNumber} from ${cheque.accountName} for GHS ${cheque.amount.toLocaleString()} has bounced. Immediate action required.`, notified_department: 'MANAGEMENT', read: false },
+          { order_id: cheque.orderRef, message: `⚠️ CHEQUE BOUNCED: Cheque #${cheque.chequeNumber} from ${cheque.accountName} for GHS ${cheque.amount.toLocaleString()} has bounced. Immediate action required.`, notified_department: 'CEO', read: false },
+        ]);
+        addNotification?.(`⚠️ Cheque #${cheque.chequeNumber} marked as BOUNCED. Management and CEO notified.`);
+      } else {
+        addNotification?.(`Cheque #${cheques.find(c => c.id === id)?.chequeNumber} marked as ${status}`);
+      }
+      await supabase.from('finance_cheques').update({ status }).eq('id', id);
+      await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Cheque ${id} status updated to ${status}`, performed_by: currentUser?.fullName || 'Finance', timestamp: new Date().toISOString() }]);
+      setCheques(prev => prev.map(c => c.id === id ? { ...c, status } : c));
+    } catch (e: any) {
+      alert(e.message || 'Failed to update cheque status.');
+    } finally {
+      setSubmitting(false);
+      setMenuOpen(null);
     }
-    supabase.from('finance_cheques').update({ status }).eq('id', id).then(() => {}, () => {});
-    supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Cheque ${id} status updated to ${status}`, performed_by: currentUser?.fullName || 'Finance', timestamp: new Date().toISOString() }]).then(() => {}, () => {});
-    setMenuOpen(null);
   }
 
   function openEditForm(c: Cheque) {
@@ -114,6 +124,8 @@ export default function FinanceChequesView({ addNotification, currentUser }: Pro
 
   async function updateCheque() {
     if (!editCheque || !editForm.chequeNumber || !editForm.bankName || !editForm.accountName) return;
+    if (submitting) return;
+    setSubmitting(true);
     try {
       const updatedAmount = parseFloat(editForm.amount) || 0;
       const { error } = await supabase.from('finance_cheques')
@@ -132,48 +144,66 @@ export default function FinanceChequesView({ addNotification, currentUser }: Pro
       if (error) throw error;
       setCheques(prev => prev.map(c => c.id === editCheque.id ? { ...c, chequeNumber: editForm.chequeNumber, bankName: editForm.bankName, accountName: editForm.accountName, amount: updatedAmount, chequeDate: editForm.chequeDate, expectedClearing: editForm.expectedClearing, orderRef: editForm.orderRef } : c));
       addNotification?.('Cheque updated successfully.');
-      supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Cheque ${editCheque.id} updated`, performed_by: currentUser?.fullName || 'Finance', timestamp: new Date().toISOString() }]).then(() => {}, () => {});
+      await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Cheque ${editCheque.id} updated`, performed_by: currentUser?.fullName || 'Finance', timestamp: new Date().toISOString() }]);
+      setShowEditForm(false);
+      setEditCheque(null);
     } catch (err: any) {
       alert(err.message || 'Failed to update cheque.');
+    } finally {
+      setSubmitting(false);
     }
-    setShowEditForm(false);
-    setEditCheque(null);
   }
 
   async function deleteCheque(id: string) {
-    if (!window.confirm('Are you sure you want to delete this cheque?')) return;
+    if (submitting) return;
+    if (!await window.confirm('Are you sure you want to delete this cheque?')) return;
+    setSubmitting(true);
     try {
       const { error } = await supabase.from('finance_cheques').delete().eq('id', id);
       if (error) throw error;
       setCheques(prev => prev.filter(c => c.id !== id));
       addNotification?.('Cheque deleted successfully.');
-      supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Cheque ${id} deleted`, performed_by: currentUser?.fullName || 'Finance', timestamp: new Date().toISOString() }]).then(() => {}, () => {});
+      await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Cheque ${id} deleted`, performed_by: currentUser?.fullName || 'Finance', timestamp: new Date().toISOString() }]);
     } catch (err: any) {
       alert(err.message || 'Failed to delete cheque.');
+    } finally {
+      setSubmitting(false);
+      setMenuOpen(null);
     }
-    setMenuOpen(null);
   }
 
-  function addCheque() {
-    const entry: Cheque = { id: Date.now().toString(), chequeNumber: form.chequeNumber, bankName: form.bankName, accountName: form.accountName, amount: parseFloat(form.amount) || 0, chequeDate: form.chequeDate, expectedClearing: form.expectedClearing, status: 'Received', customerRef: form.accountName, orderRef: form.orderRef };
-    setCheques(prev => [entry, ...prev]);
-    supabase.from('finance_cheques').insert([{
-      cheque_number: form.chequeNumber,
-      bank_name: form.bankName,
-      account_name: form.accountName,
-      account_number: form.accountNumber,
-      amount: parseFloat(form.amount) || 0,
-      cheque_date: form.chequeDate,
-      expected_clearing: form.expectedClearing,
-      customer_ref: form.accountName,
-      order_ref: form.orderRef,
-      status: 'Received',
-      recorded_by: currentUser?.fullName || 'Finance',
-      timestamp: new Date().toISOString()
-    }]).then(() => {}, () => {});
-    addNotification?.(`Cheque #${form.chequeNumber} added to register`);
-    setShowForm(false);
-    setForm({ chequeNumber: '', bankName: '', accountName: '', accountNumber: '', amount: '', chequeDate: '', expectedClearing: '', orderRef: '' });
+  async function addCheque() {
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      const parsedAmount = parseFloat(form.amount) || 0;
+      const { data, error } = await supabase.from('finance_cheques').insert([{
+        cheque_number: form.chequeNumber,
+        bank_name: form.bankName,
+        account_name: form.accountName,
+        account_number: form.accountNumber,
+        amount: parsedAmount,
+        cheque_date: form.chequeDate,
+        expected_clearing: form.expectedClearing,
+        customer_ref: form.accountName,
+        order_ref: form.orderRef,
+        status: 'Received',
+        recorded_by: currentUser?.fullName || 'Finance',
+        timestamp: new Date().toISOString()
+      }]).select();
+      if (error) throw error;
+      
+      const newId = data?.[0]?.id || Date.now().toString();
+      const entry: Cheque = { id: newId, chequeNumber: form.chequeNumber, bankName: form.bankName, accountName: form.accountName, amount: parsedAmount, chequeDate: form.chequeDate, expectedClearing: form.expectedClearing, status: 'Received', customerRef: form.accountName, orderRef: form.orderRef };
+      setCheques(prev => [entry, ...prev]);
+      addNotification?.(`Cheque #${form.chequeNumber} added to register`);
+      setShowForm(false);
+      setForm({ chequeNumber: '', bankName: '', accountName: '', accountNumber: '', amount: '', chequeDate: '', expectedClearing: '', orderRef: '' });
+    } catch (err: any) {
+      alert(err.message || 'Failed to add cheque.');
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   const totals = { total: cheques.length, cleared: cheques.filter(c => c.status === 'Cleared').length, pending: cheques.filter(c => ['Received', 'Deposited'].includes(c.status)).length, bounced: cheques.filter(c => c.status === 'Bounced').length };
@@ -276,8 +306,8 @@ export default function FinanceChequesView({ addNotification, currentUser }: Pro
               ))}
             </div>
             <div className="flex items-center gap-3 justify-end mt-5">
-              <button onClick={() => setShowForm(false)} className="px-4 py-2 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--text-secondary)]">Cancel</button>
-              <button onClick={addCheque} className="px-4 py-2 rounded-xl text-white text-sm font-medium hover:opacity-90" style={{ background: 'var(--accent)' }}>Add to Register</button>
+              <button onClick={() => setShowForm(false)} disabled={submitting} className="px-4 py-2 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--text-secondary)] disabled:opacity-50">Cancel</button>
+              <button onClick={addCheque} disabled={submitting} className="px-4 py-2 rounded-xl text-white text-sm font-medium hover:opacity-90 disabled:opacity-50" style={{ background: 'var(--accent)' }}>{submitting ? 'Adding...' : 'Add to Register'}</button>
             </div>
           </div>
         </div>
@@ -330,8 +360,8 @@ export default function FinanceChequesView({ addNotification, currentUser }: Pro
               ))}
             </div>
             <div className="flex items-center gap-3 justify-end mt-5">
-              <button onClick={() => setShowEditForm(false)} className="px-4 py-2 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--text-secondary)]">Cancel</button>
-              <button onClick={updateCheque} className="px-4 py-2 rounded-xl text-white text-sm font-medium hover:opacity-90" style={{ background: 'var(--accent)' }}>Save Changes</button>
+              <button onClick={() => setShowEditForm(false)} disabled={submitting} className="px-4 py-2 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--text-secondary)] disabled:opacity-50">Cancel</button>
+              <button onClick={updateCheque} disabled={submitting} className="px-4 py-2 rounded-xl text-white text-sm font-medium hover:opacity-90 disabled:opacity-50" style={{ background: 'var(--accent)' }}>{submitting ? 'Saving...' : 'Save Changes'}</button>
             </div>
           </div>
         </div>
