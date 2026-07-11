@@ -255,15 +255,53 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
     };
   };
 
-  // 1. Total Revenue (cleared orders only)
-  const clearedOrders = effective.filter(o => ['APPROVED', 'PROCESSING', 'DELIVERED', 'OUT_FOR_DELIVERY'].includes(o.status));
-  const rawRev = clearedOrders.filter(o => isRawMaterial(o.productName || '')).reduce((s, o) => s + (o.totalAmount || 0), 0);
-  const finRev = clearedOrders.filter(o => !isRawMaterial(o.productName || '')).reduce((s, o) => s + (o.totalAmount || 0), 0);
-  const calculatedTotalRevenue = rawRev + finRev;
+  // Helper to extract line items for an order, supporting line item metadata
+  const getOrderLineItems = (o: any) => {
+    const items: Array<{ productName: string; quantity: number; amount: number }> = [];
+    if (o.metadata?.items && Array.isArray(o.metadata.items) && o.metadata.items.length > 0) {
+      for (const item of o.metadata.items) {
+        items.push({
+          productName: item.productName || item.product_name || '',
+          quantity: Number(item.quantity || 1),
+          amount: Number(item.lineTotal || item.line_total || item.amount || 0)
+        });
+      }
+    } else {
+      items.push({
+        productName: o.productName || o.product_name || 'Unknown Item',
+        quantity: Number(o.quantity || 1),
+        amount: Number(o.totalAmount || o.total_amount || 0)
+      });
+    }
+    return items;
+  };
 
-  // 2. Total Items Sold
-  const rawSoldQty = clearedOrders.filter(o => isRawMaterial(o.productName || '')).reduce((s, o) => s + Number(o.quantity || 1), 0);
-  const finSoldQty = clearedOrders.filter(o => !isRawMaterial(o.productName || '')).reduce((s, o) => s + Number(o.quantity || 1), 0);
+  // 1. Total Revenue & 2. Total Items Sold
+  const clearedOrders = effective.filter(o => ['APPROVED', 'PROCESSING', 'DELIVERED', 'OUT_FOR_DELIVERY'].includes(o.status));
+  
+  // Extract all line items from cleared orders
+  const allClearedLineItems: Array<{ productName: string; quantity: number; amount: number }> = [];
+  for (const o of clearedOrders) {
+    allClearedLineItems.push(...getOrderLineItems(o));
+  }
+
+  let rawRev = 0;
+  let finRev = 0;
+  let rawSoldQty = 0;
+  let finSoldQty = 0;
+
+  for (const line of allClearedLineItems) {
+    const isRaw = isRawMaterial(line.productName);
+    if (isRaw) {
+      rawRev += line.amount;
+      rawSoldQty += line.quantity;
+    } else {
+      finRev += line.amount;
+      finSoldQty += line.quantity;
+    }
+  }
+
+  const calculatedTotalRevenue = rawRev + finRev;
   const totalSoldQty = rawSoldQty + finSoldQty;
 
   // 3. Unsold stock remaining value (selling price valuation)
@@ -332,19 +370,19 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
       change: 'Active', up: true,
     },
   ];
-  // Helper calculations for Drill-downs
-  const rawRevOrdersGroup = Array.from(new Set(clearedOrders.filter(o => isRawMaterial(o.productName || '')).map(o => (o.productName || '').trim()))).map(name => {
-    const ordersForProduct = clearedOrders.filter(o => (o.productName || '').toLowerCase().trim() === name.toLowerCase().trim());
-    const totalQty = ordersForProduct.reduce((sum, o) => sum + Number(o.quantity || 1), 0);
-    const totalRevenue = ordersForProduct.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
+  // Helper calculations for Drill-downs using the same grouped cleared line items
+  const rawRevOrdersGroup = Array.from(new Set(allClearedLineItems.filter(li => isRawMaterial(li.productName)).map(li => li.productName.trim()))).map(name => {
+    const itemsForProduct = allClearedLineItems.filter(li => li.productName.toLowerCase().trim() === name.toLowerCase().trim());
+    const totalQty = itemsForProduct.reduce((sum, li) => sum + li.quantity, 0);
+    const totalRevenue = itemsForProduct.reduce((sum, li) => sum + li.amount, 0);
     const prices = getPricesForProduct(name);
     return { name, unitPrice: prices.unitPrice, totalQty, totalRevenue };
   });
 
-  const finRevOrdersGroup = Array.from(new Set(clearedOrders.filter(o => !isRawMaterial(o.productName || '')).map(o => (o.productName || '').trim()))).map(name => {
-    const ordersForProduct = clearedOrders.filter(o => (o.productName || '').toLowerCase().trim() === name.toLowerCase().trim());
-    const totalQty = ordersForProduct.reduce((sum, o) => sum + Number(o.quantity || 1), 0);
-    const totalRevenue = ordersForProduct.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
+  const finRevOrdersGroup = Array.from(new Set(allClearedLineItems.filter(li => !isRawMaterial(li.productName)).map(li => li.productName.trim()))).map(name => {
+    const itemsForProduct = allClearedLineItems.filter(li => li.productName.toLowerCase().trim() === name.toLowerCase().trim());
+    const totalQty = itemsForProduct.reduce((sum, li) => sum + li.quantity, 0);
+    const totalRevenue = itemsForProduct.reduce((sum, li) => sum + li.amount, 0);
     const prices = getPricesForProduct(name);
     return { name, unitPrice: prices.unitPrice, totalQty, totalRevenue };
   });
@@ -594,7 +632,7 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
 
       {/* ══ KPI CARDS ══ */}
       <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 font-sans">
-        {kpiCards.map(({ label, value, sub, icon: Icon, clickId, color, bg, change, up }) => {
+        {kpiCards.map(({ label, value, sub, icon: Icon, clickId, color, change, up }) => {
           const isActive = activeDrillDown === clickId;
           return (
             <div
@@ -605,19 +643,21 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
                 setDrillDownSubTab('a');
                 setDrillDownSearch('');
               }}
-              className={`bg-gradient-to-br ${bg} bg-[var(--bg-card)] border rounded-2xl p-5 cursor-pointer hover:shadow-lg transition-all group ${
+              className={`bg-[var(--bg-card)] border rounded-2xl p-5 cursor-pointer hover:shadow-lg transition-all group ${
                 isActive ? 'border-[var(--accent)] ring-2 ring-[var(--accent)]/20 scale-[1.02]' : 'border-[var(--border)]'
               }`}
             >
-              <div className="flex items-start justify-between mb-3">
-                <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: `${color}20` }}>
+              <div className="flex items-start justify-between mb-3 gap-2">
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: `${color}15` }}>
                   <Icon size={17} style={{ color }} />
                 </div>
-                <span className={`flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full ${up ? 'bg-emerald-500/10 text-emerald-600' : 'bg-amber-500/10 text-amber-600'}`}>
+                <span className={`flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${up ? 'bg-emerald-500/10 text-emerald-600' : 'bg-amber-500/10 text-amber-600'}`}>
                   {up ? <TrendingUp size={9} /> : <AlertTriangle size={9} />} {change}
                 </span>
               </div>
-              <p className="text-xl font-extrabold text-[var(--text-primary)] leading-none mb-1">{value}</p>
+              <span className="text-sm sm:text-base lg:text-lg xl:text-xl font-extrabold text-[var(--text-primary)] leading-tight truncate w-full block mb-1" title={value}>
+                {value}
+              </span>
               <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-0.5">{label}</p>
               <p className="text-xs text-[var(--text-muted)] truncate">{sub}</p>
             </div>
