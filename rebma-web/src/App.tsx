@@ -160,7 +160,7 @@ export default function App() {
     const a = _getAppearance(); return a.template || localStorage.getItem('erp-theme') || 'salespulse';
   });
   const [accentColor, setAccentColor] = useState<string>(() => {
-    const a = _getAppearance(); return (a.accentType === 'solid' ? a.accentSolid : undefined) || localStorage.getItem('erp-accent') || '#22c55e';
+    const a = _getAppearance(); return (a.accentType === 'solid' ? a.accentSolid : a.gradientColor1) || localStorage.getItem('erp-accent') || '#22c55e';
   });
   const [fontFamily, setFontFamily] = useState<string>(() => {
     const a = _getAppearance(); return a.fontFamily || localStorage.getItem('erp-font') || 'Inter';

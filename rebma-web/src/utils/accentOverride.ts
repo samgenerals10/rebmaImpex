@@ -58,6 +58,7 @@ export function applyAccentOverride(data: AppearanceData): void {
     gradientVal   = `linear-gradient(${dir},${gradientColor1},${gradientColor2})`;
   }
 
+  const bgVal = accentType === 'gradient' ? gradientVal : accentVal;
   const themeClass = `theme-${template || 'salespulse'}`;
 
   const css = `
@@ -72,7 +73,7 @@ export function applyAccentOverride(data: AppearanceData): void {
     }
     body.${themeClass} .bg-accent,
     body.${themeClass} [class*="bg-accent"]:not([class*="bg-accent-soft"]):not([class*="bg-accent-light"]) {
-      background-color: ${accentVal} !important;
+      background: ${bgVal} !important;
     }
     body.${themeClass} .text-accent,
     body.${themeClass} [class*="text-accent"] {
@@ -89,7 +90,7 @@ export function applyAccentOverride(data: AppearanceData): void {
     }
     body.${themeClass} .nav-item[data-active="true"],
     body.${themeClass} .nav-item.active {
-      background: ${accentVal} !important;
+      background: ${bgVal} !important;
       color: #ffffff !important;
     }
   `;
