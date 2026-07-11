@@ -336,7 +336,12 @@ export default function App() {
     () => sessionStorage.getItem('rebma-last-tab') || 'Overview'
   );
   const isInitialLoad = useRef(true);
-  const navBadges = useNavBadges(activeSubTab);
+  const [unpricedCount, setUnpricedCount] = useState<number>(0);
+  const rawNavBadges = useNavBadges(activeSubTab);
+  const navBadges = {
+    ...rawNavBadges,
+    SetPrices: unpricedCount
+  };
   // Per-department alert counters for tab blinking dots
   const [tabAlerts, setTabAlerts] = useState<Record<string, number>>({});
   const addTabAlert = (dept: string) => setTabAlerts(prev => ({ ...prev, [dept]: (prev[dept] || 0) + 1 }));
@@ -883,6 +888,27 @@ export default function App() {
     } catch (e) {
       console.log('Skipping chat messages fetch:', e);
     }
+
+    // Fetch unpriced count
+    try {
+      const [cargoRes, pricesRes] = await Promise.all([
+        supabase.from('cargo_intake').select('product_name').eq('status', 'APPROVED'),
+        supabase.from('goods_prices').select('product_name')
+      ]);
+      if (cargoRes.data && pricesRes.data) {
+        const pricedNames = new Set(pricesRes.data.map((p: any) => String(p.product_name).toLowerCase().trim()));
+        const uniqueUnpricedCargo = new Set<string>();
+        cargoRes.data.forEach((c: any) => {
+          const name = String(c.product_name).toLowerCase().trim();
+          if (!pricedNames.has(name)) {
+            uniqueUnpricedCargo.add(name);
+          }
+        });
+        setUnpricedCount(uniqueUnpricedCargo.size);
+      }
+    } catch (e) {
+      console.log('Skipping unpriced count fetch:', e);
+    }
   };
 
   // Auth initialize hook
@@ -1151,12 +1177,12 @@ export default function App() {
         )
         .on(
           'postgres_changes',
-          { event: 'INSERT', schema: 'public', table: 'goods_prices' },
+          { event: '*', schema: 'public', table: 'goods_prices' },
           () => {
-            if (['FINANCE', 'MARKETING', 'MANAGEMENT'].includes(currentUser.department) || currentUser.isCeo) {
+            if (currentUser && (['FINANCE', 'MARKETING', 'MANAGEMENT'].includes(currentUser.department) || currentUser.isCeo)) {
               addNotification(`Price catalog updated`);
-              refreshAllData();
             }
+            refreshAllData();
           }
         )
         .on(
@@ -2739,6 +2765,7 @@ export default function App() {
           setGhanaCardValidation={setGhanaCardValidation}
           activeSubTab="ChangePassword"
           currentUser={currentUser}
+          setCurrentUser={setCurrentUser}
           addNotification={addNotification}
           darkMode={darkMode}
           setDarkMode={setDarkMode}
@@ -3039,6 +3066,7 @@ export default function App() {
             setGhanaCardValidation={setGhanaCardValidation}
             activeSubTab={activeSubTab}
             currentUser={currentUser}
+            setCurrentUser={setCurrentUser}
             addNotification={addNotification}
             darkMode={darkMode}
             setDarkMode={setDarkMode}

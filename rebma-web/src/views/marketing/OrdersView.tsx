@@ -165,11 +165,8 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
       });
       const orderTotal = itemsWithPricing.reduce((s, i) => s + i.lineTotal, 0);
 
-      // Single product name display: one product → its name, multiple → "Product A + 2 more"
-      const primaryProduct = itemsWithPricing[0].productName;
-      const productDisplay = itemsWithPricing.length === 1
-        ? primaryProduct
-        : `${primaryProduct} + ${itemsWithPricing.length - 1} more`;
+      // Product name display: join all product names with commas
+      const productDisplay = itemsWithPricing.map(item => item.productName).join(', ');
 
       const { data: inserted, error } = await supabase.from('orders').insert({
         ticket_number: ticketNumber,
@@ -294,15 +291,18 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
                   <td className="py-3 px-3 text-[var(--text-secondary)]">
                     {(() => {
                       const items: OrderLineItem[] | undefined = o.metadata?.items;
-                      if (items && items.length > 1) {
+                      if (items && items.length > 0) {
                         return (
-                          <span className="inline-flex items-center gap-1">
-                            <span className="truncate max-w-[100px]">{items[0].productName}</span>
-                            <span className="shrink-0 px-1.5 py-0.5 rounded-full bg-[var(--accent-light)] text-[var(--accent)] text-[10px] font-bold">+{items.length - 1} more</span>
+                          <span className="inline-flex items-center gap-1.5 flex-wrap">
+                            {items.map((item, idx) => (
+                              <span key={idx} className="px-1.5 py-0.5 rounded bg-[var(--accent-light)] text-[var(--accent)] text-[10px] font-medium truncate max-w-[100px]" title={item.productName}>
+                                {item.productName}
+                              </span>
+                            ))}
                           </span>
                         );
                       }
-                      return <span>{items?.[0]?.productName || o.productName || '—'}</span>;
+                      return <span>{o.productName || '—'}</span>;
                     })()}
                   </td>
                   <td className="py-3 px-3 font-semibold text-emerald-600 whitespace-nowrap">GHS {(o.totalAmount ?? 0).toLocaleString()}</td>

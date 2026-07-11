@@ -78,6 +78,7 @@ export default function CeoDashboard({
   const [totalRawMaterials, setTotalRawMaterials] = useState<number>(0);
   const [totalGeneralPurchases, setTotalGeneralPurchases] = useState<number>(0);
   const [generalPurchasesVal, setGeneralPurchasesVal] = useState<number>(0);
+  const [cargoDiscrepancies, setCargoDiscrepancies] = useState<any[]>([]);
   
   // Live GPS tracking state
   const [transitVehicles, setTransitVehicles] = useState<any[]>([]);
@@ -231,6 +232,62 @@ export default function CeoDashboard({
           const gpCost = (gpData as { cost: number }[] ?? []).reduce((s, r) => s + (r.cost || 0), 0);
           setTotalGeneralPurchases(gpUnits);
           setGeneralPurchasesVal(gpCost);
+         } catch (e) {
+          console.error(e);
+        }
+
+        // Fetch approved discrepancies
+        try {
+          const { data: discData } = await supabase
+            .from('cargo_intake')
+            .select('id, goods_code, product_name, company, quantity, unit_price, discrepancies, is_fault_or_damaged, status')
+            .eq('status', 'APPROVED')
+            .eq('is_fault_or_damaged', true);
+          
+          if (discData) {
+            const parsed = discData.map((c: any) => {
+              let originalQty = c.quantity || 0;
+              let damagedCount = 0;
+              let unitCost = Number(c.unit_price || 0);
+              let costLoss = 0;
+              let sellingPriceVal = 0;
+              let notes = c.discrepancies || '';
+
+              try {
+                if (c.discrepancies && c.discrepancies.trim().startsWith('{')) {
+                  const parsedJson = JSON.parse(c.discrepancies);
+                  originalQty = parsedJson.originalQty ?? originalQty;
+                  damagedCount = parsedJson.damagedCount ?? 0;
+                  unitCost = parsedJson.unitCost ?? unitCost;
+                  costLoss = parsedJson.costLoss ?? (damagedCount * unitCost);
+                  sellingPriceVal = parsedJson.sellingPrice ?? 0;
+                  notes = parsedJson.notes ?? '';
+                } else if (c.discrepancies && c.discrepancies !== 'None') {
+                  const dmgMatch = c.discrepancies.match(/Confirmed:\s*(\d+)/i);
+                  if (dmgMatch) {
+                    damagedCount = parseInt(dmgMatch[1], 10);
+                    costLoss = damagedCount * unitCost;
+                  }
+                }
+              } catch (err) {
+                console.error('Error parsing discrepancies JSON:', err);
+              }
+
+              return {
+                id: c.id,
+                goodsCode: c.goods_code || c.id,
+                productName: c.product_name || 'Unknown',
+                company: c.company || 'N/A',
+                originalQty,
+                damagedCount,
+                unitCost,
+                costLoss,
+                sellingPrice: sellingPriceVal,
+                notes
+              };
+            }).filter((d: any) => d.damagedCount > 0);
+            setCargoDiscrepancies(parsed);
+          }
         } catch (e) {
           console.error(e);
         }
@@ -449,6 +506,36 @@ export default function CeoDashboard({
             )}
           </div>
           <p className="text-[9px] text-text-muted mt-2 text-right">Refresh: {gpsInterval}s</p>
+        </div>
+
+        {/* Cargo Discrepancy Statement Mobile */}
+        <div className="bg-bg-card rounded-2xl border border-[var(--border)] shadow-card p-4 space-y-3">
+          <div className="flex items-center justify-between pb-2 border-b border-[var(--border)]">
+            <h3 className="text-xs font-bold text-text-primary flex items-center gap-1.5">
+              <AlertCircle size={14} className="text-red-500 animate-pulse" /> Discrepancies
+            </h3>
+            <span className="px-1.5 py-0.5 rounded bg-red-500/10 text-red-500 text-[9px] font-bold">
+              Loss: GHS {cargoDiscrepancies.reduce((s, d) => s + d.costLoss, 0).toLocaleString()}
+            </span>
+          </div>
+          <div className="space-y-2 max-h-60 overflow-y-auto">
+            {cargoDiscrepancies.map(d => (
+              <div key={d.id} className="p-2 bg-bg-page rounded-xl border border-[var(--border)] text-[11px] space-y-1">
+                <div className="flex justify-between font-bold text-text-primary">
+                  <span>{d.productName}</span>
+                  <span className="text-red-500">{d.damagedCount} damaged</span>
+                </div>
+                <div className="flex justify-between text-text-secondary text-[10px]">
+                  <span>Supplier: {d.company}</span>
+                  <span className="font-semibold">Loss: GHS {d.costLoss.toLocaleString()}</span>
+                </div>
+                {d.notes && <p className="text-text-muted text-[10px] italic">Notes: {d.notes}</p>}
+              </div>
+            ))}
+            {cargoDiscrepancies.length === 0 && (
+              <p className="text-center text-text-muted text-[10px] py-4">No approved cargo discrepancies.</p>
+            )}
+          </div>
         </div>
       </div>
 
@@ -718,6 +805,70 @@ export default function CeoDashboard({
               </div>
             </div>
   
+          </div>
+        </div>
+
+        {/* Cargo Discrepancy Statement Desktop */}
+        <div className="mt-6 bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5 shadow-[var(--box-shadow)]">
+          <div className="flex items-center justify-between mb-4 border-b border-[var(--border)] pb-3">
+            <div>
+              <h3 className="font-bold text-lg text-[var(--text-primary)] flex items-center gap-2">
+                <AlertCircle size={18} className="text-red-500 animate-pulse" /> Cargo Discrepancy Statement
+              </h3>
+              <p className="text-xs text-[var(--text-muted)] mt-0.5">Logs of confirmed inventory damages, write-offs, and resulting financial losses at cost</p>
+            </div>
+            <span className="px-2 py-0.5 rounded bg-red-500/10 text-red-500 text-[10px] font-bold">
+              Total Damages: {cargoDiscrepancies.reduce((s, d) => s + d.damagedCount, 0)} units
+            </span>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs text-left">
+              <thead>
+                <tr className="border-b border-[var(--border)] bg-[var(--bg-input)]">
+                  <th className="py-2 px-3 text-[var(--text-muted)] font-semibold">Cargo ID</th>
+                  <th className="py-2 px-3 text-[var(--text-muted)] font-semibold">Product Name</th>
+                  <th className="py-2 px-3 text-[var(--text-muted)] font-semibold">Supplier</th>
+                  <th className="py-2 px-3 text-[var(--text-muted)] font-semibold text-center">Original Qty</th>
+                  <th className="py-2 px-3 text-[var(--text-muted)] font-semibold text-center">Damaged Qty</th>
+                  <th className="py-2 px-3 text-[var(--text-muted)] font-semibold text-right">Unit Cost (GHS)</th>
+                  <th className="py-2 px-3 text-[var(--text-muted)] font-semibold text-right">Financial Loss (GHS)</th>
+                  <th className="py-2 px-3 text-[var(--text-muted)] font-semibold">Description / Notes</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--border)]">
+                {cargoDiscrepancies.map(d => (
+                  <tr key={d.id} className="hover:bg-red-500/5">
+                    <td className="py-3 px-3 font-mono text-[10px] text-[var(--text-secondary)]">{d.id.slice(0, 8).toUpperCase()}</td>
+                    <td className="py-3 px-3 font-semibold text-[var(--text-primary)]">{d.productName}</td>
+                    <td className="py-3 px-3 text-[var(--text-secondary)]">{d.company}</td>
+                    <td className="py-3 px-3 text-center text-[var(--text-secondary)]">{d.originalQty}</td>
+                    <td className="py-3 px-3 text-center text-red-500 font-bold">{d.damagedCount}</td>
+                    <td className="py-3 px-3 text-right text-[var(--text-secondary)]">{d.unitCost.toLocaleString()}</td>
+                    <td className="py-3 px-3 text-right text-red-650 font-extrabold">GHS {d.costLoss.toLocaleString()}</td>
+                    <td className="py-3 px-3 text-[var(--text-muted)] max-w-xs truncate" title={d.notes}>{d.notes}</td>
+                  </tr>
+                ))}
+                {cargoDiscrepancies.length === 0 && (
+                  <tr>
+                    <td colSpan={8} className="py-8 text-center text-[var(--text-muted)]">
+                      No approved cargo discrepancies or damages logged.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+              {cargoDiscrepancies.length > 0 && (
+                <tfoot>
+                  <tr className="bg-red-500/10 border-t border-[var(--border)] font-bold">
+                    <td colSpan={6} className="py-2.5 px-3 text-[var(--text-primary)]">Total Loss (At Cost)</td>
+                    <td className="py-2.5 px-3 text-right text-red-600">
+                      GHS {cargoDiscrepancies.reduce((s, d) => s + d.costLoss, 0).toLocaleString()}
+                    </td>
+                    <td className="py-2.5 px-3"></td>
+                  </tr>
+                </tfoot>
+              )}
+            </table>
           </div>
         </div>
 

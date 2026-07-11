@@ -45,6 +45,7 @@ interface SettingsDashboardProps {
   setMotion: (val: string) => void;
   sidebarCollapsed?: boolean;
   setSidebarCollapsed?: (val: boolean) => void;
+  setCurrentUser?: (user: CurrentUser | null) => void;
 }
 
 export default function SettingsDashboard({
@@ -84,7 +85,8 @@ export default function SettingsDashboard({
   motion,
   setMotion,
   sidebarCollapsed = false,
-  setSidebarCollapsed
+  setSidebarCollapsed,
+  setCurrentUser
 }: SettingsDashboardProps) {
 
   // Notification sound
@@ -163,6 +165,14 @@ export default function SettingsDashboard({
         updated_at: new Date().toISOString() 
       }).eq('id', currentUser.id);
       if (profileError) throw profileError;
+
+      if (setCurrentUser) {
+        setCurrentUser({
+          ...currentUser,
+          fullName: displayName,
+          photo: profilePhoto
+        });
+      }
 
       addNotification?.("Profile updated successfully.");
     } catch (err: any) {

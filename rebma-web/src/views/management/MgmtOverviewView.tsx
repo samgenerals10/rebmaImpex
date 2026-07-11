@@ -44,6 +44,8 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
   const [goodsPrices, setGoodsPrices] = useState<any[]>([]);
   const [stockList, setStockList] = useState<any[]>([]);
   const feedRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [showRevenueModal, setShowRevenueModal] = useState(false);
+  const [revenueModalTab, setRevenueModalTab] = useState<'raw' | 'finished'>('raw');
 
   const firstName = currentUser?.fullName?.split(' ')[0] || 'Manager';
 
@@ -146,6 +148,10 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
     })
     .reduce((s, o) => s + Number(o.total_amount), 0);
 
+  const cumulativeRevenue = orders
+    .filter(o => ['APPROVED', 'PROCESSING', 'DELIVERED'].includes(o.status))
+    .reduce((s, o) => s + Number(o.total_amount || 0), 0);
+
   const lastMonthRevenue = orders
     .filter(o => {
       const d = new Date(o.created_at);
@@ -168,6 +174,10 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
   const pendingProduction = productionRequests.filter(r => r.status === 'PENDING_MANAGEMENT');
   const pendingGenPurchases = generalPurchases.filter(g => g.status === 'PENDING_MANAGEMENT_APPROVAL');
   const pendingCount = pendingOrders.length + pendingCargo.length + pendingProfiles.length + pendingProduction.length + pendingGenPurchases.length;
+
+  const approvedCargoCount = cargoIntake.filter(c => c.status === 'APPROVED').length;
+  const approvedOrdersCount = orders.filter(o => o.status === 'APPROVED' || o.status === 'PROCESSING' || o.status === 'DELIVERED').length;
+  const approvedGeneralPurchasesCount = generalPurchases.filter(g => g.status === 'APPROVED').length;
 
   const pendingApprovalsList = [
     ...pendingCargo.map(c => ({
@@ -410,18 +420,25 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
     // Get live quantity directly from the stock table instead of summing historical cargo intakes
     const stockItem = stockList.find(s => String(s.product_name || '').toLowerCase().trim() === key);
     const qty = stockItem ? Number(stockItem.quantity || 0) : 0;
+    const category = stockItem ? stockItem.category : 'INCOMING_GOODS';
     
+    const soldQty = (orders as any[])
+      .filter(o => ['APPROVED','PROCESSING','DELIVERED'].includes(o.status) && String(o.product_name || '').toLowerCase().trim() === key)
+      .reduce((s: number, o: any) => s + (Number(o.quantity) || 1), 0);
+
     const soldRevenue = (orders as any[])
       .filter(o => ['APPROVED','PROCESSING','DELIVERED'].includes(o.status) && String(o.product_name || '').toLowerCase().trim() === key)
       .reduce((s: number, o: any) => s + (Number(o.total_amount) || 0), 0);
     return {
       name: gp.product_name,
+      category,
       unitPrice: Number(gp.unit_price || 0),
       costPrice: Number(gp.cost_price || 0),
       currency: gp.currency || 'GHS',
       qty,
       sellingValue: Number(gp.unit_price || 0) * qty,
       costValue: Number(gp.cost_price || 0) * qty,
+      soldQty,
       soldRevenue,
     };
   });
@@ -429,6 +446,51 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
   const totalCostValue = inventoryItems.reduce((s, i) => s + i.costValue, 0);
   const potentialProfit = totalSellingValue - totalCostValue;
   const totalRevenueEarned = inventoryItems.reduce((s, i) => s + i.soldRevenue, 0);
+
+  // Cargo Discrepancies statement logic
+  const cargoDiscrepancies = cargoIntake
+    .filter(c => c.status === 'APPROVED' && c.is_fault_or_damaged)
+    .map(c => {
+      let originalQty = c.quantity || 0;
+      let damagedCount = 0;
+      let unitCost = Number(c.unit_price || 0);
+      let costLoss = 0;
+      let sellingPriceVal = 0;
+      let notes = c.discrepancies || '';
+
+      try {
+        if (c.discrepancies && c.discrepancies.trim().startsWith('{')) {
+          const parsed = JSON.parse(c.discrepancies);
+          originalQty = parsed.originalQty ?? originalQty;
+          damagedCount = parsed.damagedCount ?? 0;
+          unitCost = parsed.unitCost ?? unitCost;
+          costLoss = parsed.costLoss ?? (damagedCount * unitCost);
+          sellingPriceVal = parsed.sellingPrice ?? 0;
+          notes = parsed.notes ?? '';
+        } else if (c.discrepancies && c.discrepancies !== 'None') {
+          const dmgMatch = c.discrepancies.match(/Confirmed:\s*(\d+)/i);
+          if (dmgMatch) {
+            damagedCount = parseInt(dmgMatch[1], 10);
+            costLoss = damagedCount * unitCost;
+          }
+        }
+      } catch (err) {
+        console.error('Error parsing discrepancies JSON:', err);
+      }
+
+      return {
+        id: c.id,
+        productName: c.product_name || 'Unknown',
+        company: c.company || 'N/A',
+        originalQty,
+        damagedCount,
+        unitCost,
+        costLoss,
+        sellingPrice: sellingPriceVal,
+        notes
+      };
+    })
+    .filter(d => d.damagedCount > 0);
 
   const cashflowValue = cashflowData[cashflowData.length - 1] || { income: 0, expense: 0 };
   const cashflowDisplay = cashflowTab === 'income' ? cashflowValue.income : cashflowTab === 'expense' ? cashflowValue.expense : cashflowValue.income - cashflowValue.expense;
@@ -505,11 +567,12 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
         {[
           {
-            label: 'Monthly Revenue',
-            value: `GHS ${(monthlyRevenue / 1000).toFixed(0)}K`,
-            change: revenueChangeStr,
-            up: revenueUp,
-            sub: ''
+            label: 'Revenue',
+            value: `GHS ${(cumulativeRevenue / 1000).toFixed(0)}K`,
+            change: `${orders.filter(o => ['APPROVED', 'PROCESSING', 'DELIVERED'].includes(o.status)).length} approved orders`,
+            up: true,
+            sub: 'Cumulative Sales',
+            isClickable: true
           },
           {
             label: 'Pending Approvals',
@@ -534,15 +597,42 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
             up: attendanceReliability === null ? true : attendanceReliability >= 80,
             sub: attendanceReliability !== null ? 'attendance-based' : 'check HR attendance'
           },
-        ].map(({ label, value, change, up, sub }) => (
-          <div key={label} className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4">
-            <p className="text-xs text-[var(--text-muted)] mb-1">{label}</p>
+        ].map(({ label, value, change, up, sub, isClickable }) => (
+          <div 
+            key={label} 
+            onClick={() => { if (isClickable) setShowRevenueModal(true); }}
+            className={`bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4 transition-all ${isClickable ? 'cursor-pointer hover:border-[var(--accent)] hover:shadow-md' : ''}`}
+          >
+            <p className="text-xs text-[var(--text-muted)] mb-1 flex items-center justify-between">
+              <span>{label}</span>
+              {isClickable && <span className="text-[9px] text-[var(--accent)] font-semibold font-mono bg-[var(--accent-light)] px-1 py-0.5 rounded">Drill down →</span>}
+            </p>
             <p className="text-2xl font-bold text-[var(--text-primary)]">{value}</p>
             <div className="flex items-center gap-1 mt-1">
               {up ? <TrendingUp size={11} className="text-green-500" /> : <TrendingDown size={11} className="text-red-400" />}
               <span className={`text-xs font-medium ${up ? 'text-green-500' : 'text-red-400'}`}>{change}</span>
             </div>
             {sub && <p className="text-xs text-[var(--text-muted)] mt-0.5">{sub}</p>}
+          </div>
+        ))}
+      </div>
+
+      {/* Approved Metrics KPIs */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {[
+          { label: 'Approved Cargo Goods', value: approvedCargoCount, sub: 'Logistics intake items approved' },
+          { label: 'Approved Credit Orders', value: approvedOrdersCount, sub: 'Sales orders approved' },
+          { label: 'Approved General Purchases', value: approvedGeneralPurchasesCount, sub: 'Company expense requests approved' }
+        ].map(item => (
+          <div key={item.label} className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4 flex items-center justify-between shadow-[var(--box-shadow)]">
+            <div>
+              <p className="text-xs text-[var(--text-muted)] mb-1 font-semibold">{item.label}</p>
+              <p className="text-xl font-bold text-[var(--text-primary)]">{item.value}</p>
+              <p className="text-[10px] text-[var(--text-muted)] mt-1">{item.sub}</p>
+            </div>
+            <div className="w-10 h-10 rounded-full bg-[var(--accent-light)] flex items-center justify-center text-[var(--accent)]">
+              <CheckCircle size={18} />
+            </div>
           </div>
         ))}
       </div>
@@ -964,6 +1054,152 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
           </div>
         </div>
       </div>
+
+      {/* ROW 8: Discrepancy Statement */}
+      <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5 shadow-[var(--box-shadow)]">
+        <div className="flex items-center justify-between mb-4 border-b border-[var(--border)] pb-3">
+          <div>
+            <h3 className="font-bold text-lg text-[var(--text-primary)] flex items-center gap-2">
+              <AlertTriangle size={18} className="text-red-500 animate-pulse" /> Cargo Discrepancy Statement
+            </h3>
+            <p className="text-xs text-[var(--text-muted)] mt-0.5">Logs of confirmed inventory damages, write-offs, and resulting financial losses at cost</p>
+          </div>
+          <span className="px-2 py-0.5 rounded bg-red-500/10 text-red-500 text-[10px] font-bold">
+            Total Damages: {cargoDiscrepancies.reduce((s, d) => s + d.damagedCount, 0)} units
+          </span>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs text-left">
+            <thead>
+              <tr className="border-b border-[var(--border)] bg-[var(--bg-input)]">
+                <th className="py-2 px-3 text-[var(--text-muted)] font-semibold">Cargo ID</th>
+                <th className="py-2 px-3 text-[var(--text-muted)] font-semibold">Product Name</th>
+                <th className="py-2 px-3 text-[var(--text-muted)] font-semibold">Supplier</th>
+                <th className="py-2 px-3 text-[var(--text-muted)] font-semibold text-center">Original Qty</th>
+                <th className="py-2 px-3 text-[var(--text-muted)] font-semibold text-center">Damaged Qty</th>
+                <th className="py-2 px-3 text-[var(--text-muted)] font-semibold text-right">Unit Cost (GHS)</th>
+                <th className="py-2 px-3 text-[var(--text-muted)] font-semibold text-right">Financial Loss (GHS)</th>
+                <th className="py-2 px-3 text-[var(--text-muted)] font-semibold">Description / Notes</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[var(--border)]">
+              {cargoDiscrepancies.map(d => (
+                <tr key={d.id} className="hover:bg-red-500/5">
+                  <td className="py-3 px-3 font-mono text-[10px] text-[var(--text-secondary)]">{d.id.slice(0, 8).toUpperCase()}</td>
+                  <td className="py-3 px-3 font-semibold text-[var(--text-primary)]">{d.productName}</td>
+                  <td className="py-3 px-3 text-[var(--text-secondary)]">{d.company}</td>
+                  <td className="py-3 px-3 text-center text-[var(--text-secondary)]">{d.originalQty}</td>
+                  <td className="py-3 px-3 text-center text-red-500 font-bold">{d.damagedCount}</td>
+                  <td className="py-3 px-3 text-right text-[var(--text-secondary)]">{d.unitCost.toLocaleString()}</td>
+                  <td className="py-3 px-3 text-right text-red-650 font-extrabold">GHS {d.costLoss.toLocaleString()}</td>
+                  <td className="py-3 px-3 text-[var(--text-muted)] max-w-xs truncate" title={d.notes}>{d.notes}</td>
+                </tr>
+              ))}
+              {cargoDiscrepancies.length === 0 && (
+                <tr>
+                  <td colSpan={8} className="py-8 text-center text-[var(--text-muted)]">
+                    No approved cargo discrepancies or damages logged.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+            {cargoDiscrepancies.length > 0 && (
+              <tfoot>
+                <tr className="bg-red-500/10 border-t border-[var(--border)] font-bold">
+                  <td colSpan={6} className="py-2.5 px-3 text-[var(--text-primary)]">Total Loss (At Cost)</td>
+                  <td className="py-2.5 px-3 text-right text-red-600">
+                    GHS {cargoDiscrepancies.reduce((s, d) => s + d.costLoss, 0).toLocaleString()}
+                  </td>
+                  <td className="py-2.5 px-3"></td>
+                </tr>
+              </tfoot>
+            )}
+          </table>
+        </div>
+      </div>
+
+      {/* Revenue drill-down modal */}
+      {showRevenueModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-4xl rounded-2xl bg-[var(--bg-card)] border border-[var(--border)] shadow-xl flex flex-col max-h-[85vh] overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-[var(--border)] bg-[var(--bg-card)]">
+              <div>
+                <h3 className="font-bold text-lg text-[var(--text-primary)]">Revenue Drill-Down Analysis</h3>
+                <p className="text-xs text-[var(--text-muted)]">Analysis of sales revenue split by inventory types</p>
+              </div>
+              <button 
+                onClick={() => setShowRevenueModal(false)}
+                className="p-1.5 rounded-lg hover:bg-[var(--bg-input)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+              >
+                <XCircle size={20} />
+              </button>
+            </div>
+
+            {/* Tab Switched Header */}
+            <div className="flex border-b border-[var(--border)] bg-[var(--bg-input)] px-6 py-2 gap-4">
+              <button
+                onClick={() => setRevenueModalTab('raw')}
+                className={`pb-1 text-xs font-bold border-b-2 transition-all ${revenueModalTab === 'raw' ? 'border-[var(--accent)] text-[var(--accent)]' : 'border-transparent text-[var(--text-muted)]'}`}
+              >
+                Raw Materials (Cargo Goods)
+              </button>
+              <button
+                onClick={() => setRevenueModalTab('finished')}
+                className={`pb-1 text-xs font-bold border-b-2 transition-all ${revenueModalTab === 'finished' ? 'border-[var(--accent)] text-[var(--accent)]' : 'border-transparent text-[var(--text-muted)]'}`}
+              >
+                Finished Products
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="overflow-y-auto p-6 flex-1 bg-[var(--bg-card)]">
+              <table className="w-full text-xs text-left">
+                <thead>
+                  <tr className="border-b border-[var(--border)] bg-[var(--bg-input)]">
+                    <th className="py-2 px-3 text-[var(--text-muted)] uppercase tracking-wider font-semibold">Product Name</th>
+                    <th className="py-2 px-3 text-[var(--text-muted)] uppercase tracking-wider font-semibold text-right">Unit Cost (GHS)</th>
+                    <th className="py-2 px-3 text-[var(--text-muted)] uppercase tracking-wider font-semibold text-right">Selling Price (GHS)</th>
+                    <th className="py-2 px-3 text-[var(--text-muted)] uppercase tracking-wider font-semibold text-center">Qty Sold</th>
+                    <th className="py-2 px-3 text-[var(--text-muted)] uppercase tracking-wider font-semibold text-right">Total Revenue (GHS)</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--border)]">
+                  {inventoryItems
+                    .filter(item => revenueModalTab === 'raw' ? item.category === 'INCOMING_GOODS' : item.category === 'FINISHED_GOODS')
+                    .map(item => (
+                      <tr key={item.name} className="hover:bg-[var(--accent-light)]">
+                        <td className="py-3 px-3 font-semibold text-[var(--text-primary)]">{item.name}</td>
+                        <td className="py-3 px-3 text-right text-[var(--text-secondary)]">{item.costPrice.toLocaleString()}</td>
+                        <td className="py-3 px-3 text-right text-sky-600 font-semibold">{item.unitPrice.toLocaleString()}</td>
+                        <td className="py-3 px-3 text-center text-[var(--text-secondary)] font-medium">{item.soldQty.toLocaleString()}</td>
+                        <td className="py-3 px-3 text-right text-emerald-600 font-bold">{(item.soldQty * item.unitPrice).toLocaleString()}</td>
+                      </tr>
+                    ))}
+                  {inventoryItems.filter(item => revenueModalTab === 'raw' ? item.category === 'INCOMING_GOODS' : item.category === 'FINISHED_GOODS').length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="py-10 text-center text-[var(--text-muted)]">
+                        No product items matched this category.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 border-t border-[var(--border)] bg-[var(--bg-input)] flex justify-end">
+              <button 
+                onClick={() => setShowRevenueModal(false)}
+                className="px-4 py-2 bg-[var(--accent)] text-white text-xs font-bold rounded-xl hover:opacity-90 transition-opacity"
+              >
+                Close Analysis
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

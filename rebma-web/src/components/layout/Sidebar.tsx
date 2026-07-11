@@ -271,13 +271,13 @@ export default function Sidebar({
           style={{ background: 'transparent', border: 'none' }}
           title={tab.label}
         >
-          <span className="lf-nav-icon flex-shrink-0 relative" style={{
+          <span className={`lf-nav-icon flex-shrink-0 relative ${tab.id === 'SetPrices' && badge > 0 ? 'red-pilot' : ''}`} style={{
             width: 40, height: 40, borderRadius: '50%',
             background: isActive ? 'var(--accent)' : 'var(--lf-icon-bg, #eef0f3)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
             <Icon style={{ width: 18, height: 18, color: isActive ? '#fff' : 'var(--text-secondary)' }} />
-            {badge > 0 && <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-500 text-white text-[8px] font-bold flex items-center justify-center animate-[badge-pulse_1.4s_ease-in-out_infinite]">{badge > 9 ? '9+' : badge}</span>}
+            {badge > 0 && tab.id !== 'SetPrices' && <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-500 text-white text-[8px] font-bold flex items-center justify-center animate-[badge-pulse_1.4s_ease-in-out_infinite]">{badge > 9 ? '9+' : badge}</span>}
           </span>
           {!lfCollapsed && (
             <span className="nav-label truncate text-xs font-semibold" style={{ color: isActive ? 'var(--accent)' : 'var(--text-secondary)' }}>
@@ -296,9 +296,9 @@ export default function Sidebar({
         style={isActive ? { background: 'var(--accent)', color: '#ffffff' } : { color: 'var(--text-sidebar, var(--text-secondary))' }}
         title={tab.label}
       >
-        <span className="nav-icon flex-shrink-0 relative">
+        <span className={`nav-icon flex-shrink-0 relative ${tab.id === 'SetPrices' && badge > 0 ? 'red-pilot' : ''}`}>
           <Icon className="w-4 h-4" style={{ color: isActive ? '#ffffff' : undefined }} />
-          {badge > 0 && <span className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 rounded-full bg-rose-500 text-white text-[8px] font-bold flex items-center justify-center animate-[badge-pulse_1.4s_ease-in-out_infinite]">{badge > 9 ? '9+' : badge}</span>}
+          {badge > 0 && tab.id !== 'SetPrices' && <span className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 rounded-full bg-rose-500 text-white text-[8px] font-bold flex items-center justify-center animate-[badge-pulse_1.4s_ease-in-out_infinite]">{badge > 9 ? '9+' : badge}</span>}
         </span>
         <span className={`nav-label truncate transition-all duration-300 ${isActualCollapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100'}`}>{tab.label}</span>
         {badge > 0 && !isActualCollapsed && !isActive && (
@@ -347,9 +347,13 @@ export default function Sidebar({
           </div>
           {/* User */}
           <div className="py-4 flex items-center gap-2.5 border-b border-[var(--border)] shrink-0">
-            <div className="w-10 h-10 rounded-full bg-[var(--accent,#068d5c)] text-white flex items-center justify-center font-bold text-sm shrink-0 relative">
-              {currentUser?.fullName?.[0] || 'U'}
-              <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-white" />
+            <div className="w-10 h-10 rounded-full bg-[var(--accent,#068d5c)] text-white flex items-center justify-center font-bold text-sm shrink-0 relative overflow-hidden">
+              {currentUser?.photo ? (
+                <img src={currentUser.photo} className="w-full h-full object-cover" alt="Profile" />
+              ) : (
+                currentUser?.fullName?.[0] || 'U'
+              )}
+              <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-white z-10" />
             </div>
             <div className="truncate flex-1">
               <p className="text-xs font-bold leading-none truncate text-[var(--text-primary)]">{currentUser?.fullName}</p>
@@ -402,9 +406,13 @@ export default function Sidebar({
 
           {/* User Profile */}
           <div className={`mb-1 shrink-0 ${isActualCollapsed ? 'px-1 py-1 justify-center' : 'px-2 py-2'} bg-[var(--accent-light)] rounded-2xl flex items-center gap-3 border border-[var(--border)] transition-all duration-300`}>
-            <div className="w-9 h-9 rounded-full bg-[var(--accent)] text-white flex items-center justify-center font-bold text-sm shrink-0 relative shadow-card">
-              {currentUser?.fullName?.[0] || 'U'}
-              <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-white" />
+            <div className="w-9 h-9 rounded-full bg-[var(--accent)] text-white flex items-center justify-center font-bold text-sm shrink-0 relative shadow-card overflow-hidden">
+              {currentUser?.photo ? (
+                <img src={currentUser.photo} className="w-full h-full object-cover" alt="Profile" />
+              ) : (
+                currentUser?.fullName?.[0] || 'U'
+              )}
+              <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-white z-10" />
             </div>
             <div className={`truncate flex-1 transition-all duration-300 ${isActualCollapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100'}`}>
               <p className="text-xs font-semibold leading-none truncate text-[var(--text-primary)]">{currentUser?.fullName}</p>
@@ -604,8 +612,12 @@ export default function Sidebar({
 
           <div className={`px-2 flex items-center ${isActualCollapsed ? 'flex-col gap-2 justify-center' : 'justify-between'}`}>
             <div className={`flex items-center ${isActualCollapsed ? 'justify-center' : 'gap-2'} truncate`}>
-              <div className="w-8 h-8 rounded-full bg-[var(--accent)] text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-card">
-                {currentUser?.fullName?.[0] || 'U'}
+              <div className="w-8 h-8 rounded-full bg-[var(--accent)] text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-card overflow-hidden relative">
+                {currentUser?.photo ? (
+                  <img src={currentUser.photo} className="w-full h-full object-cover" alt="Profile" />
+                ) : (
+                  currentUser?.fullName?.[0] || 'U'
+                )}
               </div>
               <div className={`truncate transition-all duration-300 ${isActualCollapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100'}`}>
                 <p className="text-xs font-semibold text-[var(--text-primary)] leading-none truncate">{currentUser?.fullName}</p>

@@ -27,8 +27,7 @@ export function getLineItems(order: Order): OrderLineItem[] | null {
 export function getProductSummary(order: Order): string {
   const items = getLineItems(order);
   if (!items) return order.productName || '—';
-  if (items.length === 1) return items[0].productName;
-  return `${items[0].productName} +${items.length - 1} more`;
+  return items.map(item => item.productName).join(', ');
 }
 
 /**
@@ -58,15 +57,12 @@ export default function InvoiceLineItems({ order, compact = false }: Props) {
       );
     }
     return (
-      <span className="inline-flex items-center gap-1 flex-wrap">
-        <span className="truncate max-w-[110px] text-[var(--text-secondary)]">
-          {items[0].productName}
-        </span>
-        {items.length > 1 && (
-          <span className="shrink-0 px-1.5 py-0.5 rounded-full bg-[var(--accent-light)] text-[var(--accent)] text-[10px] font-bold">
-            +{items.length - 1}
+      <span className="inline-flex items-center gap-1.5 flex-wrap">
+        {items.map((item, idx) => (
+          <span key={idx} className="px-1.5 py-0.5 rounded bg-[var(--accent-light)] text-[var(--accent)] text-[10px] font-medium truncate max-w-[100px]" title={item.productName}>
+            {item.productName}
           </span>
-        )}
+        ))}
       </span>
     );
   }

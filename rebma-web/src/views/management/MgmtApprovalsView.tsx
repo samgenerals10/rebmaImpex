@@ -244,13 +244,28 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
         const newDbStatus = action === 'approve' ? 'APPROVED' : 'REJECTED';
         const rawId = String(selectedItem.raw.id);
         const cargoRow = selectedItem.raw as Record<string, any>;
+        const incomingQty = Number(cargoRow.quantity || cargoRow.qty_received || 0);
+        const finalQtyToAdd = Math.max(0, incomingQty - confirmedDamages);
+        const discrepancyCost = confirmedDamages * costPerUnit;
+        const sellingPriceVal = sellingPrice ? parseFloat(sellingPrice) : 0;
         const rawDiscrepancies = String(cargoRow.discrepancies || '');
-        const finalDiscrepancyNotes = confirmedDamages > 0 
-          ? `${rawDiscrepancies} (Confirmed: ${confirmedDamages} damaged units, cost loss of GHS ${(confirmedDamages * costPerUnit).toLocaleString()})`
-          : rawDiscrepancies;
+
+        let finalDiscrepancyNotes = rawDiscrepancies;
+        if (confirmedDamages > 0) {
+          const discrepancyJson = {
+            originalQty: incomingQty,
+            damagedCount: confirmedDamages,
+            unitCost: costPerUnit,
+            costLoss: discrepancyCost,
+            sellingPrice: sellingPriceVal,
+            notes: rawDiscrepancies && rawDiscrepancies !== 'None' ? rawDiscrepancies : 'Damaged goods write-off'
+          };
+          finalDiscrepancyNotes = JSON.stringify(discrepancyJson);
+        }
 
         await supabase.from('cargo_intake').update({ 
           status: newDbStatus,
+          quantity: action === 'approve' ? finalQtyToAdd : incomingQty,
           discrepancies: finalDiscrepancyNotes,
           unit_price: costPerUnit,
           is_fault_or_damaged: confirmedDamages > 0
@@ -260,9 +275,6 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
           // Auto-populate stock table from approved cargo
           const productName = String(cargoRow.product_name || 'Unknown Product');
           const productCode = String(cargoRow.goods_code || rawId.slice(0, 8).toUpperCase());
-          const incomingQty = Number(cargoRow.quantity || cargoRow.qty_received || 0);
-          const finalQtyToAdd = Math.max(0, incomingQty - confirmedDamages);
-          const discrepancyCost = confirmedDamages * costPerUnit;
           const unit = String(cargoRow.goods_type || cargoRow.unit || 'units');
           const now = new Date().toISOString();
 

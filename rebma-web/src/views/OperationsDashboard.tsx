@@ -304,6 +304,50 @@ export default function OperationsDashboard({
   const approvedOrders = localOrders.filter(o => ['APPROVED', 'PROCESSING', 'OUT_FOR_DELIVERY', 'DELIVERED'].includes(o.status));
   const approvedGoods = localCargo.filter(i => i.status === 'APPROVED');
 
+  const cargoDiscrepancies = localCargo
+    .map((c: any) => {
+      let originalQty = c.quantity || 0;
+      let damagedCount = 0;
+      let unitCost = Number(c.unitPrice || 0);
+      let costLoss = 0;
+      let sellingPriceVal = 0;
+      let notes = c.discrepancies || '';
+
+      try {
+        if (c.discrepancies && c.discrepancies.trim().startsWith('{')) {
+          const parsed = JSON.parse(c.discrepancies);
+          originalQty = parsed.originalQty ?? originalQty;
+          damagedCount = parsed.damagedCount ?? 0;
+          unitCost = parsed.unitCost ?? unitCost;
+          costLoss = parsed.costLoss ?? (damagedCount * unitCost);
+          sellingPriceVal = parsed.sellingPrice ?? 0;
+          notes = parsed.notes ?? '';
+        } else if (c.discrepancies && c.discrepancies !== 'None') {
+          const dmgMatch = c.discrepancies.match(/Confirmed:\s*(\d+)/i);
+          if (dmgMatch) {
+            damagedCount = parseInt(dmgMatch[1], 10);
+            costLoss = damagedCount * unitCost;
+          }
+        }
+      } catch (err) {
+        console.error('Error parsing discrepancies JSON:', err);
+      }
+
+      return {
+        id: c.id,
+        goodsCode: c.goodsCode || c.id,
+        productName: c.productName || 'Unknown',
+        company: c.company || 'N/A',
+        originalQty,
+        damagedCount,
+        unitCost,
+        costLoss,
+        sellingPrice: sellingPriceVal,
+        notes
+      };
+    })
+    .filter(d => d.damagedCount > 0);
+
   const kpiSnapshotData = [
     { name: 'Cargo Weight', value: parseFloat(totalTons.toFixed(1)), unit: 'T', color: '#3b82f6' },
     { name: 'Awaiting Release', value: pendingReleaseCount, unit: 'orders', color: '#10b981' },
@@ -1720,6 +1764,70 @@ export default function OperationsDashboard({
                     <button className="w-8 h-8 flex items-center justify-center text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-[var(--bg-card)] hover:bg-[var(--accent-light)] rounded-lg transition-colors border border-[var(--border)] disabled:opacity-30" disabled>‹</button>
                     <button className="w-8 h-8 flex items-center justify-center text-xs text-white bg-[var(--accent)] rounded-lg font-bold">1</button>
                     <button className="w-8 h-8 flex items-center justify-center text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-[var(--bg-card)] hover:bg-[var(--accent-light)] rounded-lg transition-colors border border-[var(--border)] disabled:opacity-30" disabled>›</button>
+                  </div>
+                </div>
+
+                {/* Discrepancy Table in History tab */}
+                <div className="mt-8 border-t border-[var(--border)] pt-6 px-5 pb-5">
+                  <div className="flex items-center justify-between mb-4 pb-2 border-b border-[var(--border)]">
+                    <div>
+                      <h3 className="text-sm font-bold text-[var(--text-primary)] flex items-center gap-2">
+                        <AlertTriangle className="w-4 h-4 text-red-500 animate-pulse" /> Cargo Discrepancy Statement
+                      </h3>
+                      <p className="text-[11px] text-[var(--text-muted)] mt-0.5">Logs of confirmed inventory damages, write-offs, and resulting financial losses at cost</p>
+                    </div>
+                    <span className="px-2 py-0.5 rounded bg-red-500/10 text-red-500 text-[10px] font-bold">
+                      Total Damages: {cargoDiscrepancies.reduce((s, d) => s + d.damagedCount, 0)} units
+                    </span>
+                  </div>
+
+                  <div className="overflow-x-auto w-full">
+                    <table className="w-full text-xs text-left">
+                      <thead>
+                        <tr className="border-b border-[var(--border)] bg-[var(--bg-input)]">
+                          <th className="py-2.5 px-3 text-[var(--text-muted)] font-semibold">Cargo ID</th>
+                          <th className="py-2.5 px-3 text-[var(--text-muted)] font-semibold">Product Name</th>
+                          <th className="py-2.5 px-3 text-[var(--text-muted)] font-semibold">Supplier</th>
+                          <th className="py-2.5 px-3 text-[var(--text-muted)] font-semibold text-center">Original Qty</th>
+                          <th className="py-2.5 px-3 text-[var(--text-muted)] font-semibold text-center">Damaged Qty</th>
+                          <th className="py-2.5 px-3 text-[var(--text-muted)] font-semibold text-right">Unit Cost (GHS)</th>
+                          <th className="py-2.5 px-3 text-[var(--text-muted)] font-semibold text-right">Financial Loss (GHS)</th>
+                          <th className="py-2.5 px-3 text-[var(--text-muted)] font-semibold">Description / Notes</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[var(--border)]">
+                        {cargoDiscrepancies.map(d => (
+                          <tr key={d.id} className="hover:bg-red-500/5">
+                            <td className="py-2.5 px-3 font-mono text-[10px] text-[var(--text-secondary)]">{d.id.slice(0, 8).toUpperCase()}</td>
+                            <td className="py-2.5 px-3 font-semibold text-[var(--text-primary)]">{d.productName}</td>
+                            <td className="py-2.5 px-3 text-[var(--text-secondary)]">{d.company}</td>
+                            <td className="py-2.5 px-3 text-center text-[var(--text-secondary)]">{d.originalQty}</td>
+                            <td className="py-2.5 px-3 text-center text-red-500 font-bold">{d.damagedCount}</td>
+                            <td className="py-2.5 px-3 text-right text-[var(--text-secondary)]">{d.unitCost.toLocaleString()}</td>
+                            <td className="py-2.5 px-3 text-right text-red-650 font-extrabold">GHS {d.costLoss.toLocaleString()}</td>
+                            <td className="py-2.5 px-3 text-[var(--text-muted)] max-w-xs truncate" title={d.notes}>{d.notes}</td>
+                          </tr>
+                        ))}
+                        {cargoDiscrepancies.length === 0 && (
+                          <tr>
+                            <td colSpan={8} className="py-8 text-center text-[var(--text-muted)]">
+                              No approved cargo discrepancies or damages logged.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                      {cargoDiscrepancies.length > 0 && (
+                        <tfoot>
+                          <tr className="bg-red-500/10 border-t border-[var(--border)] font-bold">
+                            <td colSpan={6} className="py-2.5 px-3 text-[var(--text-primary)]">Total Loss (At Cost)</td>
+                            <td className="py-2.5 px-3 text-right text-red-600">
+                              GHS {cargoDiscrepancies.reduce((s, d) => s + d.costLoss, 0).toLocaleString()}
+                            </td>
+                            <td className="py-2.5 px-3"></td>
+                          </tr>
+                        </tfoot>
+                      )}
+                    </table>
                   </div>
                 </div>
               </div>

@@ -102,9 +102,13 @@ export default function Header({
           <div className="relative">
             <button 
               onClick={() => setShowAvatarDropdown(prev => !prev)}
-              className="w-10 h-10 rounded-full bg-[var(--accent,#068d5c)] text-white flex items-center justify-center font-extrabold text-sm shadow-card cursor-pointer hover:scale-105 active:scale-95 transition-all"
+              className="w-10 h-10 rounded-full bg-[var(--accent,#068d5c)] text-white flex items-center justify-center font-extrabold text-sm shadow-card cursor-pointer hover:scale-105 active:scale-95 transition-all overflow-hidden"
             >
-              {currentUser?.fullName?.[0] || 'U'}
+              {currentUser?.photo ? (
+                <img src={currentUser.photo} className="w-full h-full object-cover" alt="Profile" />
+              ) : (
+                currentUser?.fullName?.[0] || 'U'
+              )}
             </button>
             
             {/* Custom Avatar Dropdown */}
@@ -454,8 +458,12 @@ export default function Header({
               onClick={() => setShowAvatarDropdown(prev => !prev)}
               className="flex items-center gap-2.5 px-2 py-1.5 rounded-xl hover:bg-[var(--accent-light)] transition-colors cursor-pointer"
             >
-              <div className="w-8 h-8 rounded-full bg-[var(--accent)] text-white flex items-center justify-center font-bold text-xs shadow-card shrink-0 border-2 border-white">
-                {currentUser?.fullName?.[0] || 'U'}
+              <div className="w-8 h-8 rounded-full bg-[var(--accent)] text-white flex items-center justify-center font-bold text-xs shadow-card shrink-0 border-2 border-white overflow-hidden relative">
+                {currentUser?.photo ? (
+                  <img src={currentUser.photo} className="w-full h-full object-cover" alt="Profile" />
+                ) : (
+                  currentUser?.fullName?.[0] || 'U'
+                )}
               </div>
               <span className="text-xs font-semibold text-[var(--text-primary)] hidden xl:block max-w-[120px] truncate">
                 {currentUser?.fullName || 'User'}
