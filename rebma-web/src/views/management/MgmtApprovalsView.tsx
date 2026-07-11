@@ -638,8 +638,8 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
       {showModal && selectedItem && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setShowModal(null)}>
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div className="relative bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-6 w-full max-w-2xl shadow-2xl" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center gap-3 mb-4">
+          <div className="relative bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center gap-3 mb-4 shrink-0">
               {showModal === 'approve' && <CheckCircle size={20} className="text-green-500" />}
               {showModal === 'reject' && <XCircle size={20} className="text-red-500" />}
               <h3 className="text-base font-semibold text-[var(--text-primary)]">
@@ -647,137 +647,141 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
               </h3>
             </div>
 
-            <p className="text-sm text-[var(--text-secondary)] mb-4">{selectedItem.description}</p>
+            <div className="flex-1 overflow-y-auto pr-1 mb-4 min-h-0 space-y-4">
+              <p className="text-sm text-[var(--text-secondary)]">{selectedItem.description}</p>
 
-            {showModal === 'approve' && selectedItem.type === 'Cargo Intake' && (
-              <div className="mb-4 space-y-3 p-4 rounded-2xl border border-[var(--border)] bg-[var(--bg)]">
-                <div className="flex items-center gap-3 mb-1">
-                  <div className="bg-[var(--bg-input)] rounded-xl px-4 py-2.5 flex items-center gap-3">
-                    <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Total Cargo In</span>
-                    <span className="text-sm font-bold text-[var(--text-primary)] font-mono">
-                      {Number(selectedItem.raw?.quantity || selectedItem.raw?.qty_received || 0).toLocaleString()} units
-                    </span>
-                  </div>
-                </div>
-
-
-                {/* Discrepancy section — always shown for cargo intakes so damaged qty can always be set */}
-                <div className="mt-2 border-t border-[var(--border)] pt-3 space-y-3">
-                  <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Quantity Verification</p>
-
-                  {/* Quantity summary */}
-                  <div className="grid grid-cols-3 gap-2">
-                    <div className="bg-[var(--bg-input)] rounded-xl p-2.5 text-center">
-                      <p className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider mb-1">Total Received</p>
-                      <p className="text-sm font-bold text-[var(--text-primary)] font-mono">
-                        {Number(selectedItem.raw?.quantity || selectedItem.raw?.qty_received || 0).toLocaleString()}
-                      </p>
-                      <p className="text-[9px] text-[var(--text-muted)]">units</p>
-                    </div>
-                    <div className="bg-rose-500/10 border border-rose-500/20 rounded-xl p-2.5 text-center">
-                      <p className="text-[9px] font-bold text-rose-500 uppercase tracking-wider mb-1">Confirmed Damaged</p>
-                      <p className="text-sm font-bold text-rose-600 font-mono">{confirmedDamages.toLocaleString()}</p>
-                      <p className="text-[9px] text-rose-400">excluded</p>
-                    </div>
-                    <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-2.5 text-center">
-                      <p className="text-[9px] font-bold text-emerald-600 uppercase tracking-wider mb-1">Net to Stock</p>
-                      <p className="text-sm font-bold text-emerald-600 font-mono">
-                        {Math.max(0, Number(selectedItem.raw?.quantity || selectedItem.raw?.qty_received || 0) - confirmedDamages).toLocaleString()}
-                      </p>
-                      <p className="text-[9px] text-emerald-500">approved qty</p>
+              {showModal === 'approve' && selectedItem.type === 'Cargo Intake' && (
+                <div className="space-y-3 p-4 rounded-2xl border border-[var(--border)] bg-[var(--bg)]">
+                  <div className="flex items-center gap-3 mb-1">
+                    <div className="bg-[var(--bg-input)] rounded-xl px-4 py-2.5 flex items-center gap-3">
+                      <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Total Cargo In</span>
+                      <span className="text-sm font-bold text-[var(--text-primary)] font-mono">
+                        {Number((selectedItem.raw as any)?.quantity || (selectedItem.raw as any)?.qty_received || 0).toLocaleString()} units
+                      </span>
                     </div>
                   </div>
 
-                  {/* Discrepancy note if present */}
-                  {(selectedItem.raw as any)?.discrepancies && String((selectedItem.raw as any).discrepancies).trim() && (
-                    <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-2.5 text-[11px] text-amber-700 leading-relaxed">
-                      ⚠️ Discrepancy reported: <strong>{String((selectedItem.raw as any).discrepancies)}</strong>
-                    </div>
-                  )}
+                  {/* Discrepancy section — always shown for cargo intakes so damaged qty can always be set */}
+                  <div className="mt-2 border-t border-[var(--border)] pt-3 space-y-3">
+                    <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Quantity Verification</p>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider mb-1 block">Confirmed Damaged Units</label>
-                      <input
-                        type="number"
-                        value={confirmedDamages}
-                        onChange={e => setConfirmedDamages(Math.max(0, parseInt(e.target.value) || 0))}
-                        placeholder="0"
-                        min={0}
-                        max={Number(selectedItem.raw?.quantity || selectedItem.raw?.qty_received || 0)}
-                        className="w-full px-3 py-1.5 bg-[var(--bg-input)] border border-[var(--border)] rounded-xl text-xs font-mono text-[var(--text-primary)] focus:outline-none focus:border-rose-500"
-                      />
-                      <p className="text-[9px] text-[var(--text-muted)] mt-1">These units are excluded from stock</p>
+                    {/* Quantity summary */}
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="bg-[var(--bg-input)] rounded-xl p-2.5 text-center">
+                        <span className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider block mb-1">Total Received</span>
+                        <span className="text-xs font-bold text-[var(--text-primary)] font-mono">
+                          {Number((selectedItem.raw as any)?.quantity || (selectedItem.raw as any)?.qty_received || 0).toLocaleString()}
+                        </span>
+                        <span className="text-[8px] text-[var(--text-muted)] block mt-0.5">units</span>
+                      </div>
+                      <div className="bg-rose-500/5 border border-rose-500/10 rounded-xl p-2.5 text-center">
+                        <span className="text-[9px] font-bold text-rose-700 uppercase tracking-wider block mb-1">Confirmed Damaged</span>
+                        <span className="text-xs font-bold text-rose-700 font-mono">
+                          {confirmedDamages.toLocaleString()}
+                        </span>
+                        <span className="text-[8px] text-rose-600 block mt-0.5">excluded</span>
+                      </div>
+                      <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-xl p-2.5 text-center">
+                        <span className="text-[9px] font-bold text-emerald-700 uppercase tracking-wider block mb-1">Net to Stock</span>
+                        <span className="text-xs font-bold text-emerald-700 font-mono">
+                          {Math.max(0, Number((selectedItem.raw as any)?.quantity || (selectedItem.raw as any)?.qty_received || 0) - confirmedDamages).toLocaleString()}
+                        </span>
+                        <span className="text-[8px] text-emerald-600 block mt-0.5">approved qty</span>
+                      </div>
                     </div>
-                    <div>
-                      <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider mb-1 block">Damage Cost (per unit)</label>
-                      <input
-                        type="number"
-                        value={costPerUnit}
-                        onChange={e => setCostPerUnit(Number(e.target.value))}
-                        placeholder="Unit cost"
-                        className="w-full px-3 py-1.5 bg-[var(--bg-input)] border border-[var(--border)] rounded-xl text-xs font-mono text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
-                      />
-                      <p className="text-[9px] text-[var(--text-muted)] mt-1">Used to log the financial loss</p>
+
+                    {/* Warning alert if discrepancy is present */}
+                    {(selectedItem.raw as any)?.discrepancies && String((selectedItem.raw as any).discrepancies).trim() && (
+                      <div className="p-3 bg-amber-500/15 border border-amber-500/25 text-amber-700 rounded-xl text-xs flex items-center gap-2">
+                        <span className="shrink-0">⚠️</span>
+                        <span>Discrepancy reported: <strong>{String((selectedItem.raw as any).discrepancies)}</strong></span>
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-2 gap-3 pt-2">
+                      <div>
+                        <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider mb-1 block">Confirmed Damaged Units</label>
+                        <input
+                          type="number"
+                          value={confirmedDamages}
+                          onChange={e => setConfirmedDamages(Math.max(0, parseInt(e.target.value) || 0))}
+                          placeholder="0"
+                          min={0}
+                          max={Number((selectedItem.raw as any)?.quantity || (selectedItem.raw as any)?.qty_received || 0)}
+                          className="w-full px-3 py-1.5 bg-[var(--bg-input)] border border-[var(--border)] rounded-xl text-xs font-mono text-[var(--text-primary)] focus:outline-none focus:border-rose-500"
+                        />
+                        <p className="text-[9px] text-[var(--text-muted)] mt-1">These units are excluded from stock</p>
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider mb-1 block">Damage Cost (per unit)</label>
+                        <input
+                          type="number"
+                          value={costPerUnit}
+                          onChange={e => setCostPerUnit(Number(e.target.value))}
+                          placeholder="Unit cost"
+                          className="w-full px-3 py-1.5 bg-[var(--bg-input)] border border-[var(--border)] rounded-xl text-xs font-mono text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
+                        />
+                        <p className="text-[9px] text-[var(--text-muted)] mt-1">Used to log the financial loss</p>
+                      </div>
                     </div>
+
+                    {confirmedDamages > 0 && (
+                      <div className="text-[10px] text-[var(--text-muted)] leading-normal bg-rose-500/5 border border-rose-500/10 rounded-xl px-3 py-2">
+                        The <strong className="text-rose-600 font-mono">{confirmedDamages.toLocaleString()}</strong> damaged units will be recorded as a system loss of{' '}
+                        <strong className="text-rose-600 font-mono">GHS {(confirmedDamages * costPerUnit).toLocaleString()}</strong>{' '}
+                        and will <strong>NOT</strong> be added to inventory.
+                      </div>
+                    )}
                   </div>
 
-                  {confirmedDamages > 0 && (
-                    <div className="text-[10px] text-[var(--text-muted)] leading-normal bg-rose-500/5 border border-rose-500/10 rounded-xl px-3 py-2">
-                      The <strong className="text-rose-600 font-mono">{confirmedDamages.toLocaleString()}</strong> damaged units will be recorded as a system loss of{' '}
-                      <strong className="text-rose-600 font-mono">GHS {(confirmedDamages * costPerUnit).toLocaleString()}</strong>{' '}
-                      and will <strong>NOT</strong> be added to inventory.
+                  <div className="mt-2 border-t border-[var(--border)] pt-2">
+                    <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Selling Price (GHS) — optional</label>
+                    <input
+                      type="number"
+                      value={sellingPrice}
+                      onChange={e => setSellingPrice(e.target.value)}
+                      placeholder="Enter selling price per unit"
+                      className="w-full px-3 py-2 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
+                    />
+                  </div>
+
+                  <div className="space-y-2 border-t border-[var(--border)] pt-2">
+                    <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider block">Notify departments:</label>
+                    <div className="flex gap-4">
+                      <label className="flex items-center gap-2 text-xs text-[var(--text-primary)] cursor-pointer">
+                        <input type="checkbox" checked={notifyOps} onChange={e => setNotifyOps(e.target.checked)} className="rounded" />
+                        Operations
+                      </label>
+                      <label className="flex items-center gap-2 text-xs text-[var(--text-primary)] cursor-pointer">
+                        <input type="checkbox" checked={notifyCeo} onChange={e => setNotifyCeo(e.target.checked)} className="rounded" />
+                        CEO
+                      </label>
                     </div>
-                  )}
-                </div>
-
-                <div className="mt-2 border-t border-[var(--border)] pt-2">
-                  <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Selling Price (GHS) — optional</label>
-                  <input
-                    type="number"
-                    value={sellingPrice}
-                    onChange={e => setSellingPrice(e.target.value)}
-                    placeholder="Enter selling price per unit"
-                    className="w-full px-3 py-2 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
-                  />
-                </div>
-
-                <div className="space-y-2 border-t border-[var(--border)] pt-2">
-                  <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider block">Notify departments:</label>
-                  <div className="flex gap-4">
-                    <label className="flex items-center gap-2 text-xs text-[var(--text-primary)] cursor-pointer">
-                      <input type="checkbox" checked={notifyOps} onChange={e => setNotifyOps(e.target.checked)} className="rounded" />
-                      Operations
-                    </label>
-                    <label className="flex items-center gap-2 text-xs text-[var(--text-primary)] cursor-pointer">
-                      <input type="checkbox" checked={notifyCeo} onChange={e => setNotifyCeo(e.target.checked)} className="rounded" />
-                      CEO
-                    </label>
                   </div>
                 </div>
+              )}
+
+              {showModal === 'approve' && selectedItem.type === 'Credit Order' && (
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-700">
+                  Approving will move this order to <strong>Finance</strong> for payment processing.
+                </div>
+              )}
+
+              <div>
+                <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">
+                  {showModal === 'approve' ? 'Additional notes (optional)' : 'Reason for rejection *'}
+                </label>
+                <textarea
+                  value={modalNote}
+                  onChange={e => setModalNote(e.target.value)}
+                  rows={3}
+                  placeholder={showModal === 'approve' ? 'Any notes for this approval...' : 'Explain why this is being rejected...'}
+                  className="w-full px-3 py-2 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent)] resize-none"
+                />
               </div>
-            )}
-
-            {showModal === 'approve' && selectedItem.type === 'Credit Order' && (
-              <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-700">
-                Approving will move this order to <strong>Finance</strong> for payment processing.
-              </div>
-            )}
-
-            <div className="mb-4">
-              <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">
-                {showModal === 'approve' ? 'Additional notes (optional)' : 'Reason for rejection *'}
-              </label>
-              <textarea
-                value={modalNote}
-                onChange={e => setModalNote(e.target.value)}
-                rows={3}
-                placeholder={showModal === 'approve' ? 'Any notes for this approval...' : 'Explain why this is being rejected...'}
-                className="w-full px-3 py-2 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent)] resize-none"
-              />
             </div>
 
-            <div className="flex items-center gap-3 justify-end">
+            <div className="flex items-center gap-3 justify-end pt-3 border-t border-[var(--border)] shrink-0">
               <button disabled={submitting} onClick={() => setShowModal(null)} className="px-4 py-2 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-input)] disabled:opacity-50">Cancel</button>
               <button
                 disabled={submitting}
