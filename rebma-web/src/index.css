@@ -718,7 +718,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .bg-accent {
-  background: var(--accent);
+  background: var(--accent-gradient);
 }
 
 .bg-accent-hover:hover {

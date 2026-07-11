@@ -72,8 +72,20 @@ export function applyAccentOverride(data: AppearanceData): void {
       --accent-light: ${hexToRgba(accentVal, 0.15)} !important;
     }
     body.${themeClass} .bg-accent,
-    body.${themeClass} [class*="bg-accent"]:not([class*="bg-accent-soft"]):not([class*="bg-accent-light"]) {
+    body.${themeClass} .nav-item--active,
+    body.${themeClass} .lf-nav-item span[style*="var(--accent)"],
+    body.${themeClass} .lf-nav-icon[style*="var(--accent)"],
+    body.${themeClass} .erp-btn-primary,
+    body.${themeClass} [class*="bg-accent"]:not([class*="bg-accent-soft"]):not([class*="bg-accent-light"]),
+    body.${themeClass} [class*="bg-[var(--accent)]"],
+    body.${themeClass} [class*="bg-[var(--accent-hover)]"],
+    body.${themeClass} [class*="bg-[var(--accent-2)]"],
+    body.${themeClass} [style*="background: var(--accent)"],
+    body.${themeClass} [style*="background-color: var(--accent)"],
+    body.${themeClass} [style*="background:var(--accent)"],
+    body.${themeClass} [style*="background-color:var(--accent)"] {
       background: ${bgVal} !important;
+      background-image: ${bgVal} !important;
     }
     body.${themeClass} .text-accent,
     body.${themeClass} [class*="text-accent"] {
@@ -87,10 +99,12 @@ export function applyAccentOverride(data: AppearanceData): void {
     }
     body.${themeClass} .kpi-icon {
       background: ${gradientVal} !important;
+      background-image: ${gradientVal} !important;
     }
     body.${themeClass} .nav-item[data-active="true"],
     body.${themeClass} .nav-item.active {
       background: ${bgVal} !important;
+      background-image: ${bgVal} !important;
       color: #ffffff !important;
     }
   `;
