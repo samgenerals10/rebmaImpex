@@ -12,7 +12,7 @@ export function useAppState() {
     const a = _getAppearance(); return a.template || localStorage.getItem('erp-theme') || 'salespulse';
   });
   const [accentColor, setAccentColor] = useState<string>(() => {
-    const a = _getAppearance(); return (a.accentType === 'solid' ? a.accentSolid : undefined) || localStorage.getItem('erp-accent') || '#22c55e';
+    const a = _getAppearance(); return (a.accentType === 'solid' ? a.accentSolid : a.gradientColor1) || localStorage.getItem('erp-accent') || '#22c55e';
   });
   const [fontFamily, setFontFamily] = useState<string>(() => {
     const a = _getAppearance(); return a.fontFamily || localStorage.getItem('erp-font') || 'Inter';
@@ -97,11 +97,31 @@ export function useAppState() {
       return result ? { r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16) } : null;
     };
     const rgb = hexToRgb(accentColor);
+    
+    // Set --accent-gradient on root inline style
+    const savedApp = _getAppearance();
+    if (savedApp.accentType === 'gradient' && savedApp.gradientColor1 && savedApp.gradientColor2) {
+      const dir = savedApp.gradientDirection || '135deg';
+      root.style.setProperty('--accent-gradient', `linear-gradient(${dir}, ${savedApp.gradientColor1}, ${savedApp.gradientColor2})`);
+    } else if (rgb) {
+      const hoverColor = `rgba(${Math.max(0, rgb.r - 20)}, ${Math.max(0, rgb.g - 20)}, ${Math.max(0, rgb.b - 20)}, 1)`;
+      root.style.setProperty('--accent-gradient', `linear-gradient(135deg, ${accentColor}, ${hoverColor})`);
+    }
+
     if (rgb) {
       root.style.setProperty('--accent-light', `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.15)`);
       root.style.setProperty('--accent-soft',  `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.10)`);
       root.style.setProperty('--accent-hover', `rgba(${Math.max(0, rgb.r - 20)}, ${Math.max(0, rgb.g - 20)}, ${Math.max(0, rgb.b - 20)}, 1)`);
       root.style.setProperty('--accent-2',     `rgba(${Math.max(0, rgb.r - 30)}, ${Math.max(0, rgb.g - 30)}, ${Math.max(0, rgb.b - 30)}, 1)`);
+    }
+
+    // Call applyAccentOverride to ensure styling stylesheet is fully synced
+    if (savedApp.accentType && savedApp.accentType !== 'none') {
+      try {
+        applyAccentOverride(savedApp);
+      } catch (e) {
+        console.error('Failed to sync style overrides:', e);
+      }
     }
 
     const _fontMap: Record<string, string> = {

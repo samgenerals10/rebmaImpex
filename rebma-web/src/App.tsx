@@ -259,11 +259,31 @@ export default function App() {
       } : null;
     };
     const rgb = hexToRgb(accentColor);
+    
+    // Set --accent-gradient on root inline style
+    const savedApp = _getAppearance();
+    if (savedApp.accentType === 'gradient' && savedApp.gradientColor1 && savedApp.gradientColor2) {
+      const dir = savedApp.gradientDirection || '135deg';
+      root.style.setProperty('--accent-gradient', `linear-gradient(${dir}, ${savedApp.gradientColor1}, ${savedApp.gradientColor2})`);
+    } else if (rgb) {
+      const hoverColor = `rgba(${Math.max(0, rgb.r - 20)}, ${Math.max(0, rgb.g - 20)}, ${Math.max(0, rgb.b - 20)}, 1)`;
+      root.style.setProperty('--accent-gradient', `linear-gradient(135deg, ${accentColor}, ${hoverColor})`);
+    }
+
     if (rgb) {
       root.style.setProperty('--accent-light', `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.15)`);
       root.style.setProperty('--accent-soft',  `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.10)`);
       root.style.setProperty('--accent-hover', `rgba(${Math.max(0, rgb.r - 20)}, ${Math.max(0, rgb.g - 20)}, ${Math.max(0, rgb.b - 20)}, 1)`);
       root.style.setProperty('--accent-2',     `rgba(${Math.max(0, rgb.r - 30)}, ${Math.max(0, rgb.g - 30)}, ${Math.max(0, rgb.b - 30)}, 1)`);
+    }
+
+    // Call applyAccentOverride to ensure styling stylesheet is fully synced
+    if (savedApp.accentType && savedApp.accentType !== 'none') {
+      try {
+        applyAccentOverride(savedApp);
+      } catch (e) {
+        console.error('Failed to sync style overrides:', e);
+      }
     }
 
     // 4. Apply font family directly as a CSS variable (ensures it works on all viewports)
