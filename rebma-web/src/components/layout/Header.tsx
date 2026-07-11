@@ -29,6 +29,11 @@ interface HeaderProps {
   setActiveSubTab?: (tab: string) => void;
   onSearchClick?: () => void;
   theme?: string;
+  ordersList?: any[];
+  incomingGoodsList?: any[];
+  paymentsList?: any[];
+  staffList?: any[];
+  customersList?: any[];
 }
 
 const getGreeting = () => {
@@ -58,7 +63,12 @@ export default function Header({
   setActiveDepartment,
   setActiveSubTab,
   onSearchClick,
-  theme
+  theme,
+  ordersList = [],
+  incomingGoodsList = [],
+  paymentsList = [],
+  staffList = [],
+  customersList = []
 }: HeaderProps) {
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [showAvatarDropdown, setShowAvatarDropdown] = useState(false);
@@ -90,6 +100,144 @@ export default function Header({
     if (normalizedUserDept === 'HR') return d.value === 'HR';
     return d.value === normalizedUserDept;
   });
+
+  const getSearchResults = () => {
+    if (!searchQuery || !searchQuery.trim()) return [];
+    const q = searchQuery.toLowerCase().trim();
+    const results: Array<{
+      id: string;
+      title: string;
+      subtitle: string;
+      category: string;
+      dept: string;
+      tab: string;
+      icon: any;
+    }> = [];
+
+    const isCeo = currentUser?.isCeo || currentUser?.department?.toUpperCase() === 'CEO';
+    const dept = activeDepartment || currentUser?.department || '';
+
+    // 1. Orders search (accessible by CEO, MARKETING, FINANCE, MANAGEMENT)
+    if (isCeo || dept === 'MARKETING' || dept === 'FINANCE' || dept === 'MANAGEMENT') {
+      const matchedOrders = (ordersList || []).filter((o: any) =>
+        String(o.id || '').toLowerCase().includes(q) ||
+        String(o.clientName || '').toLowerCase().includes(q) ||
+        String(o.productName || '').toLowerCase().includes(q) ||
+        String(o.ticketNumber || '').toLowerCase().includes(q)
+      );
+      matchedOrders.forEach((o: any) => {
+        results.push({
+          id: o.id,
+          title: `Order: ${o.clientName}`,
+          subtitle: `${o.productName || 'Unnamed'} (Qty: ${o.quantity || 1}) · GHS ${Number(o.totalAmount || 0).toLocaleString()} [${o.status}]`,
+          category: 'Orders',
+          dept: isCeo ? 'CEO' : (dept === 'FINANCE' ? 'FINANCE' : 'MARKETING'),
+          tab: isCeo ? 'Invoices' : (dept === 'FINANCE' ? 'OrdersQueue' : 'SalesHistory'),
+          icon: Clipboard
+        });
+      });
+    }
+
+    // 2. Cargo Ingestions (accessible by CEO, OPERATIONS, MANAGEMENT)
+    if (isCeo || dept === 'OPERATIONS' || dept === 'MANAGEMENT') {
+      const matchedCargo = (incomingGoodsList || []).filter((c: any) =>
+        String(c.id || '').toLowerCase().includes(q) ||
+        String(c.goodsCode || '').toLowerCase().includes(q) ||
+        String(c.productName || '').toLowerCase().includes(q) ||
+        String(c.company || '').toLowerCase().includes(q)
+      );
+      matchedCargo.forEach((c: any) => {
+        results.push({
+          id: c.id,
+          title: `Cargo: ${c.productName || 'Incoming Goods'}`,
+          subtitle: `Code: ${c.goodsCode} · Carrier: ${c.company} · Qty: ${c.quantity} [${c.status}]`,
+          category: 'Logistics / Intake',
+          dept: isCeo ? 'MANAGEMENT' : 'OPERATIONS',
+          tab: isCeo ? 'CargoApproval' : 'LoggedCargo',
+          icon: Truck
+        });
+      });
+    }
+
+    // 3. Payments / Receipts (accessible by CEO, FINANCE)
+    if (isCeo || dept === 'FINANCE') {
+      const matchedPayments = (paymentsList || []).filter((p: any) =>
+        String(p.id || '').toLowerCase().includes(q) ||
+        String(p.clientName || '').toLowerCase().includes(q) ||
+        String(p.paymentMode || '').toLowerCase().includes(q) ||
+        String(p.paymentType || '').toLowerCase().includes(q)
+      );
+      matchedPayments.forEach((p: any) => {
+        results.push({
+          id: p.id,
+          title: `Payment: ${p.clientName}`,
+          subtitle: `Receipt: ${p.id} · GHS ${Number(p.amount || 0).toLocaleString()} · Mode: ${p.paymentMode}`,
+          category: 'Finance Receipts',
+          dept: 'FINANCE',
+          tab: 'Tickets',
+          icon: DollarSign
+        });
+      });
+    }
+
+    // 4. Staff members (accessible by CEO, HR)
+    if (isCeo || dept === 'HR') {
+      const matchedStaff = (staffList || []).filter((s: any) =>
+        String(s.id || '').toLowerCase().includes(q) ||
+        String(s.name || '').toLowerCase().includes(q) ||
+        String(s.email || '').toLowerCase().includes(q) ||
+        String(s.role || '').toLowerCase().includes(q)
+      );
+      matchedStaff.forEach((s: any) => {
+        results.push({
+          id: s.id,
+          title: `Employee: ${s.name}`,
+          subtitle: `Role: ${s.role} · Email: ${s.email} · Status: ${s.status || 'ACTIVE'}`,
+          category: 'HR Directory',
+          dept: 'HR',
+          tab: 'Staff',
+          icon: Users
+        });
+      });
+    }
+
+    // 5. Customers (accessible by CEO, MARKETING)
+    if (isCeo || dept === 'MARKETING') {
+      const matchedCustomers = (customersList || []).filter((c: any) =>
+        String(c.id || '').toLowerCase().includes(q) ||
+        String(c.name || '').toLowerCase().includes(q) ||
+        String(c.company || '').toLowerCase().includes(q) ||
+        String(c.email || '').toLowerCase().includes(q)
+      );
+      matchedCustomers.forEach((c: any) => {
+        results.push({
+          id: c.id,
+          title: `Customer: ${c.name}`,
+          subtitle: `Company: ${c.company || 'N/A'} · Contact: ${c.email || c.phone || 'N/A'}`,
+          category: 'Marketing Customers',
+          dept: 'MARKETING',
+          tab: 'RegisterCustomer',
+          icon: User
+        });
+      });
+    }
+
+    return results;
+  };
+
+  const handleResultClick = (res: any) => {
+    if (setActiveDepartment && res.dept) {
+      setActiveDepartment(res.dept);
+      sessionStorage.setItem('rebma-last-dept', res.dept);
+    }
+    if (setActiveSubTab && res.tab) {
+      setActiveSubTab(res.tab);
+    }
+    setSearchQuery('');
+  };
+
+  const searchResults = getSearchResults();
+  const dept = activeDepartment || currentUser?.department || '';
 
   return (
     <header className="relative mb-0 lg:mb-6">
@@ -336,19 +484,55 @@ export default function Header({
         )}
 
         {/* Search bar — center, pill shape, matches reference */}
-        <div className="flex items-center flex-1 max-w-[420px]">
+        <div className="relative flex items-center flex-1 max-w-[420px]">
           <div className="relative w-full">
             <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
               <Search className="h-4 w-4 text-text-muted" />
             </span>
             <input
               type="text"
-              placeholder="Search records..."
+              placeholder={isCeo ? "Search everywhere (CEO mode)..." : `Search ${dept.toLowerCase()} records...`}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-3.5 py-2 bg-[var(--bg-input)] border border-[var(--border)] rounded-full text-xs text-[var(--text-primary)] placeholder:text-text-muted focus:outline-none focus:border-[var(--accent)] transition-colors"
             />
           </div>
+
+          {/* Search Dropdown Results */}
+          {searchQuery.trim().length > 0 && (
+            <div className="absolute left-0 right-0 top-full mt-2 bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-xl z-[100] max-h-[350px] overflow-y-auto p-2 space-y-1">
+              <div className="px-3 py-1.5 text-[10px] font-bold text-[var(--text-muted)] border-b border-[var(--border)] flex justify-between items-center bg-[var(--bg-input)] rounded-t-xl">
+                <span>{isCeo ? 'GLOBAL SEARCH RESULTS' : `${dept} SEARCH RESULTS`}</span>
+                <span className="bg-[var(--accent)] text-white px-1.5 py-0.5 rounded text-[8px] font-bold">{searchResults.length} matches</span>
+              </div>
+              <div className="divide-y divide-[var(--border)] text-[var(--text-primary)]">
+                {searchResults.map((res) => {
+                  const Icon = res.icon;
+                  return (
+                    <button
+                      key={res.id}
+                      onClick={() => handleResultClick(res)}
+                      className="w-full text-left p-2.5 hover:bg-[var(--accent-light)] rounded-xl flex items-center gap-3 transition-colors cursor-pointer group"
+                    >
+                      <div className="w-8 h-8 rounded-lg bg-[var(--bg)] border border-[var(--border)] flex items-center justify-center text-[var(--accent)] shrink-0 group-hover:scale-105 transition-transform">
+                        <Icon size={14} />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs font-bold text-[var(--text-primary)] truncate">{res.title}</p>
+                          <span className="text-[8px] bg-[var(--bg-input)] text-[var(--text-muted)] font-bold px-1.5 py-0.5 rounded uppercase font-mono tracking-wider">{res.category}</span>
+                        </div>
+                        <p className="text-[10px] text-[var(--text-secondary)] truncate mt-0.5">{res.subtitle}</p>
+                      </div>
+                    </button>
+                  );
+                })}
+                {searchResults.length === 0 && (
+                  <p className="text-center text-xs text-[var(--text-muted)] py-6">No matching records found.</p>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Status badges & Widgets */}

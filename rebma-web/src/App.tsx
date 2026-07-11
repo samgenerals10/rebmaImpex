@@ -3658,6 +3658,11 @@ export default function App() {
         handleQuickAction={handleQuickAction}
         navBadges={navBadges}
         tabAlerts={tabAlerts}
+        ordersList={ordersList}
+        incomingGoodsList={incomingGoodsList}
+        paymentsList={paymentsList}
+        staffList={staffList}
+        customersList={customersList}
       />
     </CeoSettingsProvider>
   );
@@ -3679,6 +3684,7 @@ function AppInner({
   accentColor, isMobileSearchActive, isMobileNotificationsActive, navStyle,
   setIsQuickActionOpen, isQuickActionOpen, handleQuickAction,
   activeToastIds, setActiveToastIds, navBadges, tabAlerts,
+  ordersList, incomingGoodsList, paymentsList, staffList, customersList,
 }: any) {
   const { getSetting } = useCeoSettings();
   const isCeo = currentUser?.isCeo || currentUser?.department === 'CEO';
@@ -3736,6 +3742,11 @@ function AppInner({
             <Header
               searchQuery={searchQuery}
               setSearchQuery={setSearchQuery}
+              ordersList={ordersList}
+              incomingGoodsList={incomingGoodsList}
+              paymentsList={paymentsList}
+              staffList={staffList}
+              customersList={customersList}
               onOpenChat={() => {
                 setActiveDepartment('BOARDROOM');
                 sessionStorage.setItem('rebma-last-dept', 'BOARDROOM');
