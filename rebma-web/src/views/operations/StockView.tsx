@@ -233,6 +233,7 @@ export default function StockView({ incomingGoodsList: _ig, addNotification }: P
       const rawMap: Record<string, { totalIn: number; totalOut: number; entries: LedgerEntry[]; canonical: string }> = {};
       const seenRefs = new Set();
       const seenIds = new Set();
+      const seenKeys = new Set();
 
       for (const r of (ledgerData || [])) {
         const rawName: string = r.product_name || '';
@@ -251,6 +252,22 @@ export default function StockView({ incomingGoodsList: _ig, addNotification }: P
           if (seenRefs.has(normalizedRef)) continue;
           seenRefs.add(normalizedRef);
         }
+
+        // Deduplicate by movement type, quantity, notes, and day of date to catch duplicate logs with different random IDs
+        const dateVal = r.created_at || '';
+        let dayKey = '';
+        if (dateVal) {
+          try {
+            const d = new Date(dateVal);
+            dayKey = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+          } catch (err) {
+            dayKey = dateVal.slice(0, 10);
+          }
+        }
+        const notesText = (r.notes || '').toLowerCase().trim();
+        const dupKey = `${r.movement_type || ''}_${r.quantity}_${notesText}_${dayKey}`;
+        if (seenKeys.has(dupKey)) continue;
+        seenKeys.add(dupKey);
 
         const key = rawName.toLowerCase().trim();
         if (!rawMap[key]) rawMap[key] = { totalIn: 0, totalOut: 0, entries: [], canonical: rawName };

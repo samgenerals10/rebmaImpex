@@ -847,6 +847,7 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
         const rawEntries = stockLedger.filter(l => (l.product_name || '').toLowerCase().trim() === productName.toLowerCase().trim());
         const seenRefs = new Set();
         const seenIds = new Set();
+        const seenKeys = new Set();
         const entries: any[] = [];
         for (const e of rawEntries) {
           if (!e) continue;
@@ -862,6 +863,23 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
             if (seenRefs.has(normalizedRef)) continue;
             seenRefs.add(normalizedRef);
           }
+
+          // Deduplicate by movement type, quantity, notes, and day of date to catch duplicate logs with different random IDs
+          const dateVal = e.created_at || e.date || '';
+          let dayKey = '';
+          if (dateVal) {
+            try {
+              const d = new Date(dateVal);
+              dayKey = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+            } catch (err) {
+              dayKey = dateVal.slice(0, 10);
+            }
+          }
+          const notesText = (e.notes || '').toLowerCase().trim();
+          const dupKey = `${e.movement_type || e.movementType}_${e.quantity}_${notesText}_${dayKey}`;
+          if (seenKeys.has(dupKey)) continue;
+          seenKeys.add(dupKey);
+
           entries.push(e);
         }
         
