@@ -24,14 +24,6 @@ interface PerformanceAlert {
   notes?: string;
 }
 
-const MOCK_ALERTS: PerformanceAlert[] = [
-  { id: '1', staffName: 'Efua Tetteh', department: 'Finance', role: 'Accountant', issue: 'Account suspended — pending review', details: 'Staff account was suspended on 2026-05-20 due to policy violation. HR review in progress.', level: 'critical', status: 'IN_REVIEW', createdAt: '2026-05-20' },
-  { id: '2', staffName: 'Yaw Darko', department: 'Marketing', role: 'Marketing Lead', issue: 'Excessive absences (4 this month)', details: 'Employee has recorded 4 unscheduled absences in June 2026. Attendance rate has dropped to 72%.', level: 'high', status: 'OPEN', createdAt: '2026-06-10' },
-  { id: '3', staffName: 'Kojo Amponsah', department: 'Logistics', role: 'Driver', issue: 'Late check-ins 3× this week', details: 'Employee checked in more than 30 minutes late on Mon, Wed, Fri this week. No approved leave on record.', level: 'medium', status: 'OPEN', createdAt: '2026-06-12' },
-  { id: '4', staffName: 'Adwoa Sarpong', department: 'Operations', role: 'Operations Officer', issue: 'Task completion below target', details: 'Q2 task completion rate at 68%, below the 85% departmental target. Manager notified.', level: 'medium', status: 'OPEN', createdAt: '2026-06-08' },
-  { id: '5', staffName: 'Kwesi Ofori', department: 'Marketing', role: 'Sales Representative', issue: 'Sales target missed 2 months in a row', details: 'April and May sales targets not met. Sales figures at 58% and 61% of quota respectively.', level: 'high', status: 'IN_REVIEW', createdAt: '2026-06-01' },
-  { id: '6', staffName: 'Nana Agyei', department: 'Production', role: 'Production Supervisor', issue: 'Minor attendance issue resolved', details: 'Previous late arrival issue from March has been addressed. Staff returned to full attendance.', level: 'low', status: 'RESOLVED', createdAt: '2026-03-15', resolvedAt: '2026-04-01', resolvedBy: 'HR Admin' },
-];
 
 const LEVEL_CONFIG: Record<AlertLevel, { bg: string; color: string; icon: React.ReactNode; label: string }> = {
   critical: { bg: 'rgba(220,38,38,0.12)', color: '#dc2626', icon: <AlertTriangle className="w-4 h-4" />, label: 'Critical' },

@@ -793,7 +793,7 @@ export default function FinanceDashboard({
         <div className="grid grid-cols-2 gap-3">
           {[
             { label: 'Payments', value: `${recordedPaymentsCount}`, sub: 'Receipts logged', bg: '#eff6ff', color: '#3b82f6', icon: ShieldCheck },
-            { label: 'Cash Inflow', value: `GHS ${(liquidCashVal/1000).toFixed(0)}k`, sub: 'Direct collections', bg: '#f0fdf4', color: '#16a34a', icon: Activity },
+            { label: 'Cash Inflow', value: `GHS ${liquidCashVal.toLocaleString()}`, sub: 'Direct collections', bg: '#f0fdf4', color: '#16a34a', icon: Activity },
           ].map((s, i) => { const Icon = s.icon; return (
             <div key={i} className="mobile-stat-card">
               <div className="mobile-stat-icon" style={{ background: s.bg }}><Icon className="w-5 h-5" style={{ color: s.color }} /></div>
@@ -2064,13 +2064,16 @@ export default function FinanceDashboard({
                       
                       {/* 4 horizontal catalog items */}
                       <div className="xl:col-span-3 grid grid-cols-1 sm:grid-cols-4 gap-4">
-                        {[
-                          { name: 'NOZO Smartwatch', cat: 'Accessories', price: 350, cost: 280, icon: 'watch' },
-                          { name: 'Galaxy Tab Pro Z10', cat: 'Electronics', price: 699, cost: 550, icon: 'tv' },
-                          { name: 'PHX-900 Gaming Mouse', cat: 'Accessories', price: 99, cost: 70, icon: 'mouse' },
-                          { name: 'EpoMax Bluetooth', cat: 'Speakers', price: 150, cost: 120, icon: 'speaker' }
-                        ].map((prod, idx) => {
-                          const matchedRealProduct = goodsPrices.find((gp: any) => String(gp.product_name).toLowerCase().includes(prod.name.split(' ')[0].toLowerCase())) || { product_name: prod.name, category: prod.cat, unit_price: prod.price, cost_price: prod.cost, id: `mock-${idx}`, currency: 'GHS', stock: 120, margin: '25', sellingValue: prod.price * 120, costValue: prod.cost * 120 };
+                        {(goodsPrices && goodsPrices.length > 0 ? goodsPrices.slice(0, 4) : [
+                          { product_name: 'NOZO Smartwatch', category: 'Accessories', unit_price: 350, cost_price: 280, currency: 'GHS' },
+                          { product_name: 'Galaxy Tab Pro Z10', category: 'Electronics', unit_price: 699, cost_price: 550, currency: 'GHS' },
+                          { product_name: 'PHX-900 Gaming Mouse', category: 'Accessories', unit_price: 99, cost_price: 70, currency: 'GHS' },
+                          { product_name: 'EpoMax Bluetooth', category: 'Speakers', unit_price: 150, cost_price: 120, currency: 'GHS' }
+                        ]).map((gp: any, idx) => {
+                          const matchedRealProduct = gp.id ? gp : { ...gp, id: `mock-${idx}`, stock: 120, margin: '25', sellingValue: gp.unit_price * 120, costValue: gp.cost_price * 120 };
+                          const name = gp.product_name || 'Unnamed Product';
+                          const cat = gp.category || 'General';
+                          const price = gp.unit_price || 0;
                           return (
                             <div
                               key={idx}
@@ -2078,12 +2081,12 @@ export default function FinanceDashboard({
                               className="bg-white border border-slate-100 rounded-3xl p-4 flex flex-col justify-between hover:shadow-md transition-all group cursor-pointer"
                             >
                               <div className="bg-slate-50/50 rounded-2xl py-4 flex items-center justify-center min-h-[90px] mb-3">
-                                {drawProductImg(prod.name, prod.cat)}
+                                {drawProductImg(name, cat)}
                               </div>
                               <div className="text-left space-y-1">
-                                <h4 className="text-[10px] font-black text-slate-800 truncate">{prod.name}</h4>
-                                <p className="text-[9px] text-slate-400 uppercase font-semibold">{prod.cat}</p>
-                                <p className="text-xs font-black text-slate-900">GHS {prod.price}</p>
+                                <h4 className="text-[10px] font-black text-slate-800 truncate">{name}</h4>
+                                <p className="text-[9px] text-slate-400 uppercase font-semibold">{cat}</p>
+                                <p className="text-xs font-black text-slate-900">{gp.currency || 'GHS'} {price.toLocaleString()}</p>
                               </div>
                             </div>
                           );

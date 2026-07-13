@@ -53,8 +53,9 @@ export default function AttendanceView({ addNotification }: Props) {
     const load = async () => {
       setLoading(true);
       try {
-        const { data } = await supabase.from('attendance').select('*').eq('date', filterDate).order('checkInTime');
-        setRows(data && data.length > 0 ? data as AttendanceRow[] : MOCK);
+        const { data, error } = await supabase.from('attendance').select('*').eq('date', filterDate).order('checkInTime');
+        if (error) throw error;
+        setRows((data || []) as AttendanceRow[]);
       } catch { setRows(MOCK); }
       setLoading(false);
     };

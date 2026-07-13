@@ -226,7 +226,7 @@ export default function SupplierOrdersView({ currentUser, addNotification }: Pro
           { label: 'Total Orders', value: totalOrders, icon: ShoppingBag, color: '#3b82f6', bg: '#eff6ff' },
           { label: 'Pending Payment', value: pendingPayment, icon: Clock, color: '#b45309', bg: '#fef3c7' },
           { label: 'In Transit', value: inTransit, icon: Truck, color: '#7c3aed', bg: '#ede9fe' },
-          { label: 'This Month (GHS)', value: `GHS ${(thisMonthGhs / 1000).toFixed(0)}k`, icon: DollarSign, color: '#15803d', bg: '#dcfce7' },
+          { label: 'This Month (GHS)', value: `GHS ${thisMonthGhs.toLocaleString()}`, icon: DollarSign, color: '#15803d', bg: '#dcfce7' },
         ].map((c, i) => {
           const Icon = c.icon;
           return (

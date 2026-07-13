@@ -490,7 +490,7 @@ export default function ManagementDashboard({
         <div className="grid grid-cols-2 gap-3">
           {[
             { label: 'Authorized', value: `${approvedOrdersCount}`, sub: 'Orders cleared', bg: '#f0fdf4', color: '#16a34a', icon: ShieldCheck },
-            { label: 'Net Value', value: `GHS ${(totalApprovedValue/1000).toFixed(0)}k`, sub: 'Approved funds', bg: '#eef2ff', color: '#6366f1', icon: DollarSign },
+            { label: 'Net Value', value: `GHS ${totalApprovedValue.toLocaleString()}`, sub: 'Approved funds', bg: '#eef2ff', color: '#6366f1', icon: DollarSign },
           ].map((s, i) => { const Icon = s.icon; return (
             <div key={i} className="mobile-stat-card">
               <div className="mobile-stat-icon" style={{ background: s.bg }}><Icon className="w-5 h-5" style={{ color: s.color }} /></div>

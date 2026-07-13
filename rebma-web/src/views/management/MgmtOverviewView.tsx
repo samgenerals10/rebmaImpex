@@ -144,18 +144,18 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
   const monthlyRevenue = orders
     .filter(o => {
       const d = new Date(o.created_at);
-      return d.getMonth() === currentMonth && d.getFullYear() === currentYear && ['APPROVED', 'PROCESSING', 'DELIVERED'].includes(o.status);
+      return d.getMonth() === currentMonth && d.getFullYear() === currentYear && ['APPROVED', 'PROCESSING', 'DELIVERED', 'OUT_FOR_DELIVERY'].includes(o.status);
     })
     .reduce((s, o) => s + Number(o.total_amount), 0);
 
   const cumulativeRevenue = orders
-    .filter(o => ['APPROVED', 'PROCESSING', 'DELIVERED'].includes(o.status))
+    .filter(o => ['APPROVED', 'PROCESSING', 'DELIVERED', 'OUT_FOR_DELIVERY'].includes(o.status))
     .reduce((s, o) => s + Number(o.total_amount || 0), 0);
 
   const lastMonthRevenue = orders
     .filter(o => {
       const d = new Date(o.created_at);
-      return d.getMonth() === lastMonth && d.getFullYear() === lastMonthYear && ['APPROVED', 'PROCESSING', 'DELIVERED'].includes(o.status);
+      return d.getMonth() === lastMonth && d.getFullYear() === lastMonthYear && ['APPROVED', 'PROCESSING', 'DELIVERED', 'OUT_FOR_DELIVERY'].includes(o.status);
     })
     .reduce((s, o) => s + Number(o.total_amount), 0);
 
@@ -568,8 +568,8 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
         {[
           {
             label: 'Revenue',
-            value: `GHS ${(cumulativeRevenue / 1000).toFixed(0)}K`,
-            change: `${orders.filter(o => ['APPROVED', 'PROCESSING', 'DELIVERED'].includes(o.status)).length} approved orders`,
+            value: `GHS ${cumulativeRevenue.toLocaleString()}`,
+            change: `${orders.filter(o => ['APPROVED', 'PROCESSING', 'DELIVERED', 'OUT_FOR_DELIVERY'].includes(o.status)).length} approved orders`,
             up: true,
             sub: 'Cumulative Sales',
             isClickable: true

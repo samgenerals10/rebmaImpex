@@ -328,7 +328,7 @@ export default function MarketingOverviewView({ addNotification, setActiveSubTab
     .slice(0, 3);
 
   // CREDIT REQUESTS
-  const creditMock = orders
+  const creditRequests = orders
     .filter(o => o.paymentMode === 'CREDIT')
     .map(o => ({
       id: o.id,
@@ -665,14 +665,14 @@ export default function MarketingOverviewView({ addNotification, setActiveSubTab
             <h3 className="font-semibold text-[var(--text-primary)]">Credit Requests</h3>
             <button onClick={() => setActiveSubTab?.('CreditRequests')} className="flex items-center gap-1 text-xs font-medium hover:underline" style={{ color: 'var(--accent)' }}>View All <ArrowRight size={12} /></button>
           </div>
-          {creditMock.length === 0 ? (
+          {creditRequests.length === 0 ? (
             <div className="flex flex-col items-center py-10 text-[var(--text-muted)]">
               <CheckCircle size={28} className="opacity-30 mb-2" />
               <p className="text-sm">No pending credit requests</p>
             </div>
           ) : (
             <div className="space-y-2">
-              {creditMock.map(cr => (
+              {creditRequests.map(cr => (
                 <div key={cr.id} className="flex items-center gap-3 p-3 bg-[var(--bg-input)] rounded-xl cursor-pointer hover:bg-[var(--border)]" onClick={() => setActiveSubTab?.('CreditRequests')}>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-medium text-[var(--text-primary)] truncate">{cr.customer}</p>
