@@ -119,7 +119,7 @@ export default function DeptManagerView({ staffList, addNotification }: Props) {
           { label: 'Departments', value: depts.length, color: 'var(--accent)', icon: Building2 },
           { label: 'Total Headcount', value: totalHeadcount, color: '#10b981', icon: Users },
           { label: 'Avg Performance', value: `${avgPerformance}%`, color: '#6366f1', icon: TrendingUp },
-          { label: 'Total Budget', value: `GHS ${(totalBudget / 1000).toFixed(0)}K`, color: '#f59e0b', icon: BarChart2 },
+          { label: 'Total Budget', value: `GHS ${totalBudget.toLocaleString()}`, color: '#f59e0b', icon: BarChart2 },
         ].map(card => (
           <div key={card.label} className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-3.5">
             <div className="flex items-center justify-between mb-1">

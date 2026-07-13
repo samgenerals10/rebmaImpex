@@ -251,7 +251,29 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
     setIsRefreshing(false);
   };
 
-  useEffect(() => { fetchAllData(); }, []);
+  useEffect(() => {
+    fetchAllData();
+
+    // Subscribe to real-time changes
+    const channel = supabase.channel('finance-overview-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
+        fetchAllData();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'finance_payments' }, () => {
+        fetchAllData();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'finance_expenses' }, () => {
+        fetchAllData();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'stock' }, () => {
+        fetchAllData();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   useEffect(() => {
     const effective = liveOrders.length > 0 ? liveOrders : ordersList;
@@ -1024,6 +1046,45 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
           </div>
         );
       })()}
+
+      {/* Products Available to Sell */}
+      {inventoryItems.length > 0 && (
+        <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5 shadow-[var(--box-shadow)] mb-5">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="font-semibold text-[var(--text-primary)] flex items-center gap-2">
+                <CheckCircle size={15} className="text-emerald-500" /> Products Available to Sell
+              </h3>
+              <p className="text-xs text-[var(--text-muted)] mt-0.5">
+                {inventoryItems.length} product{inventoryItems.length !== 1 ? 's' : ''} priced by Management
+              </p>
+            </div>
+            <button onClick={() => setActiveSubTab?.('PriceCatalog')} className="text-xs font-semibold hover:underline" style={{ color: 'var(--accent)' }}>Manage Prices →</button>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {inventoryItems.map((item: any) => (
+              <div key={item.name} className="rounded-xl border border-[var(--border)] p-4 bg-[var(--bg)] hover:border-emerald-400 hover:scale-[1.02] transition-all cursor-pointer" onClick={() => setActiveSubTab?.('PriceCatalog')}>
+                <div className="flex items-start justify-between mb-3">
+                  <p className="text-sm font-bold text-[var(--text-primary)] leading-tight truncate">{item.name}</p>
+                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ml-2 ${item.qty > 0 ? 'bg-emerald-500/10 text-emerald-600' : 'bg-gray-500/10 text-text-muted'}`}>
+                    {item.qty > 0 ? 'In Stock' : 'Out of Stock'}
+                  </span>
+                </div>
+                <div className="flex items-end justify-between">
+                  <div>
+                    <p className="text-[10px] text-[var(--text-muted)] mb-0.5">Selling Price</p>
+                    <p className="text-lg font-bold text-emerald-650">{item.currency} {item.unitPrice.toLocaleString()}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] text-[var(--text-muted)] mb-0.5">Qty Available</p>
+                    <p className="text-lg font-bold text-[var(--text-primary)]">{item.qty.toLocaleString()}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* ══ GOODS INVENTORY + NEWLY PRICED CATALOG ══ */}
       {inventoryItems.length > 0 && (

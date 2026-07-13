@@ -207,10 +207,10 @@ export default function FinanceExpensesView({ addNotification, currentUser }: Pr
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Total This Month', value: `GHS ${(totalThisMonth / 1000).toFixed(0)}K`, color: 'var(--accent)' },
-          { label: 'Approved', value: `GHS ${(approved / 1000).toFixed(0)}K`, color: '#10b981' },
+          { label: 'Total This Month', value: `GHS ${totalThisMonth.toLocaleString()}`, color: 'var(--accent)' },
+          { label: 'Approved', value: `GHS ${approved.toLocaleString()}`, color: '#10b981' },
           { label: 'Pending Approval', value: pending, color: '#f59e0b' },
-          { label: 'Budget Remaining', value: `GHS ${(remaining / 1000).toFixed(0)}K`, color: remaining < 5000 ? '#ef4444' : '#6366f1' },
+          { label: 'Budget Remaining', value: `GHS ${remaining.toLocaleString()}`, color: remaining < 5000 ? '#ef4444' : '#6366f1' },
         ].map(({ label, value, color }) => (
           <div key={label} className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4">
             <p className="text-xs text-[var(--text-muted)] mb-1">{label}</p>

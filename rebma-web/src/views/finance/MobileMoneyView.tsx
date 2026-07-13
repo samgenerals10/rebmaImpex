@@ -63,6 +63,16 @@ export default function FinanceMobileMoneyView({ addNotification, currentUser }:
       setLoading(false);
     };
     load();
+
+    const channel = supabase.channel('mobile-money-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'finance_payments' }, () => {
+        load();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const filtered = txns.filter(t => {
@@ -168,10 +178,10 @@ export default function FinanceMobileMoneyView({ addNotification, currentUser }:
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Total MoMo', value: `GHS ${(totalMoMo / 1000).toFixed(0)}K`, color: 'var(--accent)' },
-          { label: 'MTN MoMo', value: `GHS ${(byNetwork[0].value / 1000).toFixed(0)}K`, color: '#f59e0b' },
-          { label: 'Vodafone Cash', value: `GHS ${(byNetwork[1].value / 1000).toFixed(0)}K`, color: '#ef4444' },
-          { label: 'AirtelTigo Money', value: `GHS ${(byNetwork[2].value / 1000).toFixed(0)}K`, color: '#3b82f6' },
+          { label: 'Total MoMo', value: `GHS ${totalMoMo.toLocaleString()}`, color: 'var(--accent)' },
+          { label: 'MTN MoMo', value: `GHS ${byNetwork[0].value.toLocaleString()}`, color: '#f59e0b' },
+          { label: 'Vodafone Cash', value: `GHS ${byNetwork[1].value.toLocaleString()}`, color: '#ef4444' },
+          { label: 'AirtelTigo Money', value: `GHS ${byNetwork[2].value.toLocaleString()}`, color: '#3b82f6' },
         ].map(({ label, value, color }) => (
           <div key={label} className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4 flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${color}20` }}><Smartphone size={18} style={{ color }} /></div>
@@ -193,7 +203,7 @@ export default function FinanceMobileMoneyView({ addNotification, currentUser }:
               {byNetwork.map(n => (
                 <div key={n.name} className="flex items-center justify-between">
                   <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full" style={{ background: n.color }} /><span className="text-xs text-[var(--text-secondary)]">{n.name}</span></div>
-                  <span className="text-xs font-semibold text-[var(--text-primary)]">GHS {(n.value / 1000).toFixed(0)}K</span>
+                  <span className="text-xs font-semibold text-[var(--text-primary)]">GHS {n.value.toLocaleString()}</span>
                 </div>
               ))}
             </div>

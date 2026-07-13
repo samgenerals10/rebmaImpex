@@ -1,6 +1,6 @@
 // rebma-web/src/views/FinanceDashboard.tsx
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   FileSpreadsheet, FileText, DollarSign, Clipboard, ShieldCheck, Activity, X, ExternalLink, ChevronRight, MoreVertical, TrendingUp, TrendingDown
 } from 'lucide-react';
@@ -64,10 +64,10 @@ export default function FinanceDashboard({
 
   // Self-fetch orders so Finance always has live data (App.tsx fetch may be stale)
   const [liveOrders, setLiveOrders] = useState<Order[]>([]);
-  useEffect(() => {
+  const loadLiveOrders = useCallback(() => {
     supabase.from('orders').select('*').order('created_at', { ascending: false }).limit(500)
       .then(({ data }) => {
-        if (data && data.length > 0) {
+        if (data) {
           setLiveOrders(data.map((r: any) => ({
             id: r.id,
             ticketNumber: r.ticket_number || r.id,
@@ -83,6 +83,20 @@ export default function FinanceDashboard({
         }
       }, () => {});
   }, []);
+
+  useEffect(() => {
+    loadLiveOrders();
+
+    const channel = supabase.channel('finance-orders-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
+        loadLiveOrders();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [loadLiveOrders]);
 
   // Use live fetch if available, fall back to prop
   const effectiveOrders = liveOrders.length > 0 ? liveOrders : ordersList;

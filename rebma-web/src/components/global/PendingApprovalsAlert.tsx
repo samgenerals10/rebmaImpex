@@ -99,7 +99,7 @@ export default function PendingApprovalsAlert({ department, onNavigate }: Props)
       tabIndex={0}
       onKeyDown={e => e.key === 'Enter' && onNavigate?.(primaryTab)}
     >
-      <div className="w-9 h-9 rounded-xl bg-amber-500/10 flex items-center justify-center shrink-0 animate-pulse">
+      <div className="w-9 h-9 rounded-xl bg-amber-500/10 flex items-center justify-center shrink-0 relative red-pilot">
         <AlertCircle className="w-5 h-5 text-amber-500" />
       </div>
       <div className="flex-1 min-w-0">

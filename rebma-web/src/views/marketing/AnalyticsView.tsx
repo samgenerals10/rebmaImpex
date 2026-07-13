@@ -173,10 +173,10 @@ export default function MarketingAnalyticsView({ addNotification, currentUser }:
   }
 
   const kpiCards = [
-    { label: 'Total Revenue', value: loading ? '—' : `GHS ${(totalRevenue / 1000).toFixed(1)}K`, icon: DollarSign },
+    { label: 'Total Revenue', value: loading ? '—' : `GHS ${totalRevenue.toLocaleString()}`, icon: DollarSign },
     { label: 'Total Orders', value: loading ? '—' : totalOrders, icon: ShoppingCart },
     { label: 'Total Customers', value: loading ? '—' : totalCustomers, icon: Users },
-    { label: 'Avg Order Value', value: loading ? '—' : `GHS ${(avgOrderValue / 1000).toFixed(1)}K`, icon: BarChart2 },
+    { label: 'Avg Order Value', value: loading ? '—' : `GHS ${avgOrderValue.toLocaleString()}`, icon: BarChart2 },
   ];
 
   return (

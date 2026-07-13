@@ -112,7 +112,7 @@ export default function AnalyticsDashboard({ department, currentUser, addNotific
         ]);
         const totalRev = (revenueRows ?? []).reduce((s: number, r: any) => s + (r.amount || 0), 0);
         setLiveStats([
-          { label: 'Total Revenue', value: `GHS ${(totalRev / 1000000).toFixed(1)}M`, sub: 'All payments', trend: 0, icon: DollarSign },
+          { label: 'Total Revenue', value: `GHS ${totalRev.toLocaleString()}`, sub: 'All payments', trend: 0, icon: DollarSign },
           { label: 'Active Depts', value: '9', sub: 'All reporting', trend: 0, icon: Users },
           { label: 'Active Drivers', value: `${driverCount ?? 0}`, sub: 'On roster', trend: 0, icon: Truck },
           { label: 'Staff Headcount', value: `${staffCount ?? 0}`, sub: 'Total active', trend: 0, icon: Users },
@@ -126,10 +126,10 @@ export default function AnalyticsDashboard({ department, currentUser, addNotific
         const collected = (payments ?? []).reduce((s: number, p: any) => s + (p.amount || 0), 0);
         const credit = (orders ?? []).filter((o: any) => o.payment_mode === 'CREDIT').reduce((s: number, o: any) => s + (o.total_amount || 0), 0);
         setLiveStats([
-          { label: 'Total Invoiced', value: `GHS ${(invoiced / 1000).toFixed(0)}K`, sub: 'All orders', trend: 0, icon: DollarSign },
-          { label: 'Collected', value: `GHS ${(collected / 1000).toFixed(0)}K`, sub: 'Payments in', trend: 0, icon: TrendingUp },
+          { label: 'Total Invoiced', value: `GHS ${invoiced.toLocaleString()}`, sub: 'All orders', trend: 0, icon: DollarSign },
+          { label: 'Collected', value: `GHS ${collected.toLocaleString()}`, sub: 'Payments in', trend: 0, icon: TrendingUp },
           { label: 'Outstanding', value: `GHS ${(invoiced - collected).toLocaleString()}`, sub: 'Uncollected', trend: 0, icon: TrendingDown },
-          { label: 'Credit Extended', value: `GHS ${(credit / 1000).toFixed(0)}K`, sub: 'Credit terms', trend: 0, icon: DollarSign },
+          { label: 'Credit Extended', value: `GHS ${credit.toLocaleString()}`, sub: 'Credit terms', trend: 0, icon: DollarSign },
         ]);
       } else if (department === 'HR') {
         const [{ count: total }, { count: onLeave }, { count: pending }] = await Promise.all([
@@ -154,7 +154,7 @@ export default function AnalyticsDashboard({ department, currentUser, addNotific
         setLiveStats([
           { label: 'Orders Created', value: `${ordersC ?? 0}`, sub: 'Total bookings', trend: 0, icon: Package },
           { label: 'Customers', value: `${custsC ?? 0}`, sub: 'Registered', trend: 0, icon: Users },
-          { label: 'Revenue', value: `GHS ${(rev / 1000).toFixed(0)}K`, sub: 'All orders', trend: 0, icon: DollarSign },
+          { label: 'Revenue', value: `GHS ${rev.toLocaleString()}`, sub: 'All orders', trend: 0, icon: DollarSign },
           { label: 'Pending', value: `${pendC ?? 0}`, sub: 'Awaiting approval', trend: 0, icon: TrendingDown },
         ]);
       } else if (department === 'OPERATIONS') {

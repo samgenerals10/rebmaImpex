@@ -136,6 +136,23 @@ export default function MarketingOverviewView({ addNotification, setActiveSubTab
 
   useEffect(() => {
     fetchData();
+
+    // Subscribe to real-time changes
+    const channel = supabase.channel('marketing-overview-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
+        fetchData();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'stock' }, () => {
+        fetchData();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'goods_prices' }, () => {
+        fetchData();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   // Compute stats
@@ -396,7 +413,7 @@ export default function MarketingOverviewView({ addNotification, setActiveSubTab
           { label: 'Total Orders', value: totalOrders, change: `${ordersUp ? '+' : ''}${ordersChange}%`, up: ordersUp, sub: 'vs last week', tab: 'CreateOrder' },
           { label: 'Total Customers', value: totalCustomers, change: `+${thisMonthCustomers} new`, up: customersUp, sub: 'this month', tab: 'RegisterCustomer' },
           { label: 'Pending Finance', value: pendingFinance, change: pendingChange === 0 ? 'no change' : `${pendingChange > 0 ? '+' : ''}${pendingChange} orders`, up: pendingUp, sub: 'vs 7 days ago', tab: 'CreateOrder' },
-          { label: 'Revenue Generated', value: `GHS ${(revenue / 1000).toFixed(0)}K`, change: `${revenueUp ? '+' : ''}${revenueChange}%`, up: revenueUp, sub: 'vs last month', tab: 'MktAnalytics' },
+          { label: 'Revenue Generated', value: `GHS ${revenue.toLocaleString()}`, change: `${revenueUp ? '+' : ''}${revenueChange}%`, up: revenueUp, sub: 'vs last month', tab: 'MktAnalytics' },
         ].map(({ label, value, change, up, sub, tab }) => (
           <div key={label} className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4 cursor-pointer hover:border-[var(--accent)] transition-colors" onClick={() => setActiveSubTab?.(tab)}>
             <p className="text-xs text-[var(--text-muted)] mb-1">{label}</p>

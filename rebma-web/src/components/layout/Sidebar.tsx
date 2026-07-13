@@ -267,8 +267,8 @@ export default function Sidebar({
         <button
           key={tab.id}
           onClick={() => setActiveSubTab(tab.id)}
-          className={`lf-nav-item w-full flex items-center ${lfCollapsed ? 'justify-center' : 'gap-3 px-3'} py-1 transition-all duration-200 cursor-pointer`}
-          style={{ background: 'transparent', border: 'none' }}
+          className={`lf-nav-item w-full flex items-center ${lfCollapsed ? 'justify-center' : 'gap-3 px-3'} py-1 transition-all duration-200 cursor-pointer rounded-xl hover:bg-[var(--accent-light)] hover:scale-[1.02]`}
+          style={{ background: isActive ? 'var(--accent-light)' : 'transparent', border: 'none' }}
           title={tab.label}
         >
           <span className={`lf-nav-icon flex-shrink-0 relative ${tab.id === 'SetPrices' && badge > 0 ? 'red-pilot' : ''}`} style={{
@@ -292,7 +292,7 @@ export default function Sidebar({
       <button
         key={tab.id}
         onClick={() => setActiveSubTab(tab.id)}
-        className={`nav-item ${isActive ? 'nav-item--active' : ''} w-full flex items-center ${isActualCollapsed ? 'justify-center px-0' : 'gap-3 px-4'} py-2 rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer relative`}
+        className={`nav-item ${isActive ? 'nav-item--active' : 'hover:bg-[var(--accent-light)] hover:text-[var(--accent)] hover:scale-[1.02]'} w-full flex items-center ${isActualCollapsed ? 'justify-center px-0' : 'gap-3 px-4'} py-2 rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer relative`}
         style={isActive ? { background: 'var(--accent)', color: '#ffffff' } : { color: 'var(--text-sidebar, var(--text-secondary))' }}
         title={tab.label}
       >
@@ -404,21 +404,6 @@ export default function Sidebar({
             </div>
           </div>
 
-          {/* User Profile */}
-          <div className={`mb-1 shrink-0 ${isActualCollapsed ? 'px-1 py-1 justify-center' : 'px-2 py-2'} bg-[var(--accent-light)] rounded-2xl flex items-center gap-3 border border-[var(--border)] transition-all duration-300`}>
-            <div className="w-9 h-9 rounded-full bg-[var(--accent)] text-white flex items-center justify-center font-bold text-sm shrink-0 relative shadow-card overflow-hidden">
-              {currentUser?.photo ? (
-                <img src={currentUser.photo} className="w-full h-full object-cover" alt="Profile" />
-              ) : (
-                currentUser?.fullName?.[0] || 'U'
-              )}
-              <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-white z-10" />
-            </div>
-            <div className={`truncate flex-1 transition-all duration-300 ${isActualCollapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100'}`}>
-              <p className="text-xs font-semibold leading-none truncate text-[var(--text-primary)]">{currentUser?.fullName}</p>
-              <p className="text-[10px] text-[var(--text-secondary)] leading-none mt-1 truncate">{currentUser?.department}</p>
-            </div>
-          </div>
           {/* Super Admin indicator */}
           {isSuperAdmin && (
             <div className={`mb-3 shrink-0 transition-all duration-300 ${isActualCollapsed ? 'opacity-0 h-0 overflow-hidden' : 'opacity-100'}`}>
@@ -428,16 +413,6 @@ export default function Sidebar({
               </div>
             </div>
           )}
-
-          {/* Boardroom Button */}
-          <div className="mb-3 px-1 shrink-0">
-            <button onClick={handleBoardroomClick}
-              className={`w-full flex items-center justify-center gap-2 py-2 bg-[var(--bg-card)] hover:bg-[var(--accent-light)] text-[var(--accent)] rounded-full font-semibold shadow-card border border-[var(--border)] hover:scale-[1.02] transition-all cursor-pointer text-xs ${isActualCollapsed ? 'px-0' : ''}`}
-              title="Messages & Boardroom">
-              <MessagesSquare className="w-4 h-4 text-[var(--accent)] shrink-0" />
-              <span className={`transition-all duration-300 ${isActualCollapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100'}`}>Executive Boardroom</span>
-            </button>
-          </div>
 
           {/* Department Switcher */}
           <div className="mb-3 px-1 relative shrink-0">

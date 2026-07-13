@@ -163,7 +163,25 @@ export default function WalletsView({ setActiveSubTab }: WalletsViewProps) {
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+
+    const channel = supabase.channel('wallets-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'finance_payments' }, () => {
+        load();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'finance_expenses' }, () => {
+        load();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'general_purchases' }, () => {
+        load();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [load]);
 
   const net = totalIn - totalOut;
   const activeWallet = wallets[activeCard] || null;

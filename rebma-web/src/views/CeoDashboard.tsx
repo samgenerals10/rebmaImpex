@@ -82,6 +82,8 @@ export default function CeoDashboard({
   
   // Live GPS tracking state
   const [transitVehicles, setTransitVehicles] = useState<any[]>([]);
+  const [goodsPrices, setGoodsPrices] = useState<any[]>([]);
+  const [stockList, setStockList] = useState<any[]>([]);
 
   const loadTransit = async () => {
     try {
@@ -232,7 +234,17 @@ export default function CeoDashboard({
           const gpCost = (gpData as { cost: number }[] ?? []).reduce((s, r) => s + (r.cost || 0), 0);
           setTotalGeneralPurchases(gpUnits);
           setGeneralPurchasesVal(gpCost);
-         } catch (e) {
+        } catch (e) {
+          console.error(e);
+        }
+
+        // Live Products Available to Sell
+        try {
+          const { data: gpPrices } = await supabase.from('goods_prices').select('product_name, unit_price, cost_price, currency, category');
+          if (gpPrices) setGoodsPrices(gpPrices);
+          const { data: stList } = await supabase.from('stock').select('product_name, quantity');
+          if (stList) setStockList(stList);
+        } catch (e) {
           console.error(e);
         }
 
@@ -301,8 +313,28 @@ export default function CeoDashboard({
     loadKPIs();
     loadTransit();
 
+    const channel = supabase.channel('ceo-dashboard-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
+        loadKPIs();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'finance_payments' }, () => {
+        loadKPIs();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cargo_intake' }, () => {
+        load();
+        loadPending();
+        loadKPIs();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'stock' }, () => {
+        loadKPIs();
+      })
+      .subscribe();
+
     const interval = setInterval(loadTransit, gpsInterval ? gpsInterval * 1000 : 5000);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      supabase.removeChannel(channel);
+    };
   }, [gpsInterval]);
 
   const handleExportCSV = () => {
@@ -353,6 +385,43 @@ export default function CeoDashboard({
 
         {/* Pending approvals alert */}
         <PendingApprovalsAlert department="CEO" onNavigate={setActiveSubTab} />
+
+        {/* Available Products — priced by Management, ready to sell */}
+        {goodsPrices.length > 0 && (() => {
+          const items = goodsPrices.map((gp: any) => {
+            const key = String(gp.product_name || '').toLowerCase().trim();
+            const qty = stockList.filter((s: any) => String(s.product_name || '').toLowerCase().trim() === key).reduce((sum: number, s: any) => sum + (Number(s.quantity) || 0), 0);
+            return { name: gp.product_name, unitPrice: Number(gp.unit_price || 0), currency: gp.currency || 'GHS', qty };
+          });
+          return (
+            <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4 shadow-card space-y-3">
+              <div className="flex items-center justify-between pb-1 border-b border-[var(--border)]">
+                <h3 className="text-xs font-bold text-text-primary flex items-center gap-1.5">
+                  <CheckCircle size={14} className="text-emerald-500" /> Products Available to Sell
+                </h3>
+                <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 text-[9px] font-bold">
+                  {items.length} priced
+                </span>
+              </div>
+              <div className="space-y-2">
+                {items.map((item: any) => (
+                  <div key={item.name} className="p-3 bg-bg-page border border-[var(--border)] rounded-xl flex items-center justify-between">
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-text-primary truncate">{item.name}</p>
+                      <p className="text-[10px] text-text-muted mt-0.5">Price: <strong className="text-emerald-600 font-mono">{item.currency} {item.unitPrice.toLocaleString()}</strong></p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <span className={`text-[9px] font-semibold px-2 py-0.5 rounded-full block mb-1 ${item.qty > 0 ? 'bg-emerald-500/10 text-emerald-600' : 'bg-gray-500/10 text-text-muted'}`}>
+                        {item.qty > 0 ? 'In Stock' : 'Out of Stock'}
+                      </span>
+                      <p className="text-[10px] text-text-secondary font-semibold font-mono">Qty: {item.qty.toLocaleString()}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Physical card — Global Ingestion Flow */}
         <div className="mobile-physical-card">
@@ -591,6 +660,51 @@ export default function CeoDashboard({
               </button>
             ))}
           </div>
+
+          {/* Products Available to Sell */}
+          {goodsPrices.length > 0 && (() => {
+            const items = goodsPrices.map((gp: any) => {
+              const key = String(gp.product_name || '').toLowerCase().trim();
+              const qty = stockList.filter((s: any) => String(s.product_name || '').toLowerCase().trim() === key).reduce((sum: number, s: any) => sum + (Number(s.quantity) || 0), 0);
+              return { name: gp.product_name, unitPrice: Number(gp.unit_price || 0), currency: gp.currency || 'GHS', qty };
+            });
+            return (
+              <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5 shadow-[var(--box-shadow)]">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="font-semibold text-[var(--text-primary)] flex items-center gap-2">
+                      <CheckCircle size={15} className="text-emerald-500" /> Products Available to Sell
+                    </h3>
+                    <p className="text-xs text-[var(--text-muted)] mt-0.5">
+                      {items.length} product{items.length !== 1 ? 's' : ''} priced by Management
+                    </p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {items.map((item: any) => (
+                    <div key={item.name} className="rounded-xl border border-[var(--border)] p-4 bg-[var(--bg)] hover:border-emerald-400 hover:scale-[1.02] transition-all cursor-pointer">
+                      <div className="flex items-start justify-between mb-3">
+                        <p className="text-sm font-bold text-[var(--text-primary)] leading-tight truncate">{item.name}</p>
+                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ml-2 ${item.qty > 0 ? 'bg-emerald-500/10 text-emerald-600' : 'bg-gray-500/10 text-text-muted'}`}>
+                          {item.qty > 0 ? 'In Stock' : 'Out of Stock'}
+                        </span>
+                      </div>
+                      <div className="flex items-end justify-between">
+                        <div>
+                          <p className="text-[10px] text-[var(--text-muted)] mb-0.5">Selling Price</p>
+                          <p className="text-lg font-bold text-emerald-600">{item.currency} {item.unitPrice.toLocaleString()}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-[10px] text-[var(--text-muted)] mb-0.5">Qty Available</p>
+                          <p className="text-lg font-bold text-[var(--text-primary)]">{item.qty.toLocaleString()}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
  
           {/* Supplier Order Cards */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">

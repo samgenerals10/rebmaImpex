@@ -285,9 +285,9 @@ export default function FinanceCreditMgmtView({ addNotification, currentUser }: 
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Total Extended', value: `GHS ${(totalExtended / 1000).toFixed(0)}K`, color: 'var(--accent)', icon: CreditCard },
-          { label: 'Total Collected', value: `GHS ${(totalCollected / 1000).toFixed(0)}K`, color: '#10b981', icon: CheckCircle },
-          { label: 'Outstanding', value: `GHS ${(outstanding / 1000).toFixed(0)}K`, color: '#ef4444', icon: AlertTriangle },
+          { label: 'Total Extended', value: `GHS ${totalExtended.toLocaleString()}`, color: 'var(--accent)', icon: CreditCard },
+          { label: 'Total Collected', value: `GHS ${totalCollected.toLocaleString()}`, color: '#10b981', icon: CheckCircle },
+          { label: 'Outstanding', value: `GHS ${outstanding.toLocaleString()}`, color: '#ef4444', icon: AlertTriangle },
           { label: 'Overdue Accounts', value: overdueCount, color: '#f59e0b', icon: AlertTriangle },
         ].map(({ label, value, color, icon: Icon }) => (
           <div key={label} className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4 flex items-center gap-3">
