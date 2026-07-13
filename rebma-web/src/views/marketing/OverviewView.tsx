@@ -138,7 +138,7 @@ export default function MarketingOverviewView({ addNotification, setActiveSubTab
     fetchData();
 
     // Subscribe to real-time changes
-    const channel = supabase.channel('marketing-overview-realtime')
+    const channel = supabase.channel('marketing-overview-realtime-' + Math.random().toString(36).substring(7))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
         fetchData();
       })

@@ -313,7 +313,7 @@ export default function CeoDashboard({
     loadKPIs();
     loadTransit();
 
-    const channel = supabase.channel('ceo-dashboard-realtime')
+    const channel = supabase.channel('ceo-dashboard-realtime-' + Math.random().toString(36).substring(7))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
         loadKPIs();
       })

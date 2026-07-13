@@ -166,7 +166,7 @@ export default function WalletsView({ setActiveSubTab }: WalletsViewProps) {
   useEffect(() => {
     load();
 
-    const channel = supabase.channel('wallets-realtime')
+    const channel = supabase.channel('wallets-realtime-' + Math.random().toString(36).substring(7))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'finance_payments' }, () => {
         load();
       })

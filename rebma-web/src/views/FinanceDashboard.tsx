@@ -87,7 +87,7 @@ export default function FinanceDashboard({
   useEffect(() => {
     loadLiveOrders();
 
-    const channel = supabase.channel('finance-orders-realtime')
+    const channel = supabase.channel('finance-orders-realtime-' + Math.random().toString(36).substring(7))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
         loadLiveOrders();
       })

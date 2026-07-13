@@ -1116,7 +1116,7 @@ export default function App() {
   // Supabase Realtime subscriptions hook
   useEffect(() => {
     if (currentUser) {
-      const channel = supabase.channel('erp-realtime')
+      const channel = supabase.channel('erp-realtime-' + Math.random().toString(36).substring(7))
         .on(
           'postgres_changes',
           { event: '*', schema: 'public', table: 'profiles' },

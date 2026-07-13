@@ -20,7 +20,7 @@ export function useNavBadges(activeSubTab: string) {
   useEffect(() => {
     const subs = [
       // cargo_intake inserts → Stock Intake + Overview
-      supabase.channel('nav-cargo')
+      supabase.channel('nav-cargo-' + Math.random().toString(36).substring(7))
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'cargo_intake' }, () => {
           bump('PortIngestion');
           bump('Overview');
@@ -34,7 +34,7 @@ export function useNavBadges(activeSubTab: string) {
         .subscribe(),
 
       // orders inserts → Finance OrdersQueue + Marketing Overview + Ops Overview
-      supabase.channel('nav-orders')
+      supabase.channel('nav-orders-' + Math.random().toString(36).substring(7))
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, () => {
           bump('OrdersQueue');
           bump('Overview');       // Marketing dashboard
@@ -53,7 +53,7 @@ export function useNavBadges(activeSubTab: string) {
         .subscribe(),
 
       // general_purchases inserts → Approved Goods + Stock
-      supabase.channel('nav-gp')
+      supabase.channel('nav-gp-' + Math.random().toString(36).substring(7))
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'general_purchases' }, () => {
           bump('ApprovedGoods');
           bump('Stock');
@@ -61,7 +61,7 @@ export function useNavBadges(activeSubTab: string) {
         .subscribe(),
 
       // finance_payments inserts → Wallets + Transactions
-      supabase.channel('nav-payments')
+      supabase.channel('nav-payments-' + Math.random().toString(36).substring(7))
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'finance_payments' }, () => {
           bump('Wallets');
           bump('Transactions');
@@ -70,7 +70,7 @@ export function useNavBadges(activeSubTab: string) {
         .subscribe(),
 
       // dispatches/deliveries → Dispatch dashboard
-      supabase.channel('nav-dispatch')
+      supabase.channel('nav-dispatch-' + Math.random().toString(36).substring(7))
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'dispatches' }, () => {
           bump('Deliveries');
           bump('ActiveDeliveries');
