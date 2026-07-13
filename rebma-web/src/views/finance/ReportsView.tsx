@@ -64,34 +64,208 @@ export default function FinanceReportsView({ addNotification, currentUser }: Pro
     load();
   }, []);
 
-  function generateReport(report: ReportCard) {
+  async function generateReport(report: ReportCard) {
     setShowPeriodModal(null);
     setGenerating(report.id);
     const generatedAt = new Date();
-    setTimeout(() => {
+    
+    try {
+      let dataToExport: any[] = [];
+      let headers: string[] = [];
+
+      // Determine date ranges based on selectedPeriod
+      let dateFilterGte = '';
+      const now = new Date();
+      if (selectedPeriod === 'Today') {
+        const d = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        dateFilterGte = d.toISOString();
+      } else if (selectedPeriod === 'This Week') {
+        const d = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        dateFilterGte = d.toISOString();
+      } else if (selectedPeriod === 'This Month') {
+        const d = new Date(now.getFullYear(), now.getMonth(), 1);
+        dateFilterGte = d.toISOString();
+      } else if (selectedPeriod === 'Last Month') {
+        const d = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        dateFilterGte = d.toISOString();
+      } else if (selectedPeriod === 'This Quarter') {
+        const currentQuarterMonth = Math.floor(now.getMonth() / 3) * 3;
+        const d = new Date(now.getFullYear(), currentQuarterMonth, 1);
+        dateFilterGte = d.toISOString();
+      } else if (selectedPeriod === 'This Year') {
+        const d = new Date(now.getFullYear(), 0, 1);
+        dateFilterGte = d.toISOString();
+      }
+
+      if (report.id === 'daily_cash') {
+        // Daily Cash Report: Cash inflow from cash payments
+        let query = supabase.from('finance_payments').select('*').eq('payment_mode', 'Cash');
+        if (dateFilterGte) query = query.gte('created_at', dateFilterGte);
+        const { data } = await query;
+        const payments = data || [];
+        dataToExport = payments.map(p => ({
+          'Receipt ID': p.id,
+          'Client Name': p.client_name,
+          'Amount (GHS)': Number(p.amount).toLocaleString(),
+          'Payment Mode': p.payment_mode,
+          'Payment Type': p.payment_type,
+          'Recorded By': p.recorded_by || '—',
+          'Date': new Date(p.created_at).toLocaleDateString()
+        }));
+        headers = ['Receipt ID', 'Client Name', 'Amount (GHS)', 'Payment Mode', 'Payment Type', 'Recorded By', 'Date'];
+
+      } else if (report.id === 'weekly_sales') {
+        // Weekly Sales Report: sales orders in selected period
+        let query = supabase.from('orders').select('*');
+        if (dateFilterGte) query = query.gte('created_at', dateFilterGte);
+        const { data } = await query;
+        const orders = data || [];
+        dataToExport = orders.map(o => ({
+          'Order ID': o.id,
+          'Client Name': o.client_name,
+          'Product Name': o.product_name || '—',
+          'Quantity': o.quantity || 1,
+          'Amount (GHS)': Number(o.total_amount).toLocaleString(),
+          'Payment Mode': o.payment_mode,
+          'Status': o.status,
+          'Date': new Date(o.created_at).toLocaleDateString()
+        }));
+        headers = ['Order ID', 'Client Name', 'Product Name', 'Quantity', 'Amount (GHS)', 'Payment Mode', 'Status', 'Date'];
+
+      } else if (report.id === 'monthly_pl') {
+        // Monthly P&L Statement: Revenue vs Expenses
+        let pQuery = supabase.from('finance_payments').select('amount, created_at');
+        let eQuery = supabase.from('general_purchases').select('cost, created_at').eq('status', 'APPROVED');
+        if (dateFilterGte) {
+          pQuery = pQuery.gte('created_at', dateFilterGte);
+          eQuery = eQuery.gte('created_at', dateFilterGte);
+        }
+        const { data: pData } = await pQuery;
+        const { data: eData } = await eQuery;
+        
+        const rev = (pData || []).reduce((sum, p) => sum + Number(p.amount || 0), 0);
+        const exp = (eData || []).reduce((sum, e) => sum + Number(e.cost || 0), 0);
+        const net = rev - exp;
+
+        dataToExport = [
+          { 'Financial Metric': 'Total Revenue (Collections)', 'Amount (GHS)': rev.toLocaleString(), 'Description': 'Revenue collected from payments' },
+          { 'Financial Metric': 'Total Approved Expenses', 'Amount (GHS)': exp.toLocaleString(), 'Description': 'Operations & general purchases approved' },
+          { 'Financial Metric': 'Net Operating Income', 'Amount (GHS)': net.toLocaleString(), 'Description': 'Net profit/loss before tax' }
+        ];
+        headers = ['Financial Metric', 'Amount (GHS)', 'Description'];
+
+      } else if (report.id === 'payroll') {
+        // Payroll Summary: Active staff list by department
+        const { data } = await supabase.from('profiles').select('*').eq('status', 'ACTIVE');
+        const staff = data || [];
+        dataToExport = staff.map(s => ({
+          'Staff ID': s.id.slice(0, 8).toUpperCase(),
+          'Full Name': s.full_name || '—',
+          'Role': s.role || 'Staff',
+          'Department': s.department || '—',
+          'Phone': s.phone || '—',
+          'Status': s.status
+        }));
+        headers = ['Staff ID', 'Full Name', 'Role', 'Department', 'Phone', 'Status'];
+
+      } else if (report.id === 'credit') {
+        // Customer Credit Report: Outstanding credit balances
+        const { data } = await supabase.from('orders').select('*').eq('payment_mode', 'CREDIT');
+        const creditOrders = data || [];
+        dataToExport = creditOrders.map(o => ({
+          'Order ID': o.id,
+          'Client Name': o.client_name,
+          'Total Amount (GHS)': Number(o.total_amount).toLocaleString(),
+          'Status': o.status,
+          'Date Placed': new Date(o.created_at).toLocaleDateString()
+        }));
+        headers = ['Order ID', 'Client Name', 'Total Amount (GHS)', 'Status', 'Date Placed'];
+
+      } else if (report.id === 'outstanding_inv') {
+        // Outstanding Invoices: Unpaid and processing orders
+        const { data } = await supabase.from('orders').select('*').in('status', ['PENDING_FINANCE', 'PENDING_MANAGEMENT', 'PROCESSING', 'OUT_FOR_DELIVERY']);
+        const unpaid = data || [];
+        dataToExport = unpaid.map(o => ({
+          'Invoice ID': o.ticket_number || o.id,
+          'Client Name': o.client_name,
+          'Product Name': o.product_name || '—',
+          'Amount (GHS)': Number(o.total_amount).toLocaleString(),
+          'Payment Mode': o.payment_mode,
+          'Invoice Status': o.status,
+          'Date Issued': new Date(o.created_at).toLocaleDateString()
+        }));
+        headers = ['Invoice ID', 'Client Name', 'Product Name', 'Amount (GHS)', 'Payment Mode', 'Invoice Status', 'Date Issued'];
+
+      } else if (report.id === 'payment_methods') {
+        // Payment Methods Analysis: payments grouped by method
+        const { data } = await supabase.from('finance_payments').select('payment_mode, amount');
+        const payments = data || [];
+        const groups: Record<string, { count: number; total: number }> = {};
+        for (const p of payments) {
+          const mode = p.payment_mode || 'Unknown';
+          if (!groups[mode]) groups[mode] = { count: 0, total: 0 };
+          groups[mode].count += 1;
+          groups[mode].total += Number(p.amount || 0);
+        }
+        dataToExport = Object.entries(groups).map(([mode, s]) => ({
+          'Payment Method': mode,
+          'Transaction Count': s.count,
+          'Total Collected (GHS)': s.total.toLocaleString()
+        }));
+        headers = ['Payment Method', 'Transaction Count', 'Total Collected (GHS)'];
+
+      } else if (report.id === 'expense') {
+        // Expense Report: approved and pending general purchases
+        let query = supabase.from('general_purchases').select('*');
+        if (dateFilterGte) query = query.gte('created_at', dateFilterGte);
+        const { data } = await query;
+        const expenses = data || [];
+        dataToExport = expenses.map(e => ({
+          'Expense ID': e.id,
+          'Item Name': e.item_name,
+          'Category': e.category || 'General',
+          'Cost (GHS)': Number(e.cost).toLocaleString(),
+          'Status': e.status,
+          'Department': e.department || '—',
+          'Date Received': e.date_received || '—'
+        }));
+        headers = ['Expense ID', 'Item Name', 'Category', 'Cost (GHS)', 'Status', 'Department', 'Date Received'];
+
+      } else {
+        // Fallback for generic reports
+        dataToExport = [{ Report: report.name, Period: selectedPeriod, 'Generated By': currentUser?.fullName || 'Finance', Date: generatedAt.toLocaleDateString() }];
+        headers = ['Report', 'Period', 'Generated By', 'Date'];
+      }
+
       exportToPDF(
         `${report.name} — ${selectedPeriod}`,
-        [{ Report: report.name, Period: selectedPeriod, 'Generated By': currentUser?.fullName || 'Finance', Date: generatedAt.toLocaleDateString() }],
-        ['Report', 'Period', 'Generated By', 'Date']
+        dataToExport,
+        headers
       );
+
       const entry: ReportHistoryEntry = {
         date: generatedAt.toISOString().slice(0, 10),
         type: report.name,
         period: selectedPeriod,
         generatedBy: currentUser?.fullName || 'Finance',
       };
-      supabase.from('finance_report_history' as any).insert([{
+
+      await supabase.from('finance_report_history').insert([{
         date: entry.date,
         type: entry.type,
         period: entry.period,
         generated_by: entry.generatedBy,
         created_at: generatedAt.toISOString(),
-      }]).then(() => {
-        setReportHistory(prev => [entry, ...prev]);
-      }, () => {});
-      setGenerating(null);
+      }]);
+
+      setReportHistory(prev => [entry, ...prev]);
       addNotification?.(`${report.name} generated for ${selectedPeriod}`);
-    }, 800);
+    } catch (e: any) {
+      console.error('Failed to generate report:', e);
+      addNotification?.(`Error generating report: ${e.message || e}`);
+    } finally {
+      setGenerating(null);
+    }
   }
 
   return (
