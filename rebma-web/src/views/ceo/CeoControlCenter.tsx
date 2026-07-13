@@ -273,26 +273,51 @@ function Section({ title, icon: Icon, children, defaultOpen = true }: {
 }
 
 // ── Data Reset Center ─────────────────────────────────────────────────────────
-const DEPT_TABLES: Record<string, { label: string; tables: { name: string }[] }> = {
-  MARKETING:   { label: 'Marketing',   tables: [{ name: 'orders' }, { name: 'customers' }] },
-  FINANCE:     { label: 'Finance',     tables: [{ name: 'finance_payments' }, { name: 'finance_expenses' }, { name: 'finance_cheques' }, { name: 'finance_petty_cash' }, { name: 'recurring_payments' }] },
-  OPERATIONS:  { label: 'Operations',  tables: [{ name: 'cargo_intake' }, { name: 'stock_ledger' }, { name: 'general_purchases' }, { name: 'stock' }, { name: 'wip_stock' }] },
-  PRODUCTION:  { label: 'Production',  tables: [{ name: 'production_logs' }, { name: 'production_requests' }] },
-  MANAGEMENT:  { label: 'Management',  tables: [{ name: 'goods_prices' }, { name: 'supplier_orders' }, { name: 'suppliers' }, { name: 'global_audit_history' }, { name: 'departments' }] },
-  HR:          { label: 'HR',          tables: [{ name: 'payroll_batches' }, { name: 'payroll_entries' }, { name: 'payroll_items' }, { name: 'leave_requests' }, { name: 'attendance' }] },
-  DISPATCH:    { label: 'Dispatch',    tables: [{ name: 'delivery_logs' }, { name: 'drivers' }] },
-  RECEPTION:   { label: 'Reception',   tables: [{ name: 'visitors' }] },
+const DEPT_TABLES: Record<string, { label: string; tables: { name: string; label: string }[] }> = {
+  MARKETING:   { label: 'Marketing',   tables: [{ name: 'orders', label: 'Sales Orders' }, { name: 'customers', label: 'Customer Directory' }] },
+  FINANCE:     { label: 'Finance',     tables: [
+    { name: 'finance_payments', label: 'Finance Payments (Receipts)' },
+    { name: 'finance_expenses', label: 'Finance Expenses' },
+    { name: 'finance_cheques', label: 'Finance Cheques' },
+    { name: 'finance_petty_cash', label: 'Finance Petty Cash' },
+    { name: 'recurring_payments', label: 'Recurring Payments' },
+    { name: 'finance_report_history', label: 'Financial Statements & Reports History' }
+  ] },
+  OPERATIONS:  { label: 'Operations',  tables: [
+    { name: 'cargo_intake', label: 'Cargo Intake Log' },
+    { name: 'stock_ledger', label: 'Recent Stock Movements' },
+    { name: 'general_purchases', label: 'General Purchases' },
+    { name: 'stock', label: 'Stock Levels' },
+    { name: 'wip_stock', label: 'WIP Stock' }
+  ] },
+  PRODUCTION:  { label: 'Production',  tables: [{ name: 'production_logs', label: 'Production Logs' }, { name: 'production_requests', label: 'Production Requests' }] },
+  MANAGEMENT:  { label: 'Management',  tables: [
+    { name: 'goods_prices', label: 'Goods Prices Catalog' },
+    { name: 'supplier_orders', label: 'Supplier Orders' },
+    { name: 'suppliers', label: 'Suppliers Directory' },
+    { name: 'global_audit_history', label: 'Global Audit History' },
+    { name: 'departments', label: 'Departments Directory' }
+  ] },
+  HR:          { label: 'HR',          tables: [
+    { name: 'payroll_batches', label: 'Payroll Batches' },
+    { name: 'payroll_entries', label: 'Payroll Entries' },
+    { name: 'payroll_items', label: 'Payroll Items' },
+    { name: 'leave_requests', label: 'Leave Requests' },
+    { name: 'attendance', label: 'Attendance Logs' }
+  ] },
+  DISPATCH:    { label: 'Dispatch',    tables: [{ name: 'delivery_logs', label: 'Delivery Logs' }, { name: 'drivers', label: 'Drivers Directory' }] },
+  RECEPTION:   { label: 'Reception',   tables: [{ name: 'visitors', label: 'Visitors Logs' }] },
   LOGISTICS:   { label: 'Logistics',   tables: [] },
   ALL:         { label: 'ALL Departments', tables: [
-    { name: 'orders' }, { name: 'customers' },
-    { name: 'finance_payments' }, { name: 'finance_expenses' }, { name: 'finance_cheques' }, { name: 'finance_petty_cash' }, { name: 'recurring_payments' },
-    { name: 'cargo_intake' }, { name: 'stock_ledger' }, { name: 'general_purchases' }, { name: 'stock' }, { name: 'wip_stock' },
-    { name: 'production_logs' }, { name: 'production_requests' },
-    { name: 'goods_prices' }, { name: 'supplier_orders' }, { name: 'suppliers' }, { name: 'departments' },
-    { name: 'payroll_batches' }, { name: 'payroll_entries' }, { name: 'payroll_items' }, { name: 'leave_requests' }, { name: 'attendance' },
-    { name: 'delivery_logs' }, { name: 'drivers' },
-    { name: 'visitors' },
-    { name: 'global_audit_history' }, { name: 'supplier_order_notifications' },
+    { name: 'orders', label: 'Sales Orders' }, { name: 'customers', label: 'Customer Directory' },
+    { name: 'finance_payments', label: 'Finance Payments (Receipts)' }, { name: 'finance_expenses', label: 'Finance Expenses' }, { name: 'finance_cheques', label: 'Finance Cheques' }, { name: 'finance_petty_cash', label: 'Finance Petty Cash' }, { name: 'recurring_payments', label: 'Recurring Payments' }, { name: 'finance_report_history', label: 'Financial Statements & Reports History' },
+    { name: 'cargo_intake', label: 'Cargo Intake Log' }, { name: 'stock_ledger', label: 'Recent Stock Movements' }, { name: 'general_purchases', label: 'General Purchases' }, { name: 'stock', label: 'Stock Levels' }, { name: 'wip_stock', label: 'WIP Stock' },
+    { name: 'production_logs', label: 'Production Logs' }, { name: 'production_requests', label: 'Production Requests' },
+    { name: 'goods_prices', label: 'Goods Prices Catalog' }, { name: 'supplier_orders', label: 'Supplier Orders' }, { name: 'suppliers', label: 'Suppliers Directory' }, { name: 'departments', label: 'Departments Directory' },
+    { name: 'payroll_batches', label: 'Payroll Batches' }, { name: 'payroll_entries', label: 'Payroll Entries' }, { name: 'payroll_items', label: 'Payroll Items' }, { name: 'leave_requests', label: 'Leave Requests' }, { name: 'attendance', label: 'Attendance Logs' },
+    { name: 'delivery_logs', label: 'Delivery Logs' }, { name: 'drivers', label: 'Drivers Directory' },
+    { name: 'visitors', label: 'Visitors Logs' },
+    { name: 'global_audit_history', label: 'Global Audit History' }, { name: 'supplier_order_notifications', label: 'Supplier Order Notifications' },
   ]},
 };
 
@@ -335,7 +360,7 @@ function DataResetSection({ addNotification }: { addNotification: (m: string) =>
       action: 'DATA_RESET',
       department: selectedDept,
       performed_by: 'CEO',
-      details: `Cleared: ${cfg.tables.map(t => t.name).join(', ')}`,
+      details: `Cleared: ${cfg.tables.map(t => t.label || t.name).join(', ')}`,
       timestamp: new Date().toISOString(),
     }]).then(() => {}, () => {});
 
@@ -368,7 +393,7 @@ function DataResetSection({ addNotification }: { addNotification: (m: string) =>
                 </div>
                 <div>
                   <p className="text-xs font-bold text-[var(--text-primary)] group-hover:text-rose-600">{cfg.label}</p>
-                  <p className="text-[10px] text-[var(--text-muted)]">{cfg.tables.map(t => t.name).join(', ')}</p>
+                  <p className="text-[10px] text-[var(--text-muted)]">{cfg.tables.map(t => t.label || t.name).join(', ')}</p>
                 </div>
               </button>
             );
@@ -418,7 +443,7 @@ function DataResetSection({ addNotification }: { addNotification: (m: string) =>
                       {cfg.tables.map(t => (
                         <div key={t.name} className="flex items-center gap-2 text-xs text-rose-600">
                           <div className="w-1.5 h-1.5 rounded-full bg-rose-400 shrink-0" />
-                          <span className="font-mono">{t.name}</span>
+                          <span className="font-mono">{t.label || t.name} ({t.name})</span>
                         </div>
                       ))}
                     </div>
@@ -438,14 +463,18 @@ function DataResetSection({ addNotification }: { addNotification: (m: string) =>
                   </>
                 ) : (
                   <div className="space-y-2">
-                    {results.map(r => (
-                      <div key={r.table} className={`flex items-center justify-between px-4 py-2.5 rounded-xl text-xs font-semibold ${r.error ? 'bg-rose-50 border border-rose-200' : 'bg-emerald-50 border border-emerald-200'}`}>
-                        <span className={`font-mono ${r.error ? 'text-rose-600' : 'text-emerald-700'}`}>{r.table}</span>
-                        <span className={r.error ? 'text-rose-500' : 'text-emerald-600'}>
-                          {r.error ? `Error: ${r.error}` : `✓ Cleared`}
-                        </span>
-                      </div>
-                    ))}
+                    {results.map(r => {
+                      const matched = cfg.tables.find(t => t.name === r.table);
+                      const displayLabel = matched ? `${matched.label} (${r.table})` : r.table;
+                      return (
+                        <div key={r.table} className={`flex items-center justify-between px-4 py-2.5 rounded-xl text-xs font-semibold ${r.error ? 'bg-rose-50 border border-rose-200' : 'bg-emerald-50 border border-emerald-200'}`}>
+                          <span className={`font-mono ${r.error ? 'text-rose-600' : 'text-emerald-700'}`}>{displayLabel}</span>
+                          <span className={r.error ? 'text-rose-500' : 'text-emerald-600'}>
+                            {r.error ? `Error: ${r.error}` : `✓ Cleared`}
+                          </span>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
