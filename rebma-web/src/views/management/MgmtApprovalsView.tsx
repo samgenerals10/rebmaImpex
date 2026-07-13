@@ -224,9 +224,9 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
       let defaultDamages = 0;
       const discText = String(item.raw?.discrepancies || '');
       if (discText && discText.trim() !== '') {
-        const match = discText.match(/\d+/);
-        if (match) {
-          defaultDamages = parseInt(match[0]);
+        const matches = discText.match(/\d+/g);
+        if (matches) {
+          defaultDamages = matches.reduce((sum, val) => sum + parseInt(val, 10), 0);
         }
       }
       setConfirmedDamages(defaultDamages);
