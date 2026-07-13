@@ -231,18 +231,36 @@ export default function StockView({ incomingGoodsList: _ig, addNotification }: P
 
       // Build ledger map keyed by lowercase product name for case-insensitive matching
       const rawMap: Record<string, { totalIn: number; totalOut: number; entries: LedgerEntry[]; canonical: string }> = {};
+      const seenRefs = new Set();
+      const seenIds = new Set();
+
       for (const r of (ledgerData || [])) {
         const rawName: string = r.product_name || '';
         if (!rawName) continue;
+
+        const id = String(r.id);
+        if (seenIds.has(id)) continue;
+        seenIds.add(id);
+
+        const ref = r.reference || '';
+        const isCargoApprove = ref.toLowerCase().includes('cargo approved') || ref.toLowerCase().includes('cargo intake id');
+        const isOrderApprove = ref.toLowerCase().includes('order approved') || ref.toLowerCase().includes('order finalized') || ref.toLowerCase().includes('order dispatched') || ref.toLowerCase().includes('tkt-');
+
+        if (isCargoApprove || isOrderApprove) {
+          const normalizedRef = ref.toLowerCase().trim();
+          if (seenRefs.has(normalizedRef)) continue;
+          seenRefs.add(normalizedRef);
+        }
+
         const key = rawName.toLowerCase().trim();
         if (!rawMap[key]) rawMap[key] = { totalIn: 0, totalOut: 0, entries: [], canonical: rawName };
         const qty = Number(r.quantity ?? 0);
         const entry: LedgerEntry = {
-          id: String(r.id),
+          id,
           productName: rawName,
           movementType: r.movement_type as 'ADD' | 'REMOVE',
           quantity: qty,
-          reference: r.reference || '',
+          reference: ref,
           notes: r.notes || '',
           performedBy: r.performed_by || '',
           date: r.created_at || '',

@@ -79,7 +79,7 @@ export default function MarketingOverviewView({ addNotification, setActiveSubTab
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [goodsPrices, setGoodsPrices] = useState<any[]>([]);
-  const [cargoForInventory, setCargoForInventory] = useState<any[]>([]);
+  const [stock, setStock] = useState<any[]>([]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -124,8 +124,8 @@ export default function MarketingOverviewView({ addNotification, setActiveSubTab
       supabase.from('goods_prices').select('product_name, unit_price, cost_price, currency, category').then(({ data }) => {
         if (data) setGoodsPrices(data as any[]);
       }, () => {});
-      supabase.from('cargo_intake').select('product_name, quantity').eq('status', 'APPROVED').then(({ data }) => {
-        if (data) setCargoForInventory(data as any[]);
+      supabase.from('stock').select('product_name, quantity').then(({ data }) => {
+        if (data) setStock(data as any[]);
       }, () => {});
     } catch (e) {
       console.error(e);
@@ -142,7 +142,7 @@ export default function MarketingOverviewView({ addNotification, setActiveSubTab
   const totalOrders = orders.length;
   const totalCustomers = customers.length;
   const pendingFinance = orders.filter(o => o.status === 'PENDING_FINANCE').length;
-  const revenue = orders.filter(o => ['APPROVED', 'PROCESSING', 'DELIVERED'].includes(o.status)).reduce((s, o) => s + o.totalAmount, 0);
+  const revenue = orders.filter(o => ['APPROVED', 'PROCESSING', 'DELIVERED', 'OUT_FOR_DELIVERY'].includes(o.status)).reduce((s, o) => s + o.totalAmount, 0);
 
   // Compute change badges based on real data
   const nowMs = Date.now();
@@ -151,14 +151,14 @@ export default function MarketingOverviewView({ addNotification, setActiveSubTab
   const lastWeekStart = nowMs - 14 * oneDay;
   const thisMonthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime();
   const lastMonthStart = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1).getTime();
-
+  
   const thisWeekOrders = orders.filter(o => new Date(o.createdAt).getTime() >= thisWeekStart).length;
   const lastWeekOrders = orders.filter(o => { const t = new Date(o.createdAt).getTime(); return t >= lastWeekStart && t < thisWeekStart; }).length;
   const ordersChange = lastWeekOrders === 0 ? (thisWeekOrders > 0 ? 100 : 0) : Math.round(((thisWeekOrders - lastWeekOrders) / lastWeekOrders) * 100);
   const ordersUp = ordersChange >= 0;
 
-  const thisMonthRevenue = orders.filter(o => ['APPROVED','PROCESSING','DELIVERED'].includes(o.status) && new Date(o.createdAt).getTime() >= thisMonthStart).reduce((s, o) => s + o.totalAmount, 0);
-  const lastMonthRevenue = orders.filter(o => ['APPROVED','PROCESSING','DELIVERED'].includes(o.status) && new Date(o.createdAt).getTime() >= lastMonthStart && new Date(o.createdAt).getTime() < thisMonthStart).reduce((s, o) => s + o.totalAmount, 0);
+  const thisMonthRevenue = orders.filter(o => ['APPROVED','PROCESSING','DELIVERED','OUT_FOR_DELIVERY'].includes(o.status) && new Date(o.createdAt).getTime() >= thisMonthStart).reduce((s, o) => s + o.totalAmount, 0);
+  const lastMonthRevenue = orders.filter(o => ['APPROVED','PROCESSING','DELIVERED','OUT_FOR_DELIVERY'].includes(o.status) && new Date(o.createdAt).getTime() >= lastMonthStart && new Date(o.createdAt).getTime() < thisMonthStart).reduce((s, o) => s + o.totalAmount, 0);
   const revenueChange = lastMonthRevenue === 0 ? (thisMonthRevenue > 0 ? 100 : 0) : Math.round(((thisMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100);
   const revenueUp = revenueChange >= 0;
 
@@ -414,7 +414,7 @@ export default function MarketingOverviewView({ addNotification, setActiveSubTab
       {goodsPrices.length > 0 && (() => {
         const items = goodsPrices.map((gp: any) => {
           const key = String(gp.product_name || '').toLowerCase().trim();
-          const qty = cargoForInventory.filter((c: any) => String(c.product_name || '').toLowerCase().trim() === key).reduce((s: number, c: any) => s + (Number(c.quantity) || 0), 0);
+          const qty = stock.filter((s: any) => String(s.product_name || '').toLowerCase().trim() === key).reduce((sum: number, s: any) => sum + (Number(s.quantity) || 0), 0);
           return { name: gp.product_name, unitPrice: Number(gp.unit_price || 0), currency: gp.currency || 'GHS', category: gp.category || '—', qty };
         });
         return (

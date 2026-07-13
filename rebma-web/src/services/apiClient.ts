@@ -537,8 +537,58 @@ export const operations = {
       ? metaItems.reduce((s: number, i: any) => s + (Number(i.quantity) || 1), 0)
       : Number(meta.quantity || order.quantity || 1);
 
-    // Note: Stock table and stock ledger are updated immediately upon Finance payment approval.
-    // Dispatch only updates delivery logs, global audits, and status to avoid double-deductions.
+    // Write REMOVE stock_ledger entries and decrement stock for each sold item upon dispatch
+    try {
+      const ticketRef = order.ticket_number || order.ticketNumber || `ORD-${orderId.slice(0, 6).toUpperCase()}`;
+      const notesBase = `Dispatched via ${vehicleId} (Driver: ${driverName || 'Kwame Kyeremeh'})`;
+      const now = new Date().toISOString();
+
+      if (metaItems.length > 0) {
+        for (const item of metaItems) {
+          if (!item.productName) continue;
+          const qty = Number(item.quantity) || 1;
+
+          // Stock ledger REMOVE
+          await supabase.from('stock_ledger').insert({
+            product_name: item.productName,
+            movement_type: 'REMOVE',
+            quantity: qty,
+            reference: `Order Dispatched: ${ticketRef}`,
+            notes: notesBase,
+            performed_by: performedBy,
+            created_at: now,
+          });
+
+          // Decrement stock table
+          const { data: existing } = await supabase.from('stock').select('id, quantity').eq('product_name', item.productName).limit(1);
+          if (existing && existing.length > 0) {
+            const newQty = Math.max(0, (existing[0].quantity || 0) - qty);
+            await supabase.from('stock').update({ quantity: newQty, last_updated: now, updated_by: performerId }).eq('id', existing[0].id);
+          }
+        }
+      } else if (order.product_name || order.productName) {
+        const prodName = order.product_name || order.productName;
+        const qty = Number(order.quantity || 1);
+
+        await supabase.from('stock_ledger').insert({
+          product_name: prodName,
+          movement_type: 'REMOVE',
+          quantity: qty,
+          reference: `Order Dispatched: ${ticketRef}`,
+          notes: notesBase,
+          performed_by: performedBy,
+          created_at: now,
+        });
+
+        const { data: existing } = await supabase.from('stock').select('id, quantity').eq('product_name', prodName).limit(1);
+        if (existing && existing.length > 0) {
+          const newQty = Math.max(0, (existing[0].quantity || 0) - qty);
+          await supabase.from('stock').update({ quantity: newQty, last_updated: now, updated_by: performerId }).eq('id', existing[0].id);
+        }
+      }
+    } catch (e) {
+      console.error('Stock ledger update failed during dispatch:', e);
+    }
 
     return { 
       order: updatedOrder ? mapOrderToFrontend(updatedOrder[0]) : null, 

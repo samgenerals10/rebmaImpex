@@ -190,59 +190,7 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
       ]);
       await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Order ${order.ticketNumber || order.id} APPROVED for ${order.clientName} — GHS ${(Number(order.totalAmount ?? 0)).toLocaleString()}`, performed_by: performedBy, timestamp: now }]);
 
-      // Write REMOVE stock_ledger entries and decrement stock for each sold item
-      try {
-        const metaItems: { productName: string; quantity: number }[] = order.metadata?.items || [];
-        const ticketRef = order.ticketNumber || `ORD-${order.id.slice(0, 6).toUpperCase()}`;
-        const notesBase = `Sold to: ${order.clientName} · Finance Approved`;
-
-        if (metaItems.length > 0) {
-          for (const item of metaItems) {
-            if (!item.productName) continue;
-            const qty = Number(item.quantity) || 1;
-
-            // Stock ledger REMOVE
-            await supabase.from('stock_ledger').insert({
-              product_name: item.productName,
-              movement_type: 'REMOVE',
-              quantity: qty,
-              reference: `Order Approved: ${ticketRef}`,
-              notes: notesBase,
-              performed_by: performedBy,
-              created_at: now,
-            });
-
-            // Decrement stock table
-            const { data: existing } = await supabase.from('stock').select('id, quantity').eq('product_name', item.productName).limit(1);
-            if (existing && existing.length > 0) {
-              const newQty = Math.max(0, (existing[0].quantity || 0) - qty);
-              await supabase.from('stock').update({ quantity: newQty, last_updated: now, updated_by: userId }).eq('id', existing[0].id);
-            }
-          }
-        } else if (order.productName) {
-          // Legacy single-item order
-          const qty = order.quantity || 1;
-          await supabase.from('stock_ledger').insert({
-            product_name: order.productName,
-            movement_type: 'REMOVE',
-            quantity: qty,
-            reference: `Order Approved: ${ticketRef}`,
-            notes: notesBase,
-            performed_by: performedBy,
-            created_at: now,
-          });
-
-          const { data: existing } = await supabase.from('stock').select('id, quantity').eq('product_name', order.productName).limit(1);
-          if (existing && existing.length > 0) {
-            const newQty = Math.max(0, (existing[0].quantity || 0) - qty);
-            await supabase.from('stock').update({ quantity: newQty, last_updated: now, updated_by: userId }).eq('id', existing[0].id);
-          }
-        }
-      } catch (e) {
-        console.error('Stock ledger update failed during approval:', e);
-      }
-
-      addNotification?.(`Order ${order.ticketNumber || order.id} approved. Stock updated. Operations notified.`);
+      addNotification?.(`Order ${order.ticketNumber || order.id} approved. Invoice generated. Operations notified.`);
       setSelected(null);
     } catch (e) {
       console.error(e);

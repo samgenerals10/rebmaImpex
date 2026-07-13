@@ -380,8 +380,8 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
   // Compute inventory valuation
   const inventoryItems = goodsPrices.map((gp: any) => {
     const key = String(gp.product_name || '').toLowerCase().trim();
-    const qty = cargoForInventory.filter((c: any) => String(c.product_name || '').toLowerCase().trim() === key).reduce((s: number, c: any) => s + (Number(c.quantity) || 0), 0);
-    const soldRevenue = (effective as any[]).filter(o => ['APPROVED','PROCESSING','DELIVERED'].includes(o.status) && String(o.productName || o.product_name || '').toLowerCase().trim() === key).reduce((s: number, o: any) => s + (Number(o.totalAmount || o.total_amount) || 0), 0);
+    const qty = stock.filter((s: any) => String(s.product_name || '').toLowerCase().trim() === key).reduce((sum: number, s: any) => sum + (Number(s.quantity || s.current || 0)), 0);
+    const soldRevenue = (effective as any[]).filter(o => ['APPROVED','PROCESSING','DELIVERED','OUT_FOR_DELIVERY'].includes(o.status) && String(o.productName || o.product_name || '').toLowerCase().trim() === key).reduce((s: number, o: any) => s + (Number(o.totalAmount || o.total_amount) || 0), 0);
     return { name: gp.product_name, unitPrice: Number(gp.unit_price || 0), costPrice: Number(gp.cost_price || 0), currency: gp.currency || 'GHS', qty, sellingValue: Number(gp.unit_price || 0) * qty, costValue: Number(gp.cost_price || 0) * qty, soldRevenue };
   });
   const totalSell = inventoryItems.reduce((s, i) => s + i.sellingValue, 0);
@@ -843,8 +843,28 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
         const productName = selectedLedgerProduct.name || selectedLedgerProduct.productName || selectedLedgerProduct.itemName || '';
         const currentPrices = getPricesForProduct(productName);
         
-        // Filter ledger entries for this specific product
-        const entries = stockLedger.filter(l => (l.product_name || '').toLowerCase().trim() === productName.toLowerCase().trim());
+        // Filter ledger entries for this specific product and deduplicate to avoid double-rendering/double-counting
+        const rawEntries = stockLedger.filter(l => (l.product_name || '').toLowerCase().trim() === productName.toLowerCase().trim());
+        const seenRefs = new Set();
+        const seenIds = new Set();
+        const entries: any[] = [];
+        for (const e of rawEntries) {
+          if (!e) continue;
+          if (e.id && seenIds.has(e.id)) continue;
+          if (e.id) seenIds.add(e.id);
+
+          const ref = e.reference || e.ref || '';
+          const isCargoApprove = ref.toLowerCase().includes('cargo approved') || ref.toLowerCase().includes('cargo intake id');
+          const isOrderApprove = ref.toLowerCase().includes('order approved') || ref.toLowerCase().includes('order finalized') || ref.toLowerCase().includes('order dispatched') || ref.toLowerCase().includes('tkt-');
+
+          if (isCargoApprove || isOrderApprove) {
+            const normalizedRef = ref.toLowerCase().trim();
+            if (seenRefs.has(normalizedRef)) continue;
+            seenRefs.add(normalizedRef);
+          }
+          entries.push(e);
+        }
+        
         const totalIn = entries.filter(e => e.movement_type === 'ADD').reduce((s, e) => s + Number(e.quantity || 0), 0);
         const totalOut = entries.filter(e => e.movement_type === 'REMOVE').reduce((s, e) => s + Number(e.quantity || 0), 0);
         const netQty = stock.find(s => s.product_name.toLowerCase().trim() === productName.toLowerCase().trim())?.quantity || (totalIn - totalOut);
