@@ -1580,7 +1580,7 @@ export default function FinanceDashboard({
                   .filter((c: any) => String(c.product_name || '').toLowerCase().trim() === key)
                   .reduce((s: number, c: any) => s + (Number(c.quantity) || 0), 0);
                 const sold = effectiveOrders
-                  .filter((o: any) => ['APPROVED', 'PROCESSING', 'DELIVERED'].includes(o.status) && String(o.productName || o.product_name || '').toLowerCase().trim() === key)
+                  .filter((o: any) => ['APPROVED', 'PROCESSING', 'DELIVERED', 'OUT_FOR_DELIVERY'].includes(o.status) && String(o.productName || o.product_name || '').toLowerCase().trim() === key)
                   .reduce((s: number, o: any) => s + (Number(o.quantity) || 1), 0);
                 const finalStock = Math.max(0, qty - sold);
                 const sellingValue = finalStock * Number(gp.unit_price || 0);

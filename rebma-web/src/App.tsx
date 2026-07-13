@@ -1227,6 +1227,20 @@ export default function App() {
         )
         .on(
           'postgres_changes',
+          { event: '*', schema: 'public', table: 'orders' },
+          () => {
+            refreshAllData();
+          }
+        )
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'general_purchases' },
+          () => {
+            refreshAllData();
+          }
+        )
+        .on(
+          'postgres_changes',
           { event: 'INSERT', schema: 'public', table: 'chat_messages' },
           (payload) => {
             const newMsg = payload.new as any;

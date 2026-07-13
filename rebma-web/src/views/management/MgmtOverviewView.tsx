@@ -247,7 +247,7 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
     };
   });
   orders.forEach(o => {
-    if (['APPROVED', 'PROCESSING', 'DELIVERED'].includes(o.status)) {
+    if (['APPROVED', 'PROCESSING', 'DELIVERED', 'OUT_FOR_DELIVERY'].includes(o.status)) {
       const oDate = new Date(o.created_at);
       const key = `${oDate.getFullYear()}-${oDate.getMonth()}`;
       const item = last6Months.find(m => m.monthKey === key);
@@ -297,14 +297,14 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
     const thisYearVal = orders
       .filter(o => {
         const d = new Date(o.created_at);
-        return d.getMonth() === mIdx && d.getFullYear() === currentYearYoY && ['APPROVED', 'PROCESSING', 'DELIVERED'].includes(o.status);
+        return d.getMonth() === mIdx && d.getFullYear() === currentYearYoY && ['APPROVED', 'PROCESSING', 'DELIVERED', 'OUT_FOR_DELIVERY'].includes(o.status);
       })
       .reduce((sum, o) => sum + Number(o.total_amount), 0);
 
     const lastYearVal = orders
       .filter(o => {
         const d = new Date(o.created_at);
-        return d.getMonth() === mIdx && d.getFullYear() === lastYearYoY && ['APPROVED', 'PROCESSING', 'DELIVERED'].includes(o.status);
+        return d.getMonth() === mIdx && d.getFullYear() === lastYearYoY && ['APPROVED', 'PROCESSING', 'DELIVERED', 'OUT_FOR_DELIVERY'].includes(o.status);
       })
       .reduce((sum, o) => sum + Number(o.total_amount), 0);
 
@@ -337,7 +337,7 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
     }
   });
   orders.forEach(o => {
-    if (['APPROVED', 'PROCESSING', 'DELIVERED'].includes(o.status)) {
+    if (['APPROVED', 'PROCESSING', 'DELIVERED', 'OUT_FOR_DELIVERY'].includes(o.status)) {
       const d = new Date(o.created_at);
       const key = `${d.getFullYear()}-${d.getMonth()}`;
       const item = last5Months.find(m => m.monthKey === key);
@@ -378,7 +378,7 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
   let penCount = 0;
   let rejCount = 0;
   orders.forEach(o => {
-    if (['APPROVED', 'PROCESSING', 'DELIVERED'].includes(o.status)) appCount++;
+    if (['APPROVED', 'PROCESSING', 'DELIVERED', 'OUT_FOR_DELIVERY'].includes(o.status)) appCount++;
     else if (o.status.startsWith('PENDING')) penCount++;
     else if (o.status === 'REJECTED') rejCount++;
   });
@@ -423,11 +423,11 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
     const category = stockItem ? stockItem.category : 'INCOMING_GOODS';
     
     const soldQty = (orders as any[])
-      .filter(o => ['APPROVED','PROCESSING','DELIVERED'].includes(o.status) && String(o.product_name || '').toLowerCase().trim() === key)
+      .filter(o => ['APPROVED','PROCESSING','DELIVERED','OUT_FOR_DELIVERY'].includes(o.status) && String(o.product_name || '').toLowerCase().trim() === key)
       .reduce((s: number, o: any) => s + (Number(o.quantity) || 1), 0);
 
     const soldRevenue = (orders as any[])
-      .filter(o => ['APPROVED','PROCESSING','DELIVERED'].includes(o.status) && String(o.product_name || '').toLowerCase().trim() === key)
+      .filter(o => ['APPROVED','PROCESSING','DELIVERED','OUT_FOR_DELIVERY'].includes(o.status) && String(o.product_name || '').toLowerCase().trim() === key)
       .reduce((s: number, o: any) => s + (Number(o.total_amount) || 0), 0);
     return {
       name: gp.product_name,
