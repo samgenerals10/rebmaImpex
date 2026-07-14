@@ -299,7 +299,28 @@ export default function StockView({ incomingGoodsList: _ig, addNotification }: P
     setLoading(false);
   }, []);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => {
+    loadData();
+
+    const channel = supabase.channel('operations-stock-realtime-' + Math.random().toString(36).substring(7))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'stock' }, () => {
+        loadData();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'stock_ledger' }, () => {
+        loadData();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cargo_intake' }, () => {
+        loadData();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'general_purchases' }, () => {
+        loadData();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [loadData]);
 
   // ── derived totals ───────────────────────────────────────────────────────
   const cargoTotalIn = approvedCargo.reduce((s, c) => s + c.quantity, 0);

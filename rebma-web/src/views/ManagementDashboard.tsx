@@ -183,12 +183,23 @@ export default function ManagementDashboard({
       .order('created_at', { ascending: false })
       .then(({ data }) => { if (data) setCeoNotifications(data); }, () => {});
 
-    (async () => {
+    const loadStockAlerts = async () => {
       try {
         const { data } = await supabase.from('stock').select('product_name, product_code, quantity, maximum_level').order('quantity', { ascending: true }).limit(4);
         if (data) setStockAlerts(data.map((d: any) => ({ name: d.product_name || '—', sku: d.product_code || '—', current: Number(d.quantity || 0), capacity: Number(d.maximum_level || 100) })));
       } catch { /* silent */ }
-    })();
+    };
+    loadStockAlerts();
+
+    const channel = supabase.channel('mgmt-dashboard-stock-realtime-' + Math.random().toString(36).substring(7))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'stock' }, () => {
+        loadStockAlerts();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const pendingCargoCount = localGoods.filter(i => i.status === 'PENDING_MANAGEMENT_APPROVAL').length;

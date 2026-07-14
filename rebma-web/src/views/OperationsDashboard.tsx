@@ -260,15 +260,6 @@ export default function OperationsDashboard({
         console.error('Failed to fetch low stock:', err);
       }
     };
-    fetchLowStock();
-    const interval = setInterval(fetchLowStock, 30000);
-    return () => {
-      active = false;
-      clearInterval(interval);
-    };
-  }, []);
-
-  useEffect(() => {
     const fetchTotalQty = async () => {
       try {
         const [{ data: cargoD }, { data: stockD }, { data: gpD }] = await Promise.all([
@@ -279,10 +270,32 @@ export default function OperationsDashboard({
         const cq = (cargoD || []).reduce((s: number, r: any) => s + Number(r.quantity ?? 0), 0);
         const sq = (stockD || []).reduce((s: number, r: any) => s + Number(r.current_quantity ?? 0), 0);
         const gq = (gpD || []).reduce((s: number, r: any) => s + Number(r.quantity ?? 0), 0);
-        setTotalStockQty(cq + sq + gq);
+        if (active) setTotalStockQty(cq + sq + gq);
       } catch { /* ignore */ }
     };
+
+    fetchLowStock();
     fetchTotalQty();
+    const interval = setInterval(fetchLowStock, 30000);
+
+    const channel = supabase.channel('operations-dashboard-stock-realtime-' + Math.random().toString(36).substring(7))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'stock' }, () => {
+        fetchLowStock();
+        fetchTotalQty();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cargo_intake' }, () => {
+        fetchTotalQty();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'general_purchases' }, () => {
+        fetchTotalQty();
+      })
+      .subscribe();
+
+    return () => {
+      active = false;
+      clearInterval(interval);
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   // Click outside to close menus

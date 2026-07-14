@@ -102,7 +102,29 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
     fetchData();
     refreshFeed();
     feedRef.current = setInterval(refreshFeed, 30000);
-    return () => { if (feedRef.current) clearInterval(feedRef.current); };
+
+    const channel = supabase.channel('mgmt-overview-realtime-' + Math.random().toString(36).substring(7))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'stock' }, () => {
+        fetchData();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
+        fetchData();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'general_purchases' }, () => {
+        fetchData();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cargo_intake' }, () => {
+        fetchData();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'goods_prices' }, () => {
+        fetchData();
+      })
+      .subscribe();
+
+    return () => {
+      if (feedRef.current) clearInterval(feedRef.current);
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   async function refreshFeed() {
