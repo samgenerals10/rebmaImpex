@@ -1056,9 +1056,8 @@ export const finance = {
     // rather than waiting for dispatch, so inventory value reflects the sale immediately.
     try {
       const { data: sessionData } = await supabase.auth.getSession();
-      const performerId = sessionData.session?.user?.id || 'unknown';
-      const { data: performers } = await supabase.from('profiles').select('full_name').eq('id', performerId).limit(1);
-      const performedBy = performers?.[0]?.full_name || 'Finance Staff';
+      // performed_by / updated_by are UUID FKs to auth.users — must be a real session id or null, never a name/placeholder string
+      const performerId = sessionData.session?.user?.id || null;
       const ticketRef = order.ticket_number || order.ticketNumber || `ORD-${orderId.slice(0, 6).toUpperCase()}`;
       const notesBase = `Invoice ${invoiceNo} generated`;
       const now = new Date().toISOString();
@@ -1071,20 +1070,22 @@ export const finance = {
         if (!item.productName) continue;
         const qty = Number(item.quantity) || 1;
 
-        await supabase.from('stock_ledger').insert({
+        const { error: ledgerErr } = await supabase.from('stock_ledger').insert({
           product_name: item.productName,
           movement_type: 'REMOVE',
           quantity: qty,
           reference: `Order Finalized: ${ticketRef}`,
           notes: notesBase,
-          performed_by: performedBy,
+          performed_by: performerId,
           created_at: now,
         });
+        if (ledgerErr) console.error('Stock ledger insert failed during order finalization:', ledgerErr);
 
         const { data: existing } = await supabase.from('stock').select('id, quantity').ilike('product_name', item.productName).limit(1);
         if (existing && existing.length > 0) {
           const newQty = Math.max(0, (existing[0].quantity || 0) - qty);
-          await supabase.from('stock').update({ quantity: newQty, last_updated: now, updated_by: performerId }).eq('id', existing[0].id);
+          const { error: stockErr } = await supabase.from('stock').update({ quantity: newQty, last_updated: now, updated_by: performerId }).eq('id', existing[0].id);
+          if (stockErr) console.error('Stock quantity update failed during order finalization:', stockErr);
         }
       }
     } catch (e) {
