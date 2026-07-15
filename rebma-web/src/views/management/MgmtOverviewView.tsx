@@ -42,6 +42,7 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
   const [earnPeriod, setEarnPeriod] = useState('6M');
   const [activities, setActivities] = useState<any[]>([]);
   const [goodsPrices, setGoodsPrices] = useState<any[]>([]);
+  const [soldLedger, setSoldLedger] = useState<any[]>([]);
   const [stockList, setStockList] = useState<any[]>([]);
   const feedRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [showRevenueModal, setShowRevenueModal] = useState(false);
@@ -90,6 +91,11 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
       // Goods prices — drives inventory value display
       supabase.from('goods_prices').select('product_name, unit_price, cost_price, currency').then(({ data }) => {
         if (data) setGoodsPrices(data);
+      }, () => {});
+
+      // Actual quantity sold — real deductions logged when a sale is confirmed (see deductStockForOrder)
+      supabase.from('stock_ledger').select('product_name, quantity').eq('movement_type', 'REMOVE').then(({ data }) => {
+        if (data) setSoldLedger(data);
       }, () => {});
     } catch (e) {
       console.error('Error fetching dashboard stats:', e);
@@ -445,22 +451,22 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
     const category = stockItem ? stockItem.category : 'INCOMING_GOODS';
     
     const clearedForKey = (orders as any[]).filter(o => ['APPROVED','PROCESSING','DELIVERED','OUT_FOR_DELIVERY'].includes(o.status));
-    let soldQty = 0;
     let soldRevenue = 0;
     for (const o of clearedForKey) {
       const items = o.metadata?.items;
       if (Array.isArray(items) && items.length > 0) {
         for (const it of items) {
           if (String(it.productName || it.product_name || '').toLowerCase().trim() === key) {
-            soldQty += Number(it.quantity || 1);
             soldRevenue += Number(it.lineTotal || it.line_total || it.amount || 0);
           }
         }
       } else if (String(o.product_name || '').toLowerCase().trim() === key) {
-        soldQty += Number(o.quantity || 1);
         soldRevenue += Number(o.total_amount || 0);
       }
     }
+    // Actual quantity sold — real stock_ledger deductions, not order line-item estimates
+    const soldQty = soldLedger.filter(l => String(l.product_name || '').toLowerCase().trim() === key)
+      .reduce((sum, l) => sum + (Number(l.quantity) || 0), 0);
     return {
       name: gp.product_name,
       category,

@@ -81,7 +81,7 @@ export default function CeoDashboard({
   const [transitVehicles, setTransitVehicles] = useState<any[]>([]);
   const [goodsPrices, setGoodsPrices] = useState<any[]>([]);
   const [stockList, setStockList] = useState<any[]>([]);
-  const [clearedOrders, setClearedOrders] = useState<any[]>([]);
+  const [soldLedger, setSoldLedger] = useState<any[]>([]);
 
   const loadTransit = async () => {
     try {
@@ -237,11 +237,12 @@ export default function CeoDashboard({
           if (gpPrices) setGoodsPrices(gpPrices);
           const { data: stList } = await supabase.from('stock').select('product_name, quantity');
           if (stList) setStockList(stList);
-          const { data: soldOrders } = await supabase
-            .from('orders')
-            .select('product_name, metadata, quantity, status')
-            .in('status', ['APPROVED', 'PROCESSING', 'DELIVERED', 'OUT_FOR_DELIVERY']);
-          if (soldOrders) setClearedOrders(soldOrders);
+          // Actual quantity sold — real deductions logged when a sale is confirmed (see deductStockForOrder)
+          const { data: soldLedger } = await supabase
+            .from('stock_ledger')
+            .select('product_name, quantity')
+            .eq('movement_type', 'REMOVE');
+          if (soldLedger) setSoldLedger(soldLedger);
         } catch (e) {
           console.error(e);
         }
@@ -359,14 +360,8 @@ export default function CeoDashboard({
   const inventoryItems = goodsPrices.map((gp: any) => {
     const key = String(gp.product_name || '').toLowerCase().trim();
     const qty = stockList.filter((s: any) => String(s.product_name || '').toLowerCase().trim() === key).reduce((sum: number, s: any) => sum + (Number(s.quantity) || 0), 0);
-    const soldQty = clearedOrders.reduce((sum: number, o: any) => {
-      const items = o.metadata?.items;
-      if (Array.isArray(items) && items.length > 0) {
-        return sum + items.filter((it: any) => String(it.productName || it.product_name || '').toLowerCase().trim() === key)
-          .reduce((s: number, it: any) => s + Number(it.quantity || 1), 0);
-      }
-      return String(o.product_name || '').toLowerCase().trim() === key ? sum + Number(o.quantity || 1) : sum;
-    }, 0);
+    const soldQty = soldLedger.filter((l: any) => String(l.product_name || '').toLowerCase().trim() === key)
+      .reduce((sum: number, l: any) => sum + (Number(l.quantity) || 0), 0);
     return { name: gp.product_name, unitPrice: Number(gp.unit_price || 0), currency: gp.currency || 'GHS', qty, soldQty };
   });
 

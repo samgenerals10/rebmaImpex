@@ -76,11 +76,11 @@ export default function MarketingOverviewView({ addNotification, setActiveSubTab
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
 
   const [orders, setOrders] = useState<Order[]>([]);
-  const [rawOrders, setRawOrders] = useState<any[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [goodsPrices, setGoodsPrices] = useState<any[]>([]);
   const [stock, setStock] = useState<any[]>([]);
+  const [soldLedger, setSoldLedger] = useState<any[]>([]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -97,7 +97,6 @@ export default function MarketingOverviewView({ addNotification, setActiveSubTab
       if (errO) console.error('Error fetching orders:', errO);
       if (errC) console.error('Error fetching customers:', errC);
 
-      setRawOrders(ords || []);
       const formattedOrders: Order[] = (ords || []).map((o: any) => ({
         id: o.id,
         ticketNumber: o.ticket_number,
@@ -128,6 +127,10 @@ export default function MarketingOverviewView({ addNotification, setActiveSubTab
       }, () => {});
       supabase.from('stock').select('product_name, quantity').then(({ data }) => {
         if (data) setStock(data as any[]);
+      }, () => {});
+      // Actual quantity sold — real deductions logged when a sale is confirmed (see deductStockForOrder)
+      supabase.from('stock_ledger').select('product_name, quantity').eq('movement_type', 'REMOVE').then(({ data }) => {
+        if (data) setSoldLedger(data as any[]);
       }, () => {});
     } catch (e) {
       console.error(e);
@@ -431,18 +434,11 @@ export default function MarketingOverviewView({ addNotification, setActiveSubTab
 
       {/* Available Products — priced by Management, ready to sell */}
       {goodsPrices.length > 0 && (() => {
-        const clearedRaw = rawOrders.filter((o: any) => ['APPROVED', 'PROCESSING', 'DELIVERED', 'OUT_FOR_DELIVERY'].includes(o.status));
         const items = goodsPrices.map((gp: any) => {
           const key = String(gp.product_name || '').toLowerCase().trim();
           const qty = stock.filter((s: any) => String(s.product_name || '').toLowerCase().trim() === key).reduce((sum: number, s: any) => sum + (Number(s.quantity) || 0), 0);
-          const soldQty = clearedRaw.reduce((sum: number, o: any) => {
-            const lineItems = o.metadata?.items;
-            if (Array.isArray(lineItems) && lineItems.length > 0) {
-              return sum + lineItems.filter((it: any) => String(it.productName || it.product_name || '').toLowerCase().trim() === key)
-                .reduce((s: number, it: any) => s + Number(it.quantity || 1), 0);
-            }
-            return String(o.product_name || '').toLowerCase().trim() === key ? sum + Number(o.quantity || 1) : sum;
-          }, 0);
+          const soldQty = soldLedger.filter((l: any) => String(l.product_name || '').toLowerCase().trim() === key)
+            .reduce((sum: number, l: any) => sum + (Number(l.quantity) || 0), 0);
           return { name: gp.product_name, unitPrice: Number(gp.unit_price || 0), currency: gp.currency || 'GHS', category: gp.category || '—', qty, soldQty };
         });
         return (

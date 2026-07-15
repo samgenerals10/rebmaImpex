@@ -404,7 +404,9 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
     const key = String(gp.product_name || '').toLowerCase().trim();
     const qty = stock.filter((s: any) => String(s.product_name || '').toLowerCase().trim() === key).reduce((sum: number, s: any) => sum + (Number(s.quantity || s.current || 0)), 0);
     const soldRevenue = (effective as any[]).filter(o => ['APPROVED','PROCESSING','DELIVERED','OUT_FOR_DELIVERY'].includes(o.status) && String(o.productName || o.product_name || '').toLowerCase().trim() === key).reduce((s: number, o: any) => s + (Number(o.totalAmount || o.total_amount) || 0), 0);
-    const soldQty = allClearedLineItems.filter(l => String(l.productName || '').toLowerCase().trim() === key).reduce((s, l) => s + l.quantity, 0);
+    // Actual quantity sold — real stock_ledger deductions, not order line-item estimates
+    const soldQty = stockLedger.filter(l => l.movement_type === 'REMOVE' && String(l.product_name || '').toLowerCase().trim() === key)
+      .reduce((s, l) => s + (Number(l.quantity) || 0), 0);
     return { name: gp.product_name, unitPrice: Number(gp.unit_price || 0), costPrice: Number(gp.cost_price || 0), currency: gp.currency || 'GHS', qty, sellingValue: Number(gp.unit_price || 0) * qty, costValue: Number(gp.cost_price || 0) * qty, soldRevenue, soldQty };
   });
   const totalSell = inventoryItems.reduce((s, i) => s + i.sellingValue, 0);
