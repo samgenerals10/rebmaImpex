@@ -213,9 +213,9 @@ export default function ProductionAnalyticsView({ addNotification }: Props) {
   const qualityPass = qualityPassRow ? `${qualityPassRow.value}%` : '—';
 
   const kpis = [
-    { label: 'Boxes Produced', value: totalBoxes.toLocaleString(), trend: 'up', sub: `${period} period` },
-    { label: 'Sachets Produced', value: totalSachets.toLocaleString(), trend: 'up', sub: `${period} period` },
-    { label: 'Quality Pass Rate', value: qualityPass, trend: 'up', sub: 'above 85% threshold' },
+    { label: 'Boxes Produced', value: totalBoxes.toLocaleString(), trend: 'neutral', sub: `${period} period` },
+    { label: 'Sachets Produced', value: totalSachets.toLocaleString(), trend: 'neutral', sub: `${period} period` },
+    { label: 'Quality Pass Rate', value: qualityPass, trend: 'neutral', sub: 'pass / partial / fail' },
     { label: 'Avg Efficiency', value: avgEff > 0 ? `${avgEff.toFixed(1)}%` : '—', trend: 'neutral', sub: 'input to output ratio' },
   ];
 

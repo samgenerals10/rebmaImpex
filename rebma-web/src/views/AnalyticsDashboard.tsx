@@ -38,7 +38,7 @@ function StatCard({ label, value, sub, trend, icon: Icon }: { label: string; val
           </div>
         )}
       </div>
-      {trend !== undefined && (
+      {trend !== undefined && trend !== 0 && (
         <div className={`flex items-center gap-1 mt-3 text-xs font-semibold ${trend >= 0 ? 'text-emerald-600' : 'text-rose-500'}`}>
           {trend >= 0 ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
           {Math.abs(trend).toFixed(1)}% vs last period
@@ -57,31 +57,86 @@ function ChartCard({ title, children }: { title: string; children: React.ReactNo
   );
 }
 
-// Generate synthetic trend data for a period
-function genTrend(period: Period, label: string) {
+// ── real time-series bucketing ──────────────────────────────────────────────
+function periodConfig(period: Period) {
   const n = period === '7d' ? 7 : period === '30d' ? 30 : period === '90d' ? 12 : 12;
   const isMonth = period === '12m';
-  return Array.from({ length: n }, (_, i) => {
-    const base = 40 + Math.random() * 60;
+  const days = period === '7d' ? 7 : period === '30d' ? 30 : period === '90d' ? 90 : 365;
+  return { n, isMonth, days };
+}
+
+function bucketKey(d: Date, isMonth: boolean) {
+  return isMonth ? `${d.getFullYear()}-${d.getMonth()}` : d.toDateString();
+}
+
+// Buckets real {created_at, value} rows into `n` periods ending today, summing value per bucket.
+function bucketRows(rows: { created_at: string; value: number }[], period: Period, label: string) {
+  const { n, isMonth } = periodConfig(period);
+  const buckets = Array.from({ length: n }, (_, i) => {
     const d = new Date();
     if (isMonth) d.setMonth(d.getMonth() - (n - 1 - i));
     else d.setDate(d.getDate() - (n - 1 - i));
     return {
-      name: isMonth
-        ? d.toLocaleDateString('en-GB', { month: 'short' })
-        : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }),
-      [label]: Math.round(base),
+      name: isMonth ? d.toLocaleDateString('en-GB', { month: 'short' }) : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }),
+      [label]: 0,
+      _key: bucketKey(d, isMonth),
     };
   });
+  for (const r of rows) {
+    if (!r.created_at) continue;
+    const d = new Date(r.created_at);
+    const key = bucketKey(d, isMonth);
+    const bucket = buckets.find(b => b._key === key);
+    if (bucket) (bucket as any)[label] += r.value;
+  }
+  return buckets.map(({ _key, ...rest }) => rest);
 }
 
-function genComparison(period: Period) {
-  const n = period === '7d' ? 7 : period === '30d' ? 8 : period === '90d' ? 9 : 12;
-  return Array.from({ length: n }, (_, i) => ({
-    name: `W${i + 1}`,
-    Current: Math.round(30 + Math.random() * 70),
-    Previous: Math.round(20 + Math.random() * 60),
-  }));
+// Per-department: which real table/column drives the primary trend + a secondary activity count
+interface DeptSeriesConfig {
+  table: string;
+  dateField: string;
+  valueField?: string; // sum this field; omit to count rows
+  filter?: (q: any) => any;
+}
+
+const TREND_CONFIG: Record<string, DeptSeriesConfig> = {
+  CEO: { table: 'finance_payments', dateField: 'created_at', valueField: 'amount' },
+  MANAGEMENT: { table: 'finance_payments', dateField: 'created_at', valueField: 'amount' },
+  FINANCE: { table: 'finance_payments', dateField: 'created_at', valueField: 'amount' },
+  HR: { table: 'attendance', dateField: 'created_at' },
+  MARKETING: { table: 'orders', dateField: 'created_at', valueField: 'total_amount' },
+  OPERATIONS: { table: 'cargo_intake', dateField: 'created_at' },
+  DISPATCH: { table: 'delivery_logs', dateField: 'created_at' },
+  PRODUCTION: { table: 'production_logs', dateField: 'created_at', valueField: 'boxes_produced' },
+  RECEPTION: { table: 'visitors', dateField: 'check_in_time' },
+  LOGISTICS: { table: 'fuel_logs', dateField: 'created_at', valueField: 'cost' },
+};
+
+const ACTIVITY_CONFIG: Record<string, DeptSeriesConfig> = {
+  CEO: { table: 'orders', dateField: 'created_at' },
+  MANAGEMENT: { table: 'orders', dateField: 'created_at' },
+  FINANCE: { table: 'orders', dateField: 'created_at' },
+  HR: { table: 'leave_requests', dateField: 'created_at' },
+  MARKETING: { table: 'customers', dateField: 'registered_at' },
+  OPERATIONS: { table: 'stock_ledger', dateField: 'created_at' },
+  DISPATCH: { table: 'delivery_logs', dateField: 'created_at' },
+  PRODUCTION: { table: 'production_requests', dateField: 'created_at' },
+  RECEPTION: { table: 'attendance', dateField: 'created_at' },
+  LOGISTICS: { table: 'maintenance_schedule', dateField: 'created_at' },
+};
+
+async function fetchSeries(cfg: DeptSeriesConfig, sinceIso: string): Promise<{ created_at: string; value: number }[]> {
+  try {
+    const cols = cfg.valueField ? `${cfg.dateField}, ${cfg.valueField}` : cfg.dateField;
+    const { data } = await supabase.from(cfg.table).select(cols).gte(cfg.dateField, sinceIso);
+    return (data || []).map((r: any) => ({
+      created_at: r[cfg.dateField],
+      value: cfg.valueField ? Number(r[cfg.valueField] || 0) : 1,
+    }));
+  } catch {
+    return [];
+  }
 }
 
 export default function AnalyticsDashboard({ department, currentUser, addNotification }: AnalyticsDashboardProps) {
@@ -92,14 +147,38 @@ export default function AnalyticsDashboard({ department, currentUser, addNotific
   const [compareData, setCompareData] = useState<any[]>([]);
   const [pieData, setPieData] = useState<{ name: string; value: number }[]>([]);
   const [liveStats, setLiveStats] = useState<{ label: string; value: string; sub?: string; trend: number; icon: any }[]>([]);
+  const [extraA, setExtraA] = useState<any[]>([]);
+  const [extraB, setExtraB] = useState<any[]>([]);
 
-  const load = useCallback(() => {
+  const load = useCallback(async () => {
     setLoading(true);
-    setRevenueData(genTrend(period, 'Value'));
-    setActivityData(genTrend(period, 'Activity'));
-    setCompareData(genComparison(period));
+    const { days } = periodConfig(period);
+    const now = new Date();
+    const sinceCurrent = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+    const sincePrevious = new Date(now.getTime() - days * 2 * 24 * 60 * 60 * 1000);
+
+    const trendCfg = TREND_CONFIG[department] || TREND_CONFIG.CEO;
+    const activityCfg = ACTIVITY_CONFIG[department] || ACTIVITY_CONFIG.CEO;
+
+    const [currentTrendRows, previousTrendRows, activityRows] = await Promise.all([
+      fetchSeries(trendCfg, sinceCurrent.toISOString()),
+      fetchSeries(trendCfg, sincePrevious.toISOString()).then(rows => rows.filter(r => new Date(r.created_at) < sinceCurrent)),
+      fetchSeries(activityCfg, sinceCurrent.toISOString()),
+    ]);
+
+    setRevenueData(bucketRows(currentTrendRows, period, 'Value'));
+    setActivityData(bucketRows(activityRows, period, 'Activity'));
+
+    const currentBuckets = bucketRows(currentTrendRows, period, 'Value');
+    const previousBuckets = bucketRows(previousTrendRows, period, 'Value');
+    setCompareData(currentBuckets.map((c, i) => ({
+      name: `P${i + 1}`,
+      Current: (c as any).Value,
+      Previous: (previousBuckets[i] as any)?.Value || 0,
+    })));
+
     setLoading(false);
-  }, [period]);
+  }, [period, department]);
 
   const loadLiveStats = useCallback(async () => {
     try {
@@ -113,10 +192,30 @@ export default function AnalyticsDashboard({ department, currentUser, addNotific
         const totalRev = (revenueRows ?? []).reduce((s: number, r: any) => s + (r.amount || 0), 0);
         setLiveStats([
           { label: 'Total Revenue', value: `GHS ${totalRev.toLocaleString()}`, sub: 'All payments', trend: 0, icon: DollarSign },
-          { label: 'Active Depts', value: '9', sub: 'All reporting', trend: 0, icon: Users },
+          { label: 'Total Orders', value: `${orderCount ?? 0}`, sub: 'All time', trend: 0, icon: Package },
           { label: 'Active Drivers', value: `${driverCount ?? 0}`, sub: 'On roster', trend: 0, icon: Truck },
           { label: 'Staff Headcount', value: `${staffCount ?? 0}`, sub: 'Total active', trend: 0, icon: Users },
         ]);
+
+        const { data: orders } = await supabase.from('orders').select('status');
+        const byStatus: Record<string, number> = {};
+        for (const o of orders || []) byStatus[(o as any).status] = (byStatus[(o as any).status] || 0) + 1;
+        setPieData(Object.entries(byStatus).map(([name, value]) => ({ name, value })));
+
+        const { data: rev } = await supabase.from('orders').select('total_amount, department').in('status', ['APPROVED', 'PROCESSING', 'DELIVERED', 'OUT_FOR_DELIVERY']);
+        const byDept: Record<string, number> = {};
+        for (const r of rev || []) { const d = (r as any).department || 'MARKETING'; byDept[d] = (byDept[d] || 0) + Number((r as any).total_amount || 0); }
+        setExtraA(Object.entries(byDept).map(([dept, value]) => ({ dept, value: Math.round(value / 1000) })));
+
+        const { data: payments } = await supabase.from('finance_payments').select('amount, created_at');
+        const { data: expenses } = await supabase.from('finance_expenses').select('amount, created_at').eq('status', 'Approved');
+        const months = Array.from({ length: 6 }, (_, i) => { const d = new Date(); d.setMonth(d.getMonth() - (5 - i)); return d; });
+        setExtraB(months.map(m => {
+          const key = `${m.getFullYear()}-${m.getMonth()}`;
+          const inflow = (payments || []).filter((p: any) => { const d = new Date(p.created_at); return `${d.getFullYear()}-${d.getMonth()}` === key; }).reduce((s: number, p: any) => s + Number(p.amount || 0), 0);
+          const outflow = (expenses || []).filter((e: any) => { const d = new Date(e.created_at); return `${d.getFullYear()}-${d.getMonth()}` === key; }).reduce((s: number, e: any) => s + Number(e.amount || 0), 0);
+          return { name: m.toLocaleDateString('en-GB', { month: 'short' }), Inflow: Math.round(inflow), Outflow: Math.round(outflow) };
+        }));
       } else if (department === 'FINANCE') {
         const [{ data: orders }, { data: payments }] = await Promise.all([
           supabase.from('orders').select('total_amount, status, payment_mode'),
@@ -131,6 +230,9 @@ export default function AnalyticsDashboard({ department, currentUser, addNotific
           { label: 'Outstanding', value: `GHS ${(invoiced - collected).toLocaleString()}`, sub: 'Uncollected', trend: 0, icon: TrendingDown },
           { label: 'Credit Extended', value: `GHS ${credit.toLocaleString()}`, sub: 'Credit terms', trend: 0, icon: DollarSign },
         ]);
+        const byMode: Record<string, number> = {};
+        for (const o of orders || []) { const m = (o as any).payment_mode || 'CASH'; byMode[m] = (byMode[m] || 0) + 1; }
+        setPieData(Object.entries(byMode).map(([name, value]) => ({ name, value })));
       } else if (department === 'HR') {
         const [{ count: total }, { count: onLeave }, { count: pending }] = await Promise.all([
           supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('status', 'ACTIVE'),
@@ -143,6 +245,11 @@ export default function AnalyticsDashboard({ department, currentUser, addNotific
           { label: 'Leave Requests', value: `${pending ?? 0}`, sub: 'Pending review', trend: 0, icon: Users },
           { label: 'Active', value: `${Math.max(0, (total ?? 0) - (onLeave ?? 0))}`, sub: 'Working today', trend: 0, icon: Users },
         ]);
+        const { data: profiles } = await supabase.from('profiles').select('role');
+        const byRole: Record<string, number> = {};
+        for (const p of profiles || []) { const r = (p as any).role || 'Staff'; byRole[r] = (byRole[r] || 0) + 1; }
+        setPieData(Object.entries(byRole).map(([name, value]) => ({ name, value })));
+        setExtraA(Object.entries(byRole).map(([dept, count]) => ({ dept, count })));
       } else if (department === 'MARKETING') {
         const [{ count: ordersC }, { count: custsC }, { count: pendC }, { data: revRows }] = await Promise.all([
           supabase.from('orders').select('*', { count: 'exact', head: true }),
@@ -157,6 +264,10 @@ export default function AnalyticsDashboard({ department, currentUser, addNotific
           { label: 'Revenue', value: `GHS ${rev.toLocaleString()}`, sub: 'All orders', trend: 0, icon: DollarSign },
           { label: 'Pending', value: `${pendC ?? 0}`, sub: 'Awaiting approval', trend: 0, icon: TrendingDown },
         ]);
+        const { data: orders } = await supabase.from('orders').select('status');
+        const byStatus: Record<string, number> = {};
+        for (const o of orders || []) byStatus[(o as any).status] = (byStatus[(o as any).status] || 0) + 1;
+        setPieData(Object.entries(byStatus).map(([name, value]) => ({ name, value })));
       } else if (department === 'OPERATIONS') {
         const [{ count: cargoC }, { count: stockC }, { count: discC }] = await Promise.all([
           supabase.from('cargo_intake').select('*', { count: 'exact', head: true }),
@@ -169,6 +280,10 @@ export default function AnalyticsDashboard({ department, currentUser, addNotific
           { label: 'Discrepancies', value: `${discC ?? 0}`, sub: 'Open issues', trend: 0, icon: TrendingDown },
           { label: 'Fulfillments', value: '—', sub: 'Check deliveries', trend: 0, icon: Truck },
         ]);
+        const { data: cargo } = await supabase.from('cargo_intake').select('status');
+        const byStatus: Record<string, number> = {};
+        for (const c of cargo || []) byStatus[(c as any).status] = (byStatus[(c as any).status] || 0) + 1;
+        setPieData(Object.entries(byStatus).map(([name, value]) => ({ name, value })));
       } else if (department === 'DISPATCH') {
         const [{ count: total }, { count: inTransit }, { count: delivered }, { count: drivers }] = await Promise.all([
           supabase.from('delivery_logs').select('*', { count: 'exact', head: true }),
@@ -182,6 +297,10 @@ export default function AnalyticsDashboard({ department, currentUser, addNotific
           { label: 'Delivered', value: `${delivered ?? 0}`, sub: 'Completed', trend: 0, icon: TrendingUp },
           { label: 'Active Drivers', value: `${drivers ?? 0}`, sub: 'On roster', trend: 0, icon: Users },
         ]);
+        const { data: deliveries } = await supabase.from('delivery_logs').select('status');
+        const byStatus: Record<string, number> = {};
+        for (const d of deliveries || []) byStatus[(d as any).status] = (byStatus[(d as any).status] || 0) + 1;
+        setPieData(Object.entries(byStatus).map(([name, value]) => ({ name, value })));
       } else if (department === 'PRODUCTION') {
         const [{ count: reqC }, { data: outputRows }] = await Promise.all([
           supabase.from('production_requests').select('*', { count: 'exact', head: true }),
@@ -195,19 +314,45 @@ export default function AnalyticsDashboard({ department, currentUser, addNotific
           { label: 'Sachets', value: `${totalSachets}`, sub: 'Total sachets', trend: 0, icon: Package },
           { label: 'Efficiency', value: '—', sub: 'Quality rate', trend: 0, icon: TrendingUp },
         ]);
+        const { data: reqs } = await supabase.from('production_requests').select('status');
+        const byStatus: Record<string, number> = {};
+        for (const r of reqs || []) byStatus[(r as any).status] = (byStatus[(r as any).status] || 0) + 1;
+        setPieData(Object.entries(byStatus).map(([name, value]) => ({ name, value })));
       } else if (department === 'RECEPTION') {
         const today = new Date().toISOString().split('T')[0];
         const [{ count: totalC }, { count: insideC }, { count: outC }] = await Promise.all([
-          supabase.from('visitors').select('*', { count: 'exact', head: true }).gte('check_in', today),
-          supabase.from('visitors').select('*', { count: 'exact', head: true }).gte('check_in', today).is('check_out', null),
-          supabase.from('visitors').select('*', { count: 'exact', head: true }).gte('check_in', today).not('check_out', 'is', null),
+          supabase.from('visitors').select('*', { count: 'exact', head: true }).gte('check_in_time', today),
+          supabase.from('visitors').select('*', { count: 'exact', head: true }).gte('check_in_time', today).is('check_out_time', null),
+          supabase.from('visitors').select('*', { count: 'exact', head: true }).gte('check_in_time', today).not('check_out_time', 'is', null),
         ]);
         setLiveStats([
           { label: 'Visitors Today', value: `${totalC ?? 0}`, sub: 'Checked in', trend: 0, icon: Users },
           { label: 'Inside Now', value: `${insideC ?? 0}`, sub: 'Still on premises', trend: 0, icon: Users },
           { label: 'Checked Out', value: `${outC ?? 0}`, sub: 'Departed today', trend: 0, icon: Users },
-          { label: 'Avg/Day', value: `${totalC ?? 0}`, sub: 'Today so far', trend: 0, icon: Users },
+          { label: 'Total Logged', value: `${totalC ?? 0}`, sub: 'All time today', trend: 0, icon: Users },
         ]);
+        const { data: visitors } = await supabase.from('visitors').select('purpose');
+        const byPurpose: Record<string, number> = {};
+        for (const v of visitors || []) { const p = (v as any).purpose || 'Other'; byPurpose[p] = (byPurpose[p] || 0) + 1; }
+        setPieData(Object.entries(byPurpose).slice(0, 6).map(([name, value]) => ({ name, value })));
+      } else if (department === 'LOGISTICS') {
+        const [{ count: vehicleC }, { count: activeC }, { count: maintC }, { data: fuelRows }] = await Promise.all([
+          supabase.from('fleet_vehicles').select('*', { count: 'exact', head: true }),
+          supabase.from('fleet_vehicles').select('*', { count: 'exact', head: true }).eq('status', 'Operational'),
+          supabase.from('maintenance_schedule').select('*', { count: 'exact', head: true }).neq('status', 'Completed'),
+          supabase.from('fuel_logs').select('cost'),
+        ]);
+        const fuelCost = (fuelRows ?? []).reduce((s: number, r: any) => s + Number(r.cost || 0), 0);
+        setLiveStats([
+          { label: 'Total Vehicles', value: `${vehicleC ?? 0}`, sub: 'Fleet size', trend: 0, icon: Truck },
+          { label: 'Operational', value: `${activeC ?? 0}`, sub: 'Ready to run', trend: 0, icon: Truck },
+          { label: 'Pending Maintenance', value: `${maintC ?? 0}`, sub: 'Open work orders', trend: 0, icon: Package },
+          { label: 'Fuel Spend', value: `GHS ${fuelCost.toLocaleString()}`, sub: 'All time', trend: 0, icon: DollarSign },
+        ]);
+        const { data: vehicles } = await supabase.from('fleet_vehicles').select('status');
+        const byStatus: Record<string, number> = {};
+        for (const v of vehicles || []) byStatus[(v as any).status] = (byStatus[(v as any).status] || 0) + 1;
+        setPieData(Object.entries(byStatus).map(([name, value]) => ({ name, value })));
       }
     } catch { /* silent */ }
   }, [department]);
@@ -218,105 +363,9 @@ export default function AnalyticsDashboard({ department, currentUser, addNotific
 
   useEffect(() => {
     load();
-    // Generate pie data per department
-    const deptPie: Record<string, { name: string; value: number }[]> = {
-      CEO: [
-        { name: 'Revenue',  value: 42 },
-        { name: 'Expenses', value: 28 },
-        { name: 'Payroll',  value: 20 },
-        { name: 'Other',    value: 10 },
-      ],
-      FINANCE: [
-        { name: 'Invoiced',  value: 55 },
-        { name: 'Collected', value: 30 },
-        { name: 'Overdue',   value: 15 },
-      ],
-      HR: [
-        { name: 'Active',   value: 68 },
-        { name: 'On Leave', value: 12 },
-        { name: 'New',      value: 20 },
-      ],
-      MARKETING: [
-        { name: 'Leads',     value: 45 },
-        { name: 'Converted', value: 35 },
-        { name: 'Lost',      value: 20 },
-      ],
-      OPERATIONS: [
-        { name: 'In Stock',  value: 60 },
-        { name: 'Allocated', value: 25 },
-        { name: 'Low Stock', value: 15 },
-      ],
-      DISPATCH: [
-        { name: 'Delivered', value: 70 },
-        { name: 'In Transit', value: 20 },
-        { name: 'Pending',   value: 10 },
-      ],
-      PRODUCTION: [
-        { name: 'Completed', value: 65 },
-        { name: 'WIP',       value: 25 },
-        { name: 'Defects',   value: 10 },
-      ],
-      RECEPTION: [
-        { name: 'Visitors',   value: 50 },
-        { name: 'Staff',      value: 35 },
-        { name: 'Scheduled',  value: 15 },
-      ],
-    };
-    setPieData(deptPie[department] || [{ name: 'Activity', value: 100 }]);
-  }, [period, department, load]);
+  }, [load]);
 
-  const deptStats: Record<string, { label: string; value: string; sub?: string; trend: number; icon: any }[]> = {
-    CEO: [
-      { label: 'Total Revenue',    value: 'GHS 2.4M', sub: 'This period',   trend: 12.4,  icon: DollarSign },
-      { label: 'Active Depts',     value: '9',        sub: 'All reporting', trend: 0,     icon: Users },
-      { label: 'Shipments',        value: '148',      sub: 'This period',   trend: 7.2,   icon: Truck },
-      { label: 'Staff Headcount',  value: '63',       sub: 'Total staff',   trend: 3.1,   icon: Users },
-    ],
-    FINANCE: [
-      { label: 'Total Invoiced',   value: 'GHS 890K', sub: 'This period',  trend: 8.5,   icon: DollarSign },
-      { label: 'Collected',        value: 'GHS 712K', sub: '80% rate',     trend: 3.2,   icon: TrendingUp },
-      { label: 'Overdue',          value: 'GHS 178K', sub: 'Action needed',trend: -5.0,  icon: TrendingDown },
-      { label: 'Payroll Cost',     value: 'GHS 245K', sub: 'This month',   trend: 0,     icon: DollarSign },
-    ],
-    HR: [
-      { label: 'Total Staff',      value: '63',       sub: 'Headcount',    trend: 3.1,   icon: Users },
-      { label: 'Avg Attendance',   value: '87%',      sub: 'This period',  trend: 2.4,   icon: Users },
-      { label: 'Leave Requests',   value: '7',        sub: 'Pending',      trend: 0,     icon: Users },
-      { label: 'Open Positions',   value: '4',        sub: 'Recruiting',   trend: 0,     icon: Users },
-    ],
-    MARKETING: [
-      { label: 'Orders Created',   value: '224',      sub: 'This period',  trend: 15.2,  icon: Package },
-      { label: 'New Customers',    value: '18',       sub: 'This period',  trend: 9.0,   icon: Users },
-      { label: 'Revenue',          value: 'GHS 1.1M', sub: 'This period',  trend: 11.0,  icon: DollarSign },
-      { label: 'Avg Order Value',  value: 'GHS 4.9K', sub: 'Per order',    trend: -2.1,  icon: TrendingDown },
-    ],
-    OPERATIONS: [
-      { label: 'Cargo Intakes',    value: '34',       sub: 'This period',  trend: 5.0,   icon: Package },
-      { label: 'Stock Items',      value: '1,248',    sub: 'In warehouse', trend: 2.2,   icon: Package },
-      { label: 'Fulfillments',     value: '89',       sub: 'This period',  trend: 8.3,   icon: Truck },
-      { label: 'Discrepancies',    value: '3',        sub: 'Open',         trend: -33.3, icon: TrendingDown },
-    ],
-    DISPATCH: [
-      { label: 'Deliveries',       value: '96',       sub: 'This period',  trend: 12.0,  icon: Truck },
-      { label: 'On-time Rate',     value: '94%',      sub: 'Delivery rate', trend: 3.5,  icon: TrendingUp },
-      { label: 'Active Drivers',   value: '8',        sub: 'On route',     trend: 0,     icon: Users },
-      { label: 'Avg Delivery Time',value: '2.3 hrs',  sub: 'Per delivery', trend: -8.0,  icon: TrendingDown },
-    ],
-    PRODUCTION: [
-      { label: 'Units Produced',   value: '3,840',    sub: 'This period',  trend: 7.0,   icon: Package },
-      { label: 'Defect Rate',      value: '1.2%',     sub: 'Quality',      trend: -15.0, icon: TrendingDown },
-      { label: 'Efficiency',       value: '88%',      sub: 'Line uptime',  trend: 4.2,   icon: TrendingUp },
-      { label: 'Requisitions',     value: '22',       sub: 'This period',  trend: 0,     icon: Package },
-    ],
-    RECEPTION: [
-      { label: 'Visitors Logged',  value: '312',      sub: 'This period',  trend: 6.0,   icon: Users },
-      { label: 'Staff Check-ins',  value: '891',      sub: 'This period',  trend: 2.0,   icon: Users },
-      { label: 'Avg Visitors/Day', value: '15',       sub: 'Daily avg',    trend: 6.0,   icon: Users },
-      { label: 'Appointments',     value: '47',       sub: 'Scheduled',    trend: 12.5,  icon: Users },
-    ],
-  };
-
-  const stats = liveStats.length > 0 ? liveStats : (deptStats[department] || deptStats['CEO']);
+  const stats = liveStats;
 
   const deptTitle: Record<string, string> = {
     CEO: 'Executive Analytics', FINANCE: 'Finance Analytics', HR: 'HR Analytics',
@@ -360,9 +409,11 @@ export default function AnalyticsDashboard({ department, currentUser, addNotific
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((s, i) => (
-          <StatCard key={i} label={s.label} value={s.value} sub={s.sub} trend={s.trend} icon={s.icon} />
-        ))}
+        {stats.length === 0 ? (
+          Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-24 rounded-2xl bg-[var(--bg-input)] animate-pulse" />)
+        ) : (
+          stats.map((s, i) => <StatCard key={i} label={s.label} value={s.value} sub={s.sub} trend={s.trend} icon={s.icon} />)
+        )}
       </div>
 
       {/* Charts Row 1 */}
@@ -403,14 +454,18 @@ export default function AnalyticsDashboard({ department, currentUser, addNotific
       {/* Charts Row 2 */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <ChartCard title="Activity Distribution">
-          <ResponsiveContainer width="100%" height={200}>
-            <PieChart>
-              <Pie data={pieData} cx="50%" cy="50%" outerRadius={75} dataKey="value" label={(entry) => `${entry.name ?? ''} ${(((entry.percent as number | undefined) ?? 0) * 100).toFixed(0)}%`} labelLine={false}>
-                {pieData.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
-              </Pie>
-              <Tooltip contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 11 }} />
-            </PieChart>
-          </ResponsiveContainer>
+          {pieData.length === 0 ? (
+            <div className="h-[200px] flex items-center justify-center text-xs text-[var(--text-muted)]">No data yet</div>
+          ) : (
+            <ResponsiveContainer width="100%" height={200}>
+              <PieChart>
+                <Pie data={pieData} cx="50%" cy="50%" outerRadius={75} dataKey="value" label={(entry) => `${entry.name ?? ''} ${entry.value}`} labelLine={false}>
+                  {pieData.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
+                </Pie>
+                <Tooltip contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 11 }} />
+              </PieChart>
+            </ResponsiveContainer>
+          )}
         </ChartCard>
 
         <div className="lg:col-span-2">
@@ -431,23 +486,20 @@ export default function AnalyticsDashboard({ department, currentUser, addNotific
       {/* Department-specific section */}
       {department === 'HR' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <ChartCard title="Attendance Trend">
+          <ChartCard title="Attendance Records (period)">
             <ResponsiveContainer width="100%" height={180}>
-              <BarChart data={genTrend(period, 'Attendance')}>
+              <BarChart data={activityData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                 <XAxis dataKey="name" tick={{ fontSize: 9 }} />
-                <YAxis tick={{ fontSize: 9 }} domain={[0, 100]} unit="%" />
+                <YAxis tick={{ fontSize: 9 }} />
                 <Tooltip contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 11 }} />
-                <Bar dataKey="Attendance" fill="var(--accent)" radius={[4,4,0,0]} />
+                <Bar dataKey="Activity" fill="var(--accent)" radius={[4,4,0,0]} />
               </BarChart>
             </ResponsiveContainer>
           </ChartCard>
-          <ChartCard title="Department Headcount">
+          <ChartCard title="Headcount by Role">
             <ResponsiveContainer width="100%" height={180}>
-              <BarChart data={[
-                { dept: 'HR', count: 4 }, { dept: 'Finance', count: 6 }, { dept: 'Ops', count: 8 },
-                { dept: 'Mktg', count: 7 }, { dept: 'Prod', count: 12 }, { dept: 'Dispatch', count: 9 },
-              ]}>
+              <BarChart data={extraA}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                 <XAxis dataKey="dept" tick={{ fontSize: 9 }} />
                 <YAxis tick={{ fontSize: 9 }} />
@@ -461,12 +513,9 @@ export default function AnalyticsDashboard({ department, currentUser, addNotific
 
       {(department === 'CEO' || department === 'MANAGEMENT') && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <ChartCard title="Revenue by Department">
+          <ChartCard title="Revenue by Department (GHS '000)">
             <ResponsiveContainer width="100%" height={180}>
-              <BarChart data={[
-                { dept: 'Marketing', value: 420 }, { dept: 'Operations', value: 280 },
-                { dept: 'Production', value: 380 }, { dept: 'Dispatch', value: 195 },
-              ]}>
+              <BarChart data={extraA}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                 <XAxis dataKey="dept" tick={{ fontSize: 9 }} />
                 <YAxis tick={{ fontSize: 9 }} unit="K" />
@@ -477,17 +526,10 @@ export default function AnalyticsDashboard({ department, currentUser, addNotific
           </ChartCard>
           <ChartCard title="Monthly Cash Flow">
             <ResponsiveContainer width="100%" height={180}>
-              <AreaChart data={Array.from({ length: 6 }, (_, i) => {
-                const m = new Date(); m.setMonth(m.getMonth() - (5 - i));
-                return {
-                  name: m.toLocaleDateString('en-GB', { month: 'short' }),
-                  Inflow: Math.round(200 + Math.random() * 300),
-                  Outflow: Math.round(100 + Math.random() * 200),
-                };
-              })}>
+              <AreaChart data={extraB}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                 <XAxis dataKey="name" tick={{ fontSize: 9 }} />
-                <YAxis tick={{ fontSize: 9 }} unit="K" />
+                <YAxis tick={{ fontSize: 9 }} />
                 <Tooltip contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 11 }} />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
                 <Area type="monotone" dataKey="Inflow"  stroke="var(--accent)" fill="var(--accent)" fillOpacity={0.15} strokeWidth={2} />

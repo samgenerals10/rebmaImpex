@@ -80,7 +80,7 @@ export default function AnalyticsView({ addNotification }: AddNotificationProps)
   const [totalReleased, setTotalReleased] = useState(0);
   const [totalDiscrepancies, setTotalDiscrepancies] = useState(0);
   const [cargoInflow, setCargoInflow] = useState<{ month: string; inflow: number; released: number }[]>([]);
-  const [stockTrend, setStockTrend] = useState<{ month: string; inStock: number; lowStock: number; outOfStock: number }[]>([]);
+  const [stockStatus, setStockStatus] = useState<{ name: string; count: number }[]>([]);
   const [categoryBreakdown, setCategoryBreakdown] = useState<{ name: string; value: number; color: string }[]>([]);
   const [topProducts, setTopProducts] = useState<{ rank: number; name: string; received: number; receivedCount: number; releasedQty: number; releasedCount: number; status: string }[]>([]);
   const [allCargoRows, setAllCargoRows] = useState<CargoRow[]>([]);
@@ -133,16 +133,11 @@ export default function AnalyticsView({ addNotification }: AddNotificationProps)
           const inStock = items.filter(s => s.quantity > (s.minimum_level || 0)).length;
           const lowStock = items.filter(s => s.quantity > 0 && s.quantity <= (s.minimum_level || 0)).length;
           const outOfStock = items.filter(s => s.quantity <= 0).length;
-          const months = Array.from({ length: 6 }, (_, i) => {
-            const d = new Date(); d.setMonth(d.getMonth() - (5 - i));
-            return MONTHS_SHORT[d.getMonth()];
-          });
-          setStockTrend(months.map((month, i) => ({
-            month,
-            inStock: Math.max(0, inStock - Math.floor((5 - i) * inStock * 0.05)),
-            lowStock: Math.max(0, lowStock),
-            outOfStock: Math.max(0, outOfStock),
-          })));
+          setStockStatus([
+            { name: 'In Stock', count: inStock },
+            { name: 'Low Stock', count: lowStock },
+            { name: 'Out of Stock', count: outOfStock },
+          ]);
         }
 
         // Category breakdown from stock_items
@@ -335,24 +330,23 @@ export default function AnalyticsView({ addNotification }: AddNotificationProps)
       {/* Row: Stock Status Trend + Category Breakdown */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
         <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-6 shadow-[var(--box-shadow)]">
-          <h2 className="text-sm font-bold text-[var(--text-primary)] mb-4">Stock Status Trend</h2>
+          <h2 className="text-sm font-bold text-[var(--text-primary)] mb-4">Current Stock Status</h2>
           {loading ? (
             <div className="animate-pulse h-48 bg-slate-100 dark:bg-slate-800 rounded-xl" />
-          ) : stockTrend.length === 0 ? (
+          ) : stockStatus.every(s => s.count === 0) ? (
             <div className="flex flex-col items-center justify-center py-10 text-center">
               <p className="text-sm text-gray-400">No stock data available</p>
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={240}>
-              <BarChart data={stockTrend} margin={{ top: 4, right: 10, left: -10, bottom: 0 }}>
+              <BarChart data={stockStatus} margin={{ top: 4, right: 10, left: -10, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                <XAxis dataKey="month" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} />
+                <XAxis dataKey="name" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} />
                 <Tooltip content={<CustomTooltip />} />
-                <Legend wrapperStyle={{ fontSize: 12, color: 'var(--text-secondary)' }} />
-                <Bar dataKey="inStock" name="In Stock" fill="#10b981" radius={[3,3,0,0]} />
-                <Bar dataKey="lowStock" name="Low Stock" fill="#f59e0b" radius={[3,3,0,0]} />
-                <Bar dataKey="outOfStock" name="Out of Stock" fill="#f43f5e" radius={[3,3,0,0]} />
+                <Bar dataKey="count" name="Items" radius={[3,3,0,0]}>
+                  {stockStatus.map((s, i) => <Cell key={i} fill={s.name === 'In Stock' ? '#10b981' : s.name === 'Low Stock' ? '#f59e0b' : '#f43f5e'} />)}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           )}
