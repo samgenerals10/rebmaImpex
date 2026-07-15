@@ -360,11 +360,41 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
       }
 
       if (selectedItem.type === 'Production Request' && selectedItem.raw) {
-        const newDbStatus = action === 'approve' ? 'APPROVED' : 'REJECTED';
-        await supabase.from('production_requests').update({ status: newDbStatus }).eq('id', selectedItem.id);
-
         if (action === 'approve') {
-          await supabase.from('supplier_order_notifications').insert([{ message: `Production request APPROVED by Management: ${selectedItem.description}`, notified_department: 'PRODUCTION', read: false }]);
+          // Same automated pipeline as a Marketing sales order approval: move
+          // straight to a fulfillment ticket (no separate manual release step)
+          // and add the repackaged/produced quantity to stock, mirroring the
+          // in-house-production stock ADD used for approved cargo intake.
+          await supabase.from('production_requests').update({ status: 'TICKETS_ISSUED' }).eq('id', selectedItem.id);
+
+          const req: any = selectedItem.raw;
+          const productName: string = req.product_name || req.productName || '';
+          const qty = Number(req.quantity) || 0;
+          const now = new Date().toISOString();
+
+          await supabase.from('fulfillment_tickets').insert({
+            production_request_id: selectedItem.id,
+            type: 'PRODUCTION_RELEASE',
+            details: { productName, quantity: qty, unit: req.unit, purpose: req.purpose },
+            status: 'PENDING',
+            created_at: now,
+            updated_at: now,
+          });
+
+          if (productName && qty > 0) {
+            const { data: existingStock } = await supabase.from('stock').select('id, quantity').ilike('product_name', productName).limit(1);
+            if (existingStock && existingStock.length > 0) {
+              await supabase.from('stock').update({ quantity: (existingStock[0].quantity || 0) + qty, last_updated: now }).eq('id', existingStock[0].id);
+            } else {
+              await supabase.from('stock').insert({ product_name: productName, quantity: qty, unit: req.unit || 'units', last_updated: now });
+            }
+            await supabase.from('stock_ledger').insert({ product_name: productName, movement_type: 'ADD', quantity: qty, reference: `Production Request Approved: ${selectedItem.requestId}`, created_at: now });
+          }
+
+          await supabase.from('supplier_order_notifications').insert([{ message: `Production request APPROVED by Management — ready for pickup/repackaging: ${selectedItem.description}`, notified_department: 'PRODUCTION', read: false }]);
+          await supabase.from('supplier_order_notifications').insert([{ message: `Production release ready for warehouse handling: ${selectedItem.description}`, notified_department: 'OPERATIONS', read: false }]);
+        } else {
+          await supabase.from('production_requests').update({ status: 'REJECTED' }).eq('id', selectedItem.id);
         }
       }
 

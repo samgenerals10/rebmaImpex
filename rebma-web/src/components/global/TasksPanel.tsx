@@ -63,11 +63,12 @@ export default function TasksPanel({ currentUser, addNotification }: TasksPanelP
     if (!currentUser) return;
     setLoading(true);
     try {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('tasks')
         .select('*')
         .or(`user_id.eq.${currentUser.id},assigned_to.eq.${currentUser.id},and(shared.eq.true,department.eq.${currentUser.department})`)
         .order('created_at', { ascending: false });
+      if (error) throw error;
       if (data) setTasks(data);
 
       const { data: profs } = await supabase
@@ -76,7 +77,7 @@ export default function TasksPanel({ currentUser, addNotification }: TasksPanelP
         .eq('department', currentUser.department)
         .neq('id', currentUser.id);
       if (profs) setColleagues(profs);
-    } catch { /* tables may not exist */ }
+    } catch (e) { console.error('Failed to load tasks:', e); }
     setLoading(false);
   }, [currentUser]);
 
@@ -114,14 +115,16 @@ export default function TasksPanel({ currentUser, addNotification }: TasksPanelP
         updated_at: new Date().toISOString(),
       };
       if (taskModal.id) {
-        await supabase.from('tasks').update(payload).eq('id', taskModal.id).eq('user_id', currentUser.id);
+        const { error } = await supabase.from('tasks').update(payload).eq('id', taskModal.id).eq('user_id', currentUser.id);
+        if (error) throw error;
         addNotification('Task updated.');
       } else {
-        await supabase.from('tasks').insert({ ...payload, user_id: currentUser.id, department: currentUser.department });
+        const { error } = await supabase.from('tasks').insert({ ...payload, user_id: currentUser.id, department: currentUser.department, status: 'todo' });
+        if (error) throw error;
         addNotification('Task created.');
       }
       closeTask(); load();
-    } catch { addNotification('Could not save task.'); }
+    } catch (e: any) { addNotification(`Could not save task: ${e.message || 'unknown error'}`); }
     setSaving(false);
   };
 

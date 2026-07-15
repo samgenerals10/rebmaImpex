@@ -54,8 +54,9 @@ export default function NotesPanel({ currentUser, addNotification }: NotesPanelP
         .or(`user_id.eq.${currentUser.id},and(shared_with_department.eq.true,department.eq.${currentUser.department})`)
         .order('pinned', { ascending: false })
         .order('created_at', { ascending: false });
-      if (!error && data) setNotes(data);
-    } catch { /* table may not exist yet */ }
+      if (error) throw error;
+      if (data) setNotes(data);
+    } catch (e) { console.error('Failed to load notes:', e); }
     setLoading(false);
   }, [currentUser]);
 
@@ -70,22 +71,24 @@ export default function NotesPanel({ currentUser, addNotification }: NotesPanelP
     setSaving(true);
     try {
       if (modal.id) {
-        await supabase.from('notes').update({
+        const { error } = await supabase.from('notes').update({
           title: modal.title, content: modal.content,
           color: modal.color, shared_with_department: modal.shared,
           updated_at: new Date().toISOString(),
         }).eq('id', modal.id).eq('user_id', currentUser.id);
+        if (error) throw error;
         addNotification('Note updated.');
       } else {
-        await supabase.from('notes').insert({
+        const { error } = await supabase.from('notes').insert({
           user_id: currentUser.id, department: currentUser.department,
           title: modal.title, content: modal.content,
           color: modal.color, shared_with_department: modal.shared,
         });
+        if (error) throw error;
         addNotification('Note saved.');
       }
       closeModal(); load();
-    } catch { addNotification('Could not save note.'); }
+    } catch (e: any) { addNotification(`Could not save note: ${e.message || 'unknown error'}`); }
     setSaving(false);
   };
 

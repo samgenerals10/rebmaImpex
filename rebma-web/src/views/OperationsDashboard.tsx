@@ -69,6 +69,7 @@ export default function OperationsDashboard({
   const [cardMenuOpen, setCardMenuOpen] = useState<number | null>(null);
   const [localOrders, setLocalOrders] = useState<Order[]>(ordersList);
   const [localCargo, setLocalCargo] = useState<IncomingGoods[]>(incomingGoodsList);
+  const [productionTickets, setProductionTickets] = useState<any[]>([]);
   const [lowStockItems, setLowStockItems] = useState<any[]>([]);
   const [totalStockQty, setTotalStockQty] = useState(0);
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
@@ -246,6 +247,30 @@ export default function OperationsDashboard({
   useEffect(() => {
     setLocalCargo(incomingGoodsList);
   }, [incomingGoodsList]);
+
+  const loadProductionTickets = async () => {
+    const { data } = await supabase
+      .from('fulfillment_tickets')
+      .select('*')
+      .eq('type', 'PRODUCTION_RELEASE')
+      .eq('status', 'PENDING')
+      .order('created_at', { ascending: false });
+    setProductionTickets(data || []);
+  };
+
+  useEffect(() => {
+    loadProductionTickets();
+    const channel = supabase
+      .channel('ops-production-tickets-' + Math.random().toString(36).slice(2))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'fulfillment_tickets' }, () => loadProductionTickets())
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, []);
+
+  const markProductionTicketPrepared = async (ticketId: string) => {
+    await supabase.from('fulfillment_tickets').update({ status: 'COMPLETED', updated_at: new Date().toISOString() }).eq('id', ticketId);
+    loadProductionTickets();
+  };
 
   useEffect(() => {
     let active = true;
@@ -1400,6 +1425,28 @@ export default function OperationsDashboard({
                   ))}
                   {localOrders.filter(o => o.status === 'PROCESSING').length === 0 && (
                     <p className="text-xs text-[var(--text-muted)] text-center py-6">No orders pending release from warehouse floor.</p>
+                  )}
+                </div>
+
+                <h3 className="text-lg font-bold text-[var(--text-primary)] pt-2">Production Repackaging Releases</h3>
+                <div className="divide-y divide-[var(--border)]">
+                  {productionTickets.map(ticket => (
+                    <div key={ticket.id} className="py-4 flex items-center justify-between">
+                      <div className="text-[var(--text-primary)]">
+                        <p className="text-xs font-bold text-[var(--text-primary)]">{ticket.details?.productName || 'Product'} — {ticket.details?.quantity} {ticket.details?.unit || 'units'}</p>
+                        <p className="text-[10px] text-[var(--text-muted)] mt-0.5">{ticket.details?.purpose || 'Approved by Management for repackaging/handling'}</p>
+                        <p className="text-[10px] text-cyan-500 font-semibold mt-1">Approved by Management. Ready for warehouse handling.</p>
+                      </div>
+                      <button
+                        onClick={() => markProductionTicketPrepared(ticket.id)}
+                        className="px-3 py-1.5 bg-[var(--accent)] hover:opacity-90 text-white rounded-lg text-xs font-bold cursor-pointer transition-opacity shadow"
+                      >
+                        Mark Prepared
+                      </button>
+                    </div>
+                  ))}
+                  {productionTickets.length === 0 && (
+                    <p className="text-xs text-[var(--text-muted)] text-center py-6">No production releases pending.</p>
                   )}
                 </div>
               </div>

@@ -787,3 +787,15 @@ CREATE TABLE IF NOT EXISTS public.proforma_invoices (
 ALTER TABLE public.proforma_invoices ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Allow authenticated users full access to proforma_invoices" ON public.proforma_invoices FOR ALL TO authenticated USING (true) WITH CHECK (true);
 ALTER PUBLICATION supabase_realtime ADD TABLE public.proforma_invoices;
+
+-- Notes and Tasks (personal productivity panels) were created directly in
+-- Supabase without RLS policies, so every insert/select silently failed
+-- under the anon/authenticated role even though the tables exist and the
+-- app code was correct — the UI showed a fake "Saved" toast regardless.
+ALTER TABLE public.notes ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow authenticated users full access to notes" ON public.notes;
+CREATE POLICY "Allow authenticated users full access to notes" ON public.notes FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
+ALTER TABLE public.tasks ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow authenticated users full access to tasks" ON public.tasks;
+CREATE POLICY "Allow authenticated users full access to tasks" ON public.tasks FOR ALL TO authenticated USING (true) WITH CHECK (true);
