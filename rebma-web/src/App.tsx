@@ -54,7 +54,7 @@ import CeoSupplierOrdersView from './views/ceo/SupplierOrdersView';
 import CeoControlCenter from './views/ceo/CeoControlCenter';
 import MaintenancePage from './components/MaintenancePage';
 import { CeoSettingsProvider, useCeoSettings } from './contexts/CeoSettingsContext';
-import { playNotificationSound, getSavedSound, getSavedVolume, stopAlertSound } from './utils/notificationSound';
+import { playNotificationSound, getSavedSound, getSavedVolume, stopAlertSound, setAlertNotifId } from './utils/notificationSound';
 import { uploadFile } from './utils/uploadFile';
 import { useNavBadges } from './hooks/useNavBadges';
 
@@ -346,10 +346,18 @@ export default function App() {
     ...rawNavBadges,
     SetPrices: unpricedCount
   };
-  // Per-department alert counters for tab blinking dots
+  // Per-department alert counters for tab blinking dots. The blinking dot
+  // (and, if the saved sound is "Alert", the repeating beep) persists until
+  // the user actually opens that department's tab — not on any other
+  // dismissal — per explicit request.
   const [tabAlerts, setTabAlerts] = useState<Record<string, number>>({});
   const addTabAlert = (dept: string) => setTabAlerts(prev => ({ ...prev, [dept]: (prev[dept] || 0) + 1 }));
-  const clearTabAlert = (dept: string) => setTabAlerts(prev => ({ ...prev, [dept]: 0 }));
+  const clearTabAlert = (dept: string) => setTabAlerts(prev => {
+    const next = { ...prev, [dept]: 0 };
+    const anyRemaining = Object.values(next).some(count => count > 0);
+    if (!anyRemaining) stopAlertSound();
+    return next;
+  });
 
   const setActiveDepartment = (department: string) => {
     setActiveDepartmentRaw(department);
@@ -1132,6 +1140,7 @@ export default function App() {
               if (newRecord.status === 'PENDING_APPROVAL') {
                 if (currentUser.department === 'HR' || currentUser.isCeo) {
                   addNotification(`New pending user: ${newRecord.full_name || 'Unknown'}`);
+                  addTabAlert('HR');
                   refreshAllData();
                 }
               }
@@ -1152,17 +1161,20 @@ export default function App() {
             if (payload.eventType === 'INSERT') {
               if (currentUser.department === 'MANAGEMENT' || currentUser.isCeo) {
                 addNotification(`New cargo intake logged for ${newRecord.company || 'N/A'}`);
+                addTabAlert('MANAGEMENT');
                 refreshAllData();
               }
             } else if (payload.eventType === 'UPDATE') {
               if (oldRecord && oldRecord.status !== 'APPROVED' && newRecord.status === 'APPROVED') {
                 if (currentUser.department === 'OPERATIONS' || currentUser.isCeo) {
                   addNotification(`Intake approved: ${newRecord.id}`);
+                  addTabAlert('OPERATIONS');
                   refreshAllData();
                 }
               } else if (oldRecord && oldRecord.status !== 'REJECTED' && newRecord.status === 'REJECTED') {
                 if (currentUser.department === 'OPERATIONS' || currentUser.isCeo) {
                   addNotification(`Intake rejected: ${newRecord.id}`);
+                  addTabAlert('OPERATIONS');
                   refreshAllData();
                 }
               }
@@ -1176,6 +1188,7 @@ export default function App() {
             const newRecord = payload.new as any;
             if (currentUser.department === 'DISPATCH' || currentUser.isCeo) {
               addNotification(`New delivery assigned: Order ${newRecord.order_id || 'N/A'}`);
+              addTabAlert('DISPATCH');
               refreshAllData();
             }
           }
@@ -1186,6 +1199,9 @@ export default function App() {
           () => {
             if (currentUser && (['FINANCE', 'MARKETING', 'MANAGEMENT'].includes(currentUser.department) || currentUser.isCeo)) {
               addNotification(`Price catalog updated`);
+              addTabAlert('FINANCE');
+              addTabAlert('MARKETING');
+              addTabAlert('MANAGEMENT');
             }
             refreshAllData();
           }
@@ -1225,8 +1241,13 @@ export default function App() {
         )
         .on(
           'postgres_changes',
-          { event: '*', schema: 'public', table: 'finance_payments' },
-          () => {
+          { event: 'INSERT', schema: 'public', table: 'finance_payments' },
+          (payload) => {
+            if (currentUser.department === 'FINANCE' || currentUser.isCeo) {
+              const newRecord = payload.new as any;
+              addNotification(`New payment recorded: ${newRecord.reference || newRecord.id || ''}`);
+              addTabAlert('FINANCE');
+            }
             refreshAllData();
           }
         )
@@ -1364,8 +1385,14 @@ export default function App() {
     const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     setNotifications(prev => [{ id, msg, time }, ...prev.slice(0, 49)]); // keep max 50 in bell
     setActiveToastIds(prev => { const s = new Set(prev); s.add(id); return s; });
-    // Play sound for in-app notifications
-    try { playNotificationSound(getSavedSound(), getSavedVolume()); } catch {}
+    // Play sound for in-app notifications. Tag the alert loop with a sentinel
+    // ID so dismissing an unrelated bell notification can't silence it early —
+    // it's only stopped by clearTabAlert() when the user opens the relevant
+    // department tab (or by explicitly clearing all notifications).
+    try {
+      playNotificationSound(getSavedSound(), getSavedVolume());
+      setAlertNotifId('__dept_tab_alert__');
+    } catch {}
     // Auto-dismiss toast visually after 5 seconds (notifications remain in bell)
     setTimeout(() => {
       setActiveToastIds(prev => { const s = new Set(prev); s.delete(id); return s; });
