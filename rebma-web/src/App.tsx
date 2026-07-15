@@ -46,6 +46,7 @@ import BreadcrumbBar from './components/layout/BreadcrumbBar';
 // CEO dedicated pages
 import CeoTransactionsView from './views/ceo/TransactionsView';
 import CeoInvoicesView from './views/ceo/InvoicesView';
+import FinanceStatementView from './views/finance/StatementView';
 import CeoWalletsView from './views/ceo/WalletsView';
 import CeoAccountsView from './views/ceo/AccountsView';
 import CeoApprovalsView from './views/ceo/ApprovalsView';
@@ -2800,6 +2801,7 @@ export default function App() {
     if (activeDepartment === 'FINANCE') {
       if (activeSubTab === 'Evaluation')        return <FinanceOverviewView addNotification={addNotification} setActiveSubTab={setActiveSubTab} currentUser={currentUser} ordersList={ordersList} onEvaluateOrder={handleEvaluateOrder} />;
       if (activeSubTab === 'OrdersQueue')       return <FinanceOrdersQueueView addNotification={addNotification} ordersList={ordersList} setOrdersList={setOrdersList} onEvaluateOrder={handleEvaluateOrder} currentUser={currentUser} />;
+      if (activeSubTab === 'Statement')         return <FinanceStatementView addNotification={addNotification} />;
       if (activeSubTab === 'Wallets')           return <FinanceWalletsView />;
       if (activeSubTab === 'Transactions')      return <FinanceTransactionsView addNotification={addNotification} />;
       if (activeSubTab === 'Invoices')          return <CeoInvoicesView addNotification={addNotification} currentUser={currentUser} />;

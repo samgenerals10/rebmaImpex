@@ -509,6 +509,7 @@ export default function Sidebar({
                 {sectionLabel('Reports & Auditing')}
                 <div className="space-y-0.5">
                   {[
+                    { id: 'Statement',    label: 'Statement',          icon: History },
                     { id: 'TaxVAT',       label: 'Tax & VAT',         icon: Calculator },
                     { id: 'FinReports',   label: 'Financial Reports',  icon: BarChart2 },
                     { id: 'Spreadsheets', label: 'Spreadsheets',       icon: FileSpreadsheet },
