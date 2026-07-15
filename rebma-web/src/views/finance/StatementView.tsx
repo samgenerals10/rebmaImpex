@@ -3,9 +3,9 @@
 // where it was sent, and live stock remaining — every row drills into the
 // underlying order, customer, and audit trail.
 import { useState, useEffect, useMemo } from 'react';
-import { Search, Eye } from 'lucide-react';
+import { Search, Eye, Download } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
-import { exportToCSV } from '../../utils/export';
+import { exportToCSV, downloadRowPDF } from '../../utils/export';
 import EntityDetailPanel from '../../components/global/EntityDetailPanel';
 
 interface StatementRow {
@@ -172,9 +172,21 @@ export default function StatementView({ addNotification }: Props) {
                       <td className="px-3 py-2 text-[var(--text-secondary)]">{row.paymentMode}</td>
                       <td className="px-3 py-2"><span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${STATUS_STYLES[row.status] || 'bg-gray-100 text-gray-600'}`}>{row.status.replace(/_/g, ' ')}</span></td>
                       <td className="px-3 py-2 font-semibold text-[var(--text-primary)]">{row.stockRemaining !== null ? row.stockRemaining.toLocaleString() : '—'}</td>
-                      <td className="px-3 py-2" onClick={e => e.stopPropagation()}>
+                      <td className="px-3 py-2 flex items-center gap-1" onClick={e => e.stopPropagation()}>
                         <button onClick={() => { setSelected(row); setDetailTab('order'); }} className="p-1 hover:bg-[var(--accent-light)] rounded-lg cursor-pointer text-[var(--accent)]">
                           <Eye className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => downloadRowPDF(`Statement - ${row.ticketNumber || row.orderId}`, {
+                            Ticket: row.ticketNumber || '—', OrderId: row.orderId, Date: new Date(row.date).toLocaleString(),
+                            Product: row.productName, Quantity: row.quantity, PurchasedBy: row.clientName,
+                            SentTo: row.destination || '—', PaymentMode: row.paymentMode,
+                            Status: row.status.replace(/_/g, ' '), StockRemaining: row.stockRemaining ?? '—',
+                          })}
+                          className="p-1 hover:bg-[var(--accent-light)] rounded-lg cursor-pointer text-[var(--accent)]"
+                          title="Download PDF"
+                        >
+                          <Download className="w-3.5 h-3.5" />
                         </button>
                       </td>
                     </tr>
@@ -194,6 +206,12 @@ export default function StatementView({ addNotification }: Props) {
         badgeStyle={{ background: 'var(--accent-light)', color: 'var(--accent)' }}
         fields={[]}
         onClose={() => setSelected(null)}
+        onDownloadPdf={() => downloadRowPDF(`Statement - ${selected.ticketNumber || selected.orderId}`, {
+          Ticket: selected.ticketNumber || '—', OrderId: selected.orderId, Date: new Date(selected.date).toLocaleString(),
+          Product: selected.productName, Quantity: selected.quantity, PurchasedBy: selected.clientName,
+          SentTo: selected.destination || '—', PaymentMode: selected.paymentMode,
+          Status: selected.status.replace(/_/g, ' '), StockRemaining: selected.stockRemaining ?? '—',
+        })}
       >
         <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
           {(['order', 'customer', 'audit'] as const).map(tab => (

@@ -1663,3 +1663,231 @@ export const invoices = {
     return data?.[0] ? { ...data[0], proforma_no: data[0].id } : null;
   },
 };
+
+// ── Messenger (channels, DMs, reactions, reads, ad-hoc calls) ──────────
+function slugRoom(prefix: string) {
+  return `Rebma-${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+export const messenger = {
+  ensureEveryoneChannel: async () => {
+    const { data: existing } = await supabase.from('channels').select('id').eq('type', 'everyone').limit(1);
+    if (existing && existing.length > 0) return existing[0].id;
+    const { data: created, error } = await supabase.from('channels').insert({ name: 'Everyone', type: 'everyone' }).select();
+    if (error || !created) return null;
+    return created[0].id;
+  },
+
+  listMyChannels: async (userId: string) => {
+    const { data: memberships } = await supabase.from('channel_members').select('channel_id').eq('user_id', userId);
+    const ids = (memberships || []).map(m => m.channel_id);
+    if (ids.length === 0) return [];
+    const { data: channels } = await supabase.from('channels').select('*').in('id', ids).order('created_at', { ascending: false });
+    return channels || [];
+  },
+
+  joinChannel: async (channelId: string, userId: string) => {
+    await supabase.from('channel_members').upsert({ channel_id: channelId, user_id: userId }, { onConflict: 'channel_id,user_id' });
+  },
+
+  getOrCreateDmChannel: async (myId: string, otherId: string) => {
+    const { data: myChannels } = await supabase.from('channel_members').select('channel_id').eq('user_id', myId);
+    const myIds = (myChannels || []).map(c => c.channel_id);
+    if (myIds.length > 0) {
+      const { data: otherChannels } = await supabase.from('channel_members').select('channel_id').eq('user_id', otherId).in('channel_id', myIds);
+      for (const oc of otherChannels || []) {
+        const { data: chRow } = await supabase.from('channels').select('*').eq('id', oc.channel_id).eq('type', 'dm').limit(1);
+        if (chRow && chRow.length > 0) {
+          const { count } = await supabase.from('channel_members').select('user_id', { count: 'exact', head: true }).eq('channel_id', oc.channel_id);
+          if (count === 2) return chRow[0];
+        }
+      }
+    }
+    const { data: created, error } = await supabase.from('channels').insert({ type: 'dm', created_by: myId }).select();
+    if (error || !created) throw new Error(error?.message || 'Failed to create DM channel');
+    const channel = created[0];
+    await supabase.from('channel_members').insert([
+      { channel_id: channel.id, user_id: myId },
+      { channel_id: channel.id, user_id: otherId },
+    ]);
+    return channel;
+  },
+
+  createGroupChannel: async (name: string, memberIds: string[], creatorId: string) => {
+    const { data: created, error } = await supabase.from('channels').insert({ name, type: 'group', created_by: creatorId }).select();
+    if (error || !created) throw new Error(error?.message || 'Failed to create channel');
+    const channel = created[0];
+    const allMembers = Array.from(new Set([...memberIds, creatorId]));
+    await supabase.from('channel_members').insert(allMembers.map(uid => ({ channel_id: channel.id, user_id: uid })));
+    return channel;
+  },
+
+  fetchMessages: async (channelId: string) => {
+    const { data, error } = await supabase
+      .from('chat_messages')
+      .select('*')
+      .eq('channel_id', channelId)
+      .order('created_at', { ascending: true })
+      .limit(500);
+    if (error) throw new Error(error.message);
+    return data || [];
+  },
+
+  sendMessage: async (channelId: string, senderId: string, senderName: string, content: string, opts?: { attachmentUrl?: string; attachmentType?: string; attachmentName?: string; replyToId?: string }) => {
+    const { data, error } = await supabase.from('chat_messages').insert({
+      channel_id: channelId,
+      sender_id: senderId,
+      sender: senderName,
+      content,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      attachment_url: opts?.attachmentUrl || null,
+      attachment_type: opts?.attachmentType || null,
+      attachment_name: opts?.attachmentName || null,
+      reply_to_id: opts?.replyToId || null,
+    }).select();
+    if (error) throw new Error(error.message);
+    return data?.[0] || null;
+  },
+
+  toggleReaction: async (messageId: string, userId: string, emoji: string) => {
+    const { data: existing } = await supabase.from('chat_message_reactions').select('*').eq('message_id', messageId).eq('user_id', userId).eq('emoji', emoji).limit(1);
+    if (existing && existing.length > 0) {
+      await supabase.from('chat_message_reactions').delete().eq('message_id', messageId).eq('user_id', userId).eq('emoji', emoji);
+    } else {
+      await supabase.from('chat_message_reactions').insert({ message_id: messageId, user_id: userId, emoji });
+    }
+  },
+
+  fetchReactions: async (messageIds: string[]) => {
+    if (messageIds.length === 0) return [];
+    const { data } = await supabase.from('chat_message_reactions').select('*').in('message_id', messageIds);
+    return data || [];
+  },
+
+  markRead: async (messageId: string, userId: string) => {
+    await supabase.from('chat_message_reads').upsert({ message_id: messageId, user_id: userId }, { onConflict: 'message_id,user_id' });
+  },
+
+  fetchReads: async (messageIds: string[]) => {
+    if (messageIds.length === 0) return [];
+    const { data } = await supabase.from('chat_message_reads').select('*').in('message_id', messageIds);
+    return data || [];
+  },
+
+  uploadChatAttachment: async (file: File, channelId: string) => {
+    const fileExt = file.name.split('.').pop();
+    const path = `${channelId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${fileExt}`;
+    const { error } = await supabase.storage.from('chat-attachments').upload(path, file);
+    if (error) throw new Error(error.message);
+    return path;
+  },
+
+  getSignedAttachmentUrl: async (path: string) => {
+    const { data, error } = await supabase.storage.from('chat-attachments').createSignedUrl(path, 60 * 60 * 24 * 7);
+    if (error) return null;
+    return data?.signedUrl || null;
+  },
+
+  notifyUsers: async (userIds: string[], type: string, title: string, body: string, linkRef?: string) => {
+    if (userIds.length === 0) return;
+    await supabase.from('user_notifications').insert(userIds.map(uid => ({ user_id: uid, type, title, body, link_ref: linkRef || null })));
+  },
+
+  // Ad-hoc voice/video call from a chat channel — creates a real meeting row
+  // with a fresh Jitsi room, notifies every member, and posts a join link
+  // into the thread. `kind` only changes the initial Jitsi config (audio-only
+  // vs video) — Jitsi's own UI lets either side switch mid-call.
+  startCall: async (channelId: string, memberIds: string[], organizerId: string, organizerName: string, kind: 'voice' | 'video') => {
+    const room = slugRoom(kind === 'voice' ? 'Call' : 'Video');
+    const { data: created, error } = await supabase.from('meetings').insert({
+      title: `${kind === 'voice' ? 'Voice' : 'Video'} call started by ${organizerName}`,
+      scheduled_at: new Date().toISOString(),
+      duration_minutes: 60,
+      organizer_id: organizerId,
+      jitsi_room: room,
+      status: 'IN_PROGRESS',
+    }).select();
+    if (error || !created) throw new Error(error?.message || 'Failed to start call');
+    const meeting = created[0];
+    await supabase.from('meeting_attendees').insert(memberIds.map(uid => ({ meeting_id: meeting.id, user_id: uid, rsvp_status: uid === organizerId ? 'ACCEPTED' : 'INVITED' })));
+    const callMsg = await messenger.sendMessage(channelId, organizerId, organizerName, `📞 ${kind === 'voice' ? 'Voice' : 'Video'} call started — tap to join.`, { attachmentType: 'call', attachmentUrl: meeting.id });
+    void callMsg;
+    await messenger.notifyUsers(memberIds.filter(id => id !== organizerId), 'call_started', `${organizerName} started a ${kind} call`, 'Tap to join now', meeting.id);
+    return meeting;
+  },
+};
+
+// ── Meeting App (scheduling, RSVP, recap notes) ────────────────────────
+export const meetingsApi = {
+  scheduleMeeting: async (
+    title: string, description: string, scheduledAt: string, durationMinutes: number,
+    organizerId: string, organizerName: string, attendeeIds: string[]
+  ) => {
+    const room = slugRoom('Mtg');
+    const { data: created, error } = await supabase.from('meetings').insert({
+      title, description, scheduled_at: scheduledAt, duration_minutes: durationMinutes,
+      organizer_id: organizerId, jitsi_room: room, status: 'SCHEDULED',
+    }).select();
+    if (error || !created) throw new Error(error?.message || 'Failed to schedule meeting');
+    const meeting = created[0];
+    const allAttendees = Array.from(new Set([...attendeeIds, organizerId]));
+    await supabase.from('meeting_attendees').insert(allAttendees.map(uid => ({
+      meeting_id: meeting.id, user_id: uid, rsvp_status: uid === organizerId ? 'ACCEPTED' : 'INVITED',
+    })));
+    await messenger.notifyUsers(
+      attendeeIds.filter(id => id !== organizerId), 'meeting_invite',
+      `${organizerName} invited you to "${title}"`,
+      `Scheduled ${new Date(scheduledAt).toLocaleString()}`, meeting.id
+    );
+    return meeting;
+  },
+
+  fetchMyMeetings: async (userId: string) => {
+    const { data: memberships } = await supabase.from('meeting_attendees').select('meeting_id, rsvp_status').eq('user_id', userId);
+    const ids = (memberships || []).map((m: any) => m.meeting_id);
+    if (ids.length === 0) return [];
+    const { data: meetings } = await supabase.from('meetings').select('*').in('id', ids).order('scheduled_at', { ascending: false });
+    const rsvpById: Record<string, string> = {};
+    (memberships || []).forEach((m: any) => { rsvpById[m.meeting_id] = m.rsvp_status; });
+    return (meetings || []).map((m: any) => ({ ...m, myRsvp: rsvpById[m.id] }));
+  },
+
+  fetchAttendees: async (meetingId: string) => {
+    const { data } = await supabase.from('meeting_attendees').select('*').eq('meeting_id', meetingId);
+    return data || [];
+  },
+
+  updateRsvp: async (meetingId: string, userId: string, status: 'ACCEPTED' | 'DECLINED') => {
+    await supabase.from('meeting_attendees').update({ rsvp_status: status }).eq('meeting_id', meetingId).eq('user_id', userId);
+  },
+
+  markJoined: async (meetingId: string, userId: string) => {
+    await supabase.from('meeting_attendees').update({ joined_at: new Date().toISOString() }).eq('meeting_id', meetingId).eq('user_id', userId);
+    await supabase.from('meetings').update({ status: 'IN_PROGRESS' }).eq('id', meetingId).eq('status', 'SCHEDULED');
+  },
+
+  saveRecapNotes: async (meetingId: string, notes: string) => {
+    await supabase.from('meetings').update({ recap_notes: notes }).eq('id', meetingId);
+  },
+
+  completeMeeting: async (meetingId: string) => {
+    await supabase.from('meetings').update({ status: 'COMPLETED' }).eq('id', meetingId);
+  },
+
+  cancelMeeting: async (meetingId: string) => {
+    await supabase.from('meetings').update({ status: 'CANCELLED' }).eq('id', meetingId);
+  },
+
+  fetchMyNotifications: async (userId: string) => {
+    const { data } = await supabase.from('user_notifications').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(50);
+    return data || [];
+  },
+
+  markNotificationRead: async (id: string) => {
+    await supabase.from('user_notifications').update({ read: true }).eq('id', id);
+  },
+
+  markAllNotificationsRead: async (userId: string) => {
+    await supabase.from('user_notifications').update({ read: true }).eq('user_id', userId).eq('read', false);
+  },
+};

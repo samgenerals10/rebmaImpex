@@ -1,5 +1,8 @@
 // rebma-web/src/utils/export.ts
 
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+
 export const exportToCSV = (data: any[], headers: string[], fileName: string) => {
   const csvRows = [];
   // Header row
@@ -29,78 +32,77 @@ export const exportToCSV = (data: any[], headers: string[], fileName: string) =>
   document.body.removeChild(link);
 };
 
-export const exportToPDF = (title: string, data: any[], headers: string[]) => {
-  const printWindow = window.open('', '_blank');
-  if (!printWindow) {
-    alert("Popup blocker prevented report window from opening.");
-    return;
+function slugFileName(title: string) {
+  return title.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'report';
+}
+
+function drawLetterhead(doc: jsPDF, title: string) {
+  doc.setFillColor(2, 152, 208);
+  doc.rect(0, 0, doc.internal.pageSize.getWidth(), 3, 'F');
+  doc.setFontSize(16);
+  doc.setTextColor(6, 78, 41);
+  doc.setFont('helvetica', 'bold');
+  doc.text('REMBA IMPEX GHANA LIMITED', 14, 18);
+  doc.setFontSize(10);
+  doc.setTextColor(100, 116, 139);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`${title} Report - Confidential Internal Document`, 14, 25);
+  const now = new Date();
+  doc.text(`Generated: ${now.toLocaleDateString()} ${now.toLocaleTimeString()}`, doc.internal.pageSize.getWidth() - 14, 18, { align: 'right' });
+  doc.setDrawColor(2, 152, 208);
+  doc.setLineWidth(0.5);
+  doc.line(14, 30, doc.internal.pageSize.getWidth() - 14, 30);
+}
+
+function drawFooter(doc: jsPDF) {
+  const pageCount = doc.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    const pageHeight = doc.internal.pageSize.getHeight();
+    doc.setFontSize(8);
+    doc.setTextColor(148, 163, 184);
+    doc.text(
+      'REMBA IMPEX GHANA LIMITED Enterprise Resource Planning. This document is system-generated and confidential.',
+      doc.internal.pageSize.getWidth() / 2, pageHeight - 10, { align: 'center' }
+    );
   }
-  
-  let rowsHtml = '';
-  data.forEach(row => {
-    rowsHtml += '<tr>';
-    headers.forEach(header => {
-      let val = row[header] !== undefined && row[header] !== null ? row[header] : '';
-      if (typeof val === 'object') {
-        val = JSON.stringify(val);
-      }
-      rowsHtml += `<td>${val}</td>`;
-    });
-    rowsHtml += '</tr>';
+}
+
+function cellText(val: any): string {
+  if (val === undefined || val === null) return '';
+  return typeof val === 'object' ? JSON.stringify(val) : String(val);
+}
+
+// Real downloadable PDF (replaces the old print-window trick) — same
+// signature as before, so every existing call site works unmodified.
+export const exportToPDF = (title: string, data: any[], headers: string[]) => {
+  const doc = new jsPDF({ orientation: headers.length > 6 ? 'landscape' : 'portrait' });
+  drawLetterhead(doc, title);
+  autoTable(doc, {
+    startY: 36,
+    head: [headers.map(h => h.replace(/([A-Z])/g, ' $1').trim())],
+    body: data.map(row => headers.map(h => cellText(row[h]))),
+    headStyles: { fillColor: [248, 250, 252], textColor: [51, 65, 85], fontStyle: 'bold' },
+    styles: { fontSize: 8, cellPadding: 3 },
+    alternateRowStyles: { fillColor: [248, 250, 252] },
   });
-  
-  printWindow.document.write(`
-    <html>
-      <head>
-        <title>REMBA IMPEX GHANA LIMITED - ${title}</title>
-        <style>
-          body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 30px; color: #1e293b; background: #ffffff; }
-          .header-container { display: flex; align-items: center; justify-content: space-between; border-bottom: 3px solid #0298d0; padding-bottom: 15px; margin-bottom: 20px; }
-          .title-area h1 { margin: 0; font-size: 24px; color: #064e29; }
-          .title-area p { margin: 5px 0 0 0; font-size: 12px; color: #64748b; }
-          .meta-info { text-align: right; font-size: 11px; color: #64748b; }
-          table { width: 100%; border-collapse: collapse; margin-top: 25px; }
-          th, td { border: 1px solid #e2e8f0; padding: 12px 10px; text-align: left; font-size: 11px; }
-          th { background-color: #f8fafc; color: #334155; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; }
-          tr:nth-child(even) { background-color: #f8fafc; }
-          .footer { margin-top: 50px; font-size: 10px; color: #94a3b8; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 15px; }
-        </style>
-      </head>
-      <body>
-        <div class="header-container">
-          <div class="title-area">
-            <h1>REMBA IMPEX GHANA LIMITED</h1>
-            <p>${title} Report - Confidential Internal Document</p>
-          </div>
-          <div class="meta-info">
-            <p><strong>Date Generated:</strong> ${new Date().toLocaleDateString()}</p>
-            <p><strong>Time:</strong> ${new Date().toLocaleTimeString()}</p>
-          </div>
-        </div>
-        
-        <table>
-          <thead>
-            <tr>
-              ${headers.map(h => `<th>${h.replace(/([A-Z])/g, ' $1').trim()}</th>`).join('')}
-            </tr>
-          </thead>
-          <tbody>
-            ${rowsHtml}
-          </tbody>
-        </table>
-        
-        <div class="footer">
-          REMBA IMPEX GHANA LIMITED Enterprise Resource Planning. This document is system-generated and confidential.
-        </div>
-        
-        <script>
-          window.onload = function() {
-            window.print();
-            setTimeout(function() { window.close(); }, 500);
-          };
-        </script>
-      </body>
-    </html>
-  `);
-  printWindow.document.close();
+  drawFooter(doc);
+  doc.save(`${slugFileName(title)}.pdf`);
+};
+
+// Single-record export (order detail, receipt, ticket, etc.) — a labeled
+// field list instead of a table, for row/modal-level PDF downloads.
+export const downloadRowPDF = (title: string, fields: Record<string, any>) => {
+  const doc = new jsPDF();
+  drawLetterhead(doc, title);
+  autoTable(doc, {
+    startY: 36,
+    head: [['Field', 'Value']],
+    body: Object.entries(fields).map(([k, v]) => [k.replace(/([A-Z])/g, ' $1').trim(), cellText(v)]),
+    headStyles: { fillColor: [248, 250, 252], textColor: [51, 65, 85], fontStyle: 'bold' },
+    styles: { fontSize: 9, cellPadding: 4 },
+    columnStyles: { 0: { fontStyle: 'bold', cellWidth: 50 } },
+  });
+  drawFooter(doc);
+  doc.save(`${slugFileName(title)}.pdf`);
 };

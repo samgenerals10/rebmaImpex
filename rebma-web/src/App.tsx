@@ -11,7 +11,7 @@ import { QuickActions } from './components/layout/QuickActions';
 import { MobileSearch } from './components/layout/MobileSearch';
 import { MobileNotifications } from './components/layout/MobileNotifications';
 import { applyAccentOverride } from './utils/accentOverride';
-import ChatDrawer from './components/collaborative/ChatDrawer';
+import Messenger from './components/collaborative/Messenger';
 
 import CeoDashboard from './views/CeoDashboard';
 import ManagementDashboard from './views/ManagementDashboard';
@@ -3840,15 +3840,11 @@ function AppInner({
           notifications={notifications}
         />
 
-        {/* 8. COLLABORATIVE MESSAGE DRAWER */}
-        <ChatDrawer
+        {/* 8. COLLABORATIVE MESSENGER (chat + calls) */}
+        <Messenger
           isOpen={isChatOpen}
           onClose={() => setIsChatOpen(false)}
-          chatMessages={chatMessages}
-          onSendMessage={sendChatMessage}
           currentUser={currentUser}
-          boardroomMinutes={boardroomMinutes}
-          setBoardroomMinutes={setBoardroomMinutes}
         />
 
         {/* 9. GLOBAL TOAST NOTIFICATION OVERLAY */}

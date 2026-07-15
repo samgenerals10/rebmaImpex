@@ -799,3 +799,118 @@ CREATE POLICY "Allow authenticated users full access to notes" ON public.notes F
 ALTER TABLE public.tasks ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow authenticated users full access to tasks" ON public.tasks;
 CREATE POLICY "Allow authenticated users full access to tasks" ON public.tasks FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- CHAT MESSENGER + MEETING APP
+-- Replaces the flat chat_messages/boardroom_meetings/in-memory-only pattern
+-- with real channels, attachments, reactions, threaded replies, read
+-- receipts, scheduled meetings with dynamic Jitsi rooms, and per-user
+-- persisted notifications (meeting invites, new messages).
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS public.channels (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name TEXT,
+    type TEXT NOT NULL DEFAULT 'group' CHECK (type IN ('group', 'dm', 'everyone')),
+    created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE public.channels ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow authenticated users full access to channels" ON public.channels;
+CREATE POLICY "Allow authenticated users full access to channels" ON public.channels FOR ALL TO authenticated USING (true) WITH CHECK (true);
+ALTER PUBLICATION supabase_realtime ADD TABLE public.channels;
+
+CREATE TABLE IF NOT EXISTS public.channel_members (
+    channel_id UUID NOT NULL REFERENCES public.channels(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    joined_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (channel_id, user_id)
+);
+ALTER TABLE public.channel_members ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow authenticated users full access to channel_members" ON public.channel_members;
+CREATE POLICY "Allow authenticated users full access to channel_members" ON public.channel_members FOR ALL TO authenticated USING (true) WITH CHECK (true);
+ALTER PUBLICATION supabase_realtime ADD TABLE public.channel_members;
+
+-- Extend the existing flat chat_messages table rather than replace it.
+ALTER TABLE public.chat_messages ADD COLUMN IF NOT EXISTS channel_id UUID REFERENCES public.channels(id) ON DELETE CASCADE;
+ALTER TABLE public.chat_messages ADD COLUMN IF NOT EXISTS attachment_url TEXT;
+ALTER TABLE public.chat_messages ADD COLUMN IF NOT EXISTS attachment_type TEXT;
+ALTER TABLE public.chat_messages ADD COLUMN IF NOT EXISTS attachment_name TEXT;
+ALTER TABLE public.chat_messages ADD COLUMN IF NOT EXISTS reply_to_id UUID REFERENCES public.chat_messages(id) ON DELETE SET NULL;
+ALTER TABLE public.chat_messages ADD COLUMN IF NOT EXISTS sender_id UUID REFERENCES auth.users(id) ON DELETE SET NULL;
+ALTER TABLE public.chat_messages ADD COLUMN IF NOT EXISTS edited_at TIMESTAMPTZ;
+
+CREATE TABLE IF NOT EXISTS public.chat_message_reactions (
+    message_id UUID NOT NULL REFERENCES public.chat_messages(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    emoji TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (message_id, user_id, emoji)
+);
+ALTER TABLE public.chat_message_reactions ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow authenticated users full access to chat_message_reactions" ON public.chat_message_reactions;
+CREATE POLICY "Allow authenticated users full access to chat_message_reactions" ON public.chat_message_reactions FOR ALL TO authenticated USING (true) WITH CHECK (true);
+ALTER PUBLICATION supabase_realtime ADD TABLE public.chat_message_reactions;
+
+CREATE TABLE IF NOT EXISTS public.chat_message_reads (
+    message_id UUID NOT NULL REFERENCES public.chat_messages(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    read_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (message_id, user_id)
+);
+ALTER TABLE public.chat_message_reads ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow authenticated users full access to chat_message_reads" ON public.chat_message_reads;
+CREATE POLICY "Allow authenticated users full access to chat_message_reads" ON public.chat_message_reads FOR ALL TO authenticated USING (true) WITH CHECK (true);
+ALTER PUBLICATION supabase_realtime ADD TABLE public.chat_message_reads;
+
+CREATE TABLE IF NOT EXISTS public.meetings (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    title TEXT NOT NULL,
+    description TEXT,
+    scheduled_at TIMESTAMPTZ NOT NULL,
+    duration_minutes INTEGER NOT NULL DEFAULT 30,
+    organizer_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+    jitsi_room TEXT UNIQUE NOT NULL,
+    recap_notes TEXT,
+    status TEXT NOT NULL DEFAULT 'SCHEDULED' CHECK (status IN ('SCHEDULED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED')),
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE public.meetings ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow authenticated users full access to meetings" ON public.meetings;
+CREATE POLICY "Allow authenticated users full access to meetings" ON public.meetings FOR ALL TO authenticated USING (true) WITH CHECK (true);
+ALTER PUBLICATION supabase_realtime ADD TABLE public.meetings;
+
+CREATE TABLE IF NOT EXISTS public.meeting_attendees (
+    meeting_id UUID NOT NULL REFERENCES public.meetings(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    rsvp_status TEXT NOT NULL DEFAULT 'INVITED' CHECK (rsvp_status IN ('INVITED', 'ACCEPTED', 'DECLINED')),
+    joined_at TIMESTAMPTZ,
+    PRIMARY KEY (meeting_id, user_id)
+);
+ALTER TABLE public.meeting_attendees ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow authenticated users full access to meeting_attendees" ON public.meeting_attendees;
+CREATE POLICY "Allow authenticated users full access to meeting_attendees" ON public.meeting_attendees FOR ALL TO authenticated USING (true) WITH CHECK (true);
+ALTER PUBLICATION supabase_realtime ADD TABLE public.meeting_attendees;
+
+CREATE TABLE IF NOT EXISTS public.user_notifications (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    type TEXT NOT NULL,
+    title TEXT NOT NULL,
+    body TEXT,
+    link_ref TEXT,
+    read BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE public.user_notifications ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow authenticated users full access to user_notifications" ON public.user_notifications;
+CREATE POLICY "Allow authenticated users full access to user_notifications" ON public.user_notifications FOR ALL TO authenticated USING (true) WITH CHECK (true);
+ALTER PUBLICATION supabase_realtime ADD TABLE public.user_notifications;
+
+-- chat-attachments Storage bucket is private (unlike this app's other public
+-- buckets) — access is via signed URLs generated on demand, gated by these
+-- storage.objects policies restricted to authenticated users.
+DROP POLICY IF EXISTS "Allow authenticated read chat-attachments" ON storage.objects;
+CREATE POLICY "Allow authenticated read chat-attachments" ON storage.objects FOR SELECT TO authenticated USING (bucket_id = 'chat-attachments');
+DROP POLICY IF EXISTS "Allow authenticated upload chat-attachments" ON storage.objects;
+CREATE POLICY "Allow authenticated upload chat-attachments" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'chat-attachments');

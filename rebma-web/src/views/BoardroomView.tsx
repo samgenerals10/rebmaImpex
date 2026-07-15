@@ -1,8 +1,11 @@
 // rebma-web/src/views/BoardroomView.tsx
 
-import { useState } from 'react';
-import { Video, Users, FileSpreadsheet, FileText, Send, Calendar, Clock } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Video, Users, FileSpreadsheet, FileText, Send, Calendar, Clock, Check, X as XIcon, Phone } from 'lucide-react';
 import { exportToCSV, exportToPDF } from '../utils/export';
+import { supabase } from '../lib/supabaseClient';
+import { meetingsApi } from '../services/apiClient';
+import JitsiCallModal from '../components/collaborative/JitsiCallModal';
 import type { ChatMessage, BoardroomMeeting, CurrentUser } from '../types/erp';
 
 interface BoardroomViewProps {
@@ -15,6 +18,13 @@ interface BoardroomViewProps {
   meetingsList: BoardroomMeeting[];
   setMeetingsList: React.Dispatch<React.SetStateAction<BoardroomMeeting[]>>;
 }
+
+interface RealMeeting {
+  id: string; title: string; description: string | null; scheduled_at: string;
+  duration_minutes: number; organizer_id: string | null; jitsi_room: string;
+  recap_notes: string | null; status: string; myRsvp?: string;
+}
+interface AttendeeProfile { id: string; fullName: string; department: string; }
 
 export default function BoardroomView({
   boardroomMinutes,
@@ -38,12 +48,69 @@ export default function BoardroomView({
   const [meetingTitle, setMeetingTitle] = useState('');
   const [meetingDate, setMeetingDate] = useState('');
   const [meetingTime, setMeetingTime] = useState('');
-  const [meetingParticipants, setMeetingParticipants] = useState<string[]>(['CEO', 'OPERATIONS', 'FINANCE']);
+  const [meetingDuration, setMeetingDuration] = useState(30);
+  const [selectedAttendeeIds, setSelectedAttendeeIds] = useState<string[]>([]);
 
   const departmentsList = [
-    'CEO', 'MANAGEMENT', 'FINANCE', 'OPERATIONS', 'MARKETING', 
+    'CEO', 'MANAGEMENT', 'FINANCE', 'OPERATIONS', 'MARKETING',
     'HR', 'PRODUCTION', 'RECEPTION', 'DISPATCH', 'LOGISTICS'
   ];
+
+  // Real meetings backed by Supabase (meetings / meeting_attendees / user_notifications)
+  const [realMeetings, setRealMeetings] = useState<RealMeeting[]>([]);
+  const [attendeeProfiles, setAttendeeProfiles] = useState<AttendeeProfile[]>([]);
+  const [activeCall, setActiveCall] = useState<{ room: string; title: string } | null>(null);
+
+  const myId = currentUser?.id || '';
+
+  const loadMeetings = useCallback(async () => {
+    if (!myId) return;
+    const rows = await meetingsApi.fetchMyMeetings(myId);
+    setRealMeetings(rows as RealMeeting[]);
+  }, [myId]);
+
+  useEffect(() => {
+    if (activeSubTab !== 'Meetings' || !myId) return;
+    loadMeetings();
+    (async () => {
+      const { data } = await supabase.from('profiles').select('id, full_name, role').eq('status', 'ACTIVE').order('full_name', { ascending: true });
+      setAttendeeProfiles((data || []).map((p: any) => ({ id: p.id, fullName: p.full_name || 'Unknown', department: p.role || '' })).filter(p => p.id !== myId));
+    })();
+    const ch = supabase.channel('boardroom-meetings')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'meetings' }, () => loadMeetings())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'meeting_attendees' }, () => loadMeetings())
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [activeSubTab, myId, loadMeetings]);
+
+  const handleAttendeeToggle = (id: string) => {
+    setSelectedAttendeeIds(prev => prev.includes(id) ? prev.filter(a => a !== id) : [...prev, id]);
+  };
+
+  const handleScheduleRealMeeting = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!meetingTitle.trim() || !meetingDate || !meetingTime) {
+      alert('Please fill out all meeting details');
+      return;
+    }
+    const scheduledAt = new Date(`${meetingDate}T${meetingTime}`).toISOString();
+    await meetingsApi.scheduleMeeting(
+      meetingTitle.trim(), '', scheduledAt, meetingDuration, myId,
+      currentUser?.fullName || 'Organizer', selectedAttendeeIds
+    );
+    setMeetingTitle(''); setMeetingDate(''); setMeetingTime(''); setSelectedAttendeeIds([]);
+    loadMeetings();
+  };
+
+  const handleJoinMeeting = async (mtg: RealMeeting) => {
+    await meetingsApi.markJoined(mtg.id, myId);
+    setActiveCall({ room: mtg.jitsi_room, title: mtg.title });
+  };
+
+  const handleRsvp = async (meetingId: string, status: 'ACCEPTED' | 'DECLINED') => {
+    await meetingsApi.updateRsvp(meetingId, myId, status);
+    loadMeetings();
+  };
 
   const handleExportCSV = () => {
     const formattedData = [
@@ -84,34 +151,6 @@ export default function BoardroomView({
     };
     setChatMessages(prev => [...prev, newMsg]);
     setDmText('');
-  };
-
-  const handleScheduleMeeting = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!meetingTitle.trim() || !meetingDate || !meetingTime) {
-      alert('Please fill out all meeting details');
-      return;
-    }
-    const newMtg: BoardroomMeeting = {
-      id: `MTG-${Date.now().toString().slice(-4)}`,
-      title: meetingTitle.trim(),
-      date: meetingDate,
-      time: meetingTime,
-      organizer: currentUser?.fullName || 'Samuel Remba',
-      participants: meetingParticipants
-    };
-    setMeetingsList(prev => [newMtg, ...prev]);
-    setMeetingTitle('');
-    setMeetingDate('');
-    setMeetingTime('');
-  };
-
-  const handleParticipantToggle = (dept: string) => {
-    if (meetingParticipants.includes(dept)) {
-      setMeetingParticipants(prev => prev.filter(d => d !== dept));
-    } else {
-      setMeetingParticipants(prev => [...prev, dept]);
-    }
   };
 
   // Filter public announcements (no receiver set)
@@ -470,11 +509,11 @@ export default function BoardroomView({
                     <Calendar className="w-5 h-5 text-[var(--accent)]" />
                     <h3 className="text-base md:text-lg font-bold text-[var(--text-primary)]">Organize Meeting</h3>
                   </div>
-                  <form onSubmit={handleScheduleMeeting} className="space-y-4">
+                  <form onSubmit={handleScheduleRealMeeting} className="space-y-4">
                     <div>
                       <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Meeting Title / Topic</label>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         value={meetingTitle}
                         onChange={(e) => setMeetingTitle(e.target.value)}
                         required
@@ -485,8 +524,8 @@ export default function BoardroomView({
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Date</label>
-                        <input 
-                          type="date" 
+                        <input
+                          type="date"
                           value={meetingDate}
                           onChange={(e) => setMeetingDate(e.target.value)}
                           required
@@ -495,8 +534,8 @@ export default function BoardroomView({
                       </div>
                       <div>
                         <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Time</label>
-                        <input 
-                          type="time" 
+                        <input
+                          type="time"
                           value={meetingTime}
                           onChange={(e) => setMeetingTime(e.target.value)}
                           required
@@ -504,78 +543,92 @@ export default function BoardroomView({
                         />
                       </div>
                     </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Duration (minutes)</label>
+                      <input
+                        type="number" min={5} step={5} value={meetingDuration}
+                        onChange={(e) => setMeetingDuration(Number(e.target.value) || 30)}
+                        className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
+                      />
+                    </div>
 
                     <div>
-                      <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Select Participants</label>
-                      <div className="grid grid-cols-2 gap-2 max-h-36 overflow-y-auto p-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl">
-                        {departmentsList.map(dept => (
-                          <label key={dept} className="flex items-center gap-1.5 text-xs text-[var(--text-primary)] cursor-pointer">
-                            <input 
-                              type="checkbox" 
-                              checked={meetingParticipants.includes(dept)} 
-                              onChange={() => handleParticipantToggle(dept)} 
+                      <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Invite Attendees</label>
+                      <div className="grid grid-cols-1 gap-1.5 max-h-40 overflow-y-auto p-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl">
+                        {attendeeProfiles.map(p => (
+                          <label key={p.id} className="flex items-center gap-1.5 text-xs text-[var(--text-primary)] cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={selectedAttendeeIds.includes(p.id)}
+                              onChange={() => handleAttendeeToggle(p.id)}
                               className="cursor-pointer"
                             />
-                            {dept}
+                            {p.fullName} <span className="text-[var(--text-muted)]">({p.department})</span>
                           </label>
                         ))}
+                        {attendeeProfiles.length === 0 && <p className="text-[10px] text-[var(--text-muted)]">No other staff found.</p>}
                       </div>
                     </div>
 
-                    <button 
-                      type="submit" 
+                    <button
+                      type="submit"
                       className="w-full py-2.5 bg-[var(--accent)] hover:opacity-90 text-white rounded-xl text-xs font-bold shadow cursor-pointer transition-all"
                     >
-                      Schedule Executive Board Meeting
+                      Schedule Meeting & Notify Attendees
                     </button>
                   </form>
                 </div>
 
-                {/* Scheduled Timeline */}
+                {/* Scheduled Timeline (real data) */}
                 <div className="p-4 md:p-6 bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] border border-[var(--border)] lg:col-span-2 space-y-4">
-                  <h3 className="text-base md:text-lg font-bold text-[var(--text-primary)]">Scheduled Board Meetings Timeline</h3>
+                  <h3 className="text-base md:text-lg font-bold text-[var(--text-primary)]">My Meetings</h3>
                   <div className="space-y-4 max-h-[420px] overflow-y-auto pr-1">
-                    {meetingsList.map(mtg => (
+                    {realMeetings.map(mtg => (
                       <div key={mtg.id} className="p-4 bg-[var(--bg)] border border-[var(--border)] rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 hover:scale-101 transition-all">
                         <div className="space-y-1 flex-1">
                           <div className="flex items-center gap-2">
-                            <span className="text-[9px] bg-[var(--accent-light)] text-[var(--accent)] font-bold px-2 py-0.5 rounded font-mono">
-                              {mtg.id}
-                            </span>
+                            <span className={`text-[9px] font-bold px-2 py-0.5 rounded uppercase ${
+                              mtg.status === 'COMPLETED' ? 'bg-slate-500/10 text-text-secondary'
+                              : mtg.status === 'CANCELLED' ? 'bg-red-500/10 text-red-600'
+                              : mtg.status === 'IN_PROGRESS' ? 'bg-emerald-500/10 text-emerald-600'
+                              : 'bg-[var(--accent-light)] text-[var(--accent)]'
+                            }`}>{mtg.status}</span>
                             <h4 className="text-sm font-bold text-[var(--text-primary)]">{mtg.title}</h4>
                           </div>
                           <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-[var(--text-muted)] font-medium">
                             <p className="flex items-center gap-1 text-[10px]">
                               <Calendar className="w-3.5 h-3.5 text-[var(--text-muted)]" />
-                              {mtg.date}
+                              {new Date(mtg.scheduled_at).toLocaleDateString()}
                             </p>
                             <p className="flex items-center gap-1 text-[10px]">
                               <Clock className="w-3.5 h-3.5 text-[var(--text-muted)]" />
-                              {mtg.time}
+                              {new Date(mtg.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · {mtg.duration_minutes}min
                             </p>
-                            <p className="text-[10px]">Organizer: <strong className="text-[var(--text-primary)]">{mtg.organizer}</strong></p>
+                            {mtg.myRsvp && <p className="text-[10px]">Your RSVP: <strong className="text-[var(--text-primary)]">{mtg.myRsvp}</strong></p>}
                           </div>
-                          <div className="pt-2 flex flex-wrap gap-1">
-                            {mtg.participants.map(p => (
-                              <span key={p} className="text-[8px] bg-[var(--accent-light)] text-[var(--accent)] px-1.5 py-0.5 rounded font-semibold uppercase">
-                                {p}
-                              </span>
-                            ))}
-                          </div>
+                          {mtg.recap_notes && (
+                            <p className="text-[10px] text-[var(--text-muted)] mt-1 line-clamp-2">Recap: {mtg.recap_notes}</p>
+                          )}
                         </div>
-                        <div className="shrink-0 flex items-center">
-                          <a 
-                            href="https://meet.jit.si/RembaImpexGhanaExecutiveBoardroom_101" 
-                            target="_blank" 
-                            rel="noreferrer"
-                            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold cursor-pointer transition-all shadow"
-                          >
-                            Join Stream
-                          </a>
+                        <div className="shrink-0 flex items-center gap-2">
+                          {mtg.myRsvp === 'INVITED' && (
+                            <>
+                              <button onClick={() => handleRsvp(mtg.id, 'ACCEPTED')} className="p-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg cursor-pointer" title="Accept"><Check size={14} /></button>
+                              <button onClick={() => handleRsvp(mtg.id, 'DECLINED')} className="p-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg cursor-pointer" title="Decline"><XIcon size={14} /></button>
+                            </>
+                          )}
+                          {mtg.status !== 'CANCELLED' && mtg.status !== 'COMPLETED' && (
+                            <button
+                              onClick={() => handleJoinMeeting(mtg)}
+                              className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold cursor-pointer transition-all shadow"
+                            >
+                              <Phone size={12} /> Join
+                            </button>
+                          )}
                         </div>
                       </div>
                     ))}
-                    {meetingsList.length === 0 && (
+                    {realMeetings.length === 0 && (
                       <p className="text-xs text-[var(--text-muted)] text-center py-12">No meetings scheduled on the board calendar.</p>
                     )}
                   </div>
@@ -585,6 +638,10 @@ export default function BoardroomView({
           </div>
         </div>
       </div>
+
+      {activeCall && (
+        <JitsiCallModal room={activeCall.room} title={activeCall.title} kind="video" onClose={() => setActiveCall(null)} />
+      )}
     </>
   );
 }

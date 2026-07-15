@@ -1,4 +1,4 @@
-import { X } from 'lucide-react';
+import { X, Download } from 'lucide-react';
 
 interface Field {
   label: string;
@@ -15,9 +15,10 @@ interface Props {
   onClose: () => void;
   actions?: React.ReactNode;
   children?: React.ReactNode;
+  onDownloadPdf?: () => void;
 }
 
-export default function EntityDetailPanel({ title, subtitle, badgeText, badgeStyle, fields, onClose, actions, children }: Props) {
+export default function EntityDetailPanel({ title, subtitle, badgeText, badgeStyle, fields, onClose, actions, children, onDownloadPdf }: Props) {
   return (
     <div
       style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
@@ -38,9 +39,16 @@ export default function EntityDetailPanel({ title, subtitle, badgeText, badgeSty
             </div>
             {subtitle && <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--text-muted)' }}>{subtitle}</p>}
           </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4, borderRadius: 8, flexShrink: 0 }}>
-            <X size={18} />
-          </button>
+          <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+            {onDownloadPdf && (
+              <button onClick={onDownloadPdf} title="Download PDF" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent)', padding: 4, borderRadius: 8 }}>
+                <Download size={18} />
+              </button>
+            )}
+            <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4, borderRadius: 8 }}>
+              <X size={18} />
+            </button>
+          </div>
         </div>
 
         {/* Fields grid */}
