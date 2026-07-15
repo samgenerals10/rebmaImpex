@@ -1626,7 +1626,7 @@ export const invoices = {
       .order('created_at', { ascending: false })
       .limit(200);
     if (error) throw new Error(error.message);
-    return data || [];
+    return (data || []).map(row => ({ ...row, proforma_no: row.id }));
   },
 
   createProforma: async (input: {
@@ -1660,6 +1660,6 @@ export const invoices = {
       })
       .select();
     if (error) throw new Error(error.message);
-    return data?.[0] || null;
+    return data?.[0] ? { ...data[0], proforma_no: data[0].id } : null;
   },
 };
