@@ -2781,7 +2781,7 @@ export default function App() {
     // CEO dedicated sub-tab pages
     if (activeDepartment === 'CEO') {
       if (activeSubTab === 'Transactions')    return <CeoTransactionsView addNotification={addNotification} />;
-      if (activeSubTab === 'Invoices')        return <CeoInvoicesView addNotification={addNotification} />;
+      if (activeSubTab === 'Invoices')        return <CeoInvoicesView addNotification={addNotification} currentUser={currentUser} />;
       if (activeSubTab === 'Wallets')         return <CeoWalletsView setActiveSubTab={setActiveSubTab} />;
       if (activeSubTab === 'Accounts')        return <CeoAccountsView setActiveSubTab={setActiveSubTab} />;
       if (activeSubTab === 'Approvals')       return <CeoApprovalsView currentUser={currentUser} addNotification={addNotification} />;
@@ -2801,7 +2801,7 @@ export default function App() {
       if (activeSubTab === 'OrdersQueue')       return <FinanceOrdersQueueView addNotification={addNotification} ordersList={ordersList} setOrdersList={setOrdersList} onEvaluateOrder={handleEvaluateOrder} currentUser={currentUser} />;
       if (activeSubTab === 'Wallets')           return <FinanceWalletsView />;
       if (activeSubTab === 'Transactions')      return <FinanceTransactionsView addNotification={addNotification} />;
-      if (activeSubTab === 'Invoices')          return <CeoInvoicesView addNotification={addNotification} />;
+      if (activeSubTab === 'Invoices')          return <CeoInvoicesView addNotification={addNotification} currentUser={currentUser} />;
       if (activeSubTab === 'PriceCatalog')      return <GoodsPriceCatalogView addNotification={addNotification} />;
       if (activeSubTab === 'RecurringPayments') return <FinanceRecurringView currentUser={currentUser} addNotification={addNotification} />;
       if (activeSubTab === 'CreditMgmt')        return <FinanceCreditMgmtView addNotification={addNotification} currentUser={currentUser} />;
@@ -2816,6 +2816,7 @@ export default function App() {
     // Management dedicated sub-tab pages
     if (activeDepartment === 'MANAGEMENT') {
       if (activeSubTab === 'CargoApproval')   return <MgmtOverviewView addNotification={addNotification} setActiveSubTab={setActiveSubTab} currentUser={currentUser} />;
+      if (activeSubTab === 'Invoices')        return <CeoInvoicesView addNotification={addNotification} currentUser={currentUser} />;
       if (activeSubTab === 'CreditApproval')  return <MgmtApprovalsView addNotification={addNotification} currentUser={currentUser} />;
       if (activeSubTab === 'SetPrices')       return <MgmtPriceSettingView addNotification={addNotification} currentUser={currentUser} />;
       if (activeSubTab === 'Transactions')    return <ManagementTransactionsView addNotification={addNotification} />;
@@ -2830,7 +2831,7 @@ export default function App() {
     // Marketing dedicated sub-tab pages
     if (activeDepartment === 'MARKETING') {
       if (activeSubTab === 'Overview')          return <MarketingOverviewView addNotification={addNotification} setActiveSubTab={setActiveSubTab} currentUser={currentUser} ordersList={ordersList} customersList={customersList} />;
-      if (activeSubTab === 'Invoices')          return <MarketingInvoicesView addNotification={addNotification} />;
+      if (activeSubTab === 'Invoices')          return <MarketingInvoicesView addNotification={addNotification} currentUser={currentUser} />;
       if (activeSubTab === 'PriceCatalog')      return <GoodsPriceCatalogView addNotification={addNotification} />;
       if (activeSubTab === 'CreateOrder')       return <MarketingOrdersView ordersList={ordersList} onCreateOrder={handleCreateOrder} addNotification={addNotification} />;
       if (activeSubTab === 'RegisterCustomer')  return <MarketingCustomersView customersList={customersList} onRegisterCustomer={handleRegisterCustomer} addNotification={addNotification} />;

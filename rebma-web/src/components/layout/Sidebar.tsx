@@ -119,6 +119,7 @@ export default function Sidebar({
       { id: 'CreditApproval',  label: 'Approvals',            icon: ClipboardCheck },
       { id: 'Transactions',    label: 'Transactions',         icon: ArrowLeftRight },
       { id: 'SetPrices',       label: 'Price Setting',        icon: Tag },
+      { id: 'Invoices',        label: 'Invoices',             icon: FileText },
       { id: 'Ledger',          label: 'Audit Log',            icon: History },
       { id: 'Payroll',         label: 'Payroll Overview',     icon: Banknote },
       { id: 'MgmtAnalytics',   label: 'Analytics',            icon: BarChart2 },

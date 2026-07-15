@@ -766,3 +766,24 @@ CREATE TABLE IF NOT EXISTS public.maintenance_schedule (
 ALTER TABLE public.maintenance_schedule ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Allow authenticated users full access to maintenance_schedule" ON public.maintenance_schedule FOR ALL TO authenticated USING (true) WITH CHECK (true);
 ALTER PUBLICATION supabase_realtime ADD TABLE public.maintenance_schedule;
+
+-- Proforma invoices: on-demand quotes generated before payment, addressable
+-- from Marketing/Finance/Management/CEO. Distinct from finance_ledger
+-- (issued after payment) and finance_payments (the receipt).
+CREATE TABLE IF NOT EXISTS public.proforma_invoices (
+    id TEXT PRIMARY KEY DEFAULT 'PRO-' || substring(md5(random()::text) from 1 for 8),
+    order_id TEXT REFERENCES public.orders(id) ON DELETE SET NULL,
+    client_name TEXT NOT NULL,
+    line_items JSONB NOT NULL DEFAULT '[]',
+    subtotal NUMERIC NOT NULL DEFAULT 0,
+    tax_amount NUMERIC NOT NULL DEFAULT 0,
+    grand_total NUMERIC NOT NULL DEFAULT 0,
+    currency TEXT NOT NULL DEFAULT 'GHS',
+    status TEXT NOT NULL DEFAULT 'DRAFT' CHECK (status IN ('DRAFT', 'SENT', 'CONVERTED')),
+    created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+    notes TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE public.proforma_invoices ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow authenticated users full access to proforma_invoices" ON public.proforma_invoices FOR ALL TO authenticated USING (true) WITH CHECK (true);
+ALTER PUBLICATION supabase_realtime ADD TABLE public.proforma_invoices;

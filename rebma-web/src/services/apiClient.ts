@@ -1613,3 +1613,53 @@ export const wipApi = {
     if (error) throw new Error(error.message);
   }
 };
+
+// ── Proforma Invoices ─────────────────────────────────────────
+// On-demand quotes generated before payment, addressable from
+// Marketing/Finance/Management/CEO — distinct from finance_ledger
+// (issued after payment) and finance_payments (the receipt).
+export const invoices = {
+  listProformas: async () => {
+    const { data, error } = await supabase
+      .from('proforma_invoices')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(200);
+    if (error) throw new Error(error.message);
+    return data || [];
+  },
+
+  createProforma: async (input: {
+    orderId?: string | null;
+    clientName: string;
+    lineItems: { productName: string; quantity: number; unitPrice: number }[];
+    taxRate?: number;
+    notes?: string;
+  }) => {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const performerId = sessionData.session?.user?.id || null;
+
+    const subtotal = input.lineItems.reduce((s, i) => s + (Number(i.quantity) || 0) * (Number(i.unitPrice) || 0), 0);
+    const taxRate = input.taxRate ?? 0.15;
+    const taxAmount = subtotal * taxRate;
+    const grandTotal = subtotal + taxAmount;
+
+    const { data, error } = await supabase
+      .from('proforma_invoices')
+      .insert({
+        order_id: input.orderId || null,
+        client_name: input.clientName,
+        line_items: input.lineItems,
+        subtotal,
+        tax_amount: taxAmount,
+        grand_total: grandTotal,
+        currency: 'GHS',
+        status: 'DRAFT',
+        created_by: performerId,
+        notes: input.notes || null,
+      })
+      .select();
+    if (error) throw new Error(error.message);
+    return data?.[0] || null;
+  },
+};
