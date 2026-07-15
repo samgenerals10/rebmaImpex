@@ -76,6 +76,7 @@ export default function MarketingOverviewView({ addNotification, setActiveSubTab
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
 
   const [orders, setOrders] = useState<Order[]>([]);
+  const [rawOrders, setRawOrders] = useState<any[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [goodsPrices, setGoodsPrices] = useState<any[]>([]);
@@ -96,6 +97,7 @@ export default function MarketingOverviewView({ addNotification, setActiveSubTab
       if (errO) console.error('Error fetching orders:', errO);
       if (errC) console.error('Error fetching customers:', errC);
 
+      setRawOrders(ords || []);
       const formattedOrders: Order[] = (ords || []).map((o: any) => ({
         id: o.id,
         ticketNumber: o.ticket_number,
@@ -429,10 +431,19 @@ export default function MarketingOverviewView({ addNotification, setActiveSubTab
 
       {/* Available Products — priced by Management, ready to sell */}
       {goodsPrices.length > 0 && (() => {
+        const clearedRaw = rawOrders.filter((o: any) => ['APPROVED', 'PROCESSING', 'DELIVERED', 'OUT_FOR_DELIVERY'].includes(o.status));
         const items = goodsPrices.map((gp: any) => {
           const key = String(gp.product_name || '').toLowerCase().trim();
           const qty = stock.filter((s: any) => String(s.product_name || '').toLowerCase().trim() === key).reduce((sum: number, s: any) => sum + (Number(s.quantity) || 0), 0);
-          return { name: gp.product_name, unitPrice: Number(gp.unit_price || 0), currency: gp.currency || 'GHS', category: gp.category || '—', qty };
+          const soldQty = clearedRaw.reduce((sum: number, o: any) => {
+            const lineItems = o.metadata?.items;
+            if (Array.isArray(lineItems) && lineItems.length > 0) {
+              return sum + lineItems.filter((it: any) => String(it.productName || it.product_name || '').toLowerCase().trim() === key)
+                .reduce((s: number, it: any) => s + Number(it.quantity || 1), 0);
+            }
+            return String(o.product_name || '').toLowerCase().trim() === key ? sum + Number(o.quantity || 1) : sum;
+          }, 0);
+          return { name: gp.product_name, unitPrice: Number(gp.unit_price || 0), currency: gp.currency || 'GHS', category: gp.category || '—', qty, soldQty };
         });
         return (
           <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
@@ -456,14 +467,18 @@ export default function MarketingOverviewView({ addNotification, setActiveSubTab
                       {item.qty > 0 ? 'In Stock' : 'Out of Stock'}
                     </span>
                   </div>
-                  <div className="flex items-end justify-between">
+                  <div className="mb-2">
+                    <p className="text-[10px] text-[var(--text-muted)] mb-0.5">Selling Price</p>
+                    <p className="text-lg font-bold text-emerald-600">{item.currency} {item.unitPrice.toLocaleString()}</p>
+                  </div>
+                  <div className="flex items-end justify-between pt-2 border-t border-[var(--border)]">
                     <div>
-                      <p className="text-[10px] text-[var(--text-muted)] mb-0.5">Selling Price</p>
-                      <p className="text-lg font-bold text-emerald-600">{item.currency} {item.unitPrice.toLocaleString()}</p>
+                      <p className="text-[10px] text-[var(--text-muted)] mb-0.5">Qty Sold</p>
+                      <p className="text-sm font-bold text-blue-500">{item.soldQty.toLocaleString()}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-[10px] text-[var(--text-muted)] mb-0.5">Qty Available</p>
-                      <p className="text-lg font-bold text-[var(--text-primary)]">{item.qty.toLocaleString()}</p>
+                      <p className="text-[10px] text-[var(--text-muted)] mb-0.5">Qty Remaining</p>
+                      <p className="text-sm font-bold text-[var(--text-primary)]">{item.qty.toLocaleString()}</p>
                     </div>
                   </div>
                 </div>

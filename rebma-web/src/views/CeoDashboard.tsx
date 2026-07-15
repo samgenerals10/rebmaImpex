@@ -81,6 +81,7 @@ export default function CeoDashboard({
   const [transitVehicles, setTransitVehicles] = useState<any[]>([]);
   const [goodsPrices, setGoodsPrices] = useState<any[]>([]);
   const [stockList, setStockList] = useState<any[]>([]);
+  const [clearedOrders, setClearedOrders] = useState<any[]>([]);
 
   const loadTransit = async () => {
     try {
@@ -236,6 +237,11 @@ export default function CeoDashboard({
           if (gpPrices) setGoodsPrices(gpPrices);
           const { data: stList } = await supabase.from('stock').select('product_name, quantity');
           if (stList) setStockList(stList);
+          const { data: soldOrders } = await supabase
+            .from('orders')
+            .select('product_name, metadata, quantity, status')
+            .in('status', ['APPROVED', 'PROCESSING', 'DELIVERED', 'OUT_FOR_DELIVERY']);
+          if (soldOrders) setClearedOrders(soldOrders);
         } catch (e) {
           console.error(e);
         }
@@ -349,6 +355,21 @@ export default function CeoDashboard({
     exportToPDF('CEO Executive Summary', data, ['Metric', 'Value', 'Details']);
   };
 
+  // Products priced by Management, with live remaining vs. sold quantities
+  const inventoryItems = goodsPrices.map((gp: any) => {
+    const key = String(gp.product_name || '').toLowerCase().trim();
+    const qty = stockList.filter((s: any) => String(s.product_name || '').toLowerCase().trim() === key).reduce((sum: number, s: any) => sum + (Number(s.quantity) || 0), 0);
+    const soldQty = clearedOrders.reduce((sum: number, o: any) => {
+      const items = o.metadata?.items;
+      if (Array.isArray(items) && items.length > 0) {
+        return sum + items.filter((it: any) => String(it.productName || it.product_name || '').toLowerCase().trim() === key)
+          .reduce((s: number, it: any) => s + Number(it.quantity || 1), 0);
+      }
+      return String(o.product_name || '').toLowerCase().trim() === key ? sum + Number(o.quantity || 1) : sum;
+    }, 0);
+    return { name: gp.product_name, unitPrice: Number(gp.unit_price || 0), currency: gp.currency || 'GHS', qty, soldQty };
+  });
+
   const smallStats = [
     { title: 'Logistics', value: kpiFleet !== null ? `${kpiFleet} Truck${kpiFleet !== 1 ? 's' : ''}` : '—', sub: 'GPS Live', icon: Truck, color: '#6366f1', bg: '#eef2ff', tab: 'Fleet' },
     { title: 'Staff Force', value: kpiStaff !== null ? `${kpiStaff} Active` : '—', sub: 'From HR', icon: Users, color: '#f59e0b', bg: '#fef3c7', tab: 'Staff' },
@@ -379,24 +400,18 @@ export default function CeoDashboard({
         <PendingApprovalsAlert department="CEO" onNavigate={setActiveSubTab} />
 
         {/* Available Products — priced by Management, ready to sell */}
-        {goodsPrices.length > 0 && (() => {
-          const items = goodsPrices.map((gp: any) => {
-            const key = String(gp.product_name || '').toLowerCase().trim();
-            const qty = stockList.filter((s: any) => String(s.product_name || '').toLowerCase().trim() === key).reduce((sum: number, s: any) => sum + (Number(s.quantity) || 0), 0);
-            return { name: gp.product_name, unitPrice: Number(gp.unit_price || 0), currency: gp.currency || 'GHS', qty };
-          });
-          return (
+        {inventoryItems.length > 0 && (
             <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4 shadow-card space-y-3">
               <div className="flex items-center justify-between pb-1 border-b border-[var(--border)]">
                 <h3 className="text-xs font-bold text-text-primary flex items-center gap-1.5">
                   <CheckCircle size={14} className="text-emerald-500" /> Products Available to Sell
                 </h3>
                 <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 text-[9px] font-bold">
-                  {items.length} priced
+                  {inventoryItems.length} priced
                 </span>
               </div>
               <div className="space-y-2">
-                {items.map((item: any) => (
+                {inventoryItems.map((item: any) => (
                   <div key={item.name} className="p-3 bg-bg-page border border-[var(--border)] rounded-xl flex items-center justify-between">
                     <div className="min-w-0">
                       <p className="text-xs font-bold text-text-primary truncate">{item.name}</p>
@@ -406,14 +421,13 @@ export default function CeoDashboard({
                       <span className={`text-[9px] font-semibold px-2 py-0.5 rounded-full block mb-1 ${item.qty > 0 ? 'bg-emerald-500/10 text-emerald-600' : 'bg-gray-500/10 text-text-muted'}`}>
                         {item.qty > 0 ? 'In Stock' : 'Out of Stock'}
                       </span>
-                      <p className="text-[10px] text-text-secondary font-semibold font-mono">Qty: {item.qty.toLocaleString()}</p>
+                      <p className="text-[10px] text-text-secondary font-semibold font-mono">Sold: {item.soldQty.toLocaleString()} · Left: {item.qty.toLocaleString()}</p>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
-          );
-        })()}
+        )}
 
         {/* Physical card — Global Ingestion Flow */}
         <div className="mobile-physical-card">
@@ -626,13 +640,7 @@ export default function CeoDashboard({
           </div>
 
           {/* Products Available to Sell */}
-          {goodsPrices.length > 0 && (() => {
-            const items = goodsPrices.map((gp: any) => {
-              const key = String(gp.product_name || '').toLowerCase().trim();
-              const qty = stockList.filter((s: any) => String(s.product_name || '').toLowerCase().trim() === key).reduce((sum: number, s: any) => sum + (Number(s.quantity) || 0), 0);
-              return { name: gp.product_name, unitPrice: Number(gp.unit_price || 0), currency: gp.currency || 'GHS', qty };
-            });
-            return (
+          {inventoryItems.length > 0 && (
               <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5 shadow-[var(--box-shadow)]">
                 <div className="flex items-center justify-between mb-4">
                   <div>
@@ -640,12 +648,12 @@ export default function CeoDashboard({
                       <CheckCircle size={15} className="text-emerald-500" /> Products Available to Sell
                     </h3>
                     <p className="text-xs text-[var(--text-muted)] mt-0.5">
-                      {items.length} product{items.length !== 1 ? 's' : ''} priced by Management
+                      {inventoryItems.length} product{inventoryItems.length !== 1 ? 's' : ''} priced by Management
                     </p>
                   </div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {items.map((item: any) => (
+                  {inventoryItems.map((item: any) => (
                     <div key={item.name} className="rounded-xl border border-[var(--border)] p-4 bg-[var(--bg)] hover:border-emerald-400 hover:scale-[1.02] transition-all cursor-pointer">
                       <div className="flex items-start justify-between mb-3">
                         <p className="text-sm font-bold text-[var(--text-primary)] leading-tight truncate">{item.name}</p>
@@ -653,22 +661,25 @@ export default function CeoDashboard({
                           {item.qty > 0 ? 'In Stock' : 'Out of Stock'}
                         </span>
                       </div>
-                      <div className="flex items-end justify-between">
+                      <div className="mb-2">
+                        <p className="text-[10px] text-[var(--text-muted)] mb-0.5">Selling Price</p>
+                        <p className="text-lg font-bold text-emerald-600">{item.currency} {item.unitPrice.toLocaleString()}</p>
+                      </div>
+                      <div className="flex items-end justify-between pt-2 border-t border-[var(--border)]">
                         <div>
-                          <p className="text-[10px] text-[var(--text-muted)] mb-0.5">Selling Price</p>
-                          <p className="text-lg font-bold text-emerald-600">{item.currency} {item.unitPrice.toLocaleString()}</p>
+                          <p className="text-[10px] text-[var(--text-muted)] mb-0.5">Qty Sold</p>
+                          <p className="text-sm font-bold text-blue-500">{item.soldQty.toLocaleString()}</p>
                         </div>
                         <div className="text-right">
-                          <p className="text-[10px] text-[var(--text-muted)] mb-0.5">Qty Available</p>
-                          <p className="text-lg font-bold text-[var(--text-primary)]">{item.qty.toLocaleString()}</p>
+                          <p className="text-[10px] text-[var(--text-muted)] mb-0.5">Qty Remaining</p>
+                          <p className="text-sm font-bold text-[var(--text-primary)]">{item.qty.toLocaleString()}</p>
                         </div>
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
-            );
-          })()}
+          )}
  
           {/* Supplier Order Cards */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">

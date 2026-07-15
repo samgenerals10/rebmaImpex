@@ -189,6 +189,7 @@ export default function InternalOrdersView({ productionRequests, addNotification
     setSubmitting(true);
     try {
       const { data, error } = await supabase.from('production_requests').insert([{
+        request_number: `REQ-${Math.floor(10000 + Math.random() * 90000)}`,
         product_name: order.productName,
         quantity: Number(order.quantity),
         unit: order.unit,
@@ -219,6 +220,7 @@ export default function InternalOrdersView({ productionRequests, addNotification
     
     try {
       const { data, error } = await supabase.from('production_requests').insert([{
+        request_number: `REQ-${Math.floor(10000 + Math.random() * 90000)}`,
         product_name: newForm.productName,
         quantity: Number(newForm.quantity),
         unit: newForm.unit,

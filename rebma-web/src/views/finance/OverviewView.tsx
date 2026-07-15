@@ -404,7 +404,8 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
     const key = String(gp.product_name || '').toLowerCase().trim();
     const qty = stock.filter((s: any) => String(s.product_name || '').toLowerCase().trim() === key).reduce((sum: number, s: any) => sum + (Number(s.quantity || s.current || 0)), 0);
     const soldRevenue = (effective as any[]).filter(o => ['APPROVED','PROCESSING','DELIVERED','OUT_FOR_DELIVERY'].includes(o.status) && String(o.productName || o.product_name || '').toLowerCase().trim() === key).reduce((s: number, o: any) => s + (Number(o.totalAmount || o.total_amount) || 0), 0);
-    return { name: gp.product_name, unitPrice: Number(gp.unit_price || 0), costPrice: Number(gp.cost_price || 0), currency: gp.currency || 'GHS', qty, sellingValue: Number(gp.unit_price || 0) * qty, costValue: Number(gp.cost_price || 0) * qty, soldRevenue };
+    const soldQty = allClearedLineItems.filter(l => String(l.productName || '').toLowerCase().trim() === key).reduce((s, l) => s + l.quantity, 0);
+    return { name: gp.product_name, unitPrice: Number(gp.unit_price || 0), costPrice: Number(gp.cost_price || 0), currency: gp.currency || 'GHS', qty, sellingValue: Number(gp.unit_price || 0) * qty, costValue: Number(gp.cost_price || 0) * qty, soldRevenue, soldQty };
   });
   const totalSell = inventoryItems.reduce((s, i) => s + i.sellingValue, 0);
   const totalCost = inventoryItems.reduce((s, i) => s + i.costValue, 0);
@@ -1070,14 +1071,18 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
                     {item.qty > 0 ? 'In Stock' : 'Out of Stock'}
                   </span>
                 </div>
-                <div className="flex items-end justify-between">
+                <div className="mb-2">
+                  <p className="text-[10px] text-[var(--text-muted)] mb-0.5">Selling Price</p>
+                  <p className="text-lg font-bold text-emerald-650">{item.currency} {item.unitPrice.toLocaleString()}</p>
+                </div>
+                <div className="flex items-end justify-between pt-2 border-t border-[var(--border)]">
                   <div>
-                    <p className="text-[10px] text-[var(--text-muted)] mb-0.5">Selling Price</p>
-                    <p className="text-lg font-bold text-emerald-650">{item.currency} {item.unitPrice.toLocaleString()}</p>
+                    <p className="text-[10px] text-[var(--text-muted)] mb-0.5">Qty Sold</p>
+                    <p className="text-sm font-bold text-blue-500">{item.soldQty.toLocaleString()}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-[10px] text-[var(--text-muted)] mb-0.5">Qty Available</p>
-                    <p className="text-lg font-bold text-[var(--text-primary)]">{item.qty.toLocaleString()}</p>
+                    <p className="text-[10px] text-[var(--text-muted)] mb-0.5">Qty Remaining</p>
+                    <p className="text-sm font-bold text-[var(--text-primary)]">{item.qty.toLocaleString()}</p>
                   </div>
                 </div>
               </div>

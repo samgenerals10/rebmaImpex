@@ -444,13 +444,23 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
     const qty = stockItem ? Number(stockItem.quantity || 0) : 0;
     const category = stockItem ? stockItem.category : 'INCOMING_GOODS';
     
-    const soldQty = (orders as any[])
-      .filter(o => ['APPROVED','PROCESSING','DELIVERED','OUT_FOR_DELIVERY'].includes(o.status) && String(o.product_name || '').toLowerCase().trim() === key)
-      .reduce((s: number, o: any) => s + (Number(o.quantity) || 1), 0);
-
-    const soldRevenue = (orders as any[])
-      .filter(o => ['APPROVED','PROCESSING','DELIVERED','OUT_FOR_DELIVERY'].includes(o.status) && String(o.product_name || '').toLowerCase().trim() === key)
-      .reduce((s: number, o: any) => s + (Number(o.total_amount) || 0), 0);
+    const clearedForKey = (orders as any[]).filter(o => ['APPROVED','PROCESSING','DELIVERED','OUT_FOR_DELIVERY'].includes(o.status));
+    let soldQty = 0;
+    let soldRevenue = 0;
+    for (const o of clearedForKey) {
+      const items = o.metadata?.items;
+      if (Array.isArray(items) && items.length > 0) {
+        for (const it of items) {
+          if (String(it.productName || it.product_name || '').toLowerCase().trim() === key) {
+            soldQty += Number(it.quantity || 1);
+            soldRevenue += Number(it.lineTotal || it.line_total || it.amount || 0);
+          }
+        }
+      } else if (String(o.product_name || '').toLowerCase().trim() === key) {
+        soldQty += Number(o.quantity || 1);
+        soldRevenue += Number(o.total_amount || 0);
+      }
+    }
     return {
       name: gp.product_name,
       category,
@@ -682,14 +692,18 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
                     {item.qty > 0 ? 'In Stock' : 'Out of Stock'}
                   </span>
                 </div>
-                <div className="flex items-end justify-between">
+                <div className="mb-2">
+                  <p className="text-[10px] text-[var(--text-muted)] mb-0.5">Selling Price</p>
+                  <p className="text-lg font-bold text-emerald-650">{item.currency} {item.unitPrice.toLocaleString()}</p>
+                </div>
+                <div className="flex items-end justify-between pt-2 border-t border-[var(--border)]">
                   <div>
-                    <p className="text-[10px] text-[var(--text-muted)] mb-0.5">Selling Price</p>
-                    <p className="text-lg font-bold text-emerald-650">{item.currency} {item.unitPrice.toLocaleString()}</p>
+                    <p className="text-[10px] text-[var(--text-muted)] mb-0.5">Qty Sold</p>
+                    <p className="text-sm font-bold text-blue-500">{item.soldQty.toLocaleString()}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-[10px] text-[var(--text-muted)] mb-0.5">Qty Available</p>
-                    <p className="text-lg font-bold text-[var(--text-primary)]">{item.qty.toLocaleString()}</p>
+                    <p className="text-[10px] text-[var(--text-muted)] mb-0.5">Qty Remaining</p>
+                    <p className="text-sm font-bold text-[var(--text-primary)]">{item.qty.toLocaleString()}</p>
                   </div>
                 </div>
               </div>
