@@ -21,7 +21,6 @@ import OperationsDashboard from './views/OperationsDashboard';
 import FinanceDashboard from './views/FinanceDashboard';
 import ProductionDashboard from './views/ProductionDashboard';
 import ReceptionDashboard from './views/ReceptionDashboard';
-import DispatchDashboard from './views/DispatchDashboard';
 import LogisticsDashboard from './views/LogisticsDashboard';
 import BoardroomView from './views/BoardroomView';
 import SettingsDashboard from './views/SettingsDashboard';
@@ -1311,10 +1310,6 @@ export default function App() {
     return () => clearInterval(interval);
   }, [isAuthenticated]);
 
-  // Real-Time Dispatch and Simulated Tracking States
-  const [activeCoordinates, setActiveCoordinates] = useState<{lat: number, lng: number}>({lat: 5.6037, lng: -0.1870}); // Accra coords
-  const [deliveryStatus, setDeliveryStatus] = useState<string>('IN_TRANSIT');
-
   // Real-Time Chat & Boardroom States
   const [isChatOpen, setIsChatOpen] = useState<boolean>(false);
   const [chatMessages, setChatMessagesState] = useState<ChatMessage[]>([
@@ -1408,29 +1403,12 @@ export default function App() {
     }
   }, [activeDepartment]);
 
-  // Simple location simulation for fleet Map
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setActiveCoordinates(prev => ({
-        lat: prev.lat + (Math.random() - 0.5) * 0.002,
-        lng: prev.lng + (Math.random() - 0.5) * 0.002
-      }));
-    }, gpsInterval * 1000);
-    return () => clearInterval(interval);
-  }, [gpsInterval]);
-
   // Live Data Simulator adding active live data to every activity
   useEffect(() => {
     if (!isAuthenticated) return;
-    
-    const simulationInterval = setInterval(() => {
-      // 1. Slightly drift truck GPS location coordinates
-      setActiveCoordinates(prev => ({
-        lat: prev.lat + (Math.random() - 0.5) * 0.0015,
-        lng: prev.lng + (Math.random() - 0.5) * 0.0015
-      }));
 
-      // 2. Generate simulated live messages inside community chat
+    const simulationInterval = setInterval(() => {
+      // 1. Generate simulated live messages inside community chat
       const messages = [
         "Operations registered incoming port cargo shipment from Maersk.",
         "Marketing logged a new customer account in Accra central.",
@@ -1449,7 +1427,7 @@ export default function App() {
       };
       setChatMessages(prev => [...prev, newMsg]);
 
-      // 3. Random Visitor Check-in simulation (30% chance)
+      // 2. Random Visitor Check-in simulation (30% chance)
       if (Math.random() > 0.7) {
         const guestNames = ["Yaw Boakye", "Esi Appiah", "Joseph Osei"];
         const hosts = ["CEO Samuel", "HR Derrick", "Finance Ama"];
@@ -1466,7 +1444,7 @@ export default function App() {
         setVisitorsList(prev => [visitor, ...prev]);
       }
 
-      // 4. Random Staff check-in simulation (25% chance)
+      // 3. Random Staff check-in simulation (25% chance)
       if (Math.random() > 0.75) {
         const staffList = ["Felicia Asante", "Daniel Tetteh", "Sandra Opoku"];
         const staff = staffList[Math.floor(Math.random() * staffList.length)];
@@ -1754,16 +1732,6 @@ export default function App() {
       refreshAllData();
     } catch (err: any) {
       alert(err.message || 'Failed to release to dispatch.');
-    }
-  };
-
-  const handleMarkDelivered = async (id: string) => {
-    try {
-      await dispatch.updateDelivery(id, 'DELIVERED', activeCoordinates);
-      addNotification(`Order ${id} marked as DELIVERED.`);
-      refreshAllData();
-    } catch (err: any) {
-      alert(err.message || 'Failed to mark delivery status.');
     }
   };
 
@@ -2911,8 +2879,8 @@ export default function App() {
     if (activeDepartment === 'DISPATCH') {
       if (activeSubTab === 'Deliveries')       return <DispatchOverviewView addNotification={addNotification} setActiveSubTab={setActiveSubTab} currentUser={currentUser} />;
       if (activeSubTab === 'ProofOfDelivery') return <DispatchProofOfDeliveryView currentUser={currentUser} addNotification={addNotification} />;
-      if (activeSubTab === 'ActiveDeliveries') return <DispatchDeliveriesView addNotification={addNotification} currentUser={currentUser} />;
-      if (activeSubTab === 'Drivers')          return <DispatchDriversView addNotification={addNotification} />;
+      if (activeSubTab === 'ActiveDeliveries' || activeSubTab === 'DispatchHistory') return <DispatchDeliveriesView addNotification={addNotification} currentUser={currentUser} />;
+      if (activeSubTab === 'Drivers' || activeSubTab === 'DriverLogs') return <DispatchDriversView addNotification={addNotification} />;
       if (activeSubTab === 'Tracking')         return <DispatchTrackingView addNotification={addNotification} />;
     }
 
@@ -2969,8 +2937,6 @@ export default function App() {
       case 'CEO':
         return (
           <CeoDashboard
-            activeCoordinates={activeCoordinates}
-            deliveryStatus={deliveryStatus}
             gpsInterval={gpsInterval}
             onNavigateToSupplierOrders={() => setActiveSubTab('SupplierOrders')}
             setActiveSubTab={setActiveSubTab}
@@ -3060,15 +3026,6 @@ export default function App() {
             onAddVisitor={handleAddVisitor}
             onCheckoutVisitor={handleCheckoutVisitor}
             onCheckInAttendance={handleCheckInAttendance}
-          />
-        );
-      case 'DISPATCH':
-        return (
-          <DispatchDashboard
-            activeCoordinates={activeCoordinates}
-            deliveryStatus={deliveryStatus}
-            handleMarkDelivered={handleMarkDelivered}
-            activeSubTab={activeSubTab}
           />
         );
       case 'LOGISTICS':

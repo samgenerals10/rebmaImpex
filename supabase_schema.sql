@@ -688,4 +688,26 @@ CREATE TABLE IF NOT EXISTS public.material_requisitions (
 );
 ALTER TABLE public.material_requisitions ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Allow authenticated users full access to material_requisitions" ON public.material_requisitions FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- DISPATCH LIVE GPS TRACKING
+-- Links a driver roster row (public.drivers, created outside this file) to a
+-- real login account, and stores an append-only ping log so the dispatch map
+-- can show both a driver's current position and a recent trail.
+-- ─────────────────────────────────────────────────────────────────────────────
+ALTER TABLE public.drivers ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL;
+
+CREATE TABLE IF NOT EXISTS public.driver_locations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    driver_id TEXT REFERENCES public.drivers(driver_id) ON DELETE CASCADE,
+    delivery_id TEXT REFERENCES public.delivery_logs(id) ON DELETE SET NULL,
+    latitude NUMERIC NOT NULL,
+    longitude NUMERIC NOT NULL,
+    accuracy NUMERIC,
+    recorded_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE public.driver_locations ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow authenticated users full access to driver_locations" ON public.driver_locations FOR ALL TO authenticated USING (true) WITH CHECK (true);
+ALTER PUBLICATION supabase_realtime ADD TABLE public.driver_locations;
+CREATE INDEX IF NOT EXISTS idx_driver_locations_driver_recorded ON public.driver_locations(driver_id, recorded_at DESC);
 ALTER PUBLICATION supabase_realtime ADD TABLE public.material_requisitions;

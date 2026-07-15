@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { exportToCSV, exportToPDF } from '../../utils/export';
 import type { DeliveryRecord, Driver } from '../../types/erp';
+import DispatchMap from '../../components/dispatch/DispatchMap';
 
 
 // ── types ─────────────────────────────────────────────────────────────────────
@@ -217,17 +218,24 @@ function DeliveryDetail({
             </div>
           </div>
 
-          {/* GPS tracking placeholder */}
+          {/* GPS tracking */}
           <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-semibold text-[var(--text-primary)]">GPS Tracking</h3>
               <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-medium">{delivery.status === 'IN_TRANSIT' ? 'Live' : 'Static'}</span>
             </div>
-            <div className="h-32 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] flex flex-col items-center justify-center gap-2">
-              <MapPin size={24} className="text-[var(--text-muted)] opacity-40" />
-              <p className="text-xs text-[var(--text-muted)]">Last known: Accra, Greater Accra Region</p>
-              <p className="text-xs text-[var(--text-muted)] opacity-60">Updated: just now</p>
-            </div>
+            {delivery.driverId ? (
+              <DispatchMap
+                deliveries={[{ id: delivery.id, driverId: delivery.driverId, driverName: delivery.driverName, vehicleId: delivery.vehicleId, status: delivery.status }]}
+                focusDeliveryId={delivery.id}
+                height={220}
+              />
+            ) : (
+              <div className="h-32 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] flex flex-col items-center justify-center gap-2">
+                <MapPin size={24} className="text-[var(--text-muted)] opacity-40" />
+                <p className="text-xs text-[var(--text-muted)]">No driver assigned yet</p>
+              </div>
+            )}
           </div>
 
           {/* Proof of Delivery */}

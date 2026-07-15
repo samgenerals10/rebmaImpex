@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
-import { MapPin, WifiOff, Truck, Clock, Info } from 'lucide-react';
+import { MapPin, Truck, Clock, Info } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
+import DispatchMap, { type DispatchMapDelivery } from '../../components/dispatch/DispatchMap';
 
 interface VehicleRecord {
   id: string;
+  driverId: string;
   driverName: string;
   truckId: string;
   status: 'IN_TRANSIT' | 'ACTIVE' | 'OFFLINE';
@@ -32,17 +34,32 @@ export default function TrackingView({ addNotification: _addNotification }: Prop
       try {
         const { data } = await supabase
           .from('drivers')
-          .select('id, fullName, truckId, status')
+          .select('id, driver_id, full_name, vehicle_id, status')
           .neq('status', 'OFFLINE');
         if (data && data.length > 0) {
-          setVehicles(data.map((d: { id: string; fullName: string; truckId: string; status: string }) => ({
-            id: d.id,
-            driverName: d.fullName,
-            truckId: d.truckId,
-            status: d.status === 'ON_DELIVERY' ? 'IN_TRANSIT' : (d.status as VehicleRecord['status']),
-            lastKnownLocation: 'Location data unavailable — GPS not yet connected',
-            lastUpdated: new Date().toISOString(),
-          })));
+          const driverIds = data.map((d: any) => d.driver_id).filter(Boolean);
+          const { data: pings } = await supabase
+            .from('driver_locations')
+            .select('driver_id, recorded_at')
+            .in('driver_id', driverIds)
+            .order('recorded_at', { ascending: false })
+            .limit(200);
+          const lastPingByDriver: Record<string, string> = {};
+          for (const p of (pings || []) as any[]) {
+            if (!lastPingByDriver[p.driver_id]) lastPingByDriver[p.driver_id] = p.recorded_at;
+          }
+          setVehicles(data.map((d: any) => {
+            const lastPing = lastPingByDriver[d.driver_id];
+            return {
+              id: d.id,
+              driverId: d.driver_id,
+              driverName: d.full_name,
+              truckId: d.vehicle_id || '—',
+              status: d.status === 'ON_DELIVERY' ? 'IN_TRANSIT' : (d.status as VehicleRecord['status']),
+              lastKnownLocation: lastPing ? `Live GPS · updated ${fmtAgo(lastPing)}` : 'No GPS ping yet — driver hasn’t opened the mobile app during a delivery',
+              lastUpdated: lastPing || new Date().toISOString(),
+            };
+          }));
         } else {
           setVehicles([]);
         }
@@ -53,6 +70,14 @@ export default function TrackingView({ addNotification: _addNotification }: Prop
     };
     load();
   }, []);
+
+  const mapDeliveries: DispatchMapDelivery[] = vehicles.map(v => ({
+    id: v.id,
+    driverId: v.driverId,
+    driverName: v.driverName,
+    vehicleId: v.truckId,
+    status: v.status === 'IN_TRANSIT' ? 'IN_TRANSIT' : 'ASSIGNED',
+  }));
 
   const active = vehicles.filter(v => v.status !== 'OFFLINE').length;
   const inTransit = vehicles.filter(v => v.status === 'IN_TRANSIT').length;
@@ -83,25 +108,8 @@ export default function TrackingView({ addNotification: _addNotification }: Prop
         ))}
       </div>
 
-      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 20, padding: 0, marginBottom: 24, overflow: 'hidden', boxShadow: 'var(--box-shadow)' }}>
-        <div style={{ height: 320, background: 'linear-gradient(135deg, var(--accent-light) 0%, var(--bg) 100%)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative', borderBottom: '1px solid var(--border)' }}>
-          <div style={{ position: 'absolute', inset: 0, opacity: 0.04, backgroundImage: 'repeating-linear-gradient(0deg, currentColor 0, currentColor 1px, transparent 1px, transparent 40px), repeating-linear-gradient(90deg, currentColor 0, currentColor 1px, transparent 1px, transparent 40px)', color: 'var(--text-primary)' }} />
-          <div style={{ background: 'var(--bg-card)', borderRadius: '50%', width: 80, height: 80, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20, boxShadow: '0 8px 32px rgba(0,0,0,0.15)' }}>
-            <MapPin size={36} style={{ color: 'var(--accent)' }} />
-          </div>
-          <h3 style={{ margin: '0 0 8px', fontSize: 20, fontWeight: 700, color: 'var(--text-primary)' }}>GPS Map View</h3>
-          <p style={{ margin: '0 0 20px', color: 'var(--text-muted)', fontSize: 14, textAlign: 'center', maxWidth: 320 }}>Connect GPS module to enable live tracking</p>
-          <div style={{ position: 'absolute', bottom: 16, right: 16 }}>
-            {[0.15, 0.3, 0.5].map((op, i) => (
-              <div key={i} style={{ position: 'absolute', width: 60 + i * 30, height: 60 + i * 30, borderRadius: '50%', border: '2px solid var(--accent)', opacity: op, bottom: -20 - i * 15, right: -20 - i * 15 }} />
-            ))}
-          </div>
-        </div>
-        <div style={{ padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 10 }}>
-          <WifiOff size={16} style={{ color: '#f59e0b' }} />
-          <span style={{ fontSize: 13, color: '#f59e0b', fontWeight: 600 }}>GPS Module Status: Configuration Required</span>
-          <span style={{ marginLeft: 'auto', background: '#fef3c7', color: '#92400e', borderRadius: 99, padding: '2px 10px', fontSize: 11, fontWeight: 600 }}>PENDING SETUP</span>
-        </div>
+      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 20, padding: 12, marginBottom: 24, boxShadow: 'var(--box-shadow)' }}>
+        <DispatchMap deliveries={mapDeliveries} height={360} />
       </div>
 
       <div style={{ marginBottom: 20 }}>
@@ -155,11 +163,10 @@ export default function TrackingView({ addNotification: _addNotification }: Prop
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
           <Info size={18} style={{ color: 'var(--accent)', flexShrink: 0, marginTop: 2 }} />
           <div>
-            <p style={{ margin: '0 0 6px', fontWeight: 700, color: 'var(--text-primary)', fontSize: 14 }}>GPS Hardware Integration</p>
+            <p style={{ margin: '0 0 6px', fontWeight: 700, color: 'var(--text-primary)', fontSize: 14 }}>How live tracking works</p>
             <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: 13, lineHeight: 1.6 }}>
-              To enable live GPS tracking, install a compatible OBD-II GPS tracker (e.g. Concox GT06E or Teltonika FMB920) on each vehicle.
-              Configure the device to push coordinates to the REBMA Impex tracking API endpoint. Once connected, real-time map view, geofencing alerts, and route history will be available here.
-              Contact your system administrator to complete the hardware setup and API key provisioning.
+              Drivers with a mobile app login share their phone's real GPS position while a delivery is active and the app is open.
+              Invite a driver from the Drivers screen to give them access. Positions update on this map as soon as they come in — no hardware tracker required.
             </p>
           </div>
         </div>

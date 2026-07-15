@@ -10,6 +10,7 @@ import {
 } from 'recharts';
 import { exportToCSV } from '../../utils/export';
 import type { Driver, DeliveryRecord, CurrentUser } from '../../types/erp';
+import DispatchMap from '../../components/dispatch/DispatchMap';
 
 interface Props {
   addNotification?: (msg: string) => void;
@@ -392,47 +393,13 @@ export default function DispatchOverviewView({ addNotification, setActiveSubTab,
               Full Screen
             </button>
           </div>
-          <div className="relative h-64 rounded-2xl overflow-hidden border border-[var(--border)]" style={{ background: 'linear-gradient(135deg, var(--bg) 0%, var(--accent-light) 100%)' }}>
-            {/* Grid */}
-            <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#3b82f6_1px,transparent_1px)] [background-size:20px_20px]" />
-            {/* Roads */}
-            <svg className="absolute inset-0 w-full h-full opacity-20">
-              <line x1="0" y1="50%" x2="100%" y2="50%" stroke="#64748b" strokeWidth="2" strokeDasharray="8,4" />
-              <line x1="50%" y1="0" x2="50%" y2="100%" stroke="#64748b" strokeWidth="2" strokeDasharray="8,4" />
-              <line x1="0" y1="30%" x2="100%" y2="70%" stroke="#94a3b8" strokeWidth="1" strokeDasharray="4,4" />
-            </svg>
-            {/* Location labels */}
-            {[
-              { text: 'Kotoka Intl Airport', pos: 'top-3 left-3' },
-              { text: 'Tema Harbour',         pos: 'bottom-10 right-4' },
-              { text: 'Accra Central',        pos: 'bottom-4 left-4' },
-              { text: 'Madina',              pos: 'top-5 right-6' },
-            ].map(({ text, pos }) => (
-              <div key={text} className={`absolute ${pos} text-[9px] font-bold text-[var(--text-primary)] bg-[var(--bg-card)] border border-[var(--border)] px-2 py-0.5 rounded z-10`}>{text}</div>
-            ))}
-            {/* Animated truck markers */}
-            {[
-              { left: '38%', top: '45%', driver: 'Kwesi', status: 'IN_TRANSIT', color: '#3b82f6' },
-              { left: '62%', top: '35%', driver: 'Kofi',  status: 'IN_TRANSIT', color: '#3b82f6' },
-              { left: '25%', top: '65%', driver: 'Ama',   status: 'ASSIGNED',   color: '#f59e0b' },
-            ].map(({ left, top, driver, status: st, color }) => (
-              <div key={driver} className="absolute z-10 cursor-pointer group" style={{ left, top }}>
-                <div className="rounded-full p-2.5 border-2" style={{ background: `${color}30`, borderColor: color }}>
-                  <div className="w-3.5 h-3.5 rounded-full border-2 border-white flex items-center justify-center" style={{ background: color }}>
-                    <Truck size={8} color="white" />
-                  </div>
-                </div>
-                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block bg-[var(--bg-card)] border border-[var(--border)] rounded-lg px-2 py-1 text-[10px] whitespace-nowrap shadow-lg z-20">
-                  <p className="font-bold text-[var(--text-primary)]">{driver}</p>
-                  <p className="text-[var(--text-muted)]">{st.replace('_', ' ')}</p>
-                </div>
-              </div>
-            ))}
-            {/* Info overlay */}
-            <div className="absolute bottom-3 left-3 bg-[var(--bg-card)]/95 backdrop-blur px-3 py-2 rounded-xl border border-[var(--border)] text-[10px] space-y-0.5 z-10">
-              <p className="font-bold" style={{ color: 'var(--accent)' }}>🚛 {inTransit} trucks in transit</p>
-              <p className="text-[var(--text-secondary)]">Last updated: just now</p>
-            </div>
+          <DispatchMap
+            deliveries={activeDeliveries.map(d => ({ id: d.id, driverId: d.driverId, driverName: d.driverName, vehicleId: d.vehicleId, status: d.status }))}
+            height={256}
+            compact
+          />
+          <div className="mt-2 text-[10px] text-[var(--text-secondary)] flex items-center gap-1.5">
+            <span className="font-bold" style={{ color: 'var(--accent)' }}>🚛 {inTransit} trucks in transit</span>
           </div>
           <div className="flex items-center gap-3 mt-3">
             <span className="flex items-center gap-1.5 text-xs text-[var(--text-muted)]"><span className="w-2 h-2 rounded-full bg-blue-500" />In Transit</span>

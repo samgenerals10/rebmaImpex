@@ -7,7 +7,10 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Rebma Mobile uses your location to share live delivery tracking with dispatch while a delivery is active."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -16,10 +19,14 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": ["ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION"]
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      ["expo-location", { "locationWhenInUsePermission": "Rebma Mobile uses your location to share live delivery tracking with dispatch while a delivery is active." }]
+    ]
   }
 }

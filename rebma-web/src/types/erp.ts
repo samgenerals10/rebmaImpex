@@ -133,6 +133,7 @@ export interface Driver {
   photo?: string;
   totalDeliveries?: number;
   joinedAt?: string;
+  userId?: string;
 }
 
 export interface StaffMember {

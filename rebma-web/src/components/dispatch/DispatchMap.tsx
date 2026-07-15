@@ -1,0 +1,175 @@
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
+import L from 'leaflet';
+import { Truck } from 'lucide-react';
+import { supabase } from '../../lib/supabaseClient';
+
+const ACCRA: [number, number] = [5.6037, -0.1870];
+
+export interface DispatchMapDelivery {
+  id: string;
+  driverId?: string | null;
+  driverName?: string | null;
+  vehicleId?: string | null;
+  status?: string | null;
+  active_coordinates?: { lat: number; lng: number } | null;
+}
+
+interface LivePoint {
+  lat: number;
+  lng: number;
+  recordedAt: string;
+}
+
+interface Props {
+  deliveries: DispatchMapDelivery[];
+  focusDeliveryId?: string;
+  height?: number;
+  compact?: boolean;
+  pollIntervalSeconds?: number;
+}
+
+function truckIcon(color: string) {
+  return L.divIcon({
+    className: 'dispatch-truck-marker',
+    html: `<div style="background:${color};width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.35);border:2px solid #fff;"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><path d="M10 17h4V5H2v12h3M10 17a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM10 17H2M14 8h4l4 4v5h-2M14 17a2 2 0 1 1-4 0 2 2 0 0 1 4 0z"/></svg></div>`,
+    iconSize: [26, 26],
+    iconAnchor: [13, 13],
+  });
+}
+
+const STATUS_COLOR: Record<string, string> = {
+  ASSIGNED: '#f59e0b',
+  IN_TRANSIT: '#3b82f6',
+  OUT_FOR_DELIVERY: '#3b82f6',
+  DELIVERED: '#10b981',
+  FAILED: '#ef4444',
+};
+
+function Recenter({ center }: { center: [number, number] }) {
+  const map = useMap();
+  useEffect(() => { map.setView(center); }, [center[0], center[1]]);
+  return null;
+}
+
+export default function DispatchMap({ deliveries, focusDeliveryId, height = 320, compact = false, pollIntervalSeconds = 20 }: Props) {
+  const [latestByDriver, setLatestByDriver] = useState<Record<string, LivePoint>>({});
+  const [trail, setTrail] = useState<LivePoint[]>([]);
+  const mountedRef = useRef(true);
+
+  const driverIds = useMemo(
+    () => Array.from(new Set(deliveries.map(d => d.driverId).filter((x): x is string => !!x))),
+    [deliveries]
+  );
+
+  const fetchLatest = async () => {
+    if (driverIds.length === 0) return;
+    const { data } = await supabase
+      .from('driver_locations')
+      .select('driver_id, latitude, longitude, recorded_at')
+      .in('driver_id', driverIds)
+      .order('recorded_at', { ascending: false })
+      .limit(200);
+    if (!mountedRef.current || !data) return;
+    const next: Record<string, LivePoint> = {};
+    for (const row of data as any[]) {
+      if (!next[row.driver_id]) {
+        next[row.driver_id] = { lat: Number(row.latitude), lng: Number(row.longitude), recordedAt: row.recorded_at };
+      }
+    }
+    setLatestByDriver(next);
+  };
+
+  useEffect(() => {
+    mountedRef.current = true;
+    fetchLatest();
+
+    const channel = supabase.channel('dispatch-map-' + Math.random().toString(36).substring(7))
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'driver_locations' }, (payload: any) => {
+        const row = payload.new;
+        if (!driverIds.includes(row.driver_id)) return;
+        setLatestByDriver(prev => ({
+          ...prev,
+          [row.driver_id]: { lat: Number(row.latitude), lng: Number(row.longitude), recordedAt: row.recorded_at }
+        }));
+        if (focusDeliveryId) {
+          const focused = deliveries.find(d => d.id === focusDeliveryId);
+          if (focused?.driverId === row.driver_id) {
+            setTrail(prev => [...prev, { lat: Number(row.latitude), lng: Number(row.longitude), recordedAt: row.recorded_at }].slice(-20));
+          }
+        }
+      })
+      .subscribe();
+
+    const poll = setInterval(fetchLatest, pollIntervalSeconds * 1000);
+
+    return () => {
+      mountedRef.current = false;
+      supabase.removeChannel(channel);
+      clearInterval(poll);
+    };
+  }, [driverIds.join(','), focusDeliveryId]);
+
+  useEffect(() => {
+    if (!focusDeliveryId) { setTrail([]); return; }
+    const focused = deliveries.find(d => d.id === focusDeliveryId);
+    if (!focused?.driverId) { setTrail([]); return; }
+    supabase
+      .from('driver_locations')
+      .select('latitude, longitude, recorded_at')
+      .eq('driver_id', focused.driverId)
+      .order('recorded_at', { ascending: false })
+      .limit(20)
+      .then(({ data }) => {
+        if (!data) return;
+        setTrail(data.reverse().map((r: any) => ({ lat: Number(r.latitude), lng: Number(r.longitude), recordedAt: r.recorded_at })));
+      });
+  }, [focusDeliveryId]);
+
+  const markers = deliveries
+    .filter(d => !focusDeliveryId || d.id === focusDeliveryId)
+    .map(d => {
+      const live = d.driverId ? latestByDriver[d.driverId] : undefined;
+      const point = live || (d.active_coordinates ? { lat: d.active_coordinates.lat, lng: d.active_coordinates.lng, recordedAt: '' } : null);
+      return point ? { delivery: d, point, isLive: !!live } : null;
+    })
+    .filter((x): x is { delivery: DispatchMapDelivery; point: LivePoint; isLive: boolean } => !!x);
+
+  const center: [number, number] = markers.length > 0
+    ? [markers[0].point.lat, markers[0].point.lng]
+    : ACCRA;
+
+  return (
+    <div style={{ height, borderRadius: compact ? 16 : 20, overflow: 'hidden', border: '1px solid var(--border)' }}>
+      <MapContainer center={center} zoom={focusDeliveryId ? 13 : 11} style={{ height: '100%', width: '100%' }} scrollWheelZoom={!compact}>
+        <TileLayer
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        />
+        {focusDeliveryId && markers[0] && <Recenter center={[markers[0].point.lat, markers[0].point.lng]} />}
+        {trail.length > 1 && (
+          <Polyline positions={trail.map(p => [p.lat, p.lng])} pathOptions={{ color: '#3b82f6', weight: 3, opacity: 0.6 }} />
+        )}
+        {markers.map(({ delivery, point, isLive }) => (
+          <Marker key={delivery.id} position={[point.lat, point.lng]} icon={truckIcon(STATUS_COLOR[delivery.status || ''] || '#64748b')}>
+            <Popup>
+              <div style={{ fontSize: 12, minWidth: 140 }}>
+                <p style={{ margin: '0 0 4px', fontWeight: 700 }}>{delivery.driverName || 'Driver'}</p>
+                <p style={{ margin: '0 0 4px', color: '#64748b' }}>{delivery.vehicleId || 'Unassigned vehicle'}</p>
+                <p style={{ margin: 0, color: isLive ? '#10b981' : '#94a3b8' }}>
+                  {isLive ? `Live · ${point.recordedAt ? new Date(point.recordedAt).toLocaleTimeString() : 'now'}` : 'No GPS ping yet — last known position'}
+                </p>
+              </div>
+            </Popup>
+          </Marker>
+        ))}
+      </MapContainer>
+      {markers.length === 0 && (
+        <div style={{ position: 'relative', top: -height, height, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', color: 'var(--text-muted)', gap: 6 }}>
+          <Truck size={28} style={{ opacity: 0.4 }} />
+          <p style={{ fontSize: 12, margin: 0, background: 'var(--bg-card)', padding: '4px 10px', borderRadius: 8 }}>No active vehicle positions yet</p>
+        </div>
+      )}
+    </div>
+  );
+}

@@ -512,7 +512,6 @@ export const operations = {
         vehicle_id: vehicleId,
         driver_name: driverName || null,
         status: 'ASSIGNED',
-        timestamp: new Date().toISOString(),
         updated_at: new Date().toISOString()
       }).select();
     if (delErr) throw new Error(delErr.message);
@@ -605,6 +604,51 @@ export const operations = {
     return purchase ? purchase[0] : null;
   },
 };
+
+// Deducts sold items from stock the moment a sale is confirmed — Finance approving
+// a direct-payment order, or Management approving a credit order (both are the
+// point revenue is already recognized, see the ['APPROVED','PROCESSING',...]
+// status checks used across the dashboards) — rather than waiting for the order
+// to be invoiced/dispatched later. Never throws: a stock hiccup shouldn't block
+// the approval itself, it just logs.
+async function deductStockForOrder(order: any, reference: string) {
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    // performed_by / updated_by are UUID FKs to auth.users — must be a real session id or null, never a name/placeholder string
+    const performerId = sessionData.session?.user?.id || null;
+    const now = new Date().toISOString();
+
+    const meta = order.metadata || {};
+    const metaItems = meta.items || [];
+    const lineItems = metaItems.length > 0
+      ? metaItems
+      : (order.product_name || order.productName) ? [{ productName: order.product_name || order.productName, quantity: Number(order.quantity || 1) }] : [];
+
+    for (const item of lineItems) {
+      if (!item.productName) continue;
+      const qty = Number(item.quantity) || 1;
+
+      const { error: ledgerErr } = await supabase.from('stock_ledger').insert({
+        product_name: item.productName,
+        movement_type: 'REMOVE',
+        quantity: qty,
+        reference,
+        performed_by: performerId,
+        created_at: now,
+      });
+      if (ledgerErr) console.error('Stock ledger insert failed during sale confirmation:', ledgerErr);
+
+      const { data: existing } = await supabase.from('stock').select('id, quantity').ilike('product_name', item.productName).limit(1);
+      if (existing && existing.length > 0) {
+        const newQty = Math.max(0, (existing[0].quantity || 0) - qty);
+        const { error: stockErr } = await supabase.from('stock').update({ quantity: newQty, last_updated: now, updated_by: performerId }).eq('id', existing[0].id);
+        if (stockErr) console.error('Stock quantity update failed during sale confirmation:', stockErr);
+      }
+    }
+  } catch (e) {
+    console.error('Stock deduction failed during sale confirmation:', e);
+  }
+}
 
 // ── Management ────────────────────────────────────────────────
 export const management = {
@@ -777,6 +821,11 @@ export const management = {
         });
       } catch (e) {
         console.error(e);
+      }
+
+      if (approve) {
+        const ticketRef = order.ticket_number || order.ticketNumber || `ORD-${orderId.slice(0, 6).toUpperCase()}`;
+        await deductStockForOrder(order, `Credit Order Approved: ${ticketRef}`);
       }
     }
 
@@ -995,6 +1044,10 @@ export const finance = {
         .eq('id', orderId)
         .select();
       if (error) throw new Error(error.message);
+
+      const ticketRef = order.ticket_number || order.ticketNumber || `ORD-${orderId.slice(0, 6).toUpperCase()}`;
+      await deductStockForOrder(order, `Order Approved: ${ticketRef}`);
+
       return { message: 'Order approved by Finance.', order: updatedOrder ? mapOrderToFrontend(updatedOrder[0]) : null };
     }
   },
@@ -1052,47 +1105,11 @@ export const finance = {
       .select();
     if (orderErr) throw new Error(orderErr.message);
 
-    // Sale is committed once invoiced — remove the sold items from stock now
-    // rather than waiting for dispatch, so inventory value reflects the sale immediately.
-    try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      // performed_by / updated_by are UUID FKs to auth.users — must be a real session id or null, never a name/placeholder string
-      const performerId = sessionData.session?.user?.id || null;
-      const ticketRef = order.ticket_number || order.ticketNumber || `ORD-${orderId.slice(0, 6).toUpperCase()}`;
-      const notesBase = `Invoice ${invoiceNo} generated`;
-      const now = new Date().toISOString();
+    // Stock was already deducted when the sale was confirmed (Finance approval or
+    // Management credit approval, see deductStockForOrder) — finalizing just
+    // generates the invoice and warehouse pick ticket, no further stock change.
 
-      const lineItems = metaItems.length > 0
-        ? metaItems
-        : (order.product_name || order.productName) ? [{ productName: order.product_name || order.productName, quantity: Number(order.quantity || 1) }] : [];
-
-      for (const item of lineItems) {
-        if (!item.productName) continue;
-        const qty = Number(item.quantity) || 1;
-
-        const { error: ledgerErr } = await supabase.from('stock_ledger').insert({
-          product_name: item.productName,
-          movement_type: 'REMOVE',
-          quantity: qty,
-          reference: `Order Finalized: ${ticketRef}`,
-          notes: notesBase,
-          performed_by: performerId,
-          created_at: now,
-        });
-        if (ledgerErr) console.error('Stock ledger insert failed during order finalization:', ledgerErr);
-
-        const { data: existing } = await supabase.from('stock').select('id, quantity').ilike('product_name', item.productName).limit(1);
-        if (existing && existing.length > 0) {
-          const newQty = Math.max(0, (existing[0].quantity || 0) - qty);
-          const { error: stockErr } = await supabase.from('stock').update({ quantity: newQty, last_updated: now, updated_by: performerId }).eq('id', existing[0].id);
-          if (stockErr) console.error('Stock quantity update failed during order finalization:', stockErr);
-        }
-      }
-    } catch (e) {
-      console.error('Stock ledger update failed during order finalization:', e);
-    }
-
-    return { 
+    return {
       message: 'Order finalized.', 
       order: updatedOrder ? mapOrderToFrontend(updatedOrder[0]) : null, 
       invoice: invoice ? mapLedgerToFrontend(invoice[0]) : null 
@@ -1207,6 +1224,35 @@ export const dispatch = {
     }
 
     return delivery ? delivery[0] : null;
+  },
+
+  getLatestDriverLocations: async (driverIds: string[]) => {
+    if (driverIds.length === 0) return {};
+    const { data, error } = await supabase
+      .from('driver_locations')
+      .select('driver_id, latitude, longitude, recorded_at')
+      .in('driver_id', driverIds)
+      .order('recorded_at', { ascending: false })
+      .limit(200);
+    if (error) throw new Error(error.message);
+    const latest: Record<string, { lat: number; lng: number; recordedAt: string }> = {};
+    for (const row of (data || []) as any[]) {
+      if (!latest[row.driver_id]) {
+        latest[row.driver_id] = { lat: Number(row.latitude), lng: Number(row.longitude), recordedAt: row.recorded_at };
+      }
+    }
+    return latest;
+  },
+
+  getDriverLocationHistory: async (driverId: string, limit = 20) => {
+    const { data, error } = await supabase
+      .from('driver_locations')
+      .select('latitude, longitude, recorded_at')
+      .eq('driver_id', driverId)
+      .order('recorded_at', { ascending: false })
+      .limit(limit);
+    if (error) throw new Error(error.message);
+    return (data || []).reverse().map((r: any) => ({ lat: Number(r.latitude), lng: Number(r.longitude), recordedAt: r.recorded_at }));
   },
 };
 

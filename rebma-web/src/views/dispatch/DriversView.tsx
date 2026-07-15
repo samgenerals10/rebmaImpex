@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Plus, ArrowLeft, X, Edit2, UserMinus, Truck, Trash2, Edit } from 'lucide-react';
+import { Search, Plus, ArrowLeft, X, Edit2, UserMinus, Truck, Trash2, Edit, Smartphone, Copy, Check } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import type { Driver, DeliveryRecord } from '../../types/erp';
 
@@ -31,6 +31,7 @@ const mapToUI = (db: any): Driver => ({
   status: db.status || 'OFFLINE',
   totalDeliveries: Number(db.total_deliveries || 0),
   joinedAt: db.created_at || db.joinedAt || '',
+  userId: db.user_id || undefined,
 });
 
 const mapToDB = (ui: Partial<Driver>) => {
@@ -89,6 +90,94 @@ function DriverFormModal({ title, form, submitting, onClose, onSave, onChange }:
   );
 }
 
+interface InviteDriverModalProps {
+  driver: Driver;
+  onClose: () => void;
+  onInvited: (userId: string) => void;
+}
+function InviteDriverModal({ driver, onClose, onInvited }: InviteDriverModalProps) {
+  const [email, setEmail] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [result, setResult] = useState<{ email: string; password: string } | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [error, setError] = useState('');
+
+  const submit = async () => {
+    if (!email.trim()) { setError('Email is required.'); return; }
+    setSubmitting(true);
+    setError('');
+    try {
+      const res = await fetch('/api/register-driver-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ driverRowId: driver.id, email: email.trim() }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Failed to create mobile account.');
+      setResult({ email: json.email, password: json.password });
+      onInvited(json.userId);
+    } catch (e: any) {
+      setError(e.message || 'Failed to create mobile account.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const copyCreds = () => {
+    navigator.clipboard.writeText(`Email: ${result?.email}\nPassword: ${result?.password}`);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+      <div style={{ background: 'var(--bg-card)', borderRadius: 20, padding: 32, width: '100%', maxWidth: 440, boxShadow: '0 20px 60px rgba(0,0,0,0.3)', border: '1px solid var(--border)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Smartphone size={18} /> Invite to Mobile App
+          </h2>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={20} /></button>
+        </div>
+
+        {!result ? (
+          <>
+            <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '0 0 16px' }}>
+              Creates a login for <strong>{driver.fullName}</strong> so they can sign in on the Rebma driver app and share live GPS during deliveries.
+            </p>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 5 }}>Driver's Email</label>
+            <input
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              placeholder="driver@rebmaimpex.com"
+              disabled={submitting}
+              style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'var(--text-primary)', fontSize: 14, boxSizing: 'border-box' }}
+            />
+            {error && <p style={{ color: '#dc2626', fontSize: 13, margin: '10px 0 0' }}>{error}</p>}
+            <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
+              <button onClick={onClose} disabled={submitting} style={{ flex: 1, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 12, padding: '12px', fontWeight: 600, color: 'var(--text-secondary)', cursor: submitting ? 'not-allowed' : 'pointer', fontSize: 14 }}>Cancel</button>
+              <button onClick={submit} disabled={submitting} style={{ flex: 1, background: 'var(--accent)', border: 'none', borderRadius: 12, padding: '12px', fontWeight: 600, color: '#fff', cursor: submitting ? 'not-allowed' : 'pointer', fontSize: 14, opacity: submitting ? 0.6 : 1 }}>{submitting ? 'Creating...' : 'Create Login'}</button>
+            </div>
+          </>
+        ) : (
+          <>
+            <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '0 0 16px' }}>Account created. Share these credentials with the driver now — the password won't be shown again.</p>
+            <div style={{ background: 'var(--bg)', borderRadius: 12, padding: '14px 16px', marginBottom: 16, fontFamily: 'monospace', fontSize: 13 }}>
+              <p style={{ margin: '0 0 6px', color: 'var(--text-primary)' }}>Email: {result.email}</p>
+              <p style={{ margin: 0, color: 'var(--text-primary)' }}>Password: {result.password}</p>
+            </div>
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button onClick={copyCreds} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 12, padding: '12px', fontWeight: 600, color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 14 }}>
+                {copied ? <Check size={14} /> : <Copy size={14} />} {copied ? 'Copied' : 'Copy'}
+              </button>
+              <button onClick={onClose} style={{ flex: 1, background: 'var(--accent)', border: 'none', borderRadius: 12, padding: '12px', fontWeight: 600, color: '#fff', cursor: 'pointer', fontSize: 14 }}>Done</button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function DriversView({ addNotification }: Props) {
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [loading, setLoading] = useState(true);
@@ -99,6 +188,9 @@ export default function DriversView({ addNotification }: Props) {
   const [showAdd, setShowAdd] = useState(false);
   const [editDriver, setEditDriver] = useState<Driver | null>(null);
   const [form, setForm] = useState(emptyForm);
+  const [inviteTarget, setInviteTarget] = useState<Driver | null>(null);
+  const [history, setHistory] = useState<DeliveryRecord[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   const loadData = async () => {
     setLoading(true);
@@ -116,6 +208,35 @@ export default function DriversView({ addNotification }: Props) {
   useEffect(() => {
     loadData();
   }, []);
+
+  useEffect(() => {
+    if (!profileDriver) { setHistory([]); return; }
+    let active = true;
+    setHistoryLoading(true);
+    supabase
+      .from('delivery_logs')
+      .select('*')
+      .or(`driver_id.eq.${profileDriver.driverId},driver_name.eq.${profileDriver.fullName}`)
+      .order('created_at', { ascending: false })
+      .limit(20)
+      .then(({ data }) => {
+        if (!active) return;
+        setHistory((data ?? []).map((row: any): DeliveryRecord => ({
+          id: row.id,
+          orderId: row.order_id || '',
+          clientName: row.customer_name || '',
+          destination: row.delivery_address || '',
+          driverName: row.driver_name || '',
+          driverId: row.driver_id || '',
+          dispatchedAt: row.created_at || '',
+          deliveredAt: row.delivered_at || undefined,
+          status: row.status || 'PENDING_ASSIGNMENT',
+          vehicleId: row.vehicle_id || undefined,
+        })));
+        setHistoryLoading(false);
+      }, () => { if (active) { setHistory([]); setHistoryLoading(false); } });
+    return () => { active = false; };
+  }, [profileDriver]);
 
   const total = drivers.length;
   const active = drivers.filter(d => d.status === 'ACTIVE').length;
@@ -237,7 +358,6 @@ export default function DriversView({ addNotification }: Props) {
 
 
   if (profileDriver) {
-    const history: DeliveryRecord[] = [];
     const onTime = history.length > 0 ? Math.round((history.filter(h => h.status === 'DELIVERED').length / history.length) * 100) : 0;
     return (
       <div style={{ padding: '24px 16px', maxWidth: 900, margin: '0 auto' }}>
@@ -254,6 +374,15 @@ export default function DriversView({ addNotification }: Props) {
               <p style={{ margin: '4px 0 8px', color: 'var(--text-muted)', fontSize: 13 }}>{profileDriver.id}</p>
               <span style={{ background: statusColors[profileDriver.status].bg, color: statusColors[profileDriver.status].color, borderRadius: 99, padding: '3px 12px', fontSize: 12, fontWeight: 600 }}>{statusColors[profileDriver.status].label}</span>
             </div>
+            {profileDriver.userId ? (
+              <span style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#d1fae5', color: '#065f46', borderRadius: 99, padding: '6px 14px', fontSize: 12, fontWeight: 600, flexShrink: 0 }}>
+                <Smartphone size={13} /> Mobile App Linked
+              </span>
+            ) : (
+              <button onClick={() => setInviteTarget(profileDriver)} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 12, padding: '10px 16px', fontWeight: 600, fontSize: 13, cursor: 'pointer', flexShrink: 0 }}>
+                <Smartphone size={14} /> Invite to Mobile App
+              </button>
+            )}
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14 }}>
             {[
@@ -285,7 +414,9 @@ export default function DriversView({ addNotification }: Props) {
         </div>
         <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 20, padding: 24, boxShadow: 'var(--box-shadow)' }}>
           <h3 style={{ margin: '0 0 16px', fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>Recent Delivery History</h3>
-          {history.length === 0 ? (
+          {historyLoading ? (
+            <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '24px 0' }}>Loading delivery history...</p>
+          ) : history.length === 0 ? (
             <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '24px 0' }}>No delivery history available.</p>
           ) : (
             <div style={{ overflowX: 'auto' }}>
@@ -314,6 +445,17 @@ export default function DriversView({ addNotification }: Props) {
             </div>
           )}
         </div>
+        {inviteTarget && (
+          <InviteDriverModal
+            driver={inviteTarget}
+            onClose={() => setInviteTarget(null)}
+            onInvited={(userId) => {
+              setProfileDriver(p => p ? { ...p, userId } : p);
+              addNotification(`Mobile app login created for ${inviteTarget.fullName}.`);
+              loadData();
+            }}
+          />
+        )}
       </div>
     );
   }
