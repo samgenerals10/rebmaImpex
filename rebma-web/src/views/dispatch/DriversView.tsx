@@ -107,9 +107,13 @@ function InviteDriverModal({ driver, onClose, onInvited }: InviteDriverModalProp
     setSubmitting(true);
     setError('');
     try {
+      const { data: sessionData } = await supabase.auth.getSession();
       const res = await fetch('/api/register-driver-user', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(sessionData.session ? { Authorization: `Bearer ${sessionData.session.access_token}` } : {}),
+        },
         body: JSON.stringify({ driverRowId: driver.id, email: email.trim() }),
       });
       const json = await res.json();

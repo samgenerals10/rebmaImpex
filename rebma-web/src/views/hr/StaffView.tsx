@@ -156,9 +156,13 @@ export default function StaffView({ staffList: propStaff, addNotification }: Pro
     if (!form.email.trim()) { addNotification('Email is required.'); return; }
     setSubmitting(true);
     try {
+      const { data: sessionData } = await supabase.auth.getSession();
       const res = await fetch('/api/register-staff-user', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(sessionData.session ? { Authorization: `Bearer ${sessionData.session.access_token}` } : {}),
+        },
         body: JSON.stringify({
           email: form.email,
           fullName: form.fullName,

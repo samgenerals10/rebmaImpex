@@ -2,6 +2,7 @@
 // Vercel Serverless Function — securely registers standard users using Admin API to bypass SMTP issues
 import { createClient } from '@supabase/supabase-js';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { findUserByEmail } from './_shared/findUserByEmail';
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
@@ -52,15 +53,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const regPassword = generateSecurePassword(16);
 
     // List users to check if user already exists
-    const { data: existingUser, error: listError } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 });
-    if (listError) {
-      return res.status(500).json({ error: `Database check failed: ${listError.message}` });
-    }
-
-    const foundUser = existingUser?.users?.find(
-      u => u.email?.toLowerCase() === emailLower
-    );
-
+    const foundUser = await findUserByEmail(supabaseAdmin, emailLower);
     let userId = foundUser?.id;
 
     if (!foundUser) {
