@@ -334,6 +334,7 @@ export default function App() {
     () => sessionStorage.getItem('rebma-last-tab') || 'Overview'
   );
   const isInitialLoad = useRef(true);
+  const profilePhotoInputRef = useRef<HTMLInputElement>(null);
   const [unpricedCount, setUnpricedCount] = useState<number>(0);
   const rawNavBadges = useNavBadges(activeSubTab);
   const navBadges = {
@@ -3082,8 +3083,6 @@ export default function App() {
     }
     return content;
   };
-
-  const profilePhotoInputRef = useRef<HTMLInputElement>(null);
 
   const handleProfilePhotoClick = () => {
     profilePhotoInputRef.current?.click();
