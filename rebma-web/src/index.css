@@ -1247,14 +1247,20 @@ body.glass-theme-rose {
   body.btn-style-soft    { --radius-btn: 12px; }
   body.btn-style-sharp   { --radius-btn: 6px; }
 
-  /* Motion */
-  body.motion-none * {
+  /* Motion presets: Off / Subtle / Classic (default, no override) / Playful */
+  body.motion-off * {
     transition: none !important;
     animation: none !important;
   }
-  body.motion-reduced * {
-    transition-duration: 120ms !important;
-    animation-duration: 120ms !important;
+  body.motion-subtle * {
+    transition-duration: 100ms !important;
+    animation-duration: 100ms !important;
+    transition-timing-function: linear !important;
+  }
+  body.motion-playful * {
+    transition-duration: 450ms !important;
+    animation-duration: 450ms !important;
+    transition-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1) !important;
   }
 
   /* Cards */

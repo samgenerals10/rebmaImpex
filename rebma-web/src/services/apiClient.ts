@@ -651,6 +651,86 @@ async function deductStockForOrder(order: any, reference: string) {
   }
 }
 
+// Auto-generates the customer receipt and the operations pick/load ticket the
+// moment a sale is confirmed (same trigger point as deductStockForOrder) —
+// replaces the old flow where Finance had to manually key in a receipt and
+// separately click "Finalize Order" to move the order into the fulfillment
+// queue. Idempotent: skips if a receipt/ticket already exists for this order
+// (covers manual-entry paths that also route through order evaluation).
+// Never throws — a hiccup here shouldn't block the approval itself.
+async function autoGenerateReceiptAndTicket(order: any, reference: string) {
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const performerId = sessionData.session?.user?.id || null;
+    const now = new Date().toISOString();
+    const orderId = order.id;
+    const clientName = order.client_name || order.clientName || 'Customer';
+    const totalAmount = Number(order.total_amount ?? order.totalAmount ?? 0);
+    const meta = order.metadata || {};
+    const metaItems = meta.items || [];
+
+    const { data: existingPayments } = await supabase
+      .from('finance_payments')
+      .select('id')
+      .eq('order_id', orderId)
+      .limit(1);
+
+    if (!existingPayments || existingPayments.length === 0) {
+      const invoiceNumber = `RCT-${Date.now().toString().slice(-6)}`;
+      const { error: payErr } = await supabase.from('finance_payments').insert({
+        client_name: clientName,
+        customer_name: clientName,
+        amount: totalAmount,
+        payment_mode: order.payment_mode || order.paymentMode || 'CASH',
+        payment_type: 'Full Payment',
+        order_id: orderId,
+        invoice_number: invoiceNumber,
+        recorded_by: performerId,
+        status: 'CONFIRMED',
+        payment_details: { items: metaItems, reference },
+        created_at: now,
+      });
+      if (payErr) console.error('Auto receipt insert failed:', payErr);
+    }
+
+    const { data: existingTickets } = await supabase
+      .from('fulfillment_tickets')
+      .select('id')
+      .eq('order_id', orderId)
+      .limit(1);
+
+    if (!existingTickets || existingTickets.length === 0) {
+      const totalQty = metaItems.length > 0
+        ? metaItems.reduce((s: number, i: any) => s + (Number(i.quantity) || 0), 0)
+        : Number(order.quantity || 1);
+
+      const { error: ticketErr } = await supabase.from('fulfillment_tickets').insert({
+        order_id: orderId,
+        type: 'ORDER_FULFILLMENT',
+        details: {
+          clientName,
+          productName: order.product_name || order.productName,
+          quantity: totalQty,
+          totalAmount,
+          items: metaItems,
+        },
+        status: 'PENDING',
+        created_at: now,
+        updated_at: now,
+      });
+      if (ticketErr) console.error('Auto fulfillment ticket insert failed:', ticketErr);
+
+      const { error: orderErr } = await supabase
+        .from('orders')
+        .update({ status: 'PROCESSING', updated_at: now })
+        .eq('id', orderId);
+      if (orderErr) console.error('Auto order-to-PROCESSING update failed:', orderErr);
+    }
+  } catch (e) {
+    console.error('Auto receipt/ticket generation failed:', e);
+  }
+}
+
 // ── Management ────────────────────────────────────────────────
 export const management = {
   getAuditLog: async () => {
@@ -827,6 +907,9 @@ export const management = {
       if (approve) {
         const ticketRef = order.ticket_number || order.ticketNumber || `ORD-${orderId.slice(0, 6).toUpperCase()}`;
         await deductStockForOrder(order, `Credit Order Approved: ${ticketRef}`);
+        await autoGenerateReceiptAndTicket(order, `Credit Order Approved: ${ticketRef}`);
+        const { data: finalOrder } = await supabase.from('orders').select('*').eq('id', orderId).limit(1);
+        return finalOrder?.[0] ? mapOrderToFrontend(finalOrder[0]) : (updatedOrder ? mapOrderToFrontend(updatedOrder[0]) : null);
       }
     }
 
@@ -1048,8 +1131,10 @@ export const finance = {
 
       const ticketRef = order.ticket_number || order.ticketNumber || `ORD-${orderId.slice(0, 6).toUpperCase()}`;
       await deductStockForOrder(order, `Order Approved: ${ticketRef}`);
+      await autoGenerateReceiptAndTicket(order, `Order Approved: ${ticketRef}`);
 
-      return { message: 'Order approved by Finance.', order: updatedOrder ? mapOrderToFrontend(updatedOrder[0]) : null };
+      const { data: finalOrder } = await supabase.from('orders').select('*').eq('id', orderId).limit(1);
+      return { message: 'Order approved by Finance.', order: finalOrder?.[0] ? mapOrderToFrontend(finalOrder[0]) : (updatedOrder ? mapOrderToFrontend(updatedOrder[0]) : null) };
     }
   },
 
@@ -1081,23 +1166,28 @@ export const finance = {
       }).select();
     if (invErr) throw new Error(invErr.message);
 
-    const { error: ticketErr } = await supabase
-      .from('fulfillment_tickets')
-      .insert({
-        order_id: orderId,
-        type: 'ORDER_FULFILLMENT',
-        details: {
-          clientName: order.client_name || order.clientName,
-          productName: order.product_name || order.productName,
-          quantity: totalQty,
-          totalAmount: totalAmountVal,
-          items: metaItems
-        },
-        status: 'PENDING',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      });
-    if (ticketErr) throw new Error(ticketErr.message);
+    // Auto-approval already creates this ticket (see autoGenerateReceiptAndTicket) —
+    // only insert here if that didn't happen for some reason (e.g. older order).
+    const { data: existingTickets } = await supabase.from('fulfillment_tickets').select('id').eq('order_id', orderId).limit(1);
+    if (!existingTickets || existingTickets.length === 0) {
+      const { error: ticketErr } = await supabase
+        .from('fulfillment_tickets')
+        .insert({
+          order_id: orderId,
+          type: 'ORDER_FULFILLMENT',
+          details: {
+            clientName: order.client_name || order.clientName,
+            productName: order.product_name || order.productName,
+            quantity: totalQty,
+            totalAmount: totalAmountVal,
+            items: metaItems
+          },
+          status: 'PENDING',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        });
+      if (ticketErr) throw new Error(ticketErr.message);
+    }
 
     const { data: updatedOrder, error: orderErr } = await supabase
       .from('orders')

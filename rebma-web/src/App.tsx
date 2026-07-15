@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import type { FormEvent } from 'react';
-import { motion, AnimatePresence, MotionConfig } from 'framer-motion';
+import { motion, AnimatePresence, MotionConfig, type Transition } from 'framer-motion';
 import { Eye, EyeOff, Check, X, ArrowRight, Lock, Mail, User, CreditCard, Phone, AlertCircle, Info, CheckCircle, Camera, Send, Globe, ChevronRight, Settings, LogOut, Users, MessagesSquare, Home, Search, Plus, Bell, UserPlus, ClipboardList, Calendar, Megaphone, UserCheck, BarChart3, Video, Building2, Ship, Ticket, Flag, Truck, DollarSign, BookOpen, ShoppingCart, TrendingUp, Download, Boxes, Hammer, PackagePlus, MapPin, LogIn, Map, GitMerge, Tag, ShieldAlert, FileText, CheckSquare } from 'lucide-react';
 import type { Order, IncomingGoods, ProductionRequest, Visitor, Attendance, ChatMessage, BoardroomMeeting, FinancePayment, Customer, GoodsPrice, AuditEntry, PendingRegistration, StaffMember, CurrentUser } from './types/erp';
 
@@ -179,7 +179,11 @@ export default function App() {
     const a = _getAppearance(); return a.density || localStorage.getItem('erp-density') || 'Normal';
   });
   const [motionSetting, setMotionSetting] = useState<string>(() => {
-    return localStorage.getItem('erp-motion') || 'Full';
+    const stored = localStorage.getItem('erp-motion');
+    // Migrate legacy values (Full/Reduced/None) to the new 4-tier preset names
+    const legacyMap: Record<string, string> = { Full: 'Classic', Reduced: 'Subtle', None: 'Off' };
+    if (stored && legacyMap[stored]) return legacyMap[stored];
+    return stored || 'Classic';
   });
   const [darkMode, setDarkMode] = useState<boolean>(() => {
     return localStorage.getItem('erp-dark-mode') === 'true';
@@ -297,7 +301,7 @@ export default function App() {
     document.body.style.fontFamily = _fontStack;
 
     // Set reducedMotion helper
-    setReducedMotion(motionSetting === 'Reduced');
+    setReducedMotion(motionSetting === 'Off');
   }, [theme, accentColor, fontFamily, fontSize, navStyle, buttonStyle, cardStyle, density, motionSetting, darkMode]);
 
   // Restore accent override on mount (runs once — re-applies saved custom accent over theme CSS)
@@ -3572,6 +3576,7 @@ export default function App() {
       <AppInner
         currentUser={currentUser}
         reducedMotion={reducedMotion}
+        motionSetting={motionSetting}
         activeDepartment={activeDepartment}
         setActiveDepartment={setActiveDepartment}
         activeSubTab={activeSubTab}
@@ -3633,8 +3638,15 @@ export default function App() {
 
 // ── AppInner ─────────────────────────────────────────────────────────────────
 // Separated so useCeoSettings() can be called inside CeoSettingsProvider
+const MOTION_TRANSITIONS: Record<string, Transition> = {
+  Off:     { type: 'tween', duration: 0 },
+  Subtle:  { type: 'tween', duration: 0.1, ease: 'linear' },
+  Classic: { type: 'tween', duration: 0.2, ease: [0.4, 0, 0.2, 1] },
+  Playful: { type: 'spring', stiffness: 260, damping: 20 },
+};
+
 function AppInner({
-  currentUser, reducedMotion, activeDepartment, setActiveDepartment,
+  currentUser, reducedMotion, motionSetting, activeDepartment, setActiveDepartment,
   activeSubTab, setActiveSubTab, theme, notifications, setNotifications,
   addNotification, renderDashboard, renderAlertModal, renderPromptModal,
   renderConfirmModal, isChatOpen, setIsChatOpen, chatMessages, sendChatMessage,
@@ -3660,7 +3672,7 @@ function AppInner({
   }
 
   return (
-    <MotionConfig reducedMotion={reducedMotion ? 'always' : 'user'}>
+    <MotionConfig reducedMotion={reducedMotion ? 'always' : 'user'} transition={MOTION_TRANSITIONS[motionSetting] || MOTION_TRANSITIONS.Classic}>
       <div className="min-h-screen w-full p-0 lg:p-6 transition-all duration-300 bg-[var(--bg-page)]">
 
         {/* 1. LEFT SIDEBAR */}

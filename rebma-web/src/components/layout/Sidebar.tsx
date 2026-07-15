@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import type { CurrentUser } from '../../types/erp';
 import MiniCalendar from './MiniCalendar';
+import { motion } from 'framer-motion';
 
 interface SidebarProps {
   activeDepartment: string;
@@ -440,13 +441,20 @@ export default function Sidebar({
                     const hasAlert = (tabAlerts[dept.value] || 0) > 0;
                     return (
                       <button key={dept.value} type="button" onClick={() => { setActiveDepartment(dept.value); setIsSwitcherOpen(false); }}
-                        className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${isSelected ? 'bg-[var(--accent)] text-white shadow-card' : 'text-[var(--text-primary)] hover:bg-[var(--accent-light)]'}`}>
+                        className={`relative w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${isSelected ? 'bg-[var(--accent)] text-white' : 'text-[var(--text-primary)] hover:bg-[var(--accent-light)]'}`}>
                         <div className="flex items-center gap-2">
                           <DI className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-white' : 'text-[var(--accent)]'}`} />
                           <span>{dept.label}</span>
                           {hasAlert && !isSelected && <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse shrink-0" />}
                         </div>
                         {isSelected && <span className="text-white font-extrabold">✓</span>}
+                        {isSelected && (
+                          <motion.div
+                            layoutId="dept-switcher-underline"
+                            className="absolute left-3 right-3 -bottom-0.5 h-0.5 rounded-full bg-white"
+                            transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                          />
+                        )}
                       </button>
                     );
                   })}

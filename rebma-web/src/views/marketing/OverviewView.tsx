@@ -10,6 +10,7 @@ import {
   XAxis, YAxis, Tooltip, PieChart, Pie, Cell
 } from 'recharts';
 import type { Order, Customer } from '../../types/erp';
+import ProductCatalogCard from '../../components/ProductCatalogCard';
 
 interface Props {
   addNotification?: (msg: string) => void;
@@ -454,30 +455,9 @@ export default function MarketingOverviewView({ addNotification, setActiveSubTab
               </div>
               <button onClick={() => setActiveSubTab?.('CreateOrder')} className="px-3 py-1.5 rounded-xl text-xs font-bold text-white cursor-pointer" style={{ background: 'var(--accent)' }}>+ New Order</button>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {items.map((item: any) => (
-                <div key={item.name} className="rounded-xl border border-[var(--border)] p-4 bg-[var(--bg)] hover:border-emerald-400 transition-colors cursor-pointer" onClick={() => setActiveSubTab?.('CreateOrder')}>
-                  <div className="flex items-start justify-between mb-3">
-                    <p className="text-sm font-bold text-[var(--text-primary)] leading-tight">{item.name}</p>
-                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ml-2 ${item.qty > 0 ? 'bg-emerald-500/10 text-emerald-600' : 'bg-gray-500/10 text-[var(--text-muted)]'}`}>
-                      {item.qty > 0 ? 'In Stock' : 'Out of Stock'}
-                    </span>
-                  </div>
-                  <div className="mb-2">
-                    <p className="text-[10px] text-[var(--text-muted)] mb-0.5">Selling Price</p>
-                    <p className="text-lg font-bold text-emerald-600">{item.currency} {item.unitPrice.toLocaleString()}</p>
-                  </div>
-                  <div className="flex items-end justify-between pt-2 border-t border-[var(--border)]">
-                    <div>
-                      <p className="text-[10px] text-[var(--text-muted)] mb-0.5">Qty Sold</p>
-                      <p className="text-sm font-bold text-blue-500">{item.soldQty.toLocaleString()}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-[10px] text-[var(--text-muted)] mb-0.5">Qty Remaining</p>
-                      <p className="text-sm font-bold text-[var(--text-primary)]">{item.qty.toLocaleString()}</p>
-                    </div>
-                  </div>
-                </div>
+                <ProductCatalogCard key={item.name} item={item} onSelect={() => setActiveSubTab?.('CreateOrder')} />
               ))}
             </div>
           </div>

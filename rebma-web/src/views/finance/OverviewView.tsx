@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import PendingApprovalsAlert from '../../components/global/PendingApprovalsAlert';
+import ProductCatalogCard from '../../components/ProductCatalogCard';
 import {
   DollarSign, FileText, ClipboardCheck, BarChart2, CreditCard, Receipt,
   TrendingUp, TrendingDown, ArrowRight, RefreshCw, Tag,
@@ -1064,30 +1065,9 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
             </div>
             <button onClick={() => setActiveSubTab?.('PriceCatalog')} className="text-xs font-semibold hover:underline" style={{ color: 'var(--accent)' }}>Manage Prices →</button>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {inventoryItems.map((item: any) => (
-              <div key={item.name} className="rounded-xl border border-[var(--border)] p-4 bg-[var(--bg)] hover:border-emerald-400 hover:scale-[1.02] transition-all cursor-pointer" onClick={() => setActiveSubTab?.('PriceCatalog')}>
-                <div className="flex items-start justify-between mb-3">
-                  <p className="text-sm font-bold text-[var(--text-primary)] leading-tight truncate">{item.name}</p>
-                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ml-2 ${item.qty > 0 ? 'bg-emerald-500/10 text-emerald-600' : 'bg-gray-500/10 text-text-muted'}`}>
-                    {item.qty > 0 ? 'In Stock' : 'Out of Stock'}
-                  </span>
-                </div>
-                <div className="mb-2">
-                  <p className="text-[10px] text-[var(--text-muted)] mb-0.5">Selling Price</p>
-                  <p className="text-lg font-bold text-emerald-650">{item.currency} {item.unitPrice.toLocaleString()}</p>
-                </div>
-                <div className="flex items-end justify-between pt-2 border-t border-[var(--border)]">
-                  <div>
-                    <p className="text-[10px] text-[var(--text-muted)] mb-0.5">Qty Sold</p>
-                    <p className="text-sm font-bold text-blue-500">{item.soldQty.toLocaleString()}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-[10px] text-[var(--text-muted)] mb-0.5">Qty Remaining</p>
-                    <p className="text-sm font-bold text-[var(--text-primary)]">{item.qty.toLocaleString()}</p>
-                  </div>
-                </div>
-              </div>
+              <ProductCatalogCard key={item.name} item={item} onSelect={() => setActiveSubTab?.('PriceCatalog')} />
             ))}
           </div>
         </div>

@@ -775,6 +775,31 @@ export default function SettingsDashboard({
                 </div>
               </div>
 
+              {/* Motion Effect */}
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-[var(--text-muted)]">Motion Effect</label>
+                <div className="flex gap-2">
+                  {[
+                    { v: 'Off', label: 'Off' },
+                    { v: 'Subtle', label: 'Subtle' },
+                    { v: 'Classic', label: 'Classic' },
+                    { v: 'Playful', label: 'Playful' },
+                  ].map(m => (
+                    <button
+                      key={m.v}
+                      type="button"
+                      onClick={() => setMotion(m.v)}
+                      className={`flex-1 py-2 rounded-lg border text-xs font-semibold transition-all cursor-pointer ${
+                        motion === m.v
+                          ? 'bg-[var(--accent-soft)] border-[var(--accent)] text-[var(--accent)]'
+                          : 'border-[var(--border)] text-[var(--text-secondary)] hover:border-[var(--accent)]'
+                      }`}
+                    >{m.label}</button>
+                  ))}
+                </div>
+                <p className="text-[10px] text-[var(--text-muted)]">Controls animation speed/style across the whole app — applies instantly.</p>
+              </div>
+
               {/* Dark Mode + Sidebar toggles kept here for convenience */}
               <div className="grid grid-cols-2 gap-3 pt-1">
                 <div className="flex justify-between items-center p-2.5 bg-[var(--bg)] border border-[var(--border)] rounded-xl">
