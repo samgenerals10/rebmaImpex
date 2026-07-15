@@ -877,10 +877,11 @@ export default function App() {
       const { data: messages, error } = await supabase
         .from('chat_messages')
         .select('*')
-        .order('created_at', { ascending: true });
+        .order('created_at', { ascending: false })
+        .limit(500);
       if (error) throw error;
       if (messages && messages.length > 0) {
-        setChatMessagesState(messages.map((m: any) => ({
+        setChatMessagesState(messages.reverse().map((m: any) => ({
           id: m.id,
           sender: m.sender,
           content: m.content,
@@ -3723,12 +3724,7 @@ function AppInner({
               paymentsList={paymentsList}
               staffList={staffList}
               customersList={customersList}
-              onOpenChat={() => {
-                setActiveDepartment('BOARDROOM');
-                sessionStorage.setItem('rebma-last-dept', 'BOARDROOM');
-                setActiveSubTab('VideoConf');
-                setActiveMobileView('dashboard');
-              }}
+              onOpenChat={() => setIsChatOpen(true)}
               notifications={notifications}
               onClearNotifications={() => { setNotifications([]); setActiveToastIds(new Set()); }}
               onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -3848,6 +3844,7 @@ function AppInner({
           onClose={() => setIsChatOpen(false)}
           chatMessages={chatMessages}
           onSendMessage={sendChatMessage}
+          currentUser={currentUser}
           boardroomMinutes={boardroomMinutes}
           setBoardroomMinutes={setBoardroomMinutes}
         />

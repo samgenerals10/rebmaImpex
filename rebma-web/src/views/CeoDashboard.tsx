@@ -648,7 +648,7 @@ export default function CeoDashboard({
                     </p>
                   </div>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-[repeat(auto-fill,minmax(100px,1fr))] gap-2.5">
                   {inventoryItems.map((item: any) => (
                     <ProductCatalogCard key={item.name} item={item} />
                   ))}
