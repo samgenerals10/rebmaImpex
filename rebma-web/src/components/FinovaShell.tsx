@@ -165,8 +165,8 @@ export default function FinovaShell({ activeDepartment, currentUser, children }:
           // Group logic
           return {
             month: m,
-            income: Math.round(totalPayments * 0.2 + Math.random() * 5000),
-            expense: Math.round(totalPayments * 0.1 + Math.random() * 4000)
+            income: Math.round(totalPayments * 0.2),
+            expense: Math.round(totalPayments * 0.1)
           };
         });
 

@@ -20,8 +20,6 @@ import MarketingDashboard from './views/MarketingDashboard';
 import OperationsDashboard from './views/OperationsDashboard';
 import FinanceDashboard from './views/FinanceDashboard';
 import ProductionDashboard from './views/ProductionDashboard';
-import ReceptionDashboard from './views/ReceptionDashboard';
-import LogisticsDashboard from './views/LogisticsDashboard';
 import BoardroomView from './views/BoardroomView';
 import SettingsDashboard from './views/SettingsDashboard';
 import FoodieShell from './components/FoodieShell';
@@ -56,6 +54,7 @@ import CeoControlCenter from './views/ceo/CeoControlCenter';
 import MaintenancePage from './components/MaintenancePage';
 import { CeoSettingsProvider, useCeoSettings } from './contexts/CeoSettingsContext';
 import { playNotificationSound, getSavedSound, getSavedVolume, stopAlertSound } from './utils/notificationSound';
+import { uploadFile } from './utils/uploadFile';
 import { useNavBadges } from './hooks/useNavBadges';
 
 // Finance dedicated pages
@@ -1403,65 +1402,6 @@ export default function App() {
     }
   }, [activeDepartment]);
 
-  // Live Data Simulator adding active live data to every activity
-  useEffect(() => {
-    if (!isAuthenticated) return;
-
-    const simulationInterval = setInterval(() => {
-      // 1. Generate simulated live messages inside community chat
-      const messages = [
-        "Operations registered incoming port cargo shipment from Maersk.",
-        "Marketing logged a new customer account in Accra central.",
-        "Finance finished clearance check. Ledger statement updated.",
-        "Reception logged a guest check-in for the Operations floor.",
-        "Boardroom minutes notepad has been updated with active resolutions."
-      ];
-      const senders = ["Ops Manager", "Marketing Admin", "Finance Lead", "Receptionist", "Board Coordinator"];
-      const randIdx = Math.floor(Math.random() * messages.length);
-      
-      const newMsg: ChatMessage = {
-        id: Date.now().toString(),
-        sender: senders[randIdx],
-        content: messages[randIdx],
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      };
-      setChatMessages(prev => [...prev, newMsg]);
-
-      // 2. Random Visitor Check-in simulation (30% chance)
-      if (Math.random() > 0.7) {
-        const guestNames = ["Yaw Boakye", "Esi Appiah", "Joseph Osei"];
-        const hosts = ["CEO Samuel", "HR Derrick", "Finance Ama"];
-        const reasons = ["Customs audit", "Procurement contract", "Supplier review"];
-        const randG = guestNames[Math.floor(Math.random() * guestNames.length)];
-        
-        const visitor: Visitor = {
-          id: `V-${Math.floor(100 + Math.random() * 900)}`,
-          fullName: randG,
-          purpose: reasons[Math.floor(Math.random() * reasons.length)],
-          hostName: hosts[Math.floor(Math.random() * hosts.length)],
-          checkInTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        };
-        setVisitorsList(prev => [visitor, ...prev]);
-      }
-
-      // 3. Random Staff check-in simulation (25% chance)
-      if (Math.random() > 0.75) {
-        const staffList = ["Felicia Asante", "Daniel Tetteh", "Sandra Opoku"];
-        const staff = staffList[Math.floor(Math.random() * staffList.length)];
-        const checkin: Attendance = {
-          id: `A-${Math.floor(10 + Math.random() * 90)}`,
-          fullName: staff,
-          checkInTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          status: 'PRESENT'
-        };
-        setAttendanceList(prev => [checkin, ...prev]);
-      }
-
-    }, 15000); // runs every 15 seconds
-
-    return () => clearInterval(simulationInterval);
-  }, [isAuthenticated]);
-
   // Password validation helper
   const getPasswordValidationErrors = (pw: string) => {
     const errors = [];
@@ -1725,10 +1665,29 @@ export default function App() {
 
   const handleReleaseToDispatch = async (id: string) => {
     try {
-      const randomVehicle = `TRK-${Math.floor(100 + Math.random() * 900)}`;
-      const randomDriver = 'Kwame Kyeremeh';
-      await operations.releaseToDispatch(id, randomVehicle, randomDriver);
-      addNotification(`Operations released order ${id} to dispatch fleet.`);
+      // Auto-assign the least-busy active driver rather than dispatch's own
+      // "Release" picker screen — this quick-action button has no driver UI of
+      // its own, so pick a real driver instead of fabricating one.
+      const { data: activeDrivers } = await supabase
+        .from('drivers')
+        .select('driver_id, full_name, vehicle_id, status')
+        .eq('status', 'ACTIVE');
+      if (!activeDrivers || activeDrivers.length === 0) {
+        alert('No active drivers available. Add or activate a driver in Dispatch > Drivers first.');
+        return;
+      }
+      const { data: busyCounts } = await supabase
+        .from('delivery_logs')
+        .select('driver_id')
+        .in('status', ['ASSIGNED', 'IN_TRANSIT']);
+      const loadByDriver: Record<string, number> = {};
+      for (const d of busyCounts || []) {
+        if (d.driver_id) loadByDriver[d.driver_id] = (loadByDriver[d.driver_id] || 0) + 1;
+      }
+      const driver = [...activeDrivers].sort((a, b) => (loadByDriver[a.driver_id] || 0) - (loadByDriver[b.driver_id] || 0))[0];
+
+      await operations.releaseToDispatch(id, driver.vehicle_id || 'Unassigned', driver.full_name, driver.driver_id);
+      addNotification(`Operations released order ${id} to ${driver.full_name} (${driver.vehicle_id || 'no vehicle on file'}).`);
       refreshAllData();
     } catch (err: any) {
       alert(err.message || 'Failed to release to dispatch.');
@@ -3019,17 +2978,6 @@ export default function App() {
             addNotification={addNotification}
           />
         );
-      case 'RECEPTION':
-        return (
-          <ReceptionDashboard
-            visitorsList={visitorsList}
-            onAddVisitor={handleAddVisitor}
-            onCheckoutVisitor={handleCheckoutVisitor}
-            onCheckInAttendance={handleCheckInAttendance}
-          />
-        );
-      case 'LOGISTICS':
-        return <LogisticsDashboard />;
       case 'BOARDROOM':
         return (
           <BoardroomView
@@ -3135,11 +3083,19 @@ export default function App() {
     return content;
   };
 
-  const handleProfilePhotoClick = async () => {
-    const url = window.prompt("Enter profile image URL:", currentUser?.photo || "");
-    if (url === null) return;
-    if (!currentUser) return;
+  const profilePhotoInputRef = useRef<HTMLInputElement>(null);
+
+  const handleProfilePhotoClick = () => {
+    profilePhotoInputRef.current?.click();
+  };
+
+  const handleProfilePhotoFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file || !currentUser) return;
     try {
+      const url = await uploadFile(file, 'staff-photos', currentUser.id);
+      if (!url) throw new Error('Upload failed.');
       const { error } = await supabase
         .from('profiles')
         .update({ photo: url, updated_at: new Date().toISOString() })
@@ -3207,8 +3163,10 @@ export default function App() {
         setActiveSubTab('Meetings');
         setActiveMobileView('dashboard');
       } else if (actionName === 'Send Alert') {
-        addNotification("CEO Broadcast Alert sent to all departments.");
-        alert("Broadcast Alert sent to all departments.");
+        setActiveDepartment('BOARDROOM');
+        sessionStorage.setItem('rebma-last-dept', 'BOARDROOM');
+        setActiveSubTab('Announcements');
+        setActiveMobileView('dashboard');
       } else if (actionName === 'View All Departments') {
         setIsSidebarOpen(true);
       }
@@ -3224,8 +3182,10 @@ export default function App() {
         setActiveSubTab('Releases');
         setActiveMobileView('dashboard');
       } else if (actionName === 'Flag Discrepancy') {
-        addNotification("Discrepancy flagged on latest cargo record.");
-        alert("Discrepancy flagged successfully.");
+        setActiveDepartment('OPERATIONS');
+        sessionStorage.setItem('rebma-last-dept', 'OPERATIONS');
+        setActiveSubTab('OpsHistory');
+        setActiveMobileView('dashboard');
       }
     } else if (dept === 'FINANCE') {
       if (actionName === 'Record Payment') {
@@ -3266,8 +3226,10 @@ export default function App() {
         setActiveSubTab('SalesHistory');
         setActiveMobileView('dashboard');
       } else if (actionName === 'Export Report') {
-        addNotification("Exported marketing pipeline report.");
-        alert("Marketing pipeline report exported successfully.");
+        setActiveDepartment('MARKETING');
+        sessionStorage.setItem('rebma-last-dept', 'MARKETING');
+        setActiveSubTab('SalesHistory');
+        setActiveMobileView('dashboard');
       }
     } else if (dept === 'PRODUCTION') {
       if (actionName === 'Request Materials') {
@@ -3281,8 +3243,10 @@ export default function App() {
         setActiveSubTab('WIPStock');
         setActiveMobileView('dashboard');
       } else if (actionName === 'Log Output') {
-        addNotification("Logged output production units.");
-        alert("Output production units logged successfully.");
+        setActiveDepartment('PRODUCTION');
+        sessionStorage.setItem('rebma-last-dept', 'PRODUCTION');
+        setActiveSubTab('OutputRecording');
+        setActiveMobileView('dashboard');
       } else if (actionName === 'View Requisitions') {
         setActiveDepartment('PRODUCTION');
         sessionStorage.setItem('rebma-last-dept', 'PRODUCTION');
@@ -3296,8 +3260,10 @@ export default function App() {
         setActiveSubTab('Deliveries');
         setActiveMobileView('dashboard');
       } else if (actionName === 'Update GPS') {
-        addNotification("Updated GPS coordinates for active delivery.");
-        alert("GPS coordinates updated.");
+        setActiveDepartment('DISPATCH');
+        sessionStorage.setItem('rebma-last-dept', 'DISPATCH');
+        setActiveSubTab('Tracking');
+        setActiveMobileView('dashboard');
       } else if (actionName === 'Mark Delivered') {
         setActiveDepartment('DISPATCH');
         sessionStorage.setItem('rebma-last-dept', 'DISPATCH');
@@ -3327,12 +3293,11 @@ export default function App() {
         sessionStorage.setItem('rebma-last-dept', 'LOGISTICS');
         setActiveSubTab('Dispatch');
         setActiveMobileView('dashboard');
-      } else if (actionName === 'View Supply Chain') {
-        addNotification("Supply chain network is operating optimally.");
-        alert("Supply chain status: Operational");
-      } else if (actionName === 'Export Manifest') {
-        addNotification("Logistics manifest exported successfully.");
-        alert("Manifest exported.");
+      } else if (actionName === 'View Supply Chain' || actionName === 'Export Manifest') {
+        setActiveDepartment('LOGISTICS');
+        sessionStorage.setItem('rebma-last-dept', 'LOGISTICS');
+        setActiveSubTab('FleetOverview');
+        setActiveMobileView('dashboard');
       }
     } else if (dept === 'MANAGEMENT') {
       if (actionName === 'Approve Intake') {
@@ -3373,7 +3338,7 @@ export default function App() {
                 <span className="text-3xl font-bold text-text-secondary">{currentUser.fullName?.[0] || 'U'}</span>
               )}
             </div>
-            <button 
+            <button
               type="button"
               onClick={handleProfilePhotoClick}
               className="absolute bottom-0 right-0 p-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full shadow-card cursor-pointer border-2 border-white dark:border-slate-900"
@@ -3381,6 +3346,13 @@ export default function App() {
             >
               <Camera className="w-4 h-4" />
             </button>
+            <input
+              ref={profilePhotoInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleProfilePhotoFileChange}
+              style={{ display: 'none' }}
+            />
           </div>
 
           <div className="w-full">

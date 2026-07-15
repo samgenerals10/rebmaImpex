@@ -9,6 +9,17 @@ import type { StaffMember } from '../../types/erp';
 
 const DEPARTMENTS = ['All', 'Operations', 'Finance', 'Logistics', 'HR', 'Marketing', 'Reception', 'Production', 'Management'];
 
+// profiles.role has its own check constraint with specific casing/naming
+// (e.g. 'receptionist' not 'Reception') — map the UI's department labels to it.
+const DEPT_TO_ROLE: Record<string, string> = {
+  Operations: 'operations', Finance: 'finance', Logistics: 'logistics', HR: 'HR',
+  Marketing: 'marketing', Reception: 'receptionist', Production: 'production', Management: 'management',
+};
+const ROLE_TO_DEPT: Record<string, string> = Object.fromEntries(
+  Object.entries(DEPT_TO_ROLE).map(([dept, role]) => [role.toLowerCase(), dept])
+);
+const roleToDeptLabel = (role: string) => ROLE_TO_DEPT[String(role || '').toLowerCase()] || role || 'Operations';
+
 const statusColor = (s: string) => {
   if (s === 'ACTIVE') return { bg: 'rgba(16,185,129,0.12)', color: '#10b981' };
   if (s === 'SUSPENDED') return { bg: 'rgba(239,68,68,0.12)', color: '#ef4444' };
@@ -37,6 +48,7 @@ export default function StaffView({ staffList: propStaff, addNotification }: Pro
   const [form, setForm] = useState({ fullName: '', email: '', department: 'Operations', role: '', phone: '', ghanaCard: '' });
   const [totalOnLeave, setTotalOnLeave] = useState(0);
   const [submitting, setSubmitting] = useState(false);
+  const [newCredentials, setNewCredentials] = useState<{ email: string; password: string } | null>(null);
 
   // Detail loading state
   const [attendance, setAttendance] = useState<any[]>([]);
@@ -57,7 +69,7 @@ export default function StaffView({ staffList: propStaff, addNotification }: Pro
             id: p.id,
             fullName: p.full_name || 'Employee',
             email: p.email || '',
-            department: p.role || 'Operations', // role column holds department!
+            department: roleToDeptLabel(p.role), // role column holds department!
             role: p.is_ceo ? 'CEO' : (p.metadata?.role || 'Staff'),
             phone: p.phone || '',
             ghanaCard: p.ghana_card_id || '',
@@ -141,23 +153,25 @@ export default function StaffView({ staffList: propStaff, addNotification }: Pro
 
   const handleSaveAdd = async () => {
     if (submitting) return;
+    if (!form.email.trim()) { addNotification('Email is required.'); return; }
     setSubmitting(true);
-    const tempUuid = '00000000-0000-0000-0000-' + Math.floor(Math.random() * 1000000000000).toString().padStart(12, '0');
     try {
-      const { error } = await supabase.from('profiles').insert({
-        id: tempUuid,
-        email: form.email,
-        full_name: form.fullName,
-        role: form.department, // department stored in role column
-        phone: form.phone,
-        ghana_card_id: form.ghanaCard,
-        status: 'ACTIVE',
-        created_at: new Date().toISOString()
+      const res = await fetch('/api/register-staff-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: form.email,
+          fullName: form.fullName,
+          department: DEPT_TO_ROLE[form.department] || form.department,
+          phone: form.phone,
+          ghanaCardId: form.ghanaCard,
+        }),
       });
-      if (error) throw error;
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Failed to create staff account.');
 
       const newStaff: StaffMember = {
-        id: tempUuid,
+        id: json.userId,
         fullName: form.fullName,
         email: form.email,
         department: form.department,
@@ -168,6 +182,7 @@ export default function StaffView({ staffList: propStaff, addNotification }: Pro
         status: 'ACTIVE'
       };
       setStaff(prev => [newStaff, ...prev]);
+      setNewCredentials({ email: json.email, password: json.password });
       addNotification(`Staff member ${form.fullName} added`);
       setShowAdd(false);
       setForm({ fullName: '', email: '', department: 'Operations', role: '', phone: '', ghanaCard: '' });
@@ -187,7 +202,7 @@ export default function StaffView({ staffList: propStaff, addNotification }: Pro
         .update({
           full_name: form.fullName,
           email: form.email,
-          role: form.department, // department stored in role
+          role: DEPT_TO_ROLE[form.department] || form.department, // department stored in role
           phone: form.phone,
           ghana_card_id: form.ghanaCard
         })
@@ -228,6 +243,20 @@ export default function StaffView({ staffList: propStaff, addNotification }: Pro
       setSubmitting(false);
     }
   };
+
+  const CredentialsModal = () => newCredentials ? (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+      <div style={{ background: 'var(--bg-card)', borderRadius: 12, padding: '1.5rem', width: '100%', maxWidth: 440, border: '1px solid var(--border)' }}>
+        <h3 style={{ margin: '0 0 0.75rem', color: 'var(--text-primary)', fontWeight: 600 }}>Staff Account Created</h3>
+        <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '0 0 1rem' }}>Share these credentials with the new staff member now — the password won't be shown again.</p>
+        <div style={{ background: 'var(--bg)', borderRadius: 8, padding: '0.75rem 1rem', marginBottom: '1rem', fontFamily: 'monospace', fontSize: 13 }}>
+          <p style={{ margin: '0 0 6px', color: 'var(--text-primary)' }}>Email: {newCredentials.email}</p>
+          <p style={{ margin: 0, color: 'var(--text-primary)' }}>Password: {newCredentials.password}</p>
+        </div>
+        <button onClick={() => setNewCredentials(null)} style={{ width: '100%', padding: '0.6rem', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#fff', cursor: 'pointer', fontWeight: 600 }}>Done</button>
+      </div>
+    </div>
+  ) : null;
 
   const FormModal = ({ title, onClose, onSave }: { title: string; onClose: () => void; onSave: () => void }) => (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
@@ -412,6 +441,7 @@ export default function StaffView({ staffList: propStaff, addNotification }: Pro
           )}
         </div>
         {showAdd && <FormModal title="Add Staff" onClose={() => setShowAdd(false)} onSave={handleSaveAdd} />}
+        <CredentialsModal />
         {editTarget && <FormModal title="Edit Staff" onClose={() => setEditTarget(null)} onSave={handleSaveEdit} />}
       </div>
     );
@@ -550,6 +580,7 @@ export default function StaffView({ staffList: propStaff, addNotification }: Pro
       </div>
 
       {showAdd && <FormModal title="Add Staff" onClose={() => setShowAdd(false)} onSave={handleSaveAdd} />}
+        <CredentialsModal />
       {editTarget && <FormModal title="Edit Staff" onClose={() => setEditTarget(null)} onSave={handleSaveEdit} />}
       {menuOpen && <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={() => setMenuOpen(null)} />}
     </div>

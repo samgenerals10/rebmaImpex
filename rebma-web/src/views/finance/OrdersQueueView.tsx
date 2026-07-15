@@ -184,9 +184,9 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
         created_at: now,
       }]);
       await supabase.from('supplier_order_notifications').insert([
-        { order_id: order.id, message: `Finance approved order ${order.ticketNumber || order.id} for ${order.clientName}. Please prepare goods for dispatch.`, notified_department: 'OPERATIONS', read: false },
-        { order_id: order.id, message: `Your order ${order.ticketNumber || order.id} has been approved by Finance. Operations is preparing your goods.`, notified_department: 'MARKETING', read: false },
-        { order_id: order.id, message: `Order ${order.ticketNumber || order.id} for ${order.clientName} is ready for delivery assignment.`, notified_department: 'DISPATCH', read: false },
+        { message: `Finance approved order ${order.ticketNumber || order.id} for ${order.clientName}. Please prepare goods for dispatch.`, notified_department: 'OPERATIONS', read: false },
+        { message: `Your order ${order.ticketNumber || order.id} has been approved by Finance. Operations is preparing your goods.`, notified_department: 'MARKETING', read: false },
+        { message: `Order ${order.ticketNumber || order.id} for ${order.clientName} is ready for delivery assignment.`, notified_department: 'DISPATCH', read: false },
       ]);
       await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Order ${order.ticketNumber || order.id} APPROVED for ${order.clientName} — GHS ${(Number(order.totalAmount ?? 0)).toLocaleString()}`, performed_by: performedBy, timestamp: now }]);
 
@@ -209,7 +209,7 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
       onEvaluateOrder?.(id, false);
 
       await supabase.from('orders').update({ status: 'REJECTED', reject_reason: rejectReason }).eq('id', id);
-      await supabase.from('supplier_order_notifications').insert([{ order_id: id, message: `Order ${id} rejected by Finance. Reason: ${rejectReason}`, notified_department: 'MARKETING', read: false }]);
+      await supabase.from('supplier_order_notifications').insert([{ message: `Order ${id} rejected by Finance. Reason: ${rejectReason}`, notified_department: 'MARKETING', read: false }]);
       await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Order ${id} REJECTED. Reason: ${rejectReason}`, performed_by: currentUser?.fullName || 'Finance', timestamp: new Date().toISOString() }]);
 
       addNotification?.(`Order ${id} rejected.`);

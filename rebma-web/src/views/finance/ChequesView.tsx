@@ -88,8 +88,8 @@ export default function FinanceChequesView({ addNotification, currentUser }: Pro
       const cheque = cheques.find(c => c.id === id);
       if (status === 'Bounced' && cheque) {
         await supabase.from('supplier_order_notifications').insert([
-          { order_id: cheque.orderRef, message: `⚠️ CHEQUE BOUNCED: Cheque #${cheque.chequeNumber} from ${cheque.accountName} for GHS ${cheque.amount.toLocaleString()} has bounced. Immediate action required.`, notified_department: 'MANAGEMENT', read: false },
-          { order_id: cheque.orderRef, message: `⚠️ CHEQUE BOUNCED: Cheque #${cheque.chequeNumber} from ${cheque.accountName} for GHS ${cheque.amount.toLocaleString()} has bounced. Immediate action required.`, notified_department: 'CEO', read: false },
+          { message: `⚠️ CHEQUE BOUNCED: Cheque #${cheque.chequeNumber} from ${cheque.accountName} for GHS ${cheque.amount.toLocaleString()} has bounced. Immediate action required.`, notified_department: 'MANAGEMENT', read: false },
+          { message: `⚠️ CHEQUE BOUNCED: Cheque #${cheque.chequeNumber} from ${cheque.accountName} for GHS ${cheque.amount.toLocaleString()} has bounced. Immediate action required.`, notified_department: 'CEO', read: false },
         ]);
         addNotification?.(`⚠️ Cheque #${cheque.chequeNumber} marked as BOUNCED. Management and CEO notified.`);
       } else {

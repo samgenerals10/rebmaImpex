@@ -171,7 +171,6 @@ export default function VisitorsView({ addNotification }: Props) {
       if (!error) {
         setVisitors(prev => [newVisitor, ...prev]);
         await supabase.from('supplier_order_notifications').insert([{
-          order_id: newVisitor.id,
           message: `Visitor ${form.fullName} (${form.purpose}) has arrived to see ${form.hostName}. Badge: ${newVisitor.badgeNumber}`,
           notified_department: 'ALL',
           read: false,

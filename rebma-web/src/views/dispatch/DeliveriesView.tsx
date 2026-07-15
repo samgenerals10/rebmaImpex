@@ -500,7 +500,7 @@ export default function DeliveriesView({ addNotification, currentUser }: Props) 
 
       setDeliveries(prev => [rec, ...prev]);
 
-      await supabase.from('supplier_order_notifications').insert({ order_id: rec.orderId, message: `New delivery ${rec.id} created`, notified_department: 'OPERATIONS', read: false, created_at: rec.dispatchedAt });
+      await supabase.from('supplier_order_notifications').insert({ message: `New delivery ${rec.id} created`, notified_department: 'OPERATIONS', read: false, created_at: rec.dispatchedAt });
       addNotification(`New delivery ${rec.id} dispatched.`);
       setShowNew(false);
       setForm({ clientName: '', orderId: '', destination: '', driverId: '' });
@@ -526,7 +526,7 @@ export default function DeliveriesView({ addNotification, currentUser }: Props) 
         : d
       ));
 
-      await supabase.from('supplier_order_notifications').insert({ order_id: delivery.orderId, message: `Driver ${driver.fullName} assigned to ${delivery.orderId}`, notified_department: 'OPERATIONS', read: false, created_at: now });
+      await supabase.from('supplier_order_notifications').insert({ message: `Driver ${driver.fullName} assigned to ${delivery.orderId}`, notified_department: 'OPERATIONS', read: false, created_at: now });
       await supabase.from('global_audit_history').insert({ department: 'DISPATCH', action: `Driver ${driver.fullName} assigned to ${delivery.id}`, performed_by: currentUser?.fullName || 'Dispatch', timestamp: now });
       
       addNotification(`Driver ${driver.fullName} assigned to ${delivery.id}`);

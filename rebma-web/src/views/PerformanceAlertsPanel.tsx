@@ -41,13 +41,14 @@ export default function PerformanceAlertsPanel({ currentUser, addNotification }:
 
   const resolve = async (id: string) => {
     if (!id) return;
-    await resolveAlert(id);
+    await resolveAlert(id, currentUser?.id);
     addNotification('Alert resolved.');
     await load();
   };
 
-  const visible = alerts.filter(a => filter === 'all' || !a.resolved);
-  const unresolvedCount = alerts.filter(a => !a.resolved).length;
+  const isResolved = (a: PerformanceAlert) => a.status === 'resolved';
+  const visible = alerts.filter(a => filter === 'all' || !isResolved(a));
+  const unresolvedCount = alerts.filter(a => !isResolved(a)).length;
 
   return (
     <div className="space-y-5">
@@ -92,48 +93,36 @@ export default function PerformanceAlertsPanel({ currentUser, addNotification }:
             const sev = SEV_CONFIG[alert.severity] || SEV_CONFIG.low;
             const Icon = sev.icon;
             return (
-              <div key={alert.id || i} className={`border rounded-2xl p-4 shadow-sm ${alert.resolved ? 'opacity-50' : ''} ${sev.bg}`}>
+              <div key={alert.id || i} className={`border rounded-2xl p-4 shadow-sm ${isResolved(alert) ? 'opacity-50' : ''} ${sev.bg}`}>
                 <div className="flex items-start gap-3">
                   <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${sev.bg}`}>
                     <Icon className={`w-4 h-4 ${sev.color}`} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap mb-0.5">
-                      <p className="text-sm font-bold text-[var(--text-primary)] truncate">{alert.title}</p>
                       <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${sev.bg} ${sev.color}`}>{sev.label}</span>
                       <span className="text-[9px] font-semibold px-2 py-0.5 rounded-full bg-[var(--bg-card)] border border-[var(--border)] text-[var(--text-muted)]">{alert.department}</span>
                     </div>
                     <p className="text-xs text-[var(--text-secondary)] leading-relaxed">{alert.description}</p>
-                    {alert.threshold_value !== undefined && alert.actual_value !== undefined && (
-                      <p className="text-[10px] text-[var(--text-muted)] mt-1">
-                        Threshold: {alert.threshold_value} · Actual: {alert.actual_value}
-                      </p>
-                    )}
                     {alert.created_at && (
                       <p className="text-[9px] text-[var(--text-muted)] mt-1">
                         {new Date(alert.created_at).toLocaleString('en-GB', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })}
                       </p>
                     )}
                   </div>
-                  {!alert.resolved && alert.id && (
+                  {!isResolved(alert) && alert.id && (
                     <button onClick={() => resolve(alert.id!)}
                       className="shrink-0 flex items-center gap-1 px-2.5 py-1 text-[10px] font-semibold bg-emerald-500 text-white rounded-lg cursor-pointer hover:bg-emerald-600">
                       <Check className="w-3 h-3" /> Resolve
                     </button>
                   )}
-                  {alert.resolved && <span className="text-[9px] font-bold text-emerald-600 shrink-0">Resolved</span>}
+                  {isResolved(alert) && <span className="text-[9px] font-bold text-emerald-600 shrink-0">Resolved</span>}
                 </div>
               </div>
             );
           })}
         </div>
       )}
-
-      {/* Supabase table hint */}
-      <div className="bg-[var(--bg-input)] border border-[var(--border)] rounded-xl p-3 text-xs text-[var(--text-muted)]">
-        <p className="font-bold text-[var(--text-secondary)] mb-1">Supabase Table Required</p>
-        Create <code className="bg-[var(--border)] px-1 rounded">performance_alerts</code> with columns: <code className="bg-[var(--border)] px-1 rounded">id uuid primary key default gen_random_uuid(), alert_type text, department text, severity text, title text, description text, threshold_value numeric, actual_value numeric, resolved boolean default false, created_at timestamptz default now()</code>. Enable RLS — authenticated users can SELECT; service role can INSERT/UPDATE.
-      </div>
     </div>
   );
 }

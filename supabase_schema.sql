@@ -29,9 +29,11 @@ CREATE TABLE IF NOT EXISTS public.profiles (
 );
 
 -- Ensure profiles check constraint matches the application roles
+-- 'management' added: the Management department had no valid role value at
+-- all until now, so HR could never actually create a real Management login.
 ALTER TABLE public.profiles DROP CONSTRAINT IF EXISTS profiles_role_check;
 ALTER TABLE public.profiles ADD CONSTRAINT profiles_role_check CHECK (
-    role IN ('CEO', 'HR', 'admin', 'marketing', 'operations', 'finance', 'production', 'receptionist', 'dispatch', 'logistics', 'Staff')
+    role IN ('CEO', 'HR', 'admin', 'marketing', 'operations', 'finance', 'production', 'receptionist', 'dispatch', 'logistics', 'management', 'Staff')
 );
 
 -- ATTENDANCE TABLE
@@ -711,3 +713,56 @@ CREATE POLICY "Allow authenticated users full access to driver_locations" ON pub
 ALTER PUBLICATION supabase_realtime ADD TABLE public.driver_locations;
 CREATE INDEX IF NOT EXISTS idx_driver_locations_driver_recorded ON public.driver_locations(driver_id, recorded_at DESC);
 ALTER PUBLICATION supabase_realtime ADD TABLE public.material_requisitions;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- LOGISTICS FLEET MANAGEMENT
+-- These three tables back the Logistics department's Fleet/Fuel/Maintenance
+-- screens, which were built against tables that were never actually created —
+-- every "save" in those screens has been silently local-only until now.
+-- ─────────────────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.fleet_vehicles (
+    id TEXT PRIMARY KEY DEFAULT 'VEH-' || substring(md5(random()::text) from 1 for 8),
+    vehicle_id TEXT NOT NULL,
+    type TEXT NOT NULL DEFAULT 'Pickup', -- 'Pickup' | 'Container' | 'Tanker'
+    driver TEXT,
+    status TEXT NOT NULL DEFAULT 'Operational', -- 'Operational' | 'In Maintenance' | 'Retired'
+    last_maintenance DATE,
+    total_deliveries NUMERIC DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE public.fleet_vehicles ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow authenticated users full access to fleet_vehicles" ON public.fleet_vehicles FOR ALL TO authenticated USING (true) WITH CHECK (true);
+ALTER PUBLICATION supabase_realtime ADD TABLE public.fleet_vehicles;
+
+CREATE TABLE IF NOT EXISTS public.fuel_logs (
+    id TEXT PRIMARY KEY DEFAULT 'FUEL-' || substring(md5(random()::text) from 1 for 8),
+    date DATE NOT NULL DEFAULT CURRENT_DATE,
+    vehicle_id TEXT NOT NULL,
+    driver TEXT,
+    liters NUMERIC NOT NULL DEFAULT 0,
+    cost NUMERIC NOT NULL DEFAULT 0,
+    station TEXT,
+    odometer NUMERIC DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE public.fuel_logs ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow authenticated users full access to fuel_logs" ON public.fuel_logs FOR ALL TO authenticated USING (true) WITH CHECK (true);
+ALTER PUBLICATION supabase_realtime ADD TABLE public.fuel_logs;
+
+CREATE TABLE IF NOT EXISTS public.maintenance_schedule (
+    id TEXT PRIMARY KEY DEFAULT 'MAINT-' || substring(md5(random()::text) from 1 for 8),
+    date DATE NOT NULL DEFAULT CURRENT_DATE,
+    vehicle_id TEXT NOT NULL,
+    type TEXT NOT NULL DEFAULT 'Service', -- 'Service' | 'Repair' | 'Inspection'
+    description TEXT,
+    cost NUMERIC DEFAULT 0,
+    status TEXT NOT NULL DEFAULT 'Scheduled', -- 'Scheduled' | 'In Progress' | 'Completed'
+    mechanic TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE public.maintenance_schedule ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow authenticated users full access to maintenance_schedule" ON public.maintenance_schedule FOR ALL TO authenticated USING (true) WITH CHECK (true);
+ALTER PUBLICATION supabase_realtime ADD TABLE public.maintenance_schedule;

@@ -103,15 +103,15 @@ export default function FinloFlashShell({ activeDepartment, currentUser, childre
         const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
         const lineData = months.map(m => ({
           month: m,
-          value: Math.round(totalRev * 0.15 + Math.random() * 5000)
+          value: Math.round(totalRev * 0.15)
         }));
         if (active) setEarningData(lineData);
 
         const flowData = months.map(m => ({
           month: m,
-          income: Math.round(totalRev * 0.2 + Math.random() * 4000),
-          expense: Math.round(totalRev * 0.1 + Math.random() * 3000),
-          savings: Math.round(totalRev * 0.08 + Math.random() * 2000)
+          income: Math.round(totalRev * 0.2),
+          expense: Math.round(totalRev * 0.1),
+          savings: Math.round(totalRev * 0.08)
         }));
         if (active) setCashFlowData(flowData);
 

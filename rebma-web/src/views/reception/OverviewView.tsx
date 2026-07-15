@@ -131,7 +131,6 @@ export default function ReceptionOverviewView({ visitorsList, onAddVisitor, onCh
     };
     supabase.from('visitors').insert([newV]).then(() => {}, () => {});
     supabase.from('supplier_order_notifications').insert([{
-      order_id: newV.id,
       message: `${quickForm.fullName} has arrived to see you. Badge: ${badge}`,
       notified_department: 'ALL',
       read: false,

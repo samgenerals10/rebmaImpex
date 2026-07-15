@@ -408,7 +408,7 @@ export default function SupplierOrdersView({ currentUser, addNotification }: Pro
                 notified_department: targetDept,
                 notified_user_id: userId || null,
                 message: msg,
-                sent_by: currentUser?.fullName || 'CEO',
+                sent_by: null,
                 read: false,
               }]);
               // Also flag the order as notified

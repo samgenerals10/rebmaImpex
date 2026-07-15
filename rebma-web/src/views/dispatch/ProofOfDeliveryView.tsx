@@ -1,7 +1,8 @@
 // src/views/dispatch/ProofOfDeliveryView.tsx
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Camera, CheckCircle, Clock, Upload, Eye } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
+import { uploadFile } from '../../utils/uploadFile';
 import type { CurrentUser } from '../../types/erp';
 
 interface Delivery {
@@ -56,7 +57,7 @@ export default function ProofOfDeliveryView({ addNotification }: Props) {
           customer: row.orders?.client_name || 'Generic Client',
           address: row.orders?.destination || 'N/A',
           driver: row.driver_name || 'Unassigned Driver',
-          proof_url: row.active_coordinates?.proof_url || undefined, // fallback storage path in jsonb if needed
+          proof_url: row.proof_photo || undefined,
           status: uiStatus,
           delivered_at: row.delivered_at || undefined,
         };
@@ -93,8 +94,34 @@ export default function ProofOfDeliveryView({ addNotification }: Props) {
     }
   };
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadTargetId, setUploadTargetId] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+
   const handleUpload = (id: string) => {
-    addNotification('Photo upload feature requires Supabase Storage configuration.');
+    setUploadTargetId(id);
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    const targetId = uploadTargetId;
+    e.target.value = '';
+    if (!file || !targetId) return;
+    setUploading(true);
+    try {
+      const url = await uploadFile(file, 'delivery-proofs', targetId);
+      if (!url) throw new Error('Upload failed.');
+      const { error } = await supabase.from('delivery_logs').update({ proof_photo: url }).eq('id', targetId);
+      if (error) throw error;
+      addNotification('Proof of delivery uploaded.');
+      await load();
+    } catch (err: any) {
+      addNotification(`Upload failed: ${err.message}`);
+    } finally {
+      setUploading(false);
+      setUploadTargetId(null);
+    }
   };
 
   const pending   = rows.filter(r => r.status === 'pending_proof');
@@ -103,6 +130,7 @@ export default function ProofOfDeliveryView({ addNotification }: Props) {
 
   return (
     <div className="space-y-5">
+      <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileChange} style={{ display: 'none' }} />
       <div>
         <h2 className="text-lg font-bold text-[var(--text-primary)]">Proof of Delivery</h2>
         <p className="text-xs text-[var(--text-muted)]">Upload and confirm delivery documentation</p>
@@ -155,8 +183,12 @@ export default function ProofOfDeliveryView({ addNotification }: Props) {
                   )}
                   {row.status === 'pending_proof' && (
                     <>
-                      <button onClick={() => handleUpload(row.id)} className="flex items-center gap-1 px-2.5 py-1 bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-secondary)] text-xs font-semibold rounded-lg cursor-pointer hover:bg-[var(--accent-light)]">
-                        <Upload className="w-3.5 h-3.5" /> Upload
+                      <button
+                        onClick={() => handleUpload(row.id)}
+                        disabled={uploading && uploadTargetId === row.id}
+                        className="flex items-center gap-1 px-2.5 py-1 bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-secondary)] text-xs font-semibold rounded-lg cursor-pointer hover:bg-[var(--accent-light)] disabled:opacity-60"
+                      >
+                        <Upload className="w-3.5 h-3.5" /> {uploading && uploadTargetId === row.id ? 'Uploading...' : 'Upload'}
                       </button>
                       <button onClick={() => markConfirmed(row.id)} className="flex items-center gap-1 px-2.5 py-1 bg-emerald-500 text-white text-xs font-semibold rounded-lg cursor-pointer hover:bg-emerald-600">
                         <CheckCircle className="w-3.5 h-3.5" /> Confirm

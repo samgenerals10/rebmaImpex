@@ -308,16 +308,16 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
           }
 
           if (notifyOps) {
-            await supabase.from('supplier_order_notifications').insert([{ order_id: rawId, message: `Cargo intake APPROVED by Management: ${selectedItem.description}`, notified_department: 'OPERATIONS', read: false }]);
+            await supabase.from('supplier_order_notifications').insert([{ message: `Cargo intake APPROVED by Management: ${selectedItem.description}`, notified_department: 'OPERATIONS', read: false }]);
           }
           if (notifyCeo) {
-            await supabase.from('supplier_order_notifications').insert([{ order_id: rawId, message: `Cargo intake APPROVED by Management: ${selectedItem.description}`, notified_department: 'CEO', read: false }]);
+            await supabase.from('supplier_order_notifications').insert([{ message: `Cargo intake APPROVED by Management: ${selectedItem.description}`, notified_department: 'CEO', read: false }]);
           }
           if (sellingPrice) {
             await supabase.from('goods_prices').upsert([{ product_name: productName, unit_price: parseFloat(sellingPrice) }], { onConflict: 'product_name' });
           }
-          await supabase.from('supplier_order_notifications').insert([{ order_id: rawId, message: `Cargo intake APPROVED by Management: ${selectedItem.description}`, notified_department: 'FINANCE', read: false }]);
-          await supabase.from('supplier_order_notifications').insert([{ order_id: rawId, message: `New stock approved: ${selectedItem.description}. Update pricing in Marketing.`, notified_department: 'MARKETING', read: false }]);
+          await supabase.from('supplier_order_notifications').insert([{ message: `Cargo intake APPROVED by Management: ${selectedItem.description}`, notified_department: 'FINANCE', read: false }]);
+          await supabase.from('supplier_order_notifications').insert([{ message: `New stock approved: ${selectedItem.description}. Update pricing in Marketing.`, notified_department: 'MARKETING', read: false }]);
         }
       }
 
@@ -329,8 +329,8 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
 
         if (action === 'approve') {
           if (isCreditPayment) {
-            await supabase.from('supplier_order_notifications').insert([{ order_id: selectedItem.id, message: `Credit order approved by Management — now awaiting Finance processing: ${selectedItem.description}`, notified_department: 'FINANCE', read: false }]);
-            await supabase.from('supplier_order_notifications').insert([{ order_id: selectedItem.id, message: `Your credit order has been approved by Management and sent to Finance: ${selectedItem.description}`, notified_department: 'MARKETING', read: false }]);
+            await supabase.from('supplier_order_notifications').insert([{ message: `Credit order approved by Management — now awaiting Finance processing: ${selectedItem.description}`, notified_department: 'FINANCE', read: false }]);
+            await supabase.from('supplier_order_notifications').insert([{ message: `Your credit order has been approved by Management and sent to Finance: ${selectedItem.description}`, notified_department: 'MARKETING', read: false }]);
           } else {
             // CASH/CHEQUE/MOMO orders bypass Finance — create delivery log for Dispatch directly
             const now = new Date().toISOString();
@@ -341,12 +341,12 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
               status: 'PENDING_ASSIGNMENT',
               timestamp: now,
             }]);
-            await supabase.from('supplier_order_notifications').insert([{ order_id: selectedItem.id, message: `${paymentMode} order approved by Management — ready for dispatch: ${selectedItem.description}`, notified_department: 'DISPATCH', read: false }]);
-            await supabase.from('supplier_order_notifications').insert([{ order_id: selectedItem.id, message: `${paymentMode} order approved — Operations is preparing goods: ${selectedItem.description}`, notified_department: 'MARKETING', read: false }]);
-            await supabase.from('supplier_order_notifications').insert([{ order_id: selectedItem.id, message: `Approved ${paymentMode} order ready for fulfillment: ${selectedItem.description}`, notified_department: 'OPERATIONS', read: false }]);
+            await supabase.from('supplier_order_notifications').insert([{ message: `${paymentMode} order approved by Management — ready for dispatch: ${selectedItem.description}`, notified_department: 'DISPATCH', read: false }]);
+            await supabase.from('supplier_order_notifications').insert([{ message: `${paymentMode} order approved — Operations is preparing goods: ${selectedItem.description}`, notified_department: 'MARKETING', read: false }]);
+            await supabase.from('supplier_order_notifications').insert([{ message: `Approved ${paymentMode} order ready for fulfillment: ${selectedItem.description}`, notified_department: 'OPERATIONS', read: false }]);
           }
         } else {
-          await supabase.from('supplier_order_notifications').insert([{ order_id: selectedItem.id, message: `Order REJECTED by Management: ${selectedItem.description}${modalNote ? ` — ${modalNote}` : ''}`, notified_department: 'MARKETING', read: false }]);
+          await supabase.from('supplier_order_notifications').insert([{ message: `Order REJECTED by Management: ${selectedItem.description}${modalNote ? ` — ${modalNote}` : ''}`, notified_department: 'MARKETING', read: false }]);
         }
       }
 
@@ -355,7 +355,7 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
         await supabase.from('profiles').update({ status: newDbStatus }).eq('id', selectedItem.id);
 
         if (action === 'approve') {
-          await supabase.from('supplier_order_notifications').insert([{ order_id: selectedItem.id, message: `Staff registration APPROVED: ${selectedItem.description}`, notified_department: 'HR', read: false }]);
+          await supabase.from('supplier_order_notifications').insert([{ message: `Staff registration APPROVED: ${selectedItem.description}`, notified_department: 'HR', read: false }]);
         }
       }
 
@@ -364,7 +364,7 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
         await supabase.from('production_requests').update({ status: newDbStatus }).eq('id', selectedItem.id);
 
         if (action === 'approve') {
-          await supabase.from('supplier_order_notifications').insert([{ order_id: selectedItem.id, message: `Production request APPROVED by Management: ${selectedItem.description}`, notified_department: 'PRODUCTION', read: false }]);
+          await supabase.from('supplier_order_notifications').insert([{ message: `Production request APPROVED by Management: ${selectedItem.description}`, notified_department: 'PRODUCTION', read: false }]);
         }
       }
 
@@ -373,7 +373,7 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
         await supabase.from('general_purchases').update({ status: newDbStatus }).eq('id', selectedItem.id);
 
         if (action === 'approve') {
-          await supabase.from('supplier_order_notifications').insert([{ order_id: selectedItem.id, message: `General purchase APPROVED by Management: ${selectedItem.description}`, notified_department: action === 'approve' ? (String(selectedItem.raw.department || 'OPERATIONS')) : 'OPERATIONS', read: false }]);
+          await supabase.from('supplier_order_notifications').insert([{ message: `General purchase APPROVED by Management: ${selectedItem.description}`, notified_department: action === 'approve' ? (String(selectedItem.raw.department || 'OPERATIONS')) : 'OPERATIONS', read: false }]);
         }
       }
 

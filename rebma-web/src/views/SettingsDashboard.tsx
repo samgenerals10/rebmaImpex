@@ -228,7 +228,7 @@ export default function SettingsDashboard({
   // ── Template data for Appearance tab ──
   const APPEARANCE_TEMPLATES = [
     { id: 'salespulse',  label: 'SalesPulse',   desc: 'Clean green growth',    sidebar: '#ffffff', page: '#f0fdf4', accent: '#22c55e', comingSoon: false },
-    { id: 'liamfinance', label: 'Liam Finance',  desc: 'Compact icon sidebar',  sidebar: '#f1f5f9', page: '#f8fafc', accent: '#6366f1', comingSoon: false },
+    { id: 'liamfinance', label: 'Liam Finance',  desc: 'Compact icon sidebar',  sidebar: '#f1f5f9', page: '#f8fafc', accent: '#6366f1', comingSoon: true },
     { id: 'finloflash',  label: 'Finlo Flash',   desc: 'Warm orange fire',      sidebar: '#ffffff', page: '#fff7ed', accent: '#f97316', comingSoon: false },
     { id: 'finova',      label: 'Finova',        desc: 'Blue finance gradient', sidebar: '#ffffff', page: '#f0f9ff', accent: '#3b82f6', comingSoon: false },
     { id: 'foodie',      label: 'Foodie',        desc: 'Dark indigo sidebar',   sidebar: '#1e1b4b', page: '#faf5ff', accent: '#7c3aed', comingSoon: true },

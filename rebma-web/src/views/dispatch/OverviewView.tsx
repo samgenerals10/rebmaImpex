@@ -165,7 +165,7 @@ export default function DispatchOverviewView({ addNotification, setActiveSubTab,
     try {
       await supabase.from('delivery_logs').insert([dbRec]);
       await supabase.from('supplier_order_notifications').insert({
-        order_id: assignOrderId, message: `Driver ${driver?.fullName} assigned to ${assignOrderId}`,
+        message: `Driver ${driver?.fullName} assigned to ${assignOrderId}`,
         notified_department: 'OPERATIONS', read: false, created_at: now,
       });
       await supabase.from('global_audit_history').insert({

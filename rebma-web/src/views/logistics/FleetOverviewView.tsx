@@ -17,6 +17,26 @@ const STATUS_COLORS = { Operational: '#059669', 'In Maintenance': '#d97706', Ret
 
 const emptyVehicle: Omit<Vehicle, 'id' | 'totalDeliveries'> = { vehicleId: '', type: 'Pickup', driver: '', status: 'Operational', lastMaintenance: '' };
 
+const mapToUI = (db: any): Vehicle => ({
+  id: db.id,
+  vehicleId: db.vehicle_id || '',
+  type: db.type || 'Pickup',
+  driver: db.driver || '',
+  status: db.status || 'Operational',
+  lastMaintenance: db.last_maintenance || '',
+  totalDeliveries: Number(db.total_deliveries || 0),
+});
+
+const mapToDB = (ui: Partial<Vehicle>) => {
+  const db: any = {};
+  if (ui.vehicleId !== undefined) db.vehicle_id = ui.vehicleId;
+  if (ui.type !== undefined) db.type = ui.type;
+  if (ui.driver !== undefined) db.driver = ui.driver || null;
+  if (ui.status !== undefined) db.status = ui.status;
+  if (ui.lastMaintenance !== undefined) db.last_maintenance = ui.lastMaintenance || null;
+  return db;
+};
+
 interface Props {
   addNotification: (msg: string) => void;
 }
@@ -28,21 +48,21 @@ export default function FleetOverviewView({ addNotification }: Props) {
   const [showAddModal, setShowAddModal] = useState(false);
   const [editVehicle, setEditVehicle] = useState<Vehicle | null>(null);
   const [formData, setFormData] = useState<Omit<Vehicle, 'id' | 'totalDeliveries'>>(emptyVehicle);
+  const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      try {
-        const { data, error } = await supabase.from('fleet_vehicles').select('*').order('created_at', { ascending: false });
-        if (!error && data) setVehicles(data);
-        else setVehicles([]);
-      } catch {
-        setVehicles([]);
-      }
-      setLoading(false);
-    };
-    load();
-  }, []);
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.from('fleet_vehicles').select('*').order('created_at', { ascending: false });
+      if (!error && data) setVehicles(data.map(mapToUI));
+      else setVehicles([]);
+    } catch {
+      setVehicles([]);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => { loadData(); }, []);
 
   const counts = {
     total: vehicles.length,
@@ -52,27 +72,39 @@ export default function FleetOverviewView({ addNotification }: Props) {
   };
 
   const handleSaveAdd = async () => {
-    if (!formData.vehicleId) return;
-    const newV: Vehicle = { ...formData, id: String(Date.now()), totalDeliveries: 0 };
-    try { await supabase.from('fleet_vehicles').insert([newV]); } catch {}
-    setVehicles(prev => [newV, ...prev]);
-    addNotification(`Vehicle ${newV.vehicleId} added`);
-    setShowAddModal(false);
-    setFormData(emptyVehicle);
+    if (!formData.vehicleId || submitting) return;
+    setSubmitting(true);
+    try {
+      const { data, error } = await supabase.from('fleet_vehicles').insert([mapToDB(formData)]).select();
+      if (error) { alert(error.message); return; }
+      addNotification(`Vehicle ${formData.vehicleId} added`);
+      await loadData();
+      setShowAddModal(false);
+      setFormData(emptyVehicle);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleSaveEdit = async () => {
-    if (!editVehicle) return;
-    const updated = { ...editVehicle, ...formData };
-    try { await supabase.from('fleet_vehicles').update(formData).eq('id', editVehicle.id); } catch {}
-    setVehicles(prev => prev.map(v => v.id === editVehicle.id ? updated : v));
-    addNotification(`Vehicle ${editVehicle.vehicleId} updated`);
-    setEditVehicle(null);
+    if (!editVehicle || submitting) return;
+    setSubmitting(true);
+    try {
+      const { error } = await supabase.from('fleet_vehicles').update(mapToDB(formData)).eq('id', editVehicle.id);
+      if (error) { alert(error.message); return; }
+      addNotification(`Vehicle ${editVehicle.vehicleId} updated`);
+      await loadData();
+      setEditVehicle(null);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const handleDeactivate = (vehicle: Vehicle) => {
-    setVehicles(prev => prev.map(v => v.id === vehicle.id ? { ...v, status: 'Retired' } : v));
+  const handleDeactivate = async (vehicle: Vehicle) => {
+    const { error } = await supabase.from('fleet_vehicles').update({ status: 'Retired' }).eq('id', vehicle.id);
+    if (error) { alert(error.message); return; }
     addNotification(`Vehicle ${vehicle.vehicleId} deactivated`);
+    await loadData();
   };
 
   const inputStyle: React.CSSProperties = { background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'var(--text-primary)', fontSize: 14, width: '100%', boxSizing: 'border-box' };

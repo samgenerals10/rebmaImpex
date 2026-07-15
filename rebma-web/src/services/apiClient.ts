@@ -435,7 +435,7 @@ export const operations = {
     metadata?: any;
   }) => {
     const { data: sessionData } = await supabase.auth.getSession();
-    const performerId = sessionData.session?.user?.id || 'unknown';
+    const performerId = sessionData.session?.user?.id || null;
     const { data: performers } = await supabase.from('profiles').select('full_name').eq('id', performerId).limit(1);
     const performedBy = performers?.[0]?.full_name || 'Ops Staff';
 
@@ -501,7 +501,7 @@ export const operations = {
     }));
   },
 
-  releaseToDispatch: async (orderId: string, vehicleId: string, driverName?: string) => {
+  releaseToDispatch: async (orderId: string, vehicleId: string, driverName?: string, driverId?: string) => {
     const { data: orders, error: orderErr } = await supabase.from('orders').select('id').eq('id', orderId).limit(1);
     if (orderErr || !orders || orders.length === 0) throw new Error('Order not found');
 
@@ -511,6 +511,7 @@ export const operations = {
         order_id: orderId,
         vehicle_id: vehicleId,
         driver_name: driverName || null,
+        driver_id: driverId || null,
         status: 'ASSIGNED',
         updated_at: new Date().toISOString()
       }).select();
@@ -569,7 +570,7 @@ export const operations = {
     dateReceived: string;
   }) => {
     const { data: sessionData } = await supabase.auth.getSession();
-    const performerId = sessionData.session?.user?.id || 'unknown';
+    const performerId = sessionData.session?.user?.id || null;
     const { data: performers } = await supabase.from('profiles').select('full_name').eq('id', performerId).limit(1);
     const performedBy = performers?.[0]?.full_name || 'Ops Staff';
 
@@ -673,7 +674,7 @@ export const management = {
 
   setPrice: async (data: { productName: string; category: string; unitPrice: number; currency: string; metadata?: any }) => {
     const { data: sessionData } = await supabase.auth.getSession();
-    const performerId = sessionData.session?.user?.id || 'unknown';
+    const performerId = sessionData.session?.user?.id || null;
     const { data: performers } = await supabase.from('profiles').select('full_name').eq('id', performerId).limit(1);
     const performedBy = performers?.[0]?.full_name || 'Management';
 
@@ -693,7 +694,7 @@ export const management = {
 
   approveIntake: async (intakeId: string, approve: boolean, unitPrice?: number) => {
     const { data: sessionData } = await supabase.auth.getSession();
-    const performerId = sessionData.session?.user?.id || 'unknown';
+    const performerId = sessionData.session?.user?.id || null;
     const { data: performers } = await supabase.from('profiles').select('full_name').eq('id', performerId).limit(1);
     const performedBy = performers?.[0]?.full_name || 'Management';
 
@@ -794,7 +795,7 @@ export const management = {
 
   approveCreditOrder: async (orderId: string, approve: boolean) => {
     const { data: sessionData } = await supabase.auth.getSession();
-    const performerId = sessionData.session?.user?.id || 'unknown';
+    const performerId = sessionData.session?.user?.id || null;
     const { data: performers } = await supabase.from('profiles').select('full_name').eq('id', performerId).limit(1);
     const performedBy = performers?.[0]?.full_name || 'Management';
 
@@ -845,7 +846,7 @@ export const management = {
 
   approveGeneralPurchase: async (purchaseId: string, approve: boolean) => {
     const { data: sessionData } = await supabase.auth.getSession();
-    const performerId = sessionData.session?.user?.id || 'unknown';
+    const performerId = sessionData.session?.user?.id || null;
     const { data: performers } = await supabase.from('profiles').select('full_name').eq('id', performerId).limit(1);
     const performedBy = performers?.[0]?.full_name || 'Management';
 
@@ -893,7 +894,7 @@ export const marketing = {
     ghanaCard?: string; paymentMode: string; totalAmount: number;
   }) => {
     const { data: sessionData } = await supabase.auth.getSession();
-    const performerId = sessionData.session?.user?.id || 'unknown';
+    const performerId = sessionData.session?.user?.id || null;
     const { data: performers } = await supabase.from('profiles').select('full_name').eq('id', performerId).limit(1);
     const performedBy = performers?.[0]?.full_name || 'Marketing Staff';
 
@@ -1157,18 +1158,22 @@ export const production = {
   },
 
   requestMaterials: async (items: Array<{ materialName: string; quantity: number }>, notes?: string) => {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const performerId = sessionData.session?.user?.id;
+    const { data: performers } = performerId
+      ? await supabase.from('profiles').select('full_name').eq('id', performerId).limit(1)
+      : { data: null };
+    const requestedBy = performers?.[0]?.full_name || 'Production Staff';
+
     const { data, error } = await supabase
       .from('material_requisitions')
       .insert({
+        requested_by: requestedBy,
+        department: 'PRODUCTION',
         items,
         notes: notes || null,
         status: 'PENDING_MANAGEMENT',
-        timestamp: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-        extended_data: {
-          notes: notes || null,
-          itemsCount: items.length
-        }
       }).select();
     if (error) throw new Error(error.message);
     return data ? data.map(mapRequisitionToFrontend) : null;
@@ -1269,7 +1274,7 @@ export const reception = {
 
   checkInVisitor: async (fullName: string, purpose: string, hostName: string) => {
     const { data: sessionData } = await supabase.auth.getSession();
-    const performerId = sessionData.session?.user?.id || 'unknown';
+    const performerId = sessionData.session?.user?.id || null;
 
     const { data, error } = await supabase
       .from('visitors')

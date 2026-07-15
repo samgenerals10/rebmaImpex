@@ -754,7 +754,7 @@ export default function ManagementDashboard({
                           order_id: n.order_id,
                           notified_department: 'OPERATIONS',
                           message: `Management forwarded: ${n.message}`,
-                          sent_by: currentUser?.fullName || 'MANAGEMENT',
+                          sent_by: null,
                           read: false,
                         }]).then(() => {}, () => {});
                         setForwardedIds(prev => new Set([...prev, n.id]));

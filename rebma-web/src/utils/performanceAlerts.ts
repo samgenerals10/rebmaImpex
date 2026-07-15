@@ -8,17 +8,23 @@ export interface PerformanceAlert {
   alert_type: 'dept_inactivity' | 'attendance_low' | 'finance_low' | 'finance_high' | 'general';
   department: string;
   severity: 'low' | 'medium' | 'high' | 'critical';
-  title: string;
   description: string;
-  threshold_value?: number;
-  actual_value?: number;
-  resolved: boolean;
+  status?: string;
+  resolved_by?: string | null;
+  resolved_at?: string | null;
   created_at?: string;
 }
 
 const ATTENDANCE_THRESHOLD = 50; // percent
 const FINANCE_LOW_THRESHOLD = 10000; // GHS
 const FINANCE_HIGH_THRESHOLD = 500000; // GHS
+
+// profiles.role uses mixed casing per its DB check constraint (e.g. 'marketing', 'HR', 'receptionist')
+// rather than the uppercase department labels used across the UI — map explicitly instead of guessing.
+const DEPT_TO_ROLE: Record<string, string> = {
+  HR: 'HR', MARKETING: 'marketing', OPERATIONS: 'operations', PRODUCTION: 'production',
+  RECEPTION: 'receptionist', DISPATCH: 'dispatch', FINANCE: 'finance',
+};
 
 // Check if a department has had any activity (orders/payments/records) in the last 24 hours
 async function checkDeptInactivity(): Promise<PerformanceAlert[]> {
@@ -30,24 +36,22 @@ async function checkDeptInactivity(): Promise<PerformanceAlert[]> {
   for (const dept of depts) {
     try {
       const { count } = await supabase
-        .from('audit_logs')
+        .from('global_audit_history')
         .select('*', { count: 'exact', head: true })
         .eq('department', dept)
-        .gte('created_at', yesterday);
+        .gte('timestamp', yesterday);
 
       if ((count ?? 0) === 0) {
         alerts.push({
           alert_type: 'dept_inactivity',
           department: dept,
           severity: 'medium',
-          title: `${dept} — No Activity Detected`,
-          description: `The ${dept} department has recorded zero activity in the last 24 hours. Please verify operations are running normally.`,
-          actual_value: 0,
-          resolved: false,
+          description: `${dept} — No Activity Detected: the ${dept} department has recorded zero activity in the last 24 hours. Please verify operations are running normally.`,
+          status: 'open',
         });
       }
     } catch {
-      // table may not exist; skip silently
+      // skip silently
     }
   }
   return alerts;
@@ -58,20 +62,18 @@ async function checkAttendanceAlerts(): Promise<PerformanceAlert[]> {
   const alerts: PerformanceAlert[] = [];
   const today = new Date().toISOString().split('T')[0];
 
-  const depts = ['HR', 'MARKETING', 'OPERATIONS', 'PRODUCTION', 'RECEPTION', 'DISPATCH', 'FINANCE'];
-
-  for (const dept of depts) {
+  for (const [dept, role] of Object.entries(DEPT_TO_ROLE)) {
     try {
       const { count: total } = await supabase
         .from('profiles')
         .select('*', { count: 'exact', head: true })
-        .eq('department', dept);
+        .ilike('role', role);
 
       const { count: present } = await supabase
         .from('attendance')
         .select('*', { count: 'exact', head: true })
         .eq('department', dept)
-        .gte('check_in', today);
+        .gte('check_in_time', today);
 
       if ((total ?? 0) > 0) {
         const rate = ((present ?? 0) / (total ?? 1)) * 100;
@@ -79,12 +81,9 @@ async function checkAttendanceAlerts(): Promise<PerformanceAlert[]> {
           alerts.push({
             alert_type: 'attendance_low',
             department: dept,
-            severity: rate < 25 ? 'critical' : rate < ATTENDANCE_THRESHOLD ? 'high' : 'medium',
-            title: `${dept} — Low Attendance (${rate.toFixed(0)}%)`,
-            description: `Only ${present ?? 0} of ${total ?? 0} staff have checked in today. Attendance rate is ${rate.toFixed(0)}%, below the ${ATTENDANCE_THRESHOLD}% threshold.`,
-            threshold_value: ATTENDANCE_THRESHOLD,
-            actual_value: Math.round(rate),
-            resolved: false,
+            severity: rate < 25 ? 'critical' : 'high',
+            description: `${dept} — Low Attendance (${rate.toFixed(0)}%): only ${present ?? 0} of ${total ?? 0} staff have checked in today, below the ${ATTENDANCE_THRESHOLD}% threshold.`,
+            status: 'open',
           });
         }
       }
@@ -99,10 +98,9 @@ async function checkAttendanceAlerts(): Promise<PerformanceAlert[]> {
 async function checkFinanceAlerts(): Promise<PerformanceAlert[]> {
   const alerts: PerformanceAlert[] = [];
   try {
-    // Check for very low payment collections today
     const today = new Date().toISOString().split('T')[0];
     const { data: payments } = await supabase
-      .from('payments')
+      .from('finance_payments')
       .select('amount')
       .gte('created_at', today);
 
@@ -113,11 +111,8 @@ async function checkFinanceAlerts(): Promise<PerformanceAlert[]> {
           alert_type: 'finance_low',
           department: 'FINANCE',
           severity: 'medium',
-          title: `Finance — Low Revenue Today (GHS ${total.toLocaleString()})`,
-          description: `Today's collected payments total GHS ${total.toLocaleString()}, below the expected minimum of GHS ${FINANCE_LOW_THRESHOLD.toLocaleString()}.`,
-          threshold_value: FINANCE_LOW_THRESHOLD,
-          actual_value: total,
-          resolved: false,
+          description: `Finance — Low Revenue Today (GHS ${total.toLocaleString()}): below the expected minimum of GHS ${FINANCE_LOW_THRESHOLD.toLocaleString()}.`,
+          status: 'open',
         });
       }
       if (total > FINANCE_HIGH_THRESHOLD) {
@@ -125,11 +120,8 @@ async function checkFinanceAlerts(): Promise<PerformanceAlert[]> {
           alert_type: 'finance_high',
           department: 'FINANCE',
           severity: 'low',
-          title: `Finance — High Revenue Day (GHS ${total.toLocaleString()})`,
-          description: `Today's collected payments of GHS ${total.toLocaleString()} exceed the high-value threshold. Consider end-of-day reconciliation.`,
-          threshold_value: FINANCE_HIGH_THRESHOLD,
-          actual_value: total,
-          resolved: false,
+          description: `Finance — High Revenue Day (GHS ${total.toLocaleString()}): exceeds the high-value threshold. Consider end-of-day reconciliation.`,
+          status: 'open',
         });
       }
     }
@@ -139,7 +131,7 @@ async function checkFinanceAlerts(): Promise<PerformanceAlert[]> {
   return alerts;
 }
 
-// Insert new alerts, avoiding duplicates by checking for unresolved alerts of the same type+dept created today
+// Insert new alerts, avoiding duplicates by checking for open alerts of the same type+dept created today
 async function persistAlerts(alerts: PerformanceAlert[]): Promise<void> {
   if (alerts.length === 0) return;
   const today = new Date().toISOString().split('T')[0];
@@ -151,14 +143,20 @@ async function persistAlerts(alerts: PerformanceAlert[]): Promise<void> {
         .select('*', { count: 'exact', head: true })
         .eq('alert_type', alert.alert_type)
         .eq('department', alert.department)
-        .eq('resolved', false)
+        .eq('status', 'open')
         .gte('created_at', today);
 
       if ((count ?? 0) === 0) {
-        await supabase.from('performance_alerts').insert(alert);
+        await supabase.from('performance_alerts').insert({
+          alert_type: alert.alert_type,
+          department: alert.department,
+          severity: alert.severity,
+          description: alert.description,
+          status: 'open',
+        });
       }
     } catch {
-      // table may not exist; skip
+      // skip
     }
   }
 }
@@ -175,12 +173,13 @@ export async function runPerformanceAlerts(): Promise<PerformanceAlert[]> {
   return all;
 }
 
-// Fetch all unresolved alerts from the database
+// Fetch all open alerts from the database
 export async function fetchPerformanceAlerts(): Promise<PerformanceAlert[]> {
   try {
     const { data } = await supabase
       .from('performance_alerts')
       .select('*')
+      .eq('status', 'open')
       .order('created_at', { ascending: false })
       .limit(100);
     return (data || []) as PerformanceAlert[];
@@ -190,8 +189,12 @@ export async function fetchPerformanceAlerts(): Promise<PerformanceAlert[]> {
 }
 
 // Resolve an alert by id
-export async function resolveAlert(id: string): Promise<void> {
-  await supabase.from('performance_alerts').update({ resolved: true }).eq('id', id);
+export async function resolveAlert(id: string, resolvedBy?: string): Promise<void> {
+  await supabase.from('performance_alerts').update({
+    status: 'resolved',
+    resolved_at: new Date().toISOString(),
+    resolved_by: resolvedBy || null,
+  }).eq('id', id);
 }
 
 // Starts the 30-minute polling interval

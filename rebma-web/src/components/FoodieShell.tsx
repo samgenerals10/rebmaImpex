@@ -124,7 +124,7 @@ export default function FoodieShell({ activeDepartment, currentUser, children }:
         const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
         const monthlyRev = months.map(m => ({
           month: m,
-          value: Math.round(totalRev * 0.15 + Math.random() * 5000)
+          value: Math.round(totalRev * 0.15)
         }));
         if (active) setRevenueData(monthlyRev);
 
