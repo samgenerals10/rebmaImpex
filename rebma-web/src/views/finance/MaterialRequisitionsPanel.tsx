@@ -36,7 +36,7 @@ export default function FinanceMaterialRequisitionsPanel({ addNotification, curr
   useEffect(() => {
     load();
     const channel = supabase
-      .channel('finance-material-requisitions')
+      .channel('finance-material-requisitions-' + Math.random().toString(36).slice(2))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'material_requisitions' }, () => load())
       .subscribe();
     return () => { supabase.removeChannel(channel); };

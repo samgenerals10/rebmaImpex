@@ -158,7 +158,7 @@ export default function InternalOrdersView({ productionRequests, addNotification
   useEffect(() => {
     loadRequisitions();
     const channel = supabase
-      .channel('production-material-requisitions')
+      .channel('production-material-requisitions-' + Math.random().toString(36).slice(2))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'material_requisitions' }, () => loadRequisitions())
       .subscribe();
     return () => { supabase.removeChannel(channel); };
