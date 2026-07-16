@@ -64,6 +64,7 @@ import FinanceTransactionsView from './views/finance/TransactionsView';
 import FinanceRecurringView from './views/finance/RecurringView';
 import FinanceOverviewView from './views/finance/OverviewView';
 import FinanceOrdersQueueView from './views/finance/OrdersQueueView';
+import FinanceReceiptsView from './views/finance/ReceiptsView';
 import FinanceCreditMgmtView from './views/finance/CreditMgmtView';
 import FinanceExpensesView from './views/finance/ExpensesView';
 import FinanceTaxVATView from './views/finance/TaxVATView';
@@ -2828,6 +2829,7 @@ export default function App() {
     if (activeDepartment === 'FINANCE') {
       if (activeSubTab === 'Evaluation')        return <FinanceOverviewView addNotification={addNotification} setActiveSubTab={setActiveSubTab} currentUser={currentUser} ordersList={ordersList} onEvaluateOrder={handleEvaluateOrder} />;
       if (activeSubTab === 'OrdersQueue')       return <FinanceOrdersQueueView addNotification={addNotification} ordersList={ordersList} setOrdersList={setOrdersList} onEvaluateOrder={handleEvaluateOrder} currentUser={currentUser} />;
+      if (activeSubTab === 'Receipts')          return <FinanceReceiptsView addNotification={addNotification} />;
       if (activeSubTab === 'Statement')         return <FinanceStatementView addNotification={addNotification} />;
       if (activeSubTab === 'Wallets')           return <FinanceWalletsView />;
       if (activeSubTab === 'Transactions')      return <FinanceTransactionsView addNotification={addNotification} />;

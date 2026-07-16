@@ -99,6 +99,7 @@ export default function Sidebar({
       { id: 'Evaluation',        label: 'Dashboard',              icon: LayoutDashboard },
       { id: 'OrdersQueue',       label: 'Orders Queue',           icon: ClipboardList },
       { id: 'RecordPayment',     label: 'Payments',               icon: DollarSign },
+      { id: 'Receipts',          label: 'Receipts',               icon: Receipt },
       { id: 'Invoices',          label: 'Invoices',               icon: FileText },
       { id: 'PriceCatalog',      label: 'Price Catalog',          icon: Tag },
       { id: 'Wallets',           label: 'Wallets',                icon: Wallet },
@@ -480,6 +481,7 @@ export default function Sidebar({
                     { id: 'Evaluation',    label: 'Dashboard',       icon: LayoutDashboard },
                     { id: 'OrdersQueue',   label: 'Sales Orders',    icon: ClipboardList },
                     { id: 'RecordPayment', label: 'Payments',        icon: DollarSign },
+                    { id: 'Receipts',      label: 'Receipts',        icon: Receipt },
                     { id: 'Invoices',      label: 'Invoices',        icon: FileText },
                     { id: 'PriceCatalog',  label: 'Price Catalog',   icon: Tag },
                   ].map(tab => renderNavBtn(tab))}

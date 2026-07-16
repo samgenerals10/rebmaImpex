@@ -690,6 +690,16 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
         </div>
         {/* Quick Action Pills */}
         <div className="relative z-10 flex items-center gap-2 flex-wrap mt-4">
+          <button
+            onClick={() => setActiveSubTab?.('OrdersQueue')}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-white transition-all hover:opacity-90"
+            style={{ background: 'var(--accent)' }}
+          >
+            <ClipboardCheck size={12} /> Approvals
+            {pendingOrders.length > 0 && (
+              <span className="px-1.5 py-0.5 rounded-full bg-white/25 text-[10px] font-extrabold">{pendingOrders.length}</span>
+            )}
+          </button>
           {[
             { label: 'Record Payment', tab: 'RecordPayment', icon: DollarSign },
             { label: 'Orders Queue', tab: 'OrdersQueue', icon: ClipboardCheck },

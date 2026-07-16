@@ -36,8 +36,12 @@ async function fetchPendingForDept(department: string): Promise<PendingItem[]> {
     }
 
     if (department === 'FINANCE') {
-      const { count } = await supabase.from('orders').select('id', { count: 'exact', head: true }).eq('status', 'PENDING_EVALUATION');
-      if ((count ?? 0) > 0) items.push({ label: 'orders awaiting evaluation', count: count!, tab: 'Evaluation' });
+      const [orders, requisitions] = await Promise.all([
+        supabase.from('orders').select('id', { count: 'exact', head: true }).eq('status', 'PENDING_FINANCE'),
+        supabase.from('material_requisitions').select('id', { count: 'exact', head: true }).eq('status', 'PENDING_FINANCE'),
+      ]);
+      if ((orders.count ?? 0) > 0) items.push({ label: 'orders awaiting evaluation', count: orders.count!, tab: 'OrdersQueue' });
+      if ((requisitions.count ?? 0) > 0) items.push({ label: 'material requisitions to record', count: requisitions.count!, tab: 'Evaluation' });
     }
 
     if (department === 'HR') {

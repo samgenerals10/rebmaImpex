@@ -607,12 +607,44 @@ export const operations = {
   },
 };
 
+// Guards against selling more than is physically in stock. Called right
+// before an order is approved (the point stock actually gets deducted) —
+// returns the list of items that don't have enough stock so the caller can
+// block the approval with a clear message instead of silently going
+// negative (this is what let Statement's "Remaining Stock" show -13,853).
+async function checkStockAvailability(order: any): Promise<{ productName: string; requested: number; available: number }[]> {
+  const meta = order.metadata || {};
+  const metaItems = meta.items || [];
+  const lineItems = metaItems.length > 0
+    ? metaItems
+    : (order.product_name || order.productName) ? [{ productName: order.product_name || order.productName, quantity: Number(order.quantity || 1) }] : [];
+
+  const shortages: { productName: string; requested: number; available: number }[] = [];
+  for (const item of lineItems) {
+    if (!item.productName) continue;
+    const requested = Number(item.quantity) || 0;
+    if (requested <= 0) continue;
+    const { data: existing } = await supabase.from('stock').select('quantity').ilike('product_name', item.productName).limit(1);
+    const available = existing && existing.length > 0 ? Number(existing[0].quantity) || 0 : 0;
+    if (requested > available) {
+      shortages.push({ productName: item.productName, requested, available });
+    }
+  }
+  return shortages;
+}
+
+function shortageMessage(shortages: { productName: string; requested: number; available: number }[]): string {
+  const list = shortages.map(s => `${s.productName} (need ${s.requested}, only ${s.available} in stock)`).join('; ');
+  return `Insufficient stock — cannot approve: ${list}`;
+}
+
 // Deducts sold items from stock the moment a sale is confirmed — Finance approving
 // a direct-payment order, or Management approving a credit order (both are the
 // point revenue is already recognized, see the ['APPROVED','PROCESSING',...]
 // status checks used across the dashboards) — rather than waiting for the order
 // to be invoiced/dispatched later. Never throws: a stock hiccup shouldn't block
-// the approval itself, it just logs.
+// the approval itself, it just logs. Availability itself is checked separately,
+// before this runs, via checkStockAvailability — see evaluateOrder/approveCreditOrder.
 async function deductStockForOrder(order: any, reference: string) {
   try {
     const { data: sessionData } = await supabase.auth.getSession();
@@ -898,6 +930,12 @@ export const management = {
 
     const { data: orders } = await supabase.from('orders').select('*').eq('id', orderId).limit(1);
     const order = orders?.[0];
+    if (!order) throw new Error('Order not found');
+
+    if (approve) {
+      const shortages = await checkStockAvailability(order);
+      if (shortages.length > 0) throw new Error(shortageMessage(shortages));
+    }
 
     const status = approve ? 'APPROVED' : 'REJECTED';
     const { data: updatedOrder, error } = await supabase
@@ -1141,6 +1179,9 @@ export const finance = {
       if (error) throw new Error(error.message);
       return { message: 'Credit order sent to Management.', order: updatedOrder ? mapOrderToFrontend(updatedOrder[0]) : null };
     } else {
+      const shortages = await checkStockAvailability(order);
+      if (shortages.length > 0) throw new Error(shortageMessage(shortages));
+
       const { data: sessionData } = await supabase.auth.getSession();
       const performerId = sessionData.session?.user?.id || null;
       const { data: performers } = await supabase.from('profiles').select('full_name, email').eq('id', performerId).limit(1);

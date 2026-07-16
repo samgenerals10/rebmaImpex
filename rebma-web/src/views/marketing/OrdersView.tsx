@@ -52,6 +52,7 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
   const [showNewModal, setShowNewModal] = useState(false);
 
   const [productPrices, setProductPrices] = useState<Record<string, number>>({});
+  const [stockLevels, setStockLevels] = useState<Record<string, number>>({});
   const [customers, setCustomers] = useState<{ id: string; name: string }[]>([]);
 
   const openNewOrderModal = () => {
@@ -64,6 +65,11 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
       (data || []).forEach((r: any) => { priceMap[r.product_name] = Number(r.unit_price ?? 0); });
       setProductPrices(priceMap);
     }, () => {});
+    supabase.from('stock').select('product_name, quantity').then(({ data }) => {
+      const stockMap: Record<string, number> = {};
+      (data || []).forEach((r: any) => { stockMap[String(r.product_name).trim().toLowerCase()] = Number(r.quantity ?? 0); });
+      setStockLevels(stockMap);
+    }, () => {});
     supabase.from('customers').select('id, name').order('name').then(({ data }) => {
       const seen = new Set<string>();
       const unique = (data || []).filter((r: any) => {
@@ -75,6 +81,8 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
       setCustomers(unique.map((r: any) => ({ id: String(r.id), name: String(r.name).trim() })));
     }, () => {});
   };
+
+  const getStock = (productName: string): number => stockLevels[productName.trim().toLowerCase()] ?? 0;
 
   const updateLineItem = (index: number, field: 'productName' | 'quantity', value: string | number) => {
     setLineItems(prev => prev.map((item, i) => i === index ? { ...item, [field]: value } : item));
@@ -151,6 +159,12 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
     if (!form.clientName.trim()) { addNotification('Customer name is required.'); return; }
     const validItems = lineItems.filter(item => item.productName.trim());
     if (validItems.length === 0) { addNotification('Add at least one product.'); return; }
+
+    const shortages = validItems.filter(item => item.quantity > getStock(item.productName));
+    if (shortages.length > 0) {
+      addNotification(`Cannot order more than what's in stock: ${shortages.map(i => `${i.productName} (only ${getStock(i.productName).toLocaleString()} available)`).join(', ')}`);
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -397,15 +411,17 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
                     {lineItems.map((item, index) => {
                       const unitPrice = productPrices[item.productName] ?? null;
                       const lineTotal = unitPrice != null ? unitPrice * Math.max(1, item.quantity) : null;
+                      const stockAvailable = item.productName ? getStock(item.productName) : null;
+                      const exceedsStock = stockAvailable != null && item.quantity > stockAvailable;
                       return (
-                        <div key={index} className="rounded-xl border border-[var(--border)] bg-[var(--bg)] p-3 space-y-2">
+                        <div key={index} className={`rounded-xl border p-3 space-y-2 ${exceedsStock ? 'border-rose-400 bg-rose-50 dark:bg-rose-950/20' : 'border-[var(--border)] bg-[var(--bg)]'}`}>
                           <div className="flex items-center gap-2">
                             <div className="flex-1">
                               {availableProducts.length > 0 ? (
                                 <select value={item.productName} onChange={e => updateLineItem(index, 'productName', e.target.value)}
                                   className="w-full px-3 py-2 text-sm rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]">
                                   <option value="">— Select product —</option>
-                                  {availableProducts.map(p => <option key={p} value={p}>{p}</option>)}
+                                  {availableProducts.map(p => <option key={p} value={p}>{p} (in stock: {getStock(p).toLocaleString()})</option>)}
                                 </select>
                               ) : (
                                 <input type="text" value={item.productName} onChange={e => updateLineItem(index, 'productName', e.target.value)}
@@ -415,7 +431,7 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
                             </div>
                             <div className="w-24 shrink-0">
                               <input type="number" min="1" value={item.quantity} onChange={e => updateLineItem(index, 'quantity', Math.max(1, parseInt(e.target.value) || 1))}
-                                className="w-full px-3 py-2 text-sm rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)] text-center" />
+                                className={`w-full px-3 py-2 text-sm rounded-xl bg-[var(--bg-input)] border text-[var(--text-primary)] focus:outline-none text-center ${exceedsStock ? 'border-rose-400 focus:border-rose-500' : 'border-[var(--border)] focus:border-[var(--accent)]'}`} />
                             </div>
                             {lineItems.length > 1 && (
                               <button onClick={() => removeLineItem(index)} className="p-1.5 rounded-lg hover:bg-rose-50 text-[var(--text-muted)] hover:text-rose-500 shrink-0">
@@ -423,6 +439,11 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
                               </button>
                             )}
                           </div>
+                          {exceedsStock && (
+                            <p className="px-1 text-xs font-semibold text-rose-600">
+                              Only {stockAvailable!.toLocaleString()} in stock — cannot order {item.quantity}.
+                            </p>
+                          )}
                           {unitPrice != null ? (
                             <div className="flex items-center justify-between px-1 text-xs text-[var(--text-muted)]">
                               <span>GHS {unitPrice.toLocaleString()} per unit</span>

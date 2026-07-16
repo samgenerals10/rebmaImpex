@@ -12,7 +12,7 @@ const SUBTAB_LABELS: Record<string, string> = {
   Overview: 'Dashboard', Analytics: 'Analytics', Transactions: 'Transactions',
   Invoices: 'Invoices', Wallets: 'Wallets', Accounts: 'Accounts',
   Approvals: 'Approvals', Tracking: 'GPS Tracking', Messages: 'Messages & Boardroom',
-  Evaluation: 'Dashboard', RecurringPayments: 'Recurring', RecordPayment: 'Payments',
+  Evaluation: 'Dashboard', RecurringPayments: 'Recurring', RecordPayment: 'Payments', Receipts: 'Receipts',
   OrdersQueue: 'Orders Queue', Payroll: 'Payroll', CargoApproval: 'Dashboard',
   CreditApproval: 'Approvals', SetPrices: 'Price Setting', Ledger: 'Audit Log',
   Employees: 'Dashboard', Staff: 'Staff', Attendance: 'Attendance',

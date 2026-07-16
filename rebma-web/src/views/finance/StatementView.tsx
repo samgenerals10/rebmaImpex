@@ -171,7 +171,17 @@ export default function StatementView({ addNotification }: Props) {
                       <td className="px-3 py-2 text-[var(--text-secondary)] whitespace-nowrap">{row.destination || '—'}</td>
                       <td className="px-3 py-2 text-[var(--text-secondary)]">{row.paymentMode}</td>
                       <td className="px-3 py-2"><span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${STATUS_STYLES[row.status] || 'bg-gray-100 text-gray-600'}`}>{row.status.replace(/_/g, ' ')}</span></td>
-                      <td className="px-3 py-2 font-semibold text-[var(--text-primary)]">{row.stockRemaining !== null ? row.stockRemaining.toLocaleString() : '—'}</td>
+                      <td className="px-3 py-2 font-semibold">
+                        {row.stockRemaining !== null ? (
+                          row.stockRemaining < 0 ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-rose-100 text-rose-700" title="Stock went negative — more was sold/released than was ever recorded as in stock. Investigate this product's ledger.">
+                              OVERSOLD ({row.stockRemaining.toLocaleString()})
+                            </span>
+                          ) : (
+                            <span className="text-[var(--text-primary)]">{row.stockRemaining.toLocaleString()}</span>
+                          )
+                        ) : '—'}
+                      </td>
                       <td className="px-3 py-2 flex items-center gap-1" onClick={e => e.stopPropagation()}>
                         <button onClick={() => { setSelected(row); setDetailTab('order'); }} className="p-1 hover:bg-[var(--accent-light)] rounded-lg cursor-pointer text-[var(--accent)]">
                           <Eye className="w-3.5 h-3.5" />
