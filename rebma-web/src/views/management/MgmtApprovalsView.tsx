@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { exportToCSV } from '../../utils/export';
 import InvoiceLineItems from '../../components/InvoiceLineItems';
+import MaterialRequisitionsPanel from './MaterialRequisitionsPanel';
 
 interface ApprovalItem {
   id: string;
@@ -521,6 +522,8 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
           </button>
         </div>
       </div>
+
+      <MaterialRequisitionsPanel addNotification={addNotification} currentUser={currentUser} />
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

@@ -54,9 +54,16 @@ export default function MgmtPriceSettingView({ addNotification, currentUser }: P
   useEffect(() => {
     Promise.all([
       supabase.from('cargo_intake').select('product_name').eq('status', 'APPROVED'),
+      // Repackaged/produced goods Management has just released to the
+      // warehouse also need a selling price before they're sellable, same as
+      // supplier-sourced goods — not just cargo intake.
+      supabase.from('production_requests').select('product_name').eq('status', 'TICKETS_ISSUED'),
       supabase.from('goods_prices').select('product_name'),
-    ]).then(([{ data: cargoData }, { data: priceData }]) => {
-      const approved = Array.from(new Set((cargoData || []).map((r: any) => String(r.product_name || '')).filter(Boolean)));
+    ]).then(([{ data: cargoData }, { data: productionData }, { data: priceData }]) => {
+      const approved = Array.from(new Set([
+        ...(cargoData || []).map((r: any) => String(r.product_name || '')),
+        ...(productionData || []).map((r: any) => String(r.product_name || '')),
+      ].filter(Boolean)));
       const priced = new Set((priceData || []).map((r: any) => String(r.product_name || '')));
       setApprovedGoods(approved);
       setUnpricedGoods(approved.filter(name => !priced.has(name)));

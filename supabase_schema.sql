@@ -914,3 +914,23 @@ DROP POLICY IF EXISTS "Allow authenticated read chat-attachments" ON storage.obj
 CREATE POLICY "Allow authenticated read chat-attachments" ON storage.objects FOR SELECT TO authenticated USING (bucket_id = 'chat-attachments');
 DROP POLICY IF EXISTS "Allow authenticated upload chat-attachments" ON storage.objects;
 CREATE POLICY "Allow authenticated upload chat-attachments" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'chat-attachments');
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Records the real person who approved a payment/order, so the Operations
+-- dispatch ticket can print an actual name instead of falling back to the
+-- generic "Finance Department" placeholder.
+-- ─────────────────────────────────────────────────────────────────────────────
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS finance_approved_by TEXT;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS finance_approved_by_email TEXT;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Formalizes the raw-material requisition pipeline: Production requests raw
+-- materials → Management approves (PENDING_FINANCE) → Finance records the
+-- internal credit entry and forwards it (APPROVED) → Operations releases the
+-- materials to Production (FULFILLED). Mirrors the existing Credit Order
+-- (orders.status = PENDING_FINANCE) pattern already used elsewhere.
+-- ─────────────────────────────────────────────────────────────────────────────
+ALTER TABLE public.material_requisitions DROP CONSTRAINT IF EXISTS material_requisitions_status_check;
+ALTER TABLE public.material_requisitions ADD CONSTRAINT material_requisitions_status_check
+  CHECK (status IN ('PENDING_MANAGEMENT', 'PENDING_FINANCE', 'APPROVED', 'REJECTED', 'FULFILLED'));
+ALTER TABLE public.material_requisitions ADD COLUMN IF NOT EXISTS rejection_reason TEXT;

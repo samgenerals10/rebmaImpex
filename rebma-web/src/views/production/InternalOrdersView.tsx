@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Eye, Copy, X, ChevronRight, Package, Edit, Trash2 } from 'lucide-react';
+import { Plus, Search, Eye, Copy, X, ChevronRight, Package, Edit, Trash2, Boxes } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
+import { production } from '../../services/apiClient';
 
 const STATUS_COLORS: Record<string, string> = {
   PENDING_MANAGEMENT: 'amber',
@@ -118,6 +119,73 @@ export default function InternalOrdersView({ productionRequests, addNotification
 
   const [showEditModal, setShowEditModal] = useState(false);
   const [editForm, setEditForm] = useState<any | null>(null);
+
+  // ── Raw material requisitions (front-half of the pipeline: Production
+  // requests raw materials → Management → Finance → Operations releases) —
+  // separate from the production_requests repackaging/output flow above.
+  const [requisitions, setRequisitions] = useState<any[]>([]);
+  const [loadingRequisitions, setLoadingRequisitions] = useState(true);
+  const [showMaterialModal, setShowMaterialModal] = useState(false);
+  const [materialForm, setMaterialForm] = useState({ materialName: '', quantity: 0, unit: 'kg', notes: '' });
+  const [submittingMaterial, setSubmittingMaterial] = useState(false);
+
+  const REQ_STATUS_LABELS: Record<string, string> = {
+    PENDING_MANAGEMENT: 'Awaiting Management',
+    PENDING_FINANCE: 'Awaiting Finance',
+    APPROVED: 'Approved — Awaiting Pickup',
+    FULFILLED: 'Materials Released',
+    REJECTED: 'Rejected',
+  };
+  const REQ_STATUS_COLORS: Record<string, string> = {
+    PENDING_MANAGEMENT: '#d97706',
+    PENDING_FINANCE: '#2563eb',
+    APPROVED: '#7c3aed',
+    FULFILLED: '#059669',
+    REJECTED: '#dc2626',
+  };
+
+  const loadRequisitions = async () => {
+    setLoadingRequisitions(true);
+    try {
+      const { data } = await supabase.from('material_requisitions').select('*').order('created_at', { ascending: false }).limit(50);
+      setRequisitions(data || []);
+    } catch {
+      setRequisitions([]);
+    }
+    setLoadingRequisitions(false);
+  };
+
+  useEffect(() => {
+    loadRequisitions();
+    const channel = supabase
+      .channel('production-material-requisitions')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'material_requisitions' }, () => loadRequisitions())
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, []);
+
+  const handleSubmitMaterialRequest = async () => {
+    if (!materialForm.materialName.trim() || materialForm.quantity <= 0) {
+      alert('Material name and a positive quantity are required.');
+      return;
+    }
+    if (submittingMaterial) return;
+    setSubmittingMaterial(true);
+    try {
+      await production.requestMaterials(
+        [{ materialName: materialForm.materialName.trim(), quantity: Number(materialForm.quantity), unit: materialForm.unit } as any],
+        materialForm.notes || undefined
+      );
+      addNotification('Raw material request submitted to Management.');
+      setShowMaterialModal(false);
+      setMaterialForm({ materialName: '', quantity: 0, unit: 'kg', notes: '' });
+      await loadRequisitions();
+    } catch (e: any) {
+      alert(e.message || 'Failed to submit material request.');
+    } finally {
+      setSubmittingMaterial(false);
+    }
+  };
 
   const loadData = async () => {
     setLoading(true);
@@ -325,9 +393,38 @@ export default function InternalOrdersView({ productionRequests, addNotification
           <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Internal Production Orders</h1>
           <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: 14 }}>Manage and track all production requests</p>
         </div>
-        <button onClick={() => setShowNewModal(true)} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 12, padding: '10px 20px', fontWeight: 600, cursor: 'pointer', fontSize: 14 }}>
-          <Plus size={16} /> New Request
-        </button>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button onClick={() => setShowMaterialModal(true)} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--bg-input)', color: 'var(--text-primary)', border: '1px solid var(--border)', borderRadius: 12, padding: '10px 20px', fontWeight: 600, cursor: 'pointer', fontSize: 14 }}>
+            <Boxes size={16} /> Request Raw Materials
+          </button>
+          <button onClick={() => setShowNewModal(true)} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 12, padding: '10px 20px', fontWeight: 600, cursor: 'pointer', fontSize: 14 }}>
+            <Plus size={16} /> New Request
+          </button>
+        </div>
+      </div>
+
+      <div style={{ background: 'var(--bg-card)', borderRadius: 16, padding: '20px', border: '1px solid var(--border)', boxShadow: 'var(--box-shadow)' }}>
+        <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 4px' }}>Raw Material Requisitions</h3>
+        <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '0 0 14px' }}>Materials needed before processing can begin — goes to Management, then Finance, then Operations releases the stock.</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {loadingRequisitions && <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>Loading…</p>}
+          {!loadingRequisitions && requisitions.slice(0, 8).map(r => {
+            const items = Array.isArray(r.items) ? r.items : [];
+            const summary = items.map((i: any) => `${i.materialName} (${i.quantity}${i.unit ? ' ' + i.unit : ''})`).join(', ') || 'Materials';
+            return (
+              <div key={r.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 14px', background: 'var(--bg-input)', borderRadius: 10, border: '1px solid var(--border)' }}>
+                <div style={{ minWidth: 0 }}>
+                  <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{summary}</p>
+                  <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--text-muted)' }}>{r.created_at ? new Date(r.created_at).toLocaleDateString() : ''}{r.notes ? ` · ${r.notes}` : ''}</p>
+                </div>
+                <span style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, color: REQ_STATUS_COLORS[r.status] || '#6b7280' }}>{REQ_STATUS_LABELS[r.status] || r.status}</span>
+              </div>
+            );
+          })}
+          {!loadingRequisitions && requisitions.length === 0 && (
+            <p style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', padding: '12px 0' }}>No raw material requests yet.</p>
+          )}
+        </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16 }}>
@@ -616,6 +713,44 @@ export default function InternalOrdersView({ productionRequests, addNotification
                <button disabled={submitting} onClick={handleEditSave} style={{ flex: 2, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 12, padding: '12px', fontWeight: 600, cursor: 'pointer', fontSize: 15, opacity: submitting ? 0.5 : 1 }}>
                  {submitting ? 'Saving...' : 'Save Changes'}
                </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showMaterialModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}>
+          <div style={{ background: 'var(--bg-card)', borderRadius: 20, padding: 28, width: '100%', maxWidth: 480, border: '1px solid var(--border)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Request Raw Materials</h2>
+              <button onClick={() => setShowMaterialModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={20} /></button>
+            </div>
+            <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '0 0 16px' }}>This goes to Management for approval, then Finance records it, then Operations releases the materials to you.</p>
+            <div style={{ display: 'grid', gap: 16, marginBottom: 24 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Raw Material</label>
+                <input value={materialForm.materialName} onChange={e => setMaterialForm(prev => ({ ...prev, materialName: e.target.value }))} placeholder="e.g. Raw Cocoa Beans" style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'var(--text-primary)', fontSize: 14, boxSizing: 'border-box' }} />
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Quantity</label>
+                  <input type="number" value={materialForm.quantity || ''} onChange={e => setMaterialForm(prev => ({ ...prev, quantity: Number(e.target.value) }))} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'var(--text-primary)', fontSize: 14, boxSizing: 'border-box' }} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Unit</label>
+                  <input value={materialForm.unit} onChange={e => setMaterialForm(prev => ({ ...prev, unit: e.target.value }))} placeholder="e.g. kg" style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'var(--text-primary)', fontSize: 14, boxSizing: 'border-box' }} />
+                </div>
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Notes</label>
+                <textarea value={materialForm.notes} onChange={e => setMaterialForm(prev => ({ ...prev, notes: e.target.value }))} rows={3} placeholder="What's this needed for..." style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'var(--text-primary)', fontSize: 14, resize: 'vertical', boxSizing: 'border-box' }} />
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button disabled={submittingMaterial} onClick={() => setShowMaterialModal(false)} style={{ flex: 1, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 12, padding: '12px', color: 'var(--text-secondary)', cursor: 'pointer', fontWeight: 600, opacity: submittingMaterial ? 0.5 : 1 }}>Cancel</button>
+              <button disabled={submittingMaterial} onClick={handleSubmitMaterialRequest} style={{ flex: 2, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 12, padding: '12px', fontWeight: 600, cursor: 'pointer', fontSize: 15, opacity: submittingMaterial ? 0.5 : 1 }}>
+                {submittingMaterial ? 'Submitting...' : 'Submit Request'}
+              </button>
             </div>
           </div>
         </div>

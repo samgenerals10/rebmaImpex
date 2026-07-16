@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import PendingApprovalsAlert from '../../components/global/PendingApprovalsAlert';
+import FinanceMaterialRequisitionsPanel from './MaterialRequisitionsPanel';
 import ProductCatalogCard from '../../components/ProductCatalogCard';
 import {
   DollarSign, FileText, ClipboardCheck, BarChart2, CreditCard, Receipt,
@@ -707,6 +708,8 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
 
       {/* Pending approvals alert */}
       <PendingApprovalsAlert department="FINANCE" onNavigate={setActiveSubTab} />
+
+      <FinanceMaterialRequisitionsPanel addNotification={addNotification} currentUser={currentUser} />
 
       {/* ══ KPI CARDS ══ */}
       <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 font-sans">

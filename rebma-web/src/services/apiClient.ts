@@ -1,6 +1,7 @@
 // rebma-web/src/services/apiClient.ts
 // Centralized API client — all database & auth calls go through Supabase
 import { supabase } from '../lib/supabaseClient';
+import { sendNotification } from '../utils/sendNotification';
 
 // --- Translation Mappings (Insulates UI from Database Snake_Case schema) ---
 
@@ -690,7 +691,22 @@ async function autoGenerateReceiptAndTicket(order: any, reference: string) {
         payment_details: { items: metaItems, reference },
         created_at: now,
       });
-      if (payErr) console.error('Auto receipt insert failed:', payErr);
+      if (payErr) {
+        console.error('Auto receipt insert failed:', payErr);
+      } else {
+        // Give every department that needs visibility into a confirmed sale a
+        // copy of the receipt notification — not just Finance who recorded it.
+        const receiptMsg = `${invoiceNumber} — ${clientName}, GHS ${totalAmount.toLocaleString()} (${order.ticket_number || order.ticketNumber || orderId})`;
+        for (const dept of ['FINANCE', 'CEO', 'MARKETING', 'MANAGEMENT']) {
+          sendNotification({
+            recipientDepartment: dept,
+            title: 'Payment receipt generated',
+            message: receiptMsg,
+            type: 'success',
+            actionLabel: 'View Statement',
+          });
+        }
+      }
     }
 
     const { data: existingTickets } = await supabase
@@ -876,8 +892,9 @@ export const management = {
   approveCreditOrder: async (orderId: string, approve: boolean) => {
     const { data: sessionData } = await supabase.auth.getSession();
     const performerId = sessionData.session?.user?.id || null;
-    const { data: performers } = await supabase.from('profiles').select('full_name').eq('id', performerId).limit(1);
+    const { data: performers } = await supabase.from('profiles').select('full_name, email').eq('id', performerId).limit(1);
     const performedBy = performers?.[0]?.full_name || 'Management';
+    const performedByEmail = performers?.[0]?.email || null;
 
     const { data: orders } = await supabase.from('orders').select('*').eq('id', orderId).limit(1);
     const order = orders?.[0];
@@ -885,7 +902,9 @@ export const management = {
     const status = approve ? 'APPROVED' : 'REJECTED';
     const { data: updatedOrder, error } = await supabase
       .from('orders')
-      .update({ status, updated_at: new Date().toISOString() })
+      .update(approve
+        ? { status, updated_at: new Date().toISOString(), finance_approved_by: performedBy, finance_approved_by_email: performedByEmail }
+        : { status, updated_at: new Date().toISOString() })
       .eq('id', orderId)
       .select();
     if (error) throw new Error(error.message);
@@ -907,7 +926,7 @@ export const management = {
       if (approve) {
         const ticketRef = order.ticket_number || order.ticketNumber || `ORD-${orderId.slice(0, 6).toUpperCase()}`;
         await deductStockForOrder(order, `Credit Order Approved: ${ticketRef}`);
-        await autoGenerateReceiptAndTicket(order, `Credit Order Approved: ${ticketRef}`);
+        await autoGenerateReceiptAndTicket({ ...order, finance_approved_by: performedBy }, `Credit Order Approved: ${ticketRef}`);
         const { data: finalOrder } = await supabase.from('orders').select('*').eq('id', orderId).limit(1);
         return finalOrder?.[0] ? mapOrderToFrontend(finalOrder[0]) : (updatedOrder ? mapOrderToFrontend(updatedOrder[0]) : null);
       }
@@ -1122,16 +1141,25 @@ export const finance = {
       if (error) throw new Error(error.message);
       return { message: 'Credit order sent to Management.', order: updatedOrder ? mapOrderToFrontend(updatedOrder[0]) : null };
     } else {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const performerId = sessionData.session?.user?.id || null;
+      const { data: performers } = await supabase.from('profiles').select('full_name, email').eq('id', performerId).limit(1);
+      const performedBy = performers?.[0]?.full_name || null;
+      const performedByEmail = performers?.[0]?.email || null;
+
       const { data: updatedOrder, error } = await supabase
         .from('orders')
-        .update({ status: 'APPROVED', updated_at: new Date().toISOString() })
+        .update({
+          status: 'APPROVED', updated_at: new Date().toISOString(),
+          finance_approved_by: performedBy, finance_approved_by_email: performedByEmail,
+        })
         .eq('id', orderId)
         .select();
       if (error) throw new Error(error.message);
 
       const ticketRef = order.ticket_number || order.ticketNumber || `ORD-${orderId.slice(0, 6).toUpperCase()}`;
       await deductStockForOrder(order, `Order Approved: ${ticketRef}`);
-      await autoGenerateReceiptAndTicket(order, `Order Approved: ${ticketRef}`);
+      await autoGenerateReceiptAndTicket({ ...order, finance_approved_by: performedBy }, `Order Approved: ${ticketRef}`);
 
       const { data: finalOrder } = await supabase.from('orders').select('*').eq('id', orderId).limit(1);
       return { message: 'Order approved by Finance.', order: finalOrder?.[0] ? mapOrderToFrontend(finalOrder[0]) : (updatedOrder ? mapOrderToFrontend(updatedOrder[0]) : null) };

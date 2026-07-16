@@ -128,7 +128,7 @@ async function printOperationsTicket(order: ApprovedOrder, dispatchedQty?: numbe
             <div class="brand-text">
               <div class="name">REBMA IMPEX</div>
               <div class="sub">Operations Dispatch Ticket</div>
-              <div class="addr">Accra, Ghana · operations@rebmaimpex.com</div>
+              <div class="addr">Accra, Ghana</div>
             </div>
           </div>
           <div class="ticket-meta">
@@ -142,6 +142,10 @@ async function printOperationsTicket(order: ApprovedOrder, dispatchedQty?: numbe
 
         <div class="status-banner">
           <div class="sb-item">
+            <div class="sl">Client / Customer</div>
+            <div class="sv" style="font-size:12px">${order.clientName}</div>
+          </div>
+          <div class="sb-item">
             <div class="sl">Status</div>
             <div class="sv">${order.status.replace(/_/g, ' ')}</div>
           </div>
@@ -151,28 +155,17 @@ async function printOperationsTicket(order: ApprovedOrder, dispatchedQty?: numbe
           </div>
           <div class="sb-item">
             <div class="sl">Issued By (Finance)</div>
-            <div class="sv" style="font-size:11px">${order.issuedBy}</div>
+            <div class="sv" style="font-size:11px">${order.issuedBy && order.issuedBy !== '—' ? order.issuedBy : 'Pending record'}</div>
           </div>
           ${printedBy ? `<div class="sb-item"><div class="sl">Printed By (Ops)</div><div class="sv" style="font-size:11px">${printedBy}</div></div>` : ''}
         </div>
 
-        <div class="grid">
-          <div class="field">
-            <div class="fl">Client / Customer</div>
-            <div class="fv">${order.clientName}</div>
-          </div>
-          <div class="field">
-            <div class="fl">Product / Item</div>
-            <div class="fv">${order.productName || '—'}</div>
-          </div>
-          ${dispatchedQty ? `<div class="field"><div class="fl">Quantity Dispatched</div><div class="fv" style="color:${BRAND.green}">${Number(dispatchedQty).toLocaleString()} units</div></div>` : ''}
-          <div class="field ${!dispatchedQty ? 'full' : ''}">
-            <div class="fl">Delivery Destination</div>
-            <div class="fv">${order.destination || 'To be confirmed by Operations'}</div>
-          </div>
-        </div>
-
-        ${order.metadata?.items && order.metadata.items.length > 0 ? `
+        ${(() => {
+          const items = (order.metadata?.items && order.metadata.items.length > 0)
+            ? order.metadata.items
+            : [{ productName: order.productName || 'Item', quantity: dispatchedQty || null }];
+          const totalQty = items.reduce((s, i) => s + (Number(i.quantity) || 0), 0);
+          return `
         <div class="field full" style="background: #fafdfb; border: 1px solid #d1fae5; border-radius: 8px; padding: 12px; margin-bottom: 14px;">
           <div class="fl" style="color: ${BRAND.green}; font-weight: 800; font-size: 8.5px; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 6px;">Itemized Loading Dispatch List</div>
           <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
@@ -180,19 +173,22 @@ async function printOperationsTicket(order: ApprovedOrder, dispatchedQty?: numbe
               <tr style="border-bottom: 1.5px solid #d1fae5; color: #2d7a50; font-weight: 700; text-transform: uppercase; font-size: 8px; letter-spacing: 0.05em;">
                 <th style="text-align: left; padding: 4px 0;">Item Description</th>
                 <th style="text-align: right; padding: 4px 0;">Qty to Load</th>
+                <th style="text-align: right; padding: 4px 0;">Delivery Destination</th>
               </tr>
             </thead>
             <tbody>
-              ${order.metadata.items.map(item => `
+              ${items.map(item => `
                 <tr style="border-bottom: 1px solid #e6f7ed;">
                   <td style="text-align: left; padding: 6px 0; font-weight: 650; color: #1e293b;">${item.productName}</td>
-                  <td style="text-align: right; padding: 6px 0; font-weight: 800; color: ${BRAND.green}; font-family: monospace; font-size: 12px;">${Number(item.quantity).toLocaleString()}</td>
+                  <td style="text-align: right; padding: 6px 0; font-weight: 800; color: ${BRAND.green}; font-family: monospace; font-size: 12px;">${item.quantity != null ? Number(item.quantity).toLocaleString() : '—'}</td>
+                  <td style="text-align: right; padding: 6px 0; font-weight: 650; color: #1e293b;">${order.destination || 'To be confirmed by Operations'}</td>
                 </tr>
               `).join('')}
             </tbody>
+            ${items.length > 1 ? `<tfoot><tr><td style="padding-top:6px;font-weight:800;color:#1e293b;">Total</td><td style="text-align:right;padding-top:6px;font-weight:800;color:${BRAND.green};font-family:monospace;">${totalQty.toLocaleString()}</td><td></td></tr></tfoot>` : ''}
           </table>
         </div>
-        ` : ''}
+        `; })()}
 
         <div class="dispatch-box">
           <div>
@@ -212,8 +208,7 @@ async function printOperationsTicket(order: ApprovedOrder, dispatchedQty?: numbe
           <div class="legal">
             This ticket is issued by <strong>REBMA IMPEX Ghana Limited</strong> Operations.<br/>
             It authorises the loading and dispatch of the above goods to the stated destination.<br/>
-            Invoice ref: <strong>${order.ticketNumber}</strong> — scan QR to match against customer invoice.<br/>
-            Finance contact: <span class="email">${order.issuedByEmail}</span>
+            Invoice ref: <strong>${order.ticketNumber}</strong> — scan QR to match against customer invoice.
           </div>
           <div class="qr-wrap">
             ${qrDataUrl
@@ -317,8 +312,8 @@ export default function ApprovedGoodsView({ addNotification, setActiveSubTab: _s
           paymentMode: r.payment_mode || r.paymentMode || 'CASH',
           createdAt: (r.created_at || r.createdAt || '').slice(0, 10),
           submittedBy: r.created_by || r.submittedBy || '—',
-          issuedBy: r.issued_by || r.created_by || 'Finance Department',
-          issuedByEmail: r.issuer_email || 'finance@rebmaimpex.com',
+          issuedBy: r.finance_approved_by || r.created_by || '—',
+          issuedByEmail: r.finance_approved_by_email || '',
           metadata: r.metadata || null,
         })));
       } catch (e) {
