@@ -934,3 +934,25 @@ ALTER TABLE public.material_requisitions DROP CONSTRAINT IF EXISTS material_requ
 ALTER TABLE public.material_requisitions ADD CONSTRAINT material_requisitions_status_check
   CHECK (status IN ('PENDING_MANAGEMENT', 'PENDING_FINANCE', 'APPROVED', 'REJECTED', 'FULFILLED'));
 ALTER TABLE public.material_requisitions ADD COLUMN IF NOT EXISTS rejection_reason TEXT;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Float/replenishment requests (e.g. Finance's Petty Cash "Request
+-- Replenishment") as a real approvable record, so they actually show up in
+-- Management's Approvals queue instead of only firing a notification.
+-- ─────────────────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.float_requests (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    department TEXT NOT NULL DEFAULT 'FINANCE',
+    requested_by TEXT,
+    amount NUMERIC NOT NULL,
+    reason TEXT,
+    status TEXT NOT NULL DEFAULT 'PENDING_MANAGEMENT' CHECK (status IN ('PENDING_MANAGEMENT', 'APPROVED', 'REJECTED')),
+    approved_by TEXT,
+    rejection_reason TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE public.float_requests ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow authenticated users full access to float_requests" ON public.float_requests;
+CREATE POLICY "Allow authenticated users full access to float_requests" ON public.float_requests FOR ALL TO authenticated USING (true) WITH CHECK (true);
+ALTER PUBLICATION supabase_realtime ADD TABLE public.float_requests;

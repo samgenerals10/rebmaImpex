@@ -3,16 +3,17 @@ import { supabase } from '../../lib/supabaseClient';
 import {
   CheckCircle, XCircle, Clock, AlertTriangle, Search, Filter,
   MoreVertical, ArrowLeft, Package, CreditCard,
-  UserPlus, FileText, Tag, RefreshCw, Download, Eye, ShoppingCart
+  UserPlus, FileText, Tag, RefreshCw, Download, Eye, ShoppingCart, Wallet
 } from 'lucide-react';
 import { exportToCSV } from '../../utils/export';
 import InvoiceLineItems from '../../components/InvoiceLineItems';
 import MaterialRequisitionsPanel from './MaterialRequisitionsPanel';
+import ApprovalHistoryPanel from '../../components/global/ApprovalHistoryPanel';
 
 interface ApprovalItem {
   id: string;
   requestId: string;
-  type: 'Cargo Intake' | 'Credit Order' | 'Staff Registration' | 'Price Review' | 'Production Request' | 'General Purchase';
+  type: 'Cargo Intake' | 'Credit Order' | 'Staff Registration' | 'Price Review' | 'Production Request' | 'General Purchase' | 'Float Request';
   description: string;
   department: string;
   amount: number | null;
@@ -36,6 +37,7 @@ const TYPE_COLORS: Record<string, string> = {
   'Price Review': 'bg-pink-100 text-pink-700',
   'Production Request': 'bg-cyan-100 text-cyan-700',
   'General Purchase': 'bg-amber-100 text-amber-700',
+  'Float Request': 'bg-teal-100 text-teal-700',
 };
 
 const PRIORITY_COLORS: Record<string, string> = {
@@ -57,9 +59,10 @@ const TYPE_ICONS: Record<string, React.ElementType> = {
   'Price Review': Tag,
   'Production Request': ShoppingCart,
   'General Purchase': ShoppingCart,
+  'Float Request': Wallet,
 };
 
-const TABS = ['All', 'Cargo Intake', 'Credit Order', 'Staff Registration', 'Production Request', 'General Purchase'] as const;
+const TABS = ['All', 'Cargo Intake', 'Credit Order', 'Staff Registration', 'Production Request', 'General Purchase', 'Float Request'] as const;
 
 export default function MgmtApprovalsView({ addNotification, currentUser }: Props) {
   const [items, setItems] = useState<ApprovalItem[]>([]);
@@ -105,12 +108,14 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
         { data: profilesData },
         { data: productionData },
         { data: purchasesData },
+        { data: floatData },
       ] = await Promise.all([
         supabase.from('cargo_intake').select('*').eq('status', 'PENDING_MANAGEMENT_APPROVAL').order('created_at', { ascending: false }).limit(50),
         supabase.from('orders').select('*').eq('status', 'PENDING_MANAGEMENT').order('created_at', { ascending: false }).limit(50),
         supabase.from('profiles').select('*').eq('status', 'PENDING_APPROVAL').order('created_at', { ascending: false }).limit(50),
         supabase.from('production_requests').select('*').eq('status', 'PENDING_MANAGEMENT').order('created_at', { ascending: false }).limit(50).then(r => r, () => ({ data: [] })),
         supabase.from('general_purchases').select('*').eq('status', 'PENDING_MANAGEMENT_APPROVAL').order('created_at', { ascending: false }).limit(50).then(r => r, () => ({ data: [] })),
+        supabase.from('float_requests').select('*').eq('status', 'PENDING_MANAGEMENT').order('created_at', { ascending: false }).limit(50).then(r => r, () => ({ data: [] })),
       ]);
 
       const mappedCargo: ApprovalItem[] = (cargoData || []).map((row: any) => {
@@ -189,7 +194,21 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
         raw: row,
       }));
 
-      setItems([...mappedCargo, ...mappedOrders, ...mappedProfiles, ...mappedProduction, ...mappedPurchases]);
+      const mappedFloat: ApprovalItem[] = (floatData || []).map((row: any) => ({
+        id: row.id,
+        requestId: `FLOAT-${row.id.slice(-6).toUpperCase()}`,
+        type: 'Float Request' as const,
+        description: `Float replenishment: GHS ${Number(row.amount || 0).toLocaleString()} — ${row.reason || 'No reason given'}`,
+        department: row.department || 'FINANCE',
+        amount: Number(row.amount || 0),
+        date: row.created_at?.slice(0, 10) || '',
+        priority: 'High' as const,
+        status: 'Pending' as ApprovalItem['status'],
+        submittedBy: row.requested_by || 'Finance',
+        raw: row,
+      }));
+
+      setItems([...mappedCargo, ...mappedOrders, ...mappedProfiles, ...mappedProduction, ...mappedPurchases, ...mappedFloat]);
     } catch (e) {
       console.error(e);
       setItems([]);
@@ -408,6 +427,37 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
         }
       }
 
+      if (selectedItem.type === 'Float Request' && selectedItem.raw) {
+        const req: any = selectedItem.raw;
+        const now = new Date().toISOString();
+
+        if (action === 'approve') {
+          await supabase.from('float_requests').update({ status: 'APPROVED', approved_by: currentUser?.fullName || 'Management', updated_at: now }).eq('id', selectedItem.id);
+
+          // Same automated-pipeline principle used elsewhere: the float
+          // actually lands the moment Management approves it, not on a
+          // separate manual Finance step.
+          const { data: latestEntry } = await supabase.from('finance_petty_cash').select('balance_after').order('created_at', { ascending: false }).limit(1);
+          const currentBalance = Number(latestEntry?.[0]?.balance_after) || 0;
+          const amount = Number(req.amount) || 0;
+          await supabase.from('finance_petty_cash').insert({
+            date: now.slice(0, 10),
+            description: `Replenishment approved by Management: ${req.reason || 'Float top-up'}`,
+            amount,
+            disbursed_to: 'Petty Cash Float',
+            category: 'Replenishment',
+            type: 'replenishment',
+            balance_after: currentBalance + amount,
+            created_at: now,
+          });
+
+          await supabase.from('supplier_order_notifications').insert([{ message: `Float replenishment APPROVED by Management: GHS ${amount.toLocaleString()} added to petty cash.`, notified_department: 'FINANCE', read: false }]);
+        } else {
+          await supabase.from('float_requests').update({ status: 'REJECTED', rejection_reason: modalNote || null, updated_at: now }).eq('id', selectedItem.id);
+          await supabase.from('supplier_order_notifications').insert([{ message: `Float replenishment REJECTED by Management: ${selectedItem.description}${modalNote ? ` — ${modalNote}` : ''}`, notified_department: 'FINANCE', read: false }]);
+        }
+      }
+
       await supabase.from('global_audit_history').insert([{
         department: 'MANAGEMENT',
         action: `${action.toUpperCase()}: ${selectedItem.requestId} — ${selectedItem.description}${modalNote ? ` | Note: ${modalNote}` : ''}`,
@@ -526,6 +576,7 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
       <MaterialRequisitionsPanel addNotification={addNotification} currentUser={currentUser} />
 
       {/* Summary Cards */}
+
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           { label: 'Total Pending', value: counts.total, icon: FileText, color: 'var(--accent)', filter: 'Pending' },
@@ -678,6 +729,8 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
           </div>
         )}
       </div>
+
+      <ApprovalHistoryPanel department="MANAGEMENT" />
 
       {/* Action Modal */}
       {showModal && selectedItem && (

@@ -176,8 +176,15 @@ export default function FinancePettyCashView({ addNotification, currentUser }: P
     if (submitting) return;
     setSubmitting(true);
     try {
-      const { error } = await supabase.from('supplier_order_notifications').insert([{ message: `Petty cash replenishment request: GHS ${replenForm.amount} needed. Reason: ${replenForm.reason}`, notified_department: 'MANAGEMENT', read: false }]);
+      const { error } = await supabase.from('float_requests').insert([{
+        department: 'FINANCE',
+        requested_by: currentUser?.fullName || 'Finance',
+        amount: parseFloat(replenForm.amount),
+        reason: replenForm.reason,
+        status: 'PENDING_MANAGEMENT',
+      }]);
       if (error) throw error;
+      await supabase.from('supplier_order_notifications').insert([{ message: `Petty cash replenishment request: GHS ${replenForm.amount} needed. Reason: ${replenForm.reason}`, notified_department: 'MANAGEMENT', read: false }]);
       addNotification?.(`Replenishment request sent to Management: GHS ${replenForm.amount}`);
       setShowReplenForm(false);
       setReplenForm({ amount: '', reason: '' });

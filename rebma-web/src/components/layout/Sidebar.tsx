@@ -420,7 +420,7 @@ export default function Sidebar({
           <div className="mb-3 px-1 relative shrink-0">
             <label className={`block text-[9px] font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-1 transition-all duration-300 ${isActualCollapsed ? 'opacity-0 h-0 overflow-hidden' : ''}`}>Switch Department</label>
             <button type="button" onClick={() => setIsSwitcherOpen(prev => !prev)}
-              className={`w-full flex items-center ${isActualCollapsed ? 'justify-center py-2 px-0' : 'justify-between py-2 px-3'} bg-[var(--bg)] hover:bg-[var(--accent-light)] border border-[var(--border)] text-[var(--text-primary)] rounded-xl text-xs focus:outline-none transition-all cursor-pointer font-semibold shadow-card`}
+              className={`w-full flex items-center ${isActualCollapsed ? 'justify-center py-2 px-0' : 'justify-between py-2 px-3'} bg-[var(--bg)] hover:bg-[var(--accent-light)] border border-[var(--border)] text-[var(--text-primary)] rounded-xl text-xs focus:outline-none transition-all cursor-pointer font-semibold`}
               title="Switch Department">
               <div className="flex items-center gap-2">
                 {(() => { const I = getIconForDept(activeDepartment); return <I className="w-4 h-4 text-[var(--accent)] shrink-0" />; })()}
