@@ -956,3 +956,24 @@ ALTER TABLE public.float_requests ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow authenticated users full access to float_requests" ON public.float_requests;
 CREATE POLICY "Allow authenticated users full access to float_requests" ON public.float_requests FOR ALL TO authenticated USING (true) WITH CHECK (true);
 ALTER PUBLICATION supabase_realtime ADD TABLE public.float_requests;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Financial Statements & Reports History — src/views/finance/ReportsView.tsx
+-- has been inserting into this table on every "Generate & Download" click
+-- since it was built, but the table never actually existed, so every insert
+-- silently failed (the error wasn't checked) and the history list was always
+-- empty. Also referenced as a deletable target in the CEO Control Center's
+-- Data Reset Center (Finance / ALL Departments sections).
+-- ─────────────────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.finance_report_history (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    date DATE NOT NULL,
+    type TEXT NOT NULL,
+    period TEXT NOT NULL,
+    generated_by TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE public.finance_report_history ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow authenticated users full access to finance_report_history" ON public.finance_report_history;
+CREATE POLICY "Allow authenticated users full access to finance_report_history" ON public.finance_report_history FOR ALL TO authenticated USING (true) WITH CHECK (true);
+ALTER PUBLICATION supabase_realtime ADD TABLE public.finance_report_history;

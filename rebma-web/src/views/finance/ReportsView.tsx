@@ -250,13 +250,14 @@ export default function FinanceReportsView({ addNotification, currentUser }: Pro
         generatedBy: currentUser?.fullName || 'Finance',
       };
 
-      await supabase.from('finance_report_history').insert([{
+      const { error: historyError } = await supabase.from('finance_report_history').insert([{
         date: entry.date,
         type: entry.type,
         period: entry.period,
         generated_by: entry.generatedBy,
         created_at: generatedAt.toISOString(),
       }]);
+      if (historyError) throw historyError;
 
       setReportHistory(prev => [entry, ...prev]);
       addNotification?.(`${report.name} generated for ${selectedPeriod}`);
