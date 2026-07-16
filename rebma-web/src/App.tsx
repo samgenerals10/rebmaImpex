@@ -1140,7 +1140,7 @@ export default function App() {
             if (payload.eventType === 'INSERT') {
               if (newRecord.status === 'PENDING_APPROVAL') {
                 if (currentUser.department === 'HR' || currentUser.isCeo) {
-                  addNotification(`New pending user: ${newRecord.full_name || 'Unknown'}`);
+                  addNotification(`New pending user: ${newRecord.full_name || 'Unknown'}`, { dept: 'HR', tab: 'Registrations' });
                   addTabAlert('HR');
                   refreshAllData();
                 }
@@ -1161,20 +1161,20 @@ export default function App() {
             const oldRecord = payload.old as any;
             if (payload.eventType === 'INSERT') {
               if (currentUser.department === 'MANAGEMENT' || currentUser.isCeo) {
-                addNotification(`New cargo intake logged for ${newRecord.company || 'N/A'}`);
+                addNotification(`New cargo intake logged for ${newRecord.company || 'N/A'}`, { dept: 'MANAGEMENT', tab: 'CargoApproval' });
                 addTabAlert('MANAGEMENT');
                 refreshAllData();
               }
             } else if (payload.eventType === 'UPDATE') {
               if (oldRecord && oldRecord.status !== 'APPROVED' && newRecord.status === 'APPROVED') {
                 if (currentUser.department === 'OPERATIONS' || currentUser.isCeo) {
-                  addNotification(`Intake approved: ${newRecord.id}`);
+                  addNotification(`Intake approved: ${newRecord.id}`, { dept: 'OPERATIONS', tab: 'PortIngestion' });
                   addTabAlert('OPERATIONS');
                   refreshAllData();
                 }
               } else if (oldRecord && oldRecord.status !== 'REJECTED' && newRecord.status === 'REJECTED') {
                 if (currentUser.department === 'OPERATIONS' || currentUser.isCeo) {
-                  addNotification(`Intake rejected: ${newRecord.id}`);
+                  addNotification(`Intake rejected: ${newRecord.id}`, { dept: 'OPERATIONS', tab: 'PortIngestion' });
                   addTabAlert('OPERATIONS');
                   refreshAllData();
                 }
@@ -1188,7 +1188,7 @@ export default function App() {
           (payload) => {
             const newRecord = payload.new as any;
             if (currentUser.department === 'DISPATCH' || currentUser.isCeo) {
-              addNotification(`New delivery assigned: Order ${newRecord.order_id || 'N/A'}`);
+              addNotification(`New delivery assigned: Order ${newRecord.order_id || 'N/A'}`, { dept: 'DISPATCH', tab: 'Deliveries' });
               addTabAlert('DISPATCH');
               refreshAllData();
             }
@@ -1199,7 +1199,8 @@ export default function App() {
           { event: '*', schema: 'public', table: 'goods_prices' },
           () => {
             if (currentUser && (['FINANCE', 'MARKETING', 'MANAGEMENT'].includes(currentUser.department) || currentUser.isCeo)) {
-              addNotification(`Price catalog updated`);
+              const priceTab = currentUser.department === 'MANAGEMENT' ? 'SetPrices' : 'PriceCatalog';
+              addNotification(`Price catalog updated`, { dept: currentUser.department, tab: priceTab });
               addTabAlert('FINANCE');
               addTabAlert('MARKETING');
               addTabAlert('MANAGEMENT');
@@ -1213,13 +1214,16 @@ export default function App() {
           (payload) => {
             const newRecord = payload.new as any;
             if (payload.eventType === 'INSERT') {
-              addNotification(`New order: ${newRecord.ticket_number || 'new order'}`);
+              const orderLink = currentUser.department === 'FINANCE' ? { dept: 'FINANCE', tab: 'OrdersQueue' }
+                : currentUser.department === 'MARKETING' ? { dept: 'MARKETING', tab: 'CreateOrder' }
+                : undefined;
+              addNotification(`New order: ${newRecord.ticket_number || 'new order'}`, orderLink);
               addTabAlert('MARKETING');
               addTabAlert('FINANCE');
             } else if (payload.eventType === 'UPDATE') {
               const status = newRecord.status;
               if (status === 'OUT_FOR_DELIVERY' || status === 'APPROVED') {
-                addNotification(`Order ${newRecord.ticket_number || ''} → ${status.replace(/_/g, ' ')}`);
+                addNotification(`Order ${newRecord.ticket_number || ''} → ${status.replace(/_/g, ' ')}`, { dept: 'OPERATIONS', tab: 'ApprovedGoods' });
                 addTabAlert('OPERATIONS');
               }
             }
@@ -1246,7 +1250,7 @@ export default function App() {
           (payload) => {
             if (currentUser.department === 'FINANCE' || currentUser.isCeo) {
               const newRecord = payload.new as any;
-              addNotification(`New payment recorded: ${newRecord.reference || newRecord.id || ''}`);
+              addNotification(`New payment recorded: ${newRecord.reference || newRecord.id || ''}`, { dept: 'FINANCE', tab: 'Receipts' });
               addTabAlert('FINANCE');
             }
             refreshAllData();
@@ -1378,13 +1382,16 @@ export default function App() {
   const [unreadEmailCount, setUnreadEmailCount] = useState<number>(0);
 
   // Notification system — notifications persist in bell until user clears them
-  const [notifications, setNotifications] = useState<Array<{ id: string; msg: string; time: string }>>([]);
+  const [notifications, setNotifications] = useState<Array<{ id: string; msg: string; time: string; linkDept?: string; linkTab?: string }>>([]);
   const [activeToastIds, setActiveToastIds] = useState<Set<string>>(new Set());
 
-  const addNotification = (msg: string) => {
+  // `link` lets a notification jump straight to the page it's about — e.g. a
+  // "new order" toast takes the viewer to the Orders Queue instead of just
+  // being an inert message they have to go find the right tab for themselves.
+  const addNotification = (msg: string, link?: { dept?: string; tab: string }) => {
     const id = Date.now().toString();
     const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    setNotifications(prev => [{ id, msg, time }, ...prev.slice(0, 49)]); // keep max 50 in bell
+    setNotifications(prev => [{ id, msg, time, linkDept: link?.dept, linkTab: link?.tab }, ...prev.slice(0, 49)]); // keep max 50 in bell
     setActiveToastIds(prev => { const s = new Set(prev); s.add(id); return s; });
     // Play sound for in-app notifications. Tag the alert loop with a sentinel
     // ID so dismissing an unrelated bell notification can't silence it early —
@@ -1398,6 +1405,12 @@ export default function App() {
     setTimeout(() => {
       setActiveToastIds(prev => { const s = new Set(prev); s.delete(id); return s; });
     }, 5000);
+  };
+
+  const goToNotificationLink = (linkDept?: string, linkTab?: string) => {
+    if (!linkTab) return;
+    if (linkDept && linkDept !== activeDepartment) setActiveDepartment(linkDept);
+    setActiveSubTab(linkTab);
   };
 
   // Change theme class on document body (redundant safety sync)
@@ -2796,7 +2809,7 @@ export default function App() {
     if (activeSubTab === 'Notes') return <NotesPanel currentUser={currentUser} addNotification={addNotification} />;
     if (activeSubTab === 'Tasks') return <TasksPanel currentUser={currentUser} addNotification={addNotification} />;
     if (activeSubTab === 'Emails') return <EmailsPanel currentUser={currentUser} addNotification={addNotification} onUnreadCountChange={setUnreadEmailCount} />;
-    if (activeSubTab === 'Notifications') return <NotificationsPanel notifications={notifications.map(n => n.msg)} onClear={() => setNotifications([])} currentUser={currentUser ?? undefined} />;
+    if (activeSubTab === 'Notifications') return <NotificationsPanel notifications={notifications} onNavigate={goToNotificationLink} onClear={() => setNotifications([])} currentUser={currentUser ?? undefined} />;
     if (activeSubTab === 'HelpDesk') return <HelpDeskPanel currentUser={currentUser} addNotification={addNotification} />;
     if (activeSubTab === 'Feedback') return <FeedbackPanel currentUser={currentUser} addNotification={addNotification} />;
 
@@ -3618,6 +3631,7 @@ export default function App() {
         notifications={notifications}
         setNotifications={setNotifications}
         addNotification={addNotification}
+        goToNotificationLink={goToNotificationLink}
         activeToastIds={activeToastIds}
         setActiveToastIds={setActiveToastIds}
         renderDashboard={renderDashboard}
@@ -3681,7 +3695,7 @@ const MOTION_TRANSITIONS: Record<string, Transition> = {
 function AppInner({
   currentUser, reducedMotion, motionSetting, activeDepartment, setActiveDepartment,
   activeSubTab, setActiveSubTab, theme, notifications, setNotifications,
-  addNotification, renderDashboard, renderAlertModal, renderPromptModal,
+  addNotification, goToNotificationLink, renderDashboard, renderAlertModal, renderPromptModal,
   renderConfirmModal, isChatOpen, setIsChatOpen, chatMessages, sendChatMessage,
   boardroomMinutes, setBoardroomMinutes, onLogout, openBoardroom,
   sidebarCollapsed, setSidebarCollapsed, unreadEmailCount,
@@ -3879,24 +3893,28 @@ function AppInner({
         {/* 9. GLOBAL TOAST NOTIFICATION OVERLAY */}
         <div className="fixed bottom-6 right-6 z-[300] flex flex-col gap-2 max-w-sm pointer-events-none">
           <AnimatePresence mode="sync">
-            {notifications.filter((n: { id: string; msg: string; time: string }) => activeToastIds.has(n.id)).slice(0, 3).map((n: { id: string; msg: string; time: string }) => (
+            {notifications.filter((n: { id: string }) => activeToastIds.has(n.id)).slice(0, 3).map((n: { id: string; msg: string; time: string; linkDept?: string; linkTab?: string }) => (
               <motion.div
                 key={n.id}
                 initial={{ opacity: 0, x: 40, scale: 0.9 }}
                 animate={{ opacity: 1, x: 0, scale: 1 }}
                 exit={{ opacity: 0, x: 40, scale: 0.9 }}
                 transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-                className="bg-slate-900/95 backdrop-blur-sm border border-slate-700 rounded-2xl px-4 py-3 shadow-2xl pointer-events-auto"
+                onClick={() => { if (n.linkTab) { goToNotificationLink(n.linkDept, n.linkTab); setActiveToastIds((prev: Set<string>) => { const s = new Set(prev); s.delete(n.id); return s; }); } }}
+                className={`bg-slate-900/95 backdrop-blur-sm border border-slate-700 rounded-2xl px-4 py-3 shadow-2xl pointer-events-auto ${n.linkTab ? 'cursor-pointer hover:border-slate-500' : ''}`}
               >
                 <div className="flex items-start gap-3">
                   <div className="w-2 h-2 rounded-full bg-blue-400 mt-1 shrink-0 animate-pulse" />
                   <div>
                     <p className="text-xs text-white leading-relaxed">{n.msg}</p>
-                    <p className="text-[10px] text-text-muted mt-1">{n.time}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <p className="text-[10px] text-text-muted">{n.time}</p>
+                      {n.linkTab && <p className="text-[10px] text-blue-400 font-semibold">View →</p>}
+                    </div>
                   </div>
                   <button
                     type="button"
-                    onClick={() => setNotifications((prev: Array<{ id: string; msg: string; time: string }>) => prev.filter((x: { id: string; msg: string; time: string }) => x.id !== n.id))}
+                    onClick={(e) => { e.stopPropagation(); setNotifications((prev: Array<{ id: string }>) => prev.filter((x: { id: string }) => x.id !== n.id)); }}
                     className="ml-auto shrink-0 text-text-secondary hover:text-text-muted cursor-pointer"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>

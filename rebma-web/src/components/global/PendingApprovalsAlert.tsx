@@ -18,21 +18,24 @@ async function fetchPendingForDept(department: string): Promise<PendingItem[]> {
 
   try {
     if (department === 'MANAGEMENT') {
-      const [cargo, credit] = await Promise.all([
+      const [cargo, credit, requisitions, floats] = await Promise.all([
         supabase.from('cargo_intake').select('id', { count: 'exact', head: true }).eq('status', 'PENDING_MANAGEMENT_APPROVAL'),
-        supabase.from('orders').select('id', { count: 'exact', head: true }).eq('status', 'PENDING_CREDIT_APPROVAL'),
+        supabase.from('orders').select('id', { count: 'exact', head: true }).eq('status', 'PENDING_MANAGEMENT'),
+        supabase.from('material_requisitions').select('id', { count: 'exact', head: true }).eq('status', 'PENDING_MANAGEMENT').then(r => r, () => ({ count: 0 })),
+        supabase.from('float_requests').select('id', { count: 'exact', head: true }).eq('status', 'PENDING_MANAGEMENT').then(r => r, () => ({ count: 0 })),
       ]);
       if ((cargo.count ?? 0) > 0) items.push({ label: 'cargo approvals', count: cargo.count!, tab: 'CargoApproval' });
       if ((credit.count ?? 0) > 0) items.push({ label: 'credit approvals', count: credit.count!, tab: 'CreditApproval' });
+      if ((requisitions.count ?? 0) > 0) items.push({ label: 'material requisitions', count: requisitions.count!, tab: 'CreditApproval' });
+      if ((floats.count ?? 0) > 0) items.push({ label: 'float requests', count: floats.count!, tab: 'CreditApproval' });
     }
 
     if (department === 'CEO') {
-      const [reg, prices] = await Promise.all([
-        supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('status', 'PENDING_APPROVAL'),
-        supabase.from('orders').select('id', { count: 'exact', head: true }).eq('status', 'PENDING_CEO_COSIGN'),
-      ]);
-      if ((reg.count ?? 0) > 0) items.push({ label: 'registration approvals', count: reg.count!, tab: 'Approvals' });
-      if ((prices.count ?? 0) > 0) items.push({ label: 'CEO co-sign requests', count: prices.count!, tab: 'Approvals' });
+      // Note: CEO electronic co-sign is currently just a toggle in Control
+      // Center — no order status routes to CEO for co-signing yet, so there
+      // is nothing real to check here beyond registrations.
+      const { count } = await supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('status', 'PENDING_APPROVAL');
+      if ((count ?? 0) > 0) items.push({ label: 'registration approvals', count: count!, tab: 'Approvals' });
     }
 
     if (department === 'FINANCE') {
@@ -55,8 +58,14 @@ async function fetchPendingForDept(department: string): Promise<PendingItem[]> {
     }
 
     if (department === 'OPERATIONS') {
-      const { count } = await supabase.from('cargo_intake').select('id', { count: 'exact', head: true }).eq('status', 'PENDING_MANAGEMENT_APPROVAL');
-      if ((count ?? 0) > 0) items.push({ label: 'cargo pending management sign-off', count: count!, tab: 'PortIngestion' });
+      const [cargo, production, rawMaterial] = await Promise.all([
+        supabase.from('cargo_intake').select('id', { count: 'exact', head: true }).eq('status', 'PENDING_MANAGEMENT_APPROVAL'),
+        supabase.from('fulfillment_tickets').select('id', { count: 'exact', head: true }).eq('type', 'PRODUCTION_RELEASE').eq('status', 'PENDING').then(r => r, () => ({ count: 0 })),
+        supabase.from('fulfillment_tickets').select('id', { count: 'exact', head: true }).eq('type', 'RAW_MATERIAL_RELEASE').eq('status', 'PENDING').then(r => r, () => ({ count: 0 })),
+      ]);
+      if ((cargo.count ?? 0) > 0) items.push({ label: 'cargo pending management sign-off', count: cargo.count!, tab: 'PortIngestion' });
+      if ((production.count ?? 0) > 0) items.push({ label: 'production releases to prepare', count: production.count!, tab: 'Releases' });
+      if ((rawMaterial.count ?? 0) > 0) items.push({ label: 'raw material releases to prepare', count: rawMaterial.count!, tab: 'Releases' });
     }
 
     if (department === 'DISPATCH') {
@@ -65,8 +74,8 @@ async function fetchPendingForDept(department: string): Promise<PendingItem[]> {
     }
 
     if (department === 'PRODUCTION') {
-      const { count } = await supabase.from('production_requests').select('id', { count: 'exact', head: true }).eq('status', 'PENDING');
-      if ((count ?? 0) > 0) items.push({ label: 'internal production requests pending', count: count!, tab: 'Requisition' });
+      const { count } = await supabase.from('production_requests').select('id', { count: 'exact', head: true }).eq('status', 'PENDING_MANAGEMENT');
+      if ((count ?? 0) > 0) items.push({ label: 'internal production requests pending', count: count!, tab: 'InternalOrders' });
     }
   } catch {
     // Table may not exist — silently skip

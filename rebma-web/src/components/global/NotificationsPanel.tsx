@@ -18,14 +18,17 @@ interface DbNotification {
   recipient_id?: string | null;
 }
 
+interface LegacyNotification { id: string; msg: string; time: string; linkDept?: string; linkTab?: string }
+
 interface NotificationsPanelProps {
   /** Legacy in-memory notifications (still shown as a fallback row) */
-  notifications?: string[];
+  notifications?: LegacyNotification[];
+  onNavigate?: (linkDept?: string, linkTab?: string) => void;
   onClear?: () => void;
   currentUser?: { id: string; department: string; fullName?: string } | null;
 }
 
-export default function NotificationsPanel({ notifications = [], onClear, currentUser }: NotificationsPanelProps) {
+export default function NotificationsPanel({ notifications = [], onNavigate, onClear, currentUser }: NotificationsPanelProps) {
   const [dbNotifs, setDbNotifs] = useState<DbNotification[]>([]);
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
@@ -238,12 +241,22 @@ export default function NotificationsPanel({ notifications = [], onClear, curren
           ))}
 
           {/* Legacy in-memory notifications (shown below DB ones) */}
-          {notifications.length > 0 && dbNotifs.length === 0 && [...notifications].reverse().map((msg, i) => (
-            <div key={`legacy-${i}`} className="flex items-start gap-3 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl p-3">
+          {notifications.length > 0 && dbNotifs.length === 0 && [...notifications].reverse().map(n => (
+            <div
+              key={n.id}
+              onClick={() => n.linkTab && onNavigate?.(n.linkDept, n.linkTab)}
+              className={`flex items-start gap-3 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl p-3 ${n.linkTab ? 'cursor-pointer hover:bg-[var(--accent-light)]' : ''}`}
+            >
               <div className="w-7 h-7 rounded-full bg-[var(--accent-light)] flex items-center justify-center flex-shrink-0">
                 <Bell className="w-3.5 h-3.5 text-[var(--accent)]" />
               </div>
-              <p className="text-xs text-[var(--text-secondary)] leading-relaxed pt-0.5">{msg}</p>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-[var(--text-secondary)] leading-relaxed pt-0.5">{n.msg}</p>
+                <div className="flex items-center gap-2 mt-1">
+                  <p className="text-[10px] text-[var(--text-muted)]">{n.time}</p>
+                  {n.linkTab && <p className="text-[10px] text-[var(--accent)] font-semibold">View →</p>}
+                </div>
+              </div>
             </div>
           ))}
         </div>
