@@ -134,15 +134,23 @@ export default function FinanceDashboard({
 
   const fetchCapitalMetrics = async () => {
     try {
-      const [stockData, gpData] = await Promise.all([
+      const [stockData, gpData, pricesRes] = await Promise.all([
         stockApi.getStock(),
-        operations.getGeneralPurchases()
+        operations.getGeneralPurchases(),
+        supabase.from('goods_prices').select('product_name, unit_price'),
       ]);
-      const finishedGoodsValue = stockData.reduce((acc: number, s: any) => acc + (s.current * 45.5), 0);
+      // Real per-product valuation — was previously a flat *45.5 multiplier
+      // applied to every stock item regardless of what it actually was.
+      const priceByProduct: Record<string, number> = {};
+      (pricesRes.data || []).forEach((p: any) => { priceByProduct[String(p.product_name).toLowerCase().trim()] = Number(p.unit_price || 0); });
+      const finishedGoodsValue = stockData.reduce((acc: number, s: any) => {
+        const key = String(s.name || s.product_name || '').toLowerCase().trim();
+        return acc + (Number(s.current || s.quantity || 0) * (priceByProduct[key] || 0));
+      }, 0);
       const gpValue = (gpData || [])
         .filter((gp: any) => gp.status === 'APPROVED')
         .reduce((acc: number, gp: any) => acc + gp.cost, 0);
-      
+
       setTotalCapitalAssets(finishedGoodsValue + gpValue);
     } catch (err) {
       console.error('Failed to fetch capital metrics in FinanceDashboard:', err);
@@ -972,8 +980,28 @@ export default function FinanceDashboard({
             })}
           </div>
 
-          {/* Chart */}
-          <div className="p-4 md:p-6 bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-[var(--box-shadow)]">
+          {/* Production & Warehouse Summary — always visible */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6">
+            <div title="Production requisitions Management has approved for release (status TICKETS_ISSUED or COMPLETED)" className="p-4 md:p-6 bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-[var(--box-shadow)] space-y-3">
+              <h3 className="text-sm font-bold text-[var(--text-primary)]">Overall Goods Produced by Production</h3>
+              <p className="text-2xl md:text-3xl font-bold text-[var(--accent)] font-mono">{totalGoodsProduced} <span className="text-xs md:text-base text-[var(--text-secondary)] font-normal font-sans">Batches</span></p>
+              <p className="text-[10px] text-[var(--text-secondary)] opacity-80">Requisitions with TICKETS_ISSUED or COMPLETED status from Production floor.</p>
+            </div>
+            <div title="Live sum of released production units currently held in warehouse stock" className="p-4 md:p-6 bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-[var(--box-shadow)] space-y-3">
+              <h3 className="text-sm font-bold text-[var(--text-primary)]">Overall Goods in Warehouse</h3>
+              <p className="text-2xl md:text-3xl font-bold text-emerald-500 font-mono">{totalWarehouseItems.toLocaleString()} <span className="text-xs md:text-base text-[var(--text-secondary)] font-normal font-sans">Units</span></p>
+              <p className="text-[10px] text-[var(--text-secondary)] opacity-80">Total approved and released production units currently in warehouse stock.</p>
+            </div>
+            <div title="Real stock valuation (quantity × unit price per product) plus approved general purchases — capital currently tied up, not yet converted to sales" className="p-4 md:p-6 bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-[var(--box-shadow)] space-y-3">
+              <h3 className="text-sm font-bold text-[var(--text-primary)]">Capital Tied Up in Assets</h3>
+              <p className="text-2xl md:text-3xl font-bold text-indigo-500 font-mono">₵{totalCapitalAssets.toLocaleString('en-GH', { maximumFractionDigits: 0 })}</p>
+              <p className="text-[10px] text-[var(--text-secondary)] opacity-80">Value of finished goods stock plus approved general purchased items.</p>
+            </div>
+          </div>
+
+          {/* Chart, and — on the Record Payment tab — the payment form beside it */}
+          <div className={activeSubTab === 'RecordPayment' ? 'grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-4 md:gap-6 items-start' : ''}>
+          <div title="Weekly revenue recognized vs. daily liquid (cash-in-hand) payments collected" className="p-4 md:p-6 bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-[var(--box-shadow)]">
             <h3 className="text-base md:text-lg font-bold text-[var(--text-primary)]">Finance Revenue & Cash Collection Performance</h3>
             <p className="text-xs text-[var(--text-muted)]">Weekly revenue flow vs daily liquid payments collection.</p>
             <div className="h-48 md:h-60 mt-4">
@@ -989,24 +1017,92 @@ export default function FinanceDashboard({
               </ResponsiveContainer>
             </div>
           </div>
+          {activeSubTab === 'RecordPayment' && (
+            <div title="Record a direct payment or settle an outstanding credit order — toggle below" className="p-6 bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-[var(--box-shadow)] space-y-4">
+              <h3 className="text-base font-bold text-[var(--text-primary)]">Record Inbound Payment &amp; Settle Credit</h3>
+              <form onSubmit={handleRecordPaymentSubmit} className="space-y-4 text-[var(--text-primary)]">
+                <div>
+                  <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Payment Type</label>
+                  <div title="Direct: a fresh cash/cheque/momo payment. Credit Settlement: pay down an existing unpaid credit order." className="flex gap-0 bg-[var(--bg)] p-1 rounded-xl border border-[var(--border)]">
+                    <button type="button" onClick={() => setPayType('DIRECT')} title="Record a new inbound payment not tied to an unsettled credit order"
+                      className={`flex-1 py-2 rounded-lg text-xs font-bold cursor-pointer transition-all ${payType === 'DIRECT' ? 'bg-[var(--bg-card)] shadow text-[var(--accent)]' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
+                    >Record Inbound Payment</button>
+                    <button type="button" onClick={() => setPayType('CREDIT_SETTLEMENT')} title="Apply a payment toward an existing unsettled credit order"
+                      className={`flex-1 py-2 rounded-lg text-xs font-bold cursor-pointer transition-all ${payType === 'CREDIT_SETTLEMENT' ? 'bg-[var(--bg-card)] shadow text-[var(--accent)]' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
+                    >Settle Credit</button>
+                  </div>
+                </div>
 
-          {/* Production & Warehouse Summary — always visible */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6">
-            <div className="p-4 md:p-6 bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-[var(--box-shadow)] space-y-3">
-              <h3 className="text-sm font-bold text-[var(--text-primary)]">Overall Goods Produced by Production</h3>
-              <p className="text-2xl md:text-3xl font-bold text-[var(--accent)] font-mono">{totalGoodsProduced} <span className="text-xs md:text-base text-[var(--text-secondary)] font-normal font-sans">Batches</span></p>
-              <p className="text-[10px] text-[var(--text-secondary)] opacity-80">Requisitions with TICKETS_ISSUED or COMPLETED status from Production floor.</p>
+                {payType === 'DIRECT' ? (
+                  <>
+                    <div>
+                      <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Client Customer Name</label>
+                      <input type="text" value={clientName} onChange={e => setClientName(e.target.value)} placeholder="E.g., Kumasi Foods Distributor" className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Amount Paid (GHS)</label>
+                      <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="E.g., 2500" className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />
+                    </div>
+                  </>
+                ) : (
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Select Unsettled Credit Order</label>
+                      <select value={selectedOrderId} onChange={e => setSelectedOrderId(e.target.value)} className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]">
+                        <option value="" className="bg-[var(--bg-card)]">-- Choose Credit Order --</option>
+                        {effectiveOrders.filter(o => o.paymentMode === 'CREDIT' && o.status === 'PENDING_FINANCE').map(o => (
+                          <option key={o.id} value={o.id} className="bg-[var(--bg-card)]">{o.id} - {o.clientName} (GHS {o.totalAmount.toLocaleString()}) [{o.status}]</option>
+                        ))}
+                      </select>
+                      {effectiveOrders.filter(o => o.paymentMode === 'CREDIT' && o.status === 'PENDING_FINANCE').length === 0 && (
+                        <p className="text-[10px] text-amber-500 mt-1">No pending credit orders found. Check Finance queue first.</p>
+                      )}
+                    </div>
+                    {selectedOrderId && (() => {
+                      const selOrder = effectiveOrders.find(o => o.id === selectedOrderId);
+                      const amountRequired = selOrder?.totalAmount || 0;
+                      const amountPaidNum = parseFloat(amount) || 0;
+                      const balance = amountRequired - amountPaidNum;
+                      return (
+                        <div className="space-y-2">
+                          <div className="bg-[var(--bg)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs">
+                            <p className="text-[var(--text-muted)]">Amount Required</p>
+                            <p className="font-bold text-[var(--text-primary)] text-sm">GHS {amountRequired.toLocaleString()}</p>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Amount Paid (GHS)</label>
+                            <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="Enter amount paid…"
+                              className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />
+                          </div>
+                          {amount && (
+                            <div className={`rounded-xl px-3 py-2 text-xs font-semibold ${balance <= 0 ? 'bg-emerald-500/10 text-emerald-600' : 'bg-rose-500/10 text-rose-600'}`}>
+                              {balance <= 0
+                                ? `Full payment — GHS ${Math.abs(balance).toLocaleString()} ${balance < 0 ? 'overpaid' : 'settled'}`
+                                : `Partial payment — GHS ${balance.toLocaleString()} remaining`}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Payment Mode</label>
+                  <select value={payMode} onChange={e => setPayMode(e.target.value as any)} className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]">
+                    {cashEnabled && <option value="CASH" className="bg-[var(--bg-card)]">Cash</option>}
+                    {chequeEnabled && <option value="CHEQUE" className="bg-[var(--bg-card)]">Cheque</option>}
+                    {momoEnabled && <option value="MOBILE_MONEY" className="bg-[var(--bg-card)]">Mobile Money (MTN/Telecel)</option>}
+                    <option value="CREDIT" className="bg-[var(--bg-card)]">Credit</option>
+                  </select>
+                </div>
+
+                <button type="submit" title="Saves the payment to finance_payments and, for direct payments, generates the operations dispatch ticket" className="w-full py-2.5 bg-[var(--accent)] hover:opacity-90 text-white rounded-xl text-xs font-bold cursor-pointer transition-all shadow">
+                  Record Payment & Generate Ticket
+                </button>
+              </form>
             </div>
-            <div className="p-4 md:p-6 bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-[var(--box-shadow)] space-y-3">
-              <h3 className="text-sm font-bold text-[var(--text-primary)]">Overall Goods in Warehouse</h3>
-              <p className="text-2xl md:text-3xl font-bold text-emerald-500 font-mono">{totalWarehouseItems.toLocaleString()} <span className="text-xs md:text-base text-[var(--text-secondary)] font-normal font-sans">Units</span></p>
-              <p className="text-[10px] text-[var(--text-secondary)] opacity-80">Total approved and released production units currently in warehouse stock.</p>
-            </div>
-            <div className="p-4 md:p-6 bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-[var(--box-shadow)] space-y-3">
-              <h3 className="text-sm font-bold text-[var(--text-primary)]">Capital Tied Up in Assets</h3>
-              <p className="text-2xl md:text-3xl font-bold text-indigo-500 font-mono">₵{totalCapitalAssets.toLocaleString('en-GH', { maximumFractionDigits: 0 })}</p>
-              <p className="text-[10px] text-[var(--text-secondary)] opacity-80">Value of finished goods stock plus approved general purchased items.</p>
-            </div>
+          )}
           </div>
 
           {/* Tab Views */}
@@ -1080,99 +1176,6 @@ export default function FinanceDashboard({
                     <p className="text-xs text-[var(--text-secondary)] text-center py-6">No approved order invoices pending.</p>
                   )}
                 </div>
-              </div>
-            )}
-
-            {/* RECORD INBOUND PAYMENT */}
-            {activeSubTab === 'RecordPayment' && (
-              <div className="p-6 bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-[var(--box-shadow)] space-y-4 max-w-xl">
-                <h3 className="text-lg font-bold text-[var(--text-primary)]">Record Inbound Payments & Settle Credit</h3>
-                <form onSubmit={handleRecordPaymentSubmit} className="space-y-4 text-[var(--text-primary)]">
-                  {/* Payment Type Toggle */}
-                  <div>
-                    <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Payment Type</label>
-                    <div className="flex gap-0 bg-[var(--bg)] p-1 rounded-xl border border-[var(--border)]">
-                      <button
-                        type="button"
-                        onClick={() => setPayType('DIRECT')}
-                        className={`flex-1 py-2 rounded-lg text-xs font-bold cursor-pointer transition-all ${payType === 'DIRECT' ? 'bg-[var(--bg-card)] shadow text-[var(--accent)]' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
-                      >Direct Payment</button>
-                      <button
-                        type="button"
-                        onClick={() => setPayType('CREDIT_SETTLEMENT')}
-                        className={`flex-1 py-2 rounded-lg text-xs font-bold cursor-pointer transition-all ${payType === 'CREDIT_SETTLEMENT' ? 'bg-[var(--bg-card)] shadow text-[var(--accent)]' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
-                      >Credit Settlement</button>
-                    </div>
-                  </div>
-
-                  {payType === 'DIRECT' ? (
-                    <>
-                      <div>
-                        <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Client Customer Name</label>
-                        <input type="text" value={clientName} onChange={e => setClientName(e.target.value)} placeholder="E.g., Kumasi Foods Distributor" className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Amount Paid (GHS)</label>
-                        <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="E.g., 2500" className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />
-                      </div>
-                    </>
-                  ) : (
-                    <div className="space-y-3">
-                      <div>
-                        <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Select Unsettled Credit Order</label>
-                        <select value={selectedOrderId} onChange={e => setSelectedOrderId(e.target.value)} className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]">
-                          <option value="" className="bg-[var(--bg-card)]">-- Choose Credit Order --</option>
-                          {effectiveOrders.filter(o => o.paymentMode === 'CREDIT' && o.status === 'PENDING_FINANCE').map(o => (
-                            <option key={o.id} value={o.id} className="bg-[var(--bg-card)]">{o.id} - {o.clientName} (GHS {o.totalAmount.toLocaleString()}) [{o.status}]</option>
-                          ))}
-                        </select>
-                        {effectiveOrders.filter(o => o.paymentMode === 'CREDIT' && o.status === 'PENDING_FINANCE').length === 0 && (
-                          <p className="text-[10px] text-amber-500 mt-1">No pending credit orders found. Check Finance queue first.</p>
-                        )}
-                      </div>
-                      {selectedOrderId && (() => {
-                        const selOrder = effectiveOrders.find(o => o.id === selectedOrderId);
-                        const amountRequired = selOrder?.totalAmount || 0;
-                        const amountPaidNum = parseFloat(amount) || 0;
-                        const balance = amountRequired - amountPaidNum;
-                        return (
-                          <div className="space-y-2">
-                            <div className="bg-[var(--bg)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs">
-                              <p className="text-[var(--text-muted)]">Amount Required</p>
-                              <p className="font-bold text-[var(--text-primary)] text-sm">GHS {amountRequired.toLocaleString()}</p>
-                            </div>
-                            <div>
-                              <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Amount Paid (GHS)</label>
-                              <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="Enter amount paid…"
-                                className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />
-                            </div>
-                            {amount && (
-                              <div className={`rounded-xl px-3 py-2 text-xs font-semibold ${balance <= 0 ? 'bg-emerald-500/10 text-emerald-600' : 'bg-rose-500/10 text-rose-600'}`}>
-                                {balance <= 0
-                                  ? `Full payment — GHS ${Math.abs(balance).toLocaleString()} ${balance < 0 ? 'overpaid' : 'settled'}`
-                                  : `Partial payment — GHS ${balance.toLocaleString()} remaining`}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })()}
-                    </div>
-                  )}
-
-                  <div>
-                    <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Payment Mode</label>
-                    <select value={payMode} onChange={e => setPayMode(e.target.value as any)} className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]">
-                      {cashEnabled && <option value="CASH" className="bg-[var(--bg-card)]">Cash</option>}
-                      {chequeEnabled && <option value="CHEQUE" className="bg-[var(--bg-card)]">Cheque</option>}
-                      {momoEnabled && <option value="MOBILE_MONEY" className="bg-[var(--bg-card)]">Mobile Money (MTN/Telecel)</option>}
-                      <option value="CREDIT" className="bg-[var(--bg-card)]">Credit</option>
-                    </select>
-                  </div>
-
-                  <button type="submit" className="w-full py-2.5 bg-[var(--accent)] hover:opacity-90 text-white rounded-xl text-xs font-bold cursor-pointer transition-all shadow">
-                    Record Payment & Generate Ticket
-                  </button>
-                </form>
               </div>
             )}
 

@@ -406,7 +406,23 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
   const inventoryItems = goodsPrices.map((gp: any) => {
     const key = String(gp.product_name || '').toLowerCase().trim();
     const qty = stock.filter((s: any) => String(s.product_name || '').toLowerCase().trim() === key).reduce((sum: number, s: any) => sum + (Number(s.quantity || s.current || 0)), 0);
-    const soldRevenue = (effective as any[]).filter(o => ['APPROVED','PROCESSING','DELIVERED','OUT_FOR_DELIVERY'].includes(o.status) && String(o.productName || o.product_name || '').toLowerCase().trim() === key).reduce((s: number, o: any) => s + (Number(o.totalAmount || o.total_amount) || 0), 0);
+    // Match per line-item (metadata.items), not the order's flattened product_name —
+    // multi-item orders join names as "Flour Nice, Milk Powder, ..." which never
+    // equals a single product key, silently zeroing revenue for every product.
+    const clearedOrders = (effective as any[]).filter(o => ['APPROVED','PROCESSING','DELIVERED','OUT_FOR_DELIVERY'].includes(o.status));
+    let soldRevenue = 0;
+    for (const o of clearedOrders) {
+      const items = o.metadata?.items;
+      if (Array.isArray(items) && items.length > 0) {
+        for (const it of items) {
+          if (String(it.productName || it.product_name || '').toLowerCase().trim() === key) {
+            soldRevenue += Number(it.lineTotal || it.line_total || it.amount || 0);
+          }
+        }
+      } else if (String(o.productName || o.product_name || '').toLowerCase().trim() === key) {
+        soldRevenue += Number(o.totalAmount || o.total_amount || 0);
+      }
+    }
     // Actual quantity sold — real stock_ledger deductions, not order line-item estimates
     const soldQty = stockLedger.filter(l => l.movement_type === 'REMOVE' && String(l.product_name || '').toLowerCase().trim() === key)
       .reduce((s, l) => s + (Number(l.quantity) || 0), 0);

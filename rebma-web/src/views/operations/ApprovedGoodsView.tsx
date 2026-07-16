@@ -469,9 +469,9 @@ export default function ApprovedGoodsView({ addNotification, setActiveSubTab: _s
           { key: 'orders' as const, label: `Orders Ready for Dispatch (${orders.length})` },
           { key: 'goods' as const, label: `Port-Approved Cargo (${goods.length})` },
         ]).map(t => (
-          <button key={t.key} onClick={() => setActiveTab(t.key)}
+          <button key={t.key} onClick={() => setActiveTab(t.key)} title={t.key === 'orders' ? 'Orders Finance has approved, ready to load and hand to Dispatch' : 'Cargo intake approved by Management, awaiting warehouse processing'}
             className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${activeTab === t.key ? 'text-white shadow' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}
-            style={activeTab === t.key ? { background: BRAND.green } : {}}>
+            style={activeTab === t.key ? { background: 'var(--accent)' } : {}}>
             {t.label}
           </button>
         ))}
@@ -550,8 +550,9 @@ export default function ApprovedGoodsView({ addNotification, setActiveSubTab: _s
                               </button>
                               {o.status === 'APPROVED' && (
                                 <button onClick={() => { setDispatchTarget(o); setDispatchForm({ vehicleId: '', driverName: '' }); }}
+                                  title="Assign a vehicle and driver, then release this order to Dispatch"
                                   className="flex items-center gap-1 px-2.5 py-1.5 text-white rounded-lg text-[10px] font-bold hover:opacity-90 cursor-pointer whitespace-nowrap transition-opacity"
-                                  style={{ background: BRAND.green }}>
+                                  style={{ background: 'var(--accent)' }}>
                                   <Truck size={11} /> Dispatch
                                 </button>
                               )}
@@ -698,8 +699,9 @@ export default function ApprovedGoodsView({ addNotification, setActiveSubTab: _s
               <button onClick={() => setDispatchTarget(null)}
                 className="flex-1 py-2.5 border border-[var(--border)] rounded-xl text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg)] cursor-pointer">Cancel</button>
               <button onClick={handleDispatch} disabled={dispatching}
+                title="Deducts stock, creates a delivery log, and releases this order to the assigned driver"
                 className="flex-1 py-2.5 text-white rounded-xl text-xs font-bold hover:opacity-90 cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
-                style={{ background: BRAND.green }}>
+                style={{ background: 'var(--accent)' }}>
                 <Truck size={13} /> {dispatching ? 'Sending…' : 'Confirm & Load to Dispatch'}
               </button>
             </div>

@@ -66,6 +66,7 @@ const TABS = ['All', 'Cargo Intake', 'Credit Order', 'Staff Registration', 'Prod
 
 export default function MgmtApprovalsView({ addNotification, currentUser }: Props) {
   const [items, setItems] = useState<ApprovalItem[]>([]);
+  const [historyItems, setHistoryItems] = useState<ApprovalItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<typeof TABS[number]>('All');
   const [search, setSearch] = useState('');
@@ -85,7 +86,57 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
 
   useEffect(() => {
     loadApprovals();
+    loadHistory();
   }, []);
+
+  // Parses "APPROVE: PROD-xxxxxx — description | Note: reason" (the exact
+  // format confirmAction below writes) back into a viewable row, so the
+  // Approved/Rejected filters show real past decisions — who, when, and why
+  // — instead of going empty the moment an item leaves the pending queue.
+  async function loadHistory() {
+    try {
+      const { data } = await supabase
+        .from('global_audit_history')
+        .select('*')
+        .eq('department', 'MANAGEMENT')
+        .order('timestamp', { ascending: false })
+        .limit(100);
+      const parsed: ApprovalItem[] = (data || [])
+        .map((row: any): ApprovalItem | null => {
+          const m = String(row.action || '').match(/^(APPROVE|REJECT)[A-Z_]*:\s*([\w-]+)\s*—\s*(.+)$/i);
+          if (!m) return null;
+          const [, verb, requestId, rest] = m;
+          const noteMatch = rest.match(/^(.*?)(?:\s*\|\s*Note:\s*(.*))?$/);
+          const description = noteMatch?.[1]?.trim() || rest;
+          const reason = noteMatch?.[2]?.trim();
+          const inferredType: ApprovalItem['type'] =
+            requestId.startsWith('CARGO') ? 'Cargo Intake'
+            : requestId.startsWith('ORD') ? 'Credit Order'
+            : requestId.startsWith('REG') ? 'Staff Registration'
+            : requestId.startsWith('PROD') ? 'Production Request'
+            : requestId.startsWith('PURCH') ? 'General Purchase'
+            : requestId.startsWith('FLOAT') ? 'Float Request'
+            : 'Cargo Intake';
+          return {
+            id: row.id,
+            requestId,
+            type: inferredType, // inferred from the id prefix so history rows get the right icon/color too
+            description: reason ? `${description} — Reason: ${reason}` : description,
+            department: row.department || 'MANAGEMENT',
+            amount: null,
+            date: row.timestamp ? row.timestamp.slice(0, 10) : '',
+            priority: 'Medium' as const,
+            status: (/^approve/i.test(verb) ? 'Approved' : 'Rejected') as ApprovalItem['status'],
+            submittedBy: row.performed_by || 'Management',
+            raw: { timestamp: row.timestamp },
+          };
+        })
+        .filter((r): r is ApprovalItem => r !== null);
+      setHistoryItems(parsed);
+    } catch {
+      setHistoryItems([]);
+    }
+  }
 
   async function loadApprovals() {
     setLoading(true);
@@ -217,7 +268,12 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
     }
   }
 
-  const filtered = items.filter(item => {
+  // Pending items are live DB rows; Approved/Rejected are parsed from the
+  // audit trail — combined, this gives a real "what's awaiting me / what
+  // I've already decided" view instead of history disappearing once acted on.
+  const allItems = [...items, ...historyItems];
+
+  const filtered = allItems.filter(item => {
     const matchTab = activeTab === 'All' || item.type === activeTab;
     const matchStatus = statusFilter === 'All' || item.status === statusFilter;
     const matchSearch = !search || item.description.toLowerCase().includes(search.toLowerCase()) || item.requestId.toLowerCase().includes(search.toLowerCase()) || item.department.toLowerCase().includes(search.toLowerCase());
@@ -225,13 +281,13 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
   });
 
   const counts = {
-    total: items.length,
+    total: allItems.length,
     pending: items.filter(i => i.status === 'Pending').length,
-    approved: items.filter(i => i.status === 'Approved').length,
-    rejected: items.filter(i => i.status === 'Rejected').length,
+    approved: historyItems.filter(i => i.status === 'Approved').length,
+    rejected: historyItems.filter(i => i.status === 'Rejected').length,
   };
 
-  const selectedItem = items.find(i => i.id === selected);
+  const selectedItem = allItems.find(i => i.id === selected);
 
   function handleAction(id: string, action: 'approve' | 'reject') {
     setSelected(id);
@@ -475,6 +531,7 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
     setShowModal(null);
     setSelected(null);
     loadApprovals();
+    loadHistory();
   }
 
   const handleExport = () => {
@@ -579,14 +636,15 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Total Pending', value: counts.total, icon: FileText, color: 'var(--accent)', filter: 'Pending' },
-          { label: 'Awaiting Action', value: counts.pending, icon: Clock, color: '#f59e0b', filter: 'Pending' },
-          { label: 'Approved Today', value: todayApproved, icon: CheckCircle, color: '#10b981', filter: 'Approved' },
-          { label: 'Rejected Today', value: todayRejected, icon: XCircle, color: '#ef4444', filter: 'Rejected' },
-        ].map(({ label, value, icon: Icon, color, filter }) => (
+          { label: 'Total Pending', value: counts.pending, icon: FileText, color: 'var(--accent)', filter: 'Pending', title: 'Everything currently awaiting your approval, across all types' },
+          { label: 'All Approvals', value: counts.total, icon: Clock, color: '#f59e0b', filter: 'All', title: 'Every approval on record — pending, approved, and rejected' },
+          { label: 'Approved Today', value: todayApproved, icon: CheckCircle, color: '#10b981', filter: 'Approved', title: 'Items you approved today — click to see the full approved history' },
+          { label: 'Rejected Today', value: todayRejected, icon: XCircle, color: '#ef4444', filter: 'Rejected', title: 'Items you rejected today — click to see the full rejected history' },
+        ].map(({ label, value, icon: Icon, color, filter, title }) => (
           <button
             key={label}
             onClick={() => setStatusFilter(filter)}
+            title={title}
             className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4 flex items-center gap-4 text-left hover:border-[var(--accent)] transition-colors cursor-pointer w-full"
             style={statusFilter === filter ? { borderColor: color, boxShadow: `0 0 0 2px ${color}30` } : {}}
           >

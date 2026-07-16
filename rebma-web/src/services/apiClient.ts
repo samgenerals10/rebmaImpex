@@ -709,7 +709,10 @@ async function autoGenerateReceiptAndTicket(order: any, reference: string) {
       .limit(1);
 
     if (!existingPayments || existingPayments.length === 0) {
-      const invoiceNumber = `RCT-${Date.now().toString().slice(-6)}`;
+      // Same identifier as the operations dispatch ticket — one document
+      // number to trace a sale across receipt, ticket, and invoice, instead
+      // of a separately generated RCT-xxxxxx that matches nothing else.
+      const invoiceNumber = order.ticket_number || order.ticketNumber || `ORD-${String(orderId).slice(0, 6).toUpperCase()}`;
       const { error: payErr } = await supabase.from('finance_payments').insert({
         client_name: clientName,
         customer_name: clientName,
@@ -718,7 +721,7 @@ async function autoGenerateReceiptAndTicket(order: any, reference: string) {
         payment_type: 'Full Payment',
         order_id: orderId,
         invoice_number: invoiceNumber,
-        recorded_by: performerId,
+        recorded_by: order.finance_approved_by || performerId,
         status: 'CONFIRMED',
         payment_details: { items: metaItems, reference },
         created_at: now,

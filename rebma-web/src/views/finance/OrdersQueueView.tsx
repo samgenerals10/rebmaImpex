@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabaseClient';
 import {
   Search, Download, CheckCircle, XCircle, Eye, MoreVertical,
   ArrowLeft, Package, Clock, DollarSign, CreditCard, Smartphone,
-  FileText, Camera, Upload, RefreshCw
+  FileText, Camera, Upload, RefreshCw, Truck
 } from 'lucide-react';
 import { exportToCSV } from '../../utils/export';
 import type { Order } from '../../types/erp';
@@ -14,6 +14,7 @@ interface Props {
   ordersList?: Order[];
   setOrdersList?: React.Dispatch<React.SetStateAction<Order[]>>;
   onEvaluateOrder?: (id: string, approve: boolean) => void;
+  onSendToDispatch?: (id: string) => void;
   currentUser?: { fullName: string; department: string } | null;
 }
 
@@ -90,7 +91,7 @@ function mapRow(r: any): Order {
   };
 }
 
-export default function FinanceOrdersQueueView({ addNotification, ordersList: propOrders, setOrdersList, onEvaluateOrder, currentUser }: Props) {
+export default function FinanceOrdersQueueView({ addNotification, ordersList: propOrders, setOrdersList, onEvaluateOrder, onSendToDispatch, currentUser }: Props) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(!propOrders || propOrders.length === 0);
   const [search, setSearch] = useState('');
@@ -227,25 +228,36 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
     if (submitting) return;
     setSubmitting(true);
     try {
+      // Only real finance_payments columns go top-level (cheque/bank/ghana-card/
+      // due-date/notes have no dedicated columns in the live schema — an
+      // earlier version of this insert wrote them anyway, which Postgrest
+      // rejects outright, silently breaking "Approve & Save Payment").
+      // Same identifier as the ticket/receipt elsewhere — one document number
+      // traces a sale across every generated document.
+      const invoiceNumber = order.ticketNumber || `ORD-${String(order.id).slice(0, 6).toUpperCase()}`;
       const paymentRecord = {
         order_id: order.id,
         client_name: order.clientName,
+        customer_name: order.clientName,
         amount: Number(payForm.amountReceived || order.totalAmount),
         payment_mode: order.paymentMode,
         payment_type: isPartPayment ? 'Part Payment' : 'Full Payment',
-        cheque_number: payForm.chequeNumber || null,
-        bank_name: payForm.bankName || null,
         momo_number: payForm.momoNumber || null,
         transaction_id: payForm.transactionId || null,
-        ghana_card_number: payForm.ghanaCardNumber || null,
-        due_date: payForm.dueDate || null,
-        receipt_number: payForm.receiptNumber,
-        notes: payForm.notes,
+        invoice_number: invoiceNumber,
         recorded_by: currentUser?.fullName || 'Finance',
         created_at: new Date().toISOString(),
         status: 'CONFIRMED',
+        payment_details: {
+          chequeNumber: payForm.chequeNumber || null,
+          bankName: payForm.bankName || null,
+          ghanaCardNumber: payForm.ghanaCardNumber || null,
+          dueDate: payForm.dueDate || null,
+          notes: payForm.notes || null,
+        },
       };
-      await supabase.from('finance_payments').insert([paymentRecord]);
+      const { error: payErr } = await supabase.from('finance_payments').insert([paymentRecord]);
+      if (payErr) { addNotification?.(`Failed to save payment: ${payErr.message}`); throw payErr; }
       // Note: approveOrder sets submitting to false upon completion
       setSubmitting(false);
       await approveOrder(order);
@@ -600,6 +612,15 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
                           <button onClick={() => { setRejectModal(order.id); }} className="p-1.5 rounded-lg hover:bg-red-100" title="Reject"><XCircle size={14} className="text-red-500" /></button>
                         </>
                       )}
+                      {order.status === 'APPROVED' && onSendToDispatch && (
+                        <button
+                          onClick={() => { onSendToDispatch(order.id); addNotification?.(`Order ${order.ticketNumber || order.id} sent to Dispatch.`); }}
+                          className="p-1.5 rounded-lg hover:bg-indigo-100"
+                          title="Send to Dispatch (auto-assigns the least-busy driver)"
+                        >
+                          <Truck size={14} className="text-indigo-500" />
+                        </button>
+                      )}
                       <div className="relative">
                         <button onClick={() => setMenuOpen(menuOpen === order.id ? null : order.id)} className="p-1.5 rounded-lg hover:bg-[var(--bg-input)]"><MoreVertical size={14} className="text-[var(--text-muted)]" /></button>
                         {menuOpen === order.id && (
@@ -609,6 +630,9 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
                               <button onClick={() => { setSelected(order); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-sm text-green-600 hover:bg-[var(--bg-input)]">Approve Order</button>
                               <button onClick={() => { setRejectModal(order.id); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-[var(--bg-input)]">Reject Order</button>
                             </>}
+                            {order.status === 'APPROVED' && onSendToDispatch && (
+                              <button onClick={() => { onSendToDispatch(order.id); addNotification?.(`Order ${order.ticketNumber || order.id} sent to Dispatch.`); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-sm text-indigo-600 hover:bg-[var(--bg-input)]">Send to Dispatch</button>
+                            )}
                             <button onClick={() => { window.print(); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-input)]">Export PDF</button>
                           </div>
                         )}

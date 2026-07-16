@@ -5,7 +5,9 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Search, Receipt as ReceiptIcon, Download } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
-import { exportToCSV, downloadRowPDF } from '../../utils/export';
+import { exportToCSV } from '../../utils/export';
+
+const BRAND = { green: '#1a5c32', blue: '#29a9dc', lime: '#7fc241' };
 
 interface ReceiptRow {
   id: string;
@@ -18,6 +20,179 @@ interface ReceiptRow {
   recordedBy: string | null;
   status: string;
   createdAt: string;
+}
+
+// Same branded shell as the Operations dispatch ticket and the Proforma
+// Invoice — logo, watermark, gradient stripe, QR verification — so a
+// receipt carries the same security features as every other REBMA IMPEX
+// document. invoiceNumber is the same ticket number issued elsewhere for
+// this sale, not a separately generated id.
+async function printReceipt(r: ReceiptRow) {
+  let qrDataUrl = '';
+  try {
+    const QRCode = await import('qrcode');
+    qrDataUrl = await QRCode.toDataURL(
+      [
+        'REBMA IMPEX GHANA LIMITED',
+        `Receipt: ${r.invoiceNumber}`,
+        `Client: ${r.clientName}`,
+        `Amount: GHS ${r.amount.toLocaleString()}`,
+        `Payment: ${r.paymentMode} — ${r.paymentType}`,
+        `Recorded by: ${r.recordedBy || 'Finance'}`,
+        `Status: ${r.status}`,
+      ].join('\n'),
+      { width: 140, margin: 1, color: { dark: BRAND.green, light: '#ffffff' } }
+    );
+  } catch { qrDataUrl = ''; }
+
+  const dateStr = r.createdAt ? new Date(r.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '';
+  const timeStr = r.createdAt ? new Date(r.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/>
+  <title>Receipt ${r.invoiceNumber} — REBMA IMPEX</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',Arial,sans-serif;background:#e8f4ea;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:32px}
+    .ticket{background:#fff;width:580px;border-radius:16px;overflow:hidden;box-shadow:0 12px 48px rgba(26,92,50,0.18);position:relative}
+    .watermark{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-30deg);font-size:62px;font-weight:900;color:rgba(26,92,50,0.04);white-space:nowrap;pointer-events:none;z-index:0;letter-spacing:4px;font-style:italic}
+    .stripe{height:7px;background:linear-gradient(90deg,${BRAND.green},${BRAND.blue},${BRAND.lime})}
+    .body{position:relative;z-index:1;padding:28px 34px}
+    .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px}
+    .brand{display:flex;align-items:center;gap:12px}
+    .brand img{width:56px;height:56px;object-fit:contain}
+    .brand-text .name{font-size:17px;font-weight:900;color:${BRAND.green};letter-spacing:.5px}
+    .brand-text .sub{font-size:9px;font-weight:700;color:${BRAND.blue};letter-spacing:2px;text-transform:uppercase;margin-top:2px}
+    .brand-text .addr{font-size:9px;color:#64748b;margin-top:4px}
+    .ticket-meta{text-align:right}
+    .ticket-meta .label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#94a3b8;margin-bottom:3px}
+    .ticket-meta .tno{font-size:22px;font-weight:900;color:${BRAND.green};letter-spacing:1px}
+    .ticket-meta .tdate{font-size:9px;color:#64748b;margin-top:3px}
+    .div{height:1.5px;background:linear-gradient(90deg,${BRAND.green},${BRAND.blue},transparent);margin:16px 0;border:none;border-radius:99px}
+    .status-banner{background:#f0fdf4;border:1.5px solid #16653430;border-radius:10px;padding:11px 16px;margin:14px 0;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+    .sb-item .sl{font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#64748b;margin-bottom:3px}
+    .sb-item .sv{font-size:13px;font-weight:800;color:#166534}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-bottom:14px}
+    .field{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px}
+    .field .fl{font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#94a3b8;margin-bottom:4px}
+    .field .fv{font-size:13px;font-weight:700;color:#1e293b;line-height:1.3}
+    .amount-box{background:linear-gradient(135deg,${BRAND.green},#2d7a50);border-radius:11px;padding:16px 18px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center}
+    .amount-box .dl{font-size:9px;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px}
+    .amount-box .dv{font-size:22px;font-weight:800;color:#fff}
+    .amount-box .dseal{border:1.5px solid rgba(255,255,255,0.5);border-radius:8px;padding:6px 13px;font-size:9px;font-weight:800;color:#fff;text-transform:uppercase;letter-spacing:.12em;text-align:center}
+    .amount-box .dseal small{display:block;font-size:7.5px;font-weight:500;opacity:.7;margin-top:1px;text-transform:none;letter-spacing:0}
+    .perf{display:flex;align-items:center;margin:0 -34px 14px;overflow:hidden}
+    .perf-line{flex:1;border-top:2px dashed #cbd5e1}
+    .perf-circle{width:22px;height:22px;border-radius:50%;background:#e8f4ea;flex-shrink:0}
+    .footer{display:flex;justify-content:space-between;align-items:flex-end;padding-top:14px;border-top:1px dashed #e2e8f0}
+    .legal{font-size:8px;color:#94a3b8;line-height:1.8;max-width:310px}
+    .legal strong{color:#64748b}
+    .qr-wrap{text-align:center}
+    .qr-wrap img{width:92px;height:92px;border:2px solid #e2e8f0;border-radius:8px}
+    .ql{font-size:7.5px;color:#94a3b8;margin-top:3px}
+    .ql2{font-size:7px;color:${BRAND.green};font-weight:700;margin-top:1px}
+    .foot-bar{background:#f8fafc;border-top:1px solid #e2e8f0;padding:9px 34px;display:flex;justify-content:space-between;align-items:center}
+    .foot-bar span{font-size:8.5px;color:#94a3b8}
+    .foot-bar .brand-slug{color:${BRAND.green};font-weight:700}
+    @media print{body{background:#fff;padding:0}.ticket{margin:0;box-shadow:none;border-radius:0;width:100%}.stripe{-webkit-print-color-adjust:exact;print-color-adjust:exact}.amount-box{-webkit-print-color-adjust:exact;print-color-adjust:exact}button{display:none!important}}
+  </style></head><body>
+  <div>
+    <div class="ticket">
+      <div class="stripe"></div>
+      <div class="watermark">REBMA IMPEX</div>
+      <div class="body">
+
+        <div class="header">
+          <div class="brand">
+            <img src="${window.location.origin}/logo.png" alt="REBMA IMPEX"/>
+            <div class="brand-text">
+              <div class="name">REBMA IMPEX</div>
+              <div class="sub">Official Payment Receipt</div>
+              <div class="addr">Accra, Ghana</div>
+            </div>
+          </div>
+          <div class="ticket-meta">
+            <div class="label">Receipt No.</div>
+            <div class="tno">${r.invoiceNumber}</div>
+            <div class="tdate">${dateStr} ${timeStr}</div>
+          </div>
+        </div>
+
+        <hr class="div"/>
+
+        <div class="status-banner">
+          <div class="sb-item">
+            <div class="sl">Client / Customer</div>
+            <div class="sv" style="font-size:12px">${r.clientName}</div>
+          </div>
+          <div class="sb-item">
+            <div class="sl">Status</div>
+            <div class="sv">${r.status}</div>
+          </div>
+          <div class="sb-item">
+            <div class="sl">Recorded By (Finance)</div>
+            <div class="sv" style="font-size:11px">${r.recordedBy || 'Finance'}</div>
+          </div>
+        </div>
+
+        <div class="grid">
+          <div class="field">
+            <div class="fl">Payment Mode</div>
+            <div class="fv">${r.paymentMode}</div>
+          </div>
+          <div class="field">
+            <div class="fl">Payment Type</div>
+            <div class="fv">${r.paymentType}</div>
+          </div>
+          <div class="field full" style="grid-column:1/-1">
+            <div class="fl">Order Reference</div>
+            <div class="fv">${r.orderId || '—'}</div>
+          </div>
+        </div>
+
+        <div class="amount-box">
+          <div>
+            <div class="dl">Amount Paid</div>
+            <div class="dv">GHS ${r.amount.toLocaleString()}</div>
+          </div>
+          <div class="dseal">PAYMENT<br/>VERIFIED<small>REBMA IMPEX</small></div>
+        </div>
+
+        <div class="perf">
+          <div class="perf-circle"></div>
+          <div class="perf-line"></div>
+          <div class="perf-circle"></div>
+        </div>
+
+        <div class="footer">
+          <div class="legal">
+            This receipt is issued by <strong>REBMA IMPEX Ghana Limited</strong> Finance.<br/>
+            It confirms payment has been received and recorded against the order referenced above.<br/>
+            Ticket / Invoice ref: <strong>${r.invoiceNumber}</strong> — scan QR to match against the dispatch ticket and invoice.
+          </div>
+          <div class="qr-wrap">
+            ${qrDataUrl
+              ? `<img src="${qrDataUrl}" alt="Receipt QR"/>`
+              : `<div style="width:92px;height:92px;border:2px dashed #e2e8f0;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:8px;color:#94a3b8">QR</div>`}
+            <div class="ql">Scan to verify</div>
+            <div class="ql2">Matches ticket &amp; invoice</div>
+          </div>
+        </div>
+
+      </div>
+      <div class="foot-bar">
+        <span>REBMA IMPEX Ghana Limited · Receipt ${r.invoiceNumber} · ${new Date().toLocaleDateString('en-GB')}</span>
+        <span class="brand-slug">rebmaimpex.com</span>
+      </div>
+    </div>
+    <div style="text-align:center;margin-top:16px;display:flex;gap:10px;justify-content:center">
+      <button onclick="window.print()" style="background:${BRAND.green};color:#fff;border:none;padding:11px 30px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer">🖨 Print Receipt</button>
+      <button onclick="window.close()" style="background:#f1f5f9;color:#334155;border:1px solid #e2e8f0;padding:11px 26px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer">Close</button>
+    </div>
+  </div>
+  </body></html>`;
+
+  const win = window.open('', '_blank', 'width=700,height=860');
+  if (win) { win.document.write(html); win.document.close(); }
 }
 
 interface Props {
@@ -73,19 +248,9 @@ export default function FinanceReceiptsView({ addNotification }: Props) {
 
   const totalAmount = filtered.reduce((s, r) => s + r.amount, 0);
 
-  const downloadReceipt = (r: ReceiptRow) => {
-    downloadRowPDF(`Receipt ${r.invoiceNumber}`, {
-      InvoiceNumber: r.invoiceNumber,
-      Client: r.clientName,
-      Amount: `GHS ${r.amount.toLocaleString()}`,
-      PaymentMode: r.paymentMode,
-      PaymentType: r.paymentType,
-      OrderRef: r.orderId || '—',
-      RecordedBy: r.recordedBy || '—',
-      Status: r.status,
-      Date: r.createdAt ? new Date(r.createdAt).toLocaleString() : '—',
-    });
-    addNotification?.(`Downloaded receipt ${r.invoiceNumber}.`);
+  const handlePrintReceipt = (r: ReceiptRow) => {
+    printReceipt(r);
+    addNotification?.(`Opened receipt ${r.invoiceNumber} for printing.`);
   };
 
   return (
@@ -139,7 +304,7 @@ export default function FinanceReceiptsView({ addNotification }: Props) {
                   <td className="px-3 py-2"><span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-700">{r.status}</span></td>
                   <td className="px-3 py-2 text-[var(--text-secondary)] whitespace-nowrap">{r.createdAt ? new Date(r.createdAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : '—'}</td>
                   <td className="px-3 py-2">
-                    <button onClick={() => downloadReceipt(r)} className="p-1 hover:bg-[var(--accent-light)] rounded-lg cursor-pointer text-[var(--accent)]" title="Download PDF">
+                    <button onClick={() => handlePrintReceipt(r)} className="p-1 hover:bg-[var(--accent-light)] rounded-lg cursor-pointer text-[var(--accent)]" title="Print Receipt">
                       <Download className="w-3.5 h-3.5" />
                     </button>
                   </td>
