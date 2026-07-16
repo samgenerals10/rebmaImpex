@@ -84,8 +84,10 @@ export default function OutputRecordingView({ addNotification }: Props) {
     if (submitting) return;
     setSubmitting(true);
     try {
-      const newRecord: OutputRecord = {
-        id: String(Date.now()),
+      // id is a UUID column with a gen_random_uuid() default — let the DB
+      // generate it instead of fabricating a Date.now() numeric string,
+      // which Postgres rejects outright ("invalid input syntax for type uuid").
+      const newRecordInput: Partial<OutputRecord> = {
         date: form.date,
         product: form.product,
         received: Number(form.received),
@@ -94,13 +96,14 @@ export default function OutputRecordingView({ addNotification }: Props) {
         quality: form.quality,
         notes: form.notes,
       };
-      
-      const dbData = mapToDB(newRecord);
+
+      const dbData = mapToDB(newRecordInput);
       dbData.record_number = `REC-${Date.now().toString().slice(-6)}`;
-      
-      const { error } = await supabase.from('production_logs').insert([dbData]);
+
+      const { data, error } = await supabase.from('production_logs').insert([dbData]).select();
       if (!error) {
-        setRecords(prev => [newRecord, ...prev]);
+        const inserted = data?.[0] ? mapToUI(data[0]) : { ...newRecordInput, id: dbData.record_number } as OutputRecord;
+        setRecords(prev => [inserted, ...prev]);
         addNotification(`Output recorded for ${form.product}`);
         setForm({ date: new Date().toISOString().split('T')[0], product: '', received: '', boxes: '', sachets: '', quality: 'Pass', notes: '' });
       } else {
