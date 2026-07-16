@@ -1716,9 +1716,12 @@ export default function App() {
       // Auto-assign the least-busy active driver rather than dispatch's own
       // "Release" picker screen — this quick-action button has no driver UI of
       // its own, so pick a real driver instead of fabricating one.
+      // delivery_logs.driver_id is a UUID FK to drivers.id — drivers.driver_id
+      // is a separate human-readable code (e.g. "DRV-001") and was being sent
+      // there instead, which Postgres rejected outright.
       const { data: activeDrivers } = await supabase
         .from('drivers')
-        .select('driver_id, full_name, vehicle_id, status')
+        .select('id, driver_id, full_name, vehicle_id, status')
         .eq('status', 'ACTIVE');
       if (!activeDrivers || activeDrivers.length === 0) {
         alert('No active drivers available. Add or activate a driver in Dispatch > Drivers first.');
@@ -1732,9 +1735,9 @@ export default function App() {
       for (const d of busyCounts || []) {
         if (d.driver_id) loadByDriver[d.driver_id] = (loadByDriver[d.driver_id] || 0) + 1;
       }
-      const driver = [...activeDrivers].sort((a, b) => (loadByDriver[a.driver_id] || 0) - (loadByDriver[b.driver_id] || 0))[0];
+      const driver = [...activeDrivers].sort((a, b) => (loadByDriver[a.id] || 0) - (loadByDriver[b.id] || 0))[0];
 
-      await operations.releaseToDispatch(id, driver.vehicle_id || 'Unassigned', driver.full_name, driver.driver_id);
+      await operations.releaseToDispatch(id, driver.vehicle_id || 'Unassigned', driver.full_name, driver.id);
       addNotification(`Operations released order ${id} to ${driver.full_name} (${driver.vehicle_id || 'no vehicle on file'}).`);
       refreshAllData();
     } catch (err: any) {

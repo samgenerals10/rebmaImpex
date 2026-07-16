@@ -85,7 +85,12 @@ export default function OutputRecordingView({ addNotification }: Props) {
   const totalSachets = records.reduce((s, r) => s + r.sachets, 0);
 
   const handleSubmit = async () => {
-    if (!form.product || !form.boxes || !form.sachets) return;
+    // Previously a silent no-op — clicking Submit with any of these blank
+    // did nothing and gave no feedback, which looks exactly like a broken
+    // button.
+    if (!form.product.trim()) { alert('Product name is required.'); return; }
+    if (!form.boxes) { alert('Boxes Produced is required.'); return; }
+    if (!form.sachets) { alert('Sachets Produced is required.'); return; }
     if (submitting) return;
     setSubmitting(true);
     try {
