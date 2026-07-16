@@ -734,7 +734,7 @@ export default function ProductionDashboard({
       </div>
 
       {/* Pending approvals alert */}
-      <PendingApprovalsAlert department="PRODUCTION" />
+      <PendingApprovalsAlert department="PRODUCTION" addNotification={addNotification} />
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">

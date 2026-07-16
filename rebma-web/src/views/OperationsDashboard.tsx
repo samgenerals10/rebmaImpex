@@ -1075,7 +1075,7 @@ export default function OperationsDashboard({
             {activeSubTab === 'Overview' && (
               <div className="space-y-6">
                 {/* Pending approvals alert */}
-                <PendingApprovalsAlert department="OPERATIONS" onNavigate={setActiveSubTab} />
+                <PendingApprovalsAlert department="OPERATIONS" onNavigate={setActiveSubTab} addNotification={addNotification} />
 
                 {/* Stats Cards */}
                 <div className="grid grid-cols-2 xl:grid-cols-5 gap-4">

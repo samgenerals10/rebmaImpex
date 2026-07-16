@@ -1,10 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AlertCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 
 interface Props {
   department: string;
   onNavigate?: (tab: string) => void;
+  /** Also pushes a bell/toast notification when the pending set changes —
+   * without this, someone who wasn't connected when the item was created
+   * (e.g. opening the department fresh) would only ever see the inline
+   * banner and never get a notification for it. */
+  addNotification?: (msg: string, link?: { dept?: string; tab: string }) => void;
 }
 
 interface PendingItem {
@@ -39,12 +44,21 @@ async function fetchPendingForDept(department: string): Promise<PendingItem[]> {
     }
 
     if (department === 'FINANCE') {
-      const [orders, requisitions] = await Promise.all([
+      const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const [orders, requisitions, newPrices] = await Promise.all([
         supabase.from('orders').select('id', { count: 'exact', head: true }).eq('status', 'PENDING_FINANCE'),
         supabase.from('material_requisitions').select('id', { count: 'exact', head: true }).eq('status', 'PENDING_FINANCE'),
+        supabase.from('goods_prices').select('id', { count: 'exact', head: true }).gte('updated_at', since),
       ]);
       if ((orders.count ?? 0) > 0) items.push({ label: 'orders awaiting evaluation', count: orders.count!, tab: 'OrdersQueue' });
       if ((requisitions.count ?? 0) > 0) items.push({ label: 'material requisitions to record', count: requisitions.count!, tab: 'Evaluation' });
+      if ((newPrices.count ?? 0) > 0) items.push({ label: 'newly priced items', count: newPrices.count!, tab: 'PriceCatalog' });
+    }
+
+    if (department === 'MARKETING') {
+      const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const { count } = await supabase.from('goods_prices').select('id', { count: 'exact', head: true }).gte('updated_at', since);
+      if ((count ?? 0) > 0) items.push({ label: 'newly priced items ready to sell', count: count!, tab: 'PriceCatalog' });
     }
 
     if (department === 'HR') {
@@ -84,14 +98,28 @@ async function fetchPendingForDept(department: string): Promise<PendingItem[]> {
   return items;
 }
 
-export default function PendingApprovalsAlert({ department, onNavigate }: Props) {
+export default function PendingApprovalsAlert({ department, onNavigate, addNotification }: Props) {
   const [pending, setPending] = useState<PendingItem[]>([]);
+  const lastNotifiedSignature = useRef<string>('');
 
   useEffect(() => {
     let active = true;
     const load = async () => {
       const result = await fetchPendingForDept(department);
-      if (active) setPending(result);
+      if (!active) return;
+      setPending(result);
+
+      const signature = result.map(p => `${p.tab}:${p.count}`).join('|');
+      if (result.length > 0 && signature !== lastNotifiedSignature.current) {
+        lastNotifiedSignature.current = signature;
+        const totalCount = result.reduce((s, p) => s + p.count, 0);
+        addNotification?.(
+          `${totalCount} pending approval${totalCount !== 1 ? 's' : ''}: ${result.map(p => `${p.count} ${p.label}`).join(', ')}`,
+          { dept: department, tab: result[0].tab }
+        );
+      } else if (result.length === 0) {
+        lastNotifiedSignature.current = '';
+      }
     };
     load();
     const iv = setInterval(load, 30000);

@@ -578,7 +578,7 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
       </div>
 
       {/* Pending approvals alert banner */}
-      <PendingApprovalsAlert department="MANAGEMENT" onNavigate={setActiveSubTab} />
+      <PendingApprovalsAlert department="MANAGEMENT" onNavigate={setActiveSubTab} addNotification={addNotification} />
 
       {/* Quick Actions */}
       <div className="flex items-center gap-2 flex-wrap">
@@ -618,14 +618,16 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
             value: pendingCount,
             change: pendingCount > 0 ? 'requires action' : 'all clear',
             up: pendingCount === 0,
-            sub: `${pendingCargo.length} cargo · ${pendingOrders.length} credit · ${pendingProduction.length} prod · ${pendingProfiles.length} staff`
+            sub: `${pendingCargo.length} cargo · ${pendingOrders.length} credit · ${pendingProduction.length} prod · ${pendingProfiles.length} staff`,
+            linkTab: 'CreditApproval'
           },
           {
             label: 'Avg Profit Margin',
             value: avgProfitMargin !== null ? `${avgProfitMargin}%` : '—',
             change: avgProfitMargin !== null ? (avgProfitMargin >= 0 ? 'positive margin' : 'negative margin') : 'No expense data yet',
             up: avgProfitMargin === null ? true : avgProfitMargin >= 0,
-            sub: avgProfitMargin !== null ? 'revenue vs expenses' : 'log expenses in Finance'
+            sub: avgProfitMargin !== null ? 'revenue vs expenses' : 'log expenses in Finance',
+            linkTab: 'MgmtAnalytics'
           },
           {
             label: 'Staff Reliability',
@@ -634,17 +636,18 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
               ? `${presentCount} on-time / ${totalAttendance} total`
               : 'No attendance recorded',
             up: attendanceReliability === null ? true : attendanceReliability >= 80,
-            sub: attendanceReliability !== null ? 'attendance-based' : 'check HR attendance'
+            sub: attendanceReliability !== null ? 'attendance-based' : 'check HR attendance',
+            linkTab: 'DeptActivity'
           },
-        ].map(({ label, value, change, up, sub, isClickable }) => (
-          <div 
-            key={label} 
-            onClick={() => { if (isClickable) setShowRevenueModal(true); }}
-            className={`bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4 transition-all ${isClickable ? 'cursor-pointer hover:border-[var(--accent)] hover:shadow-md' : ''}`}
+        ].map(({ label, value, change, up, sub, isClickable, linkTab }) => (
+          <div
+            key={label}
+            onClick={() => { if (isClickable) setShowRevenueModal(true); else if (linkTab) setActiveSubTab?.(linkTab); }}
+            className={`bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4 transition-all ${isClickable || linkTab ? 'cursor-pointer hover:border-[var(--accent)] hover:shadow-md' : ''}`}
           >
             <p className="text-xs text-[var(--text-muted)] mb-1 flex items-center justify-between">
               <span>{label}</span>
-              {isClickable && <span className="text-[9px] text-[var(--accent)] font-semibold font-mono bg-[var(--accent-light)] px-1 py-0.5 rounded">Drill down →</span>}
+              {(isClickable || linkTab) && <span className="text-[9px] text-[var(--accent)] font-semibold font-mono bg-[var(--accent-light)] px-1 py-0.5 rounded">{isClickable ? 'Drill down →' : 'View →'}</span>}
             </p>
             <p className="text-2xl font-bold text-[var(--text-primary)]">{value}</p>
             <div className="flex items-center gap-1 mt-1">

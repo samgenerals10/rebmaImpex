@@ -271,7 +271,7 @@ export default function HrOverviewView({ currentUser, addNotification, setActive
       </div>
 
       {/* Pending approvals alert */}
-      <PendingApprovalsAlert department="HR" onNavigate={setActiveSubTab} />
+      <PendingApprovalsAlert department="HR" onNavigate={setActiveSubTab} addNotification={addNotification} />
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

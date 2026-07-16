@@ -11,6 +11,7 @@ import {
 } from 'recharts';
 import type { Order, Customer } from '../../types/erp';
 import ProductCatalogCard from '../../components/ProductCatalogCard';
+import PendingApprovalsAlert from '../../components/global/PendingApprovalsAlert';
 
 interface Props {
   addNotification?: (msg: string) => void;
@@ -396,6 +397,8 @@ export default function MarketingOverviewView({ addNotification, setActiveSubTab
         </div>
         <button onClick={() => { fetchData(); addNotification?.('Dashboard refreshed'); }} className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[var(--border)] text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-card)]"><RefreshCw size={14} /> Refresh</button>
       </div>
+
+      <PendingApprovalsAlert department="MARKETING" onNavigate={setActiveSubTab} addNotification={addNotification} />
 
       {/* Quick Actions */}
       <div className="flex items-center gap-2 flex-wrap">

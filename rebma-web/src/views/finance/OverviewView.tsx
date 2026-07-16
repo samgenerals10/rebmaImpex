@@ -718,7 +718,7 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
       </div>
 
       {/* Pending approvals alert */}
-      <PendingApprovalsAlert department="FINANCE" onNavigate={setActiveSubTab} />
+      <PendingApprovalsAlert department="FINANCE" onNavigate={setActiveSubTab} addNotification={addNotification} />
 
       <FinanceMaterialRequisitionsPanel addNotification={addNotification} currentUser={currentUser} />
       <ApprovalHistoryPanel department="FINANCE" />
