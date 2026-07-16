@@ -8,6 +8,7 @@ interface OutputRecord {
   date: string;
   product: string;
   received: number;
+  unit: string;
   boxes: number;
   sachets: number;
   quality: 'Pass' | 'Fail';
@@ -23,6 +24,7 @@ const mapToUI = (db: any): OutputRecord => ({
   date: db.date || '',
   product: db.product_name || '',
   received: Number(db.goods_received || 0),
+  unit: db.goods_unit || 'kg',
   boxes: Number(db.boxes_produced || 0),
   sachets: Number(db.total_sachets || 0),
   quality: (db.quality_result === 'Fail' ? 'Fail' : 'Pass') as 'Pass' | 'Fail',
@@ -35,6 +37,9 @@ const mapToDB = (ui: Partial<OutputRecord>) => {
   if (ui.date !== undefined) db.date = ui.date;
   if (ui.product !== undefined) db.product_name = ui.product;
   if (ui.received !== undefined) db.goods_received = ui.received;
+  // goods_unit is NOT NULL in the live schema with no default — was never
+  // set anywhere, so every insert failed with a not-null violation.
+  if (ui.unit !== undefined) db.goods_unit = ui.unit;
   if (ui.boxes !== undefined) db.boxes_produced = ui.boxes;
   if (ui.sachets !== undefined) {
     db.total_sachets = ui.sachets;
@@ -51,7 +56,7 @@ export default function OutputRecordingView({ addNotification }: Props) {
   const [records, setRecords] = useState<OutputRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [form, setForm] = useState({ date: new Date().toISOString().split('T')[0], product: '', received: '', boxes: '', sachets: '', quality: 'Pass' as 'Pass' | 'Fail', notes: '' });
+  const [form, setForm] = useState({ date: new Date().toISOString().split('T')[0], product: '', received: '', unit: 'kg', boxes: '', sachets: '', quality: 'Pass' as 'Pass' | 'Fail', notes: '' });
   const [showEdit, setShowEdit] = useState(false);
   const [editForm, setEditForm] = useState<OutputRecord | null>(null);
 
@@ -91,6 +96,7 @@ export default function OutputRecordingView({ addNotification }: Props) {
         date: form.date,
         product: form.product,
         received: Number(form.received),
+        unit: form.unit,
         boxes: Number(form.boxes),
         sachets: Number(form.sachets),
         quality: form.quality,
@@ -105,7 +111,7 @@ export default function OutputRecordingView({ addNotification }: Props) {
         const inserted = data?.[0] ? mapToUI(data[0]) : { ...newRecordInput, id: dbData.record_number } as OutputRecord;
         setRecords(prev => [inserted, ...prev]);
         addNotification(`Output recorded for ${form.product}`);
-        setForm({ date: new Date().toISOString().split('T')[0], product: '', received: '', boxes: '', sachets: '', quality: 'Pass', notes: '' });
+        setForm({ date: new Date().toISOString().split('T')[0], product: '', received: '', unit: 'kg', boxes: '', sachets: '', quality: 'Pass', notes: '' });
       } else {
         alert(error.message || 'Failed to insert output record');
       }
@@ -163,7 +169,7 @@ export default function OutputRecordingView({ addNotification }: Props) {
   };
 
   const handleExport = () => {
-    exportToCSV(records, ['date','product','received','boxes','sachets','quality','notes'], 'production_output');
+    exportToCSV(records, ['date','product','received','unit','boxes','sachets','quality','notes'], 'production_output');
   };
 
   const inputStyle: React.CSSProperties = { background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'var(--text-primary)', fontSize: 14, width: '100%', boxSizing: 'border-box' };
@@ -208,6 +214,12 @@ export default function OutputRecordingView({ addNotification }: Props) {
           <div>
             <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Goods Received</label>
             <input type="number" value={form.received} onChange={e => setForm(f => ({ ...f, received: e.target.value }))} placeholder="From operations" style={inputStyle} />
+          </div>
+          <div>
+            <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Unit</label>
+            <select value={form.unit} onChange={e => setForm(f => ({ ...f, unit: e.target.value }))} style={inputStyle}>
+              {['kg', 'tons', 'liters', 'bags', 'units'].map(u => <option key={u} value={u}>{u}</option>)}
+            </select>
           </div>
           <div>
             <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Boxes Produced</label>
@@ -257,7 +269,7 @@ export default function OutputRecordingView({ addNotification }: Props) {
                 <tr key={r.id} style={{ borderBottom: '1px solid var(--border)' }}>
                   <td style={{ padding: '12px', color: 'var(--text-primary)', fontSize: 13, whiteSpace: 'nowrap' }}>{r.date}</td>
                   <td style={{ padding: '12px', color: 'var(--text-primary)', fontSize: 13 }}>{r.product}</td>
-                  <td style={{ padding: '12px', color: 'var(--text-secondary)', fontSize: 13, textAlign: 'center' }}>{r.received}</td>
+                  <td style={{ padding: '12px', color: 'var(--text-secondary)', fontSize: 13, textAlign: 'center' }}>{r.received} {r.unit}</td>
                   <td style={{ padding: '12px', color: 'var(--text-secondary)', fontSize: 13, textAlign: 'center' }}>{r.boxes}</td>
                   <td style={{ padding: '12px', color: 'var(--text-secondary)', fontSize: 13, textAlign: 'center' }}>{r.sachets.toLocaleString()}</td>
                   <td style={{ padding: '12px' }}>
@@ -317,6 +329,12 @@ export default function OutputRecordingView({ addNotification }: Props) {
               <div>
                 <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Goods Received</label>
                 <input type="number" value={editForm.received} onChange={e => setEditForm({ ...editForm, received: Number(e.target.value) })} style={inputStyle} />
+              </div>
+              <div>
+                <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Unit</label>
+                <select value={editForm.unit} onChange={e => setEditForm({ ...editForm, unit: e.target.value })} style={inputStyle}>
+                  {['kg', 'tons', 'liters', 'bags', 'units'].map(u => <option key={u} value={u}>{u}</option>)}
+                </select>
               </div>
               <div>
                 <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Boxes Produced</label>
