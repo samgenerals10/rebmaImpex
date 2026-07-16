@@ -9,8 +9,7 @@ import { exportToCSV } from '../../utils/export';
 
 type Period = '7D' | '30D' | '90D' | '12M';
 
-interface OutputRecord { date: string; product: string; boxes: number; sachets: number; quality: string; }
-interface LedgerRecord { quantity: number; created_at: string; }
+interface OutputRecord { date: string; product: string; boxes: number; sachets: number; quality: string; received: number; }
 
 const DAY_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const ORDERED_DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
@@ -65,7 +64,11 @@ function buildOutputTrend(records: OutputRecord[], period: Period) {
   return months.filter(m => byMonth[m]).map(m => ({ label: m, ...byMonth[m] }));
 }
 
-function buildEfficiency(output: OutputRecord[], input: LedgerRecord[], period: Period) {
+// Input (goods_received) and output (boxes_produced) both come from the
+// same production_logs row — this ties them to the actual production run
+// instead of a company-wide stock_ledger tally that has no guaranteed
+// relationship to what a specific batch consumed.
+function buildEfficiency(output: OutputRecord[], period: Period) {
   const cutoff = periodCutoff(period);
 
   if (period === '7D') {
@@ -74,11 +77,7 @@ function buildEfficiency(output: OutputRecord[], input: LedgerRecord[], period: 
     ORDERED_DAYS.forEach(d => { outByDay[d] = 0; inByDay[d] = 0; });
     output.filter(r => new Date(r.date) >= cutoff).forEach(r => {
       const n = DAY_NAMES[new Date(r.date).getDay()];
-      if (n in outByDay) outByDay[n] += r.boxes;
-    });
-    input.filter(r => new Date(r.created_at) >= cutoff).forEach(r => {
-      const n = DAY_NAMES[new Date(r.created_at).getDay()];
-      if (n in inByDay) inByDay[n] += Number(r.quantity);
+      if (n in outByDay) { outByDay[n] += r.boxes; inByDay[n] += r.received; }
     });
     return ORDERED_DAYS.map(d => ({
       label: d, input: inByDay[d], output: outByDay[d],
@@ -92,15 +91,17 @@ function buildEfficiency(output: OutputRecord[], input: LedgerRecord[], period: 
     const outByWeek: Record<string, number> = {}; const inByWeek: Record<string, number> = {};
     buckets.forEach(w => { outByWeek[w] = 0; inByWeek[w] = 0; });
     const week = (ts: number) => { const d = Math.floor((now - ts) / 86400000); return d <= 7 ? 'W4' : d <= 14 ? 'W3' : d <= 21 ? 'W2' : 'W1'; };
-    output.filter(r => new Date(r.date) >= cutoff).forEach(r => { const w = week(new Date(r.date).getTime()); outByWeek[w] += r.boxes; });
-    input.filter(r => new Date(r.created_at) >= cutoff).forEach(r => { const w = week(new Date(r.created_at).getTime()); inByWeek[w] += Number(r.quantity); });
+    output.filter(r => new Date(r.date) >= cutoff).forEach(r => { const w = week(new Date(r.date).getTime()); outByWeek[w] += r.boxes; inByWeek[w] += r.received; });
     return buckets.map(w => ({ label: w, input: inByWeek[w], output: outByWeek[w], efficiency: inByWeek[w] > 0 ? +((outByWeek[w] / inByWeek[w]) * 100).toFixed(1) : 0 }));
   }
 
   // 90D + 12M
   const outByMonth: Record<string, number> = {}; const inByMonth: Record<string, number> = {};
-  output.filter(r => new Date(r.date) >= cutoff).forEach(r => { const k = MONTH_NAMES[new Date(r.date).getMonth()]; outByMonth[k] = (outByMonth[k] || 0) + r.boxes; });
-  input.filter(r => new Date(r.created_at) >= cutoff).forEach(r => { const k = MONTH_NAMES[new Date(r.created_at).getMonth()]; inByMonth[k] = (inByMonth[k] || 0) + Number(r.quantity); });
+  output.filter(r => new Date(r.date) >= cutoff).forEach(r => {
+    const k = MONTH_NAMES[new Date(r.date).getMonth()];
+    outByMonth[k] = (outByMonth[k] || 0) + r.boxes;
+    inByMonth[k] = (inByMonth[k] || 0) + r.received;
+  });
   const months = period === '90D' ? MONTH_NAMES.slice(-3) : MONTH_NAMES;
   return months.filter(m => outByMonth[m] || inByMonth[m]).map(m => ({
     label: m, input: inByMonth[m] || 0, output: outByMonth[m] || 0,
@@ -172,12 +173,11 @@ interface Props { addNotification: (msg: string) => void; }
 export default function ProductionAnalyticsView({ addNotification }: Props) {
   const [period, setPeriod] = useState<Period>('7D');
   const [outputRecords, setOutputRecords] = useState<OutputRecord[]>([]);
-  const [ledgerRecords, setLedgerRecords] = useState<LedgerRecord[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchData = () => {
     setLoading(true);
-    supabase.from('production_logs').select('date, product_name, boxes_produced, total_sachets, quality_result').order('date', { ascending: false }).limit(2000)
+    supabase.from('production_logs').select('date, product_name, boxes_produced, total_sachets, quality_result, goods_received').order('date', { ascending: false }).limit(2000)
       .then(({ data }) => {
         if (data) {
           setOutputRecords(data.map((row: any) => ({
@@ -185,13 +185,10 @@ export default function ProductionAnalyticsView({ addNotification }: Props) {
             product: row.product_name || '',
             boxes: Number(row.boxes_produced || 0),
             sachets: Number(row.total_sachets || 0),
-            quality: row.quality_result || 'Pass'
+            quality: row.quality_result || 'Pass',
+            received: Number(row.goods_received || 0),
           })));
         }
-      }, () => {});
-    supabase.from('stock_ledger').select('quantity, created_at').eq('movement_type', 'ADD')
-      .then(({ data }) => {
-        if (data) setLedgerRecords(data as LedgerRecord[]);
         setLoading(false);
       }, () => { setLoading(false); });
   };
@@ -199,7 +196,7 @@ export default function ProductionAnalyticsView({ addNotification }: Props) {
   useEffect(() => { fetchData(); }, []);
 
   const trend = buildOutputTrend(outputRecords, period);
-  const eff = buildEfficiency(outputRecords, ledgerRecords, period);
+  const eff = buildEfficiency(outputRecords, period);
   const qualityData = buildQualityData(outputRecords);
   const productData = buildProductData(outputRecords);
   const monthlyOutput = buildMonthlyOutput(outputRecords);

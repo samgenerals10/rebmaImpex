@@ -132,22 +132,24 @@ export default function ProductionOverviewView({ currentUser, productionRequests
         setWip([]);
       }
     });
-    supabase.from('stock_ledger').select('quantity, created_at').eq('movement_type', 'ADD').then(({ data }) => {
-      if (data) {
-        setGoodsReceived(data.reduce((s: number, r: any) => s + (Number(r.quantity) || 0), 0));
-        const byDay: Record<string, number> = {};
-        ORDERED_DAYS.forEach(d => { byDay[d] = 0; });
-        data.forEach((r: any) => {
-          const d = new Date(r.created_at);
-          if (!isNaN(d.getTime())) {
-            const dayName = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()];
-            if (dayName in byDay) byDay[dayName] += Number(r.quantity) || 0;
-          }
-        });
-        setReceivedByDay(byDay);
+  }, []);
+
+  // Goods received per production run — same production_logs rows as
+  // "boxes produced", instead of a company-wide stock_ledger tally that
+  // has no guaranteed relationship to what a specific batch consumed.
+  useEffect(() => {
+    setGoodsReceived(output.reduce((s, r) => s + r.received, 0));
+    const byDay: Record<string, number> = {};
+    ORDERED_DAYS.forEach(d => { byDay[d] = 0; });
+    output.forEach(r => {
+      const d = new Date(r.date);
+      if (!isNaN(d.getTime())) {
+        const dayName = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()];
+        if (dayName in byDay) byDay[dayName] += r.received;
       }
     });
-  }, []);
+    setReceivedByDay(byDay);
+  }, [output]);
 
   const today = new Date().toISOString().slice(0, 10);
   const todayOutput = output.filter(r => r.date === today);
