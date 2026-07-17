@@ -352,6 +352,13 @@ export default function App() {
     () => (initialSessionDeptRef.current ? initialSessionTabRef.current : null) || 'Overview'
   );
   const isInitialLoad = useRef(true);
+  // Supabase silently fires TOKEN_REFRESHED every ~hour in the background —
+  // handleSession runs again on each one. Without this guard it would
+  // re-apply the department/tab captured at page load every time, snapping
+  // the user back to wherever they started no matter where they'd since
+  // navigated (e.g. an account whose stored department is HR gets yanked
+  // back to HR mid-session even after switching to Finance).
+  const hasRestoredNavRef = useRef(false);
   const profilePhotoInputRef = useRef<HTMLInputElement>(null);
   const [unpricedCount, setUnpricedCount] = useState<number>(0);
   const rawNavBadges = useNavBadges(activeSubTab);
@@ -1045,20 +1052,28 @@ export default function App() {
             try { localStorage.setItem('rebma-notification-sound', soundPref); } catch {}
           }
 
-          // lastTab only makes sense paired with the department it was saved
-          // under — applying a leftover tab from a different department (or a
-          // previous user's session in the same browser tab) lands on a
-          // sub-tab the new department's router doesn't recognize, which
-          // falls through to the "Select a Department" blank screen. Use the
-          // values captured at mount (initialSessionDeptRef/TabRef), not a
-          // fresh sessionStorage read — setActiveDepartment below persists
-          // to the same keys, so a live read here could see its own output.
-          const lastDept = initialSessionDeptRef.current;
-          const lastTab = initialSessionTabRef.current;
-          const resolvedDept = lastDept || profile.department;
-          setActiveDepartment(resolvedDept as any);
-          if (lastTab && lastDept === resolvedDept) {
-            setActiveSubTab(lastTab);
+          // Only restore the department/tab on the *first* time a session is
+          // established, not on every call — handleSession also re-runs on
+          // Supabase's silent background TOKEN_REFRESHED events, and without
+          // this guard it would keep snapping the user back to wherever they
+          // started, overriding any navigation they'd done since.
+          if (!hasRestoredNavRef.current) {
+            hasRestoredNavRef.current = true;
+            // lastTab only makes sense paired with the department it was saved
+            // under — applying a leftover tab from a different department (or a
+            // previous user's session in the same browser tab) lands on a
+            // sub-tab the new department's router doesn't recognize, which
+            // falls through to the "Select a Department" blank screen. Use the
+            // values captured at mount (initialSessionDeptRef/TabRef), not a
+            // fresh sessionStorage read — setActiveDepartment below persists
+            // to the same keys, so a live read here could see its own output.
+            const lastDept = initialSessionDeptRef.current;
+            const lastTab = initialSessionTabRef.current;
+            const resolvedDept = lastDept || profile.department;
+            setActiveDepartment(resolvedDept as any);
+            if (lastTab && lastDept === resolvedDept) {
+              setActiveSubTab(lastTab);
+            }
           }
 
           setIsAuthLoading(false);
