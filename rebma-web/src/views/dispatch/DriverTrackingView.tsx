@@ -108,31 +108,32 @@ export default function DriverTrackingView({ driver, onLogout }: DriverTrackingV
   };
 
   return (
-    <div className="min-h-screen w-full bg-[var(--bg-page)] flex flex-col">
-      <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)] bg-[var(--bg-card)]">
-        <div>
-          <p className="text-sm font-extrabold text-text-primary">{driver.fullName}</p>
-          <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted">Dispatch Driver{driver.vehicleId ? ` • ${driver.vehicleId}` : ''}</p>
+    <div className="min-h-screen w-full bg-[var(--bg-page)] flex flex-col items-center">
+      <div className="w-full max-w-xl flex flex-col min-h-screen sm:min-h-0 sm:my-8 sm:rounded-3xl sm:border sm:border-[var(--border)] sm:shadow-[var(--box-shadow)] overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)] bg-[var(--bg-card)]">
+          <div>
+            <p className="text-sm font-extrabold text-text-primary">{driver.fullName}</p>
+            <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted">Dispatch Driver{driver.vehicleId ? ` • ${driver.vehicleId}` : ''}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onLogout}
+            className="w-9 h-9 rounded-full bg-rose-50 dark:bg-rose-950/20 flex items-center justify-center text-rose-500"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={onLogout}
-          className="w-9 h-9 rounded-full bg-rose-50 dark:bg-rose-950/20 flex items-center justify-center text-rose-500"
-        >
-          <LogOut className="w-4 h-4" />
-        </button>
-      </div>
 
-      <div className={`flex items-center justify-between px-5 py-2.5 text-xs font-bold ${gpsActive ? 'bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600' : 'bg-slate-100 dark:bg-slate-800/40 text-text-muted'}`}>
-        <span className="flex items-center gap-2">
-          {gpsActive ? <Wifi className="w-3.5 h-3.5" /> : <WifiOff className="w-3.5 h-3.5" />}
-          {gpsActive ? 'Sharing live location' : 'Location sharing off'}
-        </span>
-        {lastSyncedAt && <span className="font-mono text-[10px] opacity-70">synced {lastSyncedAt.toLocaleTimeString()}</span>}
-      </div>
+        <div className={`flex items-center justify-between px-5 py-2.5 text-xs font-bold ${gpsActive ? 'bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600' : 'bg-slate-100 dark:bg-slate-800/40 text-text-muted'}`}>
+          <span className="flex items-center gap-2">
+            {gpsActive ? <Wifi className="w-3.5 h-3.5" /> : <WifiOff className="w-3.5 h-3.5" />}
+            {gpsActive ? 'Sharing live location' : 'Location sharing off'}
+          </span>
+          {lastSyncedAt && <span className="font-mono text-[10px] opacity-70">synced {lastSyncedAt.toLocaleTimeString()}</span>}
+        </div>
 
-      <div className="flex-1 p-5 space-y-4 overflow-y-auto">
-        <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
+        <div className="flex-1 p-5 space-y-4 overflow-y-auto bg-[var(--bg-page)]">
+          <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
           <p className="text-xs font-extrabold text-text-primary mb-3 flex items-center gap-2">
             <Package className="w-4 h-4" /> Active Route Assignment
           </p>
@@ -194,6 +195,7 @@ export default function DriverTrackingView({ driver, onLogout }: DriverTrackingV
               </button>
             </div>
           )}
+          </div>
         </div>
       </div>
     </div>
