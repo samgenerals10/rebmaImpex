@@ -338,11 +338,18 @@ export default function App() {
     }
   }, [currentUser]);
   
+  // Captured once, before anything else can overwrite sessionStorage —
+  // setActiveDepartment/setActiveSubTab below persist to these same keys as
+  // a side effect, so re-reading sessionStorage live later (e.g. in the
+  // "restore last tab" effect) can pick up a department that was *just*
+  // written, making an unrelated leftover tab look like a valid pairing.
+  const initialSessionDeptRef = useRef(sessionStorage.getItem('rebma-last-dept'));
+  const initialSessionTabRef = useRef(sessionStorage.getItem('rebma-last-tab'));
   const [activeDepartment, setActiveDepartmentRaw] = useState<string>(
-    () => sessionStorage.getItem('rebma-last-dept') || 'CEO'
+    () => initialSessionDeptRef.current || 'CEO'
   );
   const [activeSubTab, setActiveSubTabRaw] = useState<string>(
-    () => sessionStorage.getItem('rebma-last-tab') || 'Overview'
+    () => (initialSessionDeptRef.current ? initialSessionTabRef.current : null) || 'Overview'
   );
   const isInitialLoad = useRef(true);
   const profilePhotoInputRef = useRef<HTMLInputElement>(null);
@@ -1038,14 +1045,19 @@ export default function App() {
             try { localStorage.setItem('rebma-notification-sound', soundPref); } catch {}
           }
 
-          const lastDept = sessionStorage.getItem('rebma-last-dept');
-          const lastTab = sessionStorage.getItem('rebma-last-tab');
-          if (lastDept) {
-            setActiveDepartment(lastDept as any);
-          } else {
-            setActiveDepartment(profile.department);
-          }
-          if (lastTab) {
+          // lastTab only makes sense paired with the department it was saved
+          // under — applying a leftover tab from a different department (or a
+          // previous user's session in the same browser tab) lands on a
+          // sub-tab the new department's router doesn't recognize, which
+          // falls through to the "Select a Department" blank screen. Use the
+          // values captured at mount (initialSessionDeptRef/TabRef), not a
+          // fresh sessionStorage read — setActiveDepartment below persists
+          // to the same keys, so a live read here could see its own output.
+          const lastDept = initialSessionDeptRef.current;
+          const lastTab = initialSessionTabRef.current;
+          const resolvedDept = lastDept || profile.department;
+          setActiveDepartment(resolvedDept as any);
+          if (lastTab && lastDept === resolvedDept) {
             setActiveSubTab(lastTab);
           }
 
@@ -1056,6 +1068,8 @@ export default function App() {
         if (isMounted) {
           await supabase.auth.signOut().catch(() => {});
           clearToken();
+          sessionStorage.removeItem('rebma-last-dept');
+          sessionStorage.removeItem('rebma-last-tab');
           setIsAuthenticated(false);
           setCurrentUser(null);
           setCurrentDriver(null);
@@ -1448,8 +1462,13 @@ export default function App() {
   // Reset to default sub-tab when switching department
   useEffect(() => {
     if (isInitialLoad.current) {
-      const lastDept = sessionStorage.getItem('rebma-last-dept');
-      const lastTab = sessionStorage.getItem('rebma-last-tab');
+      // Use the values captured at mount, not a fresh sessionStorage read —
+      // setActiveDepartment already wrote activeDepartment's value under
+      // 'rebma-last-dept' by the time this effect runs, which would make a
+      // live read always "match" regardless of what department the leftover
+      // tab actually belonged to.
+      const lastDept = initialSessionDeptRef.current;
+      const lastTab = initialSessionTabRef.current;
       if (lastDept === activeDepartment && lastTab) {
         setActiveSubTab(lastTab);
         isInitialLoad.current = false;

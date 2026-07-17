@@ -327,6 +327,11 @@ export const auth = {
   signOut: async () => {
     await supabase.auth.signOut().catch(() => {});
     clearToken();
+    // A different account signing into the same browser tab must not
+    // inherit this session's last-viewed department/tab — that mismatch is
+    // what caused the "Select a Department" blank screen bug.
+    sessionStorage.removeItem('rebma-last-dept');
+    sessionStorage.removeItem('rebma-last-tab');
   },
 
   changePassword: async (newPassword: string, _currentPassword?: string) => {
