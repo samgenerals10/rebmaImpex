@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabaseClient';
+import { dispatch as dispatchApi } from '../../services/apiClient';
 import {
   Truck, CheckCircle, XCircle, Plus, Search, Eye, X, Clock,
   Download, MoreVertical, ChevronLeft, MapPin, Camera, AlertCircle,
-  Calendar, User, Package, UserCheck, Edit, Trash2
+  Calendar, User, Package, UserCheck, Edit, Trash2, MessageCircle
 } from 'lucide-react';
 import { exportToCSV, exportToPDF } from '../../utils/export';
 import type { DeliveryRecord, Driver } from '../../types/erp';
@@ -528,7 +529,11 @@ export default function DeliveriesView({ addNotification, currentUser }: Props) 
 
       await supabase.from('supplier_order_notifications').insert({ message: `Driver ${driver.fullName} assigned to ${delivery.orderId}`, notified_department: 'OPERATIONS', read: false, created_at: now });
       await supabase.from('global_audit_history').insert({ department: 'DISPATCH', action: `Driver ${driver.fullName} assigned to ${delivery.id}`, performed_by: currentUser?.fullName || 'Dispatch', timestamp: now });
-      
+
+      dispatchApi.sendWhatsAppDirections(driverId)
+        .then(() => addNotification(`Directions sent to ${driver.fullName} via WhatsApp.`))
+        .catch((e: any) => addNotification(`Driver assigned, but WhatsApp directions failed: ${e.message}`));
+
       addNotification(`Driver ${driver.fullName} assigned to ${delivery.id}`);
       setAssignTarget(null);
       if (detailRecord?.id === delivery.id) setDetailRecord(prev => prev ? { ...prev, driverId, driverName: driver.fullName, vehicleId: driver.truckId, status: 'ASSIGNED' } : prev);
@@ -687,6 +692,22 @@ export default function DeliveriesView({ addNotification, currentUser }: Props) 
                             <button onClick={() => { setDetailRecord(d); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--bg-input)] flex items-center gap-2"><Eye size={11} /> View Details</button>
                             <button onClick={() => { setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--bg-input)] flex items-center gap-2"><MapPin size={11} /> Track on GPS Map</button>
                             <button onClick={() => { setAssignTarget(d); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--bg-input)] flex items-center gap-2"><UserCheck size={11} /> {d.driverId ? 'Reassign Driver' : 'Assign Driver'}</button>
+                            {d.driverId && (d.status === 'ASSIGNED' || d.status === 'IN_TRANSIT') && (
+                              <button
+                                onClick={async () => {
+                                  setMenuOpen(null);
+                                  try {
+                                    await dispatchApi.sendWhatsAppDirections(d.driverId!);
+                                    addNotification(`Directions re-sent to ${d.driverName || 'driver'} via WhatsApp.`);
+                                  } catch (e: any) {
+                                    addNotification(`Failed to send WhatsApp directions: ${e.message}`);
+                                  }
+                                }}
+                                className="w-full text-left px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--bg-input)] flex items-center gap-2"
+                              >
+                                <MessageCircle size={11} /> Send WhatsApp Directions
+                              </button>
+                            )}
                             {d.status === 'IN_TRANSIT' && (
                               <button onClick={() => markDelivered(d.id)} className="w-full text-left px-3 py-2 text-xs text-green-600 hover:bg-[var(--bg-input)] flex items-center gap-2"><CheckCircle size={11} /> Mark as Delivered</button>
                             )}

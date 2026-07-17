@@ -503,8 +503,9 @@ export const operations = {
   },
 
   releaseToDispatch: async (orderId: string, vehicleId: string, driverName?: string, driverId?: string) => {
-    const { data: orders, error: orderErr } = await supabase.from('orders').select('id').eq('id', orderId).limit(1);
+    const { data: orders, error: orderErr } = await supabase.from('orders').select('id, client_name, customer_name, destination').eq('id', orderId).limit(1);
     if (orderErr || !orders || orders.length === 0) throw new Error('Order not found');
+    const order = orders[0];
 
     const { data: delivery, error: delErr } = await supabase
       .from('delivery_logs')
@@ -513,6 +514,8 @@ export const operations = {
         vehicle_id: vehicleId,
         driver_name: driverName || null,
         driver_id: driverId || null,
+        customer_name: order.customer_name || order.client_name || null,
+        delivery_address: order.destination || null,
         status: 'ASSIGNED',
         updated_at: new Date().toISOString()
       }).select();
@@ -1420,6 +1423,21 @@ export const dispatch = {
       .limit(limit);
     if (error) throw new Error(error.message);
     return (data || []).reverse().map((r: any) => ({ lat: Number(r.latitude), lng: Number(r.longitude), recordedAt: r.recorded_at }));
+  },
+
+  sendWhatsAppDirections: async (driverId: string) => {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const res = await fetch('/api/send-whatsapp-directions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(sessionData.session ? { Authorization: `Bearer ${sessionData.session.access_token}` } : {}),
+      },
+      body: JSON.stringify({ driverId }),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || 'Failed to send WhatsApp directions.');
+    return json;
   },
 };
 

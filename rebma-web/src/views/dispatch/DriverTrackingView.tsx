@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { LogOut, MapPin, Navigation, Package, Wifi, WifiOff, RefreshCw } from 'lucide-react';
+import { LogOut, MapPin, Navigation, Package, Wifi, WifiOff, RefreshCw, ExternalLink } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 
 interface DriverTrackingViewProps {
@@ -7,49 +7,57 @@ interface DriverTrackingViewProps {
   onLogout: () => void;
 }
 
-interface ActiveDelivery {
+interface Stop {
   id: string;
   orderId: string | null;
   customerName: string;
   deliveryAddress: string;
+  sequence: number | null;
   status: string;
 }
 
+function mapsLink(address: string): string {
+  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}`;
+}
+
 export default function DriverTrackingView({ driver, onLogout }: DriverTrackingViewProps) {
-  const [delivery, setDelivery] = useState<ActiveDelivery | null>(null);
+  const [stops, setStops] = useState<Stop[]>([]);
   const [loading, setLoading] = useState(true);
   const [gpsActive, setGpsActive] = useState(false);
   const [lastLat, setLastLat] = useState<number | null>(null);
   const [lastLng, setLastLng] = useState<number | null>(null);
   const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
-  const [marking, setMarking] = useState(false);
+  const [markingId, setMarkingId] = useState<string | null>(null);
   const watchIdRef = useRef<number | null>(null);
+  const activeDeliveryId = stops[0]?.id || null;
 
-  const loadActiveDelivery = async () => {
+  const loadStops = async () => {
     setLoading(true);
     const { data } = await supabase
       .from('delivery_logs')
-      .select('id, order_id, customer_name, delivery_address, status')
+      .select('id, order_id, customer_name, delivery_address, dispatch_sequence, status')
       .eq('driver_id', driver.id)
       .in('status', ['ASSIGNED', 'IN_TRANSIT'])
-      .order('created_at', { ascending: false })
-      .limit(1);
-    const row = data?.[0];
-    setDelivery(row ? {
+      .order('dispatch_sequence', { ascending: true, nullsFirst: false })
+      .order('created_at', { ascending: true });
+    setStops((data || []).map(row => ({
       id: row.id,
       orderId: row.order_id,
       customerName: row.customer_name || 'Client',
       deliveryAddress: row.delivery_address || '',
+      sequence: row.dispatch_sequence,
       status: row.status,
-    } : null);
+    })));
     setLoading(false);
   };
 
-  useEffect(() => { loadActiveDelivery(); }, [driver.id]);
+  useEffect(() => { loadStops(); }, [driver.id]);
 
+  // Streams position while any stop is active — tags pings with the first
+  // (current) stop so dispatch's map ties the trail to the right delivery.
   useEffect(() => {
-    if (!gpsActive || !delivery) {
+    if (!gpsActive || !activeDeliveryId) {
       if (watchIdRef.current !== null) {
         navigator.geolocation.clearWatch(watchIdRef.current);
         watchIdRef.current = null;
@@ -69,7 +77,7 @@ export default function DriverTrackingView({ driver, onLogout }: DriverTrackingV
         setLocationError(null);
         const { error } = await supabase.from('driver_locations').insert({
           driver_id: driver.driverId,
-          delivery_id: delivery.id,
+          delivery_id: activeDeliveryId,
           latitude,
           longitude,
           accuracy: accuracy ?? null,
@@ -86,25 +94,23 @@ export default function DriverTrackingView({ driver, onLogout }: DriverTrackingV
         watchIdRef.current = null;
       }
     };
-  }, [gpsActive, delivery, driver.driverId]);
+  }, [gpsActive, activeDeliveryId, driver.driverId]);
 
-  const handleMarkDelivered = async () => {
-    if (!delivery) return;
-    setMarking(true);
+  const handleMarkDelivered = async (stop: Stop) => {
+    setMarkingId(stop.id);
     const { error } = await supabase
       .from('delivery_logs')
       .update({ status: 'DELIVERED', delivered_at: new Date().toISOString(), updated_at: new Date().toISOString() })
-      .eq('id', delivery.id);
-    setMarking(false);
+      .eq('id', stop.id);
+    setMarkingId(null);
     if (error) {
       alert(`Failed to update delivery: ${error.message}`);
       return;
     }
-    if (delivery.orderId) {
-      await supabase.from('orders').update({ status: 'DELIVERED', updated_at: new Date().toISOString() }).eq('id', delivery.orderId);
+    if (stop.orderId) {
+      await supabase.from('orders').update({ status: 'DELIVERED', updated_at: new Date().toISOString() }).eq('id', stop.orderId);
     }
-    setGpsActive(false);
-    setDelivery(null);
+    setStops(prev => prev.filter(s => s.id !== stop.id));
   };
 
   return (
@@ -134,36 +140,67 @@ export default function DriverTrackingView({ driver, onLogout }: DriverTrackingV
 
         <div className="flex-1 p-5 space-y-4 overflow-y-auto bg-[var(--bg-page)]">
           <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
-          <p className="text-xs font-extrabold text-text-primary mb-3 flex items-center gap-2">
-            <Package className="w-4 h-4" /> Active Route Assignment
-          </p>
-
-          {loading ? (
-            <p className="text-xs text-text-muted">Checking for assignments...</p>
-          ) : !delivery ? (
-            <div className="text-center py-6">
-              <p className="text-xs text-text-muted mb-4">No route currently assigned. Dispatch will assign your next delivery.</p>
-              <button
-                type="button"
-                onClick={loadActiveDelivery}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold"
-              >
-                <RefreshCw className="w-3.5 h-3.5" /> Check for Assignment
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-xs font-extrabold text-text-primary flex items-center gap-2">
+                <Package className="w-4 h-4" /> Today's Stops {stops.length > 0 && `(${stops.length})`}
+              </p>
+              <button type="button" onClick={loadStops} className="text-text-muted hover:text-text-primary">
+                <RefreshCw className="w-3.5 h-3.5" />
               </button>
             </div>
-          ) : (
-            <div className="space-y-4">
-              <div className="p-3 rounded-xl bg-[var(--bg-page)] border border-[var(--border)]">
-                <p className="text-xs font-bold text-text-primary">Order Ref: {delivery.orderId || delivery.id}</p>
-                <p className="text-[11px] text-text-muted mt-1">Client: {delivery.customerName}</p>
-                {delivery.deliveryAddress && (
-                  <p className="text-[11px] text-text-muted mt-0.5 flex items-center gap-1">
-                    <MapPin className="w-3 h-3 shrink-0" /> {delivery.deliveryAddress}
-                  </p>
-                )}
-              </div>
 
-              <div className="grid grid-cols-2 gap-3">
+            {loading ? (
+              <p className="text-xs text-text-muted">Checking for assignments...</p>
+            ) : stops.length === 0 ? (
+              <div className="text-center py-6">
+                <p className="text-xs text-text-muted mb-4">No route currently assigned. Dispatch will assign your next delivery.</p>
+                <button
+                  type="button"
+                  onClick={loadStops}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" /> Check for Assignment
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {stops.map((stop, idx) => (
+                  <div key={stop.id} className={`p-3 rounded-xl border ${idx === 0 ? 'bg-emerald-50 dark:bg-emerald-950/10 border-emerald-200 dark:border-emerald-900' : 'bg-[var(--bg-page)] border-[var(--border)]'}`}>
+                    <p className="text-xs font-bold text-text-primary">Stop {stop.sequence ?? idx + 1}: {stop.customerName}</p>
+                    {stop.deliveryAddress && (
+                      <p className="text-[11px] text-text-muted mt-0.5 flex items-center gap-1">
+                        <MapPin className="w-3 h-3 shrink-0" /> {stop.deliveryAddress}
+                      </p>
+                    )}
+                    <div className="flex gap-2 mt-2.5">
+                      {stop.deliveryAddress && (
+                        <a
+                          href={mapsLink(stop.deliveryAddress)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 rounded-lg bg-[var(--accent)] text-white text-[11px] font-bold"
+                        >
+                          <ExternalLink className="w-3 h-3" /> Navigate
+                        </a>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleMarkDelivered(stop)}
+                        disabled={markingId === stop.id}
+                        className="flex-1 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold disabled:opacity-50"
+                      >
+                        {markingId === stop.id ? 'Updating...' : 'Mark Delivered'}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {stops.length > 0 && (
+            <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
+              <div className="grid grid-cols-2 gap-3 mb-3">
                 <div className="p-3 rounded-xl bg-[var(--bg-page)] border border-[var(--border)]">
                   <p className="text-[9px] font-bold uppercase text-text-muted">Latitude</p>
                   <p className="text-sm font-bold text-text-primary mt-1 font-mono">{lastLat !== null ? lastLat.toFixed(5) : '—'}</p>
@@ -182,20 +219,10 @@ export default function DriverTrackingView({ driver, onLogout }: DriverTrackingV
                 <Navigation className="w-3.5 h-3.5" />
                 {gpsActive ? 'Stop Sharing Location' : 'Share Live Location with Dispatch'}
               </button>
-              <p className="text-[10px] text-text-muted text-center -mt-2">Keep this page open while tracking is on — location only updates while the browser tab is active.</p>
-              {locationError && <p className="text-[10px] text-rose-500 text-center">{locationError}</p>}
-
-              <button
-                type="button"
-                onClick={handleMarkDelivered}
-                disabled={marking}
-                className="w-full py-2.5 rounded-xl bg-[var(--accent)] text-white text-xs font-bold disabled:opacity-50"
-              >
-                {marking ? 'Updating...' : 'Mark Order as Delivered'}
-              </button>
+              <p className="text-[10px] text-text-muted text-center mt-2">Keep this page open while tracking is on — location only updates while the browser tab is active.</p>
+              {locationError && <p className="text-[10px] text-rose-500 text-center mt-1">{locationError}</p>}
             </div>
           )}
-          </div>
         </div>
       </div>
     </div>

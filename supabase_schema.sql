@@ -976,4 +976,13 @@ CREATE TABLE IF NOT EXISTS public.finance_report_history (
 ALTER TABLE public.finance_report_history ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow authenticated users full access to finance_report_history" ON public.finance_report_history;
 CREATE POLICY "Allow authenticated users full access to finance_report_history" ON public.finance_report_history FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- WHATSAPP DISPATCH — lets a driver navigate + confirm stops entirely from
+-- WhatsApp (no app needed): dispatch_sequence numbers a driver's stops for the
+-- day so a driver's "DONE 2" reply unambiguously maps back to one delivery_logs
+-- row; whatsapp_sent_at records whether/when the directions text went out.
+-- ─────────────────────────────────────────────────────────────────────────────
+ALTER TABLE public.delivery_logs ADD COLUMN IF NOT EXISTS dispatch_sequence INTEGER;
+ALTER TABLE public.delivery_logs ADD COLUMN IF NOT EXISTS whatsapp_sent_at TIMESTAMPTZ;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.finance_report_history;
