@@ -135,6 +135,7 @@ import LogisticsFleetOverviewView from './views/logistics/FleetOverviewView';
 import LogisticsFuelManagementView from './views/logistics/FuelManagementView';
 import LogisticsMaintenanceView from './views/logistics/MaintenanceView';
 import LogisticsFleetAnalyticsView from './views/logistics/FleetAnalyticsView';
+import DriverTrackingView from './views/dispatch/DriverTrackingView';
 
 export default function App() {
   // Helper to map UI dropdown values to database role values
@@ -319,6 +320,10 @@ export default function App() {
   // Authentication & Onboarding States
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
+  // Set when the logged-in account is a driver mobile login (public.drivers
+  // linked via user_id) — these accounts get the minimal live-tracking view
+  // below instead of the full ERP dashboard.
+  const [currentDriver, setCurrentDriver] = useState<{ id: string; driverId: string; fullName: string; vehicleId: string | null } | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState<boolean>(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
   
@@ -1010,6 +1015,23 @@ export default function App() {
           
           setIsAuthenticated(true);
 
+          // Driver mobile logins (created via Dispatch's "Invite to Mobile
+          // App") get a minimal live-tracking view instead of the full ERP
+          // dashboard — same account, same drivers row, just a different
+          // surface for a phone in a moving vehicle.
+          try {
+            const { data: driverRow } = await supabase
+              .from('drivers')
+              .select('id, driver_id, full_name, vehicle_id')
+              .eq('user_id', profile.id)
+              .limit(1);
+            if (isMounted) {
+              setCurrentDriver(driverRow && driverRow[0]
+                ? { id: driverRow[0].id, driverId: driverRow[0].driver_id, fullName: driverRow[0].full_name, vehicleId: driverRow[0].vehicle_id || null }
+                : null);
+            }
+          } catch { if (isMounted) setCurrentDriver(null); }
+
           // Load notification sound preference from profile metadata
           const soundPref = (profile as any)?.metadata?.notification_sound;
           if (soundPref && ['default','ping','bell','soft','silent'].includes(soundPref)) {
@@ -1036,6 +1058,7 @@ export default function App() {
           clearToken();
           setIsAuthenticated(false);
           setCurrentUser(null);
+          setCurrentDriver(null);
           setIsAuthLoading(false);
         }
       }
@@ -1050,6 +1073,7 @@ export default function App() {
           console.warn('Auth init timed out — forcing login screen');
           setIsAuthenticated(false);
           setCurrentUser(null);
+          setCurrentDriver(null);
           setIsAuthLoading(false);
         }
       }, 8000);
@@ -1106,6 +1130,7 @@ export default function App() {
         if (isMounted) {
           setIsAuthenticated(false);
           setCurrentUser(null);
+          setCurrentDriver(null);
           clearToken();
           setIsAuthLoading(false);
         }
@@ -3479,6 +3504,7 @@ export default function App() {
               await auth.signOut();
               setIsAuthenticated(false);
               setCurrentUser(null);
+              setCurrentDriver(null);
             }}
             className="w-full flex items-center justify-between p-4 text-xs font-bold text-rose-500 cursor-pointer hover:bg-rose-50 dark:hover:bg-rose-950/10 transition-colors animate-none"
           >
@@ -3620,6 +3646,20 @@ export default function App() {
     );
   };
 
+  if (currentDriver) {
+    return (
+      <DriverTrackingView
+        driver={currentDriver}
+        onLogout={async () => {
+          await auth.signOut();
+          setIsAuthenticated(false);
+          setCurrentUser(null);
+          setCurrentDriver(null);
+        }}
+      />
+    );
+  }
+
   return (
     <CeoSettingsProvider>
       <AppInner
@@ -3647,13 +3687,14 @@ export default function App() {
         sendChatMessage={sendChatMessage}
         boardroomMinutes={boardroomMinutes}
         setBoardroomMinutes={setBoardroomMinutes}
-        onLogout={async () => { await auth.signOut(); setIsAuthenticated(false); setCurrentUser(null); }}
+        onLogout={async () => { await auth.signOut(); setIsAuthenticated(false); setCurrentUser(null); setCurrentDriver(null); }}
         openBoardroom={() => { setActiveDepartment('BOARDROOM'); setActiveSubTab('VideoConf'); }}
         sidebarCollapsed={sidebarCollapsed}
         setSidebarCollapsed={setSidebarCollapsed}
         unreadEmailCount={unreadEmailCount}
         setIsAuthenticated={setIsAuthenticated}
         setCurrentUser={setCurrentUser}
+        setCurrentDriver={setCurrentDriver}
         isSidebarOpen={isSidebarOpen}
         setIsSidebarOpen={setIsSidebarOpen}
         searchQuery={searchQuery}
@@ -3702,7 +3743,7 @@ function AppInner({
   renderConfirmModal, isChatOpen, setIsChatOpen, chatMessages, sendChatMessage,
   boardroomMinutes, setBoardroomMinutes, onLogout, openBoardroom,
   sidebarCollapsed, setSidebarCollapsed, unreadEmailCount,
-  setIsAuthenticated, setCurrentUser, isSidebarOpen, setIsSidebarOpen,
+  setIsAuthenticated, setCurrentUser, setCurrentDriver, isSidebarOpen, setIsSidebarOpen,
   searchQuery, setSearchQuery, setActiveMobileView, setIsMobileNotificationsActive,
   darkMode, setDarkMode, setIsMobileSearchActive, activeMobileView,
   renderMobileProfilePage, renderMobileChatPage, renderWithShell,
@@ -3737,6 +3778,7 @@ function AppInner({
             await auth.signOut();
             setIsAuthenticated(false);
             setCurrentUser(null);
+            setCurrentDriver(null);
           }}
           addNotification={addNotification}
           openBoardroom={() => { setActiveDepartment('BOARDROOM'); sessionStorage.setItem('rebma-last-dept', 'BOARDROOM'); setActiveSubTab('VideoConf'); }}
@@ -3787,6 +3829,7 @@ function AppInner({
                 await auth.signOut();
                 setIsAuthenticated(false);
                 setCurrentUser(null);
+                setCurrentDriver(null);
               }}
               activeDepartment={currentUser?.requiresPasswordReset ? 'SETTINGS' : activeDepartment}
               setActiveDepartment={currentUser?.requiresPasswordReset ? () => {} : setActiveDepartment}
