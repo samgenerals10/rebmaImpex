@@ -306,6 +306,7 @@ export default function DeliveriesView({ addNotification, currentUser }: Props) 
   const [detailRecord, setDetailRecord] = useState<DeliveryRecord | null>(null);
   const [assignTarget, setAssignTarget] = useState<DeliveryRecord | null>(null);
   const [form, setForm] = useState({ clientName: '', orderId: '', destination: '', driverId: '' });
+  const [dispatchableOrders, setDispatchableOrders] = useState<{ id: string; clientName: string; destination: string }[]>([]);
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -332,6 +333,20 @@ export default function DeliveriesView({ addNotification, currentUser }: Props) 
         deliveryNotes: row.notes || undefined,
       }));
       setDeliveries(mapped);
+
+      // "New Delivery" must point at a real order — delivery_logs.order_id
+      // is a foreign key to orders.id, so letting dispatch type an
+      // arbitrary string there fails with a constraint violation the
+      // instant it doesn't match a real row. APPROVED orders are exactly
+      // the ones finance has cleared but that don't have a delivery job yet.
+      const dispatchedOrderIds = new Set((mapped || []).map(d => d.orderId).filter(Boolean));
+      const { data: approvedOrders } = await supabase
+        .from('orders')
+        .select('id, client_name, customer_name, destination')
+        .eq('status', 'APPROVED');
+      setDispatchableOrders((approvedOrders || [])
+        .filter(o => !dispatchedOrderIds.has(o.id))
+        .map(o => ({ id: o.id, clientName: o.customer_name || o.client_name || '', destination: o.destination || '' })));
     } catch { setDeliveries([]); }
     try {
       const { data } = await supabase.from('drivers').select('*');
@@ -475,29 +490,40 @@ export default function DeliveriesView({ addNotification, currentUser }: Props) 
     setSubmitting(true);
     try {
       const driver = drivers.find(d => d.id === form.driverId);
+      const dispatchedAt = new Date().toISOString();
+      const status = form.driverId ? 'ASSIGNED' : 'PENDING_ASSIGNMENT';
+
+      // No client-generated id — delivery_logs.id has its own DB default
+      // ('DEL-' + random hex); overriding it here risks collisions across
+      // concurrent dispatchers and doesn't match the format used everywhere
+      // else in the app.
+      const dbRec = {
+        order_id: form.orderId,
+        customer_name: form.clientName,
+        delivery_address: form.destination,
+        driver_name: driver?.fullName ?? '',
+        driver_id: form.driverId || null,
+        vehicle_id: driver?.truckId || null,
+        status,
+        created_at: dispatchedAt
+      };
+
+      const { data: inserted, error } = await supabase.from('delivery_logs').insert([dbRec]).select().single();
+      if (error) throw error;
+
+      // The order now has a delivery job — mark it out for delivery so it
+      // drops off this list and the auto-assign path doesn't double-book it.
+      await supabase.from('orders').update({ status: 'OUT_FOR_DELIVERY', updated_at: dispatchedAt }).eq('id', form.orderId);
+      setDispatchableOrders(prev => prev.filter(o => o.id !== form.orderId));
+
       const rec: DeliveryRecord = {
-        id: `DEL-${String(deliveries.length + 1).padStart(3, '0')}`,
+        id: inserted.id,
         orderId: form.orderId, clientName: form.clientName,
         destination: form.destination, driverName: driver?.fullName ?? '',
-        driverId: form.driverId, dispatchedAt: new Date().toISOString(),
-        status: form.driverId ? 'ASSIGNED' : 'PENDING_ASSIGNMENT',
+        driverId: form.driverId, dispatchedAt,
+        status,
         vehicleId: driver?.truckId,
       };
-
-      const dbRec = {
-        id: rec.id,
-        order_id: rec.orderId,
-        customer_name: rec.clientName,
-        delivery_address: rec.destination,
-        driver_name: rec.driverName,
-        driver_id: rec.driverId || null,
-        vehicle_id: rec.vehicleId || null,
-        status: rec.status,
-        created_at: rec.dispatchedAt
-      };
-
-      const { error } = await supabase.from('delivery_logs').insert([dbRec]);
-      if (error) throw error;
 
       setDeliveries(prev => [rec, ...prev]);
 
@@ -743,9 +769,27 @@ export default function DeliveriesView({ addNotification, currentUser }: Props) 
               <button onClick={() => setShowNew(false)} className="p-1.5 rounded-lg hover:bg-[var(--bg-input)]"><X size={16} className="text-[var(--text-muted)]" /></button>
             </div>
             <div className="space-y-4">
+              <div>
+                <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Order</label>
+                <select
+                  value={form.orderId}
+                  onChange={e => {
+                    const order = dispatchableOrders.find(o => o.id === e.target.value);
+                    setForm(p => ({ ...p, orderId: e.target.value, clientName: order?.clientName || '', destination: order?.destination || '' }));
+                  }}
+                  className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm focus:outline-none focus:border-[var(--accent)] text-[var(--text-primary)]"
+                >
+                  <option value="">
+                    {dispatchableOrders.length === 0 ? 'No approved orders awaiting dispatch' : 'Choose an order...'}
+                  </option>
+                  {dispatchableOrders.map(o => (
+                    <option key={o.id} value={o.id}>{o.id} — {o.clientName || 'Unnamed client'}</option>
+                  ))}
+                </select>
+                <p className="text-[11px] text-[var(--text-muted)] mt-1">Only orders Finance has approved and that don't already have a delivery job show up here.</p>
+              </div>
               {[
                 { label: 'Client Name', key: 'clientName', placeholder: 'e.g. Accra Traders Ltd' },
-                { label: 'Order ID',    key: 'orderId',    placeholder: 'e.g. ORD-1011' },
                 { label: 'Destination', key: 'destination',placeholder: 'Full delivery address' },
               ].map(f => (
                 <div key={f.key}>
