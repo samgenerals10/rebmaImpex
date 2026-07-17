@@ -2,6 +2,7 @@
 // Centralized API client — all database & auth calls go through Supabase
 import { supabase } from '../lib/supabaseClient';
 import { sendNotification } from '../utils/sendNotification';
+import { waLink, buildDirectionsMessage } from '../utils/whatsapp';
 
 // --- Translation Mappings (Insulates UI from Database Snake_Case schema) ---
 
@@ -1425,19 +1426,57 @@ export const dispatch = {
     return (data || []).reverse().map((r: any) => ({ lat: Number(r.latitude), lng: Number(r.longitude), recordedAt: r.recorded_at }));
   },
 
+  // Opens a pre-filled WhatsApp chat (wa.me) for a dispatcher to review and
+  // tap Send themselves — no Twilio/Meta business API, no account, no fee.
+  // The tab is opened synchronously (before any await) so browsers don't
+  // treat it as an unrequested popup once the Supabase queries resolve.
   sendWhatsAppDirections: async (driverId: string) => {
-    const { data: sessionData } = await supabase.auth.getSession();
-    const res = await fetch('/api/send-whatsapp-directions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(sessionData.session ? { Authorization: `Bearer ${sessionData.session.access_token}` } : {}),
-      },
-      body: JSON.stringify({ driverId }),
-    });
-    const json = await res.json();
-    if (!res.ok) throw new Error(json.error || 'Failed to send WhatsApp directions.');
-    return json;
+    const tab = window.open('', '_blank');
+
+    const { data: driver, error: driverErr } = await supabase
+      .from('drivers')
+      .select('id, full_name, phone')
+      .eq('id', driverId)
+      .single();
+    if (driverErr || !driver) { tab?.close(); throw new Error('Driver not found.'); }
+    if (!driver.phone) { tab?.close(); throw new Error(`${driver.full_name} has no phone number on file.`); }
+
+    const { data: stops, error: stopsErr } = await supabase
+      .from('delivery_logs')
+      .select('id, customer_name, delivery_address, dispatch_sequence, created_at')
+      .eq('driver_id', driverId)
+      .in('status', ['ASSIGNED', 'IN_TRANSIT'])
+      .order('dispatch_sequence', { ascending: true, nullsFirst: false })
+      .order('created_at', { ascending: true });
+    if (stopsErr) { tab?.close(); throw new Error(stopsErr.message); }
+    if (!stops || stops.length === 0) { tab?.close(); throw new Error('This driver has no active deliveries to send.'); }
+
+    // Backfill dispatch_sequence for any stop that doesn't have one yet.
+    let nextSeq = 1;
+    const usedSeqs = new Set(stops.filter(s => s.dispatch_sequence).map(s => s.dispatch_sequence));
+    for (const stop of stops as any[]) {
+      if (!stop.dispatch_sequence) {
+        while (usedSeqs.has(nextSeq)) nextSeq++;
+        stop.dispatch_sequence = nextSeq;
+        usedSeqs.add(nextSeq);
+        await supabase.from('delivery_logs').update({ dispatch_sequence: nextSeq }).eq('id', stop.id);
+      }
+    }
+    stops.sort((a: any, b: any) => (a.dispatch_sequence || 0) - (b.dispatch_sequence || 0));
+
+    const message = buildDirectionsMessage(driver.full_name, stops.map((s: any) => ({
+      sequence: s.dispatch_sequence,
+      customerName: s.customer_name || 'Client',
+      deliveryAddress: s.delivery_address || '',
+    })));
+    const link = waLink(driver.phone, message);
+
+    if (tab) tab.location.href = link; else window.open(link, '_blank');
+
+    const now = new Date().toISOString();
+    await supabase.from('delivery_logs').update({ whatsapp_sent_at: now }).in('id', stops.map((s: any) => s.id));
+
+    return { sentTo: driver.phone, stopCount: stops.length };
   },
 };
 

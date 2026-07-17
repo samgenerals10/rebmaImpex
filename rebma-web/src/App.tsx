@@ -28,7 +28,7 @@ import AczoneShell from './components/AczoneShell';
 import LiamFinanceShell from './components/LiamFinanceShell';
 import FinloFlashShell from './components/FinloFlashShell';
 
-import { auth, hr, operations, management, marketing, finance, production, dispatch, reception, getToken, setToken, clearToken } from './services/apiClient';
+import { auth, hr, operations, management, marketing, finance, production, reception, getToken, setToken, clearToken } from './services/apiClient';
 import { supabase } from './lib/supabaseClient';
 
 import NotesPanel from './components/global/NotesPanel';
@@ -1763,14 +1763,8 @@ export default function App() {
       const driver = [...activeDrivers].sort((a, b) => (loadByDriver[a.id] || 0) - (loadByDriver[b.id] || 0))[0];
 
       await operations.releaseToDispatch(id, driver.vehicle_id || 'Unassigned', driver.full_name, driver.id);
-      addNotification(`Operations released order ${id} to ${driver.full_name} (${driver.vehicle_id || 'no vehicle on file'}).`);
+      addNotification(`Operations released order ${id} to ${driver.full_name} (${driver.vehicle_id || 'no vehicle on file'}). Send WhatsApp directions from Dispatch > Deliveries when ready.`);
       refreshAllData();
-
-      // Best-effort — a Twilio/WhatsApp hiccup shouldn't block the dispatch
-      // action itself, which already succeeded above.
-      dispatch.sendWhatsAppDirections(driver.id)
-        .then(() => addNotification(`Directions sent to ${driver.full_name} via WhatsApp.`))
-        .catch((e: any) => addNotification(`Order dispatched, but WhatsApp directions failed: ${e.message}`));
     } catch (err: any) {
       alert(err.message || 'Failed to release to dispatch.');
     }
