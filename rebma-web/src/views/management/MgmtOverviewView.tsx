@@ -90,7 +90,7 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
       setStockList(stocks || []);
 
       // Goods prices — drives inventory value display
-      supabase.from('goods_prices').select('product_name, unit_price, cost_price, currency').then(({ data }) => {
+      supabase.from('goods_prices').select('product_name, unit_price, cost_price, currency, product_image').then(({ data }) => {
         if (data) setGoodsPrices(data);
       }, () => {});
 
@@ -479,6 +479,7 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
       costValue: Number(gp.cost_price || 0) * qty,
       soldQty,
       soldRevenue,
+      image: gp.product_image || '',
     };
   });
   const totalSellingValue = inventoryItems.reduce((s, i) => s + i.sellingValue, 0);

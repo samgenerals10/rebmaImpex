@@ -153,13 +153,15 @@ CREATE TABLE IF NOT EXISTS public.goods_prices (
     currency TEXT DEFAULT 'GHS',
     category TEXT DEFAULT 'INCOMING_GOODS',
     updated_by TEXT,
-    updated_at TIMESTAMPTZ DEFAULT NOW()
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    product_image TEXT
 );
 -- Migration: if the table already exists, run these to add missing columns:
 -- ALTER TABLE public.goods_prices ADD COLUMN IF NOT EXISTS cost_price NUMERIC;
 -- ALTER TABLE public.goods_prices ADD COLUMN IF NOT EXISTS currency TEXT DEFAULT 'GHS';
 -- ALTER TABLE public.goods_prices ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'INCOMING_GOODS';
 -- ALTER TABLE public.goods_prices ADD COLUMN IF NOT EXISTS updated_by TEXT;
+-- ALTER TABLE public.goods_prices ADD COLUMN IF NOT EXISTS product_image TEXT;
 
 -- BOARDROOM MEETINGS TABLE
 CREATE TABLE IF NOT EXISTS public.boardroom_meetings (

@@ -7,6 +7,7 @@ export interface ProductCatalogItem {
   currency: string;
   qty: number;
   soldQty: number;
+  image?: string;
 }
 
 interface Props {
@@ -23,8 +24,12 @@ export default function ProductCatalogCard({ item, onSelect }: Props) {
       onClick={onSelect}
     >
       <div className="relative p-1.5 pb-0">
-        <div className="rounded-lg aspect-square flex items-center justify-center bg-[var(--accent-light)]">
-          <Package size={22} className="text-[var(--accent)] opacity-70" />
+        <div className="rounded-lg aspect-square flex items-center justify-center bg-[var(--accent-light)] overflow-hidden">
+          {item.image ? (
+            <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+          ) : (
+            <Package size={22} className="text-[var(--accent)] opacity-70" />
+          )}
         </div>
         <span
           className={`absolute top-3 right-3 text-[8px] font-semibold px-1.5 py-0.5 rounded-full ${

@@ -124,7 +124,7 @@ export default function MarketingOverviewView({ addNotification, setActiveSubTab
       setCustomers(formattedCustomers);
 
       // Goods available to sell — prices set by Management
-      supabase.from('goods_prices').select('product_name, unit_price, cost_price, currency, category').then(({ data }) => {
+      supabase.from('goods_prices').select('product_name, unit_price, cost_price, currency, category, product_image').then(({ data }) => {
         if (data) setGoodsPrices(data as any[]);
       }, () => {});
       supabase.from('stock').select('product_name, quantity').then(({ data }) => {
@@ -443,7 +443,7 @@ export default function MarketingOverviewView({ addNotification, setActiveSubTab
           const qty = stock.filter((s: any) => String(s.product_name || '').toLowerCase().trim() === key).reduce((sum: number, s: any) => sum + (Number(s.quantity) || 0), 0);
           const soldQty = soldLedger.filter((l: any) => String(l.product_name || '').toLowerCase().trim() === key)
             .reduce((sum: number, l: any) => sum + (Number(l.quantity) || 0), 0);
-          return { name: gp.product_name, unitPrice: Number(gp.unit_price || 0), currency: gp.currency || 'GHS', category: gp.category || '—', qty, soldQty };
+          return { name: gp.product_name, unitPrice: Number(gp.unit_price || 0), currency: gp.currency || 'GHS', category: gp.category || '—', qty, soldQty, image: gp.product_image || '' };
         });
         return (
           <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">

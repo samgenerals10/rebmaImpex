@@ -18,6 +18,7 @@ interface PriceEntry {
   lastUpdated: string;
   updatedBy: string;
   changeDir: 'up' | 'down' | 'same';
+  image: string;
 }
 
 interface PriceHistoryEntry {
@@ -137,6 +138,7 @@ export default function MgmtPriceSettingView({ addNotification, currentUser }: P
           lastUpdated: String(row.updated_at || row.created_at || '').slice(0, 10),
           updatedBy: String(row.updated_by || 'Management'),
           changeDir: 'same' as const,
+          image: String(row.product_image || ''),
         };
       });
       setPrices(mapped);
@@ -209,6 +211,7 @@ export default function MgmtPriceSettingView({ addNotification, currentUser }: P
       lastUpdated: form.effectiveDate || new Date().toISOString().slice(0, 10),
       updatedBy: currentUser?.fullName || 'Management',
       changeDir: editing ? (unitPrice > editing.unitPrice ? 'up' : unitPrice < editing.unitPrice ? 'down' : 'same') : 'same',
+      image: imagePreview || cameraPreview || '',
     };
 
     try {
@@ -223,6 +226,7 @@ export default function MgmtPriceSettingView({ addNotification, currentUser }: P
       try { upsertPayload.cost_price = costPrice; } catch { /* noop */ }
       try { upsertPayload.currency = form.currency; } catch { /* noop */ }
       try { upsertPayload.updated_by = currentUser?.fullName || 'Management'; } catch { /* noop */ }
+      try { upsertPayload.product_image = imagePreview || cameraPreview || null; } catch { /* noop */ }
 
       const { error: upsertError } = await supabase.from('goods_prices').upsert([upsertPayload], { onConflict: 'product_name' });
       if (upsertError) {
@@ -266,6 +270,7 @@ export default function MgmtPriceSettingView({ addNotification, currentUser }: P
   function openEdit(item: PriceEntry) {
     setEditing(item);
     setForm({ productName: item.productName, category: item.category, unitPrice: String(item.unitPrice), costPrice: String(item.costPrice), currency: item.currency, effectiveDate: '', note: '' });
+    setImagePreview(item.image || '');
     setShowForm(true);
     setMenuOpen(null);
   }
@@ -339,7 +344,7 @@ export default function MgmtPriceSettingView({ addNotification, currentUser }: P
           <button onClick={() => exportToCSV(filtered.map(p => ({ Product: p.productName, Category: p.category, 'Unit Price': p.unitPrice, 'Cost Price': p.costPrice, 'Margin %': p.margin.toFixed(1), Currency: p.currency, 'Last Updated': p.lastUpdated })), ['Product', 'Category', 'Unit Price', 'Cost Price', 'Margin %', 'Currency', 'Last Updated'], 'price_catalog')} className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[var(--border)] text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-card)]">
             <Download size={14} /> Export
           </button>
-          <button onClick={() => { setEditing(null); setForm({ productName: '', category: 'INCOMING_GOODS', unitPrice: '', costPrice: '', currency: 'GHS', effectiveDate: '', note: '' }); setShowForm(true); }} className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-white text-sm font-medium" style={{ background: 'var(--accent)' }}>
+          <button onClick={() => { setEditing(null); setForm({ productName: '', category: 'INCOMING_GOODS', unitPrice: '', costPrice: '', currency: 'GHS', effectiveDate: '', note: '' }); setImagePreview(''); setCameraPreview(''); setDocBase64(''); setDocName(''); setShowForm(true); }} className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-white text-sm font-medium" style={{ background: 'var(--accent)' }}>
             <Plus size={14} /> Set Price
           </button>
         </div>
@@ -358,7 +363,7 @@ export default function MgmtPriceSettingView({ addNotification, currentUser }: P
             </p>
           </div>
           <button
-            onClick={() => { setEditing(null); setForm(f => ({ ...f, productName: unpricedGoods[0] })); setShowForm(true); }}
+            onClick={() => { setEditing(null); setForm(f => ({ ...f, productName: unpricedGoods[0] })); setImagePreview(''); setCameraPreview(''); setDocBase64(''); setDocName(''); setShowForm(true); }}
             className="flex-shrink-0 px-3 py-1.5 rounded-xl text-white text-xs font-semibold cursor-pointer"
             style={{ background: '#f59e0b' }}
           >

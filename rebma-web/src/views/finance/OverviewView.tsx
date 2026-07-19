@@ -151,7 +151,7 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
       if (data) setTotalExpenses((data as any[]).reduce((s, e) => s + Number(e.amount || 0), 0));
     }, () => {});
 
-    supabase.from('goods_prices').select('product_name, unit_price, cost_price, currency').then(({ data }) => {
+    supabase.from('goods_prices').select('product_name, unit_price, cost_price, currency, product_image').then(({ data }) => {
       if (data) setGoodsPrices(data as any[]);
     }, () => {});
 
@@ -426,7 +426,7 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
     // Actual quantity sold — real stock_ledger deductions, not order line-item estimates
     const soldQty = stockLedger.filter(l => l.movement_type === 'REMOVE' && String(l.product_name || '').toLowerCase().trim() === key)
       .reduce((s, l) => s + (Number(l.quantity) || 0), 0);
-    return { name: gp.product_name, unitPrice: Number(gp.unit_price || 0), costPrice: Number(gp.cost_price || 0), currency: gp.currency || 'GHS', qty, sellingValue: Number(gp.unit_price || 0) * qty, costValue: Number(gp.cost_price || 0) * qty, soldRevenue, soldQty };
+    return { name: gp.product_name, unitPrice: Number(gp.unit_price || 0), costPrice: Number(gp.cost_price || 0), currency: gp.currency || 'GHS', qty, sellingValue: Number(gp.unit_price || 0) * qty, costValue: Number(gp.cost_price || 0) * qty, soldRevenue, soldQty, image: gp.product_image || '' };
   });
   const totalSell = inventoryItems.reduce((s, i) => s + i.sellingValue, 0);
   const totalCost = inventoryItems.reduce((s, i) => s + i.costValue, 0);

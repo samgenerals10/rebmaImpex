@@ -234,7 +234,7 @@ export default function CeoDashboard({
 
         // Live Products Available to Sell
         try {
-          const { data: gpPrices } = await supabase.from('goods_prices').select('product_name, unit_price, cost_price, currency, category');
+          const { data: gpPrices } = await supabase.from('goods_prices').select('product_name, unit_price, cost_price, currency, category, product_image');
           if (gpPrices) setGoodsPrices(gpPrices);
           const { data: stList } = await supabase.from('stock').select('product_name, quantity');
           if (stList) setStockList(stList);
@@ -363,7 +363,7 @@ export default function CeoDashboard({
     const qty = stockList.filter((s: any) => String(s.product_name || '').toLowerCase().trim() === key).reduce((sum: number, s: any) => sum + (Number(s.quantity) || 0), 0);
     const soldQty = soldLedger.filter((l: any) => String(l.product_name || '').toLowerCase().trim() === key)
       .reduce((sum: number, l: any) => sum + (Number(l.quantity) || 0), 0);
-    return { name: gp.product_name, unitPrice: Number(gp.unit_price || 0), currency: gp.currency || 'GHS', qty, soldQty };
+    return { name: gp.product_name, unitPrice: Number(gp.unit_price || 0), currency: gp.currency || 'GHS', qty, soldQty, image: gp.product_image || '' };
   });
 
   const smallStats = [
