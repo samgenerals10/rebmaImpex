@@ -326,7 +326,7 @@ export default function Sidebar({
       className={`sidebar-shell fixed top-0 bottom-0 left-0 z-50 flex flex-col shadow-2xl select-none transform transition-all duration-300 ease-in-out
         w-[80vw] max-w-[320px] rounded-r-3xl
         ${isOpen ? 'translate-x-0' : '-translate-x-full'}
-        lg:top-6 lg:bottom-6 lg:left-6 lg:rounded-2xl lg:border lg:border-[var(--border)] lg:translate-x-0 lg:shadow-[var(--box-shadow)]
+        lg:top-0 lg:bottom-0 lg:left-0 lg:rounded-none lg:border-r lg:border-[var(--border)] lg:translate-x-0 lg:shadow-[var(--box-shadow)]
         ${isActualCollapsed ? 'lg:w-[var(--sidebar-collapsed-width,68px)]' : 'lg:w-[var(--sidebar-width,260px)]'}
       `}
     >

@@ -3809,7 +3809,7 @@ function AppInner({
 
   return (
     <MotionConfig reducedMotion={reducedMotion ? 'always' : 'user'} transition={MOTION_TRANSITIONS[motionSetting] || MOTION_TRANSITIONS.Classic}>
-      <div className="min-h-screen w-full p-0 lg:p-6 transition-all duration-300 bg-[var(--bg-page)]">
+      <div className="min-h-screen w-full p-0 transition-all duration-300 bg-[var(--bg-page)]">
 
         {/* 1. LEFT SIDEBAR */}
         <Sidebar
@@ -3846,7 +3846,7 @@ function AppInner({
 
         {/* 2. MAIN SHEET WRAPPER */}
         <main
-          className={`ml-0 bg-[var(--bg-card)] rounded-none lg:rounded-3xl shadow-none lg:shadow-[var(--box-shadow)] flex flex-col border-none lg:border lg:border-[var(--border)] app-sheet overflow-hidden h-screen lg:h-[calc(100vh-3rem)] transition-all duration-300 ${sidebarCollapsed ? 'lg:ml-[92px]' : 'lg:ml-[284px]'}`}
+          className={`ml-0 bg-[var(--bg-card)] rounded-none shadow-none flex flex-col border-none app-sheet overflow-hidden h-screen transition-all duration-300 ${sidebarCollapsed ? 'lg:ml-[var(--sidebar-collapsed-width,68px)]' : 'lg:ml-[var(--sidebar-width,260px)]'}`}
         >
           
           {/* TOP STATUS BAR & HERO HEADER */}
