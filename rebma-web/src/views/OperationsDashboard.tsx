@@ -16,6 +16,7 @@ import { supabase } from '../lib/supabaseClient';
 import PendingApprovalsAlert from '../components/global/PendingApprovalsAlert';
 import { stockApi } from '../services/apiClient';
 import StockIntakeForm from '../components/StockIntakeForm';
+import CountrySelect from '../components/CountrySelect';
 
 interface OperationsDashboardProps {
   ordersList: Order[];
@@ -84,6 +85,7 @@ export default function OperationsDashboard({
   const [productName, setProductName] = useState('');
   const [goodsCode, setGoodsCode] = useState('');
   const [destination, setDestination] = useState('');
+  const [country, setCountry] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const docInputRef = useRef<HTMLInputElement>(null);
@@ -574,6 +576,7 @@ export default function OperationsDashboard({
     setProductName('');
     setGoodsCode('');
     setDestination('');
+    setCountry('');
     (e.target as HTMLFormElement).reset();
   };
 
@@ -1400,7 +1403,7 @@ export default function OperationsDashboard({
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Country of Origin <span className="text-rose-500">*</span></label>
-                      <input type="text" name="country" required placeholder="E.g., Germany" className="w-full px-3 py-2 bg-[var(--bg)] text-[var(--text-primary)] border border-[var(--border)] focus:border-[var(--accent)] rounded-xl text-xs focus:outline-none" />
+                      <CountrySelect value={country} onChange={setCountry} name="country" required placeholder="E.g., Germany" />
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Shipping Company <span className="text-rose-500">*</span></label>

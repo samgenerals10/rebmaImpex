@@ -9,6 +9,7 @@ import {
 import { supabase } from '../../lib/supabaseClient';
 import { exportToCSV, exportToPDF } from '../../utils/export';
 import { ChevronRight as BcChevron } from 'lucide-react';
+import CountrySelect from '../../components/CountrySelect';
 
 function InlineBreadcrumb({ crumbs, onBack }: { crumbs: string[]; onBack?: () => void }) {
   return (
@@ -667,9 +668,7 @@ function NewOrderForm({ orders, currentUser, onClose, onSave }: {
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1">Country *</label>
-                      <select value={supplierCountry} onChange={e => setSupplierCountry(e.target.value)} className={inputCls}>
-                        {['Poland','Turkey','Germany','UK','USA','China','India','Other'].map(c => <option key={c}>{c}</option>)}
-                      </select>
+                      <CountrySelect value={supplierCountry} onChange={setSupplierCountry} className={inputCls} required />
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1">Contact Name</label>
