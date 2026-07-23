@@ -28,7 +28,7 @@ import AczoneShell from './components/AczoneShell';
 import LiamFinanceShell from './components/LiamFinanceShell';
 import FinloFlashShell from './components/FinloFlashShell';
 
-import { auth, hr, operations, management, marketing, finance, production, reception, getToken, setToken, clearToken } from './services/apiClient';
+import { auth, hr, operations, management, marketing, finance, production, reception, dispatch as dispatchApi, getToken, setToken, clearToken } from './services/apiClient';
 import { supabase } from './lib/supabaseClient';
 
 import NotesPanel from './components/global/NotesPanel';
@@ -1797,8 +1797,19 @@ export default function App() {
       const driver = [...activeDrivers].sort((a, b) => (loadByDriver[a.id] || 0) - (loadByDriver[b.id] || 0))[0];
 
       await operations.releaseToDispatch(id, driver.vehicle_id || 'Unassigned', driver.full_name, driver.id);
-      addNotification(`Operations released order ${id} to ${driver.full_name} (${driver.vehicle_id || 'no vehicle on file'}). Send WhatsApp directions from Dispatch > Deliveries when ready.`);
+      addNotification(`Operations released order ${id} to ${driver.full_name} (${driver.vehicle_id || 'no vehicle on file'}).`);
       refreshAllData();
+
+      // Fire the WhatsApp directions send immediately so Dispatch doesn't
+      // have to remember the separate manual step in Dispatch > Deliveries.
+      // Best-effort: a missing phone number or a blocked popup shouldn't
+      // undo the release itself, so failures here are surfaced but not thrown.
+      try {
+        await dispatchApi.sendWhatsAppDirections(driver.id);
+        addNotification(`WhatsApp directions opened for ${driver.full_name}. Review and tap Send in the new tab.`);
+      } catch (waErr: any) {
+        addNotification(`Could not auto-send WhatsApp directions to ${driver.full_name}: ${waErr.message || 'unknown error'}. Send manually from Dispatch > Deliveries.`);
+      }
     } catch (err: any) {
       alert(err.message || 'Failed to release to dispatch.');
     }
