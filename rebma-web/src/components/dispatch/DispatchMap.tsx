@@ -13,6 +13,10 @@ export interface DispatchMapDelivery {
   vehicleId?: string | null;
   status?: string | null;
   active_coordinates?: { lat: number; lng: number } | null;
+  // Set by callers that track live driver state (e.g. the GPS Tracking view) —
+  // takes priority over `status` for marker color, since "which delivery is
+  // this" and "where is this driver right now" are different questions.
+  driverState?: 'ON_THE_WAY' | 'AT_COMPANY' | 'RETURNING' | null;
 }
 
 interface LivePoint {
@@ -27,6 +31,10 @@ interface Props {
   height?: number;
   compact?: boolean;
   pollIntervalSeconds?: number;
+  onMarkerClick?: (delivery: DispatchMapDelivery) => void;
+  // Default false — always centers on Accra/Ghana on load rather than
+  // jumping to wherever the first marker happens to be.
+  followFirstMarker?: boolean;
 }
 
 function truckIcon(color: string) {
@@ -46,13 +54,25 @@ const STATUS_COLOR: Record<string, string> = {
   FAILED: '#ef4444',
 };
 
+const DRIVER_STATE_COLOR: Record<string, string> = {
+  ON_THE_WAY: '#3b82f6',   // blue — actively delivering
+  RETURNING: '#f59e0b',    // amber — job done, heading back
+  AT_COMPANY: '#10b981',   // green — idle at base, available
+};
+
+const DRIVER_STATE_LABEL: Record<string, string> = {
+  ON_THE_WAY: 'On the way',
+  RETURNING: 'Returning to company',
+  AT_COMPANY: 'At the company',
+};
+
 function Recenter({ center }: { center: [number, number] }) {
   const map = useMap();
   useEffect(() => { map.setView(center); }, [center[0], center[1]]);
   return null;
 }
 
-export default function DispatchMap({ deliveries, focusDeliveryId, height = 320, compact = false, pollIntervalSeconds = 20 }: Props) {
+export default function DispatchMap({ deliveries, focusDeliveryId, height = 320, compact = false, pollIntervalSeconds = 20, onMarkerClick, followFirstMarker = false }: Props) {
   const [latestByDriver, setLatestByDriver] = useState<Record<string, LivePoint>>({});
   const [trail, setTrail] = useState<LivePoint[]>([]);
   const mountedRef = useRef(true);
@@ -135,9 +155,11 @@ export default function DispatchMap({ deliveries, focusDeliveryId, height = 320,
     })
     .filter((x): x is { delivery: DispatchMapDelivery; point: LivePoint; isLive: boolean } => !!x);
 
-  const center: [number, number] = markers.length > 0
+  const center: [number, number] = focusDeliveryId && markers[0]
     ? [markers[0].point.lat, markers[0].point.lng]
-    : ACCRA;
+    : followFirstMarker && markers.length > 0
+      ? [markers[0].point.lat, markers[0].point.lng]
+      : ACCRA;
 
   return (
     <div style={{ height, borderRadius: compact ? 16 : 20, overflow: 'hidden', border: '1px solid var(--border)' }}>
@@ -150,19 +172,33 @@ export default function DispatchMap({ deliveries, focusDeliveryId, height = 320,
         {trail.length > 1 && (
           <Polyline positions={trail.map(p => [p.lat, p.lng])} pathOptions={{ color: '#3b82f6', weight: 3, opacity: 0.6 }} />
         )}
-        {markers.map(({ delivery, point, isLive }) => (
-          <Marker key={delivery.id} position={[point.lat, point.lng]} icon={truckIcon(STATUS_COLOR[delivery.status || ''] || '#64748b')}>
-            <Popup>
-              <div style={{ fontSize: 12, minWidth: 140 }}>
-                <p style={{ margin: '0 0 4px', fontWeight: 700 }}>{delivery.driverName || 'Driver'}</p>
-                <p style={{ margin: '0 0 4px', color: '#64748b' }}>{delivery.vehicleId || 'Unassigned vehicle'}</p>
-                <p style={{ margin: 0, color: isLive ? '#10b981' : '#94a3b8' }}>
-                  {isLive ? `Live · ${point.recordedAt ? new Date(point.recordedAt).toLocaleTimeString() : 'now'}` : 'No GPS ping yet — last known position'}
-                </p>
-              </div>
-            </Popup>
-          </Marker>
-        ))}
+        {markers.map(({ delivery, point, isLive }) => {
+          const color = delivery.driverState
+            ? DRIVER_STATE_COLOR[delivery.driverState] || '#64748b'
+            : STATUS_COLOR[delivery.status || ''] || '#64748b';
+          return (
+            <Marker
+              key={delivery.id}
+              position={[point.lat, point.lng]}
+              icon={truckIcon(color)}
+              eventHandlers={onMarkerClick ? { click: () => onMarkerClick(delivery) } : undefined}
+            >
+              <Popup>
+                <div style={{ fontSize: 12, minWidth: 140 }}>
+                  <p style={{ margin: '0 0 4px', fontWeight: 700 }}>{delivery.driverName || 'Driver'}</p>
+                  <p style={{ margin: '0 0 4px', color: '#64748b' }}>{delivery.vehicleId || 'Unassigned vehicle'}</p>
+                  {delivery.driverState && (
+                    <p style={{ margin: '0 0 4px', fontWeight: 600, color }}>{DRIVER_STATE_LABEL[delivery.driverState]}</p>
+                  )}
+                  <p style={{ margin: 0, color: isLive ? '#10b981' : '#94a3b8' }}>
+                    {isLive ? `Live · ${point.recordedAt ? new Date(point.recordedAt).toLocaleTimeString() : 'now'}` : 'No GPS ping yet — last known position'}
+                  </p>
+                  {onMarkerClick && <p style={{ margin: '4px 0 0', color: '#94a3b8', fontStyle: 'italic' }}>Click marker for full details</p>}
+                </div>
+              </Popup>
+            </Marker>
+          );
+        })}
       </MapContainer>
       {markers.length === 0 && (
         <div style={{ position: 'relative', top: -height, height, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', color: 'var(--text-muted)', gap: 6 }}>

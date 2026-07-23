@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Plus, Download, Search, MoreVertical, X, ChevronLeft, ChevronRight, FileText } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
+import { useFullscreenToggle, FullscreenButton } from '../../components/global/FullscreenToggle';
 import type { Order, OrderLineItem } from '../../types/erp';
 
 
@@ -113,6 +114,7 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
   const [lineItems, setLineItems] = useState<{ productName: string; quantity: number }[]>([{ productName: '', quantity: 1 }]);
   const [availableProducts, setAvailableProducts] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const tableFullscreen = useFullscreenToggle();
 
   const mapOrder = (r: any): Order => ({
     id: r.id,
@@ -273,6 +275,7 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
           <button onClick={openNewOrderModal} className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--accent)] text-white text-xs font-semibold rounded-xl cursor-pointer hover:opacity-90">
             <Plus className="w-3.5 h-3.5" /> New Order
           </button>
+          <FullscreenButton expanded={tableFullscreen.expanded} onClick={tableFullscreen.toggle} />
         </div>
       </div>
 
@@ -290,7 +293,10 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
         ))}
       </div>
 
-      <div className="rounded-2xl bg-[var(--bg-card)] border border-[var(--border)] p-4 shadow-[var(--box-shadow)]">
+      <div className={`bg-[var(--bg-card)] border border-[var(--border)] p-4 shadow-[var(--box-shadow)] ${tableFullscreen.expanded ? tableFullscreen.fullscreenClass : 'rounded-2xl'}`}>
+        {tableFullscreen.expanded && (
+          <div className="flex justify-end mb-3"><FullscreenButton expanded onClick={tableFullscreen.toggle} /></div>
+        )}
         <div className="flex flex-col sm:flex-row gap-3 mb-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />

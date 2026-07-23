@@ -9,6 +9,7 @@ import { exportToCSV } from '../../utils/export';
 import InvoiceLineItems from '../../components/InvoiceLineItems';
 import MaterialRequisitionsPanel from './MaterialRequisitionsPanel';
 import ApprovalHistoryPanel from '../../components/global/ApprovalHistoryPanel';
+import { useFullscreenToggle, FullscreenButton } from '../../components/global/FullscreenToggle';
 
 interface ApprovalItem {
   id: string;
@@ -94,6 +95,7 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
   // Same idea for Sales Order line items — one editable quantity per product,
   // indexed by position in the order's metadata.items array.
   const [orderItemQty, setOrderItemQty] = useState<string[]>([]);
+  const tableFullscreen = useFullscreenToggle();
 
   useEffect(() => {
     loadApprovals();
@@ -634,6 +636,7 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
           <button onClick={handleExport} className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[var(--border)] text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-card)]">
             <Download size={14} /> Export
           </button>
+          <FullscreenButton expanded={tableFullscreen.expanded} onClick={tableFullscreen.toggle} />
         </div>
       </div>
 
@@ -714,7 +717,10 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
       </div>
 
       {/* Table */}
-      <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl overflow-hidden shadow-[var(--box-shadow)]">
+      <div className={`bg-[var(--bg-card)] border border-[var(--border)] overflow-hidden shadow-[var(--box-shadow)] ${tableFullscreen.expanded ? `${tableFullscreen.fullscreenClass} p-4` : 'rounded-2xl'}`}>
+        {tableFullscreen.expanded && (
+          <div className="flex justify-end mb-3"><FullscreenButton expanded onClick={tableFullscreen.toggle} /></div>
+        )}
         {loading ? (
           <div className="p-10 space-y-4">
             {[1, 2, 3, 4, 5].map(i => (

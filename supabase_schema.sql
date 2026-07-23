@@ -1013,3 +1013,13 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.finance_report_history;
 -- ─────────────────────────────────────────────────────────────────────────────
 UPDATE public.profiles SET role = 'management' WHERE role = 'admin';
 ALTER TABLE public.profiles RENAME COLUMN is_ceo TO is_admin;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- DESTINATION GEOCODING — Dispatch can now enter a delivery destination as a
+-- place name (geocoded via Nominatim) or raw "lat, lng" coordinates when
+-- creating/assigning a delivery; these store the resolved point so it can be
+-- shown/navigated to on the map later. Additive — the app falls back to
+-- skipping them on insert if this hasn't been run yet.
+-- ─────────────────────────────────────────────────────────────────────────────
+ALTER TABLE public.delivery_logs ADD COLUMN IF NOT EXISTS destination_lat NUMERIC;
+ALTER TABLE public.delivery_logs ADD COLUMN IF NOT EXISTS destination_lng NUMERIC;

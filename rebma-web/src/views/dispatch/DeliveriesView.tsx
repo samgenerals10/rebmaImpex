@@ -9,6 +9,8 @@ import {
 import { exportToCSV, exportToPDF } from '../../utils/export';
 import type { DeliveryRecord, Driver } from '../../types/erp';
 import DispatchMap from '../../components/dispatch/DispatchMap';
+import DestinationLocator, { type Coords } from '../../components/dispatch/DestinationLocator';
+import { useFullscreenToggle, FullscreenButton } from '../../components/global/FullscreenToggle';
 
 
 // ── types ─────────────────────────────────────────────────────────────────────
@@ -299,6 +301,7 @@ export default function DeliveriesView({ addNotification, currentUser }: Props) 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [search, setSearch] = useState('');
+  const tableFullscreen = useFullscreenToggle();
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
   const [driverFilter, setDriverFilter] = useState('');
   const [dateFilter, setDateFilter] = useState('');
@@ -306,6 +309,7 @@ export default function DeliveriesView({ addNotification, currentUser }: Props) 
   const [detailRecord, setDetailRecord] = useState<DeliveryRecord | null>(null);
   const [assignTarget, setAssignTarget] = useState<DeliveryRecord | null>(null);
   const [form, setForm] = useState({ clientName: '', orderId: '', destination: '', driverId: '' });
+  const [destinationCoords, setDestinationCoords] = useState<Coords | null>(null);
   const [dispatchableOrders, setDispatchableOrders] = useState<{ id: string; clientName: string; destination: string }[]>([]);
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -508,7 +512,14 @@ export default function DeliveriesView({ addNotification, currentUser }: Props) 
         created_at: dispatchedAt
       };
 
-      const { data: inserted, error } = await supabase.from('delivery_logs').insert([dbRec]).select().single();
+      let { data: inserted, error } = await supabase.from('delivery_logs')
+        .insert([destinationCoords ? { ...dbRec, destination_lat: destinationCoords.lat, destination_lng: destinationCoords.lng } : dbRec])
+        .select().single();
+      if (error?.message?.includes('destination_lat') || error?.message?.includes('destination_lng')) {
+        // Columns not migrated onto the live DB yet — the delivery itself
+        // shouldn't be blocked by a location that can't be saved yet.
+        ({ data: inserted, error } = await supabase.from('delivery_logs').insert([dbRec]).select().single());
+      }
       if (error) throw error;
 
       // The order now has a delivery job — mark it out for delivery so it
@@ -531,6 +542,7 @@ export default function DeliveriesView({ addNotification, currentUser }: Props) 
       addNotification(`New delivery ${rec.id} dispatched.`);
       setShowNew(false);
       setForm({ clientName: '', orderId: '', destination: '', driverId: '' });
+      setDestinationCoords(null);
     } catch (e: any) {
       alert(e.message || 'Failed to dispatch delivery.');
     } finally {
@@ -654,9 +666,10 @@ export default function DeliveriesView({ addNotification, currentUser }: Props) 
       </div>
 
       {/* Table */}
-      <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl overflow-hidden">
+      <div className={`bg-[var(--bg-card)] border border-[var(--border)] overflow-hidden ${tableFullscreen.expanded ? `${tableFullscreen.fullscreenClass} p-4` : 'rounded-2xl'}`}>
         <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--border)]">
           <p className="text-sm font-medium text-[var(--text-primary)]">Deliveries <span className="text-xs text-[var(--text-muted)] ml-1">({filtered.length})</span></p>
+          <FullscreenButton expanded={tableFullscreen.expanded} onClick={tableFullscreen.toggle} />
         </div>
 
         {loading ? (
@@ -788,16 +801,20 @@ export default function DeliveriesView({ addNotification, currentUser }: Props) 
                 </select>
                 <p className="text-[11px] text-[var(--text-muted)] mt-1">Only orders Finance has approved and that don't already have a delivery job show up here.</p>
               </div>
-              {[
-                { label: 'Client Name', key: 'clientName', placeholder: 'e.g. Accra Traders Ltd' },
-                { label: 'Destination', key: 'destination',placeholder: 'Full delivery address' },
-              ].map(f => (
-                <div key={f.key}>
-                  <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">{f.label}</label>
-                  <input value={(form as Record<string, string>)[f.key]} onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))} placeholder={f.placeholder}
-                    className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm focus:outline-none focus:border-[var(--accent)] text-[var(--text-primary)] placeholder-[var(--text-muted)]" />
-                </div>
-              ))}
+              <div>
+                <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Client Name</label>
+                <input value={form.clientName} onChange={e => setForm(p => ({ ...p, clientName: e.target.value }))} placeholder="e.g. Accra Traders Ltd"
+                  className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm focus:outline-none focus:border-[var(--accent)] text-[var(--text-primary)] placeholder-[var(--text-muted)]" />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Destination</label>
+                <DestinationLocator
+                  value={form.destination}
+                  onChange={v => setForm(p => ({ ...p, destination: v }))}
+                  onResolve={setDestinationCoords}
+                  placeholder="Full delivery address, place name, or coordinates"
+                />
+              </div>
               <div>
                 <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Driver (optional)</label>
                 <select value={form.driverId} onChange={e => setForm(p => ({ ...p, driverId: e.target.value }))}

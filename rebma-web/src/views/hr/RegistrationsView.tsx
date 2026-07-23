@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import type { PendingRegistration } from '../../types/erp';
 import { supabase } from '../../lib/supabaseClient';
+import { useFullscreenToggle, FullscreenButton } from '../../components/global/FullscreenToggle';
 
 const DEPARTMENTS = ['All', 'Operations', 'Finance', 'Logistics', 'HR', 'Marketing', 'Reception', 'Production', 'Management', 'Dispatch'];
 const STATUSES = ['All', 'PENDING', 'APPROVED', 'REJECTED'];
@@ -59,6 +60,7 @@ export default function RegistrationsView({ pendingRegistrations, addNotificatio
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const [showEdit, setShowEdit] = useState(false);
   const [editForm, setEditForm] = useState<PendingRegistration | null>(null);
+  const tableFullscreen = useFullscreenToggle();
 
   // Management and HR registrations are the CEO's call, not HR's — HR has no
   // action to take on them, so keep them out of this queue entirely.
@@ -226,10 +228,14 @@ export default function RegistrationsView({ pendingRegistrations, addNotificatio
           className="bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-[var(--text-primary)] text-xs">
           {STATUSES.map(s => <option key={s}>{s}</option>)}
         </select>
+        <FullscreenButton expanded={tableFullscreen.expanded} onClick={tableFullscreen.toggle} />
       </div>
 
       {/* Table */}
-      <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl overflow-hidden">
+      <div className={`bg-[var(--bg-card)] border border-[var(--border)] overflow-hidden ${tableFullscreen.expanded ? `${tableFullscreen.fullscreenClass} p-4` : 'rounded-2xl'}`}>
+        {tableFullscreen.expanded && (
+          <div className="flex justify-end mb-3"><FullscreenButton expanded onClick={tableFullscreen.toggle} /></div>
+        )}
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
             <thead>

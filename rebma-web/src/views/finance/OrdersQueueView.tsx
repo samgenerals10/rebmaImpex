@@ -8,6 +8,7 @@ import {
 import { exportToCSV } from '../../utils/export';
 import type { Order } from '../../types/erp';
 import InvoiceLineItems, { getProductSummary, getProductSummaryWithQty } from '../../components/InvoiceLineItems';
+import { useFullscreenToggle, FullscreenButton } from '../../components/global/FullscreenToggle';
 
 interface Props {
   addNotification?: (msg: string) => void;
@@ -105,6 +106,7 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
   const [allOrders, setAllOrders] = useState<Order[]>([]);
   const [isPartPayment, setIsPartPayment] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const tableFullscreen = useFullscreenToggle();
 
   useEffect(() => {
     if (selected) {
@@ -539,9 +541,12 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
           <h1 className="text-2xl font-bold text-[var(--text-primary)]">Orders Queue</h1>
           <p className="text-sm text-[var(--text-secondary)]">Review and process orders submitted by Marketing</p>
         </div>
-        <button onClick={() => exportToCSV(filtered.map(o => ({ ID: o.id, Customer: o.clientName, Amount: o.totalAmount, Mode: o.paymentMode, Status: o.status, Date: o.createdAt })), ['ID', 'Customer', 'Amount', 'Mode', 'Status', 'Date'], 'orders_queue')} className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[var(--border)] text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-card)]">
-          <Download size={14} /> Export
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => exportToCSV(filtered.map(o => ({ ID: o.id, Customer: o.clientName, Amount: o.totalAmount, Mode: o.paymentMode, Status: o.status, Date: o.createdAt })), ['ID', 'Customer', 'Amount', 'Mode', 'Status', 'Date'], 'orders_queue')} className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[var(--border)] text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-card)]">
+            <Download size={14} /> Export
+          </button>
+          <FullscreenButton expanded={tableFullscreen.expanded} onClick={tableFullscreen.toggle} />
+        </div>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -577,7 +582,10 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
         </select>
       </div>
 
-      <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl overflow-hidden">
+      <div className={`bg-[var(--bg-card)] border border-[var(--border)] overflow-hidden ${tableFullscreen.expanded ? `${tableFullscreen.fullscreenClass} p-4` : 'rounded-2xl'}`}>
+        {tableFullscreen.expanded && (
+          <div className="flex justify-end mb-3"><FullscreenButton expanded onClick={tableFullscreen.toggle} /></div>
+        )}
         {loadingOrders ? (
           <div className="p-6">{[0,1,2,3,4].map(i => <div key={i} className="animate-pulse h-10 bg-slate-200 dark:bg-slate-700 rounded mb-2" />)}</div>
         ) : (

@@ -6,6 +6,7 @@ import { exportToCSV, exportToPDF } from '../utils/export';
 import { supabase } from '../lib/supabaseClient';
 import { meetingsApi } from '../services/apiClient';
 import JitsiCallModal from '../components/collaborative/JitsiCallModal';
+import { useFullscreenToggle, FullscreenButton } from '../components/global/FullscreenToggle';
 import type { ChatMessage, BoardroomMeeting, CurrentUser } from '../types/erp';
 
 interface BoardroomViewProps {
@@ -37,6 +38,10 @@ export default function BoardroomView({
   setMeetingsList
 }: BoardroomViewProps) {
   
+  // Lets the video call card take over the full screen height — a fixed
+  // ~480px max is cramped for an actual meeting.
+  const videoFullscreen = useFullscreenToggle();
+
   // Community chat message input
   const [announcementText, setAnnouncementText] = useState('');
 
@@ -302,12 +307,15 @@ export default function BoardroomView({
             {activeSubTab === 'VideoConf' && (
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Live Jitsi Video Frame */}
-                <div className="lg:col-span-2 p-4 md:p-6 bg-[var(--bg-card)] rounded-2xl shadow-[var(--box-shadow)] border border-[var(--border)] space-y-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Video className="w-5 h-5 text-[var(--accent)]" />
-                    <h3 className="text-base md:text-lg font-bold text-[var(--text-primary)]">Secure Jitsi Video Stream</h3>
+                <div className={`lg:col-span-2 p-4 md:p-6 bg-[var(--bg-card)] shadow-[var(--box-shadow)] border border-[var(--border)] space-y-4 ${videoFullscreen.expanded ? videoFullscreen.fullscreenClass : 'rounded-2xl'}`}>
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <div className="flex items-center gap-2">
+                      <Video className="w-5 h-5 text-[var(--accent)]" />
+                      <h3 className="text-base md:text-lg font-bold text-[var(--text-primary)]">Secure Jitsi Video Stream</h3>
+                    </div>
+                    <FullscreenButton expanded={videoFullscreen.expanded} onClick={videoFullscreen.toggle} />
                   </div>
-                  <div className="h-60 sm:h-80 md:h-[400px] lg:h-[480px] bg-black rounded-2xl overflow-hidden border border-[var(--border)] relative">
+                  <div className={`bg-black rounded-2xl overflow-hidden border border-[var(--border)] relative ${videoFullscreen.expanded ? 'h-[calc(100vh-140px)]' : 'h-60 sm:h-80 md:h-[400px] lg:h-[480px]'}`}>
                     <iframe
                       src="https://meet.jit.si/RembaImpexGhanaExecutiveBoardroom_101"
                       style={{ border: 0, width: '100%', height: '100%' }}

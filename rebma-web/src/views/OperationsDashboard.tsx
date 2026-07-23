@@ -562,7 +562,7 @@ export default function OperationsDashboard({
       quantity: parseInt(target.quantity.value),
       weight: parseFloat(target.weight.value),
       discrepancies: target.discrepancies.value || 'None',
-      createdAt: new Date().toLocaleString(),
+      createdAt: target.intakeDate?.value ? new Date(target.intakeDate.value).toLocaleString() : new Date().toLocaleString(),
       metadata: {
         documentName: docName || null,
         documentData: docBase64 || null,
@@ -1423,10 +1423,14 @@ export default function OperationsDashboard({
                     </div>
                   </div>
 
-                  {/* Date/Time auto-display */}
-                  <div className="p-3 bg-[var(--accent-light)] border border-[var(--border)] rounded-xl text-xs text-[var(--accent)] flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 shrink-0 text-[var(--accent)]" />
-                    <span><strong>Date & Time</strong> will be auto-generated on submission: <strong>{new Date().toLocaleString()}</strong></span>
+                  {/* Date/Time — manual entry, falls back to "now" if left empty */}
+                  <div>
+                    <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Date & Time <span className="text-[var(--text-muted)] font-normal">(defaults to now if empty)</span></label>
+                    <input
+                      type="datetime-local"
+                      name="intakeDate"
+                      className="w-full px-3 py-2 bg-[var(--bg)] text-[var(--text-primary)] border border-[var(--border)] focus:border-[var(--accent)] rounded-xl text-xs focus:outline-none"
+                    />
                   </div>
 
                   {/* Discrepancy Notes */}
