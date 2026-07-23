@@ -55,12 +55,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
   const { data: callerProfiles } = await supabaseAdmin
     .from('profiles')
-    .select('role, is_ceo')
+    .select('role, is_admin')
     .eq('id', callerData.user.id)
     .limit(1);
   const callerProfile = callerProfiles?.[0];
   const callerRole = (callerProfile?.role || '').toUpperCase();
-  if (!callerProfile || (callerRole !== 'DISPATCH' && !callerProfile.is_ceo)) {
+  if (!callerProfile || (callerRole !== 'DISPATCH' && !callerProfile.is_admin)) {
     return res.status(403).json({ error: 'Only Dispatch or CEO can create driver mobile accounts.' });
   }
 
@@ -123,7 +123,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       full_name: driverRow.full_name,
       role: 'dispatch',
       status: 'ACTIVE',
-      is_ceo: false,
+      is_admin: false,
       requires_password_reset: true,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),

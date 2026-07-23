@@ -74,7 +74,7 @@ export default function Header({
   const [showAvatarDropdown, setShowAvatarDropdown] = useState(false);
   const [showPanel, setShowPanel] = useState(false);
 
-  const isCeo = currentUser?.isCeo || currentUser?.department?.toUpperCase() === 'CEO';
+  const isAdmin = currentUser?.isAdmin || currentUser?.department?.toUpperCase() === 'CEO';
   const isSuperAdmin = currentUser?.isSuperAdmin ?? false;
 
   const allDepts = [
@@ -93,7 +93,7 @@ export default function Header({
   ];
 
   const availableDepts = allDepts.filter(d => {
-    if (isSuperAdmin || isCeo) return true;
+    if (isSuperAdmin || isAdmin) return true;
     const rawDept = currentUser?.department || '';
     const normalizedUserDept = rawDept.toUpperCase() === 'HUMAN RESOURCES' ? 'HR' : rawDept.toUpperCase();
     if (d.value === 'BOARDROOM' || d.value === 'SETTINGS') return true;
@@ -114,11 +114,11 @@ export default function Header({
       icon: any;
     }> = [];
 
-    const isCeo = currentUser?.isCeo || currentUser?.department?.toUpperCase() === 'CEO';
+    const isAdmin = currentUser?.isAdmin || currentUser?.department?.toUpperCase() === 'CEO';
     const dept = activeDepartment || currentUser?.department || '';
 
     // 1. Orders search (accessible by CEO, MARKETING, FINANCE, MANAGEMENT)
-    if (isCeo || dept === 'MARKETING' || dept === 'FINANCE' || dept === 'MANAGEMENT') {
+    if (isAdmin || dept === 'MARKETING' || dept === 'FINANCE' || dept === 'MANAGEMENT') {
       const matchedOrders = (ordersList || []).filter((o: any) =>
         String(o.id || '').toLowerCase().includes(q) ||
         String(o.clientName || '').toLowerCase().includes(q) ||
@@ -131,15 +131,15 @@ export default function Header({
           title: `Order: ${o.clientName}`,
           subtitle: `${o.productName || 'Unnamed'} (Qty: ${o.quantity || 1}) · GHS ${Number(o.totalAmount || 0).toLocaleString()} [${o.status}]`,
           category: 'Orders',
-          dept: isCeo ? 'CEO' : (dept === 'FINANCE' ? 'FINANCE' : 'MARKETING'),
-          tab: isCeo ? 'Invoices' : (dept === 'FINANCE' ? 'OrdersQueue' : 'SalesHistory'),
+          dept: isAdmin ? 'CEO' : (dept === 'FINANCE' ? 'FINANCE' : 'MARKETING'),
+          tab: isAdmin ? 'Invoices' : (dept === 'FINANCE' ? 'OrdersQueue' : 'SalesHistory'),
           icon: Clipboard
         });
       });
     }
 
     // 2. Cargo Ingestions (accessible by CEO, OPERATIONS, MANAGEMENT)
-    if (isCeo || dept === 'OPERATIONS' || dept === 'MANAGEMENT') {
+    if (isAdmin || dept === 'OPERATIONS' || dept === 'MANAGEMENT') {
       const matchedCargo = (incomingGoodsList || []).filter((c: any) =>
         String(c.id || '').toLowerCase().includes(q) ||
         String(c.goodsCode || '').toLowerCase().includes(q) ||
@@ -152,15 +152,15 @@ export default function Header({
           title: `Cargo: ${c.productName || 'Incoming Goods'}`,
           subtitle: `Code: ${c.goodsCode} · Carrier: ${c.company} · Qty: ${c.quantity} [${c.status}]`,
           category: 'Logistics / Intake',
-          dept: isCeo ? 'MANAGEMENT' : 'OPERATIONS',
-          tab: isCeo ? 'CargoApproval' : 'LoggedCargo',
+          dept: isAdmin ? 'MANAGEMENT' : 'OPERATIONS',
+          tab: isAdmin ? 'CargoApproval' : 'LoggedCargo',
           icon: Truck
         });
       });
     }
 
     // 3. Payments / Receipts (accessible by CEO, FINANCE)
-    if (isCeo || dept === 'FINANCE') {
+    if (isAdmin || dept === 'FINANCE') {
       const matchedPayments = (paymentsList || []).filter((p: any) =>
         String(p.id || '').toLowerCase().includes(q) ||
         String(p.clientName || '').toLowerCase().includes(q) ||
@@ -181,7 +181,7 @@ export default function Header({
     }
 
     // 4. Staff members (accessible by CEO, HR)
-    if (isCeo || dept === 'HR') {
+    if (isAdmin || dept === 'HR') {
       const matchedStaff = (staffList || []).filter((s: any) =>
         String(s.id || '').toLowerCase().includes(q) ||
         String(s.name || '').toLowerCase().includes(q) ||
@@ -202,7 +202,7 @@ export default function Header({
     }
 
     // 5. Customers (accessible by CEO, MARKETING)
-    if (isCeo || dept === 'MARKETING') {
+    if (isAdmin || dept === 'MARKETING') {
       const matchedCustomers = (customersList || []).filter((c: any) =>
         String(c.id || '').toLowerCase().includes(q) ||
         String(c.name || '').toLowerCase().includes(q) ||
@@ -491,7 +491,7 @@ export default function Header({
             </span>
             <input
               type="text"
-              placeholder={isCeo ? "Search everywhere (CEO mode)..." : `Search ${dept.toLowerCase()} records...`}
+              placeholder={isAdmin ? "Search everywhere (CEO mode)..." : `Search ${dept.toLowerCase()} records...`}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-3.5 py-2 bg-[var(--bg-input)] border border-[var(--border)] rounded-full text-xs text-[var(--text-primary)] placeholder:text-text-muted focus:outline-none focus:border-[var(--accent)] transition-colors"
@@ -502,7 +502,7 @@ export default function Header({
           {searchQuery.trim().length > 0 && (
             <div className="absolute left-0 right-0 top-full mt-2 bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-xl z-[100] max-h-[350px] overflow-y-auto p-2 space-y-1">
               <div className="px-3 py-1.5 text-[10px] font-bold text-[var(--text-muted)] border-b border-[var(--border)] flex justify-between items-center bg-[var(--bg-input)] rounded-t-xl">
-                <span>{isCeo ? 'GLOBAL SEARCH RESULTS' : `${dept} SEARCH RESULTS`}</span>
+                <span>{isAdmin ? 'GLOBAL SEARCH RESULTS' : `${dept} SEARCH RESULTS`}</span>
                 <span className="bg-[var(--accent)] text-white px-1.5 py-0.5 rounded text-[8px] font-bold">{searchResults.length} matches</span>
               </div>
               <div className="divide-y divide-[var(--border)] text-[var(--text-primary)]">

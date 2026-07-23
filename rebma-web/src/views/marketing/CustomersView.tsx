@@ -25,7 +25,7 @@ export default function CustomersView({ customersList, onRegisterCustomer, addNo
   const [editTarget, setEditTarget] = useState<Customer | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Customer | null>(null);
   const [deleting, setDeleting] = useState(false);
-  const [form, setForm] = useState({ name: '', companyName: '', phone: '', location: '', email: '', ghanaCard: '' });
+  const [form, setForm] = useState({ name: '', companyName: '', phone: '', location: '', email: '', ghanaCard: '', isSpecialCustomer: false });
 
   useEffect(() => {
     const load = async () => {
@@ -46,6 +46,8 @@ export default function CustomersView({ customersList, onRegisterCustomer, addNo
           registeredAt: r.registered_at || r.registeredAt || new Date().toISOString(),
           orderHistory: [],
           creditHistory: [],
+          isSpecialCustomer: r.is_special_customer ?? false,
+          discountPercent: Number(r.discount_percent) || 0,
         }));
         const mappedOrders = (oData || []).map((r: any) => ({
           id: r.id,
@@ -107,27 +109,35 @@ export default function CustomersView({ customersList, onRegisterCustomer, addNo
       registeredAt: now,
       orderHistory: [],
       creditHistory: [],
+      isSpecialCustomer: form.isSpecialCustomer,
+      discountPercent: 0,
     };
     onRegisterCustomer(newCust);
     setCustomers(prev => [newCust, ...prev]);
     setShowModal(false);
-    setForm({ name: '', companyName: '', phone: '', location: '', email: '', ghanaCard: '' });
+    setForm({ name: '', companyName: '', phone: '', location: '', email: '', ghanaCard: '', isSpecialCustomer: false });
   };
 
   const openEdit = (c: Customer) => {
     setEditTarget(c);
-    setForm({ name: c.name, companyName: c.companyName || '', phone: c.phone, location: c.location || '', email: c.email || '', ghanaCard: c.ghanaCard || '' });
+    setForm({ name: c.name, companyName: c.companyName || '', phone: c.phone, location: c.location || '', email: c.email || '', ghanaCard: c.ghanaCard || '', isSpecialCustomer: c.isSpecialCustomer || false });
     setShowModal(true);
   };
 
   const handleEditSave = async () => {
     if (!editTarget) return;
     if (!form.name || !form.phone) { addNotification('Name and phone are required.'); return; }
-    const { error } = await supabase.from('customers').update({
+    const basePayload = {
       name: form.name, company_name: form.companyName, phone: form.phone,
       email: form.email || null, location: form.location || null,
-      ghana_card_id: form.ghanaCard || null, updated_at: new Date().toISOString(),
-    }).eq('id', editTarget.id);
+      ghana_card_id: form.ghanaCard || null,
+      updated_at: new Date().toISOString(),
+    };
+    let { error } = await supabase.from('customers').update({ ...basePayload, is_special_customer: form.isSpecialCustomer }).eq('id', editTarget.id);
+    if (error?.message?.includes('is_special_customer')) {
+      // Column not migrated yet — don't let that block saving the rest of the edit.
+      ({ error } = await supabase.from('customers').update(basePayload).eq('id', editTarget.id));
+    }
     if (error) { addNotification(`Update failed: ${error.message}`); return; }
     setCustomers(prev => prev.map(c => c.id === editTarget.id ? { ...c, ...form, companyName: form.companyName } : c));
     setShowModal(false); setEditTarget(null);
@@ -284,7 +294,7 @@ export default function CustomersView({ customersList, onRegisterCustomer, addNo
           <button onClick={exportAllCSV} className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--bg-card)] border border-[var(--border)] text-[var(--text-secondary)] text-xs font-semibold rounded-xl cursor-pointer hover:bg-[var(--accent-light)]">
             <Download className="w-3.5 h-3.5" /> Export All
           </button>
-          <button onClick={() => { setEditTarget(null); setForm({ name:'',companyName:'',phone:'',location:'',email:'',ghanaCard:'' }); setShowModal(true); }} className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--accent)] text-white text-xs font-semibold rounded-xl cursor-pointer hover:opacity-90">
+          <button onClick={() => { setEditTarget(null); setForm({ name:'',companyName:'',phone:'',location:'',email:'',ghanaCard:'',isSpecialCustomer:false }); setShowModal(true); }} className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--accent)] text-white text-xs font-semibold rounded-xl cursor-pointer hover:opacity-90">
             <Plus className="w-3.5 h-3.5" /> Add Customer
           </button>
         </div>
@@ -329,9 +339,13 @@ export default function CustomersView({ customersList, onRegisterCustomer, addNo
                 <div className="w-11 h-11 rounded-xl bg-[var(--accent-light)] flex items-center justify-center text-base font-bold text-[var(--accent)] flex-shrink-0">
                   {initials(c.name)}
                 </div>
-                <div className="min-w-0">
-                  <p className="font-semibold text-sm text-[var(--text-primary)] truncate">{c.name}</p>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5">
+                    <p className="font-semibold text-sm text-[var(--text-primary)] truncate">{c.name}</p>
+                    {c.isSpecialCustomer && <span className="shrink-0 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-700">Special</span>}
+                  </div>
                   <p className="text-xs text-[var(--text-muted)] truncate">{c.companyName}</p>
+                  {!!c.discountPercent && <p className="text-[10px] font-semibold text-emerald-600 mt-0.5">{c.discountPercent}% discount active</p>}
                 </div>
               </div>
               <div className="space-y-1 text-xs text-[var(--text-secondary)]">
@@ -384,6 +398,11 @@ export default function CustomersView({ customersList, onRegisterCustomer, addNo
                   className="w-full px-3 py-2 text-sm rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />
               </div>
             ))}
+            <label className="flex items-center gap-2 text-sm text-[var(--text-secondary)] cursor-pointer">
+              <input type="checkbox" checked={form.isSpecialCustomer} onChange={e => setForm(prev => ({ ...prev, isSpecialCustomer: e.target.checked }))}
+                className="w-4 h-4 rounded accent-[var(--accent)] cursor-pointer" />
+              Special customer <span className="text-xs text-[var(--text-muted)]">(flag for Management's attention — Management sets any discount separately)</span>
+            </label>
             <div className="flex gap-3 pt-2">
               <button onClick={() => { setShowModal(false); setEditTarget(null); }} className="flex-1 py-2 rounded-xl border border-[var(--border)] text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-input)] cursor-pointer">Cancel</button>
               <button onClick={editTarget ? handleEditSave : handleSave} className="flex-1 py-2 rounded-xl bg-[var(--accent)] text-white text-sm font-semibold hover:opacity-90 cursor-pointer">

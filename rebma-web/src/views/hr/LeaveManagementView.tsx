@@ -160,7 +160,7 @@ export default function LeaveManagementView({ currentUser, addNotification }: Pr
   const [form, setForm] = useState({ employeeName: '', department: 'Operations', leaveType: 'Annual' as LeaveRequest['leaveType'], startDate: '', endDate: '', reason: '' });
   const [viewLeave, setViewLeave] = useState<LeaveRequest | null>(null);
 
-  const canApprove = currentUser?.isCeo || currentUser?.department === 'HR';
+  const canApprove = currentUser?.isAdmin || currentUser?.department === 'HR';
 
   useEffect(() => {
     const load = async () => {

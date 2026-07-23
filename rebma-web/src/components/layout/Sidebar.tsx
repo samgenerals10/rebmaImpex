@@ -74,7 +74,7 @@ export default function Sidebar({
     ? lfCollapsed
     : !!sidebarCollapsed && !isHovered;
 
-  const isCeo = currentUser?.isCeo || currentUser?.department === 'CEO';
+  const isAdmin = currentUser?.isAdmin || currentUser?.department === 'CEO';
   const isManagement = currentUser?.department === 'MANAGEMENT';
   const isSuperAdmin = currentUser?.isSuperAdmin ?? false;
   const userDept = currentUser?.department || 'CEO';
@@ -228,7 +228,7 @@ export default function Sidebar({
 
   const availableDepts = allDepts.filter(d => {
     if (isSuperAdmin) return true;
-    const isUserCeo = currentUser?.isCeo || currentUser?.department?.toUpperCase() === 'CEO';
+    const isUserCeo = currentUser?.isAdmin || currentUser?.department?.toUpperCase() === 'CEO';
     if (isUserCeo) return true;
     const rawDept = currentUser?.department || '';
     const normalizedUserDept = rawDept.toUpperCase() === 'HUMAN RESOURCES' ? 'HR' : rawDept.toUpperCase();
@@ -257,7 +257,7 @@ export default function Sidebar({
     addNotification('Opening Executive Boardroom hub.');
   };
 
-  const showLogisticsSection = isCeo || isManagement || currentUser?.department === 'HR';
+  const showLogisticsSection = isAdmin || isManagement || currentUser?.department === 'HR';
 
   // Render nav button for a tab
   const renderNavBtn = (tab: { id: string; label: string; icon: any }, _badge = 0) => {
@@ -463,9 +463,9 @@ export default function Sidebar({
                 </div>
               </>
             )}
-            {!isSuperAdmin && (isCeo || isManagement) && activeDepartment !== userDept && activeDepartment !== 'SETTINGS' && (
+            {!isSuperAdmin && (isAdmin || isManagement) && activeDepartment !== userDept && activeDepartment !== 'SETTINGS' && (
               <div className={`mt-1 px-2 py-0.5 bg-amber-500/15 border border-amber-500/35 rounded-lg text-[9px] text-amber-700 font-semibold text-center transition-all duration-300 ${isActualCollapsed ? 'opacity-0 h-0 py-0 border-none overflow-hidden' : ''}`}>
-                👁 VIEW ONLY — {isCeo ? 'CEO' : 'MANAGEMENT'} ACCESS
+                👁 VIEW ONLY — {isAdmin ? 'CEO' : 'MANAGEMENT'} ACCESS
               </div>
             )}
           </div>

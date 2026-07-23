@@ -144,7 +144,7 @@ export default function HelpDeskPanel({ currentUser, addNotification }: HelpDesk
   const [newsModal, setNewsModal]   = useState({ open: false, ...blankNews });
   const [saving, setSaving]         = useState(false);
 
-  const isManagement = currentUser?.isCeo || currentUser?.department === 'MANAGEMENT' || currentUser?.department === 'CEO';
+  const isManagement = currentUser?.isAdmin || currentUser?.department === 'MANAGEMENT' || currentUser?.department === 'CEO';
 
   const load = useCallback(async () => {
     setLoading(true);

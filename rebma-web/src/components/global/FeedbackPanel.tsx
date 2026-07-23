@@ -43,7 +43,7 @@ export default function FeedbackPanel({ currentUser, addNotification }: Feedback
   const [saving, setSaving]     = useState(false);
   const [expandId, setExpandId] = useState<string | null>(null);
 
-  const isManagement = currentUser?.isCeo || currentUser?.department === 'MANAGEMENT' || currentUser?.department === 'CEO';
+  const isManagement = currentUser?.isAdmin || currentUser?.department === 'MANAGEMENT' || currentUser?.department === 'CEO';
 
   const load = useCallback(async () => {
     if (!currentUser) return;

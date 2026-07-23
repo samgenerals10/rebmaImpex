@@ -143,7 +143,7 @@ export default function App() {
     const d = dept.trim();
     if (d === 'CEO Office (OTP verification)' || d === 'CEO Office (OTP bypass)' || d === 'CEO') return 'CEO';
     if (d === 'Human Resources' || d === 'HR') return 'HR';
-    if (d === 'Management Office' || d === 'MANAGEMENT' || d === 'admin') return 'admin';
+    if (d === 'Management Office' || d === 'MANAGEMENT' || d === 'admin' || d === 'management') return 'management';
     if (d === 'Marketing Department' || d === 'MARKETING' || d === 'marketing') return 'marketing';
     if (d === 'Operations (Warehouse)' || d === 'OPERATIONS' || d === 'operations') return 'operations';
     if (d === 'Finance (Ledgers)' || d === 'FINANCE' || d === 'finance') return 'finance';
@@ -890,7 +890,7 @@ export default function App() {
         fullName: u.fullName,
         email: u.email,
         department: u.department,
-        role: u.isCeo ? 'CEO' : `${u.department} Staff`,
+        role: u.isAdmin ? 'CEO' : `${u.department} Staff`,
         ghanaCard: u.ghanaCardId || 'GHA-XXXXXXX-X',
         phone: u.phone || 'N/A',
         photo: u.photo || undefined,
@@ -989,7 +989,7 @@ export default function App() {
             const rawRole = user.user_metadata?.role || user.user_metadata?.department || 'Staff';
             const userRole = getNormalizedRole(rawRole);
             const fullName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'Employee';
-            const isCeo = user.user_metadata?.is_ceo || userRole === 'CEO';
+            const isAdmin = user.user_metadata?.is_admin || userRole === 'CEO';
 
             // Insert new profile row
             const { error: insertError } = await supabase.from('profiles').insert({
@@ -998,7 +998,7 @@ export default function App() {
               full_name: fullName,
               role: userRole,
               status: 'ACTIVE',
-              is_ceo: isCeo,
+              is_admin: isAdmin,
               requires_password_reset: true,
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString()
@@ -1021,7 +1021,7 @@ export default function App() {
             fullName: profile.fullName,
             email: profile.email,
             department: profile.department,
-            isCeo: profile.isCeo,
+            isAdmin: profile.isAdmin,
             isSuperAdmin: profile.isSuperAdmin ?? false,
             requiresPasswordReset: profile.requiresPasswordReset,
             photo: profile.photo
@@ -1193,7 +1193,7 @@ export default function App() {
             const oldRecord = payload.old as any;
             if (payload.eventType === 'INSERT') {
               if (newRecord.status === 'PENDING_APPROVAL') {
-                if (currentUser.department === 'HR' || currentUser.isCeo) {
+                if (currentUser.department === 'HR' || currentUser.isAdmin) {
                   addNotification(`New pending user: ${newRecord.full_name || 'Unknown'}`, { dept: 'HR', tab: 'Registrations' });
                   addTabAlert('HR');
                   refreshAllData();
@@ -1214,20 +1214,20 @@ export default function App() {
             const newRecord = payload.new as any;
             const oldRecord = payload.old as any;
             if (payload.eventType === 'INSERT') {
-              if (currentUser.department === 'MANAGEMENT' || currentUser.isCeo) {
+              if (currentUser.department === 'MANAGEMENT' || currentUser.isAdmin) {
                 addNotification(`New cargo intake logged for ${newRecord.company || 'N/A'}`, { dept: 'MANAGEMENT', tab: 'CargoApproval' });
                 addTabAlert('MANAGEMENT');
                 refreshAllData();
               }
             } else if (payload.eventType === 'UPDATE') {
               if (oldRecord && oldRecord.status !== 'APPROVED' && newRecord.status === 'APPROVED') {
-                if (currentUser.department === 'OPERATIONS' || currentUser.isCeo) {
+                if (currentUser.department === 'OPERATIONS' || currentUser.isAdmin) {
                   addNotification(`Intake approved: ${newRecord.id}`, { dept: 'OPERATIONS', tab: 'PortIngestion' });
                   addTabAlert('OPERATIONS');
                   refreshAllData();
                 }
               } else if (oldRecord && oldRecord.status !== 'REJECTED' && newRecord.status === 'REJECTED') {
-                if (currentUser.department === 'OPERATIONS' || currentUser.isCeo) {
+                if (currentUser.department === 'OPERATIONS' || currentUser.isAdmin) {
                   addNotification(`Intake rejected: ${newRecord.id}`, { dept: 'OPERATIONS', tab: 'PortIngestion' });
                   addTabAlert('OPERATIONS');
                   refreshAllData();
@@ -1241,7 +1241,7 @@ export default function App() {
           { event: 'INSERT', schema: 'public', table: 'delivery_logs' },
           (payload) => {
             const newRecord = payload.new as any;
-            if (currentUser.department === 'DISPATCH' || currentUser.isCeo) {
+            if (currentUser.department === 'DISPATCH' || currentUser.isAdmin) {
               addNotification(`New delivery assigned: Order ${newRecord.order_id || 'N/A'}`, { dept: 'DISPATCH', tab: 'Deliveries' });
               addTabAlert('DISPATCH');
               refreshAllData();
@@ -1252,7 +1252,7 @@ export default function App() {
           'postgres_changes',
           { event: '*', schema: 'public', table: 'goods_prices' },
           () => {
-            if (currentUser && (['FINANCE', 'MARKETING', 'MANAGEMENT'].includes(currentUser.department) || currentUser.isCeo)) {
+            if (currentUser && (['FINANCE', 'MARKETING', 'MANAGEMENT'].includes(currentUser.department) || currentUser.isAdmin)) {
               const priceTab = currentUser.department === 'MANAGEMENT' ? 'SetPrices' : 'PriceCatalog';
               addNotification(`Price catalog updated`, { dept: currentUser.department, tab: priceTab });
               addTabAlert('FINANCE');
@@ -1302,7 +1302,7 @@ export default function App() {
           'postgres_changes',
           { event: 'INSERT', schema: 'public', table: 'finance_payments' },
           (payload) => {
-            if (currentUser.department === 'FINANCE' || currentUser.isCeo) {
+            if (currentUser.department === 'FINANCE' || currentUser.isAdmin) {
               const newRecord = payload.new as any;
               addNotification(`New payment recorded: ${newRecord.reference || newRecord.id || ''}`, { dept: 'FINANCE', tab: 'Receipts' });
               addTabAlert('FINANCE');
@@ -1596,7 +1596,7 @@ export default function App() {
           fullName: res.user.fullName,
           email: res.user.email,
           department: res.user.department,
-          isCeo: res.user.isCeo,
+          isAdmin: res.user.isAdmin,
           requiresPasswordReset: res.user.requiresPasswordReset,
           photo: res.user.photo
         });
@@ -1731,7 +1731,8 @@ export default function App() {
         companyName: data.companyName || data.name || '',
         ghanaCard: data.ghanaCard,
         email: data.email,
-        photo: data.photo
+        photo: data.photo,
+        isSpecialCustomer: data.isSpecialCustomer
       });
       addNotification(`Marketing registered new customer successfully.`);
       refreshAllData();
@@ -3798,12 +3799,12 @@ function AppInner({
   ordersList, incomingGoodsList, paymentsList, staffList, customersList,
 }: any) {
   const { getSetting } = useCeoSettings();
-  const isCeo = currentUser?.isCeo || currentUser?.department === 'CEO';
+  const isAdmin = currentUser?.isAdmin || currentUser?.department === 'CEO';
   const maintenanceMode = getSetting('maintenance_mode', false);
   const appMasterSwitch = getSetting('app_master_switch', true);
   const [maintenanceRestored, setMaintenanceRestored] = useState(false);
 
-  if (!isCeo && (maintenanceMode || !appMasterSwitch) && !maintenanceRestored) {
+  if (!isAdmin && (maintenanceMode || !appMasterSwitch) && !maintenanceRestored) {
     return <MaintenancePage onAccessRestored={() => setMaintenanceRestored(true)} />;
   }
 

@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabaseClient';
 import {
   TrendingUp, TrendingDown, Clock, CheckCircle, XCircle, AlertTriangle,
   Package, CreditCard, DollarSign, Activity, Users, BarChart2,
-  ArrowRight, RefreshCw
+  ArrowRight, RefreshCw, Edit3, Search
 } from 'lucide-react';
 import PendingApprovalsAlert from '../../components/global/PendingApprovalsAlert';
 import ProductCatalogCard from '../../components/ProductCatalogCard';
@@ -48,6 +48,17 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
   const feedRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [showRevenueModal, setShowRevenueModal] = useState(false);
   const [revenueModalTab, setRevenueModalTab] = useState<'raw' | 'finished'>('raw');
+
+  // Correct a previously-logged cargo entry — quantity/weight/etc were wrong at
+  // intake time. Correcting adjusts current stock by the delta (not an overwrite,
+  // since stock may have already moved since the original entry) and leaves an
+  // audit trail, rather than silently editing a number with nothing else updated.
+  const [cargoSearch, setCargoSearch] = useState('');
+  const [correctionTarget, setCorrectionTarget] = useState<any | null>(null);
+  const [correctionForm, setCorrectionForm] = useState({
+    country: '', company: '', quantity: '', weight: '', destination: '', discrepancies: '', unitPrice: '', note: '',
+  });
+  const [savingCorrection, setSavingCorrection] = useState(false);
 
   const firstName = currentUser?.fullName?.split(' ')[0] || 'Manager';
 
@@ -531,6 +542,90 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
       };
     })
     .filter(d => d.damagedCount > 0);
+
+  const approvedCargo = cargoIntake
+    .filter(c => c.status === 'APPROVED')
+    .filter(c => !cargoSearch || String(c.product_name || '').toLowerCase().includes(cargoSearch.toLowerCase()) || String(c.goods_code || '').toLowerCase().includes(cargoSearch.toLowerCase()) || String(c.company || '').toLowerCase().includes(cargoSearch.toLowerCase()));
+
+  function openCorrection(c: any) {
+    setCorrectionTarget(c);
+    setCorrectionForm({
+      country: c.country || '',
+      company: c.company || '',
+      quantity: String(c.quantity ?? ''),
+      weight: String(c.weight ?? ''),
+      destination: c.destination || '',
+      discrepancies: (c.discrepancies && c.discrepancies !== 'None') ? c.discrepancies : '',
+      unitPrice: String(c.unit_price ?? ''),
+      note: '',
+    });
+  }
+
+  async function saveCorrection() {
+    if (!correctionTarget) return;
+    if (!correctionForm.note.trim()) { addNotification?.('A reason for the correction is required.'); return; }
+    const oldQty = Number(correctionTarget.quantity) || 0;
+    const newQty = Number(correctionForm.quantity) || 0;
+    const delta = newQty - oldQty;
+    const performedBy = currentUser?.fullName || 'Management';
+    // stock.updated_by / stock_ledger.performed_by are UUID columns on the live DB
+    // (supabase_schema.sql says TEXT, but the live schema disagrees — same drift
+    // documented elsewhere in this file) — they need the actual auth user id, not
+    // a display name. The name still goes in notes/global_audit_history, which
+    // are genuinely TEXT.
+    const { data: sessionData } = await supabase.auth.getSession();
+    const performerId = sessionData.session?.user?.id || null;
+
+    setSavingCorrection(true);
+    try {
+      const { error: cargoErr } = await supabase.from('cargo_intake').update({
+        country: correctionForm.country || null,
+        company: correctionForm.company || null,
+        quantity: newQty,
+        weight: Number(correctionForm.weight) || 0,
+        destination: correctionForm.destination || null,
+        discrepancies: correctionForm.discrepancies || 'None',
+        unit_price: correctionForm.unitPrice ? Number(correctionForm.unitPrice) : null,
+      }).eq('id', correctionTarget.id);
+      if (cargoErr) throw cargoErr;
+
+      if (delta !== 0) {
+        const productName = correctionTarget.product_name;
+        const { data: stockRow } = await supabase.from('stock').select('id, quantity').eq('product_name', productName).maybeSingle();
+        if (stockRow) {
+          const { error: stockErr } = await supabase.from('stock').update({ quantity: Math.max(0, Number(stockRow.quantity || 0) + delta), last_updated: new Date().toISOString(), updated_by: performerId }).eq('id', stockRow.id);
+          if (stockErr) throw stockErr;
+        }
+        const { error: ledgerErr } = await supabase.from('stock_ledger').insert({
+          product_name: productName,
+          movement_type: 'CORRECTION',
+          quantity: delta,
+          reference: correctionTarget.goods_code || correctionTarget.id,
+          notes: `Correction by ${performedBy}: qty ${oldQty} → ${newQty}. Reason: ${correctionForm.note.trim()}`,
+          performed_by: performerId,
+          created_at: new Date().toISOString(),
+        });
+        if (ledgerErr) throw ledgerErr;
+      }
+
+      await supabase.from('global_audit_history').insert({
+        action: `CORRECT_CARGO: ${correctionTarget.goods_code || correctionTarget.id} — ${correctionTarget.product_name}`,
+        department: 'MANAGEMENT',
+        performed_by: performedBy,
+        details: `Corrected cargo entry. Qty ${oldQty} → ${newQty}${delta !== 0 ? ` (stock adjusted by ${delta > 0 ? '+' : ''}${delta})` : ''}. Reason: ${correctionForm.note.trim()}`,
+        timestamp: new Date().toISOString(),
+      });
+
+      addNotification?.(`Cargo entry ${correctionTarget.goods_code || ''} corrected.`);
+      setCorrectionTarget(null);
+      fetchData();
+    } catch (e: any) {
+      console.error(e);
+      addNotification?.(e.message || 'Failed to save correction.');
+    } finally {
+      setSavingCorrection(false);
+    }
+  }
 
   const cashflowValue = cashflowData[cashflowData.length - 1] || { income: 0, expense: 0 };
   const cashflowDisplay = cashflowTab === 'income' ? cashflowValue.income : cashflowTab === 'expense' ? cashflowValue.expense : cashflowValue.income - cashflowValue.expense;
@@ -1183,6 +1278,123 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
           </table>
         </div>
       </div>
+
+      {/* ROW 9: Correct a logged cargo entry */}
+      <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5 shadow-[var(--box-shadow)]">
+        <div className="flex items-center justify-between mb-4 border-b border-[var(--border)] pb-3 flex-wrap gap-3">
+          <div>
+            <h3 className="font-bold text-lg text-[var(--text-primary)] flex items-center gap-2">
+              <Edit3 size={16} className="text-[var(--accent)]" /> Correct a Cargo Entry
+            </h3>
+            <p className="text-xs text-[var(--text-muted)] mt-0.5">Fix a mistake in a previously-approved intake — corrections adjust current stock and are logged to the audit trail.</p>
+          </div>
+          <div className="relative w-full sm:w-64">
+            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
+            <input
+              value={cargoSearch}
+              onChange={e => setCargoSearch(e.target.value)}
+              placeholder="Search by product, goods code, supplier..."
+              className="w-full pl-8 pr-3 py-2 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent)]"
+            />
+          </div>
+        </div>
+        <div className="overflow-x-auto max-h-80 overflow-y-auto">
+          <table className="w-full text-xs text-left">
+            <thead className="sticky top-0 bg-[var(--bg-input)]">
+              <tr className="border-b border-[var(--border)]">
+                {['Goods Code', 'Product', 'Supplier', 'Qty', 'Weight (t)', ''].map(h => (
+                  <th key={h} className="py-2 px-3 text-[var(--text-muted)] font-semibold">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[var(--border)]">
+              {approvedCargo.length === 0 ? (
+                <tr><td colSpan={6} className="py-8 text-center text-[var(--text-muted)]">No approved cargo entries found.</td></tr>
+              ) : approvedCargo.map(c => (
+                <tr key={c.id} className="hover:bg-[var(--accent-light)]">
+                  <td className="py-2.5 px-3 font-mono text-[10px] text-[var(--text-secondary)]">{c.goods_code || c.id.slice(0, 8)}</td>
+                  <td className="py-2.5 px-3 font-semibold text-[var(--text-primary)]">{c.product_name}</td>
+                  <td className="py-2.5 px-3 text-[var(--text-secondary)]">{c.company || '—'}</td>
+                  <td className="py-2.5 px-3 text-[var(--text-secondary)]">{c.quantity}</td>
+                  <td className="py-2.5 px-3 text-[var(--text-secondary)]">{c.weight}</td>
+                  <td className="py-2.5 px-3">
+                    <button onClick={() => openCorrection(c)} className="px-2.5 py-1 rounded-lg text-[10px] font-semibold border border-[var(--border)] text-[var(--accent)] hover:bg-[var(--accent-light)] cursor-pointer">
+                      Correct
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Correct cargo entry modal */}
+      {correctionTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-lg rounded-2xl bg-[var(--bg-card)] border border-[var(--border)] shadow-xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+            <div>
+              <h3 className="font-bold text-[var(--text-primary)]">Correct Entry — {correctionTarget.product_name}</h3>
+              <p className="text-xs text-[var(--text-muted)] mt-0.5">Goods Code: {correctionTarget.goods_code || correctionTarget.id}</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Quantity</label>
+                <input type="number" value={correctionForm.quantity} onChange={e => setCorrectionForm(f => ({ ...f, quantity: e.target.value }))}
+                  className="w-full px-3 py-2 text-sm rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Weight (tons)</label>
+                <input type="number" step="0.001" value={correctionForm.weight} onChange={e => setCorrectionForm(f => ({ ...f, weight: e.target.value }))}
+                  className="w-full px-3 py-2 text-sm rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Country</label>
+                <input value={correctionForm.country} onChange={e => setCorrectionForm(f => ({ ...f, country: e.target.value }))}
+                  className="w-full px-3 py-2 text-sm rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Company / Carrier</label>
+                <input value={correctionForm.company} onChange={e => setCorrectionForm(f => ({ ...f, company: e.target.value }))}
+                  className="w-full px-3 py-2 text-sm rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />
+              </div>
+              <div className="col-span-2">
+                <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Destination</label>
+                <input value={correctionForm.destination} onChange={e => setCorrectionForm(f => ({ ...f, destination: e.target.value }))}
+                  className="w-full px-3 py-2 text-sm rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />
+              </div>
+              <div className="col-span-2">
+                <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Discrepancies</label>
+                <input value={correctionForm.discrepancies} onChange={e => setCorrectionForm(f => ({ ...f, discrepancies: e.target.value }))}
+                  placeholder="None"
+                  className="w-full px-3 py-2 text-sm rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />
+              </div>
+              <div className="col-span-2">
+                <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Unit Cost (GHS)</label>
+                <input type="number" step="0.01" value={correctionForm.unitPrice} onChange={e => setCorrectionForm(f => ({ ...f, unitPrice: e.target.value }))}
+                  className="w-full px-3 py-2 text-sm rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Reason for correction <span className="text-rose-500">*</span></label>
+              <textarea value={correctionForm.note} onChange={e => setCorrectionForm(f => ({ ...f, note: e.target.value }))} rows={2}
+                placeholder="E.g. Recount found 10 fewer units than originally logged"
+                className="w-full px-3 py-2 text-sm rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-primary)] resize-none focus:outline-none focus:border-[var(--accent)]" />
+            </div>
+            {Number(correctionForm.quantity) !== (Number(correctionTarget.quantity) || 0) && (
+              <p className="text-[11px] text-amber-600 bg-amber-500/10 rounded-lg px-3 py-2">
+                Stock will be adjusted by {Number(correctionForm.quantity) - (Number(correctionTarget.quantity) || 0) > 0 ? '+' : ''}{Number(correctionForm.quantity) - (Number(correctionTarget.quantity) || 0)} units — not overwritten, since some may already be sold or dispatched. Selling price and any related damaged-goods expense record are not auto-updated; review those separately if this correction is material.
+              </p>
+            )}
+            <div className="flex gap-3 pt-2">
+              <button onClick={() => setCorrectionTarget(null)} disabled={savingCorrection} className="flex-1 py-2 rounded-xl border border-[var(--border)] text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-input)] cursor-pointer disabled:opacity-50">Cancel</button>
+              <button onClick={saveCorrection} disabled={savingCorrection} className="flex-1 py-2 rounded-xl bg-[var(--accent)] text-white text-sm font-semibold hover:opacity-90 cursor-pointer disabled:opacity-50">
+                {savingCorrection ? 'Saving…' : 'Save Correction'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Revenue drill-down modal */}
       {showRevenueModal && (

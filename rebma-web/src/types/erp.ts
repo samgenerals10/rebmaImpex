@@ -11,6 +11,7 @@ export interface Order {
   id: string;
   ticketNumber?: string;
   clientName: string;
+  customerId?: string;
   productName?: string;
   destination?: string;
   ghanaCard?: string;
@@ -81,7 +82,7 @@ export interface CurrentUser {
   fullName: string;
   email: string;
   department: string;
-  isCeo: boolean;
+  isAdmin: boolean;
   isSuperAdmin?: boolean;
   photo?: string;
   requiresPasswordReset?: boolean;
@@ -119,6 +120,8 @@ export interface Customer {
   registeredAt: string;
   orderHistory?: string[];
   creditHistory?: Array<{ orderId: string; amount: number; date: string; status: string }>;
+  isSpecialCustomer?: boolean;
+  discountPercent?: number;
 }
 
 export interface Driver {

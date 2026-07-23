@@ -17,6 +17,10 @@ export default function MaterialRequisitionsPanel({ addNotification, currentUser
   const [requisitions, setRequisitions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [submittingId, setSubmittingId] = useState<string | null>(null);
+  // Management can adjust a requested quantity before approving — keyed by
+  // `${requisitionId}:${itemIndex}` so edits don't clash across rows. Falls
+  // back to the originally-requested quantity for any item left untouched.
+  const [itemEdits, setItemEdits] = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -46,12 +50,21 @@ export default function MaterialRequisitionsPanel({ addNotification, currentUser
     if (submittingId) return;
     setSubmittingId(req.id);
     try {
-      const items = Array.isArray(req.items) ? req.items : [];
+      const originalItems = Array.isArray(req.items) ? req.items : [];
+      // Substitute Management's edited quantity per line item, if any —
+      // whatever's approved here is what Finance/Operations act on downstream.
+      const items = approve
+        ? originalItems.map((i: any, idx: number) => {
+            const draft = itemEdits[`${req.id}:${idx}`];
+            const qty = draft !== undefined ? Math.max(0, Number(draft) || 0) : i.quantity;
+            return { ...i, quantity: qty };
+          })
+        : originalItems;
       const summary = items.map((i: any) => `${i.materialName} (${i.quantity}${i.unit ? ' ' + i.unit : ''})`).join(', ') || 'Materials';
 
       await supabase
         .from('material_requisitions')
-        .update({ status: approve ? 'PENDING_FINANCE' : 'REJECTED', updated_at: new Date().toISOString() })
+        .update({ status: approve ? 'PENDING_FINANCE' : 'REJECTED', items, updated_at: new Date().toISOString() })
         .eq('id', req.id);
 
       if (approve) {
@@ -73,6 +86,11 @@ export default function MaterialRequisitionsPanel({ addNotification, currentUser
       }]);
 
       addNotification?.(`Material requisition ${approve ? 'approved — sent to Finance' : 'rejected'}.`);
+      setItemEdits(prev => {
+        const next = { ...prev };
+        originalItems.forEach((_: any, idx: number) => { delete next[`${req.id}:${idx}`]; });
+        return next;
+      });
       await load();
     } catch (e: any) {
       addNotification?.(e.message || 'Failed to process requisition.');
@@ -94,30 +112,50 @@ export default function MaterialRequisitionsPanel({ addNotification, currentUser
         {loading && <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>Loading…</p>}
         {!loading && requisitions.map(req => {
           const items = Array.isArray(req.items) ? req.items : [];
-          const summary = items.map((i: any) => `${i.materialName} (${i.quantity}${i.unit ? ' ' + i.unit : ''})`).join(', ') || 'Materials';
           return (
-            <div key={req.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 14px', background: 'var(--bg-input)', borderRadius: 10, border: '1px solid var(--border)', flexWrap: 'wrap' }}>
-              <div style={{ minWidth: 0 }}>
-                <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{summary}</p>
-                <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--text-muted)' }}>
+            <div key={req.id} style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '10px 14px', background: 'var(--bg-input)', borderRadius: 10, border: '1px solid var(--border)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                <p style={{ margin: 0, fontSize: 11, color: 'var(--text-muted)' }}>
                   Requested by {req.requested_by || 'Production'} · {req.created_at ? new Date(req.created_at).toLocaleDateString() : ''}{req.notes ? ` · ${req.notes}` : ''}
                 </p>
+                <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                  <button
+                    disabled={submittingId === req.id}
+                    onClick={() => handleDecision(req, true)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(16,185,129,0.12)', color: '#059669', border: '1px solid rgba(16,185,129,0.25)', borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', opacity: submittingId === req.id ? 0.5 : 1 }}
+                  >
+                    <CheckCircle size={13} /> Approve
+                  </button>
+                  <button
+                    disabled={submittingId === req.id}
+                    onClick={() => handleDecision(req, false)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(239,68,68,0.1)', color: '#dc2626', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', opacity: submittingId === req.id ? 0.5 : 1 }}
+                  >
+                    <XCircle size={13} /> Reject
+                  </button>
+                </div>
               </div>
-              <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-                <button
-                  disabled={submittingId === req.id}
-                  onClick={() => handleDecision(req, true)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(16,185,129,0.12)', color: '#059669', border: '1px solid rgba(16,185,129,0.25)', borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', opacity: submittingId === req.id ? 0.5 : 1 }}
-                >
-                  <CheckCircle size={13} /> Approve
-                </button>
-                <button
-                  disabled={submittingId === req.id}
-                  onClick={() => handleDecision(req, false)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(239,68,68,0.1)', color: '#dc2626', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', opacity: submittingId === req.id ? 0.5 : 1 }}
-                >
-                  <XCircle size={13} /> Reject
-                </button>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {items.map((item: any, idx: number) => {
+                  const key = `${req.id}:${idx}`;
+                  const draft = itemEdits[key];
+                  return (
+                    <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', flex: 1, minWidth: 0 }}>{item.materialName}</span>
+                      <input
+                        type="number"
+                        min={0}
+                        value={draft !== undefined ? draft : String(item.quantity ?? '')}
+                        onChange={e => setItemEdits(prev => ({ ...prev, [key]: e.target.value }))}
+                        style={{ width: 72, fontSize: 12, fontFamily: 'monospace', padding: '4px 8px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-primary)' }}
+                      />
+                      <span style={{ fontSize: 11, color: 'var(--text-muted)', minWidth: 32 }}>{item.unit || 'units'}</span>
+                      {draft !== undefined && Number(draft) !== item.quantity && (
+                        <span style={{ fontSize: 10, color: '#b45309' }}>was {item.quantity}</span>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           );

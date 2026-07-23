@@ -13,11 +13,11 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     email TEXT UNIQUE NOT NULL,
     full_name TEXT,
-    role TEXT NOT NULL, -- Database checks match normalized keys ('CEO', 'HR', 'admin', 'marketing', 'operations', 'finance', 'production', 'receptionist', 'dispatch', 'logistics')
+    role TEXT NOT NULL, -- Database checks match normalized keys ('CEO', 'HR', 'management', 'marketing', 'operations', 'finance', 'production', 'receptionist', 'dispatch', 'logistics')
     ghana_card_id TEXT,
     phone TEXT,
     status TEXT DEFAULT 'PENDING_APPROVAL', -- 'ACTIVE', 'PENDING_APPROVAL', 'REJECTED'
-    is_ceo BOOLEAN DEFAULT FALSE,
+    is_admin BOOLEAN DEFAULT FALSE, -- true only for the CEO/superuser account, not the 'management' department role
     requires_password_reset BOOLEAN DEFAULT FALSE,
     photo TEXT,
     password_hash TEXT,
@@ -28,9 +28,11 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     last_login_at TIMESTAMPTZ
 );
 
--- Ensure profiles check constraint matches the application roles
--- 'management' added: the Management department had no valid role value at
--- all until now, so HR could never actually create a real Management login.
+-- Ensure profiles check constraint matches the application roles.
+-- 'management' is the Management department's real role value; 'admin' is kept
+-- in the allowed list only for backward compatibility with any row that
+-- predates the admin->management rename migration (see bottom of this file) —
+-- the app itself never writes 'admin' anymore.
 ALTER TABLE public.profiles DROP CONSTRAINT IF EXISTS profiles_role_check;
 ALTER TABLE public.profiles ADD CONSTRAINT profiles_role_check CHECK (
     role IN ('CEO', 'HR', 'admin', 'marketing', 'operations', 'finance', 'production', 'receptionist', 'dispatch', 'logistics', 'management', 'Staff')
@@ -98,6 +100,9 @@ CREATE TABLE IF NOT EXISTS public.orders (
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS payment_mode TEXT DEFAULT 'CASH';
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS created_by TEXT;
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS metadata JSONB;
+-- Links an order back to a real customer record so a per-customer discount can be
+-- looked up reliably — orders previously only stored the free-text client_name.
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS customer_id TEXT REFERENCES public.customers(id);
 
 -- GLOBAL AUDIT HISTORY TABLE
 CREATE TABLE IF NOT EXISTS public.global_audit_history (
@@ -143,6 +148,11 @@ ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS customer_photo TEXT;
 ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS ghana_card_front TEXT;
 ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS ghana_card_back TEXT;
 ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+-- Special-customer flag (set by Marketing at registration, informational only) and
+-- the discount Management awards based on the customer's actual performance/loyalty —
+-- the discount is not gated by the flag; any customer can earn one.
+ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS is_special_customer BOOLEAN DEFAULT false;
+ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS discount_percent NUMERIC DEFAULT 0;
 
 -- GOODS PRICES (CATALOG) TABLE
 CREATE TABLE IF NOT EXISTS public.goods_prices (
@@ -263,17 +273,17 @@ $$;
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger AS $$
 BEGIN
-  INSERT INTO public.profiles (id, email, full_name, role, status, is_ceo, requires_password_reset)
+  INSERT INTO public.profiles (id, email, full_name, role, status, is_admin, requires_password_reset)
   VALUES (
     new.id,
     new.email,
     COALESCE(new.raw_user_meta_data->>'full_name', 'Employee'),
     COALESCE(new.raw_user_meta_data->>'department', 'Staff'),
-    CASE 
+    CASE
       WHEN (new.raw_user_meta_data->>'role') IN ('CEO', 'HR') THEN 'ACTIVE'
       ELSE 'PENDING_APPROVAL'
     END,
-    COALESCE((new.raw_user_meta_data->>'is_ceo')::boolean, (new.raw_user_meta_data->>'department' = 'CEO'), false),
+    COALESCE((new.raw_user_meta_data->>'is_admin')::boolean, (new.raw_user_meta_data->>'department' = 'CEO'), false),
     true
   )
   ON CONFLICT (id) DO NOTHING;
@@ -988,3 +998,18 @@ CREATE POLICY "Allow authenticated users full access to finance_report_history" 
 ALTER TABLE public.delivery_logs ADD COLUMN IF NOT EXISTS dispatch_sequence INTEGER;
 ALTER TABLE public.delivery_logs ADD COLUMN IF NOT EXISTS whatsapp_sent_at TIMESTAMPTZ;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.finance_report_history;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- NAMING CLEANUP — 'admin' (profiles.role) was the internal label for the
+-- Management department, which read backwards next to the CEO's actual
+-- superuser flag (is_ceo). This renames both so they mean what they look like
+-- they mean: role value 'admin' -> 'management' (the app has written/read
+-- 'management' as an accepted alias since the role check constraint was
+-- extended above, so this is safe to run any time), and column is_ceo ->
+-- is_admin. Pure rename — no behavior change once applied. RUN THIS ONLY
+-- AFTER deploying the matching application code (the app now reads/writes
+-- is_admin and 'management' exclusively), since the two must land together
+-- for CEO/Management gating to keep working.
+-- ─────────────────────────────────────────────────────────────────────────────
+UPDATE public.profiles SET role = 'management' WHERE role = 'admin';
+ALTER TABLE public.profiles RENAME COLUMN is_ceo TO is_admin;

@@ -48,10 +48,10 @@ export default function PayrollPanel({ currentUser, addNotification }: PayrollPa
 
   const isHR = currentUser?.department === 'HR' || currentUser?.department === 'HUMAN RESOURCES';
   const isFinance = currentUser?.department === 'FINANCE';
-  const isCeo = currentUser?.isCeo || currentUser?.department === 'CEO' || currentUser?.department === 'MANAGEMENT';
+  const isAdmin = currentUser?.isAdmin || currentUser?.department === 'CEO' || currentUser?.department === 'MANAGEMENT';
 
   const canManage = isHR;
-  const canViewTotals = isFinance || isCeo;
+  const canViewTotals = isFinance || isAdmin;
 
   const load = useCallback(async () => {
     if (!currentUser) return;

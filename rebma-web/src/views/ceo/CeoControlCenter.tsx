@@ -11,7 +11,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { useCeoSettings } from '../../contexts/CeoSettingsContext';
 
 interface Props {
-  currentUser: { id?: string; fullName: string; department: string; isCeo?: boolean } | null;
+  currentUser: { id?: string; fullName: string; department: string; isAdmin?: boolean } | null;
   addNotification: (msg: string) => void;
 }
 

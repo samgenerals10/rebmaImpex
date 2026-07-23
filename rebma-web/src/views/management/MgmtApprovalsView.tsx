@@ -13,7 +13,7 @@ import ApprovalHistoryPanel from '../../components/global/ApprovalHistoryPanel';
 interface ApprovalItem {
   id: string;
   requestId: string;
-  type: 'Cargo Intake' | 'Credit Order' | 'Staff Registration' | 'Price Review' | 'Production Request' | 'General Purchase' | 'Float Request';
+  type: 'Cargo Intake' | 'Sales Order' | 'Staff Registration' | 'Price Review' | 'Production Request' | 'General Purchase' | 'Float Request';
   description: string;
   department: string;
   amount: number | null;
@@ -32,7 +32,7 @@ interface Props {
 
 const TYPE_COLORS: Record<string, string> = {
   'Cargo Intake': 'bg-blue-100 text-blue-700',
-  'Credit Order': 'bg-purple-100 text-purple-700',
+  'Sales Order': 'bg-purple-100 text-purple-700',
   'Staff Registration': 'bg-green-100 text-green-700',
   'Price Review': 'bg-pink-100 text-pink-700',
   'Production Request': 'bg-cyan-100 text-cyan-700',
@@ -54,7 +54,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 const TYPE_ICONS: Record<string, React.ElementType> = {
   'Cargo Intake': Package,
-  'Credit Order': CreditCard,
+  'Sales Order': CreditCard,
   'Staff Registration': UserPlus,
   'Price Review': Tag,
   'Production Request': ShoppingCart,
@@ -62,7 +62,11 @@ const TYPE_ICONS: Record<string, React.ElementType> = {
   'Float Request': Wallet,
 };
 
-const TABS = ['All', 'Cargo Intake', 'Credit Order', 'Staff Registration', 'Production Request', 'General Purchase', 'Float Request'] as const;
+// Staff Registration stays in the type union / colors / icons above so old
+// history rows still render correctly, but it's no longer a live approval
+// type here — registration approval is CEO/HR-only now (see ceo/ApprovalsView.tsx
+// and hr/RegistrationsView.tsx).
+const TABS = ['All', 'Cargo Intake', 'Sales Order', 'Production Request', 'General Purchase', 'Float Request'] as const;
 
 export default function MgmtApprovalsView({ addNotification, currentUser }: Props) {
   const [items, setItems] = useState<ApprovalItem[]>([]);
@@ -83,6 +87,13 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
   const [confirmedDamages, setConfirmedDamages] = useState(0);
   const [costPerUnit, setCostPerUnit] = useState(0);
   const [submitting, setSubmitting] = useState(false);
+  // Management can adjust the requested quantity on a Production Request before
+  // approving — the stock addition and fulfillment ticket reflect what was
+  // actually authorized, not just what was originally asked for.
+  const [approvedQty, setApprovedQty] = useState('');
+  // Same idea for Sales Order line items — one editable quantity per product,
+  // indexed by position in the order's metadata.items array.
+  const [orderItemQty, setOrderItemQty] = useState<string[]>([]);
 
   useEffect(() => {
     loadApprovals();
@@ -111,7 +122,7 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
           const reason = noteMatch?.[2]?.trim();
           const inferredType: ApprovalItem['type'] =
             requestId.startsWith('CARGO') ? 'Cargo Intake'
-            : requestId.startsWith('ORD') ? 'Credit Order'
+            : requestId.startsWith('ORD') ? 'Sales Order'
             : requestId.startsWith('REG') ? 'Staff Registration'
             : requestId.startsWith('PROD') ? 'Production Request'
             : requestId.startsWith('PURCH') ? 'General Purchase'
@@ -156,14 +167,12 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
       const [
         { data: cargoData },
         { data: ordersData },
-        { data: profilesData },
         { data: productionData },
         { data: purchasesData },
         { data: floatData },
       ] = await Promise.all([
         supabase.from('cargo_intake').select('*').eq('status', 'PENDING_MANAGEMENT_APPROVAL').order('created_at', { ascending: false }).limit(50),
         supabase.from('orders').select('*').eq('status', 'PENDING_MANAGEMENT').order('created_at', { ascending: false }).limit(50),
-        supabase.from('profiles').select('*').eq('status', 'PENDING_APPROVAL').order('created_at', { ascending: false }).limit(50),
         supabase.from('production_requests').select('*').eq('status', 'PENDING_MANAGEMENT').order('created_at', { ascending: false }).limit(50).then(r => r, () => ({ data: [] })),
         supabase.from('general_purchases').select('*').eq('status', 'PENDING_MANAGEMENT_APPROVAL').order('created_at', { ascending: false }).limit(50).then(r => r, () => ({ data: [] })),
         supabase.from('float_requests').select('*').eq('status', 'PENDING_MANAGEMENT').order('created_at', { ascending: false }).limit(50).then(r => r, () => ({ data: [] })),
@@ -192,7 +201,7 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
       const mappedOrders: ApprovalItem[] = (ordersData || []).map((row: any) => ({
         id: row.id,
         requestId: `ORD-${row.id.slice(-6).toUpperCase()}`,
-        type: 'Credit Order' as const,
+        type: 'Sales Order' as const,
         description: `${row.payment_mode === 'CREDIT' ? 'Credit order' : `${row.payment_mode || 'Cash'} order`} for ${row.client_name} — GHS ${Number(row.total_amount || 0).toLocaleString()}`,
         department: 'MARKETING',
         amount: Number(row.total_amount || 0),
@@ -200,20 +209,6 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
         priority: 'High' as const,
         status: 'Pending' as ApprovalItem['status'],
         submittedBy: row.client_name || 'Marketing',
-        raw: row,
-      }));
-
-      const mappedProfiles: ApprovalItem[] = (profilesData || []).map((row: any) => ({
-        id: row.id,
-        requestId: `REG-${row.id.slice(-6).toUpperCase()}`,
-        type: 'Staff Registration' as const,
-        description: `Teammate signup: ${row.full_name || 'Employee'} (${row.role || row.department || 'Staff'})`,
-        department: 'HR',
-        amount: null,
-        date: row.created_at?.slice(0, 10) || '',
-        priority: 'Medium' as const,
-        status: 'Pending' as ApprovalItem['status'],
-        submittedBy: row.full_name || 'HR Department',
         raw: row,
       }));
 
@@ -259,7 +254,7 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
         raw: row,
       }));
 
-      setItems([...mappedCargo, ...mappedOrders, ...mappedProfiles, ...mappedProduction, ...mappedPurchases, ...mappedFloat]);
+      setItems([...mappedCargo, ...mappedOrders, ...mappedProduction, ...mappedPurchases, ...mappedFloat]);
     } catch (e) {
       console.error(e);
       setItems([]);
@@ -307,6 +302,13 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
       }
       setConfirmedDamages(defaultDamages);
       setCostPerUnit(Number(item.raw?.unit_price || 0));
+    }
+    if (item && item.type === 'Production Request') {
+      setApprovedQty(String(item.raw?.quantity ?? ''));
+    }
+    if (item && item.type === 'Sales Order') {
+      const orderItems = Array.isArray((item.raw as any)?.metadata?.items) ? (item.raw as any).metadata.items : [];
+      setOrderItemQty(orderItems.map((it: any) => String(it.quantity ?? '')));
     }
   }
 
@@ -397,41 +399,38 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
         }
       }
 
-      if (selectedItem.type === 'Credit Order') {
-        const paymentMode = String(selectedItem.raw?.payment_mode || 'CASH');
-        const isCreditPayment = paymentMode === 'CREDIT';
-        const newDbStatus = action === 'approve' ? (isCreditPayment ? 'PENDING_FINANCE' : 'APPROVED') : 'REJECTED';
-        await supabase.from('orders').update({ status: newDbStatus }).eq('id', selectedItem.id);
+      if (selectedItem.type === 'Sales Order') {
+        // Every order lands here now regardless of payment mode — Management is
+        // the universal gate. Approving always forwards to Finance, who records
+        // payment (cash/momo/cheque included, not just credit) and finalizes.
+        const newDbStatus = action === 'approve' ? 'PENDING_FINANCE' : 'REJECTED';
+        const orderRow = selectedItem.raw as Record<string, any>;
+        const originalItems: any[] = Array.isArray(orderRow?.metadata?.items) ? orderRow.metadata.items : [];
+
+        if (action === 'approve' && originalItems.length > 0) {
+          // Management's adjusted quantities win — recompute line totals and
+          // the order total so Finance bills what was actually authorized.
+          const adjustedItems = originalItems.map((it: any, idx: number) => {
+            const draft = orderItemQty[idx];
+            const qty = draft !== undefined && draft !== '' ? Math.max(0, Number(draft) || 0) : Number(it.quantity) || 0;
+            const unitPrice = Number(it.unitPrice) || 0;
+            return { ...it, quantity: qty, lineTotal: unitPrice * qty };
+          });
+          const newTotal = adjustedItems.reduce((s, it) => s + (Number(it.lineTotal) || 0), 0);
+          await supabase.from('orders').update({
+            status: newDbStatus,
+            total_amount: newTotal,
+            metadata: { ...(orderRow.metadata || {}), items: adjustedItems },
+          }).eq('id', selectedItem.id);
+        } else {
+          await supabase.from('orders').update({ status: newDbStatus }).eq('id', selectedItem.id);
+        }
 
         if (action === 'approve') {
-          if (isCreditPayment) {
-            await supabase.from('supplier_order_notifications').insert([{ message: `Credit order approved by Management — now awaiting Finance processing: ${selectedItem.description}`, notified_department: 'FINANCE', read: false }]);
-            await supabase.from('supplier_order_notifications').insert([{ message: `Your credit order has been approved by Management and sent to Finance: ${selectedItem.description}`, notified_department: 'MARKETING', read: false }]);
-          } else {
-            // CASH/CHEQUE/MOMO orders bypass Finance — create delivery log for Dispatch directly
-            const now = new Date().toISOString();
-            await supabase.from('delivery_logs').insert([{
-              order_id: selectedItem.id,
-              customer_name: String(selectedItem.raw?.client_name || selectedItem.submittedBy || ''),
-              delivery_address: String(selectedItem.raw?.delivery_address || selectedItem.raw?.client_name || ''),
-              status: 'PENDING_ASSIGNMENT',
-              timestamp: now,
-            }]);
-            await supabase.from('supplier_order_notifications').insert([{ message: `${paymentMode} order approved by Management — ready for dispatch: ${selectedItem.description}`, notified_department: 'DISPATCH', read: false }]);
-            await supabase.from('supplier_order_notifications').insert([{ message: `${paymentMode} order approved — Operations is preparing goods: ${selectedItem.description}`, notified_department: 'MARKETING', read: false }]);
-            await supabase.from('supplier_order_notifications').insert([{ message: `Approved ${paymentMode} order ready for fulfillment: ${selectedItem.description}`, notified_department: 'OPERATIONS', read: false }]);
-          }
+          await supabase.from('supplier_order_notifications').insert([{ message: `Order approved by Management — now awaiting Finance processing: ${selectedItem.description}`, notified_department: 'FINANCE', read: false }]);
+          await supabase.from('supplier_order_notifications').insert([{ message: `Your order has been approved by Management and sent to Finance: ${selectedItem.description}`, notified_department: 'MARKETING', read: false }]);
         } else {
           await supabase.from('supplier_order_notifications').insert([{ message: `Order REJECTED by Management: ${selectedItem.description}${modalNote ? ` — ${modalNote}` : ''}`, notified_department: 'MARKETING', read: false }]);
-        }
-      }
-
-      if (selectedItem.type === 'Staff Registration') {
-        const newDbStatus = action === 'approve' ? 'ACTIVE' : 'REJECTED';
-        await supabase.from('profiles').update({ status: newDbStatus }).eq('id', selectedItem.id);
-
-        if (action === 'approve') {
-          await supabase.from('supplier_order_notifications').insert([{ message: `Staff registration APPROVED: ${selectedItem.description}`, notified_department: 'HR', read: false }]);
         }
       }
 
@@ -441,17 +440,20 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
           // straight to a fulfillment ticket (no separate manual release step)
           // and add the repackaged/produced quantity to stock, mirroring the
           // in-house-production stock ADD used for approved cargo intake.
-          await supabase.from('production_requests').update({ status: 'TICKETS_ISSUED' }).eq('id', selectedItem.id);
-
           const req: any = selectedItem.raw;
           const productName: string = req.product_name || req.productName || '';
-          const qty = Number(req.quantity) || 0;
+          const requestedQty = Number(req.quantity) || 0;
+          // Management's adjusted figure wins — falls back to what was requested
+          // if the field was somehow left blank.
+          const qty = approvedQty !== '' ? Math.max(0, Number(approvedQty) || 0) : requestedQty;
           const now = new Date().toISOString();
+
+          await supabase.from('production_requests').update({ status: 'TICKETS_ISSUED', quantity: qty }).eq('id', selectedItem.id);
 
           await supabase.from('fulfillment_tickets').insert({
             production_request_id: selectedItem.id,
             type: 'PRODUCTION_RELEASE',
-            details: { productName, quantity: qty, unit: req.unit, purpose: req.purpose },
+            details: { productName, quantity: qty, requestedQuantity: requestedQty, unit: req.unit, purpose: req.purpose },
             status: 'PENDING',
             created_at: now,
             updated_at: now,
@@ -464,7 +466,12 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
             } else {
               await supabase.from('stock').insert({ product_name: productName, quantity: qty, unit: req.unit || 'units', last_updated: now });
             }
-            await supabase.from('stock_ledger').insert({ product_name: productName, movement_type: 'ADD', quantity: qty, reference: `Production Request Approved: ${selectedItem.requestId}`, created_at: now });
+            await supabase.from('stock_ledger').insert({
+              product_name: productName, movement_type: 'ADD', quantity: qty,
+              reference: `Production Request Approved: ${selectedItem.requestId}`,
+              notes: qty !== requestedQty ? `Management adjusted requested qty ${requestedQty} → ${qty}` : undefined,
+              created_at: now,
+            });
           }
 
           await supabase.from('supplier_order_notifications').insert([{ message: `Production request APPROVED by Management — ready for pickup/repackaging: ${selectedItem.description}`, notified_department: 'PRODUCTION', read: false }]);
@@ -594,7 +601,7 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
             </div>
           )}
 
-          {selectedItem.type === 'Credit Order' && selectedItem.raw && (
+          {selectedItem.type === 'Sales Order' && selectedItem.raw && (
             <div className="space-y-2">
               <p className="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider">Order Items breakdown</p>
               <InvoiceLineItems order={selectedItem.raw as any} />
@@ -917,9 +924,63 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
                 </div>
               )}
 
-              {showModal === 'approve' && selectedItem.type === 'Credit Order' && (
-                <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-700">
-                  Approving will move this order to <strong>Finance</strong> for payment processing.
+              {showModal === 'approve' && selectedItem.type === 'Sales Order' && (() => {
+                const orderItems: any[] = Array.isArray((selectedItem.raw as any)?.metadata?.items) ? (selectedItem.raw as any).metadata.items : [];
+                if (orderItems.length === 0) {
+                  return (
+                    <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-700">
+                      Approving will move this order to <strong>Finance</strong> for payment processing.
+                    </div>
+                  );
+                }
+                const adjustedTotal = orderItems.reduce((s, it, idx) => {
+                  const draft = orderItemQty[idx];
+                  const qty = draft !== undefined && draft !== '' ? Math.max(0, Number(draft) || 0) : Number(it.quantity) || 0;
+                  return s + qty * (Number(it.unitPrice) || 0);
+                }, 0);
+                return (
+                  <div className="space-y-2 p-4 rounded-2xl border border-[var(--border)] bg-[var(--bg)]">
+                    <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider block">Order Line Items — adjust quantities if needed</label>
+                    <div className="space-y-2">
+                      {orderItems.map((it: any, idx: number) => (
+                        <div key={idx} className="flex items-center gap-2">
+                          <span className="text-xs font-medium text-[var(--text-primary)] flex-1 truncate">{it.productName}</span>
+                          <input
+                            type="number"
+                            min={0}
+                            value={orderItemQty[idx] ?? String(it.quantity ?? '')}
+                            onChange={e => setOrderItemQty(prev => { const next = [...prev]; next[idx] = e.target.value; return next; })}
+                            className="w-20 px-2 py-1.5 rounded-lg bg-[var(--bg-input)] border border-[var(--border)] text-xs font-mono text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
+                          />
+                          {Number(orderItemQty[idx]) !== Number(it.quantity) && orderItemQty[idx] !== undefined && orderItemQty[idx] !== '' && (
+                            <span className="text-[9px] text-amber-600">was {it.quantity}</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex items-center justify-between border-t border-[var(--border)] pt-2 mt-1">
+                      <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Adjusted Order Total</span>
+                      <span className="text-sm font-bold" style={{ color: 'var(--accent)' }}>GHS {adjustedTotal.toLocaleString()}</span>
+                    </div>
+                    <p className="text-[9px] text-[var(--text-muted)]">Approving forwards this to Finance for payment processing at the quantities/total shown above.</p>
+                  </div>
+                );
+              })()}
+
+              {showModal === 'approve' && selectedItem.type === 'Production Request' && (
+                <div className="space-y-2 p-4 rounded-2xl border border-[var(--border)] bg-[var(--bg)]">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Approved Quantity</label>
+                    <span className="text-[10px] text-[var(--text-muted)]">Requested: {Number((selectedItem.raw as any)?.quantity ?? 0).toLocaleString()} {(selectedItem.raw as any)?.unit || 'units'}</span>
+                  </div>
+                  <input
+                    type="number"
+                    min={0}
+                    value={approvedQty}
+                    onChange={e => setApprovedQty(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm font-mono text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
+                  />
+                  <p className="text-[9px] text-[var(--text-muted)]">This is what gets added to stock and issued on the fulfillment ticket — adjust it if the requested amount isn't what should actually be released.</p>
                 </div>
               )}
 

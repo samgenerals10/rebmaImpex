@@ -98,7 +98,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ghana_card_id: ghanaCardId || null,
       phone: phone || null,
       status: initialStatus,
-      is_ceo: department === 'CEO',
+      is_admin: department === 'CEO',
       requires_password_reset: true,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -118,7 +118,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ghana_card_id: ghanaCardId || null,
       phone: phone || null,
       status: initialStatus,
-      is_ceo: department === 'CEO',
+      is_admin: department === 'CEO',
       requires_password_reset: true,
       metadata: {
         fullName,

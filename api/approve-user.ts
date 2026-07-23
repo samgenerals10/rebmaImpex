@@ -31,7 +31,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Verify caller is HR or CEO
   const { data: callerProfiles } = await supabaseAdmin
     .from('profiles')
-    .select('full_name, role, is_ceo')
+    .select('full_name, role, is_admin')
     .eq('id', callerData.user.id)
     .limit(1);
 
@@ -41,7 +41,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const callerRole = (callerProfile.role || '').toUpperCase();
-  if (callerRole !== 'HR' && !callerProfile.is_ceo) {
+  if (callerRole !== 'HR' && !callerProfile.is_admin) {
     return res.status(403).json({ error: 'Only HR or CEO can approve users.' });
   }
 
@@ -60,6 +60,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const targetProfile = targetProfiles?.[0];
   if (!targetProfile) {
     return res.status(404).json({ error: 'User profile not found.' });
+  }
+
+  // Management and HR registrations need the CEO's sign-off specifically —
+  // HR can approve every other department, but not its own or Management's.
+  const targetRole = (targetProfile.role || '').toUpperCase();
+  const isPrivilegedTarget = targetRole === 'MANAGEMENT' || targetRole === 'HR';
+  if (isPrivilegedTarget && !callerProfile.is_admin) {
+    return res.status(403).json({ error: 'Only the CEO can approve Management or HR registrations.' });
   }
 
   const status = approve ? 'ACTIVE' : 'REJECTED';

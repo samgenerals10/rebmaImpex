@@ -165,7 +165,7 @@ export default function MarketingOverviewView({ addNotification, setActiveSubTab
   // Compute stats
   const totalOrders = orders.length;
   const totalCustomers = customers.length;
-  const pendingFinance = orders.filter(o => o.status === 'PENDING_FINANCE').length;
+  const pendingFinance = orders.filter(o => o.status === 'PENDING_FINANCE' || o.status === 'PENDING_MANAGEMENT').length;
   const revenue = orders.filter(o => ['APPROVED', 'PROCESSING', 'DELIVERED', 'OUT_FOR_DELIVERY'].includes(o.status)).reduce((s, o) => s + o.totalAmount, 0);
 
   // Compute change badges based on real data
@@ -191,8 +191,8 @@ export default function MarketingOverviewView({ addNotification, setActiveSubTab
   const customersUp = thisMonthCustomers >= lastMonthCustomers;
 
   const sevenDaysAgo = nowMs - 7 * oneDay;
-  const pendingNow = orders.filter(o => o.status === 'PENDING_FINANCE').length;
-  const pendingLastWeek = orders.filter(o => o.status === 'PENDING_FINANCE' && new Date(o.createdAt).getTime() < sevenDaysAgo).length;
+  const pendingNow = orders.filter(o => o.status === 'PENDING_FINANCE' || o.status === 'PENDING_MANAGEMENT').length;
+  const pendingLastWeek = orders.filter(o => (o.status === 'PENDING_FINANCE' || o.status === 'PENDING_MANAGEMENT') && new Date(o.createdAt).getTime() < sevenDaysAgo).length;
   const pendingChange = pendingNow - pendingLastWeek;
   const pendingUp = pendingChange <= 0;
 

@@ -168,7 +168,6 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
       const updateLocal = (prev: Order[]) => prev.map(o => o.id === order.id ? { ...o, status: updatedStatus } : o);
       setAllOrders(updateLocal);
       setOrdersList?.(prev => prev.map(o => o.id === order.id ? { ...o, status: updatedStatus } : o));
-      onEvaluateOrder?.(order.id, true);
 
       // Get current user for audit trail
       const { data: sessionData } = await supabase.auth.getSession();
@@ -207,7 +206,6 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
       const updateLocal = (prev: Order[]) => prev.map(o => o.id === id ? { ...o, status: 'REJECTED' as const } : o);
       setAllOrders(updateLocal);
       setOrdersList?.(prev => prev.map(o => o.id === id ? { ...o, status: 'REJECTED' as const } : o));
-      onEvaluateOrder?.(id, false);
 
       await supabase.from('orders').update({ status: 'REJECTED', reject_reason: rejectReason }).eq('id', id);
       await supabase.from('supplier_order_notifications').insert([{ message: `Order ${id} rejected by Finance. Reason: ${rejectReason}`, notified_department: 'MARKETING', read: false }]);

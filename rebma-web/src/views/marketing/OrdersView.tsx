@@ -25,6 +25,7 @@ const STATUS_LABEL: Record<Order['status'], string> = {
 };
 
 const STEPPER = [
+  { key: 'PENDING_MANAGEMENT', label: 'Pending Management' },
   { key: 'PENDING_FINANCE', label: 'Pending Finance' },
   { key: 'APPROVED', label: 'Approved' },
   { key: 'PROCESSING', label: 'Processing' },
@@ -53,12 +54,12 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
 
   const [productPrices, setProductPrices] = useState<Record<string, number>>({});
   const [stockLevels, setStockLevels] = useState<Record<string, number>>({});
-  const [customers, setCustomers] = useState<{ id: string; name: string }[]>([]);
+  const [customers, setCustomers] = useState<{ id: string; name: string; discountPercent: number; isSpecialCustomer: boolean }[]>([]);
 
   const openNewOrderModal = () => {
     setShowNewModal(true);
     setLineItems([{ productName: '', quantity: 1 }]);
-    setForm({ clientName: '', destination: '', paymentMode: 'CASH' });
+    setForm({ clientName: '', destination: '', paymentMode: 'CASH', customerId: '' });
     supabase.from('goods_prices').select('product_name, unit_price').order('product_name').then(({ data }) => {
       setAvailableProducts((data || []).map((r: any) => String(r.product_name)));
       const priceMap: Record<string, number> = {};
@@ -70,7 +71,11 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
       (data || []).forEach((r: any) => { stockMap[String(r.product_name).trim().toLowerCase()] = Number(r.quantity ?? 0); });
       setStockLevels(stockMap);
     }, () => {});
-    supabase.from('customers').select('id, name').order('name').then(({ data }) => {
+    // select('*') rather than naming discount_percent/is_special_customer explicitly —
+    // if those columns haven't been migrated onto the live DB yet, an explicit column
+    // list would fail the whole query and silently break customer selection entirely,
+    // not just the discount feature. This degrades gracefully either way.
+    supabase.from('customers').select('*').order('name').then(({ data }) => {
       const seen = new Set<string>();
       const unique = (data || []).filter((r: any) => {
         const n = String(r.name || '').trim().toLowerCase();
@@ -78,9 +83,19 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
         seen.add(n);
         return true;
       });
-      setCustomers(unique.map((r: any) => ({ id: String(r.id), name: String(r.name).trim() })));
+      setCustomers(unique.map((r: any) => ({
+        id: String(r.id),
+        name: String(r.name).trim(),
+        discountPercent: Number(r.discount_percent) || 0,
+        isSpecialCustomer: r.is_special_customer ?? false,
+      })));
     }, () => {});
   };
+
+  // Resolves to a real customer.id only on an exact name match (e.g. picked from the
+  // datalist) — typing a name that doesn't match anyone leaves no customer linked and
+  // no discount applied, rather than guessing.
+  const resolveCustomer = (name: string) => customers.find(c => c.name.toLowerCase() === name.trim().toLowerCase());
 
   const getStock = (productName: string): number => stockLevels[productName.trim().toLowerCase()] ?? 0;
 
@@ -94,7 +109,7 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  const [form, setForm] = useState({ clientName: '', destination: '', paymentMode: 'CASH' as Order['paymentMode'] });
+  const [form, setForm] = useState({ clientName: '', destination: '', paymentMode: 'CASH' as Order['paymentMode'], customerId: '' });
   const [lineItems, setLineItems] = useState<{ productName: string; quantity: number }[]>([{ productName: '', quantity: 1 }]);
   const [availableProducts, setAvailableProducts] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -103,6 +118,7 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
     id: r.id,
     ticketNumber: r.ticket_number || r.ticketNumber || r.id,
     clientName: r.client_name || r.clientName || '',
+    customerId: r.customer_id || r.customerId || undefined,
     productName: r.product_name || r.productName || '',
     destination: r.destination || '',
     totalAmount: Number(r.total_amount ?? r.totalAmount ?? 0),
@@ -171,9 +187,15 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
       const ticketNumber = `TKT-${Math.floor(10000 + Math.random() * 90000)}`;
       const now = new Date().toISOString();
 
+      // Resolve the customer one more time at submit — the discount that lands on
+      // the order is whatever's true right now, not a stale value from when the
+      // field was last typed into.
+      const resolvedCustomer = form.customerId ? customers.find(c => c.id === form.customerId) : resolveCustomer(form.clientName);
+      const discountPct = resolvedCustomer?.discountPercent || 0;
+
       // Build line items with pricing
       const itemsWithPricing = validItems.map(item => {
-        const unitPrice = productPrices[item.productName] ?? 0;
+        const unitPrice = (productPrices[item.productName] ?? 0) * (1 - discountPct / 100);
         const qty = Math.max(1, item.quantity);
         return { productName: item.productName, quantity: qty, unitPrice, lineTotal: unitPrice * qty };
       });
@@ -182,32 +204,40 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
       // Product name display: join all product names with commas
       const productDisplay = itemsWithPricing.map(item => item.productName).join(', ');
 
-      const { data: inserted, error } = await supabase.from('orders').insert({
+      const orderPayload = {
         ticket_number: ticketNumber,
         client_name: form.clientName.trim(),
         product_name: productDisplay,
         destination: form.destination || null,
         payment_mode: form.paymentMode,
         total_amount: orderTotal,
-        status: 'PENDING_FINANCE',
+        status: 'PENDING_MANAGEMENT',
         created_at: now,
         updated_at: now,
-        metadata: { items: itemsWithPricing },
-      }).select().single();
+        metadata: { items: itemsWithPricing, discountPercent: discountPct },
+      };
+      let { data: inserted, error } = await supabase.from('orders')
+        .insert({ ...orderPayload, customer_id: resolvedCustomer?.id || null })
+        .select().single();
+      if (error?.message?.includes('customer_id')) {
+        // Column not migrated yet — creating the order shouldn't be blocked by a
+        // link that can't be saved yet; it'll just have no discount/customer tie.
+        ({ data: inserted, error } = await supabase.from('orders').insert(orderPayload).select().single());
+      }
 
       if (error) { addNotification(`Failed to create order: ${error.message}`); return; }
       const newOrder = mapOrder(inserted || {
         id: `ord-${Date.now()}`, ticket_number: ticketNumber,
         client_name: form.clientName, product_name: productDisplay,
         destination: form.destination, payment_mode: form.paymentMode,
-        total_amount: orderTotal, status: 'PENDING_FINANCE', created_at: now,
+        total_amount: orderTotal, status: 'PENDING_MANAGEMENT', created_at: now,
       });
       onCreateOrder(newOrder);
       setOrders(prev => [newOrder, ...prev]);
       setShowNewModal(false);
       setLineItems([{ productName: '', quantity: 1 }]);
-      setForm({ clientName: '', destination: '', paymentMode: 'CASH' });
-      addNotification('Order created successfully. Routed to Finance for review.');
+      setForm({ clientName: '', destination: '', paymentMode: 'CASH', customerId: '' });
+      addNotification('Order created successfully. Routed to Management for review.');
     } catch (e: any) {
       console.error(e);
       addNotification(`Error creating order: ${e.message}`);
@@ -364,8 +394,9 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
       </div>
 
       {showNewModal && (() => {
+        const discountPct = customers.find(c => c.id === form.customerId)?.discountPercent || 0;
         const orderTotal = lineItems.reduce((s, item) => {
-          const price = productPrices[item.productName] ?? 0;
+          const price = (productPrices[item.productName] ?? 0) * (1 - discountPct / 100);
           return s + price * Math.max(1, item.quantity);
         }, 0);
         return (
@@ -388,9 +419,18 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
                   <div className="col-span-2">
                     <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Customer Name *</label>
                     <input type="text" list="customer-names-list" value={form.clientName}
-                      onChange={e => setForm(prev => ({ ...prev, clientName: e.target.value }))}
+                      onChange={e => {
+                        const name = e.target.value;
+                        const match = resolveCustomer(name);
+                        setForm(prev => ({ ...prev, clientName: name, customerId: match?.id || '' }));
+                      }}
                       placeholder="Type or select customer name..."
                       className="w-full px-3 py-2 text-sm rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />
+                    {form.customerId && !!customers.find(c => c.id === form.customerId)?.discountPercent && (
+                      <p className="text-[10px] font-semibold text-emerald-600 mt-1">
+                        {customers.find(c => c.id === form.customerId)?.discountPercent}% customer discount will be applied
+                      </p>
+                    )}
                   </div>
                   <div className="col-span-2">
                     <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Destination</label>
@@ -409,7 +449,8 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
                   </div>
                   <div className="space-y-2">
                     {lineItems.map((item, index) => {
-                      const unitPrice = productPrices[item.productName] ?? null;
+                      const basePrice = productPrices[item.productName] ?? null;
+                      const unitPrice = basePrice != null ? basePrice * (1 - discountPct / 100) : null;
                       const lineTotal = unitPrice != null ? unitPrice * Math.max(1, item.quantity) : null;
                       const stockAvailable = item.productName ? getStock(item.productName) : null;
                       const exceedsStock = stockAvailable != null && item.quantity > stockAvailable;
@@ -446,7 +487,7 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
                           )}
                           {unitPrice != null ? (
                             <div className="flex items-center justify-between px-1 text-xs text-[var(--text-muted)]">
-                              <span>GHS {unitPrice.toLocaleString()} per unit</span>
+                              <span>GHS {unitPrice.toLocaleString()} per unit{discountPct > 0 ? ` (${discountPct}% off)` : ''}</span>
                               <span className="font-semibold text-[var(--accent)]">= GHS {lineTotal!.toLocaleString()}</span>
                             </div>
                           ) : item.productName ? (

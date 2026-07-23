@@ -70,7 +70,7 @@ export default function StaffView({ staffList: propStaff, addNotification }: Pro
             fullName: p.full_name || 'Employee',
             email: p.email || '',
             department: roleToDeptLabel(p.role), // role column holds department!
-            role: p.is_ceo ? 'CEO' : (p.metadata?.role || 'Staff'),
+            role: p.is_admin ? 'CEO' : (p.metadata?.role || 'Staff'),
             phone: p.phone || '',
             ghanaCard: p.ghana_card_id || '',
             joinedAt: p.created_at ? p.created_at.split('T')[0] : '',

@@ -424,7 +424,7 @@ export default function HrOverviewView({ currentUser, addNotification, setActive
               <p className="text-xs text-[var(--text-muted)] py-4 text-center">No payroll records in database</p>
             ) : (
               payrollOverview.map(row => {
-                const canSeeAmount = currentUser?.isCeo || currentUser?.department === 'HR';
+                const canSeeAmount = currentUser?.isAdmin || currentUser?.department === 'HR';
                 return (
                   <div key={row.dept} className="flex items-center justify-between py-1.5 border-b border-[var(--border)] last:border-0">
                     <span className="text-xs text-[var(--text-secondary)] font-medium">{row.dept}</span>

@@ -42,7 +42,7 @@ const mapProfileToFrontend = (db: any): any => {
     ghanaCardId: db.ghana_card_id || db.ghanaCardId,
     phone: db.phone,
     status: db.status,
-    isCeo: db.is_ceo ?? db.isCeo ?? ((db.role || '').toUpperCase() === 'CEO'),
+    isAdmin: db.is_admin ?? db.isAdmin ?? ((db.role || '').toUpperCase() === 'CEO'),
     isSuperAdmin: db.is_super_admin ?? false,
     photo: db.photo,
     passwordHash: db.password_hash || db.passwordHash,
@@ -199,7 +199,9 @@ const mapCustomerToFrontend = (db: any): any => {
     ghanaCardFront: db.ghana_card_front,
     ghanaCardBack: db.ghana_card_back,
     registeredAt: db.registered_at || db.registeredAt,
-    updatedAt: db.updated_at || db.updatedAt
+    updatedAt: db.updated_at || db.updatedAt,
+    isSpecialCustomer: db.is_special_customer ?? false,
+    discountPercent: Number(db.discount_percent) || 0,
   };
 };
 
@@ -274,7 +276,7 @@ export const auth = {
         email: dbUser.email,
         fullName: dbUser.fullName,
         department: dbUser.department,
-        isCeo: dbUser.isCeo,
+        isAdmin: dbUser.isAdmin,
         photo: dbUser.photo,
         status: dbUser.status,
         requiresPasswordReset: dbUser.requiresPasswordReset
@@ -832,6 +834,17 @@ export const management = {
     return price ? mapPriceToFrontend(price[0]) : null;
   },
 
+  // Discount is set per-customer based on Management's own judgment (performance,
+  // loyalty, volume) — it isn't restricted to customers Marketing flagged as "special"
+  // at registration; that flag is just a signal, not a gate.
+  setCustomerDiscount: async (customerId: string, discountPercent: number) => {
+    const { error } = await supabase
+      .from('customers')
+      .update({ discount_percent: discountPercent, updated_at: new Date().toISOString() })
+      .eq('id', customerId);
+    if (error) throw new Error(error.message);
+  },
+
   approveIntake: async (intakeId: string, approve: boolean, unitPrice?: number) => {
     const { data: sessionData } = await supabase.auth.getSession();
     const performerId = sessionData.session?.user?.id || null;
@@ -1103,23 +1116,30 @@ export const marketing = {
   registerCustomer: async (data: {
     name: string; phone: string; email?: string;
     location: string; companyName: string; ghanaCard?: string; photo?: string;
-    ghanaCardFront?: string; ghanaCardBack?: string;
+    ghanaCardFront?: string; ghanaCardBack?: string; isSpecialCustomer?: boolean;
   }) => {
-    const { data: customer, error } = await supabase
+    const basePayload = {
+      name: data.name,
+      phone: data.phone,
+      email: data.email || null,
+      location: data.location,
+      company_name: data.companyName,
+      ghana_card_id: data.ghanaCard || null,
+      customer_photo: data.photo || null,
+      ghana_card_front: data.ghanaCardFront || null,
+      ghana_card_back: data.ghanaCardBack || null,
+      registered_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    let { data: customer, error } = await supabase
       .from('customers')
-      .insert({
-        name: data.name,
-        phone: data.phone,
-        email: data.email || null,
-        location: data.location,
-        company_name: data.companyName,
-        ghana_card_id: data.ghanaCard || null,
-        customer_photo: data.photo || null,
-        ghana_card_front: data.ghanaCardFront || null,
-        ghana_card_back: data.ghanaCardBack || null,
-        registered_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }).select();
+      .insert({ ...basePayload, is_special_customer: data.isSpecialCustomer || false })
+      .select();
+    if (error?.message?.includes('is_special_customer')) {
+      // Column not migrated onto the live DB yet — registration itself
+      // shouldn't be blocked by a field that can't be saved yet.
+      ({ data: customer, error } = await supabase.from('customers').insert(basePayload).select());
+    }
     if (error) throw new Error(error.message);
     return customer ? mapCustomerToFrontend(customer[0]) : null;
   },

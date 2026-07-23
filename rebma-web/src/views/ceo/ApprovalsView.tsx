@@ -2,8 +2,14 @@
 import { useState, useEffect } from 'react';
 import { CheckCircle, XCircle, Download } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
+import { hr } from '../../services/apiClient';
 import type { CurrentUser } from '../../types/erp';
 import { exportToCSV } from '../../utils/export';
+
+function generateTempPassword(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#';
+  return Array.from({ length: 10 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+}
 
 interface Approval {
   id: string;
@@ -31,6 +37,7 @@ export default function ApprovalsView({ currentUser, addNotification }: Props) {
   const [loading, setLoading]     = useState(true);
   const [tab, setTab]             = useState<'all'|'credit'|'cargo'|'payment'|'registration'|'price'>('all');
   const [history, setHistory]     = useState<Approval[]>([]);
+  const [credPopup, setCredPopup] = useState<{ fullName: string; password: string } | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -43,11 +50,14 @@ export default function ApprovalsView({ currentUser, addNotification }: Props) {
         .eq('status', 'PENDING_MANAGEMENT')
         .limit(50);
 
-      // Query pending cargo intakes
+      // Query pending cargo intakes — cargo is actually inserted with
+      // PENDING_MANAGEMENT_APPROVAL (see cargo_intake writes in apiClient.ts);
+      // this previously filtered on a status nothing ever uses, so this tab
+      // was silently always empty.
       const { data: cargo } = await supabase
         .from('cargo_intake')
         .select('id,product_name,company,quantity,created_at,status')
-        .eq('status', 'PENDING_APPROVAL')
+        .eq('status', 'PENDING_MANAGEMENT_APPROVAL')
         .limit(50);
 
       // Query pending registrations from profiles
@@ -81,7 +91,7 @@ export default function ApprovalsView({ currentUser, addNotification }: Props) {
           id: p.id,
           type: 'registration' as const,
           requester: p.full_name || 'New Employee',
-          department: 'HR',
+          department: (p.role || 'STAFF').toUpperCase(),
           description: `Sign-up approval for role: ${p.role}`,
           date_submitted: p.created_at?.split('T')[0] || '',
           status: 'pending' as const,
@@ -134,22 +144,31 @@ export default function ApprovalsView({ currentUser, addNotification }: Props) {
       } else if (item.type === 'cargo') {
         await supabase.from('cargo_intake').update({ status: 'APPROVED' }).eq('id', id);
       } else if (item.type === 'registration') {
-        await supabase.from('profiles').update({ status: 'ACTIVE' }).eq('id', id);
+        // Routed through the service-role-backed endpoint — a direct client
+        // update silently no-ops here because profiles' RLS only lets a user
+        // update their own row. This also enforces the CEO-only gate for
+        // Management/HR registrants server-side.
+        const pw = generateTempPassword();
+        await hr.approveUser(id, true, pw);
+        setCredPopup({ fullName: item.requester, password: pw });
       }
 
-      await supabase.from('global_audit_history').insert({
-        action: `Approved ${item.type} request`,
-        department: item.department,
-        performed_by: currentUser?.fullName || 'CEO',
-        details: item.description,
-      });
+      if (item.type !== 'registration') {
+        // approve-user.ts already writes its own audit entry for registrations.
+        await supabase.from('global_audit_history').insert({
+          action: `Approved ${item.type} request`,
+          department: item.department,
+          performed_by: currentUser?.fullName || 'CEO',
+          details: item.description,
+        });
+      }
 
       addNotification(`Approved ${item.type} request successfully.`);
       setRows(prev => prev.filter(r => r.id !== id));
       load(); // Refresh queue and history
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      addNotification('Approval action failed.');
+      addNotification(e?.message || 'Approval action failed.');
     }
   };
 
@@ -162,22 +181,24 @@ export default function ApprovalsView({ currentUser, addNotification }: Props) {
       } else if (item.type === 'cargo') {
         await supabase.from('cargo_intake').update({ status: 'REJECTED' }).eq('id', id);
       } else if (item.type === 'registration') {
-        await supabase.from('profiles').update({ status: 'REJECTED' }).eq('id', id);
+        await hr.approveUser(id, false);
       }
 
-      await supabase.from('global_audit_history').insert({
-        action: `Rejected ${item.type} request`,
-        department: item.department,
-        performed_by: currentUser?.fullName || 'CEO',
-        details: item.description,
-      });
+      if (item.type !== 'registration') {
+        await supabase.from('global_audit_history').insert({
+          action: `Rejected ${item.type} request`,
+          department: item.department,
+          performed_by: currentUser?.fullName || 'CEO',
+          details: item.description,
+        });
+      }
 
       addNotification(`Rejected ${item.type} request.`);
       setRows(prev => prev.filter(r => r.id !== id));
       load(); // Refresh queue and history
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      addNotification('Rejection action failed.');
+      addNotification(e?.message || 'Rejection action failed.');
     }
   };
 
@@ -270,6 +291,30 @@ export default function ApprovalsView({ currentUser, addNotification }: Props) {
                 <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full capitalize ${item.status === 'approved' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-600'}`}>{item.status}</span>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Temp credentials after approving a registration */}
+      {credPopup && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5 w-full max-w-md">
+            <h3 className="font-bold text-lg text-emerald-500 mb-1">Account approved</h3>
+            <p className="text-xs text-[var(--text-muted)] mb-3">
+              Share this temporary password with <strong className="text-[var(--text-primary)]">{credPopup.fullName}</strong> — they'll be asked to change it on first login.
+            </p>
+            <div className="bg-[var(--bg)] rounded-xl p-3 border border-[var(--border)] flex items-center justify-between gap-2">
+              <p className="text-sm font-bold text-emerald-500 font-mono break-all select-all">{credPopup.password}</p>
+              <button
+                onClick={() => { navigator.clipboard.writeText(credPopup.password); addNotification('Password copied to clipboard'); }}
+                className="shrink-0 px-2.5 py-1.5 text-[10px] font-semibold bg-[var(--accent-light)] text-[var(--accent)] rounded-lg cursor-pointer hover:opacity-90">
+                Copy
+              </button>
+            </div>
+            <button onClick={() => setCredPopup(null)}
+              className="w-full mt-4 px-4 py-2.5 bg-[var(--bg)] border border-[var(--border)] text-[var(--text-primary)] rounded-xl text-sm cursor-pointer hover:bg-[var(--accent-light)]">
+              Close
+            </button>
           </div>
         </div>
       )}

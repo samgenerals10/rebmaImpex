@@ -77,7 +77,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       full_name: fullName,
       role: roleNormalized === 'Human Resources' ? 'HR' : roleNormalized,
       status: 'ACTIVE',
-      is_ceo: roleNormalized === 'CEO',
+      is_admin: roleNormalized === 'CEO',
       requires_password_reset: false,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
@@ -88,7 +88,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         role: roleNormalized === 'Human Resources' ? 'HR' : roleNormalized,
         full_name: fullName,
         status: 'ACTIVE',
-        is_ceo: roleNormalized === 'CEO',
+        is_admin: roleNormalized === 'CEO',
         requires_password_reset: false,
         updated_at: new Date().toISOString()
       })

@@ -65,7 +65,7 @@ export default function PayrollView({ currentUser, staffList, addNotification }:
     load();
   }, []);
 
-  const isHR = currentUser?.department === 'HR' || currentUser?.isCeo;
+  const isHR = currentUser?.department === 'HR' || currentUser?.isAdmin;
   const isFinance = currentUser?.department === 'Finance';
 
   const canSeeFullAmounts = isHR;

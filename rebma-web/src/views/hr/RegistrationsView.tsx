@@ -19,7 +19,7 @@ const deptToRole = (dept: string): string => {
     'Marketing': 'marketing',
     'Reception': 'receptionist',
     'Production': 'production',
-    'Management': 'admin',
+    'Management': 'management',
     'Dispatch': 'dispatch'
   };
   return map[dept] || 'Staff';
@@ -60,8 +60,13 @@ export default function RegistrationsView({ pendingRegistrations, addNotificatio
   const [showEdit, setShowEdit] = useState(false);
   const [editForm, setEditForm] = useState<PendingRegistration | null>(null);
 
+  // Management and HR registrations are the CEO's call, not HR's — HR has no
+  // action to take on them, so keep them out of this queue entirely.
+  const CEO_ONLY_DEPARTMENTS = ['MANAGEMENT', 'HR'];
+  const awaitingCeo = pendingRegistrations.filter(r => r.status === 'PENDING' && CEO_ONLY_DEPARTMENTS.includes(r.department)).length;
+
   useEffect(() => {
-    setRegistrations(pendingRegistrations);
+    setRegistrations(pendingRegistrations.filter(r => !CEO_ONLY_DEPARTMENTS.includes(r.department)));
   }, [pendingRegistrations]);
 
   const filtered = registrations.filter(r => {
@@ -184,6 +189,12 @@ export default function RegistrationsView({ pendingRegistrations, addNotificatio
           <p className="text-xs text-[var(--text-muted)] mt-0.5">Review and approve new staff registration requests</p>
         </div>
       </div>
+
+      {awaitingCeo > 0 && (
+        <div className="text-xs text-[var(--text-secondary)] bg-[var(--accent-light)] border border-[var(--border)] rounded-xl px-3 py-2">
+          {awaitingCeo} Management/HR registration{awaitingCeo === 1 ? '' : 's'} awaiting CEO approval — not shown here.
+        </div>
+      )}
 
       {/* KPI summary */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

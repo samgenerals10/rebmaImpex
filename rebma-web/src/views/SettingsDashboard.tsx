@@ -455,7 +455,7 @@ export default function SettingsDashboard({
 
               <div className="p-3 bg-[var(--bg)] border border-[var(--border)] rounded-xl space-y-1.5 text-[10px] text-[var(--text-muted)]">
                 <p>Department: <strong className="text-[var(--text-primary)]">{currentUser?.department || '—'}</strong></p>
-                <p>Role: <strong className="text-[var(--text-primary)]">{currentUser?.isCeo ? 'Chief Executive Officer' : currentUser?.department}</strong></p>
+                <p>Role: <strong className="text-[var(--text-primary)]">{currentUser?.isAdmin ? 'Chief Executive Officer' : currentUser?.department}</strong></p>
               </div>
 
               <button type="submit" className="w-full py-2.5 bg-[var(--accent)] hover:opacity-90 text-white rounded-xl text-xs font-bold cursor-pointer transition-all">
@@ -1032,7 +1032,7 @@ export default function SettingsDashboard({
             </div>
 
             {/* ── ERP System Configuration (CEO only) ── */}
-            {currentUser?.isCeo && (
+            {currentUser?.isAdmin && (
               <div className="p-5 bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-card space-y-4">
                 <div>
                   <h3 className="text-lg font-semibold text-[var(--text-primary)]">ERP System Configuration</h3>

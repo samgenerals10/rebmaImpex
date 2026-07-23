@@ -1,11 +1,20 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabaseClient';
+import { management } from '../../services/apiClient';
 import {
   Tag, TrendingUp, TrendingDown, Search, Plus, MoreVertical,
   Download, RefreshCw, CheckCircle, History, Save,
-  ArrowLeft, Edit2, Trash2, Bell, Camera, FileText, Image as ImageIcon, AlertTriangle
+  ArrowLeft, Edit2, Trash2, Bell, Camera, FileText, Image as ImageIcon, AlertTriangle, Percent, Star
 } from 'lucide-react';
 import { exportToCSV } from '../../utils/export';
+
+interface CustomerDiscountRow {
+  id: string;
+  name: string;
+  companyName: string;
+  isSpecialCustomer: boolean;
+  discountPercent: number;
+}
 
 interface PriceEntry {
   id: string;
@@ -51,6 +60,65 @@ export default function MgmtPriceSettingView({ addNotification, currentUser }: P
   const [deleteTarget, setDeleteTarget] = useState<PriceEntry | null>(null);
   const [approvedGoods, setApprovedGoods] = useState<string[]>([]);
   const [unpricedGoods, setUnpricedGoods] = useState<string[]>([]);
+
+  // Customer Discounts — every customer, not just ones Marketing flagged "special"
+  // at registration. That flag is a signal, not a gate: Management awards a discount
+  // based on how a customer has actually performed, whoever they are.
+  const [customers, setCustomers] = useState<CustomerDiscountRow[]>([]);
+  const [loadingCustomers, setLoadingCustomers] = useState(true);
+  const [customerSearch, setCustomerSearch] = useState('');
+  const [discountDraft, setDiscountDraft] = useState<Record<string, string>>({});
+  const [savingCustomerId, setSavingCustomerId] = useState<string | null>(null);
+
+  useEffect(() => { loadCustomers(); }, []);
+
+  async function loadCustomers() {
+    setLoadingCustomers(true);
+    try {
+      // select('*') and sort client-side — an explicit column list naming
+      // is_special_customer/discount_percent (or ordering by them) would fail
+      // outright if those columns haven't been migrated onto the live DB yet.
+      const { data, error } = await supabase
+        .from('customers')
+        .select('*')
+        .order('name', { ascending: true });
+      if (error) throw error;
+      const rows: CustomerDiscountRow[] = (data || []).map((r: any) => ({
+        id: r.id,
+        name: r.name || 'Unnamed customer',
+        companyName: r.company_name || '',
+        isSpecialCustomer: r.is_special_customer ?? false,
+        discountPercent: Number(r.discount_percent) || 0,
+      })).sort((a: CustomerDiscountRow, b: CustomerDiscountRow) => Number(b.isSpecialCustomer) - Number(a.isSpecialCustomer));
+      setCustomers(rows);
+    } catch (e) {
+      console.error('Error loading customers:', e);
+      setCustomers([]);
+    } finally {
+      setLoadingCustomers(false);
+    }
+  }
+
+  async function saveCustomerDiscount(customerId: string) {
+    const raw = discountDraft[customerId];
+    const pct = Math.max(0, Math.min(100, Number(raw)));
+    if (raw === undefined || Number.isNaN(pct)) return;
+    setSavingCustomerId(customerId);
+    try {
+      await management.setCustomerDiscount(customerId, pct);
+      setCustomers(prev => prev.map(c => c.id === customerId ? { ...c, discountPercent: pct } : c));
+      setDiscountDraft(prev => { const next = { ...prev }; delete next[customerId]; return next; });
+      addNotification?.('Customer discount updated.');
+    } catch (e: any) {
+      addNotification?.(e.message || 'Failed to update customer discount.');
+    } finally {
+      setSavingCustomerId(null);
+    }
+  }
+
+  const filteredCustomers = customers.filter(c =>
+    !customerSearch || c.name.toLowerCase().includes(customerSearch.toLowerCase()) || c.companyName.toLowerCase().includes(customerSearch.toLowerCase())
+  );
 
   useEffect(() => {
     Promise.all([
@@ -461,6 +529,82 @@ export default function MgmtPriceSettingView({ addNotification, currentUser }: P
                   </td>
                 </tr>
               ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Customer Discounts */}
+      <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl overflow-hidden shadow-[var(--box-shadow)]">
+        <div className="p-4 border-b border-[var(--border)] flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <h3 className="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-1.5"><Percent size={14} /> Customer Discounts</h3>
+            <p className="text-xs text-[var(--text-muted)] mt-0.5">Award any customer a discount based on their performance — not limited to customers flagged "special."</p>
+          </div>
+          <div className="relative w-full sm:w-64">
+            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
+            <input
+              value={customerSearch}
+              onChange={e => setCustomerSearch(e.target.value)}
+              placeholder="Search customers..."
+              className="w-full pl-8 pr-3 py-2 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent)]"
+            />
+          </div>
+        </div>
+        <div className="overflow-x-auto max-h-96 overflow-y-auto">
+          <table className="w-full text-sm">
+            <thead className="sticky top-0 bg-[var(--bg-input)]">
+              <tr className="border-b border-[var(--border)]">
+                {['Customer', 'Company', 'Flag', 'Discount %', ''].map(h => (
+                  <th key={h} className="px-4 py-2.5 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wide whitespace-nowrap">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[var(--border)]">
+              {loadingCustomers ? (
+                <tr><td colSpan={5} className="px-4 py-4"><div className="h-4 bg-[var(--bg-input)] rounded animate-pulse" /></td></tr>
+              ) : filteredCustomers.length === 0 ? (
+                <tr><td colSpan={5} className="px-4 py-8 text-center text-[var(--text-muted)]">No customers found.</td></tr>
+              ) : filteredCustomers.map(c => {
+                const draft = discountDraft[c.id];
+                const dirty = draft !== undefined && Number(draft) !== c.discountPercent;
+                return (
+                  <tr key={c.id} className="hover:bg-[var(--accent-light)] transition-colors">
+                    <td className="px-4 py-2.5 font-semibold text-[var(--text-primary)] whitespace-nowrap">{c.name}</td>
+                    <td className="px-4 py-2.5 text-[var(--text-secondary)] whitespace-nowrap">{c.companyName || '—'}</td>
+                    <td className="px-4 py-2.5">
+                      {c.isSpecialCustomer && (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
+                          <Star size={9} /> Special
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="number" min={0} max={100} step={1}
+                          value={draft !== undefined ? draft : String(c.discountPercent)}
+                          onChange={e => setDiscountDraft(prev => ({ ...prev, [c.id]: e.target.value }))}
+                          className="w-16 px-2 py-1 rounded-lg bg-[var(--bg-input)] border border-[var(--border)] text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
+                        />
+                        <span className="text-xs text-[var(--text-muted)]">%</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-2.5">
+                      {dirty && (
+                        <button
+                          onClick={() => saveCustomerDiscount(c.id)}
+                          disabled={savingCustomerId === c.id}
+                          className="px-2.5 py-1 rounded-lg text-[10px] font-semibold text-white cursor-pointer disabled:opacity-50"
+                          style={{ background: 'var(--accent)' }}
+                        >
+                          {savingCustomerId === c.id ? 'Saving…' : 'Save'}
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

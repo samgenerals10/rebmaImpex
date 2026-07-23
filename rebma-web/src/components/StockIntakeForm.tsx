@@ -409,13 +409,12 @@ export default function StockIntakeForm({
               {/* DATE RECEIVED */}
               <div>
                 <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">
-                  Date Received into Warehouse <span className="text-rose-500">*</span>
+                  Date Received into Warehouse <span className="text-[var(--text-muted)] font-normal">(defaults to today if empty)</span>
                 </label>
                 <input
                   type="date"
                   value={ihDate}
                   onChange={(e) => setIhDate(e.target.value)}
-                  required
                   max={new Date().toISOString().split('T')[0]}
                   className="w-full px-3 py-2 bg-[var(--bg)] text-[var(--text-primary)] border border-[var(--border)] focus:border-[var(--accent)] rounded-xl text-xs focus:outline-none"
                 />
@@ -516,13 +515,12 @@ export default function StockIntakeForm({
               {/* DATE RECEIVED */}
               <div>
                 <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">
-                  Date Received <span className="text-rose-500">*</span>
+                  Date Received <span className="text-[var(--text-muted)] font-normal">(defaults to today if empty)</span>
                 </label>
                 <input
                   type="date"
                   value={gpDate}
                   onChange={(e) => setGpDate(e.target.value)}
-                  required
                   max={new Date().toISOString().split('T')[0]}
                   className="w-full px-3 py-2 bg-[var(--bg)] text-[var(--text-primary)] border border-[var(--border)] focus:border-[var(--accent)] rounded-xl text-xs focus:outline-none"
                 />
