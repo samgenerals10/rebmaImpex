@@ -27,6 +27,7 @@ import FinovaShell from './components/FinovaShell';
 import AczoneShell from './components/AczoneShell';
 import LiamFinanceShell from './components/LiamFinanceShell';
 import FinloFlashShell from './components/FinloFlashShell';
+import BananiShell from './components/BananiShell';
 
 import { auth, hr, operations, management, marketing, finance, production, reception, dispatch as dispatchApi, getToken, setToken, clearToken } from './services/apiClient';
 import { supabase } from './lib/supabaseClient';
@@ -3203,6 +3204,13 @@ export default function App() {
         <FinloFlashShell activeDepartment={activeDepartment} currentUser={currentUser}>
           {content}
         </FinloFlashShell>
+      );
+    }
+    if (theme === 'banani') {
+      return (
+        <BananiShell activeDepartment={activeDepartment} currentUser={currentUser} setActiveSubTab={setActiveSubTab}>
+          {content}
+        </BananiShell>
       );
     }
     return content;
