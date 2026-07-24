@@ -5,7 +5,7 @@
 // eyeballed from screenshots — see the design tokens below.
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { motion } from 'framer-motion';
-import { Loader2 } from 'lucide-react';
+import { Loader2, TrendingUp, TrendingDown, Clock, Lock, Check, Eye } from 'lucide-react';
 
 export type BananiTheme = typeof B;
 
@@ -170,6 +170,7 @@ export function KpiCard({ icon: Icon, label, value, format, trend, trendUp = tru
         </div>
         {trend && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 500, color: trendUp ? B.success : B.danger }}>
+            {trendUp ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
             {trend}
           </div>
         )}
@@ -201,7 +202,11 @@ export function Badge({ children, color, size = 'sm' }: { children: ReactNode; c
   );
 }
 
-// ── Approval card — real action buttons, matches Banani's ApprovalCenter ─
+// ── Approval card — real action buttons, matches Banani's ApprovalCenter.
+// Two variants confirmed from the actual prototype export: 'compact' is the
+// tight pill-button card used in CEO's small Approval Center widget list;
+// 'full' is the bigger card with a description line, divider, and full-width
+// buttons used on Management's dedicated Approvals & Pricing page. ────────
 interface ApprovalCardProps {
   title: string;
   priority: 'HIGH' | 'CRITICAL' | 'NORMAL';
@@ -209,13 +214,15 @@ interface ApprovalCardProps {
   amount: number;
   ago: string;
   refId: string;
+  description?: string;
+  variant?: 'compact' | 'full';
   index?: number;
   onApprove: () => void | Promise<void>;
   onReject: () => void | Promise<void>;
   busy?: boolean;
 }
 
-export function ApprovalCard({ title, priority, who, amount, ago, refId, index = 0, onApprove, onReject, busy }: ApprovalCardProps) {
+export function ApprovalCard({ title, priority, who, amount, ago, refId, description, variant = 'compact', index = 0, onApprove, onReject, busy }: ApprovalCardProps) {
   const B = useBananiTheme();
   const PRIORITY_COLOR: Record<string, string> = { HIGH: B.warning, CRITICAL: B.danger, NORMAL: B.primary };
   const color = PRIORITY_COLOR[priority] || B.primary;
@@ -226,6 +233,58 @@ export function ApprovalCard({ title, priority, who, amount, ago, refId, index =
     setActing(kind);
     try { await fn(); } finally { setActing(null); }
   };
+
+  if (variant === 'full') {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: Math.min(index, 8) * 0.05, duration: 0.3 }}
+        style={{
+          display: 'flex', flexDirection: 'column', gap: 16, padding: 20, borderRadius: B.radiusXl,
+          background: priority === 'CRITICAL' ? `${color}12` : `${B.card}`,
+          border: `1px solid ${color}${priority === 'CRITICAL' ? '5c' : '2e'}`,
+        }}
+      >
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+            <span style={{ fontSize: 16, fontWeight: 700, color: B.fg }}>{title}</span>
+            <Badge color={color}>{priority}</Badge>
+          </div>
+          <div style={{ fontSize: 13, color: B.mutedFg, marginBottom: description ? 8 : 0 }}>{who}</div>
+          {description && <div style={{ fontSize: 13, color: B.mutedFg }}>{description}</div>}
+        </div>
+        <div style={{ borderTop: `1px solid ${B.border}` }} />
+        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ fontSize: 24, fontWeight: 700, color: B.secondaryFg }}><CountUp value={amount} format={fmtMoney} /></div>
+            <div style={{ fontSize: 12, color: B.mutedFg, marginTop: 4 }}>Request ID: {refId}</div>
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: 12, color: B.mutedFg }}>Submitted</div>
+            <div style={{ fontSize: 13, color: B.fg, fontWeight: 500 }}>{ago}</div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <motion.button
+            whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+            disabled={busy || !!acting}
+            onClick={() => run('reject', onReject)}
+            style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 14, padding: '12px', borderRadius: B.radiusMd, fontWeight: 600, background: `${B.danger}14`, color: B.danger, border: `1px solid ${B.danger}40`, cursor: 'pointer', opacity: busy || !!acting ? 0.6 : 1 }}
+          >
+            {acting === 'reject' ? <Loader2 size={14} className="animate-spin" /> : '✕'} Reject
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+            disabled={busy || !!acting}
+            onClick={() => run('approve', onApprove)}
+            style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 14, padding: '12px', borderRadius: B.radiusMd, fontWeight: 600, background: B.primary, color: '#fff', border: 'none', cursor: 'pointer', opacity: busy || !!acting ? 0.6 : 1 }}
+          >
+            {acting === 'approve' ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />} Approve
+          </motion.button>
+        </div>
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div
@@ -309,7 +368,9 @@ export function ProfileCard({ name, sub, photo, rating, ratingColor, stats, acti
             <div style={{ fontSize: 11, color: B.mutedFg }}>{sub}</div>
           </div>
         </div>
-        {rating && <Badge color={resolvedRatingColor}>{rating}</Badge>}
+        {rating && (
+          <span style={{ width: 28, height: 28, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, background: `${resolvedRatingColor}26`, color: resolvedRatingColor }}>{rating}</span>
+        )}
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: `repeat(${stats.length}, 1fr)`, gap: 12, paddingTop: 12, borderTop: `1px solid ${B.border}` }}>
         {stats.map(s => (
@@ -324,7 +385,7 @@ export function ProfileCard({ name, sub, photo, rating, ratingColor, stats, acti
         onClick={onAction}
         style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 12, padding: '8px 12px', borderRadius: B.radiusMd, fontWeight: 500, color: '#fff', border: 'none', cursor: 'pointer', background: `linear-gradient(135deg, ${B.primary}, #1e5fd8)` }}
       >
-        {actionLabel}
+        <Eye size={13} /> {actionLabel}
       </motion.button>
     </motion.div>
   );
@@ -369,18 +430,15 @@ export function Stepper({ steps }: { steps: StepDef[] }) {
         const color = s.state === 'done' ? B.success : s.state === 'active' ? B.primary : B.border;
         const iconColor = s.state === 'pending' ? B.mutedFg : color;
         return (
-          <div key={s.label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1, position: 'relative' }}>
-            {i < steps.length - 1 && (
-              <div style={{ position: 'absolute', top: 24, left: 'calc(50% + 24px)', width: 'calc(100% - 48px)', height: 2, background: s.state === 'done' ? B.success : B.border }} />
-            )}
+          <div key={s.label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1 }}>
             <motion.div
               initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ delay: i * 0.1, type: 'spring', stiffness: 200 }}
               style={{ width: 48, height: 48, borderRadius: '50%', border: `2px solid ${color}`, background: s.state === 'pending' ? B.glass : `${color}26`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: iconColor, marginBottom: 8, zIndex: 1 }}
             >
-              {s.state === 'done' ? '✓' : s.state === 'active' ? <Loader2 size={16} className="animate-spin" /> : '●'}
+              {s.state === 'done' ? <Check size={20} /> : s.state === 'active' ? <Clock size={18} /> : <Lock size={16} />}
             </motion.div>
             <span style={{ fontSize: 12, fontWeight: 600, color: s.state === 'pending' ? B.mutedFg : B.fg, textAlign: 'center' }}>{s.label}</span>
-            <span style={{ fontSize: 10, color: B.mutedFg, textAlign: 'center' }}>{s.time || (s.state === 'pending' ? 'Awaiting' : '')}</span>
+            <span style={{ fontSize: 10, color: B.mutedFg, textAlign: 'center' }}>{s.time || (s.state === 'pending' ? 'Awaiting' : s.state === 'active' ? 'In progress...' : '')}</span>
           </div>
         );
       })}
