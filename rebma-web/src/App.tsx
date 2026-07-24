@@ -3208,7 +3208,7 @@ export default function App() {
     }
     if (theme === 'banani') {
       return (
-        <BananiShell activeDepartment={activeDepartment} currentUser={currentUser} setActiveSubTab={setActiveSubTab}>
+        <BananiShell activeDepartment={activeDepartment} activeSubTab={activeSubTab} currentUser={currentUser} darkMode={darkMode} setActiveSubTab={setActiveSubTab}>
           {content}
         </BananiShell>
       );
