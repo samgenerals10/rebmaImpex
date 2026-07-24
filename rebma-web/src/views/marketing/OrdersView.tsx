@@ -221,9 +221,13 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
       let { data: inserted, error } = await supabase.from('orders')
         .insert({ ...orderPayload, customer_id: resolvedCustomer?.id || null })
         .select().single();
-      if (error?.message?.includes('customer_id')) {
-        // Column not migrated yet — creating the order shouldn't be blocked by a
-        // link that can't be saved yet; it'll just have no discount/customer tie.
+      if (error?.message?.includes('customer_id') || error?.code === '22P02') {
+        // customer_id can't take this value right now — either the column isn't
+        // migrated yet, or (as on production) it's typed uuid while customers.id
+        // is a non-uuid string like "CUST-xxxxxxxx", which Postgres rejects with
+        // a 22P02 "invalid input syntax for type uuid" error. Either way, order
+        // creation shouldn't be blocked by a link that can't be saved yet — it'll
+        // just have no discount/customer tie until the column type is fixed.
         ({ data: inserted, error } = await supabase.from('orders').insert(orderPayload).select().single());
       }
 
