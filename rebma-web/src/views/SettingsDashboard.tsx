@@ -227,7 +227,6 @@ export default function SettingsDashboard({
 
   // ── Template data for Appearance tab ──
   const APPEARANCE_TEMPLATES = [
-    { id: 'banani',      label: 'Banani UI 1',   desc: 'Dark neon command center', sidebar: '#0a0d14', page: '#0a0d14', accent: '#3b82f6', comingSoon: false },
     { id: 'salespulse',  label: 'SalesPulse',   desc: 'Clean green growth',    sidebar: '#ffffff', page: '#f0fdf4', accent: '#22c55e', comingSoon: false },
     { id: 'liamfinance', label: 'Liam Finance',  desc: 'Compact icon sidebar',  sidebar: '#f1f5f9', page: '#f8fafc', accent: '#6366f1', comingSoon: true },
     { id: 'finloflash',  label: 'Finlo Flash',   desc: 'Warm orange fire',      sidebar: '#ffffff', page: '#fff7ed', accent: '#f97316', comingSoon: false },
