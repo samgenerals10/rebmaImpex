@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import type { StaffMember } from '../../types/erp';
+import CountUp from '../../components/CountUp';
 
 interface Department {
   id: string;
@@ -118,8 +119,8 @@ export default function DeptManagerView({ staffList, addNotification }: Props) {
         {[
           { label: 'Departments', value: depts.length, color: 'var(--accent)', icon: Building2 },
           { label: 'Total Headcount', value: totalHeadcount, color: '#10b981', icon: Users },
-          { label: 'Avg Performance', value: `${avgPerformance}%`, color: '#6366f1', icon: TrendingUp },
-          { label: 'Total Budget', value: `GHS ${totalBudget.toLocaleString()}`, color: '#f59e0b', icon: BarChart2 },
+          { label: 'Avg Performance', value: avgPerformance, suffix: '%', color: '#6366f1', icon: TrendingUp },
+          { label: 'Total Budget', value: totalBudget, prefix: 'GHS ', color: '#f59e0b', icon: BarChart2 },
         ].map(card => (
           <div key={card.label} className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-3.5">
             <div className="flex items-center justify-between mb-1">
@@ -128,7 +129,7 @@ export default function DeptManagerView({ staffList, addNotification }: Props) {
                 <card.icon className="w-3.5 h-3.5" />
               </div>
             </div>
-            <p className="text-2xl font-bold text-[var(--text-primary)]">{card.value}</p>
+            <p className="text-2xl font-bold text-[var(--text-primary)]"><CountUp value={card.value} prefix={card.prefix} suffix={card.suffix} /></p>
           </div>
         ))}
       </div>

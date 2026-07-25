@@ -56,7 +56,7 @@ import MaintenancePage from './components/MaintenancePage';
 import { CeoSettingsProvider, useCeoSettings } from './contexts/CeoSettingsContext';
 import { playNotificationSound, getSavedSound, getSavedVolume, stopAlertSound, setAlertNotifId } from './utils/notificationSound';
 import { uploadFile } from './utils/uploadFile';
-import { useNavBadges } from './hooks/useNavBadges';
+import { usePendingBadges } from './hooks/usePendingBadges';
 
 // Finance dedicated pages
 import FinanceWalletsView from './views/finance/WalletsView';
@@ -361,9 +361,19 @@ export default function App() {
   const hasRestoredNavRef = useRef(false);
   const profilePhotoInputRef = useRef<HTMLInputElement>(null);
   const [unpricedCount, setUnpricedCount] = useState<number>(0);
-  const rawNavBadges = useNavBadges(activeSubTab);
+  // Real "N pending right now" counts (not an event-since-last-visit
+  // counter) — mirrors Sidebar.tsx's own availableDepts filter so a plain
+  // department user only ever fetches/sees their own department's total.
+  const isSuperAdminForBadges = currentUser?.isSuperAdmin ?? false;
+  const isCeoForBadges = currentUser?.isAdmin || currentUser?.department?.toUpperCase() === 'CEO';
+  const rawUserDeptForBadges = currentUser?.department || '';
+  const normalizedUserDeptForBadges = rawUserDeptForBadges.toUpperCase() === 'HUMAN RESOURCES' ? 'HR' : rawUserDeptForBadges.toUpperCase();
+  const visibleDeptsForBadges = (isSuperAdminForBadges || isCeoForBadges)
+    ? ['CEO', 'MANAGEMENT', 'HR', 'MARKETING', 'OPERATIONS', 'FINANCE', 'PRODUCTION', 'RECEPTION', 'DISPATCH', 'LOGISTICS']
+    : [normalizedUserDeptForBadges];
+  const { navBadges: pendingNavBadges, deptBadges } = usePendingBadges(activeDepartment, visibleDeptsForBadges);
   const navBadges = {
-    ...rawNavBadges,
+    ...pendingNavBadges,
     SetPrices: unpricedCount
   };
   // Per-department alert counters for tab blinking dots. The blinking dot
@@ -770,7 +780,13 @@ export default function App() {
         email: c.email || undefined,
         photo: c.photo || undefined,
         registeredAt: new Date(c.registeredAt).toLocaleString(),
-        creditHistory: c.creditHistory ? (typeof c.creditHistory === 'string' ? JSON.parse(c.creditHistory) : c.creditHistory) : undefined
+        creditHistory: c.creditHistory ? (typeof c.creditHistory === 'string' ? JSON.parse(c.creditHistory) : c.creditHistory) : undefined,
+        // Was missing here — CustomersView.tsx re-syncs its local state from this
+        // prop on every refresh, so omitting these silently wiped the special
+        // flag/discount from the UI (and the ring/badge) a few seconds after
+        // every periodic customer refetch, even though the DB value was correct.
+        isSpecialCustomer: c.isSpecialCustomer ?? false,
+        discountPercent: c.discountPercent ?? 0,
       })));
     } catch (e) {
       console.log('Skipping customers fetch (unauthorized/error)');
@@ -3763,6 +3779,7 @@ export default function App() {
         handleQuickAction={handleQuickAction}
         navBadges={navBadges}
         tabAlerts={tabAlerts}
+        deptBadges={deptBadges}
         ordersList={ordersList}
         incomingGoodsList={incomingGoodsList}
         paymentsList={paymentsList}
@@ -3795,7 +3812,7 @@ function AppInner({
   renderMobileProfilePage, renderMobileChatPage, renderWithShell,
   accentColor, isMobileSearchActive, isMobileNotificationsActive, navStyle,
   setIsQuickActionOpen, isQuickActionOpen, handleQuickAction,
-  activeToastIds, setActiveToastIds, navBadges, tabAlerts,
+  activeToastIds, setActiveToastIds, navBadges, tabAlerts, deptBadges,
   ordersList, incomingGoodsList, paymentsList, staffList, customersList,
 }: any) {
   const { getSetting } = useCeoSettings();
@@ -3835,6 +3852,7 @@ function AppInner({
           unreadEmailCount={unreadEmailCount}
           navBadges={navBadges}
           tabAlerts={tabAlerts}
+          deptBadges={deptBadges}
         />
 
         {/* Backdrop overlay for mobile/tablet */}

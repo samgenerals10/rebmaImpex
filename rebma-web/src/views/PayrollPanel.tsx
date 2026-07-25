@@ -5,6 +5,7 @@ import { Plus, Check, X, ChevronDown, ChevronUp, Download, Banknote, Users, Doll
 import { supabase } from '../lib/supabaseClient';
 import type { CurrentUser } from '../types/erp';
 import { exportToCSV } from '../utils/export';
+import CountUp from '../components/CountUp';
 
 interface PayrollBatch {
   id: string;
@@ -175,7 +176,7 @@ export default function PayrollPanel({ currentUser, addNotification }: PayrollPa
                     <p className="text-xs text-[var(--text-muted)]">{batch?.period_start} — {batch?.period_end}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-lg font-bold text-[var(--accent)]">GHS {(Number(item.net_amount ?? 0)).toLocaleString()}</p>
+                    <p className="text-lg font-bold text-[var(--accent)]">GHS <CountUp value={item.net_amount} /></p>
                     <p className="text-[10px] text-[var(--text-muted)]">Net pay</p>
                   </div>
                 </div>
@@ -215,7 +216,7 @@ export default function PayrollPanel({ currentUser, addNotification }: PayrollPa
             return (
               <div key={s} className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4 shadow-[var(--box-shadow)]">
                 <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--text-muted)] mb-1 capitalize">{s}</p>
-                <p className="text-xl font-bold text-[var(--text-primary)]">GHS {total.toLocaleString()}</p>
+                <p className="text-xl font-bold text-[var(--text-primary)]">GHS <CountUp value={total} /></p>
                 <p className="text-xs text-[var(--text-secondary)]">{batches.filter(b => b.status === s).length} batch{batches.filter(b => b.status === s).length !== 1 ? 'es' : ''}</p>
               </div>
             );

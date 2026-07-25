@@ -9,6 +9,7 @@ import KpiDetailView from '../components/KpiDetailView';
 import { exportToCSV, exportToPDF } from '../utils/export';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import type { ProductionRequest } from '../types/erp';
+import CountUp from '../components/CountUp';
 
 interface ProductionDashboardProps {
   productionRequests: ProductionRequest[];
@@ -110,10 +111,10 @@ export default function ProductionDashboard({
   const totalUnits = productionRequests.reduce((acc, r) => acc + r.items.reduce((s, i) => s + i.quantity, 0), 0);
 
   const stats = [
-    { title: 'Requisition Orders', value: `${totalRequests} Requests`, sub: 'Total raw material requests', icon: Layers, color: 'text-blue-500' },
-    { title: 'Approved Orders', value: `${approvedCount} Cleared`, sub: 'Management authorized', icon: ShieldCheck, color: 'text-emerald-500' },
-    { title: 'Production Completed', value: `${completedCount} Batches`, sub: 'Issued to warehouse stock', icon: Factory, color: 'text-indigo-500' },
-    { title: 'Total Units Processed', value: `${totalUnits.toLocaleString()} u`, sub: 'All time raw material units', icon: Activity, color: 'text-amber-500' },
+    { title: 'Requisition Orders', value: totalRequests, suffix: ' Requests', sub: 'Total raw material requests', icon: Layers, color: 'text-blue-500' },
+    { title: 'Approved Orders', value: approvedCount, suffix: ' Cleared', sub: 'Management authorized', icon: ShieldCheck, color: 'text-emerald-500' },
+    { title: 'Production Completed', value: completedCount, suffix: ' Batches', sub: 'Issued to warehouse stock', icon: Factory, color: 'text-indigo-500' },
+    { title: 'Total Units Processed', value: totalUnits, suffix: ' u', sub: 'All time raw material units', icon: Activity, color: 'text-amber-500' },
   ];
 
   const kpiDetails = [
@@ -762,7 +763,7 @@ export default function ProductionDashboard({
               </div>
               <div className="flex items-end justify-between mt-2 gap-2">
                 <div>
-                  <h3 className="text-2xl sm:text-3xl font-bold text-[var(--text-primary)] leading-none">{card.value}</h3>
+                  <h3 className="text-2xl sm:text-3xl font-bold text-[var(--text-primary)] leading-none"><CountUp value={card.value} suffix={card.suffix} /></h3>
                   <p className="text-[10px] text-[var(--text-muted)] mt-1.5">{card.sub}</p>
                 </div>
                 <MiniSparkline width={60} height={36} />

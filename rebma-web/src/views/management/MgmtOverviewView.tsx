@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import PendingApprovalsAlert from '../../components/global/PendingApprovalsAlert';
 import ProductCatalogCard from '../../components/ProductCatalogCard';
+import CountUp from '../../components/CountUp';
 import {
   ResponsiveContainer, AreaChart, Area, BarChart, Bar, LineChart, Line,
   XAxis, YAxis, Tooltip, PieChart, Pie, Cell
@@ -496,6 +497,7 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
   const totalSellingValue = inventoryItems.reduce((s, i) => s + i.sellingValue, 0);
   const totalCostValue = inventoryItems.reduce((s, i) => s + i.costValue, 0);
   const potentialProfit = totalSellingValue - totalCostValue;
+  const stockMarginPct = totalCostValue > 0 ? ((totalSellingValue - totalCostValue) / totalCostValue) * 100 : null;
   const totalRevenueEarned = inventoryItems.reduce((s, i) => s + i.soldRevenue, 0);
 
   // Cargo Discrepancies statement logic
@@ -703,7 +705,9 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
         {[
           {
             label: 'Revenue',
-            value: `GHS ${cumulativeRevenue.toLocaleString()}`,
+            value: cumulativeRevenue,
+            prefix: 'GHS ',
+            suffix: '',
             change: `${orders.filter(o => ['APPROVED', 'PROCESSING', 'DELIVERED', 'OUT_FOR_DELIVERY'].includes(o.status)).length} approved orders`,
             up: true,
             sub: 'Cumulative Sales',
@@ -712,6 +716,8 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
           {
             label: 'Pending Approvals',
             value: pendingCount,
+            prefix: '',
+            suffix: '',
             change: pendingCount > 0 ? 'requires action' : 'all clear',
             up: pendingCount === 0,
             sub: `${pendingCargo.length} cargo · ${pendingOrders.length} credit · ${pendingProduction.length} prod · ${pendingProfiles.length} staff`,
@@ -719,7 +725,9 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
           },
           {
             label: 'Avg Profit Margin',
-            value: avgProfitMargin !== null ? `${avgProfitMargin}%` : '—',
+            value: avgProfitMargin,
+            prefix: '',
+            suffix: '%',
             change: avgProfitMargin !== null ? (avgProfitMargin >= 0 ? 'positive margin' : 'negative margin') : 'No expense data yet',
             up: avgProfitMargin === null ? true : avgProfitMargin >= 0,
             sub: avgProfitMargin !== null ? 'revenue vs expenses' : 'log expenses in Finance',
@@ -727,7 +735,9 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
           },
           {
             label: 'Staff Reliability',
-            value: attendanceReliability !== null ? `${attendanceReliability}%` : '—',
+            value: attendanceReliability,
+            prefix: '',
+            suffix: '%',
             change: attendanceReliability !== null
               ? `${presentCount} on-time / ${totalAttendance} total`
               : 'No attendance recorded',
@@ -735,7 +745,7 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
             sub: attendanceReliability !== null ? 'attendance-based' : 'check HR attendance',
             linkTab: 'DeptActivity'
           },
-        ].map(({ label, value, change, up, sub, isClickable, linkTab }) => (
+        ].map(({ label, value, prefix, suffix, change, up, sub, isClickable, linkTab }) => (
           <div
             key={label}
             onClick={() => { if (isClickable) setShowRevenueModal(true); else if (linkTab) setActiveSubTab?.(linkTab); }}
@@ -745,7 +755,7 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
               <span>{label}</span>
               {(isClickable || linkTab) && <span className="text-[9px] text-[var(--accent)] font-semibold font-mono bg-[var(--accent-light)] px-1 py-0.5 rounded">{isClickable ? 'Drill down →' : 'View →'}</span>}
             </p>
-            <p className="text-2xl font-bold text-[var(--text-primary)]">{value}</p>
+            <p className="text-2xl font-bold text-[var(--text-primary)]"><CountUp value={value} prefix={prefix} suffix={suffix} /></p>
             <div className="flex items-center gap-1 mt-1">
               {up ? <TrendingUp size={11} className="text-green-500" /> : <TrendingDown size={11} className="text-red-400" />}
               <span className={`text-xs font-medium ${up ? 'text-green-500' : 'text-red-400'}`}>{change}</span>
@@ -765,7 +775,7 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
           <div key={item.label} className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4 flex items-center justify-between shadow-[var(--box-shadow)]">
             <div>
               <p className="text-xs text-[var(--text-muted)] mb-1 font-semibold">{item.label}</p>
-              <p className="text-xl font-bold text-[var(--text-primary)]">{item.value}</p>
+              <p className="text-xl font-bold text-[var(--text-primary)]"><CountUp value={item.value} /></p>
               <p className="text-[10px] text-[var(--text-muted)] mt-1">{item.sub}</p>
             </div>
             <div className="w-10 h-10 rounded-full bg-[var(--accent-light)] flex items-center justify-center text-[var(--accent)]">
@@ -812,22 +822,22 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
           <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-4">
             <div className="rounded-xl p-4 bg-amber-500/10">
               <p className="text-[10px] text-[var(--text-muted)] uppercase font-semibold tracking-wide mb-1">Stock Cost Value</p>
-              <p className="text-xl font-bold text-amber-600">{inventoryItems[0]?.currency || 'GHS'} {totalCostValue.toLocaleString()}</p>
+              <p className="text-xl font-bold text-amber-600">{inventoryItems[0]?.currency || 'GHS'} <CountUp value={totalCostValue} /></p>
               <p className="text-xs text-[var(--text-muted)] mt-0.5">What goods cost us</p>
             </div>
             <div className="rounded-xl p-4 bg-sky-500/10">
               <p className="text-[10px] text-[var(--text-muted)] uppercase font-semibold tracking-wide mb-1">Stock Selling Value</p>
-              <p className="text-xl font-bold text-sky-600">{inventoryItems[0]?.currency || 'GHS'} {totalSellingValue.toLocaleString()}</p>
+              <p className="text-xl font-bold text-sky-600">{inventoryItems[0]?.currency || 'GHS'} <CountUp value={totalSellingValue} /></p>
               <p className="text-xs text-[var(--text-muted)] mt-0.5">At set prices</p>
             </div>
             <div className="rounded-xl p-4 bg-emerald-500/10">
               <p className="text-[10px] text-[var(--text-muted)] uppercase font-semibold tracking-wide mb-1">Revenue Earned</p>
-              <p className="text-xl font-bold text-emerald-600">{inventoryItems[0]?.currency || 'GHS'} {totalRevenueEarned.toLocaleString()}</p>
+              <p className="text-xl font-bold text-emerald-600">{inventoryItems[0]?.currency || 'GHS'} <CountUp value={totalRevenueEarned} /></p>
               <p className="text-xs text-[var(--text-muted)] mt-0.5">From approved orders</p>
             </div>
             <div className="rounded-xl p-4 bg-violet-500/10">
               <p className="text-[10px] text-[var(--text-muted)] uppercase font-semibold tracking-wide mb-1">Stock Margin</p>
-              <p className={`text-xl font-bold ${potentialProfit >= 0 ? 'text-violet-600' : 'text-rose-600'}`}>{totalCostValue > 0 ? `${(((totalSellingValue - totalCostValue) / totalCostValue) * 100).toFixed(1)}%` : '—'}</p>
+              <p className={`text-xl font-bold ${potentialProfit >= 0 ? 'text-violet-600' : 'text-rose-600'}`}><CountUp value={stockMarginPct} decimals={1} suffix="%" /></p>
               <p className="text-xs text-[var(--text-muted)] mt-0.5">Selling − Cost</p>
             </div>
           </div>
@@ -934,7 +944,7 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
               <button key={t} onClick={() => setCashflowTab(t)} className={`px-3 py-1.5 rounded-full text-xs font-medium capitalize transition-colors ${cashflowTab === t ? 'text-white' : 'text-[var(--text-secondary)] bg-[var(--bg-input)]'}`} style={cashflowTab === t ? { background: 'var(--accent)' } : {}}>{t}</button>
             ))}
           </div>
-          <p className="text-2xl font-bold text-[var(--text-primary)] mb-4">GHS {cashflowDisplay.toLocaleString()}</p>
+          <p className="text-2xl font-bold text-[var(--text-primary)] mb-4">GHS <CountUp value={cashflowDisplay} /></p>
           <div className="h-36">
             {cashflowData.every(c => c.income === 0 && c.expense === 0) ? (
               <div className="h-full flex items-center justify-center text-[var(--text-muted)] text-xs">No cashflow logs</div>
@@ -1026,7 +1036,7 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
               </ResponsiveContainer>
             </div>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <p className="text-xl font-bold text-[var(--text-primary)]">{appCount + penCount + rejCount}</p>
+              <p className="text-xl font-bold text-[var(--text-primary)]"><CountUp value={appCount + penCount + rejCount} /></p>
               <p className="text-xs text-[var(--text-muted)]">Total</p>
             </div>
           </div>

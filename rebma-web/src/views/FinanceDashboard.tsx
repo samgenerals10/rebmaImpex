@@ -14,6 +14,7 @@ import { stockApi, operations } from '../services/apiClient';
 import { supabase } from '../lib/supabaseClient';
 import ActivityFeed from '../components/global/ActivityFeed';
 import FinanceOverviewView from './finance/OverviewView';
+import CountUp from '../components/CountUp';
 
 interface FinanceDashboardProps {
   ordersList: Order[];
@@ -277,10 +278,10 @@ export default function FinanceDashboard({
   const liquidCashVal = localPayments.reduce((acc, p) => acc + p.amount, 0);
 
   const stats = [
-    { title: 'Total Revenue',      value: `GHS ${totalRevenueVal.toLocaleString()}`, sub: 'Completed & Approved Sales', icon: DollarSign, color: 'text-emerald-500' },
-    { title: 'Pending Orders',     value: `${pendingFinanceCount} Orders`,           sub: 'Awaiting finance review',    icon: Clipboard,  color: 'text-amber-500' },
-    { title: 'Invoices Generated', value: `${recordedPaymentsCount} Tickets`,        sub: 'Receipt database logs',      icon: ShieldCheck, color: 'text-blue-500' },
-    { title: 'Credit Outstanding', value: `GHS ${liquidCashVal.toLocaleString()}`,   sub: 'Total direct collections',   icon: Activity,   color: 'text-indigo-500' },
+    { title: 'Total Revenue',      value: totalRevenueVal, prefix: 'GHS ', suffix: '', sub: 'Completed & Approved Sales', icon: DollarSign, color: 'text-emerald-500' },
+    { title: 'Pending Orders',     value: pendingFinanceCount, prefix: '', suffix: ' Orders', sub: 'Awaiting finance review',    icon: Clipboard,  color: 'text-amber-500' },
+    { title: 'Invoices Generated', value: recordedPaymentsCount, prefix: '', suffix: ' Tickets', sub: 'Receipt database logs',      icon: ShieldCheck, color: 'text-blue-500' },
+    { title: 'Credit Outstanding', value: liquidCashVal, prefix: 'GHS ', suffix: '', sub: 'Total direct collections',   icon: Activity,   color: 'text-indigo-500' },
   ];
 
   const handleRecordPaymentSubmit = async (e: React.FormEvent) => {
@@ -798,15 +799,15 @@ export default function FinanceDashboard({
           <div className="flex justify-between items-start relative z-10">
             <div>
               <p className="text-[10px] uppercase tracking-widest text-white/60 font-bold">Total Revenue</p>
-              <h2 className="text-3xl font-extrabold text-white mt-1 tracking-tight">GHS {totalRevenueVal.toLocaleString()}</h2>
-              <p className="text-[10px] text-white/70 mt-1">{pendingFinanceCount} Orders Pending Review</p>
+              <h2 className="text-3xl font-extrabold text-white mt-1 tracking-tight">GHS <CountUp value={totalRevenueVal} /></h2>
+              <p className="text-[10px] text-white/70 mt-1"><CountUp value={pendingFinanceCount} suffix=" Orders Pending Review" /></p>
             </div>
             <div className="mobile-card-chip mt-1" />
           </div>
           <div className="flex justify-between items-end mt-8 relative z-10">
             <div>
-              <p className="text-[10px] font-mono tracking-widest text-white/60">{recordedPaymentsCount} Payment Receipts</p>
-              <p className="text-[10px] font-bold text-white/80 mt-1 uppercase tracking-wider">GHS {liquidCashVal.toLocaleString()} Liquid Cash</p>
+              <p className="text-[10px] font-mono tracking-widest text-white/60"><CountUp value={recordedPaymentsCount} suffix=" Payment Receipts" /></p>
+              <p className="text-[10px] font-bold text-white/80 mt-1 uppercase tracking-wider">GHS <CountUp value={liquidCashVal} suffix=" Liquid Cash" /></p>
             </div>
             <div className="mobile-card-circles"><div className="mobile-card-circle-1" /><div className="mobile-card-circle-2" /></div>
           </div>
@@ -814,14 +815,14 @@ export default function FinanceDashboard({
 
         <div className="grid grid-cols-2 gap-3">
           {[
-            { label: 'Payments', value: `${recordedPaymentsCount}`, sub: 'Receipts logged', bg: '#eff6ff', color: '#3b82f6', icon: ShieldCheck },
-            { label: 'Cash Inflow', value: `GHS ${liquidCashVal.toLocaleString()}`, sub: 'Direct collections', bg: '#f0fdf4', color: '#16a34a', icon: Activity },
+            { label: 'Payments', value: recordedPaymentsCount, prefix: '', sub: 'Receipts logged', bg: '#eff6ff', color: '#3b82f6', icon: ShieldCheck },
+            { label: 'Cash Inflow', value: liquidCashVal, prefix: 'GHS ', sub: 'Direct collections', bg: '#f0fdf4', color: '#16a34a', icon: Activity },
           ].map((s, i) => { const Icon = s.icon; return (
             <div key={i} className="mobile-stat-card">
               <div className="mobile-stat-icon" style={{ background: s.bg }}><Icon className="w-5 h-5" style={{ color: s.color }} /></div>
               <div className="min-w-0">
                 <p className="text-[9px] text-text-muted uppercase font-bold tracking-wider">{s.label}</p>
-                <p className="text-sm font-bold text-text-primary mt-0.5">{s.value}</p>
+                <p className="text-sm font-bold text-text-primary mt-0.5"><CountUp value={s.value} prefix={s.prefix} /></p>
                 <p className="text-[9px] text-text-muted">{s.sub}</p>
               </div>
             </div>
@@ -838,7 +839,7 @@ export default function FinanceDashboard({
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-bold text-text-primary truncate">{pay.clientName}</p>
-                  <p className="text-[10px] text-text-muted truncate">GHS {pay.amount.toLocaleString()} • {pay.paymentMode}</p>
+                  <p className="text-[10px] text-text-muted truncate">GHS <CountUp value={pay.amount} /> • {pay.paymentMode}</p>
                 </div>
                 <span className="mobile-status-pill bg-emerald-50 text-emerald-700">Paid</span>
               </div>
@@ -877,7 +878,7 @@ export default function FinanceDashboard({
 
                 <div className="p-6 space-y-4 text-[var(--text-primary)]">
                   <div className="text-center">
-                    <p className="text-2xl font-bold font-mono">GHS {selectedTicket.amount.toLocaleString()}</p>
+                    <p className="text-2xl font-bold font-mono">GHS <CountUp value={selectedTicket.amount} /></p>
                     <span className="px-3 py-1 bg-emerald-500/15 text-emerald-450 rounded-full text-xs font-bold mt-1 inline-block">PAID</span>
                   </div>
                   
@@ -967,7 +968,7 @@ export default function FinanceDashboard({
                   </div>
                   <div className="flex items-end justify-between mt-2 gap-2">
                     <div>
-                      <h3 className="text-2xl sm:text-3xl font-bold text-[var(--text-primary)] leading-none">{card.value}</h3>
+                      <h3 className="text-2xl sm:text-3xl font-bold text-[var(--text-primary)] leading-none"><CountUp value={card.value} prefix={card.prefix} suffix={card.suffix} /></h3>
                       <p className={`flex items-center gap-0.5 text-[10px] font-semibold mt-1.5 ${isUp ? 'text-emerald-500' : 'text-rose-500'}`}>
                         {isUp ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
                         {card.sub}
@@ -984,17 +985,17 @@ export default function FinanceDashboard({
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6">
             <div title="Production requisitions Management has approved for release (status TICKETS_ISSUED or COMPLETED)" className="p-4 md:p-6 bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-[var(--box-shadow)] space-y-3">
               <h3 className="text-sm font-bold text-[var(--text-primary)]">Overall Goods Produced by Production</h3>
-              <p className="text-2xl md:text-3xl font-bold text-[var(--accent)] font-mono">{totalGoodsProduced} <span className="text-xs md:text-base text-[var(--text-secondary)] font-normal font-sans">Batches</span></p>
+              <p className="text-2xl md:text-3xl font-bold text-[var(--accent)] font-mono"><CountUp value={totalGoodsProduced} /> <span className="text-xs md:text-base text-[var(--text-secondary)] font-normal font-sans">Batches</span></p>
               <p className="text-[10px] text-[var(--text-secondary)] opacity-80">Requisitions with TICKETS_ISSUED or COMPLETED status from Production floor.</p>
             </div>
             <div title="Live sum of released production units currently held in warehouse stock" className="p-4 md:p-6 bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-[var(--box-shadow)] space-y-3">
               <h3 className="text-sm font-bold text-[var(--text-primary)]">Overall Goods in Warehouse</h3>
-              <p className="text-2xl md:text-3xl font-bold text-emerald-500 font-mono">{totalWarehouseItems.toLocaleString()} <span className="text-xs md:text-base text-[var(--text-secondary)] font-normal font-sans">Units</span></p>
+              <p className="text-2xl md:text-3xl font-bold text-emerald-500 font-mono"><CountUp value={totalWarehouseItems} /> <span className="text-xs md:text-base text-[var(--text-secondary)] font-normal font-sans">Units</span></p>
               <p className="text-[10px] text-[var(--text-secondary)] opacity-80">Total approved and released production units currently in warehouse stock.</p>
             </div>
             <div title="Real stock valuation (quantity × unit price per product) plus approved general purchases — capital currently tied up, not yet converted to sales" className="p-4 md:p-6 bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-[var(--box-shadow)] space-y-3">
               <h3 className="text-sm font-bold text-[var(--text-primary)]">Capital Tied Up in Assets</h3>
-              <p className="text-2xl md:text-3xl font-bold text-indigo-500 font-mono">₵{totalCapitalAssets.toLocaleString('en-GH', { maximumFractionDigits: 0 })}</p>
+              <p className="text-2xl md:text-3xl font-bold text-indigo-500 font-mono">₵<CountUp value={totalCapitalAssets} /></p>
               <p className="text-[10px] text-[var(--text-secondary)] opacity-80">Value of finished goods stock plus approved general purchased items.</p>
             </div>
           </div>
@@ -1067,7 +1068,7 @@ export default function FinanceDashboard({
                         <div className="space-y-2">
                           <div className="bg-[var(--bg)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs">
                             <p className="text-[var(--text-muted)]">Amount Required</p>
-                            <p className="font-bold text-[var(--text-primary)] text-sm">GHS {amountRequired.toLocaleString()}</p>
+                            <p className="font-bold text-[var(--text-primary)] text-sm">GHS <CountUp value={amountRequired} /></p>
                           </div>
                           <div>
                             <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Amount Paid (GHS)</label>
@@ -1122,7 +1123,7 @@ export default function FinanceDashboard({
                             <span className="text-[10px] font-mono text-[var(--text-secondary)]">({order.id})</span>
                             {order.ticketNumber && <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-450 rounded text-[9px] font-bold">🎫 {order.ticketNumber}</span>}
                           </div>
-                          <p className="text-xs text-[var(--text-secondary)] mt-0.5">Payment Mode: <strong className="text-[var(--text-primary)]">{order.paymentMode}</strong> | Amount: <strong className="text-[var(--text-primary)]">GHS {order.totalAmount.toLocaleString()}</strong></p>
+                          <p className="text-xs text-[var(--text-secondary)] mt-0.5">Payment Mode: <strong className="text-[var(--text-primary)]">{order.paymentMode}</strong> | Amount: <strong className="text-[var(--text-primary)]">GHS <CountUp value={order.totalAmount} /></strong></p>
                           {order.productName && <p className="text-[10px] text-[var(--text-secondary)]">Product: {order.productName}</p>}
                           {order.destination && <p className="text-[10px] text-[var(--text-secondary)]">Destination: {order.destination}</p>}
                           {order.ghanaCard && <p className="text-[10px] text-[var(--text-secondary)] font-mono">Ghana Card: <code>{order.ghanaCard}</code></p>}
@@ -1161,7 +1162,7 @@ export default function FinanceDashboard({
                           {order.productName && <p className="text-[10px] text-[var(--text-secondary)]">Product: <strong className="text-[var(--text-primary)]">{order.productName}</strong></p>}
                           {order.destination && <p className="text-[10px] text-[var(--text-secondary)]">Ship to: <strong className="text-[var(--text-primary)]">{order.destination}</strong></p>}
                           <p className="text-[10px] text-[var(--text-secondary)]">Mode: <strong className="text-[var(--text-primary)]">{order.paymentMode}</strong></p>
-                          <p className="text-sm font-bold text-emerald-500 mt-1 font-mono">Invoice Amount: GHS {order.totalAmount.toLocaleString()}</p>
+                          <p className="text-sm font-bold text-emerald-500 mt-1 font-mono">Invoice Amount: GHS <CountUp value={order.totalAmount} /></p>
                         </div>
                         <button
                           onClick={() => onFinalizeOrder(order.id)}
@@ -1251,7 +1252,7 @@ export default function FinanceDashboard({
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-emerald-500 font-mono">GHS {pay.amount.toLocaleString()}</span>
+                        <span className="text-xs font-bold text-emerald-500 font-mono">GHS <CountUp value={pay.amount} /></span>
                         <ChevronRight className="w-4 h-4 text-text-muted" />
                       </div>
                     </div>
@@ -1471,7 +1472,7 @@ export default function FinanceDashboard({
                           <p className="text-xs text-text-muted font-semibold truncate max-w-[150px]">
                             {req.items.map(it => it.materialName).join(', ')}
                           </p>
-                          <p className="text-[10px] text-text-muted mt-0.5 font-mono">{req.items.reduce((s, i) => s + i.quantity, 0).toLocaleString()} units</p>
+                          <p className="text-[10px] text-text-muted mt-0.5 font-mono"><CountUp value={req.items.reduce((s, i) => s + i.quantity, 0)} suffix=" units" /></p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
@@ -1791,23 +1792,23 @@ export default function FinanceDashboard({
                       <div className="grid grid-cols-2 gap-4 border-t md:border-t-0 md:border-x border-slate-200/60 px-0 md:px-6 py-4 md:py-0">
                         <div>
                           <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide block">Selling Price</span>
-                          <span className="text-lg font-extrabold text-slate-900">{selectedCatalogProduct.currency} {Number(selectedCatalogProduct.unit_price || 0).toLocaleString()}</span>
+                          <span className="text-lg font-extrabold text-slate-900">{selectedCatalogProduct.currency} <CountUp value={Number(selectedCatalogProduct.unit_price || 0)} /></span>
                         </div>
                         <div>
                           <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide block">Cost Price</span>
-                          <span className="text-sm font-semibold text-slate-600 block mt-0.5">{selectedCatalogProduct.currency} {Number(selectedCatalogProduct.cost_price || 0).toLocaleString()}</span>
-                          <span className="text-[9px] text-emerald-500 font-black">+{selectedCatalogProduct.margin}% margin</span>
+                          <span className="text-sm font-semibold text-slate-600 block mt-0.5">{selectedCatalogProduct.currency} <CountUp value={Number(selectedCatalogProduct.cost_price || 0)} /></span>
+                          <span className="text-[9px] text-emerald-500 font-black"><CountUp value={Number(selectedCatalogProduct.margin)} prefix="+" suffix="% margin" /></span>
                         </div>
                       </div>
 
                       <div className="flex flex-col justify-center">
                         <div className="flex items-center justify-between text-xs mb-1">
                           <span className="text-slate-500 font-medium">Quantity in Stock:</span>
-                          <span className="font-bold text-slate-900">{(selectedCatalogProduct.stock || 0).toLocaleString()} units</span>
+                          <span className="font-bold text-slate-900"><CountUp value={selectedCatalogProduct.stock || 0} suffix=" units" /></span>
                         </div>
                         <div className="flex items-center justify-between text-xs">
                           <span className="text-slate-500 font-medium">Fulfillment Valuation:</span>
-                          <span className="font-black text-slate-955">{(selectedCatalogProduct.currency || 'GHS')} {(selectedCatalogProduct.sellingValue || 0).toLocaleString()}</span>
+                          <span className="font-black text-slate-955">{(selectedCatalogProduct.currency || 'GHS')} <CountUp value={selectedCatalogProduct.sellingValue || 0} /></span>
                         </div>
                       </div>
                     </div>
@@ -2037,15 +2038,15 @@ export default function FinanceDashboard({
                               
                               {/* Price Row */}
                               <div className="flex items-center gap-2 pt-2">
-                                <span className="text-sm font-extrabold text-slate-900">{item.currency} {Number(item.unit_price).toLocaleString()}</span>
-                                <span className="text-[10px] text-slate-300 line-through font-semibold">{item.currency} {Number(item.cost_price).toLocaleString()}</span>
+                                <span className="text-sm font-extrabold text-slate-900">{item.currency} <CountUp value={Number(item.unit_price)} /></span>
+                                <span className="text-[10px] text-slate-300 line-through font-semibold">{item.currency} <CountUp value={Number(item.cost_price)} /></span>
                               </div>
                             </div>
 
                             {/* Inventory status line inside card */}
                             <div className="mt-4 pt-3 border-t border-slate-50 text-[10px] text-slate-500 flex justify-between items-center font-medium">
-                              <span>Stock: {item.stock.toLocaleString()}</span>
-                              <span className="text-emerald-500 font-extrabold">+{item.margin}% margin</span>
+                              <span>Stock: <CountUp value={item.stock} /></span>
+                              <span className="text-emerald-500 font-extrabold"><CountUp value={Number(item.margin)} prefix="+" suffix="% margin" /></span>
                             </div>
                           </div>
                         ))}
@@ -2063,7 +2064,7 @@ export default function FinanceDashboard({
                         {/* Valuation info */}
                         <div className="space-y-2 pt-4 z-10 text-left">
                           <p className="text-[9px] text-sky-200 uppercase tracking-wider font-extrabold">Fulfillment Valuation</p>
-                          <p className="text-3xl font-black">GHS {Number(sortedCatalogItems.reduce((s,i)=>s+i.sellingValue, 0)).toLocaleString()}</p>
+                          <p className="text-3xl font-black">GHS <CountUp value={Number(sortedCatalogItems.reduce((s,i)=>s+i.sellingValue, 0))} /></p>
                         </div>
                       </div>
 
@@ -2103,7 +2104,7 @@ export default function FinanceDashboard({
                               <div className="text-left space-y-1">
                                 <h4 className="text-[10px] font-black text-slate-800 truncate">{name}</h4>
                                 <p className="text-[9px] text-slate-400 uppercase font-semibold">{cat}</p>
-                                <p className="text-xs font-black text-slate-900">{gp.currency || 'GHS'} {price.toLocaleString()}</p>
+                                <p className="text-xs font-black text-slate-900">{gp.currency || 'GHS'} <CountUp value={price} /></p>
                               </div>
                             </div>
                           );

@@ -6,6 +6,7 @@ import {
 import { TrendingUp, TrendingDown, ClipboardCheck, ShieldCheck, Users, DollarSign, Download, BarChart2, RefreshCw } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { exportToCSV } from '../../utils/export';
+import CountUp from '../../components/CountUp';
 
 interface Props { addNotification: (msg: string) => void }
 
@@ -221,10 +222,10 @@ export default function MgmtAnalyticsView({ addNotification }: Props) {
   };
 
   const KPI_CARDS = [
-    { label: 'Total Cargo Reviewed', value: totalApprovals.toLocaleString(), change: null, icon: ClipboardCheck, color: 'var(--accent)' },
-    { label: 'Approval Rate', value: `${approvalRate}%`, change: null, icon: ShieldCheck, color: '#10b981' },
-    { label: 'Revenue Tracked', value: deptRevenue.length > 0 ? `GHS ${deptRevenue.reduce((s,d) => s + d.revenue, 0).toLocaleString()}` : '—', change: null, icon: DollarSign, color: '#8b5cf6' },
-    { label: 'Departments Active', value: performanceHeatmap.length > 0 ? `${performanceHeatmap.length}/${DEPT_LIST.length}` : '—', change: null, icon: Users, color: '#f59e0b' },
+    { label: 'Total Cargo Reviewed', value: totalApprovals, prefix: '', suffix: '', icon: ClipboardCheck, color: 'var(--accent)' },
+    { label: 'Approval Rate', value: approvalRate, prefix: '', suffix: '%', icon: ShieldCheck, color: '#10b981' },
+    { label: 'Revenue Tracked', value: deptRevenue.length > 0 ? deptRevenue.reduce((s,d) => s + d.revenue, 0) : null, prefix: 'GHS ', suffix: '', icon: DollarSign, color: '#8b5cf6' },
+    { label: 'Departments Active', value: performanceHeatmap.length > 0 ? `${performanceHeatmap.length}/${DEPT_LIST.length}` : '—', prefix: '', suffix: '', icon: Users, color: '#f59e0b' },
   ];
 
   return (
@@ -262,7 +263,11 @@ export default function MgmtAnalyticsView({ addNotification }: Props) {
                   <Icon className="w-4 h-4" style={{ color: card.color }} />
                 </div>
               </div>
-              <p className="text-2xl font-bold text-[var(--text-primary)]">{loading ? '—' : card.value}</p>
+              <p className="text-2xl font-bold text-[var(--text-primary)]">
+                {loading ? '—' : typeof card.value === 'number'
+                  ? <CountUp value={card.value} prefix={card.prefix} suffix={card.suffix} />
+                  : card.value}
+              </p>
               <p className="text-[10px] text-[var(--text-muted)] mt-1">Live from database</p>
             </div>
           );

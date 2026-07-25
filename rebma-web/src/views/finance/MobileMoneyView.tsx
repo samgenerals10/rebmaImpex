@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { Search, Download, MoreVertical, Eye, CheckCircle, Clock, XCircle, Smartphone } from 'lucide-react';
 import { exportToCSV } from '../../utils/export';
 import { ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import CountUp from '../../components/CountUp';
 
 interface MomoTxn {
   id: string;
@@ -178,14 +179,14 @@ export default function FinanceMobileMoneyView({ addNotification, currentUser }:
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Total MoMo', value: `GHS ${totalMoMo.toLocaleString()}`, color: 'var(--accent)' },
-          { label: 'MTN MoMo', value: `GHS ${byNetwork[0].value.toLocaleString()}`, color: '#f59e0b' },
-          { label: 'Vodafone Cash', value: `GHS ${byNetwork[1].value.toLocaleString()}`, color: '#ef4444' },
-          { label: 'AirtelTigo Money', value: `GHS ${byNetwork[2].value.toLocaleString()}`, color: '#3b82f6' },
+          { label: 'Total MoMo', value: totalMoMo, color: 'var(--accent)' },
+          { label: 'MTN MoMo', value: byNetwork[0].value, color: '#f59e0b' },
+          { label: 'Vodafone Cash', value: byNetwork[1].value, color: '#ef4444' },
+          { label: 'AirtelTigo Money', value: byNetwork[2].value, color: '#3b82f6' },
         ].map(({ label, value, color }) => (
           <div key={label} className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4 flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${color}20` }}><Smartphone size={18} style={{ color }} /></div>
-            <div><p className="text-xs text-[var(--text-muted)]">{label}</p><p className="text-lg font-bold text-[var(--text-primary)]">{value}</p></div>
+            <div><p className="text-xs text-[var(--text-muted)]">{label}</p><p className="text-lg font-bold text-[var(--text-primary)]">GHS <CountUp value={value} /></p></div>
           </div>
         ))}
       </div>
@@ -203,7 +204,7 @@ export default function FinanceMobileMoneyView({ addNotification, currentUser }:
               {byNetwork.map(n => (
                 <div key={n.name} className="flex items-center justify-between">
                   <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full" style={{ background: n.color }} /><span className="text-xs text-[var(--text-secondary)]">{n.name}</span></div>
-                  <span className="text-xs font-semibold text-[var(--text-primary)]">GHS {n.value.toLocaleString()}</span>
+                  <span className="text-xs font-semibold text-[var(--text-primary)]">GHS <CountUp value={n.value} /></span>
                 </div>
               ))}
             </div>

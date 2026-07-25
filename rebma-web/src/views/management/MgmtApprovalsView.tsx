@@ -10,6 +10,7 @@ import InvoiceLineItems from '../../components/InvoiceLineItems';
 import MaterialRequisitionsPanel from './MaterialRequisitionsPanel';
 import ApprovalHistoryPanel from '../../components/global/ApprovalHistoryPanel';
 import { useFullscreenToggle, FullscreenButton } from '../../components/global/FullscreenToggle';
+import CountUp from '../../components/CountUp';
 
 interface ApprovalItem {
   id: string;
@@ -92,9 +93,11 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
   // approving — the stock addition and fulfillment ticket reflect what was
   // actually authorized, not just what was originally asked for.
   const [approvedQty, setApprovedQty] = useState('');
-  // Same idea for Sales Order line items — one editable quantity per product,
-  // indexed by position in the order's metadata.items array.
-  const [orderItemQty, setOrderItemQty] = useState<string[]>([]);
+  // Same idea for Sales Order line items — editable quantity AND unit price
+  // per product, indexed by position in the order's metadata.items array.
+  // Edited inline on the detail card itself (not in the approve modal), so it
+  // initializes whenever a pending Sales Order becomes the selected item.
+  const [orderEdits, setOrderEdits] = useState<{ quantity: string; unitPrice: string }[]>([]);
   const tableFullscreen = useFullscreenToggle();
 
   useEffect(() => {
@@ -286,6 +289,19 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
 
   const selectedItem = allItems.find(i => i.id === selected);
 
+  // Initialize the inline order-item editor whenever a pending Sales Order
+  // becomes the selected item — covers opening it via handleAction (Approve/
+  // Reject buttons) AND the plain "View Details" row clicks that skip it.
+  useEffect(() => {
+    if (selectedItem?.type === 'Sales Order' && selectedItem.raw) {
+      const orderItems = Array.isArray((selectedItem.raw as any)?.metadata?.items) ? (selectedItem.raw as any).metadata.items : [];
+      setOrderEdits(orderItems.map((it: any) => ({ quantity: String(it.quantity ?? ''), unitPrice: String(it.unitPrice ?? '') })));
+    } else {
+      setOrderEdits([]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected]);
+
   function handleAction(id: string, action: 'approve' | 'reject') {
     setSelected(id);
     setShowModal(action);
@@ -308,10 +324,8 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
     if (item && item.type === 'Production Request') {
       setApprovedQty(String(item.raw?.quantity ?? ''));
     }
-    if (item && item.type === 'Sales Order') {
-      const orderItems = Array.isArray((item.raw as any)?.metadata?.items) ? (item.raw as any).metadata.items : [];
-      setOrderItemQty(orderItems.map((it: any) => String(it.quantity ?? '')));
-    }
+    // Sales Order line-item edits are initialized by the useEffect above,
+    // keyed on `selected` — no per-action setup needed here.
   }
 
   async function confirmAction() {
@@ -410,13 +424,14 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
         const originalItems: any[] = Array.isArray(orderRow?.metadata?.items) ? orderRow.metadata.items : [];
 
         if (action === 'approve' && originalItems.length > 0) {
-          // Management's adjusted quantities win — recompute line totals and
-          // the order total so Finance bills what was actually authorized.
+          // Management's adjusted quantities AND unit prices win — recompute
+          // line totals and the order total so Finance bills what was
+          // actually authorized, not just what Marketing originally quoted.
           const adjustedItems = originalItems.map((it: any, idx: number) => {
-            const draft = orderItemQty[idx];
-            const qty = draft !== undefined && draft !== '' ? Math.max(0, Number(draft) || 0) : Number(it.quantity) || 0;
-            const unitPrice = Number(it.unitPrice) || 0;
-            return { ...it, quantity: qty, lineTotal: unitPrice * qty };
+            const draft = orderEdits[idx];
+            const qty = draft?.quantity !== undefined && draft.quantity !== '' ? Math.max(0, Number(draft.quantity) || 0) : Number(it.quantity) || 0;
+            const unitPrice = draft?.unitPrice !== undefined && draft.unitPrice !== '' ? Math.max(0, Number(draft.unitPrice) || 0) : Number(it.unitPrice) || 0;
+            return { ...it, quantity: qty, unitPrice, lineTotal: unitPrice * qty };
           });
           const newTotal = adjustedItems.reduce((s, it) => s + (Number(it.lineTotal) || 0), 0);
           await supabase.from('orders').update({
@@ -599,14 +614,85 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
           {selectedItem.amount !== null && (
             <div className="bg-[var(--bg-input)] rounded-xl p-4">
               <p className="text-xs text-[var(--text-muted)] mb-1">Transaction Amount</p>
-              <p className="text-2xl font-bold" style={{ color: 'var(--accent)' }}>GHS {(Number(selectedItem.amount ?? 0)).toLocaleString()}</p>
+              <p className="text-2xl font-bold" style={{ color: 'var(--accent)' }}>GHS <CountUp value={Number(selectedItem.amount ?? 0)} /></p>
             </div>
           )}
 
           {selectedItem.type === 'Sales Order' && selectedItem.raw && (
             <div className="space-y-2">
-              <p className="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider">Order Items breakdown</p>
-              <InvoiceLineItems order={selectedItem.raw as any} />
+              <div className="flex items-center justify-between flex-wrap gap-1">
+                <p className="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider">Order Items breakdown</p>
+                {selectedItem.status === 'Pending' && (
+                  <span className="text-[10px] text-[var(--text-muted)]">Editable — adjust qty/price before approving</span>
+                )}
+              </div>
+              {selectedItem.status === 'Pending' && Array.isArray((selectedItem.raw as any)?.metadata?.items) && (selectedItem.raw as any).metadata.items.length > 0 ? (() => {
+                const originalItems: any[] = (selectedItem.raw as any).metadata.items;
+                const orderTotal = originalItems.reduce((s, it, idx) => {
+                  const draft = orderEdits[idx];
+                  const qty = draft?.quantity !== undefined && draft.quantity !== '' ? Math.max(0, Number(draft.quantity) || 0) : Number(it.quantity) || 0;
+                  const unitPrice = draft?.unitPrice !== undefined && draft.unitPrice !== '' ? Math.max(0, Number(draft.unitPrice) || 0) : Number(it.unitPrice) || 0;
+                  return s + qty * unitPrice;
+                }, 0);
+                return (
+                  <div className="rounded-xl border border-[var(--border)] overflow-hidden">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="bg-[var(--bg-input)] border-b border-[var(--border)]">
+                          <th className="text-left py-2 px-3 font-semibold text-[var(--text-muted)]">Product</th>
+                          <th className="text-center py-2 px-3 font-semibold text-[var(--text-muted)]">Qty</th>
+                          <th className="text-right py-2 px-3 font-semibold text-[var(--text-muted)]">Unit Price</th>
+                          <th className="text-right py-2 px-3 font-semibold text-[var(--text-muted)]">Subtotal</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {originalItems.map((it: any, idx: number) => {
+                          const draft = orderEdits[idx] || { quantity: String(it.quantity ?? ''), unitPrice: String(it.unitPrice ?? '') };
+                          const qty = draft.quantity !== '' ? Math.max(0, Number(draft.quantity) || 0) : 0;
+                          const unitPrice = draft.unitPrice !== '' ? Math.max(0, Number(draft.unitPrice) || 0) : 0;
+                          const subtotal = qty * unitPrice;
+                          const qtyChanged = draft.quantity !== '' && Number(draft.quantity) !== Number(it.quantity);
+                          const priceChanged = draft.unitPrice !== '' && Number(draft.unitPrice) !== Number(it.unitPrice);
+                          return (
+                            <tr key={idx} className="border-b border-[var(--border)] last:border-0">
+                              <td className="py-2 px-3 font-medium text-[var(--text-primary)]">{it.productName}</td>
+                              <td className="py-2 px-3 text-center">
+                                <input
+                                  type="number" min={0}
+                                  value={draft.quantity}
+                                  onChange={e => setOrderEdits(prev => { const next = [...prev]; next[idx] = { ...(next[idx] || draft), quantity: e.target.value }; return next; })}
+                                  className="w-16 px-2 py-1 rounded-lg bg-[var(--bg-input)] border border-[var(--border)] text-xs font-mono text-center text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
+                                />
+                                {qtyChanged && <span className="block text-[9px] text-amber-600 mt-0.5">was {it.quantity}</span>}
+                              </td>
+                              <td className="py-2 px-3 text-right">
+                                <input
+                                  type="number" min={0}
+                                  value={draft.unitPrice}
+                                  onChange={e => setOrderEdits(prev => { const next = [...prev]; next[idx] = { ...(next[idx] || draft), unitPrice: e.target.value }; return next; })}
+                                  className="w-24 px-2 py-1 rounded-lg bg-[var(--bg-input)] border border-[var(--border)] text-xs font-mono text-right text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
+                                />
+                                {priceChanged && <span className="block text-[9px] text-amber-600 mt-0.5">was GHS {Number(it.unitPrice).toLocaleString()}</span>}
+                              </td>
+                              <td className="py-2 px-3 text-right font-semibold text-emerald-600">
+                                {subtotal > 0 ? `GHS ${subtotal.toLocaleString()}` : '—'}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                      <tfoot>
+                        <tr className="bg-[var(--accent-light)] border-t border-[var(--border)]">
+                          <td colSpan={3} className="py-2.5 px-3 font-bold text-[var(--text-primary)]">Order Total</td>
+                          <td className="py-2.5 px-3 text-right font-bold text-[var(--accent)]">GHS {orderTotal.toLocaleString()}</td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                );
+              })() : (
+                <InvoiceLineItems order={selectedItem.raw as any} />
+              )}
             </div>
           )}
 
@@ -663,7 +749,7 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
             </div>
             <div>
               <p className="text-xs text-[var(--text-muted)]">{label}</p>
-              <p className="text-xl font-bold text-[var(--text-primary)]">{value}</p>
+              <p className="text-xl font-bold text-[var(--text-primary)]"><CountUp value={value} /></p>
             </div>
           </button>
         ))}
@@ -939,36 +1025,22 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
                     </div>
                   );
                 }
+                // Quantities/prices are edited on the detail card itself (the
+                // "Order Items breakdown" table) before this confirm step —
+                // this is just a read-only recap of what's about to be sent.
                 const adjustedTotal = orderItems.reduce((s, it, idx) => {
-                  const draft = orderItemQty[idx];
-                  const qty = draft !== undefined && draft !== '' ? Math.max(0, Number(draft) || 0) : Number(it.quantity) || 0;
-                  return s + qty * (Number(it.unitPrice) || 0);
+                  const draft = orderEdits[idx];
+                  const qty = draft?.quantity !== undefined && draft.quantity !== '' ? Math.max(0, Number(draft.quantity) || 0) : Number(it.quantity) || 0;
+                  const unitPrice = draft?.unitPrice !== undefined && draft.unitPrice !== '' ? Math.max(0, Number(draft.unitPrice) || 0) : Number(it.unitPrice) || 0;
+                  return s + qty * unitPrice;
                 }, 0);
                 return (
                   <div className="space-y-2 p-4 rounded-2xl border border-[var(--border)] bg-[var(--bg)]">
-                    <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider block">Order Line Items — adjust quantities if needed</label>
-                    <div className="space-y-2">
-                      {orderItems.map((it: any, idx: number) => (
-                        <div key={idx} className="flex items-center gap-2">
-                          <span className="text-xs font-medium text-[var(--text-primary)] flex-1 truncate">{it.productName}</span>
-                          <input
-                            type="number"
-                            min={0}
-                            value={orderItemQty[idx] ?? String(it.quantity ?? '')}
-                            onChange={e => setOrderItemQty(prev => { const next = [...prev]; next[idx] = e.target.value; return next; })}
-                            className="w-20 px-2 py-1.5 rounded-lg bg-[var(--bg-input)] border border-[var(--border)] text-xs font-mono text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
-                          />
-                          {Number(orderItemQty[idx]) !== Number(it.quantity) && orderItemQty[idx] !== undefined && orderItemQty[idx] !== '' && (
-                            <span className="text-[9px] text-amber-600">was {it.quantity}</span>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                    <div className="flex items-center justify-between border-t border-[var(--border)] pt-2 mt-1">
-                      <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Adjusted Order Total</span>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Order Total (as adjusted)</span>
                       <span className="text-sm font-bold" style={{ color: 'var(--accent)' }}>GHS {adjustedTotal.toLocaleString()}</span>
                     </div>
-                    <p className="text-[9px] text-[var(--text-muted)]">Approving forwards this to Finance for payment processing at the quantities/total shown above.</p>
+                    <p className="text-[9px] text-[var(--text-muted)]">Approving forwards this to Finance for payment processing at the quantities/prices shown on the order breakdown.</p>
                   </div>
                 );
               })()}

@@ -17,6 +17,7 @@ import PendingApprovalsAlert from '../components/global/PendingApprovalsAlert';
 import { stockApi } from '../services/apiClient';
 import StockIntakeForm from '../components/StockIntakeForm';
 import CountrySelect from '../components/CountrySelect';
+import CountUp from '../components/CountUp';
 
 interface OperationsDashboardProps {
   ordersList: Order[];
@@ -455,10 +456,10 @@ export default function OperationsDashboard({
   ];
 
   const stats = [
-    { title: 'Total Cargo Weight', value: `${totalTons.toFixed(1)} Tons`, sub: 'Accumulated cargo intake', icon: Layers, color: 'text-blue-500' },
-    { title: 'Awaiting Release', value: `${pendingReleaseCount} Shipments`, sub: 'Queue ready to load', icon: Truck, color: 'text-emerald-500' },
-    { title: 'Pending Approval', value: `${pendingMgmtApprovalCount} Batches`, sub: 'Pending manager approval', icon: CheckCircle, color: 'text-amber-500' },
-    { title: 'Discrepancy Notes', value: `${discrepancyCount} Flagged`, sub: 'Faults or damaged boxes', icon: AlertTriangle, color: 'text-rose-500' }
+    { title: 'Total Cargo Weight', value: totalTons, decimals: 1, suffix: ' Tons', sub: 'Accumulated cargo intake', icon: Layers, color: 'text-blue-500' },
+    { title: 'Awaiting Release', value: pendingReleaseCount, decimals: 0, suffix: ' Shipments', sub: 'Queue ready to load', icon: Truck, color: 'text-emerald-500' },
+    { title: 'Pending Approval', value: pendingMgmtApprovalCount, decimals: 0, suffix: ' Batches', sub: 'Pending manager approval', icon: CheckCircle, color: 'text-amber-500' },
+    { title: 'Discrepancy Notes', value: discrepancyCount, decimals: 0, suffix: ' Flagged', sub: 'Faults or damaged boxes', icon: AlertTriangle, color: 'text-rose-500' }
   ];
 
   const kpiDetails = [
@@ -1096,7 +1097,7 @@ export default function OperationsDashboard({
                             <Icon className="w-3.5 h-3.5" />
                           </div>
                         </div>
-                        <p className="text-lg sm:text-xl font-bold text-[var(--text-primary)] font-mono">{stat.value}</p>
+                        <p className="text-lg sm:text-xl font-bold text-[var(--text-primary)] font-mono"><CountUp value={stat.value} decimals={stat.decimals} suffix={stat.suffix} /></p>
                         <p className="text-[9px] text-[var(--text-muted)] mt-1">{stat.sub}</p>
                       </div>
                     );
@@ -1113,7 +1114,7 @@ export default function OperationsDashboard({
                       </div>
                     </div>
                     <p className="text-lg sm:text-xl font-bold text-[var(--text-primary)] font-mono">
-                      {totalStockQty.toLocaleString()} <span className="text-xs font-normal text-[var(--text-muted)]">units</span>
+                      <CountUp value={totalStockQty} /> <span className="text-xs font-normal text-[var(--text-muted)]">units</span>
                     </p>
                     <p className="text-[9px] text-[var(--text-muted)] mt-1">Port + Products + Purchases</p>
                     <span className="absolute bottom-3 right-3 text-[9px] font-bold text-[var(--accent)] opacity-0 group-hover:opacity-100 transition-opacity">View Stock →</span>

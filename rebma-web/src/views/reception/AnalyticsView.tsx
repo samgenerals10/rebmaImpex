@@ -8,6 +8,7 @@ import {
 } from 'recharts';
 import { supabase } from '../../lib/supabaseClient';
 import { exportToCSV } from '../../utils/export';
+import CountUp from '../../components/CountUp';
 
 type Period = '7D' | '30D' | '90D' | '12M';
 const PERIOD_DAYS: Record<Period, number> = { '7D': 7, '30D': 30, '90D': 90, '12M': 365 };
@@ -199,10 +200,10 @@ export default function AnalyticsView({ addNotification }: Props) {
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Total Visitors', value: totalVisitors, sub: `in ${period}`, icon: Users, color: 'var(--accent)' },
-          { label: 'Avg Daily Visitors', value: avgDaily, sub: 'per day', icon: Calendar, color: '#6366f1' },
-          { label: 'Avg Attendance Rate', value: `${avgAttendance}%`, sub: 'staff present', icon: UserCheck, color: '#10b981' },
-          { label: 'Peak Hour', value: peakHour, sub: 'busiest time (4wk)', icon: Clock, color: '#f59e0b' },
+          { label: 'Total Visitors', value: totalVisitors, suffix: '', sub: `in ${period}`, icon: Users, color: 'var(--accent)' },
+          { label: 'Avg Daily Visitors', value: avgDaily, suffix: '', sub: 'per day', icon: Calendar, color: '#6366f1' },
+          { label: 'Avg Attendance Rate', value: avgAttendance, suffix: '%', sub: 'staff present', icon: UserCheck, color: '#10b981' },
+          { label: 'Peak Hour', value: peakHour as (string | number), suffix: '', sub: 'busiest time (4wk)', icon: Clock, color: '#f59e0b' },
         ].map(card => (
           <div key={card.label} className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4">
             <div className="flex items-center justify-between mb-2">
@@ -211,7 +212,7 @@ export default function AnalyticsView({ addNotification }: Props) {
                 <card.icon className="w-4 h-4" />
               </div>
             </div>
-            <p className="text-2xl font-bold text-[var(--text-primary)]">{card.value}</p>
+            <p className="text-2xl font-bold text-[var(--text-primary)]">{typeof card.value === 'number' ? <CountUp value={card.value} suffix={card.suffix} /> : card.value}</p>
             <p className="text-[10px] text-[var(--text-muted)] mt-0.5">{card.sub}</p>
           </div>
         ))}

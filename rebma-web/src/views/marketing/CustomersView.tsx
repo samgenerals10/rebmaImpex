@@ -1,12 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Plus, Search, ArrowLeft, X, Pencil, Trash2, Download } from 'lucide-react';
+import { Plus, Search, ArrowLeft, X, Pencil, Trash2, Download, Star } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import type { Customer, Order } from '../../types/erp';
-
-
-function initials(name: string) {
-  return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
-}
+import CustomerAvatar from '../../components/CustomerAvatar';
+import RatingBadge from '../../components/RatingBadge';
+import { computeCustomerRating, ordersForCustomer } from '../../utils/customerRating';
+import CountUp from '../../components/CountUp';
 
 interface Props {
   customersList: Customer[];
@@ -43,6 +42,7 @@ export default function CustomersView({ customersList, onRegisterCustomer, addNo
           email: r.email || '',
           location: r.location || '',
           ghanaCard: r.ghana_card_id || r.ghanaCard || '',
+          photo: r.customer_photo || r.photo || undefined,
           registeredAt: r.registered_at || r.registeredAt || new Date().toISOString(),
           orderHistory: [],
           creditHistory: [],
@@ -169,9 +169,10 @@ export default function CustomersView({ customersList, onRegisterCustomer, addNo
   };
 
   if (selectedCustomer) {
-    const custOrders = orders.filter(o => o.clientName === selectedCustomer.name);
+    const custOrders = ordersForCustomer(orders, selectedCustomer.name);
     const totalSpend = custOrders.filter(o => o.status === 'DELIVERED').reduce((s, o) => s + o.totalAmount, 0);
     const outstanding = (selectedCustomer.creditHistory || []).filter(h => h.status !== 'PAID').reduce((s, h) => s + h.amount, 0);
+    const rating = computeCustomerRating(custOrders);
     return (
       <div className="space-y-5">
         <div className="flex items-center gap-3">
@@ -182,10 +183,17 @@ export default function CustomersView({ customersList, onRegisterCustomer, addNo
 
         <div className="rounded-2xl bg-[var(--bg-card)] border border-[var(--border)] p-6 shadow-[var(--box-shadow)]">
           <div className="flex flex-col sm:flex-row gap-5 items-start">
-            <div className="w-16 h-16 rounded-2xl bg-[var(--accent-light)] flex items-center justify-center text-2xl font-bold text-[var(--accent)] flex-shrink-0">
-              {initials(selectedCustomer.name)}
-            </div>
+            <CustomerAvatar name={selectedCustomer.name} photo={selectedCustomer.photo} isSpecial={selectedCustomer.isSpecialCustomer} size={64} rounded="2xl" />
             <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="sm:col-span-2 flex items-center gap-2 flex-wrap">
+                {selectedCustomer.isSpecialCustomer && (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
+                    <Star size={9} className="fill-amber-500" /> Special Customer
+                  </span>
+                )}
+                <RatingBadge rating={rating} />
+                <span className="text-[10px] text-[var(--text-muted)]"><CountUp value={rating.orderCount} /> order{rating.orderCount === 1 ? '' : 's'} counted</span>
+              </div>
               {[
                 ['Full Name', selectedCustomer.name],
                 ['Company', selectedCustomer.companyName],
@@ -204,17 +212,22 @@ export default function CustomersView({ customersList, onRegisterCustomer, addNo
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {[
             { label: 'Total Orders', value: custOrders.length, color: 'text-[var(--text-primary)]' },
-            { label: 'Total Spend (GHS)', value: totalSpend.toLocaleString(), color: 'text-emerald-600' },
-            { label: 'Outstanding (GHS)', value: outstanding.toLocaleString(), color: 'text-rose-600' },
+            { label: 'Total Spend (GHS)', value: totalSpend, color: 'text-emerald-600' },
+            { label: 'Outstanding (GHS)', value: outstanding, color: 'text-rose-600' },
           ].map(c => (
             <div key={c.label} className="rounded-2xl bg-[var(--bg-card)] border border-[var(--border)] p-4 shadow-[var(--box-shadow)]">
               <p className="text-xs text-[var(--text-muted)] mb-1">{c.label}</p>
-              <p className={`text-xl font-bold ${c.color}`}>{c.value}</p>
+              <p className={`text-xl font-bold ${c.color}`}><CountUp value={c.value} /></p>
             </div>
           ))}
+          <div className="rounded-2xl bg-[var(--bg-card)] border border-[var(--border)] p-4 shadow-[var(--box-shadow)]">
+            <p className="text-xs text-[var(--text-muted)] mb-1">Rating — {rating.grade}</p>
+            <p className="text-xl font-bold" style={{ color: rating.color }}><CountUp value={rating.score} /><span className="text-xs text-[var(--text-muted)] font-normal">/100</span></p>
+            <p className="text-[9px] text-[var(--text-muted)] mt-1">Consistency {rating.consistencyScore} · Volume {rating.volumeScore}</p>
+          </div>
         </div>
 
         <div className="rounded-2xl bg-[var(--bg-card)] border border-[var(--border)] p-5 shadow-[var(--box-shadow)]">
@@ -302,14 +315,14 @@ export default function CustomersView({ customersList, onRegisterCustomer, addNo
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Total Customers', value: customers.length, color: 'text-[var(--text-primary)]' },
-          { label: 'Active (with Orders)', value: withOrders, color: 'text-emerald-600' },
-          { label: 'New This Month', value: thisMonth, color: 'text-blue-600' },
-          { label: 'Credit Outstanding', value: `GHS ${totalCredit.toLocaleString()}`, color: 'text-rose-600' },
+          { label: 'Total Customers', value: customers.length, prefix: '', color: 'text-[var(--text-primary)]' },
+          { label: 'Active (with Orders)', value: withOrders, prefix: '', color: 'text-emerald-600' },
+          { label: 'New This Month', value: thisMonth, prefix: '', color: 'text-blue-600' },
+          { label: 'Credit Outstanding', value: totalCredit, prefix: 'GHS ', color: 'text-rose-600' },
         ].map(c => (
           <div key={c.label} className="rounded-2xl bg-[var(--bg-card)] border border-[var(--border)] p-4 shadow-[var(--box-shadow)]">
             <p className="text-xs text-[var(--text-muted)] mb-1">{c.label}</p>
-            <p className={`text-xl font-bold ${c.color}`}>{c.value}</p>
+            <p className={`text-xl font-bold ${c.color}`}><CountUp value={c.value} prefix={c.prefix} /></p>
           </div>
         ))}
       </div>
@@ -336,13 +349,12 @@ export default function CustomersView({ customersList, onRegisterCustomer, addNo
           {filtered.map(c => (
             <div key={c.id} className="rounded-2xl bg-[var(--bg-card)] border border-[var(--border)] p-5 shadow-[var(--box-shadow)] flex flex-col gap-3">
               <div className="flex items-center gap-3">
-                <div className="w-11 h-11 rounded-xl bg-[var(--accent-light)] flex items-center justify-center text-base font-bold text-[var(--accent)] flex-shrink-0">
-                  {initials(c.name)}
-                </div>
+                <CustomerAvatar name={c.name} photo={c.photo} isSpecial={c.isSpecialCustomer} size={44} />
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 flex-wrap">
                     <p className="font-semibold text-sm text-[var(--text-primary)] truncate">{c.name}</p>
-                    {c.isSpecialCustomer && <span className="shrink-0 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-700">Special</span>}
+                    <RatingBadge rating={computeCustomerRating(ordersForCustomer(orders, c.name))} size="xs" />
+                    {c.isSpecialCustomer && <span className="shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-700"><Star size={8} className="fill-amber-500" /> Special</span>}
                   </div>
                   <p className="text-xs text-[var(--text-muted)] truncate">{c.companyName}</p>
                   {!!c.discountPercent && <p className="text-[10px] font-semibold text-emerald-600 mt-0.5">{c.discountPercent}% discount active</p>}

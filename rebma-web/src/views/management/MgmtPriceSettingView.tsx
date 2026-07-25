@@ -7,6 +7,10 @@ import {
   ArrowLeft, Edit2, Trash2, Bell, Camera, FileText, Image as ImageIcon, AlertTriangle, Percent, Star
 } from 'lucide-react';
 import { exportToCSV } from '../../utils/export';
+import RatingBadge from '../../components/RatingBadge';
+import { computeCustomerRating, ordersForCustomer, SUGGESTED_DISCOUNT } from '../../utils/customerRating';
+import type { Order } from '../../types/erp';
+import CountUp from '../../components/CountUp';
 
 interface CustomerDiscountRow {
   id: string;
@@ -65,10 +69,12 @@ export default function MgmtPriceSettingView({ addNotification, currentUser }: P
   // at registration. That flag is a signal, not a gate: Management awards a discount
   // based on how a customer has actually performed, whoever they are.
   const [customers, setCustomers] = useState<CustomerDiscountRow[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [loadingCustomers, setLoadingCustomers] = useState(true);
   const [customerSearch, setCustomerSearch] = useState('');
   const [discountDraft, setDiscountDraft] = useState<Record<string, string>>({});
   const [savingCustomerId, setSavingCustomerId] = useState<string | null>(null);
+  const [togglingSpecialId, setTogglingSpecialId] = useState<string | null>(null);
 
   useEffect(() => { loadCustomers(); }, []);
 
@@ -78,10 +84,13 @@ export default function MgmtPriceSettingView({ addNotification, currentUser }: P
       // select('*') and sort client-side — an explicit column list naming
       // is_special_customer/discount_percent (or ordering by them) would fail
       // outright if those columns haven't been migrated onto the live DB yet.
-      const { data, error } = await supabase
-        .from('customers')
-        .select('*')
-        .order('name', { ascending: true });
+      const [{ data, error }, { data: orderRows }] = await Promise.all([
+        supabase.from('customers').select('*').order('name', { ascending: true }),
+        // Rating is computed from real order history, so the discount
+        // suggestion has something to base itself on — same fields the
+        // Marketing-side rating badges use.
+        supabase.from('orders').select('id, client_name, total_amount, status, created_at').then(r => r, () => ({ data: [] as any[] })),
+      ]);
       if (error) throw error;
       const rows: CustomerDiscountRow[] = (data || []).map((r: any) => ({
         id: r.id,
@@ -91,6 +100,10 @@ export default function MgmtPriceSettingView({ addNotification, currentUser }: P
         discountPercent: Number(r.discount_percent) || 0,
       })).sort((a: CustomerDiscountRow, b: CustomerDiscountRow) => Number(b.isSpecialCustomer) - Number(a.isSpecialCustomer));
       setCustomers(rows);
+      setOrders((orderRows || []).map((o: any) => ({
+        id: o.id, clientName: o.client_name || '', totalAmount: Number(o.total_amount) || 0,
+        status: o.status, createdAt: o.created_at, paymentMode: '',
+      })));
     } catch (e) {
       console.error('Error loading customers:', e);
       setCustomers([]);
@@ -113,6 +126,24 @@ export default function MgmtPriceSettingView({ addNotification, currentUser }: P
       addNotification?.(e.message || 'Failed to update customer discount.');
     } finally {
       setSavingCustomerId(null);
+    }
+  }
+
+  // Management can flag/unflag a customer special themselves — Marketing's
+  // checkbox at registration is just a signal, not the only way in. Re-sorts
+  // specials to the top afterward, same ordering loadCustomers() applies.
+  async function toggleCustomerSpecial(customerId: string, next: boolean) {
+    setTogglingSpecialId(customerId);
+    try {
+      await management.setCustomerSpecial(customerId, next);
+      setCustomers(prev => prev
+        .map(c => c.id === customerId ? { ...c, isSpecialCustomer: next } : c)
+        .sort((a, b) => Number(b.isSpecialCustomer) - Number(a.isSpecialCustomer)));
+      addNotification?.(next ? 'Customer flagged as special.' : 'Special flag removed.');
+    } catch (e: any) {
+      addNotification?.(e.message || 'Failed to update special flag.');
+    } finally {
+      setTogglingSpecialId(null);
     }
   }
 
@@ -443,14 +474,14 @@ export default function MgmtPriceSettingView({ addNotification, currentUser }: P
       {/* Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Total Products', value: totalProducts, sub: 'in catalog', color: 'var(--accent)' },
-          { label: 'Avg Margin', value: `${avgMargin.toFixed(1)}%`, sub: 'across products', color: '#10b981' },
-          { label: 'High Margin', value: highMargin, sub: '≥ 50% margin', color: '#6366f1' },
-          { label: 'Low Margin', value: lowMargin, sub: '< 40% margin', color: '#f59e0b' },
-        ].map(({ label, value, sub, color }) => (
+          { label: 'Total Products', value: totalProducts, decimals: 0, suffix: '', sub: 'in catalog', color: 'var(--accent)' },
+          { label: 'Avg Margin', value: avgMargin, decimals: 1, suffix: '%', sub: 'across products', color: '#10b981' },
+          { label: 'High Margin', value: highMargin, decimals: 0, suffix: '', sub: '≥ 50% margin', color: '#6366f1' },
+          { label: 'Low Margin', value: lowMargin, decimals: 0, suffix: '', sub: '< 40% margin', color: '#f59e0b' },
+        ].map(({ label, value, decimals, suffix, sub, color }) => (
           <div key={label} className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4">
             <p className="text-xs text-[var(--text-muted)] mb-1">{label}</p>
-            <p className="text-2xl font-bold" style={{ color }}>{value}</p>
+            <p className="text-2xl font-bold" style={{ color }}><CountUp value={value} decimals={decimals} suffix={suffix} /></p>
             <p className="text-xs text-[var(--text-muted)] mt-0.5">{sub}</p>
           </div>
         ))}
@@ -555,39 +586,64 @@ export default function MgmtPriceSettingView({ addNotification, currentUser }: P
           <table className="w-full text-sm">
             <thead className="sticky top-0 bg-[var(--bg-input)]">
               <tr className="border-b border-[var(--border)]">
-                {['Customer', 'Company', 'Flag', 'Discount %', ''].map(h => (
+                {['Customer', 'Company', 'Flag', 'Rating', 'Discount %', ''].map(h => (
                   <th key={h} className="px-4 py-2.5 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wide whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--border)]">
               {loadingCustomers ? (
-                <tr><td colSpan={5} className="px-4 py-4"><div className="h-4 bg-[var(--bg-input)] rounded animate-pulse" /></td></tr>
+                <tr><td colSpan={6} className="px-4 py-4"><div className="h-4 bg-[var(--bg-input)] rounded animate-pulse" /></td></tr>
               ) : filteredCustomers.length === 0 ? (
-                <tr><td colSpan={5} className="px-4 py-8 text-center text-[var(--text-muted)]">No customers found.</td></tr>
+                <tr><td colSpan={6} className="px-4 py-8 text-center text-[var(--text-muted)]">No customers found.</td></tr>
               ) : filteredCustomers.map(c => {
                 const draft = discountDraft[c.id];
                 const dirty = draft !== undefined && Number(draft) !== c.discountPercent;
+                const rating = computeCustomerRating(ordersForCustomer(orders, c.name));
+                const suggested = SUGGESTED_DISCOUNT[rating.grade];
+                const currentValue = draft !== undefined ? Number(draft) : c.discountPercent;
                 return (
                   <tr key={c.id} className="hover:bg-[var(--accent-light)] transition-colors">
                     <td className="px-4 py-2.5 font-semibold text-[var(--text-primary)] whitespace-nowrap">{c.name}</td>
                     <td className="px-4 py-2.5 text-[var(--text-secondary)] whitespace-nowrap">{c.companyName || '—'}</td>
                     <td className="px-4 py-2.5">
-                      {c.isSpecialCustomer && (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
-                          <Star size={9} /> Special
-                        </span>
-                      )}
+                      <button
+                        onClick={() => toggleCustomerSpecial(c.id, !c.isSpecialCustomer)}
+                        disabled={togglingSpecialId === c.id}
+                        title={c.isSpecialCustomer ? 'Click to remove special flag' : 'Click to flag as special'}
+                        className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full cursor-pointer transition-colors disabled:opacity-50 ${
+                          c.isSpecialCustomer
+                            ? 'bg-amber-100 text-amber-700 hover:bg-amber-200'
+                            : 'bg-[var(--bg-input)] text-[var(--text-muted)] hover:bg-amber-50 hover:text-amber-600'
+                        }`}
+                      >
+                        <Star size={9} className={c.isSpecialCustomer ? 'fill-amber-500' : ''} />
+                        {togglingSpecialId === c.id ? '…' : c.isSpecialCustomer ? 'Special' : 'Flag special'}
+                      </button>
                     </td>
                     <td className="px-4 py-2.5">
-                      <div className="flex items-center gap-1">
-                        <input
-                          type="number" min={0} max={100} step={1}
-                          value={draft !== undefined ? draft : String(c.discountPercent)}
-                          onChange={e => setDiscountDraft(prev => ({ ...prev, [c.id]: e.target.value }))}
-                          className="w-16 px-2 py-1 rounded-lg bg-[var(--bg-input)] border border-[var(--border)] text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
-                        />
-                        <span className="text-xs text-[var(--text-muted)]">%</span>
+                      <RatingBadge rating={rating} size="xs" />
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="number" min={0} max={100} step={1}
+                            value={draft !== undefined ? draft : String(c.discountPercent)}
+                            onChange={e => setDiscountDraft(prev => ({ ...prev, [c.id]: e.target.value }))}
+                            className="w-16 px-2 py-1 rounded-lg bg-[var(--bg-input)] border border-[var(--border)] text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
+                          />
+                          <span className="text-xs text-[var(--text-muted)]">%</span>
+                        </div>
+                        {currentValue !== suggested && (
+                          <button
+                            onClick={() => setDiscountDraft(prev => ({ ...prev, [c.id]: String(suggested) }))}
+                            title={`Based on their ${rating.grade} rating (${rating.score}/100)`}
+                            className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-[var(--bg-input)] text-[var(--text-muted)] hover:bg-[var(--accent-light)] hover:text-[var(--accent)] cursor-pointer whitespace-nowrap"
+                          >
+                            Suggest {suggested}%
+                          </button>
+                        )}
                       </div>
                     </td>
                     <td className="px-4 py-2.5">

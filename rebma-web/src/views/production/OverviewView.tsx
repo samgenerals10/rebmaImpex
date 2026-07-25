@@ -9,6 +9,7 @@ import {
 } from 'recharts';
 import { supabase } from '../../lib/supabaseClient';
 import { exportToCSV, exportToPDF } from '../../utils/export';
+import CountUp from '../../components/CountUp';
 import type { ProductionRequest, CurrentUser } from '../../types/erp';
 
 interface OutputRecord {
@@ -200,10 +201,10 @@ export default function ProductionOverviewView({ currentUser, productionRequests
   const weekBoxes = output.reduce((s, r) => s + r.boxes, 0);
 
   const kpiCards = [
-    { label: 'Orders Received Today', value: ordersToday || productionRequests.filter(r => r.status === 'APPROVED').length, sub: 'approved requests', spark: [2,3,4,2,5,3,ordersToday||0], trend: 'up', tab: 'InternalOrders' },
-    { label: 'Boxes Produced Today', value: todayBoxes, sub: 'boxes logged today', spark: outputChartData.map(d => d.boxes), trend: 'up', tab: 'OutputRecording' },
-    { label: 'Sachets Today', value: todaySachets.toLocaleString(), sub: 'sachets logged today', spark: outputChartData.map(d => d.sachets), trend: 'up', tab: 'OutputRecording' },
-    { label: 'Quality Pass Rate', value: `${passRate}%`, sub: passRate >= 90 ? 'Excellent' : passRate >= 70 ? 'Good' : output.length === 0 ? 'No data yet' : 'Needs review', spark: [passRate, passRate, passRate, passRate, passRate, passRate, passRate], trend: passRate >= 85 ? 'up' : 'down', tab: 'OutputRecording', color: passRate >= 90 ? '#10b981' : passRate >= 70 ? '#f59e0b' : '#ef4444' },
+    { label: 'Orders Received Today', value: ordersToday || productionRequests.filter(r => r.status === 'APPROVED').length, suffix: '', sub: 'approved requests', spark: [2,3,4,2,5,3,ordersToday||0], trend: 'up', tab: 'InternalOrders' },
+    { label: 'Boxes Produced Today', value: todayBoxes, suffix: '', sub: 'boxes logged today', spark: outputChartData.map(d => d.boxes), trend: 'up', tab: 'OutputRecording' },
+    { label: 'Sachets Today', value: todaySachets, suffix: '', sub: 'sachets logged today', spark: outputChartData.map(d => d.sachets), trend: 'up', tab: 'OutputRecording' },
+    { label: 'Quality Pass Rate', value: passRate, suffix: '%', sub: passRate >= 90 ? 'Excellent' : passRate >= 70 ? 'Good' : output.length === 0 ? 'No data yet' : 'Needs review', spark: [passRate, passRate, passRate, passRate, passRate, passRate, passRate], trend: passRate >= 85 ? 'up' : 'down', tab: 'OutputRecording', color: passRate >= 90 ? '#10b981' : passRate >= 70 ? '#f59e0b' : '#ef4444' },
   ];
 
   const chartData = outputTab === 'boxes' ? outputChartData.map(d => ({ ...d, value: d.boxes }))
@@ -271,7 +272,7 @@ export default function ProductionOverviewView({ currentUser, productionRequests
             </div>
             <div className="flex items-end justify-between gap-2">
               <div>
-                <p className="text-3xl font-bold leading-none" style={{ color: (card as any).color || 'var(--text-primary)' }}>{card.value}</p>
+                <p className="text-3xl font-bold leading-none" style={{ color: (card as any).color || 'var(--text-primary)' }}><CountUp value={card.value} suffix={card.suffix} /></p>
                 <div className="flex items-center gap-1 mt-1.5">
                   {card.trend === 'up' ? <TrendingUp className="w-3 h-3 text-emerald-500" /> : <TrendingDown className="w-3 h-3 text-rose-500" />}
                   <p className="text-[10px] text-[var(--text-muted)]">{card.sub}</p>
@@ -332,12 +333,12 @@ export default function ProductionOverviewView({ currentUser, productionRequests
           <div className="grid grid-cols-2 gap-3 mb-3">
             <div className="bg-[var(--bg)] rounded-xl p-3 border border-[var(--border)]">
               <p className="text-[10px] text-[var(--text-muted)] uppercase font-semibold">Goods Received</p>
-              <p className="text-2xl font-bold text-emerald-600 mt-1">{goodsReceived.toLocaleString()}</p>
+              <p className="text-2xl font-bold text-emerald-600 mt-1"><CountUp value={goodsReceived} /></p>
               <p className="text-[10px] text-[var(--text-muted)]">units from stock ledger</p>
             </div>
             <div className="bg-[var(--bg)] rounded-xl p-3 border border-[var(--border)]">
               <p className="text-[10px] text-[var(--text-muted)] uppercase font-semibold">Goods Produced</p>
-              <p className="text-2xl font-bold text-[var(--accent)] mt-1">{weekBoxes}</p>
+              <p className="text-2xl font-bold text-[var(--accent)] mt-1"><CountUp value={weekBoxes} /></p>
               <p className="text-[10px] text-[var(--text-muted)]">boxes recorded</p>
             </div>
           </div>
@@ -464,7 +465,7 @@ export default function ProductionOverviewView({ currentUser, productionRequests
             </div>
             <div className="space-y-3">
               <div className="text-center mb-2">
-                <p className="text-3xl font-bold text-emerald-600">{passRate}%</p>
+                <p className="text-3xl font-bold text-emerald-600"><CountUp value={passRate} suffix="%" /></p>
                 <p className="text-[10px] text-[var(--text-muted)]">Pass Rate</p>
               </div>
               {qualityData.map(d => (

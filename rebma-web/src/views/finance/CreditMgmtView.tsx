@@ -5,6 +5,7 @@ import {
   DollarSign, AlertTriangle, CheckCircle, Send, RefreshCw, Phone
 } from 'lucide-react';
 import { exportToCSV } from '../../utils/export';
+import CountUp from '../../components/CountUp';
 
 interface CreditEntry {
   id: string;
@@ -245,14 +246,16 @@ export default function FinanceCreditMgmtView({ addNotification, currentUser }: 
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {[
-              { label: 'Credit Amount', value: `GHS ${selected.creditAmount.toLocaleString()}` },
-              { label: 'Amount Paid', value: `GHS ${selected.amountPaid.toLocaleString()}` },
-              { label: 'Outstanding', value: `GHS ${selected.outstanding.toLocaleString()}` },
-              { label: 'Due Date', value: selected.dueDate },
-            ].map(({ label, value }) => (
+              { label: 'Credit Amount', value: selected.creditAmount, isAmount: true },
+              { label: 'Amount Paid', value: selected.amountPaid, isAmount: true },
+              { label: 'Outstanding', value: selected.outstanding, isAmount: true },
+              { label: 'Due Date', value: selected.dueDate, isAmount: false },
+            ].map(({ label, value, isAmount }) => (
               <div key={label} className="bg-[var(--bg-input)] rounded-xl p-3">
                 <p className="text-xs text-[var(--text-muted)] mb-1">{label}</p>
-                <p className="text-sm font-semibold text-[var(--text-primary)]">{value}</p>
+                <p className="text-sm font-semibold text-[var(--text-primary)]">
+                  {isAmount ? <>GHS <CountUp value={value as number} /></> : value}
+                </p>
               </div>
             ))}
           </div>
@@ -285,18 +288,18 @@ export default function FinanceCreditMgmtView({ addNotification, currentUser }: 
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Total Extended', value: `GHS ${totalExtended.toLocaleString()}`, color: 'var(--accent)', icon: CreditCard },
-          { label: 'Total Collected', value: `GHS ${totalCollected.toLocaleString()}`, color: '#10b981', icon: CheckCircle },
-          { label: 'Outstanding', value: `GHS ${outstanding.toLocaleString()}`, color: '#ef4444', icon: AlertTriangle },
-          { label: 'Overdue Accounts', value: overdueCount, color: '#f59e0b', icon: AlertTriangle },
-        ].map(({ label, value, color, icon: Icon }) => (
+          { label: 'Total Extended', value: totalExtended, prefix: 'GHS ', color: 'var(--accent)', icon: CreditCard },
+          { label: 'Total Collected', value: totalCollected, prefix: 'GHS ', color: '#10b981', icon: CheckCircle },
+          { label: 'Outstanding', value: outstanding, prefix: 'GHS ', color: '#ef4444', icon: AlertTriangle },
+          { label: 'Overdue Accounts', value: overdueCount, prefix: '', color: '#f59e0b', icon: AlertTriangle },
+        ].map(({ label, value, prefix, color, icon: Icon }) => (
           <div key={label} className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4 flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${color}20` }}>
               <Icon size={18} style={{ color }} />
             </div>
             <div>
               <p className="text-xs text-[var(--text-muted)]">{label}</p>
-              <p className="text-lg font-bold text-[var(--text-primary)]">{value}</p>
+              <p className="text-lg font-bold text-[var(--text-primary)]"><CountUp value={value} prefix={prefix} /></p>
             </div>
           </div>
         ))}

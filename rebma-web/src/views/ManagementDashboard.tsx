@@ -6,6 +6,7 @@ import { FileSpreadsheet, FileText, Clipboard, Activity, ShieldCheck, DollarSign
 import { supabase } from '../lib/supabaseClient';
 import { operations, management } from '../services/apiClient';
 import MiniSparkline from '../components/MiniSparkline';
+import CountUp from '../components/CountUp';
 import ActivityFeed from '../components/global/ActivityFeed';
 import KpiDetailView from '../components/KpiDetailView';
 import { exportToCSV, exportToPDF } from '../utils/export';
@@ -211,10 +212,10 @@ export default function ManagementDashboard({
     .reduce((acc, o) => acc + o.totalAmount, 0);
 
   const stats = [
-    { title: 'Cargo Awaiting Price', value: `${totalPendingIntakes} Batches`, sub: 'Incoming port cargo & purchases', icon: Clipboard, color: 'text-blue-500' },
-    { title: 'Credit Audits Pending', value: `${pendingCreditCount} Orders`, sub: 'Awaiting limit check-offs', icon: Activity, color: 'text-amber-500' },
-    { title: 'Authorized Orders', value: `${approvedOrdersCount} Cleared`, sub: 'Sales orders verified', icon: ShieldCheck, color: 'text-emerald-500' },
-    { title: 'Net Authorized Value', value: `GHS ${totalApprovedValue.toLocaleString()}`, sub: 'Approved credit limit funds', icon: DollarSign, color: 'text-indigo-500' }
+    { title: 'Cargo Awaiting Price', value: totalPendingIntakes, prefix: '', suffix: ' Batches', sub: 'Incoming port cargo & purchases', icon: Clipboard, color: 'text-blue-500' },
+    { title: 'Credit Audits Pending', value: pendingCreditCount, prefix: '', suffix: ' Orders', sub: 'Awaiting limit check-offs', icon: Activity, color: 'text-amber-500' },
+    { title: 'Authorized Orders', value: approvedOrdersCount, prefix: '', suffix: ' Cleared', sub: 'Sales orders verified', icon: ShieldCheck, color: 'text-emerald-500' },
+    { title: 'Net Authorized Value', value: totalApprovedValue, prefix: 'GHS ', suffix: '', sub: 'Approved credit limit funds', icon: DollarSign, color: 'text-indigo-500' }
   ];
 
   const kpiDetails = [
@@ -484,7 +485,7 @@ export default function ManagementDashboard({
           <div className="flex justify-between items-start relative z-10">
             <div>
               <p className="text-[10px] uppercase tracking-widest text-white/60 font-bold">Cargo Awaiting Approval</p>
-              <h2 className="text-3xl font-extrabold text-white mt-1 tracking-tight">{pendingCargoCount} Batches</h2>
+              <h2 className="text-3xl font-extrabold text-white mt-1 tracking-tight"><CountUp value={pendingCargoCount} /> Batches</h2>
               <p className="text-[10px] text-white/70 mt-1">{pendingCreditCount} Credit Audits Pending</p>
             </div>
             <div className="mobile-card-chip mt-1" />
@@ -492,7 +493,7 @@ export default function ManagementDashboard({
           <div className="flex justify-between items-end mt-8 relative z-10">
             <div>
               <p className="text-[10px] font-mono tracking-widest text-white/60">{approvedOrdersCount} Orders Authorized</p>
-              <p className="text-[10px] font-bold text-white/80 mt-1 uppercase tracking-wider">GHS {totalApprovedValue.toLocaleString()} Approved</p>
+              <p className="text-[10px] font-bold text-white/80 mt-1 uppercase tracking-wider">GHS <CountUp value={totalApprovedValue} /> Approved</p>
             </div>
             <div className="mobile-card-circles"><div className="mobile-card-circle-1" /><div className="mobile-card-circle-2" /></div>
           </div>
@@ -500,14 +501,14 @@ export default function ManagementDashboard({
 
         <div className="grid grid-cols-2 gap-3">
           {[
-            { label: 'Authorized', value: `${approvedOrdersCount}`, sub: 'Orders cleared', bg: '#f0fdf4', color: '#16a34a', icon: ShieldCheck },
-            { label: 'Net Value', value: `GHS ${totalApprovedValue.toLocaleString()}`, sub: 'Approved funds', bg: '#eef2ff', color: '#6366f1', icon: DollarSign },
+            { label: 'Authorized', value: approvedOrdersCount, prefix: '', sub: 'Orders cleared', bg: '#f0fdf4', color: '#16a34a', icon: ShieldCheck },
+            { label: 'Net Value', value: totalApprovedValue, prefix: 'GHS ', sub: 'Approved funds', bg: '#eef2ff', color: '#6366f1', icon: DollarSign },
           ].map((s, i) => { const Icon = s.icon; return (
             <div key={i} className="mobile-stat-card">
               <div className="mobile-stat-icon" style={{ background: s.bg }}><Icon className="w-5 h-5" style={{ color: s.color }} /></div>
               <div className="min-w-0">
                 <p className="text-[9px] text-text-muted uppercase font-bold tracking-wider">{s.label}</p>
-                <p className="text-sm font-bold text-text-primary mt-0.5">{s.value}</p>
+                <p className="text-sm font-bold text-text-primary mt-0.5"><CountUp value={s.value} prefix={s.prefix} /></p>
                 <p className="text-[9px] text-text-muted">{s.sub}</p>
               </div>
             </div>
@@ -614,7 +615,7 @@ export default function ManagementDashboard({
               </div>
               <div className="flex items-end justify-between mt-2 gap-2">
                 <div>
-                  <h3 className="text-2xl sm:text-3xl font-bold text-[var(--text-primary)] leading-none">{card.value}</h3>
+                  <h3 className="text-2xl sm:text-3xl font-bold text-[var(--text-primary)] leading-none"><CountUp value={card.value} prefix={card.prefix} suffix={card.suffix} /></h3>
                   <p className="text-[10px] text-[var(--text-muted)] mt-1.5">{card.sub}</p>
                 </div>
                 <MiniSparkline width={60} height={36} />

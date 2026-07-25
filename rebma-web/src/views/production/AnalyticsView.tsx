@@ -6,6 +6,7 @@ import {
 } from 'recharts';
 import { supabase } from '../../lib/supabaseClient';
 import { exportToCSV } from '../../utils/export';
+import CountUp from '../../components/CountUp';
 
 type Period = '7D' | '30D' | '90D' | '12M';
 
@@ -207,13 +208,12 @@ export default function ProductionAnalyticsView({ addNotification }: Props) {
   const effRows = eff.filter(d => d.efficiency > 0);
   const avgEff = effRows.length > 0 ? effRows.reduce((s, d) => s + d.efficiency, 0) / effRows.length : 0;
   const qualityPassRow = qualityData.find(d => d.name === 'Passed');
-  const qualityPass = qualityPassRow ? `${qualityPassRow.value}%` : '—';
 
   const kpis = [
-    { label: 'Boxes Produced', value: totalBoxes.toLocaleString(), trend: 'neutral', sub: `${period} period` },
-    { label: 'Sachets Produced', value: totalSachets.toLocaleString(), trend: 'neutral', sub: `${period} period` },
-    { label: 'Quality Pass Rate', value: qualityPass, trend: 'neutral', sub: 'pass / partial / fail' },
-    { label: 'Avg Efficiency', value: avgEff > 0 ? `${avgEff.toFixed(1)}%` : '—', trend: 'neutral', sub: 'input to output ratio' },
+    { label: 'Boxes Produced', value: totalBoxes, suffix: '', decimals: 0, trend: 'neutral', sub: `${period} period` },
+    { label: 'Sachets Produced', value: totalSachets, suffix: '', decimals: 0, trend: 'neutral', sub: `${period} period` },
+    { label: 'Quality Pass Rate', value: qualityPassRow ? qualityPassRow.value : null, suffix: '%', decimals: 0, trend: 'neutral', sub: 'pass / partial / fail' },
+    { label: 'Avg Efficiency', value: avgEff > 0 ? avgEff : null, suffix: '%', decimals: 1, trend: 'neutral', sub: 'input to output ratio' },
   ];
 
   return (
@@ -253,7 +253,7 @@ export default function ProductionAnalyticsView({ addNotification }: Props) {
             {kpis.map(k => (
               <div key={k.label} className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4">
                 <p className="text-[10px] text-[var(--text-muted)] uppercase font-semibold tracking-wide">{k.label}</p>
-                <p className="text-3xl font-bold text-[var(--text-primary)] mt-1">{k.value}</p>
+                <p className="text-3xl font-bold text-[var(--text-primary)] mt-1"><CountUp value={k.value} suffix={k.suffix} decimals={k.decimals} /></p>
                 <div className="flex items-center gap-1 mt-1.5">
                   {k.trend === 'up' ? <TrendingUp className="w-3 h-3 text-emerald-500" /> : k.trend === 'down' ? <TrendingDown className="w-3 h-3 text-rose-500" /> : null}
                   <p className="text-[10px] text-[var(--text-muted)]">{k.sub}</p>

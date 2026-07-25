@@ -7,6 +7,7 @@ import {
 import { supabase } from '../../lib/supabaseClient';
 import { exportToCSV, exportToPDF } from '../../utils/export';
 import { useCeoSettings } from '../../contexts/CeoSettingsContext';
+import CountUp from '../../components/CountUp';
 
 interface ActivityItem {
   id: string;
@@ -224,7 +225,7 @@ export default function DeptActivityView({ addNotification, currentUser }: Props
                 <div className={`w-2 h-2 rounded-full ${statusColor}`} />
               </div>
               <p className="text-[10px] font-bold text-[var(--text-primary)] uppercase tracking-wide">{ds.dept}</p>
-              <p className="text-lg font-extrabold text-[var(--text-primary)]">{ds.count}</p>
+              <p className="text-lg font-extrabold text-[var(--text-primary)]"><CountUp value={ds.count} /></p>
               <p className="text-[9px] text-[var(--text-muted)] mt-0.5">{ds.lastActivity ?? 'No activity yet'}</p>
               <div className="mt-2 space-y-0.5">
                 {recentActivities.map(a => (

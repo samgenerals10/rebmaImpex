@@ -11,6 +11,7 @@ import {
 import { exportToCSV } from '../../utils/export';
 import type { Driver, DeliveryRecord, CurrentUser } from '../../types/erp';
 import DispatchMap from '../../components/dispatch/DispatchMap';
+import CountUp from '../../components/CountUp';
 
 interface Props {
   addNotification?: (msg: string) => void;
@@ -238,7 +239,7 @@ export default function DispatchOverviewView({ addNotification, setActiveSubTab,
           <div key={i} onClick={() => setActiveSubTab?.(tab)}
             className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4 cursor-pointer hover:border-[var(--accent)] transition-colors">
             <p className="text-xs text-[var(--text-muted)] mb-1 uppercase tracking-wide font-semibold">{label}</p>
-            <p className="text-3xl font-bold" style={{ color }}>{value}</p>
+            <p className="text-3xl font-bold" style={{ color }}><CountUp value={value} /></p>
             <div className="flex items-center gap-1 mt-1">
               {up ? <TrendingUp size={11} className="text-green-500" /> : <TrendingDown size={11} className="text-red-400" />}
               <span className={`text-xs font-medium ${up ? 'text-green-500' : 'text-red-400'}`}>{change}</span>
@@ -418,7 +419,7 @@ export default function DispatchOverviewView({ addNotification, setActiveSubTab,
           </div>
           {/* On-Time Rate */}
           <div className="flex items-end gap-3 mb-5">
-            <p className="text-4xl font-bold text-[var(--text-primary)]">96.8<span className="text-xl">%</span></p>
+            <p className="text-4xl font-bold text-[var(--text-primary)]"><CountUp value={96.8} decimals={1} /><span className="text-xl">%</span></p>
             <div className="pb-1">
               <div className="flex items-center gap-1 text-xs text-green-500"><TrendingUp size={11} /> +1.2% vs last week</div>
               <p className="text-xs text-[var(--text-muted)]">on-time rate</p>
@@ -444,17 +445,17 @@ export default function DispatchOverviewView({ addNotification, setActiveSubTab,
           {/* Stats */}
           <div className="grid grid-cols-2 gap-3">
             {[
-              { label: 'Avg Delivery Time', value: '2h 34m', icon: Clock },
-              { label: 'Distance Today',    value: '247 km',  icon: Navigation },
-              { label: 'Active Drivers',    value: `${availableDrivers.length} / ${drivers.length}`, icon: UserCheck },
-              { label: 'Completed Today',   value: `${deliveredToday}`, icon: CheckCircle },
-            ].map(({ label, value, icon: Icon }) => (
+              { label: 'Avg Delivery Time', value: '2h 34m', numeric: null, suffix: '', icon: Clock },
+              { label: 'Distance Today',    value: null, numeric: 247, suffix: ' km', icon: Navigation },
+              { label: 'Active Drivers',    value: `${availableDrivers.length} / ${drivers.length}`, numeric: null, suffix: '', icon: UserCheck },
+              { label: 'Completed Today',   value: null, numeric: deliveredToday, suffix: '', icon: CheckCircle },
+            ].map(({ label, value, numeric, suffix, icon: Icon }) => (
               <div key={label} className="p-3 bg-[var(--bg-input)] rounded-xl">
                 <div className="flex items-center gap-2 mb-1">
                   <Icon size={12} style={{ color: 'var(--accent)' }} />
                   <p className="text-xs text-[var(--text-muted)]">{label}</p>
                 </div>
-                <p className="text-base font-bold text-[var(--text-primary)]">{value}</p>
+                <p className="text-base font-bold text-[var(--text-primary)]">{numeric !== null ? <CountUp value={numeric} suffix={suffix} /> : value}</p>
               </div>
             ))}
           </div>
@@ -476,12 +477,12 @@ export default function DispatchOverviewView({ addNotification, setActiveSubTab,
           <div className="grid grid-cols-2 gap-4 mb-4">
             <div>
               <p className="text-xs text-[var(--text-muted)]">Deliveries Dispatched</p>
-              <p className="text-3xl font-bold text-[var(--text-primary)]">75</p>
+              <p className="text-3xl font-bold text-[var(--text-primary)]"><CountUp value={75} /></p>
               <div className="flex items-center gap-1 mt-0.5"><TrendingUp size={11} className="text-green-500" /><span className="text-xs text-green-500">+8 vs last week</span></div>
             </div>
             <div>
               <p className="text-xs text-[var(--text-muted)]">Deliveries Completed</p>
-              <p className="text-3xl font-bold text-[var(--text-primary)]">59</p>
+              <p className="text-3xl font-bold text-[var(--text-primary)]"><CountUp value={59} /></p>
               <div className="flex items-center gap-1 mt-0.5"><TrendingUp size={11} className="text-green-500" /><span className="text-xs text-green-500">+5 vs last week</span></div>
             </div>
           </div>

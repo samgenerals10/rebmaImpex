@@ -120,7 +120,11 @@ export default function InvoiceLineItems({ order, compact = false }: Props) {
               Order Total
             </td>
             <td className="py-2.5 px-3 text-right font-bold text-[var(--accent)]">
-              GHS {Number(order.totalAmount ?? 0).toLocaleString()}
+              {/* Sum the line items rather than trust order.totalAmount — some
+                  callers (e.g. Management's approval detail card) pass the raw
+                  Supabase row, which has total_amount (snake_case), not
+                  totalAmount, and would otherwise render GHS 0. */}
+              GHS {items.reduce((s, item) => s + (Number(item.lineTotal) || 0), 0).toLocaleString()}
             </td>
           </tr>
         </tfoot>

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { Search, Download, Plus, Upload, Camera, AlertTriangle, MoreVertical } from 'lucide-react';
 import { exportToCSV } from '../../utils/export';
+import CountUp from '../../components/CountUp';
 
 interface PettyCashEntry {
   id: string;
@@ -211,7 +212,7 @@ export default function FinancePettyCashView({ addNotification, currentUser }: P
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className={`rounded-2xl p-5 text-white ${currentFloat < LOW_THRESHOLD ? 'bg-red-500' : ''}`} style={currentFloat >= LOW_THRESHOLD ? { background: 'linear-gradient(135deg, var(--accent)CC, var(--accent))' } : {}}>
           <p className="text-xs text-white/70 mb-1">Current Float</p>
-          <p className="text-3xl font-bold">GHS {currentFloat.toLocaleString()}</p>
+          <p className="text-3xl font-bold">GHS <CountUp value={currentFloat} /></p>
           {currentFloat < LOW_THRESHOLD && (
             <div className="flex items-center gap-1.5 mt-2">
               <AlertTriangle size={12} /><span className="text-xs">Low float — replenishment needed</span>
@@ -223,7 +224,7 @@ export default function FinancePettyCashView({ addNotification, currentUser }: P
         </div>
         <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
           <p className="text-xs text-[var(--text-muted)] mb-1">Total Disbursed This Month</p>
-          <p className="text-2xl font-bold text-[var(--text-primary)]">GHS {totalDisbursed.toLocaleString()}</p>
+          <p className="text-2xl font-bold text-[var(--text-primary)]">GHS <CountUp value={totalDisbursed} /></p>
         </div>
         {currentFloat >= LOW_THRESHOLD && (
           <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5 flex items-end">

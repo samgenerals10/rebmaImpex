@@ -4,6 +4,7 @@ import {
   AlertCircle, X, Edit2, Trash2, Copy, Share2, MoreVertical, Plus
 } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
+import CountUp from '../../components/CountUp';
 import { exportToCSV } from '../../utils/export';
 import type { Attendance } from '../../types/erp';
 
@@ -254,7 +255,7 @@ export default function AttendanceView({ attendanceList, addNotification }: Prop
           { label: 'Total Records', value: records.length, color: 'var(--accent)', icon: UserCheck },
           { label: 'Present', value: present, color: '#10b981', icon: CheckCircle },
           { label: 'Late', value: late, color: '#f59e0b', icon: Clock },
-          { label: 'Attendance Rate', value: `${rate}%`, color: '#6366f1', icon: AlertCircle },
+          { label: 'Attendance Rate', value: rate, suffix: '%', color: '#6366f1', icon: AlertCircle },
         ].map(card => (
           <div key={card.label} className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-3.5">
             <div className="flex items-center justify-between mb-1">
@@ -263,7 +264,7 @@ export default function AttendanceView({ attendanceList, addNotification }: Prop
                 <card.icon className="w-3.5 h-3.5" />
               </div>
             </div>
-            <p className="text-2xl font-bold text-[var(--text-primary)]">{card.value}</p>
+            <p className="text-2xl font-bold text-[var(--text-primary)]"><CountUp value={card.value} suffix={card.suffix} /></p>
           </div>
         ))}
       </div>

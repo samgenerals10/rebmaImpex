@@ -32,6 +32,10 @@ interface SidebarProps {
   unreadEmailCount?: number;
   navBadges?: Record<string, number>;
   tabAlerts?: Record<string, number>;
+  /** Real "N pending right now" totals per department, for the department
+   * switcher list — only populated for viewers who can see more than their
+   * own department (CEO/Super Admin today). */
+  deptBadges?: Record<string, number>;
 }
 
 export default function Sidebar({
@@ -50,7 +54,8 @@ export default function Sidebar({
   setSidebarCollapsed,
   unreadEmailCount = 0,
   navBadges = {},
-  tabAlerts = {}
+  tabAlerts = {},
+  deptBadges = {}
 }: SidebarProps) {
   const [isSwitcherOpen, setIsSwitcherOpen] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
@@ -441,6 +446,7 @@ export default function Sidebar({
                     const isSelected = dept.value === activeDepartment;
                     const DI = getIconForDept(dept.value);
                     const hasAlert = (tabAlerts[dept.value] || 0) > 0;
+                    const pendingCount = deptBadges[dept.value] || 0;
                     return (
                       <button key={dept.value} type="button" onClick={() => { setActiveDepartment(dept.value); setIsSwitcherOpen(false); }}
                         className={`relative w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${isSelected ? 'bg-[var(--accent)] text-white' : 'text-[var(--text-primary)] hover:bg-[var(--accent-light)]'}`}>
@@ -448,6 +454,11 @@ export default function Sidebar({
                           <DI className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-white' : 'text-[var(--accent)]'}`} />
                           <span>{dept.label}</span>
                           {hasAlert && !isSelected && <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse shrink-0" />}
+                          {pendingCount > 0 && (
+                            <span className={`min-w-[16px] h-4 px-1 rounded-full text-[9px] font-bold flex items-center justify-center animate-[badge-pulse_1.4s_ease-in-out_infinite] ${isSelected ? 'bg-white text-[var(--accent)]' : 'bg-rose-500 text-white'}`}>
+                              {pendingCount > 9 ? '9+' : pendingCount}
+                            </span>
+                          )}
                         </div>
                         {isSelected && <span className="text-white font-extrabold">✓</span>}
                         {isSelected && (

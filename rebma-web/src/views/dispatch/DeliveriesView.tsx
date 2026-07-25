@@ -11,6 +11,7 @@ import type { DeliveryRecord, Driver } from '../../types/erp';
 import DispatchMap from '../../components/dispatch/DispatchMap';
 import DestinationLocator, { type Coords } from '../../components/dispatch/DestinationLocator';
 import { useFullscreenToggle, FullscreenButton } from '../../components/global/FullscreenToggle';
+import CountUp from '../../components/CountUp';
 
 
 // ── types ─────────────────────────────────────────────────────────────────────
@@ -628,7 +629,7 @@ export default function DeliveriesView({ addNotification, currentUser }: Props) 
           <div key={label} onClick={() => setStatusFilter(filter)}
             className={`bg-[var(--bg-card)] border rounded-2xl p-4 cursor-pointer transition-all hover:shadow-md ${statusFilter === filter ? 'border-[var(--accent)] shadow-sm' : 'border-[var(--border)]'}`}>
             <p className="text-xs text-[var(--text-muted)] mb-1">{label}</p>
-            <p className="text-2xl font-bold" style={{ color }}>{value}</p>
+            <p className="text-2xl font-bold" style={{ color }}><CountUp value={value} /></p>
           </div>
         ))}
       </div>

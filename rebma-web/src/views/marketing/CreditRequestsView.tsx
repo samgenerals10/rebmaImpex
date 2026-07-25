@@ -5,6 +5,7 @@ import {
   XCircle, AlertCircle, Camera, User, Phone, MapPin, Calendar
 } from 'lucide-react';
 import { exportToCSV } from '../../utils/export';
+import CountUp from '../../components/CountUp';
 
 interface CreditRequest {
   id: string;
@@ -181,7 +182,7 @@ export default function MarketingCreditRequestsView({ addNotification, currentUs
                 ))}
                 <div className="pt-2 border-t border-[var(--border)]">
                   <p className="text-xs text-[var(--text-muted)] mb-1">Credit Amount</p>
-                  <p className="text-2xl font-bold" style={{ color: 'var(--accent)' }}>GHS {detail.amount.toLocaleString()}</p>
+                  <p className="text-2xl font-bold" style={{ color: 'var(--accent)' }}>GHS <CountUp value={detail.amount} /></p>
                 </div>
               </div>
             </div>
@@ -282,7 +283,7 @@ export default function MarketingCreditRequestsView({ addNotification, currentUs
         ].map(({ label, count, color, bg }) => (
           <div key={label} className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4">
             <p className="text-xs text-[var(--text-muted)]">{label}</p>
-            <p className="text-2xl font-bold mt-1" style={{ color }}>{count}</p>
+            <p className="text-2xl font-bold mt-1" style={{ color }}><CountUp value={count} /></p>
           </div>
         ))}
       </div>

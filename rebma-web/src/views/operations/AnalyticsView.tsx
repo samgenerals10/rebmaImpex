@@ -6,6 +6,7 @@ import {
 import { Package, PackageCheck, AlertTriangle, BarChart2, Download, Clock, X } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { exportToCSV } from '../../utils/export';
+import CountUp from '../../components/CountUp';
 
 interface AddNotificationProps { addNotification: (msg: string) => void; }
 
@@ -271,7 +272,7 @@ export default function AnalyticsView({ addNotification }: AddNotificationProps)
               {loading ? (
                 <div className="animate-pulse h-8 w-20 bg-slate-200 dark:bg-slate-700 rounded" />
               ) : (
-                <p className="text-2xl font-bold text-[var(--text-primary)]">{typeof card.value === 'number' ? card.value.toLocaleString() : card.value}</p>
+                <p className="text-2xl font-bold text-[var(--text-primary)]">{typeof card.value === 'number' ? <CountUp value={card.value} /> : card.value}</p>
               )}
               {clickable && !loading && <p className="text-[10px] text-[var(--text-muted)] mt-1">Click to view details</p>}
             </button>

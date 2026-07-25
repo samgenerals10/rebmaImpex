@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { Search, Download, Tag, TrendingUp, TrendingDown } from 'lucide-react';
 import { exportToCSV } from '../../utils/export';
+import CountUp from '../../components/CountUp';
 
 interface PriceRow {
   id: string;
@@ -83,13 +84,13 @@ export default function GoodsPriceCatalogView({ addNotification }: Props) {
       {/* Summary */}
       <div className="grid grid-cols-3 gap-4">
         {[
-          { label: 'Total Products', value: prices.length, color: 'var(--accent)' },
-          { label: 'Avg Margin', value: `${avgMargin.toFixed(1)}%`, color: '#10b981' },
-          { label: 'High Margin (≥50%)', value: prices.filter(p => p.margin >= 50).length, color: '#6366f1' },
-        ].map(({ label, value, color }) => (
+          { label: 'Total Products', value: prices.length, decimals: 0, suffix: '', color: 'var(--accent)' },
+          { label: 'Avg Margin', value: avgMargin, decimals: 1, suffix: '%', color: '#10b981' },
+          { label: 'High Margin (≥50%)', value: prices.filter(p => p.margin >= 50).length, decimals: 0, suffix: '', color: '#6366f1' },
+        ].map(({ label, value, decimals, suffix, color }) => (
           <div key={label} className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4 shadow-[var(--box-shadow)]">
             <p className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-1">{label}</p>
-            <p className="text-xl font-bold" style={{ color }}>{value}</p>
+            <p className="text-xl font-bold" style={{ color }}><CountUp value={value} decimals={decimals} suffix={suffix} /></p>
           </div>
         ))}
       </div>

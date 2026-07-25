@@ -2,6 +2,9 @@ import { useState, useEffect, useRef } from 'react';
 import { Plus, Download, Search, MoreVertical, X, ChevronLeft, ChevronRight, FileText } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useFullscreenToggle, FullscreenButton } from '../../components/global/FullscreenToggle';
+import RatingBadge from '../../components/RatingBadge';
+import { computeCustomerRating, ordersForCustomer } from '../../utils/customerRating';
+import CountUp from '../../components/CountUp';
 import type { Order, OrderLineItem } from '../../types/erp';
 
 
@@ -285,14 +288,14 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'All Orders', value: orders.length, color: 'text-[var(--text-primary)]' },
-          { label: 'Pending', value: pending, color: 'text-amber-600' },
-          { label: 'Active / Delivered', value: active, color: 'text-emerald-600' },
-          { label: 'Total Value (GHS)', value: totalValue.toLocaleString('en-GH', { minimumFractionDigits: 2 }), color: 'text-[var(--accent)]' },
+          { label: 'All Orders', value: orders.length, decimals: 0, color: 'text-[var(--text-primary)]' },
+          { label: 'Pending', value: pending, decimals: 0, color: 'text-amber-600' },
+          { label: 'Active / Delivered', value: active, decimals: 0, color: 'text-emerald-600' },
+          { label: 'Total Value (GHS)', value: totalValue, decimals: 2, color: 'text-[var(--accent)]' },
         ].map(c => (
           <div key={c.label} className="rounded-2xl bg-[var(--bg-card)] border border-[var(--border)] p-4 shadow-[var(--box-shadow)]">
             <p className="text-xs text-[var(--text-muted)] mb-1">{c.label}</p>
-            <p className={`text-xl font-bold ${c.color}`}>{c.value}</p>
+            <p className={`text-xl font-bold ${c.color}`}><CountUp value={c.value} decimals={c.decimals} /></p>
           </div>
         ))}
       </div>
@@ -341,7 +344,12 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
               ) : paginated.map(o => (
                 <tr key={o.id} onClick={() => setSelectedOrder(o)} className="border-b border-[var(--border)] hover:bg-[var(--bg-input)] cursor-pointer transition-colors">
                   <td className="py-3 px-3 font-mono text-xs text-[var(--text-secondary)]">{o.ticketNumber || o.id}</td>
-                  <td className="py-3 px-3 font-medium text-[var(--text-primary)] whitespace-nowrap">{o.clientName}</td>
+                  <td className="py-3 px-3 font-medium text-[var(--text-primary)] whitespace-nowrap">
+                    <div className="flex items-center gap-1.5">
+                      <span>{o.clientName}</span>
+                      <RatingBadge rating={computeCustomerRating(ordersForCustomer(orders, o.clientName))} size="xs" />
+                    </div>
+                  </td>
                   <td className="py-3 px-3 text-[var(--text-secondary)]">
                     {(() => {
                       const items: OrderLineItem[] | undefined = o.metadata?.items;
@@ -578,6 +586,11 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
                       <p className="font-medium text-[var(--text-primary)]">{v}</p>
                     </div>
                   ))}
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs text-[var(--text-muted)]">Customer rating:</span>
+                  <RatingBadge rating={computeCustomerRating(ordersForCustomer(orders, selectedOrder.clientName))} />
                 </div>
 
                 {/* Line items table */}

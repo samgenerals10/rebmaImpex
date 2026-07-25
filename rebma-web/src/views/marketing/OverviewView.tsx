@@ -12,6 +12,7 @@ import {
 import type { Order, Customer } from '../../types/erp';
 import ProductCatalogCard from '../../components/ProductCatalogCard';
 import PendingApprovalsAlert from '../../components/global/PendingApprovalsAlert';
+import CountUp from '../../components/CountUp';
 
 interface Props {
   addNotification?: (msg: string) => void;
@@ -419,14 +420,14 @@ export default function MarketingOverviewView({ addNotification, setActiveSubTab
       {/* KPI Cards */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
         {[
-          { label: 'Total Orders', value: totalOrders, change: `${ordersUp ? '+' : ''}${ordersChange}%`, up: ordersUp, sub: 'vs last week', tab: 'CreateOrder' },
-          { label: 'Total Customers', value: totalCustomers, change: `+${thisMonthCustomers} new`, up: customersUp, sub: 'this month', tab: 'RegisterCustomer' },
-          { label: 'Pending Finance', value: pendingFinance, change: pendingChange === 0 ? 'no change' : `${pendingChange > 0 ? '+' : ''}${pendingChange} orders`, up: pendingUp, sub: 'vs 7 days ago', tab: 'CreateOrder' },
-          { label: 'Revenue Generated', value: `GHS ${revenue.toLocaleString()}`, change: `${revenueUp ? '+' : ''}${revenueChange}%`, up: revenueUp, sub: 'vs last month', tab: 'MktAnalytics' },
-        ].map(({ label, value, change, up, sub, tab }) => (
+          { label: 'Total Orders', value: totalOrders, prefix: '', change: `${ordersUp ? '+' : ''}${ordersChange}%`, up: ordersUp, sub: 'vs last week', tab: 'CreateOrder' },
+          { label: 'Total Customers', value: totalCustomers, prefix: '', change: `+${thisMonthCustomers} new`, up: customersUp, sub: 'this month', tab: 'RegisterCustomer' },
+          { label: 'Pending Finance', value: pendingFinance, prefix: '', change: pendingChange === 0 ? 'no change' : `${pendingChange > 0 ? '+' : ''}${pendingChange} orders`, up: pendingUp, sub: 'vs 7 days ago', tab: 'CreateOrder' },
+          { label: 'Revenue Generated', value: revenue, prefix: 'GHS ', change: `${revenueUp ? '+' : ''}${revenueChange}%`, up: revenueUp, sub: 'vs last month', tab: 'MktAnalytics' },
+        ].map(({ label, value, prefix, change, up, sub, tab }) => (
           <div key={label} className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4 cursor-pointer hover:border-[var(--accent)] transition-colors" onClick={() => setActiveSubTab?.(tab)}>
             <p className="text-xs text-[var(--text-muted)] mb-1">{label}</p>
-            <p className="text-2xl font-bold text-[var(--text-primary)]">{value}</p>
+            <p className="text-2xl font-bold text-[var(--text-primary)]"><CountUp value={value} prefix={prefix} /></p>
             <div className="flex items-center gap-1 mt-1">
               {up ? <TrendingUp size={11} className="text-green-500" /> : <TrendingDown size={11} className="text-red-400" />}
               <span className={`text-xs font-medium ${up ? 'text-green-500' : 'text-red-400'}`}>{change}</span>
@@ -473,7 +474,7 @@ export default function MarketingOverviewView({ addNotification, setActiveSubTab
           <div className="flex items-center justify-between mb-4">
             <div>
               <h3 className="font-semibold text-[var(--text-primary)]">Sales Overview</h3>
-              <p className="text-2xl font-bold text-[var(--text-primary)] mt-1">GHS {revenue.toLocaleString()} <span className="text-sm font-normal text-green-500">+14.2%</span></p>
+              <p className="text-2xl font-bold text-[var(--text-primary)] mt-1">GHS <CountUp value={revenue} /> <span className="text-sm font-normal text-green-500">+14.2%</span></p>
             </div>
             <select value={salesPeriod} onChange={e => setSalesPeriod(e.target.value)} className="text-xs px-2 py-1.5 rounded-lg bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-secondary)] focus:outline-none">
               {['This Week', 'This Month', '6 Months', 'Year'].map(p => <option key={p}>{p}</option>)}
@@ -519,7 +520,7 @@ export default function MarketingOverviewView({ addNotification, setActiveSubTab
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                  <p className="text-lg font-bold text-[var(--text-primary)]">{totalOrders}</p>
+                  <p className="text-lg font-bold text-[var(--text-primary)]"><CountUp value={totalOrders} /></p>
                   <p className="text-xs text-[var(--text-muted)]">orders</p>
                 </div>
               </div>
@@ -613,7 +614,7 @@ export default function MarketingOverviewView({ addNotification, setActiveSubTab
         <div className="flex items-center justify-between mb-4">
           <div>
             <h3 className="font-semibold text-[var(--text-primary)]">Revenue Overview</h3>
-            <p className="text-2xl font-bold text-[var(--text-primary)] mt-1">GHS {revenue.toLocaleString()} <span className="text-sm font-normal text-green-500">+8.2%</span></p>
+            <p className="text-2xl font-bold text-[var(--text-primary)] mt-1">GHS <CountUp value={revenue} /> <span className="text-sm font-normal text-green-500">+8.2%</span></p>
           </div>
           <select value={revPeriod} onChange={e => setRevPeriod(e.target.value)} className="text-xs px-2 py-1.5 rounded-lg bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-secondary)] focus:outline-none">
             {['This Month', 'This Quarter', 'This Year'].map(p => <option key={p}>{p}</option>)}
@@ -652,7 +653,7 @@ export default function MarketingOverviewView({ addNotification, setActiveSubTab
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                  <p className="text-lg font-bold text-[var(--text-primary)]">{totalOrders}</p>
+                  <p className="text-lg font-bold text-[var(--text-primary)]"><CountUp value={totalOrders} /></p>
                   <p className="text-xs text-[var(--text-muted)]">total</p>
                 </div>
               </div>
@@ -706,7 +707,7 @@ export default function MarketingOverviewView({ addNotification, setActiveSubTab
           <div className="flex items-center justify-between mb-2">
             <h3 className="font-semibold text-[var(--text-primary)]">Customer Growth</h3>
           </div>
-          <p className="text-2xl font-bold text-[var(--text-primary)] mb-1">{totalCustomers} <span className="text-sm font-normal text-green-500">+3 this month</span></p>
+          <p className="text-2xl font-bold text-[var(--text-primary)] mb-1"><CountUp value={totalCustomers} /> <span className="text-sm font-normal text-green-500">+3 this month</span></p>
           <div className="h-40">
             {custGrowth.every(g => g.n === 0) ? (
               <div className="h-full flex items-center justify-center text-[var(--text-muted)] text-xs">No customer growth data</div>

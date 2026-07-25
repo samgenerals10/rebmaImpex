@@ -5,6 +5,7 @@ import { Download, RefreshCw, TrendingUp, TrendingDown, DollarSign, Users, Packa
 import { supabase } from '../lib/supabaseClient';
 import type { CurrentUser } from '../types/erp';
 import { exportToCSV } from '../utils/export';
+import CountUp from '../components/CountUp';
 
 interface AnalyticsDashboardProps {
   department: string;
@@ -23,13 +24,13 @@ const PERIODS: { value: Period; label: string }[] = [
 
 const CHART_COLORS = ['var(--accent)', '#6366f1', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6'];
 
-function StatCard({ label, value, sub, trend, icon: Icon }: { label: string; value: string; sub?: string; trend?: number; icon?: any }) {
+function StatCard({ label, value, prefix, sub, trend, icon: Icon }: { label: string; value: number | null; prefix?: string; sub?: string; trend?: number; icon?: any }) {
   return (
     <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4 shadow-[var(--box-shadow)]">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-1">{label}</p>
-          <p className="text-2xl font-bold text-[var(--text-primary)] leading-none">{value}</p>
+          <p className="text-2xl font-bold text-[var(--text-primary)] leading-none"><CountUp value={value} prefix={prefix} /></p>
           {sub && <p className="text-xs text-[var(--text-secondary)] mt-1">{sub}</p>}
         </div>
         {Icon && (
@@ -146,7 +147,7 @@ export default function AnalyticsDashboard({ department, currentUser, addNotific
   const [activityData, setActivityData] = useState<any[]>([]);
   const [compareData, setCompareData] = useState<any[]>([]);
   const [pieData, setPieData] = useState<{ name: string; value: number }[]>([]);
-  const [liveStats, setLiveStats] = useState<{ label: string; value: string; sub?: string; trend: number; icon: any }[]>([]);
+  const [liveStats, setLiveStats] = useState<{ label: string; value: number | null; prefix?: string; sub?: string; trend: number; icon: any }[]>([]);
   const [extraA, setExtraA] = useState<any[]>([]);
   const [extraB, setExtraB] = useState<any[]>([]);
 
@@ -191,10 +192,10 @@ export default function AnalyticsDashboard({ department, currentUser, addNotific
         ]);
         const totalRev = (revenueRows ?? []).reduce((s: number, r: any) => s + (r.amount || 0), 0);
         setLiveStats([
-          { label: 'Total Revenue', value: `GHS ${totalRev.toLocaleString()}`, sub: 'All payments', trend: 0, icon: DollarSign },
-          { label: 'Total Orders', value: `${orderCount ?? 0}`, sub: 'All time', trend: 0, icon: Package },
-          { label: 'Active Drivers', value: `${driverCount ?? 0}`, sub: 'On roster', trend: 0, icon: Truck },
-          { label: 'Staff Headcount', value: `${staffCount ?? 0}`, sub: 'Total active', trend: 0, icon: Users },
+          { label: 'Total Revenue', value: totalRev, prefix: 'GHS ', sub: 'All payments', trend: 0, icon: DollarSign },
+          { label: 'Total Orders', value: orderCount ?? 0, sub: 'All time', trend: 0, icon: Package },
+          { label: 'Active Drivers', value: driverCount ?? 0, sub: 'On roster', trend: 0, icon: Truck },
+          { label: 'Staff Headcount', value: staffCount ?? 0, sub: 'Total active', trend: 0, icon: Users },
         ]);
 
         const { data: orders } = await supabase.from('orders').select('status');
@@ -225,10 +226,10 @@ export default function AnalyticsDashboard({ department, currentUser, addNotific
         const collected = (payments ?? []).reduce((s: number, p: any) => s + (p.amount || 0), 0);
         const credit = (orders ?? []).filter((o: any) => o.payment_mode === 'CREDIT').reduce((s: number, o: any) => s + (o.total_amount || 0), 0);
         setLiveStats([
-          { label: 'Total Invoiced', value: `GHS ${invoiced.toLocaleString()}`, sub: 'All orders', trend: 0, icon: DollarSign },
-          { label: 'Collected', value: `GHS ${collected.toLocaleString()}`, sub: 'Payments in', trend: 0, icon: TrendingUp },
-          { label: 'Outstanding', value: `GHS ${(invoiced - collected).toLocaleString()}`, sub: 'Uncollected', trend: 0, icon: TrendingDown },
-          { label: 'Credit Extended', value: `GHS ${credit.toLocaleString()}`, sub: 'Credit terms', trend: 0, icon: DollarSign },
+          { label: 'Total Invoiced', value: invoiced, prefix: 'GHS ', sub: 'All orders', trend: 0, icon: DollarSign },
+          { label: 'Collected', value: collected, prefix: 'GHS ', sub: 'Payments in', trend: 0, icon: TrendingUp },
+          { label: 'Outstanding', value: invoiced - collected, prefix: 'GHS ', sub: 'Uncollected', trend: 0, icon: TrendingDown },
+          { label: 'Credit Extended', value: credit, prefix: 'GHS ', sub: 'Credit terms', trend: 0, icon: DollarSign },
         ]);
         const byMode: Record<string, number> = {};
         for (const o of orders || []) { const m = (o as any).payment_mode || 'CASH'; byMode[m] = (byMode[m] || 0) + 1; }
@@ -240,10 +241,10 @@ export default function AnalyticsDashboard({ department, currentUser, addNotific
           supabase.from('leave_requests').select('*', { count: 'exact', head: true }).eq('status', 'PENDING'),
         ]);
         setLiveStats([
-          { label: 'Total Staff', value: `${total ?? 0}`, sub: 'Headcount', trend: 0, icon: Users },
-          { label: 'On Leave', value: `${onLeave ?? 0}`, sub: 'Approved leaves', trend: 0, icon: Users },
-          { label: 'Leave Requests', value: `${pending ?? 0}`, sub: 'Pending review', trend: 0, icon: Users },
-          { label: 'Active', value: `${Math.max(0, (total ?? 0) - (onLeave ?? 0))}`, sub: 'Working today', trend: 0, icon: Users },
+          { label: 'Total Staff', value: total ?? 0, sub: 'Headcount', trend: 0, icon: Users },
+          { label: 'On Leave', value: onLeave ?? 0, sub: 'Approved leaves', trend: 0, icon: Users },
+          { label: 'Leave Requests', value: pending ?? 0, sub: 'Pending review', trend: 0, icon: Users },
+          { label: 'Active', value: Math.max(0, (total ?? 0) - (onLeave ?? 0)), sub: 'Working today', trend: 0, icon: Users },
         ]);
         const { data: profiles } = await supabase.from('profiles').select('role');
         const byRole: Record<string, number> = {};
@@ -259,10 +260,10 @@ export default function AnalyticsDashboard({ department, currentUser, addNotific
         ]);
         const rev = (revRows ?? []).reduce((s: number, o: any) => s + (o.total_amount || 0), 0);
         setLiveStats([
-          { label: 'Orders Created', value: `${ordersC ?? 0}`, sub: 'Total bookings', trend: 0, icon: Package },
-          { label: 'Customers', value: `${custsC ?? 0}`, sub: 'Registered', trend: 0, icon: Users },
-          { label: 'Revenue', value: `GHS ${rev.toLocaleString()}`, sub: 'All orders', trend: 0, icon: DollarSign },
-          { label: 'Pending', value: `${pendC ?? 0}`, sub: 'Awaiting approval', trend: 0, icon: TrendingDown },
+          { label: 'Orders Created', value: ordersC ?? 0, sub: 'Total bookings', trend: 0, icon: Package },
+          { label: 'Customers', value: custsC ?? 0, sub: 'Registered', trend: 0, icon: Users },
+          { label: 'Revenue', value: rev, prefix: 'GHS ', sub: 'All orders', trend: 0, icon: DollarSign },
+          { label: 'Pending', value: pendC ?? 0, sub: 'Awaiting approval', trend: 0, icon: TrendingDown },
         ]);
         const { data: orders } = await supabase.from('orders').select('status');
         const byStatus: Record<string, number> = {};
@@ -275,10 +276,10 @@ export default function AnalyticsDashboard({ department, currentUser, addNotific
           supabase.from('cargo_intake').select('*', { count: 'exact', head: true }).neq('discrepancies', 'None'),
         ]);
         setLiveStats([
-          { label: 'Cargo Intakes', value: `${cargoC ?? 0}`, sub: 'Total logged', trend: 0, icon: Package },
-          { label: 'Stock Items', value: `${stockC ?? 0}`, sub: 'In warehouse', trend: 0, icon: Package },
-          { label: 'Discrepancies', value: `${discC ?? 0}`, sub: 'Open issues', trend: 0, icon: TrendingDown },
-          { label: 'Fulfillments', value: '—', sub: 'Check deliveries', trend: 0, icon: Truck },
+          { label: 'Cargo Intakes', value: cargoC ?? 0, sub: 'Total logged', trend: 0, icon: Package },
+          { label: 'Stock Items', value: stockC ?? 0, sub: 'In warehouse', trend: 0, icon: Package },
+          { label: 'Discrepancies', value: discC ?? 0, sub: 'Open issues', trend: 0, icon: TrendingDown },
+          { label: 'Fulfillments', value: null, sub: 'Check deliveries', trend: 0, icon: Truck },
         ]);
         const { data: cargo } = await supabase.from('cargo_intake').select('status');
         const byStatus: Record<string, number> = {};
@@ -292,10 +293,10 @@ export default function AnalyticsDashboard({ department, currentUser, addNotific
           supabase.from('drivers').select('*', { count: 'exact', head: true }).eq('status', 'ACTIVE'),
         ]);
         setLiveStats([
-          { label: 'Deliveries', value: `${total ?? 0}`, sub: 'Total', trend: 0, icon: Truck },
-          { label: 'In Transit', value: `${inTransit ?? 0}`, sub: 'Currently active', trend: 0, icon: Truck },
-          { label: 'Delivered', value: `${delivered ?? 0}`, sub: 'Completed', trend: 0, icon: TrendingUp },
-          { label: 'Active Drivers', value: `${drivers ?? 0}`, sub: 'On roster', trend: 0, icon: Users },
+          { label: 'Deliveries', value: total ?? 0, sub: 'Total', trend: 0, icon: Truck },
+          { label: 'In Transit', value: inTransit ?? 0, sub: 'Currently active', trend: 0, icon: Truck },
+          { label: 'Delivered', value: delivered ?? 0, sub: 'Completed', trend: 0, icon: TrendingUp },
+          { label: 'Active Drivers', value: drivers ?? 0, sub: 'On roster', trend: 0, icon: Users },
         ]);
         const { data: deliveries } = await supabase.from('delivery_logs').select('status');
         const byStatus: Record<string, number> = {};
@@ -309,10 +310,10 @@ export default function AnalyticsDashboard({ department, currentUser, addNotific
         const totalBoxes = (outputRows ?? []).reduce((s: number, r: any) => s + (r.boxes_produced || 0), 0);
         const totalSachets = (outputRows ?? []).reduce((s: number, r: any) => s + (r.total_sachets || 0), 0);
         setLiveStats([
-          { label: 'Requests', value: `${reqC ?? 0}`, sub: 'Production orders', trend: 0, icon: Package },
-          { label: 'Boxes Produced', value: `${totalBoxes}`, sub: 'Total output', trend: 0, icon: Package },
-          { label: 'Sachets', value: `${totalSachets}`, sub: 'Total sachets', trend: 0, icon: Package },
-          { label: 'Efficiency', value: '—', sub: 'Quality rate', trend: 0, icon: TrendingUp },
+          { label: 'Requests', value: reqC ?? 0, sub: 'Production orders', trend: 0, icon: Package },
+          { label: 'Boxes Produced', value: totalBoxes, sub: 'Total output', trend: 0, icon: Package },
+          { label: 'Sachets', value: totalSachets, sub: 'Total sachets', trend: 0, icon: Package },
+          { label: 'Efficiency', value: null, sub: 'Quality rate', trend: 0, icon: TrendingUp },
         ]);
         const { data: reqs } = await supabase.from('production_requests').select('status');
         const byStatus: Record<string, number> = {};
@@ -326,10 +327,10 @@ export default function AnalyticsDashboard({ department, currentUser, addNotific
           supabase.from('visitors').select('*', { count: 'exact', head: true }).gte('check_in_time', today).not('check_out_time', 'is', null),
         ]);
         setLiveStats([
-          { label: 'Visitors Today', value: `${totalC ?? 0}`, sub: 'Checked in', trend: 0, icon: Users },
-          { label: 'Inside Now', value: `${insideC ?? 0}`, sub: 'Still on premises', trend: 0, icon: Users },
-          { label: 'Checked Out', value: `${outC ?? 0}`, sub: 'Departed today', trend: 0, icon: Users },
-          { label: 'Total Logged', value: `${totalC ?? 0}`, sub: 'All time today', trend: 0, icon: Users },
+          { label: 'Visitors Today', value: totalC ?? 0, sub: 'Checked in', trend: 0, icon: Users },
+          { label: 'Inside Now', value: insideC ?? 0, sub: 'Still on premises', trend: 0, icon: Users },
+          { label: 'Checked Out', value: outC ?? 0, sub: 'Departed today', trend: 0, icon: Users },
+          { label: 'Total Logged', value: totalC ?? 0, sub: 'All time today', trend: 0, icon: Users },
         ]);
         const { data: visitors } = await supabase.from('visitors').select('purpose');
         const byPurpose: Record<string, number> = {};
@@ -344,10 +345,10 @@ export default function AnalyticsDashboard({ department, currentUser, addNotific
         ]);
         const fuelCost = (fuelRows ?? []).reduce((s: number, r: any) => s + Number(r.cost || 0), 0);
         setLiveStats([
-          { label: 'Total Vehicles', value: `${vehicleC ?? 0}`, sub: 'Fleet size', trend: 0, icon: Truck },
-          { label: 'Operational', value: `${activeC ?? 0}`, sub: 'Ready to run', trend: 0, icon: Truck },
-          { label: 'Pending Maintenance', value: `${maintC ?? 0}`, sub: 'Open work orders', trend: 0, icon: Package },
-          { label: 'Fuel Spend', value: `GHS ${fuelCost.toLocaleString()}`, sub: 'All time', trend: 0, icon: DollarSign },
+          { label: 'Total Vehicles', value: vehicleC ?? 0, sub: 'Fleet size', trend: 0, icon: Truck },
+          { label: 'Operational', value: activeC ?? 0, sub: 'Ready to run', trend: 0, icon: Truck },
+          { label: 'Pending Maintenance', value: maintC ?? 0, sub: 'Open work orders', trend: 0, icon: Package },
+          { label: 'Fuel Spend', value: fuelCost, prefix: 'GHS ', sub: 'All time', trend: 0, icon: DollarSign },
         ]);
         const { data: vehicles } = await supabase.from('fleet_vehicles').select('status');
         const byStatus: Record<string, number> = {};
@@ -412,7 +413,7 @@ export default function AnalyticsDashboard({ department, currentUser, addNotific
         {stats.length === 0 ? (
           Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-24 rounded-2xl bg-[var(--bg-input)] animate-pulse" />)
         ) : (
-          stats.map((s, i) => <StatCard key={i} label={s.label} value={s.value} sub={s.sub} trend={s.trend} icon={s.icon} />)
+          stats.map((s, i) => <StatCard key={i} label={s.label} value={s.value} prefix={s.prefix} sub={s.sub} trend={s.trend} icon={s.icon} />)
         )}
       </div>
 

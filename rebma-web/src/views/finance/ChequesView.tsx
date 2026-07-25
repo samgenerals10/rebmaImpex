@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { Search, Download, MoreVertical, Plus, CheckCircle, XCircle, Clock, AlertTriangle } from 'lucide-react';
 import { exportToCSV } from '../../utils/export';
 import EntityDetailPanel from '../../components/global/EntityDetailPanel';
+import CountUp from '../../components/CountUp';
 
 interface Cheque {
   id: string;
@@ -230,7 +231,7 @@ export default function FinanceChequesView({ addNotification, currentUser }: Pro
         ].map(({ label, value, color, Icon }) => (
           <div key={label} className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4 flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${color}20` }}><Icon size={18} style={{ color }} /></div>
-            <div><p className="text-xs text-[var(--text-muted)]">{label}</p><p className="text-xl font-bold text-[var(--text-primary)]">{value}</p></div>
+            <div><p className="text-xs text-[var(--text-muted)]">{label}</p><p className="text-xl font-bold text-[var(--text-primary)]"><CountUp value={value} /></p></div>
           </div>
         ))}
       </div>

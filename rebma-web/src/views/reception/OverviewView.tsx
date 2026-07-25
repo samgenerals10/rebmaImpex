@@ -10,6 +10,7 @@ import {
 } from 'recharts';
 import { supabase } from '../../lib/supabaseClient';
 import { exportToCSV, exportToPDF } from '../../utils/export';
+import CountUp from '../../components/CountUp';
 import type { Visitor, CurrentUser, Attendance } from '../../types/erp';
 
 interface Props {
@@ -221,7 +222,7 @@ export default function ReceptionOverviewView({ visitorsList, onAddVisitor, onCh
             </div>
             <div className="flex items-end justify-between gap-2">
               <div>
-                <p className="text-3xl font-bold text-[var(--text-primary)] leading-none">{card.value}</p>
+                <p className="text-3xl font-bold text-[var(--text-primary)] leading-none"><CountUp value={card.value} /></p>
                 <div className="flex items-center gap-1 mt-1.5">
                   {card.trend === 'up' ? <TrendingUp className="w-3 h-3 text-emerald-500" /> : card.trend === 'down' ? <TrendingDown className="w-3 h-3 text-rose-500" /> : null}
                   <p className="text-[10px] text-[var(--text-muted)]">{card.sub}</p>
@@ -474,15 +475,15 @@ export default function ReceptionOverviewView({ visitorsList, onAddVisitor, onCh
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           {[
-            { label: 'Total Visitors', value: todayVisitors.length, color: 'var(--accent)' },
-            { label: 'Total Check-ins', value: todayVisitors.length, color: '#10b981' },
-            { label: 'Total Check-outs', value: checkedOut.length, color: '#6366f1' },
-            { label: 'Currently Inside', value: currentlyIn.length, color: '#f59e0b' },
-            { label: 'Staff Attendance', value: `${staffPresent.length > 0 ? Math.round((staffPresent.length / Math.max(staffPresent.length + 5, 30)) * 100) : 0}%`, color: '#10b981' },
-            { label: 'Peak Hour', value: '9AM', color: '#8b5cf6' },
+            { label: 'Total Visitors', value: todayVisitors.length as (number | string), suffix: '', color: 'var(--accent)' },
+            { label: 'Total Check-ins', value: todayVisitors.length as (number | string), suffix: '', color: '#10b981' },
+            { label: 'Total Check-outs', value: checkedOut.length as (number | string), suffix: '', color: '#6366f1' },
+            { label: 'Currently Inside', value: currentlyIn.length as (number | string), suffix: '', color: '#f59e0b' },
+            { label: 'Staff Attendance', value: (staffPresent.length > 0 ? Math.round((staffPresent.length / Math.max(staffPresent.length + 5, 30)) * 100) : 0) as (number | string), suffix: '%', color: '#10b981' },
+            { label: 'Peak Hour', value: '9AM' as (number | string), suffix: '', color: '#8b5cf6' },
           ].map(item => (
             <div key={item.label} className="bg-[var(--bg)] rounded-xl p-3 border border-[var(--border)] text-center">
-              <p className="text-xl font-bold" style={{ color: item.color }}>{item.value}</p>
+              <p className="text-xl font-bold" style={{ color: item.color }}>{typeof item.value === 'number' ? <CountUp value={item.value} suffix={item.suffix} /> : item.value}</p>
               <p className="text-[10px] text-[var(--text-muted)] mt-0.5">{item.label}</p>
             </div>
           ))}

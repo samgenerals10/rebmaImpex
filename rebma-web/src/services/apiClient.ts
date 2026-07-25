@@ -845,6 +845,18 @@ export const management = {
     if (error) throw new Error(error.message);
   },
 
+  // Marketing can flag a customer special at registration, but Management
+  // also reviews existing customers over time (performance/loyalty/volume)
+  // and should be able to raise or lift the flag themselves without waiting
+  // on Marketing to go back and edit the customer record.
+  setCustomerSpecial: async (customerId: string, isSpecial: boolean) => {
+    const { error } = await supabase
+      .from('customers')
+      .update({ is_special_customer: isSpecial, updated_at: new Date().toISOString() })
+      .eq('id', customerId);
+    if (error) throw new Error(error.message);
+  },
+
   approveIntake: async (intakeId: string, approve: boolean, unitPrice?: number) => {
     const { data: sessionData } = await supabase.auth.getSession();
     const performerId = sessionData.session?.user?.id || null;

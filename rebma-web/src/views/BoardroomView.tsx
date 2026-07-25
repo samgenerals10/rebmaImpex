@@ -6,6 +6,7 @@ import { exportToCSV, exportToPDF } from '../utils/export';
 import { supabase } from '../lib/supabaseClient';
 import { meetingsApi } from '../services/apiClient';
 import JitsiCallModal from '../components/collaborative/JitsiCallModal';
+import CountUp from '../components/CountUp';
 import { useFullscreenToggle, FullscreenButton } from '../components/global/FullscreenToggle';
 import type { ChatMessage, BoardroomMeeting, CurrentUser } from '../types/erp';
 
@@ -196,7 +197,7 @@ export default function BoardroomView({
           <div className="flex justify-between items-start relative z-10">
             <div>
               <p className="text-[10px] uppercase tracking-widest text-white/60 font-bold">Scheduled Meetings</p>
-              <h2 className="text-3xl font-extrabold text-white mt-1 tracking-tight">{meetingsList.length} Meetings</h2>
+              <h2 className="text-3xl font-extrabold text-white mt-1 tracking-tight"><CountUp value={meetingsList.length} suffix=" Meetings" /></h2>
               <p className="text-[10px] text-white/70 mt-1">Live Jitsi channel enabled</p>
             </div>
             <div className="mobile-card-chip mt-1" />

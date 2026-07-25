@@ -9,6 +9,7 @@ import { exportToCSV, exportToPDF } from '../utils/export';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { useCeoSettings } from '../contexts/CeoSettingsContext';
 import ActivityFeed from '../components/global/ActivityFeed';
+import CountUp from '../components/CountUp';
 
 interface MarketingDashboardProps {
   ordersList: Order[];
@@ -134,10 +135,10 @@ export default function MarketingDashboard({
   const pipelineValue = localOrders.reduce((acc, o) => acc + o.totalAmount, 0);
 
   const stats = [
-    { title: 'Registered Customers', value: `${totalCustomersCount} Accounts`, sub: 'Client directory profiles', icon: Users, color: 'text-blue-500' },
-    { title: 'Total Sales Booked', value: `${totalOrdersCount} Orders`, sub: 'Active & archived logs', icon: Clipboard, color: 'text-amber-500' },
-    { title: 'Pipeline Net Value', value: `GHS ${pipelineValue.toLocaleString()}`, sub: 'Estimated bookings value', icon: DollarSign, color: 'text-emerald-500' },
-    { title: 'Completed Deliveries', value: `${completedDealsCount} Closed`, sub: 'Successfully delivered deals', icon: ShieldCheck, color: 'text-indigo-500' },
+    { title: 'Registered Customers', value: totalCustomersCount, suffix: ' Accounts', sub: 'Client directory profiles', icon: Users, color: 'text-blue-500' },
+    { title: 'Total Sales Booked', value: totalOrdersCount, suffix: ' Orders', sub: 'Active & archived logs', icon: Clipboard, color: 'text-amber-500' },
+    { title: 'Pipeline Net Value', value: pipelineValue, prefix: 'GHS ', sub: 'Estimated bookings value', icon: DollarSign, color: 'text-emerald-500' },
+    { title: 'Completed Deliveries', value: completedDealsCount, suffix: ' Closed', sub: 'Successfully delivered deals', icon: ShieldCheck, color: 'text-indigo-500' },
   ];
 
   const kpiDetails = [
@@ -478,8 +479,8 @@ export default function MarketingDashboard({
           <div className="flex justify-between items-start relative z-10">
             <div>
               <p className="text-[10px] uppercase tracking-widest text-white/60 font-bold">Pipeline Value</p>
-              <h2 className="text-3xl font-extrabold text-white mt-1 tracking-tight">GHS {pipelineValue.toLocaleString()}</h2>
-              <p className="text-[10px] text-white/70 mt-1">{totalOrdersCount} Total Bookings</p>
+              <h2 className="text-3xl font-extrabold text-white mt-1 tracking-tight">GHS <CountUp value={pipelineValue} /></h2>
+              <p className="text-[10px] text-white/70 mt-1"><CountUp value={totalOrdersCount} /> Total Bookings</p>
             </div>
             <div className="mobile-card-chip mt-1" />
           </div>
@@ -498,8 +499,8 @@ export default function MarketingDashboard({
         {/* Stats Grid */}
         <div className="grid grid-cols-2 gap-3">
           {[
-            { label: 'Customers', value: `${totalCustomersCount}`, sub: 'Accounts active', bg: '#eff6ff', color: '#3b82f6', icon: Users },
-            { label: 'Completed', value: `${completedDealsCount}`, sub: 'Deals closed', bg: '#f0fdf4', color: '#16a34a', icon: ShieldCheck },
+            { label: 'Customers', value: totalCustomersCount, sub: 'Accounts active', bg: '#eff6ff', color: '#3b82f6', icon: Users },
+            { label: 'Completed', value: completedDealsCount, sub: 'Deals closed', bg: '#f0fdf4', color: '#16a34a', icon: ShieldCheck },
           ].map((s, i) => {
             const Icon = s.icon;
             return (
@@ -509,7 +510,7 @@ export default function MarketingDashboard({
                 </div>
                 <div className="min-w-0">
                   <p className="text-[9px] text-text-muted uppercase font-bold tracking-wider truncate">{s.label}</p>
-                  <p className="text-sm font-bold text-text-primary mt-0.5">{s.value}</p>
+                  <p className="text-sm font-bold text-text-primary mt-0.5"><CountUp value={s.value} /></p>
                   <p className="text-[9px] text-text-muted truncate">{s.sub}</p>
                 </div>
               </div>
@@ -876,7 +877,7 @@ export default function MarketingDashboard({
               </div>
               <div className="flex items-end justify-between mt-2 gap-2">
                 <div>
-                  <h3 className="text-2xl sm:text-3xl font-bold text-[var(--text-primary)] leading-none">{card.value}</h3>
+                  <h3 className="text-2xl sm:text-3xl font-bold text-[var(--text-primary)] leading-none"><CountUp value={card.value} prefix={card.prefix} suffix={card.suffix} /></h3>
                   <p className="text-[10px] text-[var(--text-muted)] mt-1.5">{card.sub}</p>
                 </div>
                 <MiniSparkline width={60} height={36} />

@@ -5,6 +5,7 @@ import {
   ChevronUp, ChevronDown, Truck, Printer, X, AlertCircle,
 } from 'lucide-react';
 import { exportToCSV } from '../../utils/export';
+import CountUp from '../../components/CountUp';
 
 // ── Brand colors from REBMA logo ──────────────────────────────────────────
 const BRAND = {
@@ -432,7 +433,7 @@ export default function ApprovedGoodsView({ addNotification, setActiveSubTab: _s
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
           { label: 'Approved Cargo Batches', value: goods.length, color: BRAND.blue, icon: <Package size={16} /> },
-          { label: 'Total Port Units', value: totalGoodsQty.toLocaleString(), color: BRAND.green, icon: <PackageCheck size={16} /> },
+          { label: 'Total Port Units', value: totalGoodsQty, color: BRAND.green, icon: <PackageCheck size={16} /> },
           { label: 'Awaiting Dispatch', value: pendingDispatch, color: BRAND.gold, icon: <TicketCheck size={16} />, alert: pendingDispatch > 0 },
           { label: 'In Transit', value: inTransit, color: BRAND.lime, icon: <Truck size={16} /> },
         ].map(c => (
@@ -441,7 +442,7 @@ export default function ApprovedGoodsView({ addNotification, setActiveSubTab: _s
               <p className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wide leading-tight">{c.label}</p>
               <span style={{ color: c.color }}>{c.icon}</span>
             </div>
-            <p className="text-xl font-bold" style={{ color: c.color }}>{c.value}</p>
+            <p className="text-xl font-bold" style={{ color: c.color }}><CountUp value={c.value} /></p>
             {(c as any).alert && (
               <p className="text-[9px] text-amber-600 font-semibold mt-1 flex items-center gap-1"><AlertCircle size={9} /> Action required</p>
             )}

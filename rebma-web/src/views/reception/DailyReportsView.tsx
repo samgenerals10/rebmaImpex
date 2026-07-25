@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { exportToPDF } from '../../utils/export';
 import { supabase } from '../../lib/supabaseClient';
+import CountUp from '../../components/CountUp';
 
 interface VisitorToday {
   id: string;
@@ -275,14 +276,14 @@ export default function DailyReportsView({ addNotification }: Props) {
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
-              { label: 'Total Visitors', val: visitorsToday.length, icon: Users },
-              { label: 'Staff Present', val: totalPresent, icon: UserCheck },
-              { label: 'Attendance Rate', val: `${attendanceRate}%`, icon: TrendingUp },
-              { label: 'Check-Outs', val: visitorsToday.filter(v => v.out).length, icon: FileText },
+              { label: 'Total Visitors', val: visitorsToday.length, suffix: '', icon: Users },
+              { label: 'Staff Present', val: totalPresent, suffix: '', icon: UserCheck },
+              { label: 'Attendance Rate', val: attendanceRate, suffix: '%', icon: TrendingUp },
+              { label: 'Check-Outs', val: visitorsToday.filter(v => v.out).length, suffix: '', icon: FileText },
             ].map((s, i) => { const Icon = s.icon; return (
               <div key={i} className="bg-white/15 rounded-xl p-3">
                 <Icon className="w-4 h-4 mb-1 opacity-80" />
-                <p className="text-xl font-bold">{s.val}</p>
+                <p className="text-xl font-bold"><CountUp value={s.val} suffix={s.suffix} /></p>
                 <p className="text-[10px] opacity-75">{s.label}</p>
               </div>
             ); })}

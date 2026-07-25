@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { exportToPDF } from '../../utils/export';
+import CountUp from '../../components/CountUp';
 import type { Visitor } from '../../types/erp';
 
 
@@ -276,7 +277,7 @@ export default function VisitorsView({ addNotification }: Props) {
               <card.icon className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-[var(--text-primary)]">{card.value}</p>
+              <p className="text-2xl font-bold text-[var(--text-primary)]"><CountUp value={card.value} /></p>
               <p className="text-[10px] text-[var(--text-muted)]">{card.label}</p>
             </div>
           </div>

@@ -6,6 +6,7 @@ import {
 } from 'recharts';
 import { exportToCSV } from '../../utils/export';
 import { supabase } from '../../lib/supabaseClient';
+import CountUp from '../../components/CountUp';
 
 const COLORS = ['#10b981','#6366f1','#f59e0b','#3b82f6','#8b5cf6','#ec4899'];
 
@@ -173,10 +174,10 @@ export default function MarketingAnalyticsView({ addNotification, currentUser }:
   }
 
   const kpiCards = [
-    { label: 'Total Revenue', value: loading ? '—' : `GHS ${totalRevenue.toLocaleString()}`, icon: DollarSign },
-    { label: 'Total Orders', value: loading ? '—' : totalOrders, icon: ShoppingCart },
-    { label: 'Total Customers', value: loading ? '—' : totalCustomers, icon: Users },
-    { label: 'Avg Order Value', value: loading ? '—' : `GHS ${avgOrderValue.toLocaleString()}`, icon: BarChart2 },
+    { label: 'Total Revenue', value: totalRevenue, prefix: 'GHS ', icon: DollarSign },
+    { label: 'Total Orders', value: totalOrders, prefix: '', icon: ShoppingCart },
+    { label: 'Total Customers', value: totalCustomers, prefix: '', icon: Users },
+    { label: 'Avg Order Value', value: avgOrderValue, prefix: 'GHS ', icon: BarChart2 },
   ];
 
   return (
@@ -190,7 +191,7 @@ export default function MarketingAnalyticsView({ addNotification, currentUser }:
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-        {kpiCards.map(({ label, value, icon: Icon }) => (
+        {kpiCards.map(({ label, value, prefix, icon: Icon }) => (
           <div key={label} className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4">
             <div className="flex items-center justify-between mb-2">
               <p className="text-xs text-[var(--text-muted)]">{label}</p>
@@ -201,7 +202,7 @@ export default function MarketingAnalyticsView({ addNotification, currentUser }:
             {loading ? (
               <div className="animate-pulse h-8 w-24 bg-slate-200 dark:bg-slate-700 rounded" />
             ) : (
-              <p className="text-2xl font-bold text-[var(--text-primary)]">{value}</p>
+              <p className="text-2xl font-bold text-[var(--text-primary)]"><CountUp value={value} prefix={prefix} /></p>
             )}
           </div>
         ))}
@@ -255,7 +256,7 @@ export default function MarketingAnalyticsView({ addNotification, currentUser }:
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between mb-0.5">
                         <p className="text-xs font-medium text-[var(--text-primary)] truncate">{p.name}</p>
-                        <span className="text-xs text-[var(--text-secondary)] flex-shrink-0 ml-2">GHS {(p.revenue / 1000).toFixed(1)}K</span>
+                        <span className="text-xs text-[var(--text-secondary)] flex-shrink-0 ml-2">GHS <CountUp value={p.revenue / 1000} decimals={1} suffix="K" /></span>
                       </div>
                       <div className="h-1.5 bg-[var(--bg-input)] rounded-full overflow-hidden">
                         <div className="h-full rounded-full" style={{ width: `${(p.orders / maxOrders) * 100}%`, background: COLORS[p.rank - 1] || COLORS[0] }} />
@@ -347,7 +348,7 @@ export default function MarketingAnalyticsView({ addNotification, currentUser }:
                   <div className="w-28 text-sm text-[var(--text-secondary)] text-right flex-shrink-0">{s.name}</div>
                   <div className="flex-1 bg-[var(--bg-input)] rounded-full h-7 relative overflow-hidden">
                     <div className="h-full rounded-full flex items-center justify-end pr-3 transition-all" style={{ width: `${Math.max(s.pct, 2)}%`, background: fColors[i] }}>
-                      <span className="text-xs font-bold text-white">{s.count}</span>
+                      <span className="text-xs font-bold text-white"><CountUp value={s.count} /></span>
                     </div>
                   </div>
                   <div className="w-14 text-right text-xs text-[var(--text-muted)] flex-shrink-0">{s.pct}%</div>

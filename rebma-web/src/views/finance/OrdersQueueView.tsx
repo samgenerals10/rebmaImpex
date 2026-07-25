@@ -9,6 +9,7 @@ import { exportToCSV } from '../../utils/export';
 import type { Order } from '../../types/erp';
 import InvoiceLineItems, { getProductSummary, getProductSummaryWithQty } from '../../components/InvoiceLineItems';
 import { useFullscreenToggle, FullscreenButton } from '../../components/global/FullscreenToggle';
+import CountUp from '../../components/CountUp';
 
 interface Props {
   addNotification?: (msg: string) => void;
@@ -316,7 +317,7 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
             </div>
             <div className="text-right flex flex-col items-end gap-1.5">
               <span className="text-xl font-extrabold text-emerald-500">
-                GHS {Number(selected.totalAmount ?? 0).toLocaleString()}
+                GHS <CountUp value={Number(selected.totalAmount ?? 0)} />
               </span>
               <div className="flex items-center gap-1.5">
                 <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wide ${MODE_COLORS[selected.paymentMode] || ''}`}>{selected.paymentMode}</span>
@@ -562,7 +563,7 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
             </div>
             <div>
               <p className="text-xs text-[var(--text-muted)]">{label}</p>
-              <p className="text-lg font-bold text-[var(--text-primary)]">{value}</p>
+              <p className="text-lg font-bold text-[var(--text-primary)]"><CountUp value={value} /></p>
               <p className="text-[10px] text-[var(--text-muted)] font-medium">{sub}</p>
             </div>
           </div>

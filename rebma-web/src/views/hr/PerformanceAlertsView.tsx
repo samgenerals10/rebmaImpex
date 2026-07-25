@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import type { CurrentUser } from '../../types/erp';
+import CountUp from '../../components/CountUp';
 
 type AlertLevel = 'critical' | 'high' | 'medium' | 'low';
 type AlertStatus = 'OPEN' | 'IN_REVIEW' | 'RESOLVED';
@@ -162,7 +163,7 @@ export default function PerformanceAlertsView({ currentUser, addNotification }: 
           { label: 'Resolved', value: counts.resolved, color: '#10b981' },
         ].map(card => (
           <div key={card.label} className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-3.5">
-            <p className="text-2xl font-bold" style={{ color: card.color }}>{card.value}</p>
+            <p className="text-2xl font-bold" style={{ color: card.color }}><CountUp value={card.value} /></p>
             <p className="text-xs text-[var(--text-muted)] mt-0.5">{card.label}</p>
           </div>
         ))}

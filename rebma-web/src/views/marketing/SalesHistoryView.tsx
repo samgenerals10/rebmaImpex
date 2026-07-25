@@ -7,6 +7,7 @@ import {
 import { supabase } from '../../lib/supabaseClient';
 import type { Order } from '../../types/erp';
 import InvoiceLineItems, { getLineItems } from '../../components/InvoiceLineItems';
+import CountUp from '../../components/CountUp';
 
 const STATUS_STYLES: Record<string, string> = {
   PENDING_FINANCE:     'bg-amber-100 text-amber-700',
@@ -219,10 +220,10 @@ export default function SalesHistoryView({ ordersList, addNotification }: Props)
           {/* KPI cards */}
           <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
             {[
-              { label: 'Total Revenue', value: `GHS ${totalRevenue.toLocaleString()}`, icon: TrendingUp, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-              { label: 'Completed Orders', value: completed.length.toString(), icon: Package, color: 'text-[var(--accent)]', bg: 'bg-[var(--accent-light)]' },
-              { label: 'Avg Order Value', value: `GHS ${avgOrder.toLocaleString()}`, icon: TrendingUp, color: 'text-indigo-600', bg: 'bg-indigo-50' },
-              { label: 'Best Month', value: bestMonth.month, icon: TrendingUp, color: 'text-amber-600', bg: 'bg-amber-50', sub: `GHS ${bestMonth.revenue.toLocaleString()}` },
+              { label: 'Total Revenue', value: <>GHS <CountUp value={totalRevenue} /></>, icon: TrendingUp, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+              { label: 'Completed Orders', value: <CountUp value={completed.length} />, icon: Package, color: 'text-[var(--accent)]', bg: 'bg-[var(--accent-light)]' },
+              { label: 'Avg Order Value', value: <>GHS <CountUp value={avgOrder} /></>, icon: TrendingUp, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+              { label: 'Best Month', value: bestMonth.month, icon: TrendingUp, color: 'text-amber-600', bg: 'bg-amber-50', sub: <>GHS <CountUp value={bestMonth.revenue} /></> },
             ].map(c => {
               const Icon = c.icon;
               return (
@@ -279,7 +280,7 @@ export default function SalesHistoryView({ ordersList, addNotification }: Props)
                           <p className="text-xs font-semibold text-[var(--text-primary)] truncate">{c.name}</p>
                           <p className="text-[10px] text-[var(--text-muted)]">{c.count} order{c.count !== 1 ? 's' : ''}</p>
                         </div>
-                        <span className="text-xs font-bold text-emerald-600 whitespace-nowrap">GHS {c.revenue.toLocaleString()}</span>
+                        <span className="text-xs font-bold text-emerald-600 whitespace-nowrap">GHS <CountUp value={c.revenue} /></span>
                       </div>
                     ))}
                   </div>}
@@ -301,7 +302,7 @@ export default function SalesHistoryView({ ordersList, addNotification }: Props)
                           <p className="text-xs font-semibold text-[var(--text-primary)] truncate">{p.name || '—'}</p>
                           <p className="text-[10px] text-[var(--text-muted)]">{p.count} sold</p>
                         </div>
-                        <span className="text-xs font-bold text-emerald-600 whitespace-nowrap">GHS {p.revenue.toLocaleString()}</span>
+                        <span className="text-xs font-bold text-emerald-600 whitespace-nowrap">GHS <CountUp value={p.revenue} /></span>
                       </div>
                     ))}
                   </div>}
@@ -325,7 +326,7 @@ export default function SalesHistoryView({ ordersList, addNotification }: Props)
                       {modeData.map((m, i) => (
                         <div key={m.name} className="flex items-center justify-between">
                           <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full" style={{ background: PIE_COLORS[i % PIE_COLORS.length] }} /><span className="text-[10px] text-[var(--text-secondary)]">{m.name.replace(/_/g,' ')}</span></div>
-                          <span className="text-[10px] font-bold text-[var(--text-primary)]">GHS {m.value.toLocaleString()}</span>
+                          <span className="text-[10px] font-bold text-[var(--text-primary)]">GHS <CountUp value={m.value} /></span>
                         </div>
                       ))}
                     </div>
@@ -421,14 +422,14 @@ export default function SalesHistoryView({ ordersList, addNotification }: Props)
             ].map(c => (
               <div key={c.label} className="rounded-2xl bg-[var(--bg-card)] border border-[var(--border)] p-4 shadow-[var(--box-shadow)]">
                 <p className="text-xs text-[var(--text-muted)] mb-1">{c.label}</p>
-                <p className={`text-xl font-bold ${c.color}`}>{c.value}</p>
+                <p className={`text-xl font-bold ${c.color}`}><CountUp value={c.value} /></p>
               </div>
             ))}
           </div>
 
           {creditValue > 0 && (
             <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3">
-              <p className="text-xs font-semibold text-amber-700">Total credit value outstanding: <span className="font-extrabold">GHS {creditValue.toLocaleString()}</span></p>
+              <p className="text-xs font-semibold text-amber-700">Total credit value outstanding: <span className="font-extrabold">GHS <CountUp value={creditValue} /></span></p>
             </div>
           )}
 
@@ -449,7 +450,7 @@ export default function SalesHistoryView({ ordersList, addNotification }: Props)
                       <p className="text-[10px] text-[var(--text-muted)]">{o.productName || '—'} · Submitted {(o.createdAt || '').split('T')[0]}</p>
                     </div>
                     <div className="flex items-center gap-3 flex-shrink-0">
-                      <span className="font-bold text-emerald-600 text-sm whitespace-nowrap">GHS {Number(o.totalAmount ?? 0).toLocaleString()}</span>
+                      <span className="font-bold text-emerald-600 text-sm whitespace-nowrap">GHS <CountUp value={Number(o.totalAmount ?? 0)} /></span>
                       <button onClick={() => addNotification(`Tracking order ${o.ticketNumber || o.id}.`)}
                         className="px-3 py-1.5 rounded-xl border border-[var(--accent)] text-[var(--accent)] text-xs font-semibold hover:bg-[var(--accent-light)] transition-colors whitespace-nowrap cursor-pointer">
                         Track

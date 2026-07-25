@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import type { PendingRegistration } from '../../types/erp';
 import { supabase } from '../../lib/supabaseClient';
+import CountUp from '../../components/CountUp';
 import { useFullscreenToggle, FullscreenButton } from '../../components/global/FullscreenToggle';
 
 const DEPARTMENTS = ['All', 'Operations', 'Finance', 'Logistics', 'HR', 'Marketing', 'Reception', 'Production', 'Management', 'Dispatch'];
@@ -207,7 +208,7 @@ export default function RegistrationsView({ pendingRegistrations, addNotificatio
           { label: 'Rejected', value: rejected, color: '#ef4444' },
         ].map(card => (
           <div key={card.label} className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-3.5">
-            <p className="text-2xl font-bold text-[var(--text-primary)]" style={{ color: card.color }}>{card.value}</p>
+            <p className="text-2xl font-bold text-[var(--text-primary)]" style={{ color: card.color }}><CountUp value={card.value} /></p>
             <p className="text-xs text-[var(--text-muted)] mt-0.5">{card.label}</p>
           </div>
         ))}

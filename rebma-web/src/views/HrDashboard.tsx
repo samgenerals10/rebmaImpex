@@ -6,6 +6,7 @@ import type { Attendance, PendingRegistration, StaffMember } from '../types/erp'
 import { FileSpreadsheet, FileText, Users, Clipboard, ShieldCheck, Activity, UserCheck, UserX, X, Copy, ChevronRight, User, MoreVertical, TrendingUp, TrendingDown } from 'lucide-react';
 import MiniSparkline from '../components/MiniSparkline';
 import KpiDetailView from '../components/KpiDetailView';
+import CountUp from '../components/CountUp';
 import { exportToCSV, exportToPDF } from '../utils/export';
 
 interface HrDashboardProps {
@@ -122,10 +123,10 @@ export default function HrDashboard({
   const pendingApprovals = pendingRegistrations.filter(r => r.status === 'PENDING').length;
 
   const stats = [
-    { title: 'Total Staff Force', value: `${localStaff.length} Active`, sub: 'Employee database profiles', icon: Users, color: 'text-blue-500' },
-    { title: 'Present Today', value: `${presentToday} Present`, sub: 'Check-in registered successfully', icon: ShieldCheck, color: 'text-emerald-500' },
-    { title: 'Late Today', value: `${lateToday} Late`, sub: 'Incidents recorded after 8:00 AM', icon: Activity, color: 'text-rose-500' },
-    { title: 'Pending Profiles', value: `${pendingApprovals} Approvals`, sub: 'Registration approval queue', icon: Clipboard, color: 'text-amber-500' },
+    { title: 'Total Staff Force', value: localStaff.length, suffix: ' Active', sub: 'Employee database profiles', icon: Users, color: 'text-blue-500' },
+    { title: 'Present Today', value: presentToday, suffix: ' Present', sub: 'Check-in registered successfully', icon: ShieldCheck, color: 'text-emerald-500' },
+    { title: 'Late Today', value: lateToday, suffix: ' Late', sub: 'Incidents recorded after 8:00 AM', icon: Activity, color: 'text-rose-500' },
+    { title: 'Pending Profiles', value: pendingApprovals, suffix: ' Approvals', sub: 'Registration approval queue', icon: Clipboard, color: 'text-amber-500' },
   ];
 
   const kpiDetails = [
@@ -597,7 +598,7 @@ export default function HrDashboard({
               </div>
               <div className="flex items-end justify-between mt-2 gap-2">
                 <div>
-                  <h3 className="text-2xl sm:text-3xl font-bold text-[var(--text-primary)] leading-none">{card.value}</h3>
+                  <h3 className="text-2xl sm:text-3xl font-bold text-[var(--text-primary)] leading-none"><CountUp value={card.value} suffix={card.suffix} /></h3>
                   <p className="text-[10px] text-[var(--text-muted)] mt-1.5">{card.sub}</p>
                 </div>
                 <MiniSparkline width={60} height={36} />

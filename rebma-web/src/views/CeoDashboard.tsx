@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Layers, DollarSign, Truck, Users, FileSpreadsheet, FileText, MoreVertical, TrendingUp, TrendingDown, ShoppingBag, Clock, ChevronRight, CheckCircle, AlertCircle } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import MiniSparkline from '../components/MiniSparkline';
+import CountUp from '../components/CountUp';
 import PendingApprovalsAlert from '../components/global/PendingApprovalsAlert';
 import ActivityFeed from '../components/global/ActivityFeed';
 import DispatchMap from '../components/dispatch/DispatchMap';
@@ -614,10 +615,10 @@ export default function CeoDashboard({
           {/* Operational KPI Counters */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
             {[
-              { title: 'Global Ingestion Flow', value: kpiIngestion !== null ? `${kpiIngestion.toLocaleString()} Tons` : '—', data: [30,45,35,60,40,70,55], tab: 'Cargo' },
-              { title: 'Processing Invoices',   value: kpiInvoices !== null ? `${kpiInvoices} Invoice${kpiInvoices !== 1 ? 's' : ''}` : '—', data: [20,35,25,50,30,55,45], tab: 'Orders' },
-              { title: 'Active Fleet Vehicles',  value: kpiFleet !== null ? `${kpiFleet} Truck${kpiFleet !== 1 ? 's' : ''}` : '—', data: [40,40,40,40,40,40,40], tab: 'Fleet' },
-              { title: 'Total Registered Staff', value: kpiStaff !== null ? `${kpiStaff} Active` : '—', data: [15,25,20,35,25,40,30], tab: 'Staff' }
+              { title: 'Global Ingestion Flow', value: kpiIngestion, suffix: ' Tons', data: [30,45,35,60,40,70,55], tab: 'Cargo' },
+              { title: 'Processing Invoices',   value: kpiInvoices, suffix: kpiInvoices !== null ? ` Invoice${kpiInvoices !== 1 ? 's' : ''}` : '', data: [20,35,25,50,30,55,45], tab: 'Orders' },
+              { title: 'Active Fleet Vehicles',  value: kpiFleet, suffix: kpiFleet !== null ? ` Truck${kpiFleet !== 1 ? 's' : ''}` : '', data: [40,40,40,40,40,40,40], tab: 'Fleet' },
+              { title: 'Total Registered Staff', value: kpiStaff, suffix: ' Active', data: [15,25,20,35,25,40,30], tab: 'Staff' }
             ].map((card, idx) => (
               <button key={idx} className="kpi-card group text-left cursor-pointer hover:ring-2 hover:ring-[var(--accent)] transition-all" onClick={() => setActiveSubTab?.(card.tab)}>
                 <div className="flex items-start justify-between gap-2">
@@ -626,7 +627,7 @@ export default function CeoDashboard({
                 </div>
                 <div className="flex items-end justify-between mt-2 gap-2">
                   <div>
-                    <h3 className="text-2xl sm:text-3xl font-bold text-[var(--text-primary)] leading-none">{card.value}</h3>
+                    <h3 className="text-2xl sm:text-3xl font-bold text-[var(--text-primary)] leading-none"><CountUp value={card.value} suffix={card.suffix} /></h3>
                     <p className="flex items-center gap-0.5 text-[10px] font-semibold mt-1.5 text-[var(--text-muted)]">—</p>
                   </div>
                   <MiniSparkline data={card.data} color="var(--accent)" width={60} height={36} />
@@ -758,8 +759,8 @@ export default function CeoDashboard({
                   <span className="text-xs">📦</span>
                 </div>
                 <div className="space-y-1">
-                  <h4 className="text-xl font-bold text-[var(--text-primary)] font-mono">{totalFinishedGoods.toLocaleString()} <span className="text-xs font-normal font-sans text-[var(--text-secondary)]">Units</span></h4>
-                  <p className="text-[10px] text-[var(--text-muted)] font-mono">Value: GHS {finishedGoodsVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                  <h4 className="text-xl font-bold text-[var(--text-primary)] font-mono"><CountUp value={totalFinishedGoods} /> <span className="text-xs font-normal font-sans text-[var(--text-secondary)]">Units</span></h4>
+                  <p className="text-[10px] text-[var(--text-muted)] font-mono">Value: GHS <CountUp value={finishedGoodsVal} decimals={2} /></p>
                 </div>
               </div>
 
@@ -770,7 +771,7 @@ export default function CeoDashboard({
                   <span className="text-xs">🧱</span>
                 </div>
                 <div className="space-y-1">
-                  <h4 className="text-xl font-bold text-[var(--text-primary)] font-mono">{totalRawMaterials.toLocaleString()} <span className="text-xs font-normal font-sans text-[var(--text-secondary)]">Units</span></h4>
+                  <h4 className="text-xl font-bold text-[var(--text-primary)] font-mono"><CountUp value={totalRawMaterials} /> <span className="text-xs font-normal font-sans text-[var(--text-secondary)]">Units</span></h4>
                   <p className="text-[10px] text-[var(--text-muted)]">Currently in production queue stage</p>
                 </div>
               </div>
@@ -782,8 +783,8 @@ export default function CeoDashboard({
                   <span className="text-xs">💰</span>
                 </div>
                 <div className="space-y-1">
-                  <h4 className="text-xl font-bold text-[var(--text-primary)] font-mono">{totalGeneralPurchases.toLocaleString()} <span className="text-xs font-normal font-sans text-[var(--text-secondary)]">Items</span></h4>
-                  <p className="text-[10px] text-[var(--text-muted)] font-mono">Spent: GHS {generalPurchasesVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                  <h4 className="text-xl font-bold text-[var(--text-primary)] font-mono"><CountUp value={totalGeneralPurchases} /> <span className="text-xs font-normal font-sans text-[var(--text-secondary)]">Items</span></h4>
+                  <p className="text-[10px] text-[var(--text-muted)] font-mono">Spent: GHS <CountUp value={generalPurchasesVal} decimals={2} /></p>
                 </div>
               </div>
             </div>

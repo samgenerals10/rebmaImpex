@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { CurrentUser } from '../../types/erp';
+import CountUp from '../CountUp';
 
 interface HeaderProps {
   searchQuery: string;
@@ -570,7 +571,7 @@ export default function Header({
               <Bell className="w-4 h-4" />
               {notifications.length > 0 && (
                 <span className="absolute -top-1 -right-1 min-w-[16px] h-[16px] bg-rose-500 text-white text-[8px] font-bold rounded-full flex items-center justify-center border-2 border-[var(--bg-card)] px-0.5">
-                  {notifications.length > 9 ? '9+' : notifications.length}
+                  {notifications.length > 9 ? '9+' : <CountUp value={notifications.length} />}
                 </span>
               )}
             </button>

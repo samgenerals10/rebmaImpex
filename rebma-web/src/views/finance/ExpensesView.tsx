@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { Search, Download, Plus, MoreVertical, CheckCircle, XCircle, Clock, Upload, Camera } from 'lucide-react';
 import { exportToCSV } from '../../utils/export';
+import CountUp from '../../components/CountUp';
 
 interface Expense {
   id: string;
@@ -207,14 +208,14 @@ export default function FinanceExpensesView({ addNotification, currentUser }: Pr
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Total This Month', value: `GHS ${totalThisMonth.toLocaleString()}`, color: 'var(--accent)' },
-          { label: 'Approved', value: `GHS ${approved.toLocaleString()}`, color: '#10b981' },
-          { label: 'Pending Approval', value: pending, color: '#f59e0b' },
-          { label: 'Budget Remaining', value: `GHS ${remaining.toLocaleString()}`, color: remaining < 5000 ? '#ef4444' : '#6366f1' },
-        ].map(({ label, value, color }) => (
+          { label: 'Total This Month', value: totalThisMonth, prefix: 'GHS ', color: 'var(--accent)' },
+          { label: 'Approved', value: approved, prefix: 'GHS ', color: '#10b981' },
+          { label: 'Pending Approval', value: pending, prefix: '', color: '#f59e0b' },
+          { label: 'Budget Remaining', value: remaining, prefix: 'GHS ', color: remaining < 5000 ? '#ef4444' : '#6366f1' },
+        ].map(({ label, value, prefix, color }) => (
           <div key={label} className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4">
             <p className="text-xs text-[var(--text-muted)] mb-1">{label}</p>
-            <p className="text-xl font-bold" style={{ color }}>{value}</p>
+            <p className="text-xl font-bold" style={{ color }}><CountUp value={value} prefix={prefix} /></p>
           </div>
         ))}
       </div>

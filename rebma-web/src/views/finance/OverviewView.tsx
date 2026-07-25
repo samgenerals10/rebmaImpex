@@ -4,6 +4,7 @@ import PendingApprovalsAlert from '../../components/global/PendingApprovalsAlert
 import ApprovalHistoryPanel from '../../components/global/ApprovalHistoryPanel';
 import FinanceMaterialRequisitionsPanel from './MaterialRequisitionsPanel';
 import ProductCatalogCard from '../../components/ProductCatalogCard';
+import CountUp from '../../components/CountUp';
 import {
   DollarSign, FileText, ClipboardCheck, BarChart2, CreditCard, Receipt,
   TrendingUp, TrendingDown, ArrowRight, RefreshCw, Tag,
@@ -436,31 +437,36 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
 
   const kpiCards = [
     {
-      label: 'Total Revenue', value: `GHS ${calculatedTotalRevenue.toLocaleString()}`,
+      label: 'Total Revenue', value: calculatedTotalRevenue, prefix: 'GHS ', suffix: '',
+      title: `GHS ${calculatedTotalRevenue.toLocaleString()}`,
       sub: 'Approved & delivered sales', icon: DollarSign, clickId: 'revenue',
       color: '#10b981', bg: 'from-emerald-500/10 to-emerald-500/5',
       change: '+8.2%', up: true,
     },
     {
-      label: 'Total Items Sold', value: `${totalSoldQty.toLocaleString()} units`,
+      label: 'Total Items Sold', value: totalSoldQty, prefix: '', suffix: ' units',
+      title: `${totalSoldQty.toLocaleString()} units`,
       sub: 'Items sold from cleared orders', icon: ShoppingCart, clickId: 'sold',
       color: '#3b82f6', bg: 'from-blue-500/10 to-blue-500/5',
       change: 'Active', up: true,
     },
     {
-      label: 'Remaining Sales Value', value: `GHS ${totalRemainingValue.toLocaleString()}`,
+      label: 'Remaining Sales Value', value: totalRemainingValue, prefix: 'GHS ', suffix: '',
+      title: `GHS ${totalRemainingValue.toLocaleString()}`,
       sub: 'Unsold stock remaining value', icon: TrendingUp, clickId: 'remaining',
       color: '#f59e0b', bg: 'from-amber-500/10 to-amber-500/5',
       change: 'In Stock', up: true,
     },
     {
-      label: 'Overall Goods in Stock', value: `${totalStockQty.toLocaleString()} units`,
+      label: 'Overall Goods in Stock', value: totalStockQty, prefix: '', suffix: ' units',
+      title: `${totalStockQty.toLocaleString()} units`,
       sub: 'Total physical goods count', icon: Package, clickId: 'overall_qty',
       color: '#8b5cf6', bg: 'from-violet-500/10 to-violet-500/5',
       change: 'Updated', up: true,
     },
     {
-      label: 'Overall Remaining Goods', value: `${totalRemainingGoodsCount} Items`,
+      label: 'Overall Remaining Goods', value: totalRemainingGoodsCount, prefix: '', suffix: ' Items',
+      title: `${totalRemainingGoodsCount} Items`,
       sub: 'Count of active distinct SKUs', icon: Activity, clickId: 'overall_rem',
       color: '#ec4899', bg: 'from-pink-500/10 to-pink-500/5',
       change: 'Active', up: true,
@@ -741,7 +747,7 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
 
       {/* ══ KPI CARDS ══ */}
       <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 font-sans">
-        {kpiCards.map(({ label, value, sub, icon: Icon, clickId, color, change, up }) => {
+        {kpiCards.map(({ label, value, prefix, suffix, title, sub, icon: Icon, clickId, color, change, up }) => {
           const isActive = activeDrillDown === clickId;
           return (
             <div
@@ -764,8 +770,8 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
                   {up ? <TrendingUp size={9} /> : <AlertTriangle size={9} />} {change}
                 </span>
               </div>
-              <span className="text-sm sm:text-base lg:text-lg xl:text-xl font-extrabold text-[var(--text-primary)] leading-tight truncate w-full block mb-1" title={value}>
-                {value}
+              <span className="text-sm sm:text-base lg:text-lg xl:text-xl font-extrabold text-[var(--text-primary)] leading-tight truncate w-full block mb-1" title={title}>
+                <CountUp value={value} prefix={prefix} suffix={suffix} />
               </span>
               <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-0.5">{label}</p>
               <p className="text-xs text-[var(--text-muted)] truncate">{sub}</p>
@@ -971,21 +977,21 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
                     <ArrowDownLeft size={13} />
                     <span className="text-[9px] font-bold uppercase tracking-wider">Total Received (IN)</span>
                   </div>
-                  <p className="text-lg font-extrabold text-[var(--text-primary)] font-mono">{totalIn.toLocaleString()}</p>
+                  <p className="text-lg font-extrabold text-[var(--text-primary)] font-mono"><CountUp value={totalIn} /></p>
                 </div>
                 <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-xl p-3 text-center">
                   <div className="flex items-center justify-center gap-1 text-red-500 mb-1">
                     <ArrowUpRight size={13} />
                     <span className="text-[9px] font-bold uppercase tracking-wider">Total Released (OUT)</span>
                   </div>
-                  <p className="text-lg font-extrabold text-[var(--text-primary)] font-mono">{totalOut.toLocaleString()}</p>
+                  <p className="text-lg font-extrabold text-[var(--text-primary)] font-mono"><CountUp value={totalOut} /></p>
                 </div>
                 <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-xl p-3 text-center">
                   <div className="flex items-center justify-center gap-1 text-emerald-500 mb-1">
                     <Layers size={13} />
                     <span className="text-[9px] font-bold uppercase tracking-wider">Remaining Stock</span>
                   </div>
-                  <p className="text-lg font-extrabold text-emerald-500 font-mono">{Number(netQty).toLocaleString()}</p>
+                  <p className="text-lg font-extrabold text-emerald-500 font-mono"><CountUp value={Number(netQty)} /></p>
                 </div>
               </div>
 
@@ -1118,14 +1124,14 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
             </div>
             <div className="grid grid-cols-2 gap-3 mb-4">
               {[
-                { label: 'Stock Cost Value', value: `GHS ${totalCost.toLocaleString()}`, color: 'text-amber-600', bg: 'bg-amber-500/10' },
-                { label: 'Stock Selling Value', value: `GHS ${totalSell.toLocaleString()}`, color: 'text-sky-600', bg: 'bg-sky-500/10' },
-                { label: 'Revenue Earned', value: `GHS ${totalRevEarned.toLocaleString()}`, color: 'text-emerald-600', bg: 'bg-emerald-500/10' },
-                { label: 'Gross Margin', value: totalCost > 0 ? `${(((totalSell - totalCost) / totalCost) * 100).toFixed(1)}%` : '—', color: 'text-violet-600', bg: 'bg-violet-500/10' },
-              ].map(({ label, value, color, bg }) => (
+                { label: 'Stock Cost Value', value: totalCost, prefix: 'GHS ', suffix: '', decimals: 0, color: 'text-amber-600', bg: 'bg-amber-500/10' },
+                { label: 'Stock Selling Value', value: totalSell, prefix: 'GHS ', suffix: '', decimals: 0, color: 'text-sky-600', bg: 'bg-sky-500/10' },
+                { label: 'Revenue Earned', value: totalRevEarned, prefix: 'GHS ', suffix: '', decimals: 0, color: 'text-emerald-600', bg: 'bg-emerald-500/10' },
+                { label: 'Gross Margin', value: totalCost > 0 ? ((totalSell - totalCost) / totalCost) * 100 : null, prefix: '', suffix: '%', decimals: 1, color: 'text-violet-600', bg: 'bg-violet-500/10' },
+              ].map(({ label, value, prefix, suffix, decimals, color, bg }) => (
                 <div key={label} className={`rounded-xl p-3 ${bg}`}>
                   <p className="text-[9px] text-[var(--text-muted)] uppercase font-bold tracking-wide mb-1">{label}</p>
-                  <p className={`text-lg font-extrabold ${color}`}>{value}</p>
+                  <p className={`text-lg font-extrabold ${color}`}><CountUp value={value} prefix={prefix} suffix={suffix} decimals={decimals} /></p>
                 </div>
               ))}
             </div>
@@ -1201,7 +1207,7 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
                         </p>
                       </div>
                       <div className="text-right shrink-0">
-                        <p className="text-sm font-extrabold text-[var(--text-primary)]">{item.currency} {item.unit_price.toLocaleString()}</p>
+                        <p className="text-sm font-extrabold text-[var(--text-primary)]">{item.currency} <CountUp value={item.unit_price} /></p>
                         {margin && (
                           <span className={`text-[9px] font-bold ${Number(margin) > 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
                             {Number(margin) > 0 ? '↑' : '↓'} {margin}% margin
@@ -1236,7 +1242,7 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
               ))}
             </div>
           </div>
-          <p className="text-3xl font-extrabold text-[var(--text-primary)] mb-4">GHS {totalRevenue.toLocaleString()}</p>
+          <p className="text-3xl font-extrabold text-[var(--text-primary)] mb-4">GHS <CountUp value={totalRevenue} /></p>
           <div className="h-32">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={earningData}>
@@ -1286,7 +1292,7 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
                       <div className="w-2.5 h-2.5 rounded-full" style={{ background: item.color }} />
                       <span className="text-xs text-[var(--text-secondary)]">{item.name}</span>
                     </div>
-                    <span className="text-xs font-bold text-[var(--text-primary)]">{item.value}%</span>
+                    <span className="text-xs font-bold text-[var(--text-primary)]"><CountUp value={item.value} suffix="%" /></span>
                   </div>
                 ))}
               </div>
@@ -1305,14 +1311,14 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {[
-            { name: 'Total Payments Received', num: `Cash: GHS ${walletCash.toLocaleString()} · MoMo: GHS ${walletMomo.toLocaleString()}`, balance: `GHS ${walletTotal.toLocaleString()}`, trend: 'Live from payment records', color: 'var(--accent)', tab: 'Wallets' },
-            { name: 'Expenses Paid', num: 'Approved expense records', balance: `GHS ${totalExpenses.toLocaleString()}`, trend: 'Approved only', color: '#6366f1', tab: 'Expenses' },
-            { name: 'Net Balance', num: `In: GHS ${walletTotal.toLocaleString()} · Out: GHS ${totalExpenses.toLocaleString()}`, balance: `GHS ${Math.abs(netBalance).toLocaleString()}`, trend: netBalance >= 0 ? 'Surplus ↑' : 'Deficit ↓', color: netBalance >= 0 ? '#10b981' : '#ef4444', tab: 'Transactions' },
+            { name: 'Total Payments Received', num: `Cash: GHS ${walletCash.toLocaleString()} · MoMo: GHS ${walletMomo.toLocaleString()}`, balanceValue: walletTotal, trend: 'Live from payment records', color: 'var(--accent)', tab: 'Wallets' },
+            { name: 'Expenses Paid', num: 'Approved expense records', balanceValue: totalExpenses, trend: 'Approved only', color: '#6366f1', tab: 'Expenses' },
+            { name: 'Net Balance', num: `In: GHS ${walletTotal.toLocaleString()} · Out: GHS ${totalExpenses.toLocaleString()}`, balanceValue: Math.abs(netBalance), trend: netBalance >= 0 ? 'Surplus ↑' : 'Deficit ↓', color: netBalance >= 0 ? '#10b981' : '#ef4444', tab: 'Transactions' },
           ].map(acc => (
             <div key={acc.name} className="rounded-2xl p-5 text-white" style={{ background: `linear-gradient(135deg, ${acc.color}CC, ${acc.color})` }}>
               <p className="text-xs text-white/70 mb-1">{acc.name}</p>
               <p className="text-[10px] text-white/60 mb-3 font-mono">{acc.num}</p>
-              <p className="text-2xl font-extrabold">{acc.balance}</p>
+              <p className="text-2xl font-extrabold">GHS <CountUp value={acc.balanceValue} /></p>
               <div className="flex items-center justify-between mt-3">
                 <span className="text-xs text-white/70">{acc.trend}</span>
                 <button onClick={() => setActiveSubTab?.(acc.tab)} className="text-xs text-white/80 hover:text-white flex items-center gap-1">Details <ArrowRight size={10} /></button>
@@ -1336,11 +1342,13 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
             ))}
           </div>
           <p className="text-2xl font-extrabold text-[var(--text-primary)] mb-4">
-            {cashflowTab === 'income'
-              ? `GHS ${cashflowData.reduce((s, d) => s + d.income, 0).toLocaleString()}`
-              : cashflowTab === 'expense'
-              ? `GHS ${cashflowData.reduce((s, d) => s + d.expense, 0).toLocaleString()}`
-              : `GHS ${cashflowData.reduce((s, d) => s + d.income - d.expense, 0).toLocaleString()}`}
+            GHS <CountUp value={
+              cashflowTab === 'income'
+                ? cashflowData.reduce((s, d) => s + d.income, 0)
+                : cashflowTab === 'expense'
+                ? cashflowData.reduce((s, d) => s + d.expense, 0)
+                : cashflowData.reduce((s, d) => s + d.income - d.expense, 0)
+            } />
           </p>
           <div className="h-36">
             <ResponsiveContainer width="100%" height="100%">
@@ -1377,7 +1385,7 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
                   <p className="text-[10px] text-[var(--text-muted)]">Due: {bill.due}</p>
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="text-xs font-bold text-[var(--text-primary)]">GHS {Number(bill.amount).toLocaleString()}</p>
+                  <p className="text-xs font-bold text-[var(--text-primary)]">GHS <CountUp value={Number(bill.amount)} /></p>
                   <span className={`text-[9px] font-bold ${bill.status === 'Overdue' ? 'text-red-500' : bill.status === 'Due Soon' ? 'text-yellow-500' : 'text-[var(--text-muted)]'}`}>{bill.status}</span>
                 </div>
               </div>
@@ -1417,7 +1425,7 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
                   <p className="text-xs font-bold text-[var(--text-primary)] truncate">{order.clientName}</p>
                   <p className="text-[10px] text-[var(--text-muted)] font-mono">{order.id} · {order.paymentMode || 'CASH'}</p>
                 </div>
-                <p className="text-sm font-extrabold text-[var(--text-primary)] shrink-0">GHS {order.totalAmount.toLocaleString()}</p>
+                <p className="text-sm font-extrabold text-[var(--text-primary)] shrink-0">GHS <CountUp value={order.totalAmount} /></p>
                 <button
                   onClick={() => setActiveSubTab?.('OrdersQueue')}
                   className="px-3 py-1.5 rounded-lg text-white text-xs font-bold hover:opacity-90 shrink-0 transition-opacity"
@@ -1462,7 +1470,7 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
                     </PieChart>
                   </ResponsiveContainer>
                   <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <p className="text-lg font-extrabold text-[var(--text-primary)]">{invoiceCount}</p>
+                    <p className="text-lg font-extrabold text-[var(--text-primary)]"><CountUp value={invoiceCount} /></p>
                     <p className="text-[9px] text-[var(--text-muted)]">Total</p>
                   </div>
                 </div>
@@ -1473,7 +1481,7 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
                         <div className="w-2.5 h-2.5 rounded-full" style={{ background: item.color }} />
                         <span className="text-xs text-[var(--text-secondary)]">{item.name}</span>
                       </div>
-                      <span className="text-xs font-bold text-[var(--text-primary)]">{item.value}%</span>
+                      <span className="text-xs font-bold text-[var(--text-primary)]"><CountUp value={item.value} suffix="%" /></span>
                     </div>
                   ))}
                 </div>
@@ -1499,13 +1507,13 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
             return (
               <>
                 {[
-                  { label: 'Total Extended', value: `GHS ${totalExtended.toLocaleString()}`, color: 'text-[var(--text-primary)]' },
-                  { label: 'Total Collected', value: `GHS ${collected.toLocaleString()}`, color: 'text-emerald-500' },
-                  { label: 'Outstanding', value: `GHS ${outstanding.toLocaleString()}`, color: 'text-rose-500' },
+                  { label: 'Total Extended', value: totalExtended, color: 'text-[var(--text-primary)]' },
+                  { label: 'Total Collected', value: collected, color: 'text-emerald-500' },
+                  { label: 'Outstanding', value: outstanding, color: 'text-rose-500' },
                 ].map(({ label, value, color }) => (
                   <div key={label} className="flex items-center justify-between py-2.5 border-b border-[var(--border)] last:border-0">
                     <span className="text-xs text-[var(--text-muted)]">{label}</span>
-                    <span className={`text-sm font-bold ${color}`}>{value}</span>
+                    <span className={`text-sm font-bold ${color}`}>GHS <CountUp value={value} /></span>
                   </div>
                 ))}
                 <div className="mt-3 h-2 bg-[var(--bg-input)] rounded-full overflow-hidden">
@@ -1528,7 +1536,7 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
             <p className="text-xs text-[var(--text-muted)] mt-0.5">Logs of confirmed inventory damages, write-offs, and resulting financial losses at cost</p>
           </div>
           <span className="px-2 py-0.5 rounded bg-red-500/10 text-red-500 text-[10px] font-bold">
-            Total Damages: {cargoDiscrepancies.reduce((s, d) => s + d.damagedCount, 0)} units
+            Total Damages: <CountUp value={cargoDiscrepancies.reduce((s, d) => s + d.damagedCount, 0)} /> units
           </span>
         </div>
 
@@ -1572,7 +1580,7 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
                 <tr className="bg-red-500/10 border-t border-[var(--border)] font-bold">
                   <td colSpan={6} className="py-2.5 px-3 text-[var(--text-primary)]">Total Loss (At Cost)</td>
                   <td className="py-2.5 px-3 text-right text-red-600">
-                    GHS {cargoDiscrepancies.reduce((s, d) => s + d.costLoss, 0).toLocaleString()}
+                    GHS <CountUp value={cargoDiscrepancies.reduce((s, d) => s + d.costLoss, 0)} />
                   </td>
                   <td className="py-2.5 px-3"></td>
                 </tr>

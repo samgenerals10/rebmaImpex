@@ -18,7 +18,7 @@ interface PendingItem {
   tab: string;
 }
 
-async function fetchPendingForDept(department: string): Promise<PendingItem[]> {
+export async function fetchPendingForDept(department: string): Promise<PendingItem[]> {
   const items: PendingItem[] = [];
 
   try {
@@ -29,7 +29,9 @@ async function fetchPendingForDept(department: string): Promise<PendingItem[]> {
         supabase.from('material_requisitions').select('id', { count: 'exact', head: true }).eq('status', 'PENDING_MANAGEMENT').then(r => r, () => ({ count: 0 })),
         supabase.from('float_requests').select('id', { count: 'exact', head: true }).eq('status', 'PENDING_MANAGEMENT').then(r => r, () => ({ count: 0 })),
       ]);
-      if ((cargo.count ?? 0) > 0) items.push({ label: 'cargo approvals', count: cargo.count!, tab: 'CargoApproval' });
+      // All four surface together on the single "Approvals" page (id CreditApproval) —
+      // MgmtApprovalsView.tsx, not split across Dashboard/Approvals as the tab ids might suggest.
+      if ((cargo.count ?? 0) > 0) items.push({ label: 'cargo approvals', count: cargo.count!, tab: 'CreditApproval' });
       if ((credit.count ?? 0) > 0) items.push({ label: 'credit approvals', count: credit.count!, tab: 'CreditApproval' });
       if ((requisitions.count ?? 0) > 0) items.push({ label: 'material requisitions', count: requisitions.count!, tab: 'CreditApproval' });
       if ((floats.count ?? 0) > 0) items.push({ label: 'float requests', count: floats.count!, tab: 'CreditApproval' });
@@ -64,11 +66,6 @@ async function fetchPendingForDept(department: string): Promise<PendingItem[]> {
     if (department === 'HR') {
       const { count } = await supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('status', 'PENDING_APPROVAL');
       if ((count ?? 0) > 0) items.push({ label: 'registration approvals', count: count!, tab: 'Registrations' });
-    }
-
-    if (department === 'RECEPTION') {
-      const { count } = await supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('status', 'PENDING_APPROVAL');
-      if ((count ?? 0) > 0) items.push({ label: 'pending registrations', count: count!, tab: 'Registrations' });
     }
 
     if (department === 'OPERATIONS') {

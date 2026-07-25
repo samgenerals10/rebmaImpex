@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { exportToCSV } from '../../utils/export';
 import { supabase } from '../../lib/supabaseClient';
+import CountUp from '../../components/CountUp';
 import type { StaffMember, CurrentUser } from '../../types/erp';
 
 interface PayrollBatch {
@@ -184,7 +185,7 @@ export default function PayrollView({ currentUser, staffList, addNotification }:
                   <card.icon className="w-3.5 h-3.5" />
                 </div>
               </div>
-              <p className="text-2xl font-bold text-[var(--text-primary)]">{card.value}</p>
+              <p className="text-2xl font-bold text-[var(--text-primary)]"><CountUp value={card.value} /></p>
             </div>
           ))}
         </div>
@@ -369,7 +370,7 @@ export default function PayrollView({ currentUser, staffList, addNotification }:
             ].map(item => (
               <div key={item.label} className="bg-[var(--bg)] rounded-xl p-3 border border-[var(--border)]">
                 <p className="text-xs text-[var(--text-muted)] mb-1">{item.label}</p>
-                <p className="text-lg font-bold font-mono" style={{ color: item.color }}>GHS {(Number(item.value ?? 0)).toLocaleString()}</p>
+                <p className="text-lg font-bold font-mono" style={{ color: item.color }}>GHS <CountUp value={item.value} /></p>
               </div>
             ))}
           </div>

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Search, MoreVertical, Layers, Download, Printer, X, Edit2, TrendingUp } from 'lucide-react';
 import { exportToCSV, exportToPDF } from '../../utils/export';
 import { wipApi } from '../../services/apiClient';
+import CountUp from '../../components/CountUp';
 
 interface WipItem {
   id: string;
@@ -74,7 +75,7 @@ export default function WipStockView({ addNotification }: Props) {
 
   const summary = [
     { label: 'Total Items', value: items.length, color: 'var(--accent)' },
-    { label: 'Total Qty', value: items.reduce((s, i) => s + i.qty, 0).toLocaleString(), color: '#2563eb' },
+    { label: 'Total Qty', value: items.reduce((s, i) => s + i.qty, 0), color: '#2563eb' },
     { label: 'In Processing', value: items.filter(i => i.stage === 'Processing').length, color: '#d97706' },
     { label: 'Ready to Dispatch', value: items.filter(i => i.stage === 'Awaiting Dispatch').length, color: '#059669' },
   ];
@@ -211,7 +212,7 @@ export default function WipStockView({ addNotification }: Props) {
         {summary.map(c => (
           <div key={c.label} className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4">
             <p className="text-[10px] text-[var(--text-muted)] uppercase font-semibold tracking-wide">{c.label}</p>
-            <p className="text-3xl font-bold mt-1" style={{ color: c.color }}>{c.value}</p>
+            <p className="text-3xl font-bold mt-1" style={{ color: c.color }}><CountUp value={c.value} /></p>
           </div>
         ))}
       </div>
@@ -227,7 +228,7 @@ export default function WipStockView({ addNotification }: Props) {
                 <button onClick={() => setStageFilter(stageFilter === stage ? 'All' : stage)}
                   className={`flex flex-col items-center px-4 py-3 rounded-xl border cursor-pointer transition-all min-w-[110px] ${stageFilter === stage ? 'bg-[var(--accent)] border-[var(--accent)]' : 'bg-[var(--bg)] border-[var(--border)] hover:bg-[var(--accent-light)]'}`}>
                   <span className={`text-[10px] font-bold uppercase tracking-wide ${stageFilter === stage ? 'text-white' : 'text-[var(--text-muted)]'}`}>{stage}</span>
-                  <span className={`text-2xl font-bold mt-1 ${stageFilter === stage ? 'text-white' : 'text-[var(--text-primary)]'}`}>{count}</span>
+                  <span className={`text-2xl font-bold mt-1 ${stageFilter === stage ? 'text-white' : 'text-[var(--text-primary)]'}`}><CountUp value={count} /></span>
                 </button>
                 {i < STAGES.length - 1 && <div className="w-6 h-0.5 bg-[var(--border)] shrink-0" />}
               </React.Fragment>

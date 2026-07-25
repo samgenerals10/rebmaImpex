@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { Download, Save, FileText, Calculator } from 'lucide-react';
 import { exportToCSV, exportToPDF } from '../../utils/export';
+import CountUp from '../../components/CountUp';
 
 interface VATEntry {
   period: string;
@@ -138,14 +139,14 @@ export default function FinanceTaxVATView({ addNotification, currentUser }: Prop
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'VAT Collected (MTD)', value: `GHS ${(current?.vatAmount || 0).toLocaleString()}`, color: 'var(--accent)' },
-          { label: 'VAT Rate', value: `${rates.vat}%`, color: '#6366f1' },
-          { label: 'NHIL Amount', value: `GHS ${nhilAmount.toLocaleString()}`, color: '#f59e0b' },
-          { label: 'Total Tax Liability', value: `GHS ${totalTaxLiability.toLocaleString()}`, color: '#ef4444' },
-        ].map(({ label, value, color }) => (
+          { label: 'VAT Collected (MTD)', value: current?.vatAmount || 0, prefix: 'GHS ', suffix: '', color: 'var(--accent)' },
+          { label: 'VAT Rate', value: rates.vat, prefix: '', suffix: '%', color: '#6366f1' },
+          { label: 'NHIL Amount', value: nhilAmount, prefix: 'GHS ', suffix: '', color: '#f59e0b' },
+          { label: 'Total Tax Liability', value: totalTaxLiability, prefix: 'GHS ', suffix: '', color: '#ef4444' },
+        ].map(({ label, value, prefix, suffix, color }) => (
           <div key={label} className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4">
             <p className="text-xs text-[var(--text-muted)] mb-1">{label}</p>
-            <p className="text-xl font-bold" style={{ color }}>{value}</p>
+            <p className="text-xl font-bold" style={{ color }}><CountUp value={value} prefix={prefix} suffix={suffix} /></p>
           </div>
         ))}
       </div>
@@ -230,8 +231,8 @@ export default function FinanceTaxVATView({ addNotification, currentUser }: Prop
           {agingData.map(({ label, invoices, amount, color }) => (
             <div key={label} className="bg-[var(--bg-input)] rounded-xl p-4">
               <p className="text-xs text-[var(--text-muted)] mb-1">{label}</p>
-              <p className={`text-xl font-bold ${color}`}>{invoices} invoices</p>
-              <p className="text-sm text-[var(--text-secondary)]">GHS {amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+              <p className={`text-xl font-bold ${color}`}><CountUp value={invoices} suffix=" invoices" /></p>
+              <p className="text-sm text-[var(--text-secondary)]">GHS <CountUp value={amount} decimals={2} /></p>
             </div>
           ))}
         </div>
