@@ -131,8 +131,11 @@ export default function MarketingOverviewView({ addNotification, setActiveSubTab
       supabase.from('stock').select('product_name, quantity').then(({ data }) => {
         if (data) setStock(data as any[]);
       }, () => {});
-      // Actual quantity sold — real deductions logged when a sale is confirmed (see deductStockForOrder)
-      supabase.from('stock_ledger').select('product_name, quantity').eq('movement_type', 'REMOVE').then(({ data }) => {
+      // Actual quantity sold — real deductions logged when a sale is confirmed (see
+      // deductStockForOrder). Filtered to that function's own reference text, since
+      // movement_type='REMOVE' alone also covers non-sale deductions (raw material
+      // sent to Production, manual stock adjustments) that must not count as "sold".
+      supabase.from('stock_ledger').select('product_name, quantity').eq('movement_type', 'REMOVE').ilike('reference', '%Order Approved%').then(({ data }) => {
         if (data) setSoldLedger(data as any[]);
       }, () => {});
     } catch (e) {

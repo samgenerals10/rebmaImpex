@@ -355,6 +355,21 @@ function DataResetSection({ addNotification }: { addNotification: (m: string) =>
         res.push({ table: t.name, deleted: 0, error: e?.message || 'Unknown error' });
       }
     }
+    // Wiping `orders` leaves behind the stock_ledger rows deductStockForOrder wrote
+    // when those orders were sold — those are the only REMOVE rows that mean "sold"
+    // (see MgmtOverviewView/CeoDashboard/marketing OverviewView), so orphaning them
+    // makes "Sold" figures lie about stock that was never actually deducted for a
+    // real, currently-existing order. stock_ledger itself isn't in every dept's own
+    // table list (e.g. MARKETING resets orders but not stock_ledger), so this has to
+    // run as an explicit extra step whenever `orders` was part of this reset.
+    if (cfg.tables.some(t => t.name === 'orders')) {
+      try {
+        const { error, count } = await (supabase.from('stock_ledger').delete() as any).ilike('reference', '%Order Approved%');
+        res.push({ table: 'stock_ledger (orphaned sale entries)', deleted: count ?? 0, error: error?.message });
+      } catch (e: any) {
+        res.push({ table: 'stock_ledger (orphaned sale entries)', deleted: 0, error: e?.message || 'Unknown error' });
+      }
+    }
     // Log to audit history (best-effort)
     supabase.from('global_audit_history').insert([{
       action: 'DATA_RESET',

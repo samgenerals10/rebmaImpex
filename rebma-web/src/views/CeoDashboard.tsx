@@ -239,11 +239,15 @@ export default function CeoDashboard({
           if (gpPrices) setGoodsPrices(gpPrices);
           const { data: stList } = await supabase.from('stock').select('product_name, quantity');
           if (stList) setStockList(stList);
-          // Actual quantity sold — real deductions logged when a sale is confirmed (see deductStockForOrder)
+          // Actual quantity sold — real deductions logged when a sale is confirmed (see
+          // deductStockForOrder). Filtered to that function's own reference text, since
+          // movement_type='REMOVE' alone also covers non-sale deductions (raw material
+          // sent to Production, manual stock adjustments) that must not count as "sold".
           const { data: soldLedger } = await supabase
             .from('stock_ledger')
             .select('product_name, quantity')
-            .eq('movement_type', 'REMOVE');
+            .eq('movement_type', 'REMOVE')
+            .ilike('reference', '%Order Approved%');
           if (soldLedger) setSoldLedger(soldLedger);
         } catch (e) {
           console.error(e);

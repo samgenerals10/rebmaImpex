@@ -106,8 +106,11 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
         if (data) setGoodsPrices(data);
       }, () => {});
 
-      // Actual quantity sold — real deductions logged when a sale is confirmed (see deductStockForOrder)
-      supabase.from('stock_ledger').select('product_name, quantity').eq('movement_type', 'REMOVE').then(({ data }) => {
+      // Actual quantity sold — real deductions logged when a sale is confirmed (see
+      // deductStockForOrder). Filtered to that function's own reference text, since
+      // movement_type='REMOVE' alone also covers non-sale deductions (raw material
+      // sent to Production, manual stock adjustments) that must not count as "sold".
+      supabase.from('stock_ledger').select('product_name, quantity').eq('movement_type', 'REMOVE').ilike('reference', '%Order Approved%').then(({ data }) => {
         if (data) setSoldLedger(data);
       }, () => {});
     } catch (e) {
