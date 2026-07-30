@@ -25,8 +25,8 @@ interface PriceEntry {
   productName: string;
   category: string;
   unitPrice: number;
-  costPrice: number;
-  margin: number;
+  costPrice: number | null;
+  margin: number | null;
   currency: 'GHS' | 'USD';
   lastUpdated: string;
   updatedBy: string;
@@ -225,14 +225,16 @@ export default function MgmtPriceSettingView({ addNotification, currentUser }: P
 
       const mapped: PriceEntry[] = (data || []).map((row: any) => {
         const unitPrice = typeof row.unit_price === 'number' ? row.unit_price : 0;
-        const costPrice = typeof row.cost_price === 'number' ? row.cost_price : unitPrice * 0.65;
+        // No fabricated cost price — a product with no cost entered has an
+        // unknown margin, not an invented "65% of selling price" one.
+        const costPrice = typeof row.cost_price === 'number' ? row.cost_price : null;
         return {
           id: String(row.id),
           productName: String(row.product_name || ''),
           category: String(row.category || 'INCOMING_GOODS'),
           unitPrice,
           costPrice,
-          margin: costPrice > 0 ? ((unitPrice - costPrice) / costPrice) * 100 : unitPrice > 0 ? 100 : 0,
+          margin: costPrice !== null && costPrice > 0 ? ((unitPrice - costPrice) / costPrice) * 100 : null,
           currency: (row.currency as 'GHS' | 'USD') || 'GHS',
           lastUpdated: String(row.updated_at || row.created_at || '').slice(0, 10),
           updatedBy: String(row.updated_by || 'Management'),
@@ -287,16 +289,21 @@ export default function MgmtPriceSettingView({ addNotification, currentUser }: P
     !search || p.productName.toLowerCase().includes(search.toLowerCase()) || p.category.toLowerCase().includes(search.toLowerCase())
   );
 
-  const avgMargin = prices.length > 0 ? prices.reduce((s, p) => s + p.margin, 0) / prices.length : 0;
+  // Products with no cost price have an unknown margin — excluded from
+  // these stats rather than skewing them with a fabricated number.
+  const pricedProducts = prices.filter((p): p is PriceEntry & { margin: number } => p.margin !== null);
+  const avgMargin = pricedProducts.length > 0 ? pricedProducts.reduce((s, p) => s + p.margin, 0) / pricedProducts.length : 0;
   const totalProducts = prices.length;
-  const highMargin = prices.filter(p => p.margin >= 50).length;
-  const lowMargin = prices.filter(p => p.margin < 40).length;
+  const highMargin = pricedProducts.filter(p => p.margin >= 50).length;
+  const lowMargin = pricedProducts.filter(p => p.margin < 40).length;
 
   async function savePrice() {
     if (!form.productName || !form.unitPrice) return;
     const unitPrice = parseFloat(form.unitPrice);
-    const costPrice = form.costPrice ? parseFloat(form.costPrice) : unitPrice * 0.65;
-    const margin = costPrice > 0 ? ((unitPrice - costPrice) / costPrice) * 100 : 0;
+    // Leaving Cost Price blank means "not entered", not "assume 65% of
+    // selling price" — that fabricated a cost the user never gave.
+    const costPrice = form.costPrice ? parseFloat(form.costPrice) : null;
+    const margin = costPrice !== null && costPrice > 0 ? ((unitPrice - costPrice) / costPrice) * 100 : null;
 
     const newId = editing?.id || 'PRC-' + Math.random().toString(36).substring(2, 9);
     const newEntry: PriceEntry = {
@@ -368,7 +375,7 @@ export default function MgmtPriceSettingView({ addNotification, currentUser }: P
 
   function openEdit(item: PriceEntry) {
     setEditing(item);
-    setForm({ productName: item.productName, category: item.category, unitPrice: String(item.unitPrice), costPrice: String(item.costPrice), currency: item.currency, effectiveDate: '', note: '' });
+    setForm({ productName: item.productName, category: item.category, unitPrice: String(item.unitPrice), costPrice: item.costPrice !== null ? String(item.costPrice) : '', currency: item.currency, effectiveDate: '', note: '' });
     setImagePreview(item.image || '');
     setShowForm(true);
     setMenuOpen(null);
@@ -440,7 +447,7 @@ export default function MgmtPriceSettingView({ addNotification, currentUser }: P
           <button onClick={loadPrices} className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[var(--border)] text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-card)]">
             <RefreshCw size={14} /> Refresh
           </button>
-          <button onClick={() => exportToCSV(filtered.map(p => ({ Product: p.productName, Category: p.category, 'Unit Price': p.unitPrice, 'Cost Price': p.costPrice, 'Margin %': p.margin.toFixed(1), Currency: p.currency, 'Last Updated': p.lastUpdated })), ['Product', 'Category', 'Unit Price', 'Cost Price', 'Margin %', 'Currency', 'Last Updated'], 'price_catalog')} className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[var(--border)] text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-card)]">
+          <button onClick={() => exportToCSV(filtered.map(p => ({ Product: p.productName, Category: p.category, 'Unit Price': p.unitPrice, 'Cost Price': p.costPrice ?? '', 'Margin %': p.margin !== null ? p.margin.toFixed(1) : '', Currency: p.currency, 'Last Updated': p.lastUpdated })), ['Product', 'Category', 'Unit Price', 'Cost Price', 'Margin %', 'Currency', 'Last Updated'], 'price_catalog')} className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[var(--border)] text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-card)]">
             <Download size={14} /> Export
           </button>
           <button onClick={() => { setEditing(null); setForm({ productName: '', category: 'INCOMING_GOODS', unitPrice: '', costPrice: '', currency: 'GHS', effectiveDate: '', note: '' }); setImagePreview(''); setCameraPreview(''); setDocBase64(''); setDocName(''); setShowForm(true); }} className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-white text-sm font-medium" style={{ background: 'var(--accent)' }}>
@@ -534,12 +541,16 @@ export default function MgmtPriceSettingView({ addNotification, currentUser }: P
                   <td className="px-4 py-3">
                     <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--accent-light)] text-[var(--accent)] font-semibold">{item.category}</span>
                   </td>
-                  <td className="px-4 py-3 text-[var(--text-secondary)] whitespace-nowrap">{item.currency} {item.costPrice.toFixed(2)}</td>
+                  <td className="px-4 py-3 text-[var(--text-secondary)] whitespace-nowrap">{item.costPrice !== null ? `${item.currency} ${item.costPrice.toFixed(2)}` : <span className="text-[var(--text-muted)]">Not entered</span>}</td>
                   <td className="px-4 py-3 font-bold text-[var(--text-primary)] whitespace-nowrap">{item.currency} {item.unitPrice.toFixed(2)}</td>
                   <td className="px-4 py-3 whitespace-nowrap">
-                    <span className={`font-semibold text-sm ${item.margin >= 50 ? 'text-green-500' : item.margin >= 40 ? 'text-yellow-500' : 'text-red-500'}`}>
-                      {item.margin.toFixed(1)}%
-                    </span>
+                    {item.margin !== null ? (
+                      <span className={`font-semibold text-sm ${item.margin >= 50 ? 'text-green-500' : item.margin >= 40 ? 'text-yellow-500' : 'text-red-500'}`}>
+                        {item.margin.toFixed(1)}%
+                      </span>
+                    ) : (
+                      <span className="text-[var(--text-muted)]">—</span>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-[var(--text-muted)]">{item.currency}</td>
                   <td className="px-4 py-3 text-[var(--text-muted)] whitespace-nowrap">{item.lastUpdated}</td>

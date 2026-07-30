@@ -10,8 +10,8 @@ interface PriceRow {
   productName: string;
   category: string;
   unitPrice: number;
-  costPrice: number;
-  margin: number;
+  costPrice: number | null;
+  margin: number | null;
   currency: 'GHS' | 'USD';
   lastUpdated: string;
   updatedBy: string;
@@ -37,14 +37,16 @@ export default function GoodsPriceCatalogView({ addNotification }: Props) {
         if (error) console.error('Error loading price catalog:', error);
         setPrices((data || []).map((row: any) => {
           const unitPrice = typeof row.unit_price === 'number' ? row.unit_price : 0;
-          const costPrice = typeof row.cost_price === 'number' ? row.cost_price : unitPrice * 0.65;
+          // No fabricated cost price — a product with no cost entered has an
+          // unknown margin, not an invented "65% of selling price" one.
+          const costPrice = typeof row.cost_price === 'number' ? row.cost_price : null;
           return {
             id: String(row.product_name || row.id),
             productName: String(row.product_name || ''),
             category: String(row.category || 'INCOMING_GOODS'),
             unitPrice,
             costPrice,
-            margin: costPrice > 0 ? ((unitPrice - costPrice) / costPrice) * 100 : 0,
+            margin: costPrice !== null && costPrice > 0 ? ((unitPrice - costPrice) / costPrice) * 100 : null,
             currency: (row.currency as 'GHS' | 'USD') || 'GHS',
             lastUpdated: String(row.updated_at || row.created_at || '').slice(0, 10),
             updatedBy: String(row.updated_by || 'Management'),
@@ -64,7 +66,10 @@ export default function GoodsPriceCatalogView({ addNotification }: Props) {
     !search || p.productName.toLowerCase().includes(search.toLowerCase()) || p.category.toLowerCase().includes(search.toLowerCase())
   );
 
-  const avgMargin = prices.length > 0 ? prices.reduce((s, p) => s + p.margin, 0) / prices.length : 0;
+  // Products with no cost price have an unknown margin — excluded from
+  // these stats rather than skewing them with a fabricated number.
+  const pricedProducts = prices.filter((p): p is PriceRow & { margin: number } => p.margin !== null);
+  const avgMargin = pricedProducts.length > 0 ? pricedProducts.reduce((s, p) => s + p.margin, 0) / pricedProducts.length : 0;
 
   return (
     <div className="space-y-5">
@@ -74,7 +79,7 @@ export default function GoodsPriceCatalogView({ addNotification }: Props) {
           <p className="text-xs text-[var(--text-muted)]">Selling prices set by Management — read only</p>
         </div>
         <button
-          onClick={() => { exportToCSV(filtered.map(p => ({ Product: p.productName, Category: p.category, 'Selling Price': p.unitPrice, 'Cost Price': p.costPrice, 'Margin %': p.margin.toFixed(1), Currency: p.currency, 'Last Updated': p.lastUpdated, 'Set By': p.updatedBy })), ['Product', 'Category', 'Selling Price', 'Cost Price', 'Margin %', 'Currency', 'Last Updated', 'Set By'], 'price_catalog'); addNotification?.('Exported price catalog.'); }}
+          onClick={() => { exportToCSV(filtered.map(p => ({ Product: p.productName, Category: p.category, 'Selling Price': p.unitPrice, 'Cost Price': p.costPrice ?? '', 'Margin %': p.margin !== null ? p.margin.toFixed(1) : '', Currency: p.currency, 'Last Updated': p.lastUpdated, 'Set By': p.updatedBy })), ['Product', 'Category', 'Selling Price', 'Cost Price', 'Margin %', 'Currency', 'Last Updated', 'Set By'], 'price_catalog'); addNotification?.('Exported price catalog.'); }}
           className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[var(--border)] text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-card)] cursor-pointer"
         >
           <Download size={14} /> Export CSV
@@ -86,7 +91,7 @@ export default function GoodsPriceCatalogView({ addNotification }: Props) {
         {[
           { label: 'Total Products', value: prices.length, decimals: 0, suffix: '', color: 'var(--accent)' },
           { label: 'Avg Margin', value: avgMargin, decimals: 1, suffix: '%', color: '#10b981' },
-          { label: 'High Margin (≥50%)', value: prices.filter(p => p.margin >= 50).length, decimals: 0, suffix: '', color: '#6366f1' },
+          { label: 'High Margin (≥50%)', value: pricedProducts.filter(p => p.margin >= 50).length, decimals: 0, suffix: '', color: '#6366f1' },
         ].map(({ label, value, decimals, suffix, color }) => (
           <div key={label} className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4 shadow-[var(--box-shadow)]">
             <p className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-1">{label}</p>
@@ -140,12 +145,16 @@ export default function GoodsPriceCatalogView({ addNotification }: Props) {
                     <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--accent-light)] text-[var(--accent)] font-semibold">{item.category}</span>
                   </td>
                   <td className="px-4 py-2.5 font-bold text-[var(--text-primary)] whitespace-nowrap">{item.currency} {item.unitPrice.toFixed(2)}</td>
-                  <td className="px-4 py-2.5 text-[var(--text-secondary)] whitespace-nowrap">{item.currency} {item.costPrice.toFixed(2)}</td>
+                  <td className="px-4 py-2.5 text-[var(--text-secondary)] whitespace-nowrap">{item.costPrice !== null ? `${item.currency} ${item.costPrice.toFixed(2)}` : <span className="text-[var(--text-muted)]">Not entered</span>}</td>
                   <td className="px-4 py-2.5 whitespace-nowrap">
-                    <div className="flex items-center gap-1">
-                      {item.margin >= 50 ? <TrendingUp size={11} className="text-green-500" /> : <TrendingDown size={11} className="text-red-500" />}
-                      <span className={`font-semibold ${item.margin >= 50 ? 'text-green-500' : item.margin >= 40 ? 'text-yellow-500' : 'text-red-500'}`}>{item.margin.toFixed(1)}%</span>
-                    </div>
+                    {item.margin !== null ? (
+                      <div className="flex items-center gap-1">
+                        {item.margin >= 50 ? <TrendingUp size={11} className="text-green-500" /> : <TrendingDown size={11} className="text-red-500" />}
+                        <span className={`font-semibold ${item.margin >= 50 ? 'text-green-500' : item.margin >= 40 ? 'text-yellow-500' : 'text-red-500'}`}>{item.margin.toFixed(1)}%</span>
+                      </div>
+                    ) : (
+                      <span className="text-[var(--text-muted)]">—</span>
+                    )}
                   </td>
                   <td className="px-4 py-2.5 text-[var(--text-muted)]">{item.currency}</td>
                   <td className="px-4 py-2.5 text-[var(--text-muted)] whitespace-nowrap">{item.lastUpdated}</td>
