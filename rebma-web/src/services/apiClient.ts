@@ -4,6 +4,17 @@ import { supabase } from '../lib/supabaseClient';
 import { sendNotification } from '../utils/sendNotification';
 import { waLink, buildDirectionsMessage } from '../utils/whatsapp';
 
+// A stalled network call (flaky connection, rate-limit) otherwise hangs
+// whatever awaits it forever — Supabase calls have no built-in timeout, so
+// login and profile fetches never reject, just never resolve, leaving the
+// sign-in spinner stuck until the user reloads the page.
+export function withTimeout<T>(promise: PromiseLike<T>, ms: number, message: string): Promise<T> {
+  return Promise.race([
+    Promise.resolve(promise),
+    new Promise<T>((_, reject) => setTimeout(() => reject(new Error(message)), ms)),
+  ]);
+}
+
 // --- Translation Mappings (Insulates UI from Database Snake_Case schema) ---
 
 const generateSecurePassword = (length = 16): string => {
@@ -220,10 +231,11 @@ export const auth = {
     const emailLower = email.trim().toLowerCase();
 
     // 1. Sign in with Supabase Auth first
-    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-      email: emailLower,
-      password,
-    });
+    const { data: authData, error: authError } = await withTimeout(
+      supabase.auth.signInWithPassword({ email: emailLower, password }),
+      15000,
+      'Sign-in is taking too long. Please check your connection and try again.'
+    );
 
     if (authError) {
       if (authError.message === 'Invalid login credentials' || authError.message.includes('credentials')) {
@@ -238,11 +250,11 @@ export const auth = {
     }
 
     // 2. Fetch user profile using the authenticated user's ID
-    const { data: users, error: userError } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .limit(1);
+    const { data: users, error: userError } = await withTimeout(
+      supabase.from('profiles').select('*').eq('id', userId).limit(1),
+      15000,
+      'Could not load your account. Please check your connection and try again.'
+    );
 
     if (userError || !users || users.length === 0) {
       // Sign out to clean up session
@@ -277,6 +289,7 @@ export const auth = {
         fullName: dbUser.fullName,
         department: dbUser.department,
         isAdmin: dbUser.isAdmin,
+        isSuperAdmin: dbUser.isSuperAdmin,
         photo: dbUser.photo,
         status: dbUser.status,
         requiresPasswordReset: dbUser.requiresPasswordReset
@@ -303,17 +316,21 @@ export const auth = {
   },
 
   me: async () => {
-    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    const { data: sessionData, error: sessionError } = await withTimeout(
+      supabase.auth.getSession(),
+      15000,
+      'Could not verify your session. Please check your connection and try again.'
+    );
     if (sessionError || !sessionData.session?.user) {
       throw new Error('Not authenticated');
     }
     const user = sessionData.session.user;
 
-    const { data: userRecords, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
-      .limit(1);
+    const { data: userRecords, error } = await withTimeout(
+      supabase.from('profiles').select('*').eq('id', user.id).limit(1),
+      15000,
+      'Could not load your account. Please check your connection and try again.'
+    );
 
     if (error || !userRecords || userRecords.length === 0) {
       throw new Error('User profile record not found.');

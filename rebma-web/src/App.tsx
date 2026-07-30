@@ -28,8 +28,8 @@ import AczoneShell from './components/AczoneShell';
 import LiamFinanceShell from './components/LiamFinanceShell';
 import FinloFlashShell from './components/FinloFlashShell';
 
-import { auth, hr, operations, management, marketing, finance, production, reception, dispatch as dispatchApi, getToken, setToken, clearToken } from './services/apiClient';
-import { supabase } from './lib/supabaseClient';
+import { auth, hr, operations, management, marketing, finance, production, reception, dispatch as dispatchApi, getToken, setToken, clearToken, withTimeout } from './services/apiClient';
+import { supabase, setAuthPersistence } from './lib/supabaseClient';
 
 import NotesPanel from './components/global/NotesPanel';
 import TasksPanel from './components/global/TasksPanel';
@@ -1050,11 +1050,11 @@ export default function App() {
           // dashboard — same account, same drivers row, just a different
           // surface for a phone in a moving vehicle.
           try {
-            const { data: driverRow } = await supabase
-              .from('drivers')
-              .select('id, driver_id, full_name, vehicle_id')
-              .eq('user_id', profile.id)
-              .limit(1);
+            const { data: driverRow } = await withTimeout(
+              supabase.from('drivers').select('id, driver_id, full_name, vehicle_id').eq('user_id', profile.id).limit(1),
+              15000,
+              'Driver lookup timed out'
+            );
             if (isMounted) {
               setCurrentDriver(driverRow && driverRow[0]
                 ? { id: driverRow[0].id, driverId: driverRow[0].driver_id, fullName: driverRow[0].full_name, vehicleId: driverRow[0].vehicle_id || null }
@@ -1603,6 +1603,11 @@ export default function App() {
 
     setIsLoggingIn(true);
     try {
+      // Must be set before signInWithPassword — Supabase writes the new
+      // session to storage as part of that call, so this decides which
+      // store (persists across browser restarts vs. cleared when the tab
+      // closes) the session about to be created lands in.
+      setAuthPersistence(staySignedIn);
       const res = await auth.login(loginEmail, loginPassword);
       
       if ('user' in res && res.user) {
@@ -1613,6 +1618,7 @@ export default function App() {
           email: res.user.email,
           department: res.user.department,
           isAdmin: res.user.isAdmin,
+          isSuperAdmin: (res.user as any).isSuperAdmin ?? false,
           requiresPasswordReset: res.user.requiresPasswordReset,
           photo: res.user.photo
         });
