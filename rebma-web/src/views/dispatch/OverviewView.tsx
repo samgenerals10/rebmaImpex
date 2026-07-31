@@ -80,6 +80,7 @@ export default function DispatchOverviewView({ addNotification, setActiveSubTab,
   const [loadingDeliveries, setLoadingDeliveries] = useState(true);
   const [loadingDrivers, setLoadingDrivers]       = useState(true);
   const [menuOpen, setMenuOpen]     = useState<string | null>(null);
+  const [menuOpenUp, setMenuOpenUp] = useState(false);
   const [volPeriod, setVolPeriod]   = useState('This Week');
 
   // Assign driver form state
@@ -319,12 +320,19 @@ export default function DispatchOverviewView({ addNotification, setActiveSubTab,
                   <div className="flex-shrink-0 flex items-center gap-2">
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap ${badge?.bg} ${badge?.color}`}>{badge?.label}</span>
                     <div className="relative" onClick={e => e.stopPropagation()}>
-                      <button onClick={() => setMenuOpen(menuOpen === del.id ? null : del.id)}
+                      <button onClick={e => {
+                        if (menuOpen === del.id) { setMenuOpen(null); return; }
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        const estimatedMenuHeight = 170;
+                        const spaceBelow = window.innerHeight - rect.bottom;
+                        setMenuOpenUp(spaceBelow < estimatedMenuHeight && rect.top > spaceBelow);
+                        setMenuOpen(del.id);
+                      }}
                         className="p-1 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-[var(--bg-card)] transition-all">
                         <MoreVertical size={13} className="text-[var(--text-muted)]" />
                       </button>
                       {menuOpen === del.id && (
-                        <div className="absolute right-0 top-6 z-20 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-lg py-1 min-w-[160px]">
+                        <div className={`absolute right-0 z-20 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-lg py-1 min-w-[160px] ${menuOpenUp ? 'bottom-6' : 'top-6'}`}>
                           <button onClick={() => { setActiveSubTab?.('ActiveDeliveries'); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--bg-input)] flex items-center gap-2"><Eye size={11} /> View Details</button>
                           <button onClick={() => { setActiveSubTab?.('Tracking'); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--bg-input)] flex items-center gap-2"><MapPin size={11} /> Track on Map</button>
                           {del.status === 'IN_TRANSIT' && (

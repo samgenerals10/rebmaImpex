@@ -10,6 +10,8 @@ export default function DispatchHomeScreen() {
   const { profile, driver, signOut } = useAuthStore();
   const [activeDeliveryClient, setActiveDeliveryClient] = useState('');
   const [activeDeliveryDestination, setActiveDeliveryDestination] = useState('');
+  const [activeDeliveryOrderId, setActiveDeliveryOrderId] = useState<string | null>(null);
+  const [activeDeliveryStatus, setActiveDeliveryStatus] = useState<string | null>(null);
   const [lastLat, setLastLat] = useState<number | null>(null);
   const [lastLng, setLastLng] = useState<number | null>(null);
 
@@ -44,16 +46,38 @@ export default function DispatchHomeScreen() {
       setActiveOrder(delivery.id);
       setActiveDeliveryClient(delivery.customer_name || 'Client');
       setActiveDeliveryDestination(delivery.delivery_address || '');
+      setActiveDeliveryOrderId(delivery.order_id);
+      setActiveDeliveryStatus(delivery.status);
     } else {
       setActiveOrder(null);
       setActiveDeliveryClient('');
       setActiveDeliveryDestination('');
+      setActiveDeliveryOrderId(null);
+      setActiveDeliveryStatus(null);
     }
   };
 
   useEffect(() => {
     if (driver) loadActiveDelivery(driver);
   }, [driver?.id]);
+
+  // The real "out for delivery" moment — not when a driver gets assigned,
+  // but when they actually start the trip. Sharing live location is the
+  // driver's own explicit signal that they're moving, so this is where
+  // delivery_logs/orders flip from ASSIGNED to IN_TRANSIT/OUT_FOR_DELIVERY,
+  // not at dispatch-assignment time. Mirrors the web driver portal's
+  // DriverTrackingView, which already worked this way.
+  useEffect(() => {
+    if (!gpsActive || !activeOrderId || activeDeliveryStatus !== 'ASSIGNED') return;
+    const now = new Date().toISOString();
+    (async () => {
+      await supabase.from('delivery_logs').update({ status: 'IN_TRANSIT', updated_at: now }).eq('id', activeOrderId);
+      if (activeDeliveryOrderId) {
+        await supabase.from('orders').update({ status: 'OUT_FOR_DELIVERY', updated_at: now }).eq('id', activeDeliveryOrderId);
+      }
+      setActiveDeliveryStatus('IN_TRANSIT');
+    })();
+  }, [gpsActive, activeOrderId, activeDeliveryStatus, activeDeliveryOrderId]);
 
   // Real GPS tracking: stream the phone's actual location to driver_locations
   // while gpsActive is on and a delivery is assigned. Foreground-only — the
@@ -143,17 +167,23 @@ export default function DispatchHomeScreen() {
 
   const handleDeliver = async () => {
     if (!activeOrderId) return;
+    const now = new Date().toISOString();
     const { error } = await supabase
       .from('delivery_logs')
-      .update({ status: 'DELIVERED', delivered_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+      .update({ status: 'DELIVERED', delivered_at: now, updated_at: now })
       .eq('id', activeOrderId);
     if (error) {
       Alert.alert('Failed to Update', error.message);
       return;
     }
+    if (activeDeliveryOrderId) {
+      await supabase.from('orders').update({ status: 'DELIVERED', updated_at: now }).eq('id', activeDeliveryOrderId);
+    }
     markOrderDelivered(activeOrderId);
     setActiveDeliveryClient('');
     setActiveDeliveryDestination('');
+    setActiveDeliveryOrderId(null);
+    setActiveDeliveryStatus(null);
     Alert.alert('Delivery Logged', 'Order status updated to DELIVERED.', [{ text: 'Dismiss' }]);
   };
 

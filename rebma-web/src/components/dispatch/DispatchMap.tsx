@@ -31,7 +31,10 @@ export interface DispatchMapDelivery {
   // Set by callers that track live driver state (e.g. the GPS Tracking view) —
   // takes priority over `status` for marker color, since "which delivery is
   // this" and "where is this driver right now" are different questions.
-  driverState?: 'ON_THE_WAY' | 'AT_COMPANY' | 'RETURNING' | null;
+  // ASSIGNED means a driver has the job but hasn't started sharing live
+  // location yet — distinct from ON_THE_WAY, which only applies once they
+  // actually start the trip.
+  driverState?: 'ON_THE_WAY' | 'AT_COMPANY' | 'RETURNING' | 'ASSIGNED' | null;
 }
 
 interface LivePoint {
@@ -70,12 +73,14 @@ const STATUS_COLOR: Record<string, string> = {
 };
 
 const DRIVER_STATE_COLOR: Record<string, string> = {
+  ASSIGNED: '#8b5cf6',     // violet — has a job, hasn't started sharing location yet
   ON_THE_WAY: '#3b82f6',   // blue — actively delivering
   RETURNING: '#f59e0b',    // amber — job done, heading back
   AT_COMPANY: '#10b981',   // green — idle at base, available
 };
 
 const DRIVER_STATE_LABEL: Record<string, string> = {
+  ASSIGNED: 'Assigned — awaiting start',
   ON_THE_WAY: 'On the way',
   RETURNING: 'Returning to company',
   AT_COMPANY: 'At the company',
@@ -178,7 +183,7 @@ export default function DispatchMap({ deliveries, focusDeliveryId, height = 320,
       : ACCRA;
 
   return (
-    <div style={{ height, borderRadius: compact ? 16 : 20, overflow: 'hidden', border: '1px solid var(--border)', position: 'relative' }}>
+    <div style={{ height, borderRadius: compact ? 16 : 20, overflow: 'hidden', border: '1px solid var(--border)', position: 'relative', zIndex: 0 }}>
       <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 1000, display: 'flex', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 10, padding: 3, gap: 2, boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}>
         {([
           { key: 'street' as MapLayer, label: 'Map', icon: MapIcon },

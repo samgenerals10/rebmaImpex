@@ -308,7 +308,20 @@ export default function DeliveriesView({ addNotification, currentUser }: Props) 
   const [detailRecord, setDetailRecord] = useState<DeliveryRecord | null>(null);
   const [assignTarget, setAssignTarget] = useState<DeliveryRecord | null>(null);
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
+  const [menuOpenUp, setMenuOpenUp] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  // Flip the action dropdown upward when there isn't room below the trigger
+  // button (e.g. rows near the bottom of the table), so it's never clipped
+  // off-screen.
+  const openMenu = (id: string, triggerEl: HTMLElement) => {
+    if (menuOpen === id) { setMenuOpen(null); return; }
+    const rect = triggerEl.getBoundingClientRect();
+    const estimatedMenuHeight = 360;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    setMenuOpenUp(spaceBelow < estimatedMenuHeight && rect.top > spaceBelow);
+    setMenuOpen(id);
+  };
 
   const [showEdit, setShowEdit] = useState(false);
   const [editingDelivery, setEditingDelivery] = useState<any | null>(null);
@@ -641,12 +654,12 @@ export default function DeliveriesView({ addNotification, currentUser }: Props) 
                         </span>
                       </td>
                       <td className="px-4 py-3 relative" onClick={e => e.stopPropagation()}>
-                        <button onClick={() => setMenuOpen(menuOpen === d.id ? null : d.id)}
+                        <button onClick={e => openMenu(d.id, e.currentTarget)}
                           className="p-1.5 rounded-lg hover:bg-[var(--bg-input)] border border-transparent hover:border-[var(--border)]">
                           <MoreVertical size={14} className="text-[var(--text-muted)]" />
                         </button>
                         {menuOpen === d.id && (
-                          <div ref={menuRef} className="absolute right-4 top-10 z-20 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl py-1 min-w-[180px]"
+                          <div ref={menuRef} className={`absolute right-4 z-20 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl py-1 min-w-[180px] max-h-[70vh] overflow-y-auto ${menuOpenUp ? 'bottom-10' : 'top-10'}`}
                             onClick={e => e.stopPropagation()}>
                             <button onClick={() => { setDetailRecord(d); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--bg-input)] flex items-center gap-2"><Eye size={11} /> View Details</button>
                             <button onClick={() => { setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--bg-input)] flex items-center gap-2"><MapPin size={11} /> Track on GPS Map</button>
