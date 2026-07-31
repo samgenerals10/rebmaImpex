@@ -4,11 +4,11 @@
 // a searchable, printable list of every receipt on record. Shared across
 // Finance/Management/Marketing/CEO sidebars (same data, same component).
 import { useEffect, useState, useCallback } from 'react';
-import { Search, Receipt as ReceiptIcon, Download, Pencil } from 'lucide-react';
+import { Search, Receipt as ReceiptIcon, Download } from 'lucide-react';
 import QRCode from 'qrcode';
 import { supabase } from '../../lib/supabaseClient';
 import { exportToCSV, safeDisplayName } from '../../utils/export';
-import DocumentContactEditModal, { DEFAULT_COMPANY_CONTACT, type DocumentContactInfo } from '../../components/global/DocumentContactEditModal';
+import { documentTemplates, type DocumentTemplate } from '../../services/apiClient';
 import type { OrderLineItem } from '../../types/erp';
 
 const BRAND = { green: '#1a5c32', blue: '#29a9dc', lime: '#7fc241' };
@@ -58,7 +58,10 @@ export interface ReceiptRow {
   recordedBy: string | null;
   status: string;
   createdAt: string;
-  contactInfo?: DocumentContactInfo;
+  // Captured from the underlying order at the time the payment was
+  // recorded — display-only here, not editable from this screen. To
+  // correct it, fix the order/customer record it came from.
+  customerPhone?: string;
 }
 
 // A receipt number distinct from the order's own dispatch ticket number —
@@ -73,8 +76,8 @@ export function generateReceiptNumber(): string {
 // receipt carries the same security features as every other REBMA IMPEX
 // document. Renders an itemized table when the underlying order's line
 // items are available, rather than summary cards.
-export async function printReceipt(r: ReceiptRow, lineItems: OrderLineItem[] | null, contact?: DocumentContactInfo) {
-  const c: DocumentContactInfo = contact || r.contactInfo || { customerPhone: '', ...DEFAULT_COMPANY_CONTACT };
+export async function printReceipt(r: ReceiptRow, lineItems: OrderLineItem[] | null, template: DocumentTemplate) {
+  const t = template;
   // Shown on the printed receipt itself exactly as before — including a raw
   // email if that's what's on file, which is legitimate identification, not
   // a bug. Only the copy embedded in the QR payload gets sanitized, since
@@ -174,11 +177,11 @@ export async function printReceipt(r: ReceiptRow, lineItems: OrderLineItem[] | n
 
         <div class="header">
           <div class="brand">
-            <img src="${window.location.origin}/logo.png" alt="REBMA IMPEX"/>
+            <img src="${t.logoUrl.startsWith('http') || t.logoUrl.startsWith('data:') ? t.logoUrl : window.location.origin + t.logoUrl}" alt="${t.companyName}"/>
             <div class="brand-text">
-              <div class="name">REBMA IMPEX</div>
-              <div class="sub">Official Payment Receipt</div>
-              <div class="addr">${c.companyAddress}${c.companyPhone ? ` · Tel: ${c.companyPhone}` : ''}${c.companyEmail ? ` · ${c.companyEmail}` : ''}</div>
+              <div class="name">${t.companyName}</div>
+              <div class="sub">${t.subtitle}</div>
+              <div class="addr">${t.companyAddress}${t.companyPhone ? ` · Tel: ${t.companyPhone}` : ''}${t.companyEmail ? ` · ${t.companyEmail}` : ''}</div>
             </div>
           </div>
           <div class="ticket-meta">
@@ -192,7 +195,7 @@ export async function printReceipt(r: ReceiptRow, lineItems: OrderLineItem[] | n
 
         <div class="details-grid">
           <div class="fld"><div class="fl">Client</div><div class="fv">${r.clientName}</div></div>
-          <div class="fld"><div class="fl">Customer Phone</div><div class="fv">${c.customerPhone || '—'}</div></div>
+          <div class="fld"><div class="fl">Customer Phone</div><div class="fv">${r.customerPhone || '—'}</div></div>
           <div class="fld"><div class="fl">Order Ref</div><div class="fv">${r.ticketNumber || r.orderId || '—'}</div></div>
           <div class="fld"><div class="fl">Payment Method</div><div class="fv">${r.paymentMode} · ${r.paymentType}</div></div>
           <div class="fld full"><div class="fl">Recorded By</div><div class="fv">${recordedBy}</div></div>
@@ -220,8 +223,6 @@ export async function printReceipt(r: ReceiptRow, lineItems: OrderLineItem[] | n
 
         <div class="verified">✓ Payment Verified — ${r.status}</div>
 
-        <div class="thanks">Thank you for your business with <b>REBMA IMPEX Ghana Limited</b>. Please retain this receipt for your records.</div>
-
         <div class="perf">
           <div class="perf-circle"></div>
           <div class="perf-line"></div>
@@ -230,8 +231,7 @@ export async function printReceipt(r: ReceiptRow, lineItems: OrderLineItem[] | n
 
         <div class="footer">
           <div class="legal">
-            This receipt is issued by <strong>REBMA IMPEX Ghana Limited</strong> Finance.<br/>
-            It confirms payment has been received and recorded against the order referenced above.<br/>
+            ${t.footerNote}<br/>
             Receipt <strong>${r.receiptNumber}</strong> documents this payment; order ticket <strong>${r.ticketNumber || '—'}</strong> is a separate record — scan QR to verify both match.
           </div>
           <div class="qr-wrap">
@@ -245,8 +245,8 @@ export async function printReceipt(r: ReceiptRow, lineItems: OrderLineItem[] | n
 
       </div>
       <div class="foot-bar">
-        <span>REBMA IMPEX Ghana Limited · Receipt ${r.receiptNumber} · ${new Date().toLocaleDateString('en-GB')}</span>
-        <span class="brand-slug">rebmaimpex.com</span>
+        <span>${t.companyName} Ghana Limited · Receipt ${r.receiptNumber} · ${new Date().toLocaleDateString('en-GB')}</span>
+        <span class="brand-slug">${t.website}</span>
       </div>
     </div>
     <div style="text-align:center;margin-top:16px;display:flex;gap:10px;justify-content:center">
@@ -269,8 +269,6 @@ export default function FinanceReceiptsView({ addNotification }: Props) {
   const [receipts, setReceipts] = useState<ReceiptRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [contactEditTarget, setContactEditTarget] = useState<ReceiptRow | null>(null);
-  const [savingContact, setSavingContact] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -292,7 +290,7 @@ export default function FinanceReceiptsView({ addNotification }: Props) {
         recordedBy: r.recorded_by || null,
         status: r.status || 'CONFIRMED',
         createdAt: r.created_at || '',
-        contactInfo: r.metadata?.contactInfo || undefined,
+        customerPhone: r.metadata?.contactInfo?.customerPhone || undefined,
       })));
     } catch {
       setReceipts([]);
@@ -321,36 +319,18 @@ export default function FinanceReceiptsView({ addNotification }: Props) {
 
   const handlePrintReceipt = async (r: ReceiptRow) => {
     let lineItems: OrderLineItem[] | null = null;
-    let orderPhone = '';
+    let orderPhone = r.customerPhone || '';
     if (r.orderId) {
       try {
         const { data } = await supabase.from('orders').select('metadata, phone').eq('id', r.orderId).limit(1);
         const items = data?.[0]?.metadata?.items;
         if (Array.isArray(items) && items.length > 0) lineItems = items;
-        orderPhone = data?.[0]?.phone || '';
+        orderPhone = data?.[0]?.phone || orderPhone;
       } catch { /* falls back to the no-items message on the receipt */ }
     }
-    const contact = r.contactInfo || { customerPhone: orderPhone, ...DEFAULT_COMPANY_CONTACT };
-    printReceipt(r, lineItems, contact);
+    const template = await documentTemplates.get('RECEIPT');
+    printReceipt({ ...r, customerPhone: orderPhone }, lineItems, template);
     addNotification?.(`Opened receipt ${r.receiptNumber} for printing.`);
-  };
-
-  const handleSaveContact = async (info: DocumentContactInfo) => {
-    if (!contactEditTarget || savingContact) return;
-    setSavingContact(true);
-    try {
-      const { data: existing } = await supabase.from('finance_payments').select('metadata').eq('id', contactEditTarget.id).limit(1);
-      const nextMetadata = { ...(existing?.[0]?.metadata || {}), contactInfo: info };
-      const { error } = await supabase.from('finance_payments').update({ metadata: nextMetadata }).eq('id', contactEditTarget.id);
-      if (error) throw error;
-      setReceipts(prev => prev.map(r => r.id === contactEditTarget.id ? { ...r, contactInfo: info } : r));
-      addNotification?.(`Contact details updated for ${contactEditTarget.receiptNumber}.`);
-      setContactEditTarget(null);
-    } catch (e: any) {
-      alert(e.message || 'Failed to save contact details.');
-    } finally {
-      setSavingContact(false);
-    }
   };
 
   return (
@@ -404,14 +384,9 @@ export default function FinanceReceiptsView({ addNotification }: Props) {
                   <td className="px-3 py-2"><span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-700">{r.status}</span></td>
                   <td className="px-3 py-2 text-[var(--text-secondary)] whitespace-nowrap">{r.createdAt ? new Date(r.createdAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : '—'}</td>
                   <td className="px-3 py-2">
-                    <div className="flex items-center gap-1">
-                      <button onClick={() => handlePrintReceipt(r)} className="p-1 hover:bg-[var(--accent-light)] rounded-lg cursor-pointer text-[var(--accent)]" title="Print Receipt">
-                        <Download className="w-3.5 h-3.5" />
-                      </button>
-                      <button onClick={() => setContactEditTarget(r)} className="p-1 hover:bg-[var(--accent-light)] rounded-lg cursor-pointer text-[var(--text-secondary)]" title="Edit customer/company contact details">
-                        <Pencil className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
+                    <button onClick={() => handlePrintReceipt(r)} className="p-1 hover:bg-[var(--accent-light)] rounded-lg cursor-pointer text-[var(--accent)]" title="Print Receipt">
+                      <Download className="w-3.5 h-3.5" />
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -424,19 +399,6 @@ export default function FinanceReceiptsView({ addNotification }: Props) {
         <div className="flex flex-col items-center py-6 text-[var(--text-muted)]">
           <ReceiptIcon className="w-8 h-8 opacity-30 mb-2" />
         </div>
-      )}
-
-      {contactEditTarget && (
-        <DocumentContactEditModal
-          title="Edit Receipt Contact Details"
-          documentLabel={contactEditTarget.receiptNumber}
-          initial={contactEditTarget.contactInfo || { customerPhone: '', ...DEFAULT_COMPANY_CONTACT }}
-          issuedByName={contactEditTarget.recordedBy || 'Finance'}
-          department="Finance"
-          saving={savingContact}
-          onSave={handleSaveContact}
-          onClose={() => setContactEditTarget(null)}
-        />
       )}
     </div>
   );

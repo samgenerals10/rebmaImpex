@@ -11,6 +11,7 @@ import InvoiceLineItems, { getProductSummary, getProductSummaryWithQty } from '.
 import { useFullscreenToggle, FullscreenButton } from '../../components/global/FullscreenToggle';
 import CountUp from '../../components/CountUp';
 import { generateReceiptNumber, printReceipt } from './ReceiptsView';
+import { documentTemplates } from '../../services/apiClient';
 
 interface Props {
   addNotification?: (msg: string) => void;
@@ -277,6 +278,7 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
 
       const wantsReceipt = await window.confirm(`Payment recorded for ${order.clientName}. Generate a receipt now?`);
       if (wantsReceipt) {
+        const template = await documentTemplates.get('RECEIPT');
         printReceipt({
           id: order.id,
           clientName: order.clientName,
@@ -289,7 +291,8 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
           recordedBy,
           status: 'CONFIRMED',
           createdAt,
-        }, order.metadata?.items || null);
+          customerPhone: (order as any).phone || '',
+        }, order.metadata?.items || null, template);
       }
     } catch (e) {
       console.error(e);

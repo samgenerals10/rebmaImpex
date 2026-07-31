@@ -1037,3 +1037,39 @@ ALTER TABLE public.delivery_logs ADD COLUMN IF NOT EXISTS destination_lng NUMERI
 -- typed coordinates to a point via the same DestinationLocator component.
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS destination_lat NUMERIC;
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS destination_lng NUMERIC;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- DOCUMENT TEMPLATES — the header (logo, company name, subtitle, address,
+-- phone, email) and footer note printed on every receipt, dispatch ticket,
+-- and proforma invoice, editable ONLY from Management's "Document Templates"
+-- page. Finance/Operations/Marketing view and issue these documents but
+-- don't edit them — one row per document type, applied to every document of
+-- that type going forward (not per-transaction). The transaction-specific
+-- content (customer, amounts, line items, who issued it, the document
+-- number, the QR code) stays system-generated and is untouched by this.
+-- ─────────────────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.document_templates (
+    doc_type TEXT PRIMARY KEY CHECK (doc_type IN ('RECEIPT', 'TICKET', 'INVOICE')),
+    logo_url TEXT,
+    company_name TEXT NOT NULL DEFAULT 'REBMA IMPEX',
+    subtitle TEXT NOT NULL DEFAULT '',
+    company_address TEXT NOT NULL DEFAULT 'Accra Business District, Accra, Ghana',
+    company_phone TEXT NOT NULL DEFAULT '',
+    company_email TEXT NOT NULL DEFAULT '',
+    website TEXT NOT NULL DEFAULT 'rebmaimpex.com',
+    footer_note TEXT NOT NULL DEFAULT '',
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_by TEXT
+);
+ALTER TABLE public.document_templates ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow authenticated users full access to document_templates" ON public.document_templates FOR ALL TO authenticated USING (true) WITH CHECK (true);
+ALTER PUBLICATION supabase_realtime ADD TABLE public.document_templates;
+
+INSERT INTO public.document_templates (doc_type, logo_url, company_name, subtitle, company_address, company_phone, company_email, website, footer_note) VALUES
+('RECEIPT', '/logo.png', 'REBMA IMPEX', 'Official Payment Receipt', 'Accra Business District, Accra, Ghana', '+233 (0) 302 000 000', 'info@rebmaimpex.com', 'rebmaimpex.com',
+ 'This receipt is issued by REBMA IMPEX Ghana Limited Finance. It confirms payment has been received and recorded against the order referenced above. Thank you for your business with REBMA IMPEX Ghana Limited — please retain this receipt for your records.'),
+('TICKET', '/logo.png', 'REBMA IMPEX', 'Operations Dispatch Ticket', 'Accra Business District, Accra, Ghana', '+233 (0) 302 000 000', 'info@rebmaimpex.com', 'rebmaimpex.com',
+ 'This ticket is issued by REBMA IMPEX Ghana Limited Operations. It authorises the loading and dispatch of the above goods to the stated destination.'),
+('INVOICE', '/logo.png', 'REBMA IMPEX', 'Proforma Invoice — Quote Only', 'Accra Business District, Accra, Ghana', '+233 (0) 302 000 000', 'info@rebmaimpex.com', 'rebmaimpex.com',
+ 'This is a proforma invoice — a quotation only, not a demand for payment or a tax invoice. Prices are valid for 14 days from the issue date above.')
+ON CONFLICT (doc_type) DO NOTHING;

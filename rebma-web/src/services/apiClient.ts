@@ -1849,9 +1849,92 @@ export const invoices = {
     if (error) throw new Error(error.message);
     return data?.[0] ? { ...data[0], proforma_no: data[0].id } : null;
   },
+};
 
-  updateContactInfo: async (id: string, contactInfo: { customerPhone: string; companyPhone: string; companyEmail: string; companyAddress: string }) => {
-    const { error } = await supabase.from('proforma_invoices').update({ contact_info: contactInfo }).eq('id', id);
+// ── Document Templates ──────────────────────────────────────────────
+// Header/footer content for receipts, dispatch tickets, and proforma
+// invoices — edited exclusively from Management's Document Templates page.
+// One row per doc type, applied to every document of that type; the
+// transaction-specific content (customer, amounts, issued-by, the QR code)
+// is untouched by this and stays system-generated at print time.
+export interface DocumentTemplate {
+  docType: 'RECEIPT' | 'TICKET' | 'INVOICE';
+  logoUrl: string;
+  companyName: string;
+  subtitle: string;
+  companyAddress: string;
+  companyPhone: string;
+  companyEmail: string;
+  website: string;
+  footerNote: string;
+}
+
+const DOC_TEMPLATE_FALLBACKS: Record<DocumentTemplate['docType'], DocumentTemplate> = {
+  RECEIPT: { docType: 'RECEIPT', logoUrl: '/logo.png', companyName: 'REBMA IMPEX', subtitle: 'Official Payment Receipt', companyAddress: 'Accra Business District, Accra, Ghana', companyPhone: '', companyEmail: '', website: 'rebmaimpex.com', footerNote: 'This receipt is issued by REBMA IMPEX Ghana Limited Finance. It confirms payment has been received and recorded against the order referenced above.' },
+  TICKET: { docType: 'TICKET', logoUrl: '/logo.png', companyName: 'REBMA IMPEX', subtitle: 'Operations Dispatch Ticket', companyAddress: 'Accra Business District, Accra, Ghana', companyPhone: '', companyEmail: '', website: 'rebmaimpex.com', footerNote: 'This ticket is issued by REBMA IMPEX Ghana Limited Operations. It authorises the loading and dispatch of the above goods to the stated destination.' },
+  INVOICE: { docType: 'INVOICE', logoUrl: '/logo.png', companyName: 'REBMA IMPEX', subtitle: 'Proforma Invoice — Quote Only', companyAddress: 'Accra Business District, Accra, Ghana', companyPhone: '', companyEmail: '', website: 'rebmaimpex.com', footerNote: 'This is a proforma invoice — a quotation only, not a demand for payment or a tax invoice.' },
+};
+
+function mapDocTemplate(row: any, docType: DocumentTemplate['docType']): DocumentTemplate {
+  const fallback = DOC_TEMPLATE_FALLBACKS[docType];
+  if (!row) return fallback;
+  return {
+    docType,
+    logoUrl: row.logo_url || fallback.logoUrl,
+    companyName: row.company_name || fallback.companyName,
+    subtitle: row.subtitle ?? fallback.subtitle,
+    companyAddress: row.company_address ?? fallback.companyAddress,
+    companyPhone: row.company_phone ?? fallback.companyPhone,
+    companyEmail: row.company_email ?? fallback.companyEmail,
+    website: row.website || fallback.website,
+    footerNote: row.footer_note ?? fallback.footerNote,
+  };
+}
+
+export const documentTemplates = {
+  // Used at print time by receipts/tickets/invoices — always resolves to a
+  // usable template (built-in fallback if the table/row isn't there yet),
+  // so printing never breaks even before the migration is run.
+  get: async (docType: DocumentTemplate['docType']): Promise<DocumentTemplate> => {
+    try {
+      const { data, error } = await supabase.from('document_templates').select('*').eq('doc_type', docType).maybeSingle();
+      if (error) throw error;
+      return mapDocTemplate(data, docType);
+    } catch {
+      return DOC_TEMPLATE_FALLBACKS[docType];
+    }
+  },
+
+  // Used by Management's Document Templates page to show all three at once.
+  getAll: async (): Promise<Record<DocumentTemplate['docType'], DocumentTemplate>> => {
+    try {
+      const { data, error } = await supabase.from('document_templates').select('*');
+      if (error) throw error;
+      const byType = new Map((data || []).map((r: any) => [r.doc_type, r]));
+      return {
+        RECEIPT: mapDocTemplate(byType.get('RECEIPT'), 'RECEIPT'),
+        TICKET: mapDocTemplate(byType.get('TICKET'), 'TICKET'),
+        INVOICE: mapDocTemplate(byType.get('INVOICE'), 'INVOICE'),
+      };
+    } catch {
+      return { ...DOC_TEMPLATE_FALLBACKS };
+    }
+  },
+
+  update: async (template: DocumentTemplate, updatedBy: string) => {
+    const { error } = await supabase.from('document_templates').upsert({
+      doc_type: template.docType,
+      logo_url: template.logoUrl,
+      company_name: template.companyName,
+      subtitle: template.subtitle,
+      company_address: template.companyAddress,
+      company_phone: template.companyPhone,
+      company_email: template.companyEmail,
+      website: template.website,
+      footer_note: template.footerNote,
+      updated_at: new Date().toISOString(),
+      updated_by: updatedBy,
+    });
     if (error) throw new Error(error.message);
   },
 };

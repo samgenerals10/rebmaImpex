@@ -1,11 +1,10 @@
 // src/views/ceo/InvoicesView.tsx
 import { useState, useEffect } from 'react';
-import { Download, Eye, Printer, Plus, X, Trash2, Pencil } from 'lucide-react';
+import { Download, Eye, Printer, Plus, X, Trash2 } from 'lucide-react';
 import QRCode from 'qrcode';
-import { invoices as invoicesApi } from '../../services/apiClient';
+import { invoices as invoicesApi, documentTemplates, type DocumentTemplate } from '../../services/apiClient';
 import { exportToCSV, safeDisplayName } from '../../utils/export';
 import EntityDetailPanel from '../../components/global/EntityDetailPanel';
-import DocumentContactEditModal, { DEFAULT_COMPANY_CONTACT, type DocumentContactInfo } from '../../components/global/DocumentContactEditModal';
 import type { CurrentUser } from '../../types/erp';
 
 interface LineItem {
@@ -27,7 +26,9 @@ interface ProformaRow {
   status: 'DRAFT' | 'SENT' | 'CONVERTED';
   notes: string | null;
   created_at: string;
-  contact_info?: DocumentContactInfo | null;
+  // Captured when Marketing/CEO generates the invoice — display-only here,
+  // not editable from this screen.
+  contact_info?: { customerPhone?: string } | null;
 }
 
 const STATUS_STYLES: Record<ProformaRow['status'], string> = {
@@ -41,9 +42,10 @@ interface Props {
   currentUser?: CurrentUser | null;
 }
 
-async function printProforma(r: ProformaRow, issuedBy: string, contact?: DocumentContactInfo) {
+async function printProforma(r: ProformaRow, issuedBy: string, template: DocumentTemplate) {
   const GREEN = '#1a5c32', BLUE = '#29a9dc', LIME = '#7fc241';
-  const c: DocumentContactInfo = contact || r.contact_info || { customerPhone: '', ...DEFAULT_COMPANY_CONTACT };
+  const t = template;
+  const customerPhone = r.contact_info?.customerPhone || '';
   // Shown on the printed invoice itself exactly as before — an email here is
   // legitimate identification, not a bug. Only the copy embedded in the QR
   // payload gets sanitized, since that's the one iOS's scanner misreads as
@@ -102,15 +104,15 @@ async function printProforma(r: ProformaRow, issuedBy: string, contact?: Documen
     <div class="content">
       <div class="header">
         <div class="logo-wrap">
-          <img src="${window.location.origin}/logo.png" alt="REBMA IMPEX"/>
+          <img src="${t.logoUrl.startsWith('http') || t.logoUrl.startsWith('data:') ? t.logoUrl : window.location.origin + t.logoUrl}" alt="${t.companyName}"/>
           <div class="logo-block">
-            <div class="company">REBMA IMPEX</div>
+            <div class="company">${t.companyName}</div>
             <div class="tagline">Ghana Limited</div>
-            <div class="address">${c.companyAddress}<br/>${c.companyPhone ? `Tel: ${c.companyPhone}` : ''}${c.companyPhone && c.companyEmail ? ' &bull; ' : ''}${c.companyEmail || ''}</div>
+            <div class="address">${t.companyAddress}<br/>${t.companyPhone ? `Tel: ${t.companyPhone}` : ''}${t.companyPhone && t.companyEmail ? ' &bull; ' : ''}${t.companyEmail || ''}</div>
           </div>
         </div>
         <div class="inv-meta">
-          <div class="inv-label">Proforma Invoice — Quote Only</div>
+          <div class="inv-label">${t.subtitle}</div>
           <div class="inv-no">${r.proforma_no}</div>
           <div class="inv-date">Issued: ${dateStr}</div>
           <span class="badge">Not a Tax Invoice</span>
@@ -120,7 +122,7 @@ async function printProforma(r: ProformaRow, issuedBy: string, contact?: Documen
       <div class="bill-box">
         <div class="blabel">Prepared For</div>
         <div class="bname">${r.client_name}</div>
-        ${c.customerPhone ? `<div style="font-size:12px;color:#64748b;margin-top:3px">Tel: ${c.customerPhone}</div>` : ''}
+        ${customerPhone ? `<div style="font-size:12px;color:#64748b;margin-top:3px">Tel: ${customerPhone}</div>` : ''}
       </div>
       <table class="items-table">
         <thead><tr><th>Product / Service</th><th style="text-align:center">Qty</th><th style="text-align:right">Unit Price (${r.currency})</th><th style="text-align:right">Amount (${r.currency})</th></tr></thead>
@@ -144,9 +146,8 @@ async function printProforma(r: ProformaRow, issuedBy: string, contact?: Documen
       ${r.notes ? `<div class="notes-box"><strong>Notes</strong>${r.notes}</div>` : ''}
       <div class="footer">
         <div class="legal">
-          This is a <strong>proforma invoice</strong> — a quotation only, not a demand for payment or a tax invoice.
-          Prices are valid for 14 days from the issue date above.<br/>
-          Issued by ${issuedBy}, REBMA IMPEX Ghana Limited.
+          ${t.footerNote}<br/>
+          Issued by ${issuedBy}, ${t.companyName} Ghana Limited.
         </div>
         <div class="qr-block">
           ${qrDataUrl ? `<img src="${qrDataUrl}" alt="Proforma QR"/>` : ''}
@@ -180,8 +181,6 @@ export default function InvoicesView({ addNotification, currentUser }: Props) {
   const [clientPhone, setClientPhone] = useState('');
   const [lineItems, setLineItems] = useState<LineItem[]>([emptyLine()]);
   const [notes, setNotes] = useState('');
-  const [contactEditTarget, setContactEditTarget] = useState<ProformaRow | null>(null);
-  const [savingContact, setSavingContact] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -234,27 +233,14 @@ export default function InvoicesView({ addNotification, currentUser }: Props) {
       setShowGenerate(false);
       resetForm();
       await load();
-      if (created) printProforma(created as ProformaRow, currentUser?.fullName || 'REBMA IMPEX Staff');
+      if (created) {
+        const template = await documentTemplates.get('INVOICE');
+        printProforma(created as ProformaRow, currentUser?.fullName || 'REBMA IMPEX Staff', template);
+      }
     } catch (e: any) {
       addNotification(e.message || 'Failed to generate proforma invoice.');
     } finally {
       setSubmitting(false);
-    }
-  };
-
-  const handleSaveContact = async (info: DocumentContactInfo) => {
-    if (!contactEditTarget || savingContact) return;
-    setSavingContact(true);
-    try {
-      await invoicesApi.updateContactInfo(contactEditTarget.id, info);
-      setRows(prev => prev.map(r => r.id === contactEditTarget.id ? { ...r, contact_info: info } : r));
-      setSelected(prev => prev && prev.id === contactEditTarget.id ? { ...prev, contact_info: info } : prev);
-      addNotification(`Contact details updated for ${contactEditTarget.proforma_no}.`);
-      setContactEditTarget(null);
-    } catch (e: any) {
-      addNotification(e.message || 'Failed to save contact details.');
-    } finally {
-      setSavingContact(false);
     }
   };
 
@@ -373,33 +359,17 @@ export default function InvoicesView({ addNotification, currentUser }: Props) {
         </div>
         <div style={{ display: 'flex', gap: 8, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
           <button
-            onClick={() => printProforma(selected, currentUser?.fullName || 'REBMA IMPEX Staff')}
+            onClick={async () => {
+              const template = await documentTemplates.get('INVOICE');
+              printProforma(selected, currentUser?.fullName || 'REBMA IMPEX Staff', template);
+            }}
             style={{ background: 'var(--accent)', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
           >
             <Printer size={15} /> Print / Share
           </button>
-          <button
-            onClick={() => setContactEditTarget(selected)}
-            style={{ background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--border)', padding: '8px 16px', borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
-          >
-            <Pencil size={14} /> Edit Contact
-          </button>
           <button onClick={() => setSelected(null)} style={{ background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--border)', padding: '8px 16px', borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer', marginLeft: 'auto' }}>Close</button>
         </div>
       </EntityDetailPanel>
-    )}
-
-    {contactEditTarget && (
-      <DocumentContactEditModal
-        title="Edit Invoice Contact Details"
-        documentLabel={contactEditTarget.proforma_no}
-        initial={contactEditTarget.contact_info || { customerPhone: '', ...DEFAULT_COMPANY_CONTACT }}
-        issuedByName={currentUser?.fullName || 'REBMA IMPEX Staff'}
-        department={currentUser?.department || 'Marketing'}
-        saving={savingContact}
-        onSave={handleSaveContact}
-        onClose={() => setContactEditTarget(null)}
-      />
     )}
 
     {showGenerate && (
