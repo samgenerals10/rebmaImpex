@@ -6,9 +6,10 @@
 // every document of that type from then on (not per-transaction). The
 // per-transaction content — customer, amounts, line items, who issued it,
 // the document number, the QR code — is system-generated and untouched here.
-import { useState, useEffect } from 'react';
-import { Receipt, Ticket, FileText, Save, Image as ImageIcon } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Receipt, Ticket, FileText, Save, Image as ImageIcon, Upload, X, Loader2 } from 'lucide-react';
 import { documentTemplates, type DocumentTemplate } from '../../services/apiClient';
+import { uploadFile } from '../../utils/uploadFile';
 
 interface Props {
   addNotification?: (msg: string) => void;
@@ -30,6 +31,8 @@ export default function DocumentTemplatesView({ addNotification, currentUser }: 
   const [drafts, setDrafts] = useState<Record<DocumentTemplate['docType'], DocumentTemplate> | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const load = async () => {
     setLoading(true);
@@ -50,6 +53,22 @@ export default function DocumentTemplatesView({ addNotification, currentUser }: 
 
   const setField = (key: keyof DocumentTemplate, value: string) => {
     setDrafts(prev => prev ? { ...prev, [activeTab]: { ...prev[activeTab], [key]: value } } : prev);
+  };
+
+  const handleLogoFile = async (file: File | undefined) => {
+    if (!file) return;
+    setUploadingLogo(true);
+    try {
+      const url = await uploadFile(file, 'document-logos', activeTab);
+      if (url) {
+        setField('logoUrl', url);
+      } else {
+        addNotification?.('Failed to upload logo.');
+      }
+    } finally {
+      setUploadingLogo(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
   };
 
   const handleSave = async () => {
@@ -101,8 +120,29 @@ export default function DocumentTemplatesView({ addNotification, currentUser }: 
             <h3 className="text-sm font-bold text-[var(--text-primary)] mb-3">Header</h3>
             <div className="space-y-3">
               <div>
-                <label className={labelCls}>Logo URL</label>
-                <input className={inputCls} value={draft.logoUrl} onChange={e => setField('logoUrl', e.target.value)} placeholder="/logo.png" />
+                <label className={labelCls}>Logo</label>
+                <div className="flex items-center gap-3">
+                  {draft.logoUrl ? (
+                    <img src={draft.logoUrl} alt="Logo" className="w-12 h-12 rounded-lg object-contain bg-white border border-[var(--border)]" />
+                  ) : (
+                    <div className="w-12 h-12 rounded-lg bg-[var(--bg-input)] border border-[var(--border)] flex items-center justify-center">
+                      <ImageIcon size={16} className="text-[var(--text-muted)]" />
+                    </div>
+                  )}
+                  <input ref={fileInputRef} type="file" accept="image/*" className="hidden"
+                    onChange={e => handleLogoFile(e.target.files?.[0])} />
+                  <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploadingLogo}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold border border-[var(--border)] text-[var(--text-secondary)] hover:bg-[var(--bg-input)] cursor-pointer disabled:opacity-50">
+                    {uploadingLogo ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
+                    {uploadingLogo ? 'Uploading…' : draft.logoUrl ? 'Replace' : 'Upload Image'}
+                  </button>
+                  {draft.logoUrl && (
+                    <button type="button" onClick={() => setField('logoUrl', '')}
+                      className="flex items-center gap-1 px-2 py-2 rounded-lg text-xs font-bold text-rose-500 hover:bg-rose-500/10 cursor-pointer">
+                      <X size={13} /> Remove
+                    </button>
+                  )}
+                </div>
               </div>
               <div>
                 <label className={labelCls}>Company Name</label>
