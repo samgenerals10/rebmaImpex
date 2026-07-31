@@ -1,8 +1,23 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
-import { Truck } from 'lucide-react';
+import { Truck, Satellite, Map as MapIcon } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
+
+type MapLayer = 'street' | 'satellite';
+
+// Esri's World Imagery — free, no API key, same "no signup required" bar as
+// the OpenStreetMap street tiles already used here.
+const TILE_LAYERS: Record<MapLayer, { url: string; attribution: string }> = {
+  street: {
+    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+  },
+  satellite: {
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    attribution: 'Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community',
+  },
+};
 
 const ACCRA: [number, number] = [5.6037, -0.1870];
 
@@ -75,6 +90,7 @@ function Recenter({ center }: { center: [number, number] }) {
 export default function DispatchMap({ deliveries, focusDeliveryId, height = 320, compact = false, pollIntervalSeconds = 20, onMarkerClick, followFirstMarker = false }: Props) {
   const [latestByDriver, setLatestByDriver] = useState<Record<string, LivePoint>>({});
   const [trail, setTrail] = useState<LivePoint[]>([]);
+  const [layer, setLayer] = useState<MapLayer>('street');
   const mountedRef = useRef(true);
 
   const driverIds = useMemo(
@@ -162,11 +178,33 @@ export default function DispatchMap({ deliveries, focusDeliveryId, height = 320,
       : ACCRA;
 
   return (
-    <div style={{ height, borderRadius: compact ? 16 : 20, overflow: 'hidden', border: '1px solid var(--border)' }}>
+    <div style={{ height, borderRadius: compact ? 16 : 20, overflow: 'hidden', border: '1px solid var(--border)', position: 'relative' }}>
+      <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 1000, display: 'flex', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 10, padding: 3, gap: 2, boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}>
+        {([
+          { key: 'street' as MapLayer, label: 'Map', icon: MapIcon },
+          { key: 'satellite' as MapLayer, label: 'Satellite', icon: Satellite },
+        ]).map(opt => (
+          <button
+            key={opt.key}
+            onClick={() => setLayer(opt.key)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 5,
+              background: layer === opt.key ? 'var(--accent)' : 'transparent',
+              color: layer === opt.key ? '#fff' : 'var(--text-secondary)',
+              border: 'none', borderRadius: 7, padding: compact ? '4px 8px' : '6px 10px',
+              fontSize: compact ? 10 : 11, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
+            }}
+          >
+            <opt.icon size={compact ? 11 : 13} />
+            {!compact && opt.label}
+          </button>
+        ))}
+      </div>
       <MapContainer center={center} zoom={focusDeliveryId ? 13 : 11} style={{ height: '100%', width: '100%' }} scrollWheelZoom={!compact}>
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          key={layer}
+          attribution={TILE_LAYERS[layer].attribution}
+          url={TILE_LAYERS[layer].url}
         />
         {focusDeliveryId && markers[0] && <Recenter center={[markers[0].point.lat, markers[0].point.lng]} />}
         {trail.length > 1 && (
