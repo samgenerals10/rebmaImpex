@@ -5,6 +5,7 @@ import { useFullscreenToggle, FullscreenButton } from '../../components/global/F
 import RatingBadge from '../../components/RatingBadge';
 import { computeCustomerRating, ordersForCustomer } from '../../utils/customerRating';
 import CountUp from '../../components/CountUp';
+import DestinationLocator, { type Coords } from '../../components/dispatch/DestinationLocator';
 import type { Order, OrderLineItem } from '../../types/erp';
 
 
@@ -59,11 +60,13 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
   const [productPrices, setProductPrices] = useState<Record<string, number>>({});
   const [stockLevels, setStockLevels] = useState<Record<string, number>>({});
   const [customers, setCustomers] = useState<{ id: string; name: string; discountPercent: number; isSpecialCustomer: boolean }[]>([]);
+  const [destinationCoords, setDestinationCoords] = useState<Coords | null>(null);
 
   const openNewOrderModal = () => {
     setShowNewModal(true);
     setLineItems([{ productName: '', quantity: 1 }]);
     setForm({ clientName: '', destination: '', paymentMode: 'CASH', customerId: '' });
+    setDestinationCoords(null);
     supabase.from('goods_prices').select('product_name, unit_price').order('product_name').then(({ data }) => {
       setAvailableProducts((data || []).map((r: any) => String(r.product_name)));
       const priceMap: Record<string, number> = {};
@@ -221,9 +224,12 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
         updated_at: now,
         metadata: { items: itemsWithPricing, discountPercent: discountPct },
       };
-      let { data: inserted, error } = await supabase.from('orders')
-        .insert({ ...orderPayload, customer_id: resolvedCustomer?.id || null })
-        .select().single();
+      const insertPayload: Record<string, unknown> = { ...orderPayload, customer_id: resolvedCustomer?.id || null };
+      if (destinationCoords) {
+        insertPayload.destination_lat = destinationCoords.lat;
+        insertPayload.destination_lng = destinationCoords.lng;
+      }
+      let { data: inserted, error } = await supabase.from('orders').insert(insertPayload).select().single();
       if (error?.message?.includes('customer_id') || error?.code === '22P02') {
         // customer_id can't take this value right now — either the column isn't
         // migrated yet, or (as on production) it's typed uuid while customers.id
@@ -231,7 +237,14 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
         // a 22P02 "invalid input syntax for type uuid" error. Either way, order
         // creation shouldn't be blocked by a link that can't be saved yet — it'll
         // just have no discount/customer tie until the column type is fixed.
-        ({ data: inserted, error } = await supabase.from('orders').insert(orderPayload).select().single());
+        const { customer_id, ...withoutCustomer } = insertPayload;
+        ({ data: inserted, error } = await supabase.from('orders').insert(withoutCustomer).select().single());
+      }
+      if (error?.message?.includes('destination_lat') || error?.message?.includes('destination_lng')) {
+        // Columns not migrated yet on this environment — don't let that block
+        // order creation, just save without the coordinates.
+        const { destination_lat, destination_lng, ...withoutCoords } = insertPayload;
+        ({ data: inserted, error } = await supabase.from('orders').insert(withoutCoords).select().single());
       }
 
       if (error) { addNotification(`Failed to create order: ${error.message}`); return; }
@@ -246,6 +259,7 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
       setShowNewModal(false);
       setLineItems([{ productName: '', quantity: 1 }]);
       setForm({ clientName: '', destination: '', paymentMode: 'CASH', customerId: '' });
+      setDestinationCoords(null);
       addNotification('Order created successfully. Routed to Management for review.');
     } catch (e: any) {
       console.error(e);
@@ -452,10 +466,12 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
                   </div>
                   <div className="col-span-2">
                     <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Destination</label>
-                    <input type="text" value={form.destination}
-                      onChange={e => setForm(prev => ({ ...prev, destination: e.target.value }))}
-                      placeholder="e.g. Accra, Tema, Kumasi..."
-                      className="w-full px-3 py-2 text-sm rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />
+                    <DestinationLocator
+                      value={form.destination}
+                      onChange={text => setForm(prev => ({ ...prev, destination: text }))}
+                      onResolve={setDestinationCoords}
+                      placeholder="Enter the destination name, or its coordinates…"
+                    />
                   </div>
                 </div>
 

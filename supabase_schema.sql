@@ -1023,3 +1023,9 @@ ALTER TABLE public.profiles RENAME COLUMN is_ceo TO is_admin;
 -- ─────────────────────────────────────────────────────────────────────────────
 ALTER TABLE public.delivery_logs ADD COLUMN IF NOT EXISTS destination_lat NUMERIC;
 ALTER TABLE public.delivery_logs ADD COLUMN IF NOT EXISTS destination_lng NUMERIC;
+
+-- Same geocoded-destination pattern, now also on Marketing's sales orders —
+-- the "New Sales Order" form's Destination field resolves a place name or
+-- typed coordinates to a point via the same DestinationLocator component.
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS destination_lat NUMERIC;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS destination_lng NUMERIC;
