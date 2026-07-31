@@ -1,8 +1,9 @@
 // src/views/ceo/InvoicesView.tsx
 import { useState, useEffect } from 'react';
 import { Download, Eye, Printer, Plus, X, Trash2 } from 'lucide-react';
+import QRCode from 'qrcode';
 import { invoices as invoicesApi } from '../../services/apiClient';
-import { exportToCSV } from '../../utils/export';
+import { exportToCSV, safeDisplayName } from '../../utils/export';
 import EntityDetailPanel from '../../components/global/EntityDetailPanel';
 import type { CurrentUser } from '../../types/erp';
 
@@ -38,16 +39,16 @@ interface Props {
   currentUser?: CurrentUser | null;
 }
 
-async function printProforma(r: ProformaRow, issuedBy: string) {
+async function printProforma(r: ProformaRow, issuedByRaw: string) {
   const GREEN = '#1a5c32', BLUE = '#29a9dc', LIME = '#7fc241';
+  const issuedBy = safeDisplayName(issuedByRaw, 'REBMA IMPEX Staff');
   let qrDataUrl = '';
   try {
-    const QRCode = await import('qrcode');
     qrDataUrl = await QRCode.toDataURL(
       `REBMA IMPEX GHANA LIMITED\nProforma: ${r.proforma_no}\nCustomer: ${r.client_name}\nGrand Total: ${r.currency} ${Number(r.grand_total).toLocaleString()}\nIssued by: ${issuedBy}`,
       { width: 140, margin: 1, color: { dark: GREEN, light: '#ffffff' } }
     );
-  } catch { qrDataUrl = ''; }
+  } catch (err) { console.error('QR generation failed for proforma', r.proforma_no, err); qrDataUrl = ''; }
 
   const dateStr = new Date(r.created_at).toISOString().split('T')[0];
 
@@ -153,6 +154,7 @@ async function printProforma(r: ProformaRow, issuedBy: string) {
   </body></html>`;
   const w = window.open('', '_blank', 'width=860,height=900');
   if (w) { w.document.write(html); w.document.close(); }
+  else { alert('Your browser blocked the invoice pop-up. Please allow pop-ups for this site, then try again.'); }
 }
 
 const emptyLine = (): LineItem => ({ productName: '', quantity: 1, unitPrice: 0 });

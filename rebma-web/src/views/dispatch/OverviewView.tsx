@@ -83,7 +83,7 @@ export default function DispatchOverviewView({ addNotification, setActiveSubTab,
   const [volPeriod, setVolPeriod]   = useState('This Week');
 
   // Assign driver form state
-  const [assignOrderId, setAssignOrderId] = useState('');
+  const [assignDeliveryId, setAssignDeliveryId] = useState('');
   const [assignDriverId, setAssignDriverId] = useState('');
   const [assigning, setAssigning] = useState(false);
 
@@ -138,46 +138,48 @@ export default function DispatchOverviewView({ addNotification, setActiveSubTab,
   const activeDeliveries = deliveries.filter(d => ['ASSIGNED', 'IN_TRANSIT'].includes(d.status)).slice(0, 6);
   const availableDrivers = drivers.filter(d => d.status === 'ACTIVE');
   const upcoming = deliveries.filter(d => ['PENDING_ASSIGNMENT', 'ASSIGNED'].includes(d.status)).slice(0, 4);
+  const pendingDeliveries = deliveries.filter(d => d.status === 'PENDING_ASSIGNMENT');
 
-  // Assign driver handler
+  // Assign driver handler — updates a delivery Operations already created
+  // (status PENDING_ASSIGNMENT) rather than inserting a brand new one from a
+  // typed order ID. Dispatch picking any Finance-approved order directly,
+  // with no validation, was the same bypass the "New Delivery" flow in
+  // DeliveriesView.tsx had — Operations clicking Dispatch/Fulfillment is
+  // meant to be the only thing that creates a delivery job.
   const handleAssign = async () => {
-    if (!assignOrderId || !assignDriverId) { addNotification?.('Please fill in all fields.'); return; }
+    if (!assignDeliveryId || !assignDriverId) { addNotification?.('Please fill in all fields.'); return; }
     setAssigning(true);
     const driver = drivers.find(d => d.id === assignDriverId);
+    const delivery = deliveries.find(d => d.id === assignDeliveryId);
+    if (!driver || !delivery) { addNotification?.('Selection no longer valid — please try again.'); setAssigning(false); return; }
     const now = new Date().toISOString();
-    const newId = `DEL-${String(deliveries.length + 1).padStart(3, '0')}`;
-    const rec: DeliveryRecord = {
-      id: newId, orderId: assignOrderId, clientName: 'New Assignment',
-      destination: 'To be confirmed', driverName: driver?.fullName ?? '',
-      driverId: assignDriverId, dispatchedAt: now, status: 'ASSIGNED', vehicleId: driver?.truckId,
-    };
-    setDeliveries(prev => [rec, ...prev]);
-    const dbRec = {
-      id: rec.id,
-      order_id: rec.orderId,
-      customer_name: rec.clientName,
-      delivery_address: rec.destination,
-      driver_name: rec.driverName,
-      driver_id: rec.driverId || null,
-      vehicle_id: rec.vehicleId || null,
-      status: rec.status,
-      created_at: rec.dispatchedAt
-    };
     try {
-      await supabase.from('delivery_logs').insert([dbRec]);
+      const { error } = await supabase.from('delivery_logs').update({
+        driver_name: driver.fullName,
+        driver_id: driver.id,
+        vehicle_id: driver.truckId || null,
+        status: 'ASSIGNED',
+        updated_at: now,
+      }).eq('id', assignDeliveryId);
+      if (error) throw error;
+
+      setDeliveries(prev => prev.map(d => d.id === assignDeliveryId
+        ? { ...d, driverName: driver.fullName, driverId: driver.id, vehicleId: driver.truckId, status: 'ASSIGNED' }
+        : d));
+
       await supabase.from('supplier_order_notifications').insert({
-        message: `Driver ${driver?.fullName} assigned to ${assignOrderId}`,
+        message: `Driver ${driver.fullName} assigned to ${delivery.orderId}`,
         notified_department: 'OPERATIONS', read: false, created_at: now,
       });
       await supabase.from('global_audit_history').insert({
-        department: 'DISPATCH', action: `Driver ${driver?.fullName} assigned to ${assignOrderId}`,
+        department: 'DISPATCH', action: `Driver ${driver.fullName} assigned to ${delivery.orderId}`,
         performed_by: currentUser?.fullName || 'Dispatch', timestamp: now,
       });
-      addNotification?.(`Driver ${driver?.fullName} assigned to ${assignOrderId}`);
+      addNotification?.(`Driver ${driver.fullName} assigned to ${delivery.orderId}`);
     } catch (err: any) {
       addNotification?.(`Failed to assign driver: ${err.message}`);
     } finally {
-      setAssignOrderId(''); setAssignDriverId('');
+      setAssignDeliveryId(''); setAssignDriverId('');
       setAssigning(false);
     }
   };
@@ -347,10 +349,17 @@ export default function DispatchOverviewView({ addNotification, setActiveSubTab,
           {/* Assignment form */}
           <div className="space-y-3">
             <div>
-              <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Order / Delivery ID</label>
-              <input value={assignOrderId} onChange={e => setAssignOrderId(e.target.value)}
-                placeholder="e.g. ORD-1011"
-                className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm focus:outline-none focus:border-[var(--accent)] text-[var(--text-primary)] placeholder-[var(--text-muted)]" />
+              <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Delivery Awaiting Driver</label>
+              <select value={assignDeliveryId} onChange={e => setAssignDeliveryId(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm focus:outline-none focus:border-[var(--accent)] text-[var(--text-primary)]">
+                <option value="">
+                  {pendingDeliveries.length === 0 ? 'No deliveries awaiting a driver' : 'Choose a delivery...'}
+                </option>
+                {pendingDeliveries.map(d => (
+                  <option key={d.id} value={d.id}>{d.orderId} — {d.clientName || 'Unnamed client'}</option>
+                ))}
+              </select>
+              <p className="text-[11px] text-[var(--text-muted)] mt-1">Only deliveries Operations has already sent over show up here.</p>
             </div>
             <div>
               <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Select Driver</label>
@@ -360,7 +369,7 @@ export default function DispatchOverviewView({ addNotification, setActiveSubTab,
                 {availableDrivers.map(d => <option key={d.id} value={d.id}>{d.fullName} — {d.truckId}</option>)}
               </select>
             </div>
-            <button onClick={handleAssign} disabled={assigning || !assignOrderId || !assignDriverId}
+            <button onClick={handleAssign} disabled={assigning || !assignDeliveryId || !assignDriverId}
               className="w-full py-2.5 rounded-xl text-white text-sm font-semibold disabled:opacity-50 transition-opacity hover:opacity-90" style={{ background: 'var(--accent)' }}>
               {assigning ? 'Assigning...' : 'Assign Driver'}
             </button>

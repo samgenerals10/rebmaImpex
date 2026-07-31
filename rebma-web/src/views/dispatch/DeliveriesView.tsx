@@ -2,14 +2,13 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { dispatch as dispatchApi } from '../../services/apiClient';
 import {
-  Truck, CheckCircle, XCircle, Plus, Search, Eye, X, Clock,
+  Truck, CheckCircle, XCircle, Search, Eye, X, Clock,
   Download, MoreVertical, ChevronLeft, MapPin, Camera, AlertCircle,
   Calendar, User, Package, UserCheck, Edit, Trash2, MessageCircle
 } from 'lucide-react';
 import { exportToCSV, exportToPDF } from '../../utils/export';
 import type { DeliveryRecord, Driver } from '../../types/erp';
 import DispatchMap from '../../components/dispatch/DispatchMap';
-import DestinationLocator, { type Coords } from '../../components/dispatch/DestinationLocator';
 import { useFullscreenToggle, FullscreenButton } from '../../components/global/FullscreenToggle';
 import CountUp from '../../components/CountUp';
 
@@ -306,12 +305,8 @@ export default function DeliveriesView({ addNotification, currentUser }: Props) 
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
   const [driverFilter, setDriverFilter] = useState('');
   const [dateFilter, setDateFilter] = useState('');
-  const [showNew, setShowNew] = useState(false);
   const [detailRecord, setDetailRecord] = useState<DeliveryRecord | null>(null);
   const [assignTarget, setAssignTarget] = useState<DeliveryRecord | null>(null);
-  const [form, setForm] = useState({ clientName: '', orderId: '', destination: '', driverId: '' });
-  const [destinationCoords, setDestinationCoords] = useState<Coords | null>(null);
-  const [dispatchableOrders, setDispatchableOrders] = useState<{ id: string; clientName: string; destination: string }[]>([]);
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -338,24 +333,6 @@ export default function DeliveriesView({ addNotification, currentUser }: Props) 
         deliveryNotes: row.notes || undefined,
       }));
       setDeliveries(mapped);
-
-      // "New Delivery" must point at a real order — delivery_logs.order_id
-      // is a foreign key to orders.id, so letting dispatch type an
-      // arbitrary string there fails with a constraint violation the
-      // instant it doesn't match a real row. APPROVED orders are exactly
-      // the ones finance has cleared but that don't have a delivery job yet.
-      const dispatchedOrderIds = new Set((mapped || []).map(d => d.orderId).filter(Boolean));
-      // Finance's own approval flow bumps status APPROVED -> PROCESSING
-      // synchronously (see finance.evaluateOrder), so APPROVED barely exists
-      // as an observable state on its own — querying only APPROVED left this
-      // list permanently empty in practice.
-      const { data: approvedOrders } = await supabase
-        .from('orders')
-        .select('id, client_name, customer_name, destination')
-        .in('status', ['APPROVED', 'PROCESSING']);
-      setDispatchableOrders((approvedOrders || [])
-        .filter(o => !dispatchedOrderIds.has(o.id))
-        .map(o => ({ id: o.id, clientName: o.customer_name || o.client_name || '', destination: o.destination || '' })));
     } catch { setDeliveries([]); }
     try {
       const { data } = await supabase.from('drivers').select('*');
@@ -493,72 +470,6 @@ export default function DeliveriesView({ addNotification, currentUser }: Props) 
     }
   };
 
-  const createDelivery = async () => {
-    if (!form.clientName || !form.orderId || !form.destination) return;
-    if (submitting) return;
-    setSubmitting(true);
-    try {
-      const driver = drivers.find(d => d.id === form.driverId);
-      const dispatchedAt = new Date().toISOString();
-      const status = form.driverId ? 'ASSIGNED' : 'PENDING_ASSIGNMENT';
-
-      // No client-generated id — delivery_logs.id has its own DB default
-      // ('DEL-' + random hex); overriding it here risks collisions across
-      // concurrent dispatchers and doesn't match the format used everywhere
-      // else in the app.
-      const dbRec = {
-        order_id: form.orderId,
-        customer_name: form.clientName,
-        delivery_address: form.destination,
-        driver_name: driver?.fullName ?? '',
-        driver_id: form.driverId || null,
-        vehicle_id: driver?.truckId || null,
-        status,
-        created_at: dispatchedAt
-      };
-
-      let { data: inserted, error } = await supabase.from('delivery_logs')
-        .insert([destinationCoords ? { ...dbRec, destination_lat: destinationCoords.lat, destination_lng: destinationCoords.lng } : dbRec])
-        .select().single();
-      if (error?.message?.includes('destination_lat') || error?.message?.includes('destination_lng')) {
-        // Columns not migrated onto the live DB yet — the delivery itself
-        // shouldn't be blocked by a location that can't be saved yet.
-        ({ data: inserted, error } = await supabase.from('delivery_logs').insert([dbRec]).select().single());
-      }
-      if (error) throw error;
-
-      // Don't mark the order OUT_FOR_DELIVERY yet — a driver being assigned
-      // isn't the same as a driver actually moving. It stays at its current
-      // status (still APPROVED/PROCESSING) until the driver starts sharing
-      // live location from their tracking screen (see DriverTrackingView),
-      // which is the real "out for delivery" moment. It still drops off this
-      // list immediately below since dispatchedOrderIds is keyed off
-      // delivery_logs existing, not orders.status.
-      setDispatchableOrders(prev => prev.filter(o => o.id !== form.orderId));
-
-      const rec: DeliveryRecord = {
-        id: inserted.id,
-        orderId: form.orderId, clientName: form.clientName,
-        destination: form.destination, driverName: driver?.fullName ?? '',
-        driverId: form.driverId, dispatchedAt,
-        status,
-        vehicleId: driver?.truckId,
-      };
-
-      setDeliveries(prev => [rec, ...prev]);
-
-      await supabase.from('supplier_order_notifications').insert({ message: `New delivery ${rec.id} created`, notified_department: 'OPERATIONS', read: false, created_at: rec.dispatchedAt });
-      addNotification(`New delivery ${rec.id} dispatched.`);
-      setShowNew(false);
-      setForm({ clientName: '', orderId: '', destination: '', driverId: '' });
-      setDestinationCoords(null);
-    } catch (e: any) {
-      alert(e.message || 'Failed to dispatch delivery.');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
   const handleAssignDriver = async (delivery: DeliveryRecord, driverId: string, notes: string) => {
     const driver = drivers.find(d => d.id === driverId);
     if (!driver) return;
@@ -617,10 +528,6 @@ export default function DeliveriesView({ addNotification, currentUser }: Props) 
           <button onClick={() => exportToPDF('Delivery Job Board', filtered, ['id', 'orderId', 'clientName', 'driverName', 'status'])}
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[var(--border)] text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-card)]">
             <Download size={14} /> PDF
-          </button>
-          <button onClick={() => setShowNew(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl text-white text-sm font-semibold" style={{ background: 'var(--accent)' }}>
-            <Plus size={15} /> New Delivery
           </button>
         </div>
       </div>
@@ -781,67 +688,6 @@ export default function DeliveriesView({ addNotification, currentUser }: Props) 
         </div>
       </div>
 
-      {/* New Delivery Modal */}
-      {showNew && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setShowNew(false)}>
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div className="relative bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-6 w-full max-w-2xl shadow-2xl" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="text-lg font-bold text-[var(--text-primary)]">New Delivery</h2>
-              <button onClick={() => setShowNew(false)} className="p-1.5 rounded-lg hover:bg-[var(--bg-input)]"><X size={16} className="text-[var(--text-muted)]" /></button>
-            </div>
-            <div className="space-y-4">
-              <div>
-                <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Order</label>
-                <select
-                  value={form.orderId}
-                  onChange={e => {
-                    const order = dispatchableOrders.find(o => o.id === e.target.value);
-                    setForm(p => ({ ...p, orderId: e.target.value, clientName: order?.clientName || '', destination: order?.destination || '' }));
-                  }}
-                  className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm focus:outline-none focus:border-[var(--accent)] text-[var(--text-primary)]"
-                >
-                  <option value="">
-                    {dispatchableOrders.length === 0 ? 'No approved orders awaiting dispatch' : 'Choose an order...'}
-                  </option>
-                  {dispatchableOrders.map(o => (
-                    <option key={o.id} value={o.id}>{o.id} — {o.clientName || 'Unnamed client'}</option>
-                  ))}
-                </select>
-                <p className="text-[11px] text-[var(--text-muted)] mt-1">Only orders Finance has approved and that don't already have a delivery job show up here.</p>
-              </div>
-              <div>
-                <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Client Name</label>
-                <input value={form.clientName} onChange={e => setForm(p => ({ ...p, clientName: e.target.value }))} placeholder="e.g. Accra Traders Ltd"
-                  className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm focus:outline-none focus:border-[var(--accent)] text-[var(--text-primary)] placeholder-[var(--text-muted)]" />
-              </div>
-              <div>
-                <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Destination</label>
-                <DestinationLocator
-                  value={form.destination}
-                  onChange={v => setForm(p => ({ ...p, destination: v }))}
-                  onResolve={setDestinationCoords}
-                  placeholder="Full delivery address, place name, or coordinates"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Driver (optional)</label>
-                <select value={form.driverId} onChange={e => setForm(p => ({ ...p, driverId: e.target.value }))}
-                  className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm focus:outline-none focus:border-[var(--accent)] text-[var(--text-primary)]">
-                  <option value="">Assign later (Pending Assignment)</option>
-                  {drivers.filter(d => d.status !== 'OFFLINE').map(d => (
-                    <option key={d.id} value={d.id}>{d.fullName} ({d.truckId})</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 mt-5">
-              <button onClick={() => setShowNew(false)} disabled={submitting} className="flex-1 py-2.5 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-input)] disabled:opacity-50">Cancel</button>
-              <button onClick={createDelivery} disabled={submitting} className="flex-1 py-2.5 rounded-xl text-white text-sm font-semibold disabled:opacity-50" style={{ background: 'var(--accent)' }}>{submitting ? 'Dispatching...' : 'Dispatch'}</button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Assign Driver Modal */}
       {assignTarget && (

@@ -3,6 +3,19 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
+// Profiles with no full_name on file fall back to the raw email elsewhere in
+// the app (apiClient's fullName mapper: full_name || fullName || email), so
+// "Recorded by" / "Issued by" on a printed document can silently be an email
+// address. That's harmless in the visible text, but deadly inside a QR code:
+// iOS's Camera QR reader detects an embedded email and shows a "Mail"
+// quick-action instead of the document's actual content, while Android just
+// shows the raw text — so the same code reads completely differently
+// depending on the phone. Never let a bare email reach a printed name field.
+export function safeDisplayName(name: string | null | undefined, fallback: string): string {
+  if (!name || !name.trim()) return fallback;
+  return name.includes('@') ? fallback : name;
+}
+
 export const exportToCSV = (data: any[], headers: string[], fileName: string) => {
   const csvRows = [];
   // Header row

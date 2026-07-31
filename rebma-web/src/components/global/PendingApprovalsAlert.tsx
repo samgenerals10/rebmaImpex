@@ -97,8 +97,11 @@ export async function fetchPendingForDept(department: string): Promise<PendingIt
       // 'ActiveDeliveries' is the real actionable Deliveries screen — the
       // 'Deliveries' id is just the Dispatch dashboard and has no orders
       // query at all, so a badge pointing there went nowhere.
-      const { count } = await supabase.from('orders').select('id', { count: 'exact', head: true }).in('status', ['APPROVED', 'PROCESSING']);
-      if ((count ?? 0) > 0) items.push({ label: 'orders pending dispatch', count: count!, tab: 'ActiveDeliveries' });
+      // Keyed off delivery_logs, not raw order status — an order sitting at
+      // APPROVED/PROCESSING isn't Dispatch's business yet; it only becomes
+      // that once Operations hands it off (creates the delivery_logs row).
+      const { count } = await supabase.from('delivery_logs').select('id', { count: 'exact', head: true }).eq('status', 'PENDING_ASSIGNMENT');
+      if ((count ?? 0) > 0) items.push({ label: 'deliveries awaiting driver assignment', count: count!, tab: 'ActiveDeliveries' });
     }
 
     if (department === 'PRODUCTION') {

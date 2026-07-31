@@ -9,7 +9,7 @@ import {
   DollarSign, FileText, ClipboardCheck, BarChart2, CreditCard, Receipt,
   TrendingUp, TrendingDown, ArrowRight, RefreshCw, Tag,
   Clock, CheckCircle, AlertTriangle, Building2, Package,
-  ShoppingCart, Wallet, Zap, Star, Activity, FileSpreadsheet, Share2, Printer, Search, ArrowUpRight, ArrowDownLeft, Eye, Trash2, Layers, X, History
+  ShoppingCart, Wallet, Zap, Star, Activity, FileSpreadsheet, Share2, Printer, Search, ArrowUpRight, ArrowDownLeft, Eye, Trash2, Layers, X, History, ArrowLeft
 } from 'lucide-react';
 import { exportToCSV, exportToPDF } from '../../utils/export';
 import {
@@ -781,7 +781,7 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
       </div>
 
       {/* ══ DRILL DOWN DETAILED REPORT ══ */}
-      {activeDrillDown && (
+      {activeDrillDown && !selectedLedgerProduct && (
         <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-6 shadow-xl animate-fade-in space-y-6">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-4 border-b border-[var(--border)]">
             <div>
@@ -901,7 +901,7 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
         </div>
       )}
 
-      {/* ══ LEDGER STATEMENT MODAL ══ */}
+      {/* ══ LEDGER STATEMENT PAGE ══ */}
       {selectedLedgerProduct && (() => {
         const productName = selectedLedgerProduct.name || selectedLedgerProduct.productName || selectedLedgerProduct.itemName || '';
         const currentPrices = getPricesForProduct(productName);
@@ -946,18 +946,34 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
           entries.push(e);
         }
         
-        const totalIn = entries.filter(e => e.movement_type === 'ADD').reduce((s, e) => s + Number(e.quantity || 0), 0);
         const totalOut = entries.filter(e => e.movement_type === 'REMOVE').reduce((s, e) => s + Number(e.quantity || 0), 0);
-        const netQty = stock.find(s => s.product_name.toLowerCase().trim() === productName.toLowerCase().trim())?.quantity || (totalIn - totalOut);
-        
+        // The `stock` table is the authoritative "what's actually on hand right
+        // now" figure — the raw ledger ADD sum below isn't, because cargo
+        // batches that were later deleted (fully consumed, or cleared in a
+        // reset) leave their historical ADD rows behind with nothing to
+        // reverse them. Falling back to totalIn-totalOut only when there's no
+        // stock row keeps a product with zero real stock reading as 0, not
+        // silently re-deriving from ??? that fallback (`||` treats 0 as
+        // missing, `??` doesn't).
+        const rawTotalIn = entries.filter(e => e.movement_type === 'ADD').reduce((s, e) => s + Number(e.quantity || 0), 0);
+        const netQty = Number(stock.find(s => s.product_name.toLowerCase().trim() === productName.toLowerCase().trim())?.quantity ?? (rawTotalIn - totalOut));
+        // Derived so the three headline numbers always reconcile (IN - OUT =
+        // Remaining) instead of "Total Received" showing every unit this
+        // product has ever received across its whole history — including
+        // batches that no longer exist — while Remaining reflects only what's
+        // real today. The full historical log below is untouched.
+        const totalIn = netQty + totalOut;
+
         return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={() => setSelectedLedgerProduct(null)}>
-            <div className="relative bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl w-full max-w-3xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden font-sans" onClick={e => e.stopPropagation()}>
-              
+          <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-xl animate-fade-in overflow-hidden font-sans">
+
               {/* Header */}
               <div className="bg-gradient-to-r from-[var(--accent)] to-[#0298d0] p-6 text-white shrink-0">
                 <div className="flex justify-between items-start">
                   <div>
+                    <button onClick={() => setSelectedLedgerProduct(null)} className="flex items-center gap-1 text-[10px] font-bold text-white/80 hover:text-white mb-2 cursor-pointer">
+                      <ArrowLeft className="w-3.5 h-3.5" /> Back
+                    </button>
                     <span className="text-[9px] font-extrabold uppercase tracking-widest bg-white/25 px-2 py-0.5 rounded-full">
                       Ledger statement & Audit report
                     </span>
@@ -1045,7 +1061,7 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
               </div>
 
               {/* Table Logs */}
-              <div className="flex-1 overflow-y-auto p-6 min-h-[250px]">
+              <div className="p-6 min-h-[250px]">
                 {entries.length === 0 ? (
                   <div className="text-center text-xs text-[var(--text-muted)] py-12">No movement logs found for this product.</div>
                 ) : (
@@ -1083,8 +1099,7 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
                   </table>
                 )}
               </div>
-            </div>
-          </div>
+        </div>
         );
       })()}
 

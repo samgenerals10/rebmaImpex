@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabaseClient';
 import {
   Search, Download, CheckCircle, XCircle, Eye, MoreVertical,
   ArrowLeft, Package, Clock, DollarSign, CreditCard, Smartphone,
-  FileText, Camera, Upload, RefreshCw, Truck
+  FileText, Camera, Upload, RefreshCw
 } from 'lucide-react';
 import { exportToCSV } from '../../utils/export';
 import type { Order } from '../../types/erp';
@@ -17,7 +17,6 @@ interface Props {
   ordersList?: Order[];
   setOrdersList?: React.Dispatch<React.SetStateAction<Order[]>>;
   onEvaluateOrder?: (id: string, approve: boolean) => void;
-  onSendToDispatch?: (id: string) => void;
   currentUser?: { fullName: string; department: string } | null;
 }
 
@@ -94,7 +93,7 @@ function mapRow(r: any): Order {
   };
 }
 
-export default function FinanceOrdersQueueView({ addNotification, ordersList: propOrders, setOrdersList, onEvaluateOrder, onSendToDispatch, currentUser }: Props) {
+export default function FinanceOrdersQueueView({ addNotification, ordersList: propOrders, setOrdersList, onEvaluateOrder, currentUser }: Props) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(!propOrders || propOrders.length === 0);
   const [search, setSearch] = useState('');
@@ -180,17 +179,14 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
       const now = new Date().toISOString();
 
       await supabase.from('orders').update({ status: updatedStatus }).eq('id', order.id);
-      await supabase.from('delivery_logs').insert([{
-        order_id: order.id,
-        customer_name: order.clientName,
-        delivery_address: order.destination || order.clientName,
-        status: 'PENDING_ASSIGNMENT',
-        created_at: now,
-      }]);
+      // No delivery_logs row here — creating one the instant Finance approves
+      // is what let an order show up in Dispatch's driver-assignment screen
+      // before Operations had done anything at all. That handoff now only
+      // happens when Operations clicks Dispatch/Fulfillment in
+      // ApprovedGoodsView, which is the one place that inserts it.
       await supabase.from('supplier_order_notifications').insert([
         { message: `Finance approved order ${order.ticketNumber || order.id} for ${order.clientName}. Please prepare goods for dispatch.`, notified_department: 'OPERATIONS', read: false },
         { message: `Your order ${order.ticketNumber || order.id} has been approved by Finance. Operations is preparing your goods.`, notified_department: 'MARKETING', read: false },
-        { message: `Order ${order.ticketNumber || order.id} for ${order.clientName} is ready for delivery assignment.`, notified_department: 'DISPATCH', read: false },
       ]);
       await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Order ${order.ticketNumber || order.id} APPROVED for ${order.clientName} — GHS ${(Number(order.totalAmount ?? 0)).toLocaleString()}`, performed_by: performedBy, timestamp: now }]);
 
@@ -652,15 +648,6 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
                           <button onClick={() => { setRejectModal(order.id); }} className="p-1.5 rounded-lg hover:bg-red-100" title="Reject"><XCircle size={14} className="text-red-500" /></button>
                         </>
                       )}
-                      {(order.status === 'APPROVED' || order.status === 'PROCESSING') && onSendToDispatch && (
-                        <button
-                          onClick={() => { onSendToDispatch(order.id); addNotification?.(`Order ${order.ticketNumber || order.id} sent to Dispatch.`); }}
-                          className="p-1.5 rounded-lg hover:bg-indigo-100"
-                          title="Send to Dispatch (auto-assigns the least-busy driver)"
-                        >
-                          <Truck size={14} className="text-indigo-500" />
-                        </button>
-                      )}
                       <div className="relative">
                         <button onClick={() => setMenuOpen(menuOpen === order.id ? null : order.id)} className="p-1.5 rounded-lg hover:bg-[var(--bg-input)]"><MoreVertical size={14} className="text-[var(--text-muted)]" /></button>
                         {menuOpen === order.id && (
@@ -670,9 +657,6 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
                               <button onClick={() => { setSelected(order); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-sm text-green-600 hover:bg-[var(--bg-input)]">Approve Order</button>
                               <button onClick={() => { setRejectModal(order.id); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-[var(--bg-input)]">Reject Order</button>
                             </>}
-                            {(order.status === 'APPROVED' || order.status === 'PROCESSING') && onSendToDispatch && (
-                              <button onClick={() => { onSendToDispatch(order.id); addNotification?.(`Order ${order.ticketNumber || order.id} sent to Dispatch.`); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-sm text-indigo-600 hover:bg-[var(--bg-input)]">Send to Dispatch</button>
-                            )}
                             <button onClick={() => { window.print(); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-input)]">Export PDF</button>
                           </div>
                         )}

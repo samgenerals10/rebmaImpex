@@ -5,11 +5,45 @@
 // Finance/Management/Marketing/CEO sidebars (same data, same component).
 import { useEffect, useState, useCallback } from 'react';
 import { Search, Receipt as ReceiptIcon, Download } from 'lucide-react';
+import QRCode from 'qrcode';
 import { supabase } from '../../lib/supabaseClient';
-import { exportToCSV } from '../../utils/export';
+import { exportToCSV, safeDisplayName } from '../../utils/export';
 import type { OrderLineItem } from '../../types/erp';
 
 const BRAND = { green: '#1a5c32', blue: '#29a9dc', lime: '#7fc241' };
+
+// Spelled-out amount ("Fifty Ghana Cedis only") — standard on Ghanaian
+// financial documents, and it fills what was otherwise a lot of dead space
+// on a single-line-item receipt while doubling as a tamper-check.
+const ONES = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten',
+  'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+const TENS = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+function threeDigitsToWords(n: number): string {
+  let out = '';
+  if (n >= 100) { out += `${ONES[Math.floor(n / 100)]} Hundred`; n %= 100; if (n) out += ' '; }
+  if (n >= 20) { out += TENS[Math.floor(n / 10)]; if (n % 10) out += `-${ONES[n % 10]}`; }
+  else if (n > 0) { out += ONES[n]; }
+  return out;
+}
+function numberToWords(n: number): string {
+  if (n === 0) return 'Zero';
+  const scales = ['', 'Thousand', 'Million', 'Billion'];
+  let scaleIdx = 0;
+  const parts: string[] = [];
+  while (n > 0) {
+    const chunk = n % 1000;
+    if (chunk > 0) parts.unshift(`${threeDigitsToWords(chunk)}${scales[scaleIdx] ? ' ' + scales[scaleIdx] : ''}`);
+    n = Math.floor(n / 1000);
+    scaleIdx++;
+  }
+  return parts.join(' ');
+}
+function amountToWords(amount: number): string {
+  const cedis = Math.floor(amount);
+  const pesewas = Math.round((amount - cedis) * 100);
+  const cedisWords = `${numberToWords(cedis)} Ghana Cedi${cedis === 1 ? '' : 's'}`;
+  return pesewas > 0 ? `${cedisWords}, ${numberToWords(pesewas)} Pesewa${pesewas === 1 ? '' : 's'} Only` : `${cedisWords} Only`;
+}
 
 export interface ReceiptRow {
   id: string;
@@ -38,9 +72,9 @@ export function generateReceiptNumber(): string {
 // document. Renders an itemized table when the underlying order's line
 // items are available, rather than summary cards.
 export async function printReceipt(r: ReceiptRow, lineItems: OrderLineItem[] | null) {
+  const recordedBy = safeDisplayName(r.recordedBy, 'Finance');
   let qrDataUrl = '';
   try {
-    const QRCode = await import('qrcode');
     qrDataUrl = await QRCode.toDataURL(
       [
         'REBMA IMPEX GHANA LIMITED',
@@ -48,12 +82,12 @@ export async function printReceipt(r: ReceiptRow, lineItems: OrderLineItem[] | n
         `Client: ${r.clientName}`,
         `Amount: GHS ${r.amount.toLocaleString()}`,
         `Payment: ${r.paymentMode} — ${r.paymentType}`,
-        `Recorded by: ${r.recordedBy || 'Finance'}`,
+        `Recorded by: ${recordedBy}`,
         `Status: ${r.status}`,
       ].join('\n'),
       { width: 140, margin: 1, color: { dark: BRAND.green, light: '#ffffff' } }
     );
-  } catch { qrDataUrl = ''; }
+  } catch (err) { console.error('QR generation failed for receipt', r.receiptNumber, err); qrDataUrl = ''; }
 
   const dateStr = r.createdAt ? new Date(r.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '';
   const timeStr = r.createdAt ? new Date(r.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
@@ -88,36 +122,41 @@ export async function printReceipt(r: ReceiptRow, lineItems: OrderLineItem[] | n
     .ticket-meta .tno{font-size:22px;font-weight:900;color:${BRAND.green};letter-spacing:1px}
     .ticket-meta .tdate{font-size:9px;color:#64748b;margin-top:3px}
     .div{height:1.5px;background:linear-gradient(90deg,${BRAND.green},${BRAND.blue},transparent);margin:14px 0;border:none;border-radius:99px}
-    .info-row{display:flex;flex-wrap:wrap;gap:4px 22px;font-size:10.5px;color:#475569;margin-bottom:16px}
-    .info-row b{color:#1e293b;font-weight:700}
-    .items{width:100%;border-collapse:collapse;margin-bottom:8px}
-    .items thead th{background:#f0fdf4;color:${BRAND.green};font-size:8.5px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;text-align:left;padding:8px 10px;border-bottom:1.5px solid #16653430}
+    .details-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}
+    .details-grid .fld{background:#f8fafc;border:1px solid #eef2f6;border-radius:9px;padding:8px 12px}
+    .details-grid .fld.full{grid-column:1/-1}
+    .details-grid .fl{font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:#94a3b8;margin-bottom:2px}
+    .details-grid .fv{font-size:12px;font-weight:700;color:#1e293b}
+    .items{width:100%;border-collapse:collapse;margin-bottom:10px}
+    .items thead th{background:#f0fdf4;color:${BRAND.green};font-size:8.5px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;text-align:left;padding:9px 10px;border-bottom:1.5px solid #16653430}
     .items thead th.it-num{text-align:right}
-    .items td{padding:8px 10px;font-size:11.5px;color:#1e293b;border-bottom:1px solid #f1f5f9}
+    .items td{padding:9px 10px;font-size:11.5px;color:#1e293b;border-bottom:1px solid #f1f5f9}
     .items td.it-num{text-align:right;font-variant-numeric:tabular-nums}
     .items td.it-total{font-weight:700}
-    .items td.it-empty{color:#94a3b8;font-style:italic;font-size:10.5px;padding:14px 10px}
-    .totals{display:flex;justify-content:flex-end;margin-bottom:14px}
-    .totals table{border-collapse:collapse}
-    .totals td{padding:4px 10px;font-size:11px}
-    .totals .tl{color:#64748b;text-align:right}
-    .totals .tv{color:#1e293b;font-weight:700;text-align:right;min-width:90px}
-    .totals .grand td{font-size:15px;font-weight:900;color:${BRAND.green};padding-top:8px;border-top:1.5px solid #16653430}
-    .verified{display:inline-flex;align-items:center;gap:6px;background:#f0fdf4;border:1px solid #16653430;border-radius:99px;padding:5px 14px;font-size:9.5px;font-weight:800;color:${BRAND.green};text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px}
+    .items td.it-empty{color:#94a3b8;font-style:italic;font-size:10.5px;padding:16px 10px;text-align:center}
+    .summary{display:flex;justify-content:space-between;align-items:center;gap:16px;background:linear-gradient(135deg,${BRAND.green},#2d7a50);border-radius:12px;padding:14px 18px;margin-bottom:14px}
+    .summary .sw{color:rgba(255,255,255,0.85);font-size:11px;line-height:1.5;max-width:280px}
+    .summary .sw b{color:#fff}
+    .summary .sr{text-align:right}
+    .summary .sl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:rgba(255,255,255,0.65);margin-bottom:3px}
+    .summary .sv{font-size:22px;font-weight:900;color:#fff;white-space:nowrap}
+    .verified{display:inline-flex;align-items:center;gap:6px;background:#f0fdf4;border:1px solid #16653430;border-radius:99px;padding:5px 14px;font-size:9.5px;font-weight:800;color:${BRAND.green};text-transform:uppercase;letter-spacing:.08em;margin-bottom:16px}
+    .thanks{font-size:11px;color:#475569;margin-bottom:16px}
+    .thanks b{color:${BRAND.green}}
     .perf{display:flex;align-items:center;margin:0 -34px 14px;overflow:hidden}
     .perf-line{flex:1;border-top:2px dashed #cbd5e1}
     .perf-circle{width:22px;height:22px;border-radius:50%;background:#e8f4ea;flex-shrink:0}
-    .footer{display:flex;justify-content:space-between;align-items:flex-end;padding-top:14px;border-top:1px dashed #e2e8f0}
+    .footer{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;padding-top:6px}
     .legal{font-size:8px;color:#94a3b8;line-height:1.8;max-width:330px}
     .legal strong{color:#64748b}
     .qr-wrap{text-align:center}
     .qr-wrap img{width:92px;height:92px;border:2px solid #e2e8f0;border-radius:8px}
     .ql{font-size:7.5px;color:#94a3b8;margin-top:3px}
     .ql2{font-size:7px;color:${BRAND.green};font-weight:700;margin-top:1px}
-    .foot-bar{background:#f8fafc;border-top:1px solid #e2e8f0;padding:9px 34px;display:flex;justify-content:space-between;align-items:center}
+    .foot-bar{background:#f8fafc;border-top:1px solid #e2e8f0;padding:9px 34px;display:flex;justify-content:space-between;align-items:center;margin-top:18px}
     .foot-bar span{font-size:8.5px;color:#94a3b8}
     .foot-bar .brand-slug{color:${BRAND.green};font-weight:700}
-    @media print{body{background:#fff;padding:0}.ticket{margin:0;box-shadow:none;border-radius:0;width:100%}.stripe{-webkit-print-color-adjust:exact;print-color-adjust:exact}.items thead th{-webkit-print-color-adjust:exact;print-color-adjust:exact}button{display:none!important}}
+    @media print{body{background:#fff;padding:0}.ticket{margin:0;box-shadow:none;border-radius:0;width:100%}.stripe{-webkit-print-color-adjust:exact;print-color-adjust:exact}.items thead th{-webkit-print-color-adjust:exact;print-color-adjust:exact}.summary{-webkit-print-color-adjust:exact;print-color-adjust:exact}button{display:none!important}}
   </style></head><body>
   <div>
     <div class="ticket">
@@ -143,11 +182,11 @@ export async function printReceipt(r: ReceiptRow, lineItems: OrderLineItem[] | n
 
         <hr class="div"/>
 
-        <div class="info-row">
-          <span>Client: <b>${r.clientName}</b></span>
-          <span>Payment: <b>${r.paymentMode} · ${r.paymentType}</b></span>
-          <span>Order Ref: <b>${r.ticketNumber || r.orderId || '—'}</b></span>
-          <span>Recorded By: <b>${r.recordedBy || 'Finance'}</b></span>
+        <div class="details-grid">
+          <div class="fld"><div class="fl">Client</div><div class="fv">${r.clientName}</div></div>
+          <div class="fld"><div class="fl">Order Ref</div><div class="fv">${r.ticketNumber || r.orderId || '—'}</div></div>
+          <div class="fld"><div class="fl">Payment Method</div><div class="fv">${r.paymentMode} · ${r.paymentType}</div></div>
+          <div class="fld"><div class="fl">Recorded By</div><div class="fv">${recordedBy}</div></div>
         </div>
 
         <table class="items">
@@ -162,13 +201,17 @@ export async function printReceipt(r: ReceiptRow, lineItems: OrderLineItem[] | n
           <tbody>${itemRows}</tbody>
         </table>
 
-        <div class="totals">
-          <table>
-            <tr class="grand"><td class="tl">Amount Paid</td><td class="tv">GHS ${r.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td></tr>
-          </table>
+        <div class="summary">
+          <div class="sw"><b>Amount in words:</b><br/>${amountToWords(r.amount)}</div>
+          <div class="sr">
+            <div class="sl">Amount Paid</div>
+            <div class="sv">GHS ${r.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+          </div>
         </div>
 
         <div class="verified">✓ Payment Verified — ${r.status}</div>
+
+        <div class="thanks">Thank you for your business with <b>REBMA IMPEX Ghana Limited</b>. Please retain this receipt for your records.</div>
 
         <div class="perf">
           <div class="perf-circle"></div>
@@ -206,6 +249,7 @@ export async function printReceipt(r: ReceiptRow, lineItems: OrderLineItem[] | n
 
   const win = window.open('', '_blank', 'width=740,height=900');
   if (win) { win.document.write(html); win.document.close(); }
+  else { alert('Your browser blocked the receipt pop-up. Please allow pop-ups for this site, then try again.'); }
 }
 
 interface Props {

@@ -4,7 +4,8 @@ import {
   Search, Download, Package, PackageCheck, TicketCheck,
   ChevronUp, ChevronDown, Truck, Printer, X, AlertCircle,
 } from 'lucide-react';
-import { exportToCSV } from '../../utils/export';
+import QRCode from 'qrcode';
+import { exportToCSV, safeDisplayName } from '../../utils/export';
 import CountUp from '../../components/CountUp';
 
 // ── Brand colors from REBMA logo ──────────────────────────────────────────
@@ -39,9 +40,10 @@ interface Props { addNotification?: (msg: string) => void; setActiveSubTab?: (t:
 
 // ── ticket printer ──────────────────────────────────────────────────────────
 async function printOperationsTicket(order: ApprovedOrder, dispatchedQty?: number, printedBy?: string) {
+  const issuedBy = safeDisplayName(order.issuedBy, 'Pending record');
+  const safePrintedBy = printedBy ? safeDisplayName(printedBy, '') : '';
   let qrDataUrl = '';
   try {
-    const QRCode = await import('qrcode');
     qrDataUrl = await QRCode.toDataURL(
       [
         'REBMA IMPEX GHANA LIMITED',
@@ -53,12 +55,12 @@ async function printOperationsTicket(order: ApprovedOrder, dispatchedQty?: numbe
         `Destination: ${order.destination}`,
         `Payment: ${order.paymentMode}`,
         `Status: ${order.status}`,
-        `Issued by: ${order.issuedBy}`,
-        printedBy ? `Printed by: ${printedBy}` : '',
+        `Issued by: ${issuedBy}`,
+        safePrintedBy ? `Printed by: ${safePrintedBy}` : '',
       ].filter(Boolean).join('\n'),
       { width: 160, margin: 1, color: { dark: '#1a5c32', light: '#ffffff' } }
     );
-  } catch { qrDataUrl = ''; }
+  } catch (err) { console.error('QR generation failed for ticket', order.ticketNumber, err); qrDataUrl = ''; }
 
   const statusColors: Record<string, [string, string]> = {
     APPROVED:        ['#f0fdf4', '#166534'],
@@ -156,9 +158,9 @@ async function printOperationsTicket(order: ApprovedOrder, dispatchedQty?: numbe
           </div>
           <div class="sb-item">
             <div class="sl">Issued By (Finance)</div>
-            <div class="sv" style="font-size:11px">${order.issuedBy && order.issuedBy !== '—' ? order.issuedBy : 'Pending record'}</div>
+            <div class="sv" style="font-size:11px">${issuedBy}</div>
           </div>
-          ${printedBy ? `<div class="sb-item"><div class="sl">Printed By (Ops)</div><div class="sv" style="font-size:11px">${printedBy}</div></div>` : ''}
+          ${safePrintedBy ? `<div class="sb-item"><div class="sl">Printed By (Ops)</div><div class="sv" style="font-size:11px">${safePrintedBy}</div></div>` : ''}
         </div>
 
         ${(() => {
@@ -235,6 +237,7 @@ async function printOperationsTicket(order: ApprovedOrder, dispatchedQty?: numbe
 
   const win = window.open('', '_blank', 'width=700,height=860');
   if (win) { win.document.write(html); win.document.close(); }
+  else { alert('Your browser blocked the ticket pop-up. Please allow pop-ups for this site, then try again.'); }
 }
 
 // ── helpers ────────────────────────────────────────────────────────────────
@@ -346,12 +349,17 @@ export default function ApprovedGoodsView({ addNotification, setActiveSubTab: _s
       : Number(meta.quantity || (dispatchTarget as any).quantity || 1);
 
     try {
-      // 1. Create delivery_log
+      // 1. Create delivery_log — this is the sole handoff point from
+      // Operations to Dispatch (Finance's approval no longer creates one).
+      // Driver name is optional here: if Operations names a driver on the
+      // spot the delivery starts ASSIGNED, otherwise it lands as
+      // PENDING_ASSIGNMENT so it shows up in Dispatch's own "Assign Driver"
+      // queue for them to pick one.
       await supabase.from('delivery_logs').insert({
         order_id: dispatchTarget.id,
         vehicle_id: dispatchForm.vehicleId || 'TBD',
         driver_name: dispatchForm.driverName || null,
-        status: 'ASSIGNED',
+        status: dispatchForm.driverName ? 'ASSIGNED' : 'PENDING_ASSIGNMENT',
         timestamp: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       });
