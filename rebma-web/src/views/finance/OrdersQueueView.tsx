@@ -10,6 +10,7 @@ import type { Order } from '../../types/erp';
 import InvoiceLineItems, { getProductSummary, getProductSummaryWithQty } from '../../components/InvoiceLineItems';
 import { useFullscreenToggle, FullscreenButton } from '../../components/global/FullscreenToggle';
 import CountUp from '../../components/CountUp';
+import { generateReceiptNumber, printReceipt } from './ReceiptsView';
 
 interface Props {
   addNotification?: (msg: string) => void;
@@ -236,18 +237,26 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
       // Same identifier as the ticket/receipt elsewhere — one document number
       // traces a sale across every generated document.
       const invoiceNumber = order.ticketNumber || `ORD-${String(order.id).slice(0, 6).toUpperCase()}`;
-      const paymentRecord = {
+      const amountPaid = Number(payForm.amountReceived || order.totalAmount);
+      const paymentType = isPartPayment ? 'Part Payment' : 'Full Payment';
+      const recordedBy = currentUser?.fullName || 'Finance';
+      const createdAt = new Date().toISOString();
+      // Distinct from the order's own ticket number — a receipt is its own
+      // document, not the dispatch ticket reprinted with a different label.
+      const receiptNumber = generateReceiptNumber();
+      const paymentRecord: Record<string, unknown> = {
         order_id: order.id,
         client_name: order.clientName,
         customer_name: order.clientName,
-        amount: Number(payForm.amountReceived || order.totalAmount),
+        amount: amountPaid,
         payment_mode: order.paymentMode,
-        payment_type: isPartPayment ? 'Part Payment' : 'Full Payment',
+        payment_type: paymentType,
         momo_number: payForm.momoNumber || null,
         transaction_id: payForm.transactionId || null,
         invoice_number: invoiceNumber,
-        recorded_by: currentUser?.fullName || 'Finance',
-        created_at: new Date().toISOString(),
+        receipt_number: receiptNumber,
+        recorded_by: recordedBy,
+        created_at: createdAt,
         status: 'CONFIRMED',
         payment_details: {
           chequeNumber: payForm.chequeNumber || null,
@@ -257,11 +266,35 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
           notes: payForm.notes || null,
         },
       };
-      const { error: payErr } = await supabase.from('finance_payments').insert([paymentRecord]);
+      let { error: payErr } = await supabase.from('finance_payments').insert([paymentRecord]);
+      if (payErr?.message?.includes('receipt_number')) {
+        // Column not migrated onto the live DB yet — don't let that block
+        // recording the payment, just save without a distinct receipt number
+        // (the receipt view falls back to invoice_number in that case).
+        const { receipt_number, ...withoutReceiptNumber } = paymentRecord;
+        ({ error: payErr } = await supabase.from('finance_payments').insert([withoutReceiptNumber]));
+      }
       if (payErr) { addNotification?.(`Failed to save payment: ${payErr.message}`); throw payErr; }
       // Note: approveOrder sets submitting to false upon completion
       setSubmitting(false);
       await approveOrder(order);
+
+      const wantsReceipt = await window.confirm(`Payment recorded for ${order.clientName}. Generate a receipt now?`);
+      if (wantsReceipt) {
+        printReceipt({
+          id: order.id,
+          clientName: order.clientName,
+          amount: amountPaid,
+          paymentMode: order.paymentMode,
+          paymentType,
+          orderId: order.id,
+          ticketNumber: invoiceNumber,
+          receiptNumber,
+          recordedBy,
+          status: 'CONFIRMED',
+          createdAt,
+        }, order.metadata?.items || null);
+      }
     } catch (e) {
       console.error(e);
       setSubmitting(false);
@@ -619,7 +652,7 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
                           <button onClick={() => { setRejectModal(order.id); }} className="p-1.5 rounded-lg hover:bg-red-100" title="Reject"><XCircle size={14} className="text-red-500" /></button>
                         </>
                       )}
-                      {order.status === 'APPROVED' && onSendToDispatch && (
+                      {(order.status === 'APPROVED' || order.status === 'PROCESSING') && onSendToDispatch && (
                         <button
                           onClick={() => { onSendToDispatch(order.id); addNotification?.(`Order ${order.ticketNumber || order.id} sent to Dispatch.`); }}
                           className="p-1.5 rounded-lg hover:bg-indigo-100"
@@ -637,7 +670,7 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
                               <button onClick={() => { setSelected(order); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-sm text-green-600 hover:bg-[var(--bg-input)]">Approve Order</button>
                               <button onClick={() => { setRejectModal(order.id); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-[var(--bg-input)]">Reject Order</button>
                             </>}
-                            {order.status === 'APPROVED' && onSendToDispatch && (
+                            {(order.status === 'APPROVED' || order.status === 'PROCESSING') && onSendToDispatch && (
                               <button onClick={() => { onSendToDispatch(order.id); addNotification?.(`Order ${order.ticketNumber || order.id} sent to Dispatch.`); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-sm text-indigo-600 hover:bg-[var(--bg-input)]">Send to Dispatch</button>
                             )}
                             <button onClick={() => { window.print(); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-input)]">Export PDF</button>

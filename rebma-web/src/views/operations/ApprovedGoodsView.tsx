@@ -257,6 +257,12 @@ const SortIco = ({ field, sort }: { field: string; sort: { field: string; dir: s
 export default function ApprovedGoodsView({ addNotification, setActiveSubTab: _sat }: Props) {
   const [goods, setGoods] = useState<ApprovedGood[]>([]);
   const [orders, setOrders] = useState<ApprovedOrder[]>([]);
+  // Orders already handed to a driver (a delivery_logs row exists) — since
+  // an order no longer flips to OUT_FOR_DELIVERY the instant it's dispatched
+  // (that now only happens once the driver actually starts moving), status
+  // alone can't tell "not yet dispatched" from "dispatched, driver not
+  // moving yet" apart. This does.
+  const [dispatchedOrderIds, setDispatchedOrderIds] = useState<Set<string>>(new Set());
   const [currentUserEmail, setCurrentUserEmail] = useState('');
   const [currentUserId, setCurrentUserId] = useState('');
   const [loading, setLoading] = useState(true);
@@ -284,10 +290,12 @@ export default function ApprovedGoodsView({ addNotification, setActiveSubTab: _s
     async function load() {
       setLoading(true);
       try {
-        const [{ data: cargoData }, { data: ordersData }] = await Promise.all([
+        const [{ data: cargoData }, { data: ordersData }, { data: deliveryLogRows }] = await Promise.all([
           supabase.from('cargo_intake').select('*').eq('status', 'APPROVED').order('updated_at', { ascending: false }).limit(200),
           supabase.from('orders').select('*').in('status', ['APPROVED', 'PROCESSING', 'OUT_FOR_DELIVERY', 'DELIVERED']).order('created_at', { ascending: false }).limit(200),
+          supabase.from('delivery_logs').select('order_id').not('order_id', 'is', null),
         ]);
+        setDispatchedOrderIds(new Set((deliveryLogRows || []).map((d: any) => d.order_id).filter(Boolean)));
 
         setGoods((cargoData || []).map((r: any) => ({
           id: String(r.id),
@@ -348,10 +356,11 @@ export default function ApprovedGoodsView({ addNotification, setActiveSubTab: _s
         updated_at: new Date().toISOString(),
       });
 
-      // 2. Move order to OUT_FOR_DELIVERY
-      await supabase.from('orders')
-        .update({ status: 'OUT_FOR_DELIVERY', updated_at: new Date().toISOString() })
-        .eq('id', dispatchTarget.id);
+      // 2. Order stays at its current status (APPROVED/PROCESSING) — being
+      // assigned a driver isn't the same as the driver actually moving.
+      // dispatchedOrderIds (below) is what actually hides the Dispatch
+      // button now; orders.status only becomes OUT_FOR_DELIVERY once the
+      // driver starts sharing live location from their tracking screen.
 
       // Note: Stock table and stock ledger are updated immediately upon Finance payment approval.
       // Dispatch only updates delivery logs, global audits, and status to avoid double-deductions.
@@ -367,11 +376,9 @@ export default function ApprovedGoodsView({ addNotification, setActiveSubTab: _s
       });
 
       // 5. Update local state
-      setOrders(prev => prev.map(o =>
-        o.id === dispatchTarget.id ? { ...o, status: 'OUT_FOR_DELIVERY' } : o
-      ));
+      setDispatchedOrderIds(prev => new Set(prev).add(dispatchTarget.id));
 
-      addNotification?.(`Order ${dispatchTarget.ticketNumber} loaded to Dispatch — stock ledger updated.`);
+      addNotification?.(`Order ${dispatchTarget.ticketNumber} assigned to a driver — will show Out for Delivery once they start the trip.`);
       setDispatchTarget(null);
       setDispatchForm({ vehicleId: '', driverName: '' });
     } catch (e: any) {
@@ -411,7 +418,7 @@ export default function ApprovedGoodsView({ addNotification, setActiveSubTab: _s
     });
 
   const totalGoodsQty = goods.reduce((s, g) => s + g.quantity, 0);
-  const pendingDispatch = orders.filter(o => o.status === 'APPROVED').length;
+  const pendingDispatch = orders.filter(o => (o.status === 'APPROVED' || o.status === 'PROCESSING') && !dispatchedOrderIds.has(o.id)).length;
   const inTransit = orders.filter(o => o.status === 'OUT_FOR_DELIVERY').length;
 
   const th = (label: string, field: string, sort: any, toggle: (f: any) => void) => (
@@ -549,13 +556,16 @@ export default function ApprovedGoodsView({ addNotification, setActiveSubTab: _s
                                 className="flex items-center gap-1 px-2.5 py-1.5 bg-[var(--bg)] border border-[var(--border)] rounded-lg text-[10px] font-semibold text-[var(--text-secondary)] hover:bg-[var(--accent-light)] cursor-pointer whitespace-nowrap transition-colors">
                                 <Printer size={11} /> Ticket
                               </button>
-                              {o.status === 'APPROVED' && (
+                              {(o.status === 'APPROVED' || o.status === 'PROCESSING') && !dispatchedOrderIds.has(o.id) && (
                                 <button onClick={() => { setDispatchTarget(o); setDispatchForm({ vehicleId: '', driverName: '' }); }}
                                   title="Assign a vehicle and driver, then release this order to Dispatch"
                                   className="flex items-center gap-1 px-2.5 py-1.5 text-white rounded-lg text-[10px] font-bold hover:opacity-90 cursor-pointer whitespace-nowrap transition-opacity"
                                   style={{ background: 'var(--accent)' }}>
                                   <Truck size={11} /> Dispatch
                                 </button>
+                              )}
+                              {(o.status === 'APPROVED' || o.status === 'PROCESSING') && dispatchedOrderIds.has(o.id) && (
+                                <span className="text-[9px] font-bold text-blue-600 flex items-center gap-1"><Truck size={9} /> Assigned — awaiting pickup</span>
                               )}
                               {o.status === 'OUT_FOR_DELIVERY' && (
                                 <span className="text-[9px] font-bold text-amber-600 flex items-center gap-1"><Truck size={9} /> In Transit</span>

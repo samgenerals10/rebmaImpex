@@ -273,41 +273,50 @@ function Section({ title, icon: Icon, children, defaultOpen = true }: {
 }
 
 // ── Data Reset Center ─────────────────────────────────────────────────────────
+// Every non-ALL department gets its own audit-trail entry, scoped to just
+// its own rows (see the department filter applied in run()) rather than
+// wiping the shared table outright — so e.g. clearing Marketing's data
+// doesn't also erase Finance's or Operations' audit history.
+const AUDIT_ENTRY = { name: 'global_audit_history', label: 'Department Audit Trail' };
+
 const DEPT_TABLES: Record<string, { label: string; tables: { name: string; label: string }[] }> = {
-  MARKETING:   { label: 'Marketing',   tables: [{ name: 'orders', label: 'Sales Orders' }, { name: 'customers', label: 'Customer Directory' }] },
+  MARKETING:   { label: 'Marketing',   tables: [{ name: 'orders', label: 'Sales Orders' }, { name: 'customers', label: 'Customer Directory' }, AUDIT_ENTRY] },
   FINANCE:     { label: 'Finance',     tables: [
     { name: 'finance_payments', label: 'Finance Payments (Receipts)' },
     { name: 'finance_expenses', label: 'Finance Expenses' },
     { name: 'finance_cheques', label: 'Finance Cheques' },
     { name: 'finance_petty_cash', label: 'Finance Petty Cash' },
     { name: 'recurring_payments', label: 'Recurring Payments' },
-    { name: 'finance_report_history', label: 'Financial Statements & Reports History' }
+    { name: 'finance_report_history', label: 'Financial Statements & Reports History' },
+    AUDIT_ENTRY
   ] },
   OPERATIONS:  { label: 'Operations',  tables: [
     { name: 'cargo_intake', label: 'Cargo Intake Log' },
-    { name: 'stock_ledger', label: 'Recent Stock Movements' },
+    { name: 'stock_ledger', label: 'Recent Stock Movements (Ledger Statement)' },
     { name: 'general_purchases', label: 'General Purchases' },
     { name: 'stock', label: 'Stock Levels' },
-    { name: 'wip_stock', label: 'WIP Stock' }
+    { name: 'wip_stock', label: 'WIP Stock' },
+    AUDIT_ENTRY
   ] },
-  PRODUCTION:  { label: 'Production',  tables: [{ name: 'production_logs', label: 'Production Logs' }, { name: 'production_requests', label: 'Production Requests' }] },
+  PRODUCTION:  { label: 'Production',  tables: [{ name: 'production_logs', label: 'Production Logs' }, { name: 'production_requests', label: 'Production Requests' }, AUDIT_ENTRY] },
   MANAGEMENT:  { label: 'Management',  tables: [
     { name: 'goods_prices', label: 'Goods Prices Catalog' },
     { name: 'supplier_orders', label: 'Supplier Orders' },
     { name: 'suppliers', label: 'Suppliers Directory' },
-    { name: 'global_audit_history', label: 'Global Audit History' },
-    { name: 'departments', label: 'Departments Directory' }
+    { name: 'departments', label: 'Departments Directory' },
+    AUDIT_ENTRY
   ] },
   HR:          { label: 'HR',          tables: [
     { name: 'payroll_batches', label: 'Payroll Batches' },
     { name: 'payroll_entries', label: 'Payroll Entries' },
     { name: 'payroll_items', label: 'Payroll Items' },
     { name: 'leave_requests', label: 'Leave Requests' },
-    { name: 'attendance', label: 'Attendance Logs' }
+    { name: 'attendance', label: 'Attendance Logs' },
+    AUDIT_ENTRY
   ] },
-  DISPATCH:    { label: 'Dispatch',    tables: [{ name: 'delivery_logs', label: 'Delivery Logs' }, { name: 'drivers', label: 'Drivers Directory' }] },
-  RECEPTION:   { label: 'Reception',   tables: [{ name: 'visitors', label: 'Visitors Logs' }] },
-  LOGISTICS:   { label: 'Logistics',   tables: [] },
+  DISPATCH:    { label: 'Dispatch',    tables: [{ name: 'delivery_logs', label: 'Delivery Logs' }, { name: 'drivers', label: 'Drivers Directory' }, AUDIT_ENTRY] },
+  RECEPTION:   { label: 'Reception',   tables: [{ name: 'visitors', label: 'Visitors Logs' }, AUDIT_ENTRY] },
+  LOGISTICS:   { label: 'Logistics',   tables: [AUDIT_ENTRY] },
   ALL:         { label: 'ALL Departments', tables: [
     { name: 'orders', label: 'Sales Orders' }, { name: 'customers', label: 'Customer Directory' },
     { name: 'finance_payments', label: 'Finance Payments (Receipts)' }, { name: 'finance_expenses', label: 'Finance Expenses' }, { name: 'finance_cheques', label: 'Finance Cheques' }, { name: 'finance_petty_cash', label: 'Finance Petty Cash' }, { name: 'recurring_payments', label: 'Recurring Payments' }, { name: 'finance_report_history', label: 'Financial Statements & Reports History' },
@@ -348,8 +357,15 @@ function DataResetSection({ addNotification }: { addNotification: (m: string) =>
     const res: typeof results = [];
     for (const t of cfg.tables) {
       try {
-        // .not('id','is',null) matches every row regardless of id column type (int or uuid)
-        const { error, count } = await (supabase.from(t.name as any).delete() as any).not('id', 'is', null);
+        // global_audit_history is shared across every department — scope its
+        // delete to just this department's own rows so it doesn't erase
+        // everyone else's trail too. ALL still clears it in full via its own
+        // dedicated table entry below, matching every other table there.
+        const query = t.name === 'global_audit_history' && selectedDept !== 'ALL'
+          ? (supabase.from(t.name as any).delete() as any).eq('department', selectedDept)
+          // .not('id','is',null) matches every row regardless of id column type (int or uuid)
+          : (supabase.from(t.name as any).delete() as any).not('id', 'is', null);
+        const { error, count } = await query;
         res.push({ table: t.name, deleted: count ?? 0, error: error?.message });
       } catch (e: any) {
         res.push({ table: t.name, deleted: 0, error: e?.message || 'Unknown error' });
@@ -362,10 +378,40 @@ function DataResetSection({ addNotification }: { addNotification: (m: string) =>
     // real, currently-existing order. stock_ledger itself isn't in every dept's own
     // table list (e.g. MARKETING resets orders but not stock_ledger), so this has to
     // run as an explicit extra step whenever `orders` was part of this reset.
-    if (cfg.tables.some(t => t.name === 'orders')) {
+    //
+    // Deleting those rows alone (as this used to do) left the Ledger Statement
+    // unreconciled: "Received" stayed at its real historical total, "Released"
+    // dropped by whatever got deleted here, but `stock.quantity` was never
+    // touched — the physical deduction those orders caused is real and should
+    // stay real. So before deleting each orphaned row, its quantity is added
+    // back to `stock` first, making this a genuine reversal ("as if that sale
+    // never happened") rather than just erasing the audit trail of one. Skipped
+    // when this reset already wipes `stock_ledger`/`stock` directly (OPERATIONS
+    // or ALL) — those already end up fully consistent on their own.
+    if (cfg.tables.some(t => t.name === 'orders') && !cfg.tables.some(t => t.name === 'stock_ledger')) {
       try {
+        const { data: orphaned, error: fetchErr } = await supabase
+          .from('stock_ledger')
+          .select('id, product_name, quantity')
+          .ilike('reference', '%Order Approved%');
+        if (fetchErr) throw fetchErr;
+
+        const reversalByProduct = new Map<string, number>();
+        for (const row of orphaned || []) {
+          const key = String(row.product_name || '').trim().toLowerCase();
+          if (!key) continue;
+          reversalByProduct.set(key, (reversalByProduct.get(key) || 0) + (Number(row.quantity) || 0));
+        }
+        for (const [productKey, qty] of reversalByProduct) {
+          if (qty <= 0) continue;
+          const { data: stockRow } = await supabase.from('stock').select('id, quantity').ilike('product_name', productKey).limit(1);
+          if (stockRow && stockRow[0]) {
+            await supabase.from('stock').update({ quantity: (Number(stockRow[0].quantity) || 0) + qty, last_updated: new Date().toISOString() }).eq('id', stockRow[0].id);
+          }
+        }
+
         const { error, count } = await (supabase.from('stock_ledger').delete() as any).ilike('reference', '%Order Approved%');
-        res.push({ table: 'stock_ledger (orphaned sale entries)', deleted: count ?? 0, error: error?.message });
+        res.push({ table: 'stock_ledger (orphaned sale entries, reversed into stock)', deleted: count ?? 0, error: error?.message });
       } catch (e: any) {
         res.push({ table: 'stock_ledger (orphaned sale entries)', deleted: 0, error: e?.message || 'Unknown error' });
       }

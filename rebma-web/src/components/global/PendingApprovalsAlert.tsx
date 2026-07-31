@@ -69,19 +69,29 @@ export async function fetchPendingForDept(department: string): Promise<PendingIt
     }
 
     if (department === 'OPERATIONS') {
-      const [cargo, production, rawMaterial] = await Promise.all([
+      const [cargo, production, rawMaterial, orders] = await Promise.all([
         supabase.from('cargo_intake').select('id', { count: 'exact', head: true }).eq('status', 'PENDING_MANAGEMENT_APPROVAL'),
         supabase.from('fulfillment_tickets').select('id', { count: 'exact', head: true }).eq('type', 'PRODUCTION_RELEASE').eq('status', 'PENDING').then(r => r, () => ({ count: 0 })),
         supabase.from('fulfillment_tickets').select('id', { count: 'exact', head: true }).eq('type', 'RAW_MATERIAL_RELEASE').eq('status', 'PENDING').then(r => r, () => ({ count: 0 })),
+        // Finance-cleared orders waiting to be released to a driver — the gap
+        // this was missing: nothing told Operations Finance had handed one
+        // over. Matches the statuses ApprovedGoodsView's own Dispatch button
+        // now acts on (Finance's synchronous APPROVED→PROCESSING bump means
+        // APPROVED barely exists as an observable state on its own).
+        supabase.from('orders').select('id', { count: 'exact', head: true }).in('status', ['APPROVED', 'PROCESSING']),
       ]);
       if ((cargo.count ?? 0) > 0) items.push({ label: 'cargo pending management sign-off', count: cargo.count!, tab: 'PortIngestion' });
       if ((production.count ?? 0) > 0) items.push({ label: 'production releases to prepare', count: production.count!, tab: 'Releases' });
       if ((rawMaterial.count ?? 0) > 0) items.push({ label: 'raw material releases to prepare', count: rawMaterial.count!, tab: 'Releases' });
+      if ((orders.count ?? 0) > 0) items.push({ label: 'orders ready to dispatch', count: orders.count!, tab: 'ApprovedGoods' });
     }
 
     if (department === 'DISPATCH') {
-      const { count } = await supabase.from('orders').select('id', { count: 'exact', head: true }).eq('status', 'PROCESSING');
-      if ((count ?? 0) > 0) items.push({ label: 'orders pending dispatch', count: count!, tab: 'Deliveries' });
+      // 'ActiveDeliveries' is the real actionable Deliveries screen — the
+      // 'Deliveries' id is just the Dispatch dashboard and has no orders
+      // query at all, so a badge pointing there went nowhere.
+      const { count } = await supabase.from('orders').select('id', { count: 'exact', head: true }).in('status', ['APPROVED', 'PROCESSING']);
+      if ((count ?? 0) > 0) items.push({ label: 'orders pending dispatch', count: count!, tab: 'ActiveDeliveries' });
     }
 
     if (department === 'PRODUCTION') {

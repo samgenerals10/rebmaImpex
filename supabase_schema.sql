@@ -357,6 +357,10 @@ ALTER TABLE public.finance_payments ADD COLUMN IF NOT EXISTS transaction_id TEXT
 ALTER TABLE public.finance_payments ADD COLUMN IF NOT EXISTS network TEXT;
 ALTER TABLE public.finance_payments ADD COLUMN IF NOT EXISTS momo_number TEXT;
 ALTER TABLE public.finance_payments ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'Verified';
+-- A receipt previously just displayed the order's own dispatch ticket number
+-- ("TKT-xxxxx"), making it look like a ticket rather than an issued receipt.
+-- This is a distinct, independently-generated receipt number.
+ALTER TABLE public.finance_payments ADD COLUMN IF NOT EXISTS receipt_number TEXT;
 
 -- Missing tables creation
 CREATE TABLE IF NOT EXISTS public.invoices (

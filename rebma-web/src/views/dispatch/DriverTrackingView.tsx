@@ -54,6 +54,26 @@ export default function DriverTrackingView({ driver, onLogout }: DriverTrackingV
 
   useEffect(() => { loadStops(); }, [driver.id]);
 
+  // The real "out for delivery" moment — not when a driver gets assigned,
+  // but when they actually start the trip. Sharing live location is the
+  // driver's own explicit signal that they're moving, so this is where
+  // delivery_logs/orders flip from ASSIGNED to IN_TRANSIT/OUT_FOR_DELIVERY,
+  // not at dispatch-assignment time.
+  useEffect(() => {
+    if (!gpsActive || !activeDeliveryId) return;
+    const stop = stops.find(s => s.id === activeDeliveryId);
+    if (!stop || stop.status !== 'ASSIGNED') return;
+    const now = new Date().toISOString();
+    (async () => {
+      await supabase.from('delivery_logs').update({ status: 'IN_TRANSIT', updated_at: now }).eq('id', activeDeliveryId);
+      if (stop.orderId) {
+        await supabase.from('orders').update({ status: 'OUT_FOR_DELIVERY', updated_at: now }).eq('id', stop.orderId);
+      }
+      setStops(prev => prev.map(s => s.id === activeDeliveryId ? { ...s, status: 'IN_TRANSIT' } : s));
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gpsActive, activeDeliveryId]);
+
   // Streams position while any stop is active — tags pings with the first
   // (current) stop so dispatch's map ties the trail to the right delivery.
   useEffect(() => {

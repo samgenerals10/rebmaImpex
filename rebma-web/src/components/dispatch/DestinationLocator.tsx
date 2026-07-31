@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { MapPin, Loader2 } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
@@ -99,6 +99,17 @@ export default function DestinationLocator({ value, onChange, onResolve, placeho
       setLoading(false);
     }
   }
+
+  // Live preview: re-locate a short pause after the user stops typing, so
+  // the map shows where the destination resolves to without needing an
+  // explicit click — the pin icon/Enter remain there for an immediate,
+  // on-demand check too.
+  useEffect(() => {
+    if (!value.trim()) return;
+    const t = setTimeout(() => { locate(); }, 800);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
 
   const mapCenter: [number, number] = coords ? [coords.lat, coords.lng] : GHANA_CENTER;
 

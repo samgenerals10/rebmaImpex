@@ -546,18 +546,15 @@ export const operations = {
       }).select();
     if (delErr) throw new Error(delErr.message);
 
-    const { data: updatedOrder, error: updateErr } = await supabase
-      .from('orders')
-      .update({ status: 'OUT_FOR_DELIVERY', updated_at: new Date().toISOString() })
-      .eq('id', orderId)
-      .select();
-    if (updateErr) throw new Error(updateErr.message);
+    // Order stays at its current status — a driver being assigned isn't the
+    // same as them actually moving. It only becomes OUT_FOR_DELIVERY once
+    // the driver starts sharing live location (see DriverTrackingView).
 
     // Stock was already removed when the order was finalized (invoiced) — dispatch
     // just hands the already-committed goods to a vehicle, no further stock change.
 
     return {
-      order: updatedOrder ? mapOrderToFrontend(updatedOrder[0]) : null, 
+      order: mapOrderToFrontend(order),
       delivery: delivery ? {
         id: delivery[0].id,
         orderId: delivery[0].order_id,

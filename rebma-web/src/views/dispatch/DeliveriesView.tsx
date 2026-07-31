@@ -345,10 +345,14 @@ export default function DeliveriesView({ addNotification, currentUser }: Props) 
       // instant it doesn't match a real row. APPROVED orders are exactly
       // the ones finance has cleared but that don't have a delivery job yet.
       const dispatchedOrderIds = new Set((mapped || []).map(d => d.orderId).filter(Boolean));
+      // Finance's own approval flow bumps status APPROVED -> PROCESSING
+      // synchronously (see finance.evaluateOrder), so APPROVED barely exists
+      // as an observable state on its own — querying only APPROVED left this
+      // list permanently empty in practice.
       const { data: approvedOrders } = await supabase
         .from('orders')
         .select('id, client_name, customer_name, destination')
-        .eq('status', 'APPROVED');
+        .in('status', ['APPROVED', 'PROCESSING']);
       setDispatchableOrders((approvedOrders || [])
         .filter(o => !dispatchedOrderIds.has(o.id))
         .map(o => ({ id: o.id, clientName: o.customer_name || o.client_name || '', destination: o.destination || '' })));
@@ -523,9 +527,13 @@ export default function DeliveriesView({ addNotification, currentUser }: Props) 
       }
       if (error) throw error;
 
-      // The order now has a delivery job — mark it out for delivery so it
-      // drops off this list and the auto-assign path doesn't double-book it.
-      await supabase.from('orders').update({ status: 'OUT_FOR_DELIVERY', updated_at: dispatchedAt }).eq('id', form.orderId);
+      // Don't mark the order OUT_FOR_DELIVERY yet — a driver being assigned
+      // isn't the same as a driver actually moving. It stays at its current
+      // status (still APPROVED/PROCESSING) until the driver starts sharing
+      // live location from their tracking screen (see DriverTrackingView),
+      // which is the real "out for delivery" moment. It still drops off this
+      // list immediately below since dispatchedOrderIds is keyed off
+      // delivery_logs existing, not orders.status.
       setDispatchableOrders(prev => prev.filter(o => o.id !== form.orderId));
 
       const rec: DeliveryRecord = {
