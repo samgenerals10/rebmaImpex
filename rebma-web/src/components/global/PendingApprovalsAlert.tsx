@@ -69,8 +69,14 @@ export async function fetchPendingForDept(department: string): Promise<PendingIt
     }
 
     if (department === 'OPERATIONS') {
-      const [cargo, production, rawMaterial, orders] = await Promise.all([
+      const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const [cargo, cargoApproved, production, rawMaterial, orders] = await Promise.all([
         supabase.from('cargo_intake').select('id', { count: 'exact', head: true }).eq('status', 'PENDING_MANAGEMENT_APPROVAL'),
+        // Management just signed off — this is what tells Operations cargo
+        // is ready to log into stock. Previously missing: only the "still
+        // waiting on Management" query above existed, so an approval never
+        // surfaced a badge here.
+        supabase.from('cargo_intake').select('id', { count: 'exact', head: true }).eq('status', 'APPROVED').gte('updated_at', since),
         supabase.from('fulfillment_tickets').select('id', { count: 'exact', head: true }).eq('type', 'PRODUCTION_RELEASE').eq('status', 'PENDING').then(r => r, () => ({ count: 0 })),
         supabase.from('fulfillment_tickets').select('id', { count: 'exact', head: true }).eq('type', 'RAW_MATERIAL_RELEASE').eq('status', 'PENDING').then(r => r, () => ({ count: 0 })),
         // Finance-cleared orders waiting to be released to a driver — the gap
@@ -81,6 +87,7 @@ export async function fetchPendingForDept(department: string): Promise<PendingIt
         supabase.from('orders').select('id', { count: 'exact', head: true }).in('status', ['APPROVED', 'PROCESSING']),
       ]);
       if ((cargo.count ?? 0) > 0) items.push({ label: 'cargo pending management sign-off', count: cargo.count!, tab: 'PortIngestion' });
+      if ((cargoApproved.count ?? 0) > 0) items.push({ label: 'cargo approved and ready to log into stock', count: cargoApproved.count!, tab: 'Stock' });
       if ((production.count ?? 0) > 0) items.push({ label: 'production releases to prepare', count: production.count!, tab: 'Releases' });
       if ((rawMaterial.count ?? 0) > 0) items.push({ label: 'raw material releases to prepare', count: rawMaterial.count!, tab: 'Releases' });
       if ((orders.count ?? 0) > 0) items.push({ label: 'orders ready to dispatch', count: orders.count!, tab: 'ApprovedGoods' });

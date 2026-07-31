@@ -165,6 +165,7 @@ export default function StockView({ incomingGoodsList: _ig, addNotification }: P
   const [stock, setStock] = useState<StockItem[]>([]);
   const [generalPurchases, setGeneralPurchases] = useState<GeneralPurchase[]>([]);
   const [ledgerMap, setLedgerMap] = useState<LedgerMap>({});
+  const [ledgerEntries, setLedgerEntries] = useState<LedgerEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
   // search / filter
@@ -293,6 +294,11 @@ export default function StockView({ incomingGoodsList: _ig, addNotification }: P
         map[key] = { totalIn: val.totalIn, totalOut: val.totalOut, entries: val.entries };
       }
       setLedgerMap(map);
+      // Global movement history must walk rawMap (one bucket per product),
+      // not the re-indexed `map` above — that map holds each product's entry
+      // list under two keys (canonical-case and lowercase), so summing its
+      // values would silently double every row in "Recent Stock Movements".
+      setLedgerEntries(Object.values(rawMap).flatMap(v => v.entries));
     } catch (err) {
       console.error(err);
     }
@@ -326,7 +332,30 @@ export default function StockView({ incomingGoodsList: _ig, addNotification }: P
   const cargoTotalIn = approvedCargo.reduce((s, c) => s + c.quantity, 0);
   // Try both original and lowercase key for case-insensitive lookup
   const getLedger = (name: string) => ledgerMap[name] ?? ledgerMap[name.toLowerCase().trim()] ?? { totalIn: 0, totalOut: 0, entries: [] };
-  const cargoTotalOut = approvedCargo.reduce((s, c) => s + (getLedger(c.productName).totalOut), 0);
+  // A product's ledger holds every REMOVE it has ever had, including from
+  // cargo batches that were approved (and fully consumed/deleted) long
+  // before this one arrived — e.g. a production release from two weeks ago
+  // shouldn't count as "dispatched" against a batch that only landed today.
+  // Scoping to entries on/after the batch's own approval date keeps OUT
+  // meaning "moved since THIS stock existed", not "ever moved, historically".
+  const getLedgerSince = (name: string, sinceIso: string) => {
+    const entries = getLedger(name).entries.filter(e => !sinceIso || e.date >= sinceIso);
+    const totalOut = entries.filter(e => e.movementType === 'REMOVE').reduce((s, e) => s + e.quantity, 0);
+    return { totalOut, entries };
+  };
+  // Sum OUT once per distinct product (using the earliest approval among its
+  // currently-listed batches) rather than once per row — summing per row
+  // would double/triple-count the same removals whenever more than one
+  // batch of the same product is on the approved list at once.
+  const earliestApprovalByProduct: Record<string, string> = {};
+  for (const c of approvedCargo) {
+    const key = c.productName;
+    if (!earliestApprovalByProduct[key] || c.approvedAt < earliestApprovalByProduct[key]) {
+      earliestApprovalByProduct[key] = c.approvedAt;
+    }
+  }
+  const cargoTotalOut = Object.entries(earliestApprovalByProduct)
+    .reduce((s, [name, since]) => s + getLedgerSince(name, since).totalOut, 0);
 
   const productsTotalIn = stock.reduce((s, p) => s + (getLedger(p.name).totalIn), 0);
   const productsTotalOut = stock.reduce((s, p) => s + (getLedger(p.name).totalOut), 0);
@@ -554,7 +583,7 @@ export default function StockView({ incomingGoodsList: _ig, addNotification }: P
           style={{ flex: '0 0 140px', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '8px 12px', color: 'var(--text-primary)', fontSize: 14 }} />
         <button onClick={() => {
           const data = activeTab === 'APPROVED_CARGO'
-            ? filteredCargo.map(c => ({ Product: c.productName, Code: c.goodsCode, IN: c.quantity, OUT: getLedger(c.productName).totalOut, Remaining: c.quantity - (getLedger(c.productName).totalOut), Unit: c.unit, Supplier: c.supplier, Origin: c.portOfOrigin, Destination: c.destination, 'Approved On': fmtDate(c.approvedAt) }))
+            ? filteredCargo.map(c => { const out = getLedgerSince(c.productName, c.approvedAt).totalOut; return { Product: c.productName, Code: c.goodsCode, IN: c.quantity, OUT: out, Remaining: Math.max(0, c.quantity - out), Unit: c.unit, Supplier: c.supplier, Origin: c.portOfOrigin, Destination: c.destination, 'Approved On': fmtDate(c.approvedAt) }; })
             : activeTab === 'PRODUCTS'
               ? filteredStock.map(s => ({ Product: s.name, SKU: s.sku, Category: s.category, IN: getLedger(s.name).totalIn, OUT: getLedger(s.name).totalOut, Remaining: s.current, Capacity: s.capacity }))
               : filteredGP.map(gp => ({ Item: gp.itemName, Code: gp.itemCode, Category: gp.category, IN: gp.quantity, OUT: getLedger(gp.itemName).totalOut, Remaining: Number(gp.quantity) - (getLedger(gp.itemName).totalOut), 'Date Received': gp.dateReceived }));
@@ -589,7 +618,7 @@ export default function StockView({ incomingGoodsList: _ig, addNotification }: P
                 </thead>
                 <tbody>
                   {filteredCargo.map(c => {
-                    const out = getLedger(c.productName).totalOut;
+                    const out = getLedgerSince(c.productName, c.approvedAt).totalOut;
                     const remaining = Math.max(0, c.quantity - out);
                     return (
                       <tr key={c.id} onClick={() => setSelectedCargo(c)}
@@ -760,7 +789,7 @@ export default function StockView({ incomingGoodsList: _ig, addNotification }: P
           <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-muted)' }}>Latest 20 entries across all products</span>
         </div>
         <MovementHistory
-          entries={Object.values(ledgerMap).flatMap(v => v.entries)
+          entries={[...ledgerEntries]
             .sort((a, b) => b.date.localeCompare(a.date))
             .slice(0, 20)}
         />
@@ -768,9 +797,8 @@ export default function StockView({ incomingGoodsList: _ig, addNotification }: P
 
       {/* ── DETAIL PANELS ── */}
       {selectedCargo && (() => {
-        const out = getLedger(selectedCargo.productName).totalOut;
+        const { totalOut: out, entries } = getLedgerSince(selectedCargo.productName, selectedCargo.approvedAt);
         const remaining = Math.max(0, selectedCargo.quantity - out);
-        const entries = getLedger(selectedCargo.productName).entries;
         return (
           <EntityDetailPanel
             title={selectedCargo.productName}
