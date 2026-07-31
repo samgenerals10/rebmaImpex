@@ -343,6 +343,14 @@ export default function DeliveriesView({ addNotification, currentUser }: Props) 
 
   useEffect(() => {
     loadData();
+
+    const channel = supabase.channel('dispatch-deliveries-realtime-' + Math.random().toString(36).substring(7))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'delivery_logs' }, () => {
+        loadData();
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
   }, []);
 
   const handleEditSave = async () => {

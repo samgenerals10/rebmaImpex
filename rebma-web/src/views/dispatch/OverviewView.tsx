@@ -88,45 +88,75 @@ export default function DispatchOverviewView({ addNotification, setActiveSubTab,
   const [assigning, setAssigning] = useState(false);
 
   // Load from Supabase
+  const loadDeliveries = async () => {
+    try {
+      const { data } = await supabase.from('delivery_logs').select('*').order('created_at', { ascending: false }).limit(50);
+      const mapped = (data ?? []).map((row: any) => ({
+        id: row.id,
+        orderId: row.order_id || '',
+        clientName: row.customer_name || '',
+        destination: row.delivery_address || '',
+        driverName: row.driver_name || '',
+        driverId: row.driver_id || '',
+        dispatchedAt: row.created_at || '',
+        deliveredAt: row.delivered_at || undefined,
+        status: row.status || 'PENDING_ASSIGNMENT',
+        vehicleId: row.vehicle_id || undefined,
+        proofUrl: row.proof_photo || undefined,
+        recipientName: row.recipient_name || undefined,
+        deliveryNotes: row.notes || undefined,
+      }));
+      setDeliveries(mapped);
+    } catch {
+      setDeliveries([]);
+    } finally {
+      setLoadingDeliveries(false);
+    }
+  };
+
+  const loadDrivers = async () => {
+    try {
+      const { data } = await supabase.from('drivers').select('*').order('created_at', { ascending: false });
+      setDrivers((data ?? []).map((db: any) => ({
+        id: db.id,
+        driverId: db.driver_id || db.id || '',
+        fullName: db.full_name || db.fullName || '',
+        phone: db.phone || '',
+        ghanaCard: db.ghana_card_id || db.ghanaCard || '',
+        licenseNumber: db.license_number || db.licenseNumber || '',
+        truckId: db.vehicle_id || db.truckId || '',
+        status: db.status || 'OFFLINE',
+        totalDeliveries: Number(db.total_deliveries || 0),
+        joinedAt: db.created_at || db.joinedAt || '',
+      } as Driver)));
+    } catch {
+      setDrivers([]);
+    } finally {
+      setLoadingDrivers(false);
+    }
+  };
+
   useEffect(() => {
-    (async () => {
-      try {
-        const { data } = await supabase.from('delivery_logs').select('*').order('created_at', { ascending: false }).limit(50);
-        const mapped = (data ?? []).map((row: any) => ({
-          id: row.id,
-          orderId: row.order_id || '',
-          clientName: row.customer_name || '',
-          destination: row.delivery_address || '',
-          driverName: row.driver_name || '',
-          driverId: row.driver_id || '',
-          dispatchedAt: row.created_at || '',
-          deliveredAt: row.delivered_at || undefined,
-          status: row.status || 'PENDING_ASSIGNMENT',
-          vehicleId: row.vehicle_id || undefined,
-          proofUrl: row.proof_photo || undefined,
-          recipientName: row.recipient_name || undefined,
-          deliveryNotes: row.notes || undefined,
-        }));
-        setDeliveries(mapped);
-      } catch {
-        setDeliveries([]);
-      } finally {
-        setLoadingDeliveries(false);
-      }
-    })();
-    (async () => { try { const { data } = await supabase.from('drivers').select('*').order('created_at', { ascending: false }); setDrivers((data ?? []).map((db: any) => ({
-          id: db.id,
-          driverId: db.driver_id || db.id || '',
-          fullName: db.full_name || db.fullName || '',
-          phone: db.phone || '',
-          ghanaCard: db.ghana_card_id || db.ghanaCard || '',
-          licenseNumber: db.license_number || db.licenseNumber || '',
-          truckId: db.vehicle_id || db.truckId || '',
-          status: db.status || 'OFFLINE',
-          totalDeliveries: Number(db.total_deliveries || 0),
-          joinedAt: db.created_at || db.joinedAt || '',
-        } as Driver))); } catch { setDrivers([]); } finally { setLoadingDrivers(false); } })();
+    loadDeliveries();
+    loadDrivers();
+
+    const channel = supabase.channel('dispatch-overview-realtime-' + Math.random().toString(36).substring(7))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'delivery_logs' }, () => {
+        loadDeliveries();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'drivers' }, () => {
+        loadDrivers();
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
   }, []);
+
+  const handleRefresh = () => {
+    loadDeliveries();
+    loadDrivers();
+    addNotification?.('Dashboard refreshed');
+  };
 
   // KPI counts
   const todayStr = new Date().toDateString();
@@ -208,7 +238,7 @@ export default function DispatchOverviewView({ addNotification, setActiveSubTab,
           <h1 className="text-2xl font-bold text-[var(--text-primary)]">{timeGreeting()}, {firstName} 👋</h1>
           <p className="text-sm text-[var(--text-secondary)]">Here's your delivery overview today — {new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
         </div>
-        <button onClick={() => { addNotification?.('Dashboard refreshed'); }} className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[var(--border)] text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-card)] transition-colors">
+        <button onClick={handleRefresh} className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[var(--border)] text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-card)] transition-colors">
           <RefreshCw size={14} /> Refresh
         </button>
       </div>

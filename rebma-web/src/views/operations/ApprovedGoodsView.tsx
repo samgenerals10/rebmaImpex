@@ -364,14 +364,17 @@ export default function ApprovedGoodsView({ addNotification, setActiveSubTab: _s
       // spot the delivery starts ASSIGNED, otherwise it lands as
       // PENDING_ASSIGNMENT so it shows up in Dispatch's own "Assign Driver"
       // queue for them to pick one.
-      await supabase.from('delivery_logs').insert({
+      const { error: dispatchInsertError } = await supabase.from('delivery_logs').insert({
         order_id: dispatchTarget.id,
+        customer_name: dispatchTarget.clientName,
+        delivery_address: dispatchTarget.destination,
         vehicle_id: dispatchForm.vehicleId || 'TBD',
         driver_name: dispatchForm.driverName || null,
         status: dispatchForm.driverName ? 'ASSIGNED' : 'PENDING_ASSIGNMENT',
         timestamp: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       });
+      if (dispatchInsertError) throw dispatchInsertError;
 
       // 2. Order stays at its current status (APPROVED/PROCESSING) — being
       // assigned a driver isn't the same as the driver actually moving.
