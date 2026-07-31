@@ -1812,6 +1812,7 @@ export const invoices = {
   createProforma: async (input: {
     orderId?: string | null;
     clientName: string;
+    clientPhone?: string;
     lineItems: { productName: string; quantity: number; unitPrice: number }[];
     taxRate?: number;
     notes?: string;
@@ -1824,23 +1825,34 @@ export const invoices = {
     const taxAmount = subtotal * taxRate;
     const grandTotal = subtotal + taxAmount;
 
-    const { data, error } = await supabase
-      .from('proforma_invoices')
-      .insert({
-        order_id: input.orderId || null,
-        client_name: input.clientName,
-        line_items: input.lineItems,
-        subtotal,
-        tax_amount: taxAmount,
-        grand_total: grandTotal,
-        currency: 'GHS',
-        status: 'DRAFT',
-        created_by: performerId,
-        notes: input.notes || null,
-      })
-      .select();
+    const record: Record<string, unknown> = {
+      order_id: input.orderId || null,
+      client_name: input.clientName,
+      line_items: input.lineItems,
+      subtotal,
+      tax_amount: taxAmount,
+      grand_total: grandTotal,
+      currency: 'GHS',
+      status: 'DRAFT',
+      created_by: performerId,
+      notes: input.notes || null,
+      contact_info: { customerPhone: input.clientPhone || '', companyPhone: '', companyEmail: '', companyAddress: '' },
+    };
+
+    let { data, error } = await supabase.from('proforma_invoices').insert(record).select();
+    if (error?.message?.includes('contact_info')) {
+      // Column not migrated onto the live DB yet — don't block invoice
+      // creation on it, just save without contact info this time.
+      const { contact_info, ...withoutContactInfo } = record;
+      ({ data, error } = await supabase.from('proforma_invoices').insert(withoutContactInfo).select());
+    }
     if (error) throw new Error(error.message);
     return data?.[0] ? { ...data[0], proforma_no: data[0].id } : null;
+  },
+
+  updateContactInfo: async (id: string, contactInfo: { customerPhone: string; companyPhone: string; companyEmail: string; companyAddress: string }) => {
+    const { error } = await supabase.from('proforma_invoices').update({ contact_info: contactInfo }).eq('id', id);
+    if (error) throw new Error(error.message);
   },
 };
 

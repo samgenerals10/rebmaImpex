@@ -1,10 +1,11 @@
 // src/views/ceo/InvoicesView.tsx
 import { useState, useEffect } from 'react';
-import { Download, Eye, Printer, Plus, X, Trash2 } from 'lucide-react';
+import { Download, Eye, Printer, Plus, X, Trash2, Pencil } from 'lucide-react';
 import QRCode from 'qrcode';
 import { invoices as invoicesApi } from '../../services/apiClient';
 import { exportToCSV, safeDisplayName } from '../../utils/export';
 import EntityDetailPanel from '../../components/global/EntityDetailPanel';
+import DocumentContactEditModal, { DEFAULT_COMPANY_CONTACT, type DocumentContactInfo } from '../../components/global/DocumentContactEditModal';
 import type { CurrentUser } from '../../types/erp';
 
 interface LineItem {
@@ -26,6 +27,7 @@ interface ProformaRow {
   status: 'DRAFT' | 'SENT' | 'CONVERTED';
   notes: string | null;
   created_at: string;
+  contact_info?: DocumentContactInfo | null;
 }
 
 const STATUS_STYLES: Record<ProformaRow['status'], string> = {
@@ -39,8 +41,9 @@ interface Props {
   currentUser?: CurrentUser | null;
 }
 
-async function printProforma(r: ProformaRow, issuedBy: string) {
+async function printProforma(r: ProformaRow, issuedBy: string, contact?: DocumentContactInfo) {
   const GREEN = '#1a5c32', BLUE = '#29a9dc', LIME = '#7fc241';
+  const c: DocumentContactInfo = contact || r.contact_info || { customerPhone: '', ...DEFAULT_COMPANY_CONTACT };
   // Shown on the printed invoice itself exactly as before — an email here is
   // legitimate identification, not a bug. Only the copy embedded in the QR
   // payload gets sanitized, since that's the one iOS's scanner misreads as
@@ -103,7 +106,7 @@ async function printProforma(r: ProformaRow, issuedBy: string) {
           <div class="logo-block">
             <div class="company">REBMA IMPEX</div>
             <div class="tagline">Ghana Limited</div>
-            <div class="address">Accra Business District, Accra, Ghana<br/>Tel: +233 XX XXX XXXX &bull; info@rebmaimpex.com</div>
+            <div class="address">${c.companyAddress}<br/>${c.companyPhone ? `Tel: ${c.companyPhone}` : ''}${c.companyPhone && c.companyEmail ? ' &bull; ' : ''}${c.companyEmail || ''}</div>
           </div>
         </div>
         <div class="inv-meta">
@@ -117,6 +120,7 @@ async function printProforma(r: ProformaRow, issuedBy: string) {
       <div class="bill-box">
         <div class="blabel">Prepared For</div>
         <div class="bname">${r.client_name}</div>
+        ${c.customerPhone ? `<div style="font-size:12px;color:#64748b;margin-top:3px">Tel: ${c.customerPhone}</div>` : ''}
       </div>
       <table class="items-table">
         <thead><tr><th>Product / Service</th><th style="text-align:center">Qty</th><th style="text-align:right">Unit Price (${r.currency})</th><th style="text-align:right">Amount (${r.currency})</th></tr></thead>
@@ -173,8 +177,11 @@ export default function InvoicesView({ addNotification, currentUser }: Props) {
   const [submitting, setSubmitting] = useState(false);
 
   const [clientName, setClientName] = useState('');
+  const [clientPhone, setClientPhone] = useState('');
   const [lineItems, setLineItems] = useState<LineItem[]>([emptyLine()]);
   const [notes, setNotes] = useState('');
+  const [contactEditTarget, setContactEditTarget] = useState<ProformaRow | null>(null);
+  const [savingContact, setSavingContact] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -200,6 +207,7 @@ export default function InvoicesView({ addNotification, currentUser }: Props) {
 
   const resetForm = () => {
     setClientName('');
+    setClientPhone('');
     setLineItems([emptyLine()]);
     setNotes('');
   };
@@ -218,6 +226,7 @@ export default function InvoicesView({ addNotification, currentUser }: Props) {
     try {
       const created = await invoicesApi.createProforma({
         clientName: clientName.trim(),
+        clientPhone: clientPhone.trim() || undefined,
         lineItems: validItems,
         notes: notes.trim() || undefined,
       });
@@ -230,6 +239,22 @@ export default function InvoicesView({ addNotification, currentUser }: Props) {
       addNotification(e.message || 'Failed to generate proforma invoice.');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleSaveContact = async (info: DocumentContactInfo) => {
+    if (!contactEditTarget || savingContact) return;
+    setSavingContact(true);
+    try {
+      await invoicesApi.updateContactInfo(contactEditTarget.id, info);
+      setRows(prev => prev.map(r => r.id === contactEditTarget.id ? { ...r, contact_info: info } : r));
+      setSelected(prev => prev && prev.id === contactEditTarget.id ? { ...prev, contact_info: info } : prev);
+      addNotification(`Contact details updated for ${contactEditTarget.proforma_no}.`);
+      setContactEditTarget(null);
+    } catch (e: any) {
+      addNotification(e.message || 'Failed to save contact details.');
+    } finally {
+      setSavingContact(false);
     }
   };
 
@@ -353,9 +378,28 @@ export default function InvoicesView({ addNotification, currentUser }: Props) {
           >
             <Printer size={15} /> Print / Share
           </button>
+          <button
+            onClick={() => setContactEditTarget(selected)}
+            style={{ background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--border)', padding: '8px 16px', borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+          >
+            <Pencil size={14} /> Edit Contact
+          </button>
           <button onClick={() => setSelected(null)} style={{ background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--border)', padding: '8px 16px', borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer', marginLeft: 'auto' }}>Close</button>
         </div>
       </EntityDetailPanel>
+    )}
+
+    {contactEditTarget && (
+      <DocumentContactEditModal
+        title="Edit Invoice Contact Details"
+        documentLabel={contactEditTarget.proforma_no}
+        initial={contactEditTarget.contact_info || { customerPhone: '', ...DEFAULT_COMPANY_CONTACT }}
+        issuedByName={currentUser?.fullName || 'REBMA IMPEX Staff'}
+        department={currentUser?.department || 'Marketing'}
+        saving={savingContact}
+        onSave={handleSaveContact}
+        onClose={() => setContactEditTarget(null)}
+      />
     )}
 
     {showGenerate && (
@@ -369,6 +413,12 @@ export default function InvoicesView({ addNotification, currentUser }: Props) {
             <div>
               <label className="text-xs font-semibold text-[var(--text-secondary)] mb-1 block">Client Name</label>
               <input value={clientName} onChange={e => setClientName(e.target.value)} placeholder="Customer or company name"
+                className="w-full px-3 py-2 text-sm bg-[var(--bg-input)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-[var(--accent)]" />
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-[var(--text-secondary)] mb-1 block">Client Phone <span className="font-normal text-[var(--text-muted)]">(optional, editable later)</span></label>
+              <input value={clientPhone} onChange={e => setClientPhone(e.target.value)} placeholder="e.g. +233 24 123 4567"
                 className="w-full px-3 py-2 text-sm bg-[var(--bg-input)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-[var(--accent)]" />
             </div>
 

@@ -803,6 +803,10 @@ CREATE TABLE IF NOT EXISTS public.proforma_invoices (
 ALTER TABLE public.proforma_invoices ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Allow authenticated users full access to proforma_invoices" ON public.proforma_invoices FOR ALL TO authenticated USING (true) WITH CHECK (true);
 ALTER PUBLICATION supabase_realtime ADD TABLE public.proforma_invoices;
+-- Editable customer/company contact details shown on the printed invoice —
+-- kept separate from client_name so it can be corrected after issuing
+-- without touching the customer record itself.
+ALTER TABLE public.proforma_invoices ADD COLUMN IF NOT EXISTS contact_info JSONB;
 
 -- Notes and Tasks (personal productivity panels) were created directly in
 -- Supabase without RLS policies, so every insert/select silently failed

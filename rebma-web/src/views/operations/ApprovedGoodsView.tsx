@@ -2,11 +2,12 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import {
   Search, Download, Package, PackageCheck, TicketCheck,
-  ChevronUp, ChevronDown, Truck, Printer, X, AlertCircle,
+  ChevronUp, ChevronDown, Truck, Printer, X, AlertCircle, Pencil,
 } from 'lucide-react';
 import QRCode from 'qrcode';
 import { exportToCSV, safeDisplayName } from '../../utils/export';
 import CountUp from '../../components/CountUp';
+import DocumentContactEditModal, { DEFAULT_COMPANY_CONTACT, type DocumentContactInfo } from '../../components/global/DocumentContactEditModal';
 
 // ── Brand colors from REBMA logo ──────────────────────────────────────────
 const BRAND = {
@@ -27,8 +28,10 @@ interface ApprovedOrder {
   id: string; ticketNumber: string; clientName: string; productName: string;
   destination: string; totalAmount: number; status: string; paymentMode: string;
   createdAt: string; submittedBy: string; issuedBy: string; issuedByEmail: string;
+  phone: string;
   metadata?: {
     items?: Array<{ productName: string; quantity: number; unitPrice: number; lineTotal: number }>;
+    contactInfo?: DocumentContactInfo;
     [key: string]: any;
   } | null;
 }
@@ -39,7 +42,8 @@ type OrderSort = { field: keyof ApprovedOrder; dir: 'asc' | 'desc' };
 interface Props { addNotification?: (msg: string) => void; setActiveSubTab?: (t: string) => void }
 
 // ── ticket printer ──────────────────────────────────────────────────────────
-async function printOperationsTicket(order: ApprovedOrder, dispatchedQty?: number, printedBy?: string) {
+async function printOperationsTicket(order: ApprovedOrder, dispatchedQty?: number, printedBy?: string, contact?: DocumentContactInfo) {
+  const c: DocumentContactInfo = contact || { customerPhone: order.phone || '', ...DEFAULT_COMPANY_CONTACT };
   // Shown on the printed ticket itself exactly as before — an email here is
   // legitimate identification, not a bug. Only the copy embedded in the QR
   // payload gets sanitized, since that's the one iOS's scanner misreads as
@@ -136,7 +140,7 @@ async function printOperationsTicket(order: ApprovedOrder, dispatchedQty?: numbe
             <div class="brand-text">
               <div class="name">REBMA IMPEX</div>
               <div class="sub">Operations Dispatch Ticket</div>
-              <div class="addr">Accra, Ghana</div>
+              <div class="addr">${c.companyAddress}${c.companyPhone ? ` · Tel: ${c.companyPhone}` : ''}${c.companyEmail ? ` · ${c.companyEmail}` : ''}</div>
             </div>
           </div>
           <div class="ticket-meta">
@@ -153,6 +157,7 @@ async function printOperationsTicket(order: ApprovedOrder, dispatchedQty?: numbe
             <div class="sl">Client / Customer</div>
             <div class="sv" style="font-size:12px">${order.clientName}</div>
           </div>
+          ${c.customerPhone ? `<div class="sb-item"><div class="sl">Customer Phone</div><div class="sv" style="font-size:11px">${c.customerPhone}</div></div>` : ''}
           <div class="sb-item">
             <div class="sl">Status</div>
             <div class="sv">${order.status.replace(/_/g, ' ')}</div>
@@ -286,6 +291,10 @@ export default function ApprovedGoodsView({ addNotification, setActiveSubTab: _s
   const [dispatchForm, setDispatchForm] = useState({ vehicleId: '', driverName: '' });
   const [dispatching, setDispatching] = useState(false);
 
+  // Contact-edit modal (ticket customer/company contact details)
+  const [contactEditTarget, setContactEditTarget] = useState<ApprovedOrder | null>(null);
+  const [savingContact, setSavingContact] = useState(false);
+
   // Get current logged-in user once
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -331,6 +340,7 @@ export default function ApprovedGoodsView({ addNotification, setActiveSubTab: _s
           submittedBy: r.created_by || r.submittedBy || '—',
           issuedBy: r.finance_approved_by || r.created_by || '—',
           issuedByEmail: r.finance_approved_by_email || '',
+          phone: r.phone || '',
           metadata: r.metadata || null,
         })));
       } catch (e) {
@@ -398,6 +408,24 @@ export default function ApprovedGoodsView({ addNotification, setActiveSubTab: _s
       alert(e.message || 'Failed to send to dispatch.');
     }
     setDispatching(false);
+  };
+
+  // ── contact-edit (ticket customer/company details) ──────────────────────
+  const handleSaveContact = async (info: DocumentContactInfo) => {
+    if (!contactEditTarget || savingContact) return;
+    setSavingContact(true);
+    try {
+      const nextMetadata = { ...(contactEditTarget.metadata || {}), contactInfo: info };
+      const { error } = await supabase.from('orders').update({ phone: info.customerPhone, metadata: nextMetadata }).eq('id', contactEditTarget.id);
+      if (error) throw error;
+      setOrders(prev => prev.map(o => o.id === contactEditTarget.id ? { ...o, phone: info.customerPhone, metadata: nextMetadata } : o));
+      addNotification?.(`Contact details updated for ${contactEditTarget.ticketNumber}.`);
+      setContactEditTarget(null);
+    } catch (e: any) {
+      alert(e.message || 'Failed to save contact details.');
+    } finally {
+      setSavingContact(false);
+    }
   };
 
   // ── sort / filter ──────────────────────────────────────────────────────
@@ -563,11 +591,16 @@ export default function ApprovedGoodsView({ addNotification, setActiveSubTab: _s
                                   const totalQty = o.metadata?.items && o.metadata.items.length > 0
                                     ? o.metadata.items.reduce((sum: number, it: any) => sum + (Number(it.quantity) || 0), 0)
                                     : Number(o.metadata?.quantity || (o as any).quantity || 1);
-                                  printOperationsTicket(o, totalQty, currentUserEmail);
+                                  printOperationsTicket(o, totalQty, currentUserEmail, o.metadata?.contactInfo || { customerPhone: o.phone || '', ...DEFAULT_COMPANY_CONTACT });
                                 }}
                                 title="Print Operations Ticket"
                                 className="flex items-center gap-1 px-2.5 py-1.5 bg-[var(--bg)] border border-[var(--border)] rounded-lg text-[10px] font-semibold text-[var(--text-secondary)] hover:bg-[var(--accent-light)] cursor-pointer whitespace-nowrap transition-colors">
                                 <Printer size={11} /> Ticket
+                              </button>
+                              <button onClick={() => setContactEditTarget(o)}
+                                title="Edit customer/company contact details on this ticket"
+                                className="flex items-center gap-1 px-2 py-1.5 bg-[var(--bg)] border border-[var(--border)] rounded-lg text-[10px] font-semibold text-[var(--text-secondary)] hover:bg-[var(--accent-light)] cursor-pointer whitespace-nowrap transition-colors">
+                                <Pencil size={11} />
                               </button>
                               {(o.status === 'APPROVED' || o.status === 'PROCESSING') && !dispatchedOrderIds.has(o.id) && (
                                 <button onClick={() => { setDispatchTarget(o); setDispatchForm({ vehicleId: '', driverName: '' }); }}
@@ -735,6 +768,20 @@ export default function ApprovedGoodsView({ addNotification, setActiveSubTab: _s
             </p>
           </div>
         </div>
+      )}
+
+      {contactEditTarget && (
+        <DocumentContactEditModal
+          title="Edit Ticket Contact Details"
+          documentLabel={contactEditTarget.ticketNumber || contactEditTarget.id}
+          initial={contactEditTarget.metadata?.contactInfo || { customerPhone: contactEditTarget.phone || '', ...DEFAULT_COMPANY_CONTACT }}
+          issuedByName={contactEditTarget.issuedBy && contactEditTarget.issuedBy !== '—' ? contactEditTarget.issuedBy : 'Pending record'}
+          issuedByEmail={contactEditTarget.issuedByEmail}
+          department="Finance"
+          saving={savingContact}
+          onSave={handleSaveContact}
+          onClose={() => setContactEditTarget(null)}
+        />
       )}
     </div>
   );
