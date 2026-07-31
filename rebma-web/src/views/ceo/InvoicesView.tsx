@@ -39,13 +39,17 @@ interface Props {
   currentUser?: CurrentUser | null;
 }
 
-async function printProforma(r: ProformaRow, issuedByRaw: string) {
+async function printProforma(r: ProformaRow, issuedBy: string) {
   const GREEN = '#1a5c32', BLUE = '#29a9dc', LIME = '#7fc241';
-  const issuedBy = safeDisplayName(issuedByRaw, 'REBMA IMPEX Staff');
+  // Shown on the printed invoice itself exactly as before — an email here is
+  // legitimate identification, not a bug. Only the copy embedded in the QR
+  // payload gets sanitized, since that's the one iOS's scanner misreads as
+  // a "Mail" action instead of showing the invoice content.
+  const issuedByForQr = safeDisplayName(issuedBy, 'REBMA IMPEX Staff');
   let qrDataUrl = '';
   try {
     qrDataUrl = await QRCode.toDataURL(
-      `REBMA IMPEX GHANA LIMITED\nProforma: ${r.proforma_no}\nCustomer: ${r.client_name}\nGrand Total: ${r.currency} ${Number(r.grand_total).toLocaleString()}\nIssued by: ${issuedBy}`,
+      `REBMA IMPEX GHANA LIMITED\nProforma: ${r.proforma_no}\nCustomer: ${r.client_name}\nGrand Total: ${r.currency} ${Number(r.grand_total).toLocaleString()}\nIssued by: ${issuedByForQr}`,
       { width: 140, margin: 1, color: { dark: GREEN, light: '#ffffff' } }
     );
   } catch (err) { console.error('QR generation failed for proforma', r.proforma_no, err); qrDataUrl = ''; }

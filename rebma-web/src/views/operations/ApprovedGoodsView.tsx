@@ -40,8 +40,13 @@ interface Props { addNotification?: (msg: string) => void; setActiveSubTab?: (t:
 
 // ── ticket printer ──────────────────────────────────────────────────────────
 async function printOperationsTicket(order: ApprovedOrder, dispatchedQty?: number, printedBy?: string) {
-  const issuedBy = safeDisplayName(order.issuedBy, 'Pending record');
-  const safePrintedBy = printedBy ? safeDisplayName(printedBy, '') : '';
+  // Shown on the printed ticket itself exactly as before — an email here is
+  // legitimate identification, not a bug. Only the copy embedded in the QR
+  // payload gets sanitized, since that's the one iOS's scanner misreads as
+  // a "Mail" action instead of showing the ticket content.
+  const issuedBy = order.issuedBy && order.issuedBy !== '—' ? order.issuedBy : 'Pending record';
+  const issuedByForQr = safeDisplayName(order.issuedBy, 'Pending record');
+  const printedByForQr = printedBy ? safeDisplayName(printedBy, '') : '';
   let qrDataUrl = '';
   try {
     qrDataUrl = await QRCode.toDataURL(
@@ -55,8 +60,8 @@ async function printOperationsTicket(order: ApprovedOrder, dispatchedQty?: numbe
         `Destination: ${order.destination}`,
         `Payment: ${order.paymentMode}`,
         `Status: ${order.status}`,
-        `Issued by: ${issuedBy}`,
-        safePrintedBy ? `Printed by: ${safePrintedBy}` : '',
+        `Issued by: ${issuedByForQr}`,
+        printedByForQr ? `Printed by: ${printedByForQr}` : '',
       ].filter(Boolean).join('\n'),
       { width: 160, margin: 1, color: { dark: '#1a5c32', light: '#ffffff' } }
     );
@@ -160,7 +165,7 @@ async function printOperationsTicket(order: ApprovedOrder, dispatchedQty?: numbe
             <div class="sl">Issued By (Finance)</div>
             <div class="sv" style="font-size:11px">${issuedBy}</div>
           </div>
-          ${safePrintedBy ? `<div class="sb-item"><div class="sl">Printed By (Ops)</div><div class="sv" style="font-size:11px">${safePrintedBy}</div></div>` : ''}
+          ${printedBy ? `<div class="sb-item"><div class="sl">Printed By (Ops)</div><div class="sv" style="font-size:11px">${printedBy}</div></div>` : ''}
         </div>
 
         ${(() => {

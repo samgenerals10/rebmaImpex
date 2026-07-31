@@ -100,8 +100,12 @@ export async function fetchPendingForDept(department: string): Promise<PendingIt
       // Keyed off delivery_logs, not raw order status — an order sitting at
       // APPROVED/PROCESSING isn't Dispatch's business yet; it only becomes
       // that once Operations hands it off (creates the delivery_logs row).
-      const { count } = await supabase.from('delivery_logs').select('id', { count: 'exact', head: true }).eq('status', 'PENDING_ASSIGNMENT');
-      if ((count ?? 0) > 0) items.push({ label: 'deliveries awaiting driver assignment', count: count!, tab: 'ActiveDeliveries' });
+      // Covers both PENDING_ASSIGNMENT (Operations left the driver blank)
+      // and ASSIGNED (Operations picked one on the spot) — either way it's a
+      // fresh handoff Dispatch hasn't started tracking yet. Once it moves to
+      // IN_TRANSIT/DELIVERED/FAILED it's no longer "new" and drops off.
+      const { count } = await supabase.from('delivery_logs').select('id', { count: 'exact', head: true }).in('status', ['PENDING_ASSIGNMENT', 'ASSIGNED']);
+      if ((count ?? 0) > 0) items.push({ label: 'new deliveries from Operations', count: count!, tab: 'ActiveDeliveries' });
     }
 
     if (department === 'PRODUCTION') {

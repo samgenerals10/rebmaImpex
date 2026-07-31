@@ -72,7 +72,12 @@ export function generateReceiptNumber(): string {
 // document. Renders an itemized table when the underlying order's line
 // items are available, rather than summary cards.
 export async function printReceipt(r: ReceiptRow, lineItems: OrderLineItem[] | null) {
-  const recordedBy = safeDisplayName(r.recordedBy, 'Finance');
+  // Shown on the printed receipt itself exactly as before — including a raw
+  // email if that's what's on file, which is legitimate identification, not
+  // a bug. Only the copy embedded in the QR payload gets sanitized, since
+  // that's the one iOS's scanner misreads as a "Mail" action.
+  const recordedBy = r.recordedBy || 'Finance';
+  const recordedByForQr = safeDisplayName(r.recordedBy, 'Finance');
   let qrDataUrl = '';
   try {
     qrDataUrl = await QRCode.toDataURL(
@@ -82,7 +87,7 @@ export async function printReceipt(r: ReceiptRow, lineItems: OrderLineItem[] | n
         `Client: ${r.clientName}`,
         `Amount: GHS ${r.amount.toLocaleString()}`,
         `Payment: ${r.paymentMode} — ${r.paymentType}`,
-        `Recorded by: ${recordedBy}`,
+        `Recorded by: ${recordedByForQr}`,
         `Status: ${r.status}`,
       ].join('\n'),
       { width: 140, margin: 1, color: { dark: BRAND.green, light: '#ffffff' } }
