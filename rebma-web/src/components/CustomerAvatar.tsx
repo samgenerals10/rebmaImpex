@@ -14,12 +14,12 @@ interface Props {
   isSpecial?: boolean;
   /** px, applies to both width and height */
   size?: number;
-  rounded?: 'xl' | '2xl';
+  rounded?: 'xl' | '2xl' | 'full';
   className?: string;
 }
 
 export default function CustomerAvatar({ name, photo, isSpecial, size = 44, rounded = 'xl', className = '' }: Props) {
-  const borderRadius = rounded === '2xl' ? 16 : 12;
+  const borderRadius = rounded === 'full' ? size / 2 : rounded === '2xl' ? 16 : 12;
   const content = photo ? (
     <img src={photo} alt={name} className="w-full h-full object-cover" style={{ borderRadius }} />
   ) : (

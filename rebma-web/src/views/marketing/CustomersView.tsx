@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react';
-import { Plus, Search, ArrowLeft, X, Pencil, Trash2, Download, Star } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Plus, Search, ArrowLeft, X, Pencil, Trash2, Download, Star, Camera } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import type { Customer, Order } from '../../types/erp';
 import CustomerAvatar from '../../components/CustomerAvatar';
 import RatingBadge from '../../components/RatingBadge';
 import { computeCustomerRating, ordersForCustomer } from '../../utils/customerRating';
 import CountUp from '../../components/CountUp';
+import { uploadFile } from '../../utils/uploadFile';
 
 interface Props {
   customersList: Customer[];
@@ -24,6 +25,8 @@ export default function CustomersView({ customersList, onRegisterCustomer, addNo
   const [editTarget, setEditTarget] = useState<Customer | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Customer | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState({ name: '', companyName: '', phone: '', location: '', email: '', ghanaCard: '', isSpecialCustomer: false });
 
   useEffect(() => {
@@ -151,8 +154,27 @@ export default function CustomersView({ customersList, onRegisterCustomer, addNo
     setDeleting(false);
     if (error) { addNotification(`Delete failed: ${error.message}`); return; }
     setCustomers(prev => prev.filter(c => c.id !== deleteTarget.id));
+    if (selectedCustomer?.id === deleteTarget.id) setSelectedCustomer(null);
     setDeleteTarget(null);
     addNotification(`Customer "${deleteTarget.name}" deleted.`);
+  };
+
+  const handlePhotoUpload = async (file: File) => {
+    if (!selectedCustomer) return;
+    setUploadingPhoto(true);
+    try {
+      const url = await uploadFile(file, 'customer-photos', selectedCustomer.id);
+      if (!url) throw new Error('Upload failed.');
+      const { error } = await supabase.from('customers').update({ customer_photo: url, updated_at: new Date().toISOString() }).eq('id', selectedCustomer.id);
+      if (error) throw error;
+      setCustomers(prev => prev.map(c => c.id === selectedCustomer.id ? { ...c, photo: url } : c));
+      setSelectedCustomer(prev => prev ? { ...prev, photo: url } : prev);
+      addNotification(`Photo updated for ${selectedCustomer.name}.`);
+    } catch (e: any) {
+      addNotification(`Photo upload failed: ${e.message || 'Unknown error'}`);
+    } finally {
+      setUploadingPhoto(false);
+    }
   };
 
   const exportCustomerCSV = (c: Customer) => {
@@ -175,15 +197,44 @@ export default function CustomersView({ customersList, onRegisterCustomer, addNo
     const rating = computeCustomerRating(custOrders);
     return (
       <div className="space-y-5">
-        <div className="flex items-center gap-3">
-          <button onClick={() => setSelectedCustomer(null)} className="flex items-center gap-2 text-sm text-[var(--text-secondary)] hover:text-[var(--accent)] transition-colors">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <button onClick={() => setSelectedCustomer(null)} className="flex items-center gap-2 text-sm text-[var(--text-secondary)] hover:text-[var(--accent)] transition-colors cursor-pointer">
             <ArrowLeft className="w-4 h-4" /> Back to Customers
           </button>
+          <div className="flex items-center gap-2">
+            <button onClick={() => openEdit(selectedCustomer)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[var(--border)] text-[var(--text-secondary)] text-xs font-semibold hover:bg-[var(--accent-light)] hover:text-[var(--accent)] transition-colors cursor-pointer">
+              <Pencil className="w-3.5 h-3.5" /> Edit
+            </button>
+            <button onClick={() => exportCustomerCSV(selectedCustomer)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[var(--border)] text-[var(--text-secondary)] text-xs font-semibold hover:bg-[var(--accent-light)] hover:text-[var(--accent)] transition-colors cursor-pointer">
+              <Download className="w-3.5 h-3.5" /> Export
+            </button>
+            <button onClick={() => setDeleteTarget(selectedCustomer)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-rose-200 text-rose-500 text-xs font-semibold hover:bg-rose-50 transition-colors cursor-pointer">
+              <Trash2 className="w-3.5 h-3.5" /> Delete
+            </button>
+          </div>
         </div>
 
         <div className="rounded-2xl bg-[var(--bg-card)] border border-[var(--border)] p-6 shadow-[var(--box-shadow)]">
           <div className="flex flex-col sm:flex-row gap-5 items-start">
-            <CustomerAvatar name={selectedCustomer.name} photo={selectedCustomer.photo} isSpecial={selectedCustomer.isSpecialCustomer} size={64} rounded="2xl" />
+            <div className="flex flex-col items-center gap-1 shrink-0">
+              <div className="relative inline-block cursor-pointer group" onClick={() => photoInputRef.current?.click()} title="Update photo">
+                <CustomerAvatar name={selectedCustomer.name} photo={selectedCustomer.photo} isSpecial={selectedCustomer.isSpecialCustomer} size={72} rounded="full" />
+                <div className="absolute inset-0 rounded-full bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <Camera className="w-5 h-5 text-white" />
+                </div>
+                {uploadingPhoto && (
+                  <div className="absolute inset-0 rounded-full bg-black/60 flex items-center justify-center">
+                    <span className="text-[8px] text-white font-semibold">Uploading…</span>
+                  </div>
+                )}
+              </div>
+              <span className="text-[9px] text-[var(--text-muted)]">Click to update</span>
+              <input ref={photoInputRef} type="file" accept="image/*" className="hidden"
+                onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; if (f) handlePhotoUpload(f); }} />
+            </div>
             <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="sm:col-span-2 flex items-center gap-2 flex-wrap">
                 {selectedCustomer.isSpecialCustomer && (
@@ -345,46 +396,38 @@ export default function CustomersView({ customersList, onRegisterCustomer, addNo
       ) : filtered.length === 0 ? (
         <div className="text-center py-16 text-[var(--text-muted)] text-sm">No customers found.</div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filtered.map(c => (
-            <div key={c.id} className="rounded-2xl bg-[var(--bg-card)] border border-[var(--border)] p-5 shadow-[var(--box-shadow)] flex flex-col gap-3">
-              <div className="flex items-center gap-3">
-                <CustomerAvatar name={c.name} photo={c.photo} isSpecial={c.isSpecialCustomer} size={44} />
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <p className="font-semibold text-sm text-[var(--text-primary)] truncate">{c.name}</p>
-                    <RatingBadge rating={computeCustomerRating(ordersForCustomer(orders, c.name))} size="xs" />
-                    {c.isSpecialCustomer && <span className="shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-700"><Star size={8} className="fill-amber-500" /> Special</span>}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5">
+          {filtered.map(c => {
+            const custOrders = ordersForCustomer(orders, c.name);
+            const rating = computeCustomerRating(custOrders);
+            return (
+              <div key={c.id} className="group rounded-2xl bg-[var(--bg-card)] border border-[var(--border)] p-4 shadow-[var(--box-shadow)] flex flex-col gap-2.5 hover:border-[var(--accent)] hover:shadow-lg transition-all">
+                <div className="flex items-center gap-2.5">
+                  <button onClick={() => setSelectedCustomer(c)} title="View profile" className="cursor-pointer shrink-0">
+                    <CustomerAvatar name={c.name} photo={c.photo} isSpecial={c.isSpecialCustomer} size={40} rounded="full" />
+                  </button>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1 flex-wrap">
+                      <p className="font-semibold text-sm text-[var(--text-primary)] truncate">{c.name}</p>
+                      {c.isSpecialCustomer && <Star size={9} className="fill-amber-500 text-amber-500 shrink-0" />}
+                    </div>
+                    <p className="text-[11px] text-[var(--text-muted)] truncate">{c.companyName || c.phone}</p>
                   </div>
-                  <p className="text-xs text-[var(--text-muted)] truncate">{c.companyName}</p>
-                  {!!c.discountPercent && <p className="text-[10px] font-semibold text-emerald-600 mt-0.5">{c.discountPercent}% discount active</p>}
                 </div>
-              </div>
-              <div className="space-y-1 text-xs text-[var(--text-secondary)]">
-                <p>{c.phone}</p>
-                <p>{c.location}</p>
-                <p className="text-[var(--text-muted)]">Registered {c.registeredAt.split('T')[0]}</p>
-              </div>
-              <div className="mt-auto grid grid-cols-4 gap-1.5">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <RatingBadge rating={rating} size="xs" />
+                  <span className="text-[10px] font-semibold text-[var(--text-secondary)] bg-[var(--bg-input)] px-1.5 py-0.5 rounded-full">
+                    {custOrders.length} order{custOrders.length === 1 ? '' : 's'}
+                  </span>
+                  {!!c.discountPercent && <span className="text-[10px] font-semibold text-emerald-600">{c.discountPercent}% off</span>}
+                </div>
                 <button onClick={() => setSelectedCustomer(c)}
-                  className="col-span-2 py-1.5 rounded-xl border border-[var(--accent)] text-[var(--accent)] text-xs font-semibold hover:bg-[var(--accent-light)] transition-colors cursor-pointer">
+                  className="w-full py-1.5 rounded-xl border border-[var(--accent)] text-[var(--accent)] text-xs font-semibold hover:bg-[var(--accent-light)] transition-colors cursor-pointer">
                   View Profile
                 </button>
-                <button onClick={() => openEdit(c)} title="Edit"
-                  className="py-1.5 rounded-xl border border-[var(--border)] text-[var(--text-secondary)] hover:bg-[var(--accent-light)] hover:text-[var(--accent)] transition-colors cursor-pointer flex items-center justify-center">
-                  <Pencil className="w-3.5 h-3.5" />
-                </button>
-                <button onClick={() => exportCustomerCSV(c)} title="Export"
-                  className="py-1.5 rounded-xl border border-[var(--border)] text-[var(--text-secondary)] hover:bg-[var(--accent-light)] hover:text-[var(--accent)] transition-colors cursor-pointer flex items-center justify-center">
-                  <Download className="w-3.5 h-3.5" />
-                </button>
               </div>
-              <button onClick={() => setDeleteTarget(c)}
-                className="w-full py-1.5 rounded-xl border border-rose-200 text-rose-500 text-xs font-semibold hover:bg-rose-50 transition-colors cursor-pointer flex items-center justify-center gap-1">
-                <Trash2 className="w-3 h-3" /> Delete
-              </button>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
