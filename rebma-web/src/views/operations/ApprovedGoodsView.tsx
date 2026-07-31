@@ -371,7 +371,6 @@ export default function ApprovedGoodsView({ addNotification, setActiveSubTab: _s
         vehicle_id: dispatchForm.vehicleId || 'TBD',
         driver_name: dispatchForm.driverName || null,
         status: dispatchForm.driverName ? 'ASSIGNED' : 'PENDING_ASSIGNMENT',
-        timestamp: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       });
       if (dispatchInsertError) throw dispatchInsertError;
