@@ -292,7 +292,7 @@ const DEPT_TABLES: Record<string, { label: string; tables: { name: string; label
   ] },
   OPERATIONS:  { label: 'Operations',  tables: [
     { name: 'cargo_intake', label: 'Cargo Intake Log' },
-    { name: 'stock_ledger', label: 'Recent Stock Movements (Ledger Statement)' },
+    { name: 'stock_ledger', label: 'Recent Stock Movements' },
     { name: 'general_purchases', label: 'General Purchases' },
     { name: 'stock', label: 'Stock Levels' },
     { name: 'wip_stock', label: 'WIP Stock' },
