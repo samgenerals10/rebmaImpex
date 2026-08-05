@@ -1,10 +1,14 @@
 import { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView, SafeAreaView, Switch, Alert, StatusBar } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, SafeAreaView, Switch, Alert, StatusBar, Linking } from 'react-native';
 import * as Location from 'expo-location';
-import { Wifi, WifiOff, LogOut, RefreshCw } from 'lucide-react-native';
+import { Wifi, WifiOff, LogOut, RefreshCw, Navigation } from 'lucide-react-native';
 import { supabase, type DriverRow } from '../../lib/supabaseClient';
 import { useAuthStore } from '../../store/authStore';
 import { useDeliveryStore } from '../../store/deliveryStore';
+
+function mapsLink(address: string): string {
+  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}`;
+}
 
 export default function DispatchHomeScreen() {
   const { profile, driver, signOut } = useAuthStore();
@@ -165,6 +169,12 @@ export default function DispatchHomeScreen() {
     );
   };
 
+  const handleNavigate = () => {
+    if (!activeDeliveryDestination) return;
+    setGpsActive(true);
+    Linking.openURL(mapsLink(activeDeliveryDestination));
+  };
+
   const handleDeliver = async () => {
     if (!activeOrderId) return;
     const now = new Date().toISOString();
@@ -245,6 +255,13 @@ export default function DispatchHomeScreen() {
                     <Text style={styles.metricValue}>{lastLng !== null ? lastLng.toFixed(5) : '—'}</Text>
                   </View>
                 </View>
+
+                {!!activeDeliveryDestination && (
+                  <TouchableOpacity style={styles.navigateBtn} onPress={handleNavigate}>
+                    <Navigation size={14} color="#ffffff" />
+                    <Text style={styles.btnText}>Navigate</Text>
+                  </TouchableOpacity>
+                )}
 
                 <View style={styles.toggleRow}>
                   <Text style={styles.toggleLabel}>Share Live Location with Dispatch</Text>
@@ -334,6 +351,10 @@ const styles = StyleSheet.create({
   metricValue: { fontSize: 14, fontWeight: 'bold', color: '#0f172a', marginTop: 4 },
   toggleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   toggleLabel: { fontSize: 12, color: '#475569' },
+  navigateBtn: {
+    height: 44, backgroundColor: '#0f55ff', borderRadius: 12,
+    flexDirection: 'row', gap: 6, justifyContent: 'center', alignItems: 'center',
+  },
   deliverBtn: { height: 44, backgroundColor: '#10b981', borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginTop: 4 },
   btnText: { color: '#ffffff', fontSize: 14, fontWeight: 'bold' },
   queueHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },

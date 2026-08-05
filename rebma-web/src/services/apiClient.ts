@@ -1492,6 +1492,10 @@ export const dispatch = {
     if (driverErr || !driver) { tab?.close(); throw new Error('Driver not found.'); }
     if (!driver.phone) { tab?.close(); throw new Error(`${driver.full_name} has no phone number on file.`); }
 
+    // Fresh token per trip — invalidates whatever link was sent last time.
+    const tripToken = crypto.randomUUID();
+    await supabase.from('drivers').update({ trip_token: tripToken, returned_at: null }).eq('id', driverId);
+
     const { data: stops, error: stopsErr } = await supabase
       .from('delivery_logs')
       .select('id, customer_name, delivery_address, dispatch_sequence, created_at')
@@ -1519,7 +1523,7 @@ export const dispatch = {
       sequence: s.dispatch_sequence,
       customerName: s.customer_name || 'Client',
       deliveryAddress: s.delivery_address || '',
-    })));
+    })), tripToken);
     const link = waLink(driver.phone, message);
 
     if (tab) tab.location.href = link; else window.open(link, '_blank');

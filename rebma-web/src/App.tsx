@@ -137,8 +137,20 @@ import LogisticsFuelManagementView from './views/logistics/FuelManagementView';
 import LogisticsMaintenanceView from './views/logistics/MaintenanceView';
 import LogisticsFleetAnalyticsView from './views/logistics/FleetAnalyticsView';
 import DriverTrackingView from './views/dispatch/DriverTrackingView';
+import TripView from './views/dispatch/TripView';
+import NotFoundView from './views/NotFoundView';
+
+const currentPath = window.location.pathname;
+const tripToken = currentPath.startsWith('/trip/') ? currentPath.split('/')[2] : null;
+const isUnknownRoute = currentPath !== '/' && !tripToken;
 
 export default function App() {
+  if (tripToken) {
+    return <TripView token={tripToken} />;
+  }
+  if (isUnknownRoute) {
+    return <NotFoundView />;
+  }
   // Helper to map UI dropdown values to database role values
   const getNormalizedRole = (dept: string): string => {
     const d = dept.trim();
@@ -2990,7 +3002,7 @@ export default function App() {
     if (activeDepartment === 'DISPATCH') {
       if (activeSubTab === 'Deliveries')       return <DispatchOverviewView addNotification={addNotification} setActiveSubTab={setActiveSubTab} currentUser={currentUser} />;
       if (activeSubTab === 'ProofOfDelivery') return <DispatchProofOfDeliveryView currentUser={currentUser} addNotification={addNotification} />;
-      if (activeSubTab === 'ActiveDeliveries' || activeSubTab === 'DispatchHistory') return <DispatchDeliveriesView addNotification={addNotification} currentUser={currentUser} />;
+      if (activeSubTab === 'ActiveDeliveries' || activeSubTab === 'DispatchHistory') return <DispatchDeliveriesView addNotification={addNotification} currentUser={currentUser} setActiveSubTab={setActiveSubTab} />;
       if (activeSubTab === 'Drivers' || activeSubTab === 'DriverLogs') return <DispatchDriversView addNotification={addNotification} />;
       if (activeSubTab === 'Tracking')         return <DispatchTrackingView addNotification={addNotification} />;
     }

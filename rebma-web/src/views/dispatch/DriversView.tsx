@@ -182,6 +182,51 @@ function InviteDriverModal({ driver, onClose, onInvited }: InviteDriverModalProp
   );
 }
 
+interface AssignDeliveryModalProps {
+  driver: Driver;
+  deliveries: DeliveryRecord[];
+  loading: boolean;
+  submitting: boolean;
+  onAssign: (deliveryId: string) => void;
+  onClose: () => void;
+}
+function AssignDeliveryModal({ driver, deliveries, loading, submitting, onAssign, onClose }: AssignDeliveryModalProps) {
+  const [deliveryId, setDeliveryId] = useState('');
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+      <div style={{ background: 'var(--bg-card)', borderRadius: 20, padding: 32, width: '100%', maxWidth: 440, boxShadow: '0 20px 60px rgba(0,0,0,0.3)', border: '1px solid var(--border)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--text-primary)' }}>Assign Delivery to {driver.fullName}</h2>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={20} /></button>
+        </div>
+        {loading ? (
+          <p style={{ color: 'var(--text-muted)', fontSize: 13, textAlign: 'center', padding: '20px 0' }}>Loading pending deliveries...</p>
+        ) : deliveries.length === 0 ? (
+          <p style={{ color: 'var(--text-muted)', fontSize: 13, textAlign: 'center', padding: '20px 0' }}>No unassigned deliveries right now.</p>
+        ) : (
+          <>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 5 }}>Select Delivery</label>
+            <select value={deliveryId} onChange={e => setDeliveryId(e.target.value)}
+              style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'var(--text-primary)', fontSize: 14, boxSizing: 'border-box' }}>
+              <option value="">Choose a delivery...</option>
+              {deliveries.map(d => (
+                <option key={d.id} value={d.id}>{d.orderId} — {d.clientName} ({d.destination})</option>
+              ))}
+            </select>
+          </>
+        )}
+        <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
+          <button onClick={onClose} disabled={submitting} style={{ flex: 1, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 12, padding: '12px', fontWeight: 600, color: 'var(--text-secondary)', cursor: submitting ? 'not-allowed' : 'pointer', fontSize: 14 }}>Cancel</button>
+          <button onClick={() => deliveryId && onAssign(deliveryId)} disabled={!deliveryId || submitting}
+            style={{ flex: 1, background: 'var(--accent)', border: 'none', borderRadius: 12, padding: '12px', fontWeight: 600, color: '#fff', cursor: (!deliveryId || submitting) ? 'not-allowed' : 'pointer', fontSize: 14, opacity: (!deliveryId || submitting) ? 0.6 : 1 }}>
+            {submitting ? 'Assigning...' : 'Assign'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function DriversView({ addNotification }: Props) {
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [loading, setLoading] = useState(true);
@@ -193,6 +238,9 @@ export default function DriversView({ addNotification }: Props) {
   const [editDriver, setEditDriver] = useState<Driver | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [inviteTarget, setInviteTarget] = useState<Driver | null>(null);
+  const [assignTarget, setAssignTarget] = useState<Driver | null>(null);
+  const [pendingDeliveries, setPendingDeliveries] = useState<DeliveryRecord[]>([]);
+  const [pendingLoading, setPendingLoading] = useState(false);
   const [history, setHistory] = useState<DeliveryRecord[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
 
@@ -241,6 +289,52 @@ export default function DriversView({ addNotification }: Props) {
       }, () => { if (active) { setHistory([]); setHistoryLoading(false); } });
     return () => { active = false; };
   }, [profileDriver]);
+
+  useEffect(() => {
+    if (!assignTarget) { setPendingDeliveries([]); return; }
+    let active = true;
+    setPendingLoading(true);
+    supabase
+      .from('delivery_logs')
+      .select('*')
+      .eq('status', 'PENDING_ASSIGNMENT')
+      .order('created_at', { ascending: false })
+      .then(({ data }) => {
+        if (!active) return;
+        setPendingDeliveries((data ?? []).map((row: any): DeliveryRecord => ({
+          id: row.id,
+          orderId: row.order_id || '',
+          clientName: row.customer_name || '',
+          destination: row.delivery_address || '',
+          driverName: '',
+          driverId: '',
+          dispatchedAt: row.created_at || '',
+          status: 'PENDING_ASSIGNMENT',
+        })));
+        setPendingLoading(false);
+      }, () => { if (active) { setPendingDeliveries([]); setPendingLoading(false); } });
+    return () => { active = false; };
+  }, [assignTarget]);
+
+  const assignDeliveryToDriver = async (deliveryId: string) => {
+    if (!assignTarget || submitting) return;
+    setSubmitting(true);
+    try {
+      const { error } = await supabase.from('delivery_logs').update({
+        driver_id: assignTarget.id,
+        driver_name: assignTarget.fullName,
+        vehicle_id: assignTarget.truckId,
+        status: 'ASSIGNED',
+      }).eq('id', deliveryId);
+      if (error) throw error;
+      addNotification(`Driver ${assignTarget.fullName} assigned to ${deliveryId}.`);
+      setAssignTarget(null);
+    } catch (e: any) {
+      alert(e.message || 'Failed to assign driver.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const total = drivers.length;
   const active = drivers.filter(d => d.status === 'ACTIVE').length;
@@ -378,15 +472,20 @@ export default function DriversView({ addNotification }: Props) {
               <p style={{ margin: '4px 0 8px', color: 'var(--text-muted)', fontSize: 13 }}>{profileDriver.id}</p>
               <span style={{ background: statusColors[profileDriver.status].bg, color: statusColors[profileDriver.status].color, borderRadius: 99, padding: '3px 12px', fontSize: 12, fontWeight: 600 }}>{statusColors[profileDriver.status].label}</span>
             </div>
-            {profileDriver.userId ? (
-              <span style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#d1fae5', color: '#065f46', borderRadius: 99, padding: '6px 14px', fontSize: 12, fontWeight: 600, flexShrink: 0 }}>
-                <Smartphone size={13} /> Mobile App Linked
-              </span>
-            ) : (
-              <button onClick={() => setInviteTarget(profileDriver)} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 12, padding: '10px 16px', fontWeight: 600, fontSize: 13, cursor: 'pointer', flexShrink: 0 }}>
-                <Smartphone size={14} /> Invite to Mobile App
+            <div style={{ display: 'flex', gap: 10, flexShrink: 0, flexWrap: 'wrap' }}>
+              <button onClick={() => setAssignTarget(profileDriver)} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--bg-input)', border: '1px solid var(--border)', color: 'var(--text-primary)', borderRadius: 12, padding: '10px 16px', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
+                <Truck size={14} /> Assign Driver
               </button>
-            )}
+              {profileDriver.userId ? (
+                <span style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#d1fae5', color: '#065f46', borderRadius: 99, padding: '6px 14px', fontSize: 12, fontWeight: 600 }}>
+                  <Smartphone size={13} /> Mobile App Linked
+                </span>
+              ) : (
+                <button onClick={() => setInviteTarget(profileDriver)} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 12, padding: '10px 16px', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
+                  <Smartphone size={14} /> Invite to Mobile App
+                </button>
+              )}
+            </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14 }}>
             {[
@@ -460,6 +559,16 @@ export default function DriversView({ addNotification }: Props) {
             }}
           />
         )}
+        {assignTarget && (
+          <AssignDeliveryModal
+            driver={assignTarget}
+            deliveries={pendingDeliveries}
+            loading={pendingLoading}
+            submitting={submitting}
+            onAssign={assignDeliveryToDriver}
+            onClose={() => setAssignTarget(null)}
+          />
+        )}
       </div>
     );
   }
@@ -513,46 +622,47 @@ export default function DriversView({ addNotification }: Props) {
           <p style={{ fontSize: 15 }}>No drivers found</p>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: 12 }}>
           {filtered.map(d => (
-            <div key={d.id} onClick={() => setProfileDriver(d)} style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 20, padding: '24px', cursor: 'pointer', transition: 'box-shadow 0.2s', boxShadow: 'var(--box-shadow)' }}
+            <div key={d.id} onClick={() => setProfileDriver(d)} style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, padding: '14px', cursor: 'pointer', transition: 'box-shadow 0.2s', boxShadow: 'var(--box-shadow)' }}
               onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 8px 30px rgba(0,0,0,0.15)')}
               onMouseLeave={e => (e.currentTarget.style.boxShadow = 'var(--box-shadow)')}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 16 }}>
-                <div style={{ width: 52, height: 52, borderRadius: '50%', background: avatarColors[d.status], display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                <div style={{ width: 38, height: 38, borderRadius: '50%', background: avatarColors[d.status], display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
                   {initials(d.fullName)}
                 </div>
-                <div>
-                  <p style={{ margin: 0, fontWeight: 700, color: 'var(--text-primary)', fontSize: 15 }}>{d.fullName}</p>
-                  <p style={{ margin: '2px 0 6px', color: 'var(--text-muted)', fontSize: 12 }}>{d.id}</p>
-                  <span style={{ background: statusColors[d.status].bg, color: statusColors[d.status].color, borderRadius: 99, padding: '2px 10px', fontSize: 11, fontWeight: 600 }}>{statusColors[d.status].label}</span>
+                <div style={{ minWidth: 0 }}>
+                  <p style={{ margin: 0, fontWeight: 700, color: 'var(--text-primary)', fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.fullName}</p>
+                  <span style={{ background: statusColors[d.status].bg, color: statusColors[d.status].color, borderRadius: 99, padding: '1px 8px', fontSize: 10, fontWeight: 600 }}>{statusColors[d.status].label}</span>
                 </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 16 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 10 }}>
                 {[
-                  { label: 'Truck ID', value: d.truckId },
+                  { label: 'Truck', value: d.truckId },
                   { label: 'Phone', value: d.phone },
-                  { label: 'License', value: d.licenseNumber },
-                  { label: 'Deliveries', value: String(d.totalDeliveries ?? 0) },
                 ].map(f => (
                   <div key={f.label}>
-                    <p style={{ margin: 0, fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{f.label}</p>
-                    <p style={{ margin: '2px 0 0', fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>{f.value}</p>
+                    <p style={{ margin: 0, fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{f.label}</p>
+                    <p style={{ margin: '1px 0 0', fontSize: 12, color: 'var(--text-secondary)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.value || '—'}</p>
                   </div>
                 ))}
               </div>
-              {d.joinedAt && <p style={{ margin: '0 0 16px', fontSize: 12, color: 'var(--text-muted)' }}>Joined {fmt(d.joinedAt)}</p>}
-              <div style={{ display: 'flex', gap: 8 }} onClick={e => e.stopPropagation()}>
-                <button onClick={() => openEdit(d)} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '8px', fontWeight: 600, fontSize: 13, color: 'var(--text-secondary)', cursor: 'pointer' }}>
-                  <Edit2 size={13} /> Edit
-                </button>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }} onClick={e => e.stopPropagation()}>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button onClick={() => setAssignTarget(d)} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, background: 'var(--accent)', border: 'none', borderRadius: 8, padding: '6px', fontWeight: 600, fontSize: 11, color: '#fff', cursor: 'pointer' }}>
+                    <Truck size={11} /> Assign
+                  </button>
+                  <button onClick={() => openEdit(d)} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 8, padding: '6px', fontWeight: 600, fontSize: 11, color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                    <Edit2 size={11} /> Edit
+                  </button>
+                </div>
                 {d.status !== 'OFFLINE' ? (
-                  <button onClick={() => deactivate(d.id)} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, background: '#ffe4e6', border: 'none', borderRadius: 10, padding: '8px', fontWeight: 600, fontSize: 13, color: '#9f1239', cursor: 'pointer' }}>
-                    <UserMinus size={13} /> Deactivate
+                  <button onClick={() => deactivate(d.id)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, background: '#ffe4e6', border: 'none', borderRadius: 8, padding: '6px', fontWeight: 600, fontSize: 11, color: '#9f1239', cursor: 'pointer' }}>
+                    <UserMinus size={11} /> Deactivate
                   </button>
                 ) : (
-                  <button onClick={() => handleDelete(d)} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 10, padding: '8px', fontWeight: 600, fontSize: 13, color: '#dc2626', cursor: 'pointer' }}>
-                    <Trash2 size={13} /> Delete
+                  <button onClick={() => handleDelete(d)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 8, padding: '6px', fontWeight: 600, fontSize: 11, color: '#dc2626', cursor: 'pointer' }}>
+                    <Trash2 size={11} /> Delete
                   </button>
                 )}
               </div>
@@ -569,6 +679,17 @@ export default function DriversView({ addNotification }: Props) {
           onClose={() => { setShowAdd(false); setEditDriver(null); setForm(emptyForm); }}
           onSave={saveDriver}
           onChange={(key, val) => setForm(p => ({ ...p, [key]: val }))}
+        />
+      )}
+
+      {assignTarget && (
+        <AssignDeliveryModal
+          driver={assignTarget}
+          deliveries={pendingDeliveries}
+          loading={pendingLoading}
+          submitting={submitting}
+          onAssign={assignDeliveryToDriver}
+          onClose={() => setAssignTarget(null)}
         />
       )}
     </div>

@@ -48,7 +48,7 @@ export default function TrackingView({ addNotification: _addNotification }: Prop
       try {
         const { data } = await supabase
           .from('drivers')
-          .select('id, driver_id, full_name, vehicle_id, status, phone, ghana_card_id, license_number, photo')
+          .select('id, driver_id, full_name, vehicle_id, status, phone, ghana_card_id, license_number, photo, returned_at')
           .neq('status', 'OFFLINE');
         if (data && data.length > 0) {
           const driverIds = data.map((d: any) => d.driver_id).filter(Boolean);
@@ -70,7 +70,7 @@ export default function TrackingView({ addNotification: _addNotification }: Prop
           const driverRowIds = data.map((d: any) => d.id).filter(Boolean);
           const { data: recentDeliveries } = await supabase
             .from('delivery_logs')
-            .select('id, driver_id, delivery_address, status, created_at')
+            .select('id, driver_id, delivery_address, status, created_at, delivered_at')
             .in('driver_id', driverRowIds)
             .order('created_at', { ascending: false })
             .limit(200);
@@ -86,7 +86,11 @@ export default function TrackingView({ addNotification: _addNotification }: Prop
             if (lastDelivery) {
               if (['IN_TRANSIT', 'OUT_FOR_DELIVERY'].includes(lastDelivery.status)) driverState = 'ON_THE_WAY';
               else if (lastDelivery.status === 'ASSIGNED') driverState = 'ASSIGNED';
-              else if (lastDelivery.status === 'DELIVERED') driverState = 'RETURNING';
+              else if (lastDelivery.status === 'DELIVERED') {
+                const returnedAt = d.returned_at ? new Date(d.returned_at).getTime() : 0;
+                const deliveredAt = lastDelivery.delivered_at ? new Date(lastDelivery.delivered_at).getTime() : 0;
+                driverState = returnedAt > deliveredAt ? 'AT_COMPANY' : 'RETURNING';
+              }
             }
             return {
               id: d.id,

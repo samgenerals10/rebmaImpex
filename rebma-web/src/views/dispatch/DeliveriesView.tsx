@@ -6,7 +6,7 @@ import {
   Download, MoreVertical, ChevronLeft, MapPin, Camera, AlertCircle,
   Calendar, User, Package, UserCheck, Edit, Trash2, MessageCircle
 } from 'lucide-react';
-import { exportToCSV, exportToPDF } from '../../utils/export';
+import { exportToCSV, exportToPDF, downloadRowPDF } from '../../utils/export';
 import type { DeliveryRecord, Driver } from '../../types/erp';
 import DispatchMap from '../../components/dispatch/DispatchMap';
 import { useFullscreenToggle, FullscreenButton } from '../../components/global/FullscreenToggle';
@@ -28,12 +28,29 @@ const fmt = (iso?: string) =>
   iso ? new Date(iso).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—';
 
 function initials(name: string) {
-  return name.split(' ').slice(0, 2).map(w => w[0] || '').join('').toUpperCase() || '?';
+  return (name || '').split(' ').slice(0, 2).map(w => w[0] || '').join('').toUpperCase() || '?';
 }
+
+// drivers rows come back from Supabase in snake_case — map to the camelCase
+// Driver type before use, same mapping DriversView.tsx applies.
+const mapDriverToUI = (db: any): Driver => ({
+  id: db.id,
+  driverId: db.driver_id || db.id || '',
+  fullName: db.full_name || db.fullName || '',
+  phone: db.phone || '',
+  ghanaCard: db.ghana_card_id || db.ghanaCard || '',
+  licenseNumber: db.license_number || db.licenseNumber || '',
+  truckId: db.vehicle_id || db.truckId || '',
+  status: db.status || 'OFFLINE',
+  totalDeliveries: Number(db.total_deliveries || 0),
+  joinedAt: db.created_at || db.joinedAt || '',
+  userId: db.user_id || undefined,
+});
 
 interface Props {
   addNotification: (msg: string) => void;
   currentUser?: { fullName: string; department: string } | null;
+  setActiveSubTab?: (tab: string) => void;
 }
 
 // ── Assign Driver Modal ────────────────────────────────────────────────────────
@@ -284,7 +301,19 @@ function DeliveryDetail({
             className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-sm font-semibold" style={{ background: '#10b981' }}>
             <CheckCircle size={15} /> Mark as Delivered
           </button>
-          <button onClick={() => addNotification(`Delivery note PDF exported for ${delivery.id}`)}
+          <button onClick={() => {
+              downloadRowPDF(`Delivery Note - ${delivery.id}`, {
+                deliveryId: delivery.id,
+                orderId: delivery.orderId,
+                customer: delivery.clientName,
+                destination: delivery.destination,
+                driver: driver?.fullName || 'Unassigned',
+                vehicle: delivery.vehicleId || '—',
+                dispatched: fmt(delivery.dispatchedAt),
+                status: badge.label,
+              });
+              addNotification(`Delivery note PDF exported for ${delivery.id}`);
+            }}
             className="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-card)]">
             <Download size={14} /> Export Delivery Note PDF
           </button>
@@ -295,7 +324,7 @@ function DeliveryDetail({
 }
 
 // ── Main Component ─────────────────────────────────────────────────────────────
-export default function DeliveriesView({ addNotification, currentUser }: Props) {
+export default function DeliveriesView({ addNotification, currentUser, setActiveSubTab }: Props) {
   const [deliveries, setDeliveries] = useState<DeliveryRecord[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [loading, setLoading] = useState(true);
@@ -349,7 +378,7 @@ export default function DeliveriesView({ addNotification, currentUser }: Props) 
     } catch { setDeliveries([]); }
     try {
       const { data } = await supabase.from('drivers').select('*');
-      if (data && data.length > 0) setDrivers(data as Driver[]);
+      if (data && data.length > 0) setDrivers(data.map(mapDriverToUI));
     } catch {}
     setLoading(false);
   };
@@ -662,7 +691,7 @@ export default function DeliveriesView({ addNotification, currentUser }: Props) 
                           <div ref={menuRef} className={`absolute right-4 z-20 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl py-1 min-w-[180px] max-h-[70vh] overflow-y-auto ${menuOpenUp ? 'bottom-10' : 'top-10'}`}
                             onClick={e => e.stopPropagation()}>
                             <button onClick={() => { setDetailRecord(d); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--bg-input)] flex items-center gap-2"><Eye size={11} /> View Details</button>
-                            <button onClick={() => { setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--bg-input)] flex items-center gap-2"><MapPin size={11} /> Track on GPS Map</button>
+                            <button onClick={() => { setMenuOpen(null); setActiveSubTab?.('Tracking'); }} className="w-full text-left px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--bg-input)] flex items-center gap-2"><MapPin size={11} /> Track on GPS Map</button>
                             <button onClick={() => { setAssignTarget(d); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--bg-input)] flex items-center gap-2"><UserCheck size={11} /> {d.driverId ? 'Reassign Driver' : 'Assign Driver'}</button>
                             {d.driverId && (d.status === 'ASSIGNED' || d.status === 'IN_TRANSIT') && (
                               <button

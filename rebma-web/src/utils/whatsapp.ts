@@ -13,28 +13,22 @@ export function toWhatsAppDigits(rawPhone: string): string {
   return digits;
 }
 
-export function mapsLink(address: string): string {
-  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}`;
-}
-
 export interface WhatsAppStop {
   sequence: number;
   customerName: string;
   deliveryAddress: string;
 }
 
-export function buildDirectionsMessage(driverName: string, stops: WhatsAppStop[]): string {
-  const trackingUrl = window.location.origin;
+export function buildDirectionsMessage(driverName: string, stops: WhatsAppStop[], tripToken: string): string {
+  const tripUrl = `${window.location.origin}/trip/${tripToken}`;
   const lines = [`Hi ${driverName}, you have ${stops.length} ${stops.length === 1 ? 'delivery' : 'deliveries'} today:`, ''];
   for (const stop of stops) {
     lines.push(`Stop ${stop.sequence}: ${stop.customerName}`);
-    if (stop.deliveryAddress) {
-      lines.push(stop.deliveryAddress);
-      lines.push(`Directions: ${mapsLink(stop.deliveryAddress)}`);
-    }
+    if (stop.deliveryAddress) lines.push(stop.deliveryAddress);
     lines.push('');
   }
-  lines.push(`Log in at ${trackingUrl} with your driver account to mark each stop delivered as you go.`);
+  lines.push(`Tap to start your trip: ${tripUrl}`);
+  lines.push('This opens Google Maps for each stop and shares your location with dispatch — no login needed.');
   return lines.join('\n');
 }
 
