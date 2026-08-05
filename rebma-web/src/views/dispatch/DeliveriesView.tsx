@@ -538,9 +538,15 @@ export default function DeliveriesView({ addNotification, currentUser, setActive
       await supabase.from('supplier_order_notifications').insert({ message: `Driver ${driver.fullName} assigned to ${delivery.orderId}`, notified_department: 'OPERATIONS', read: false, created_at: now });
       await supabase.from('global_audit_history').insert({ department: 'DISPATCH', action: `Driver ${driver.fullName} assigned to ${delivery.id}`, performed_by: currentUser?.fullName || 'Dispatch', timestamp: now });
 
-      addNotification(`Driver ${driver.fullName} assigned to ${delivery.id}. Use "Send WhatsApp Directions" to text them the route.`);
+      addNotification(`Driver ${driver.fullName} assigned to ${delivery.id}.`);
       setAssignTarget(null);
       if (detailRecord?.id === delivery.id) setDetailRecord(prev => prev ? { ...prev, driverId, driverName: driver.fullName, vehicleId: driver.truckId, status: 'ASSIGNED' } : prev);
+      try {
+        await dispatchApi.sendWhatsAppDirections(driverId);
+        addNotification(`WhatsApp opened with the trip link for ${driver.fullName} — tap Send to deliver it.`);
+      } catch (e: any) {
+        addNotification(`Assigned, but couldn't open WhatsApp: ${e.message}`);
+      }
     } catch (e: any) {
       alert(e.message || 'Failed to assign driver.');
     } finally {

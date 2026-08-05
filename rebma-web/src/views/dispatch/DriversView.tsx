@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Search, Plus, ArrowLeft, X, Edit2, UserMinus, Truck, Trash2, Edit, Smartphone, Copy, Check } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
+import { dispatch as dispatchApi } from '../../services/apiClient';
 import type { Driver, DeliveryRecord } from '../../types/erp';
 
 const statusColors: Record<Driver['status'], { bg: string; color: string; label: string }> = {
@@ -329,6 +330,12 @@ export default function DriversView({ addNotification }: Props) {
       if (error) throw error;
       addNotification(`Driver ${assignTarget.fullName} assigned to ${deliveryId}.`);
       setAssignTarget(null);
+      try {
+        await dispatchApi.sendWhatsAppDirections(assignTarget.id);
+        addNotification(`WhatsApp opened with the trip link for ${assignTarget.fullName} — tap Send to deliver it.`);
+      } catch (e: any) {
+        addNotification(`Assigned, but couldn't open WhatsApp: ${e.message}`);
+      }
     } catch (e: any) {
       alert(e.message || 'Failed to assign driver.');
     } finally {

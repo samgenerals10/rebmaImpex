@@ -9,6 +9,7 @@ import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip
 } from 'recharts';
 import { exportToCSV } from '../../utils/export';
+import { dispatch as dispatchApi } from '../../services/apiClient';
 import type { Driver, DeliveryRecord, CurrentUser } from '../../types/erp';
 import DispatchMap from '../../components/dispatch/DispatchMap';
 import CountUp from '../../components/CountUp';
@@ -207,6 +208,12 @@ export default function DispatchOverviewView({ addNotification, setActiveSubTab,
         performed_by: currentUser?.fullName || 'Dispatch', timestamp: now,
       });
       addNotification?.(`Driver ${driver.fullName} assigned to ${delivery.orderId}`);
+      try {
+        await dispatchApi.sendWhatsAppDirections(driver.id);
+        addNotification?.(`WhatsApp opened with the trip link for ${driver.fullName} — tap Send to deliver it.`);
+      } catch (e: any) {
+        addNotification?.(`Assigned, but couldn't open WhatsApp: ${e.message}`);
+      }
     } catch (err: any) {
       addNotification?.(`Failed to assign driver: ${err.message}`);
     } finally {
