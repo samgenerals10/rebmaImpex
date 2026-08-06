@@ -8,6 +8,7 @@ import EntityDetailPanel from '../../components/global/EntityDetailPanel';
 import { stockApi, operations } from '../../services/apiClient';
 import { exportToCSV } from '../../utils/export';
 import { supabase } from '../../lib/supabaseClient';
+import { useCeoSettings } from '../../contexts/CeoSettingsContext';
 import type { IncomingGoods, GeneralPurchase } from '../../types/erp';
 import StockIntakeForm from '../../components/StockIntakeForm';
 
@@ -160,6 +161,7 @@ function MovementHistory({ entries }: { entries: LedgerEntry[] }) {
 interface Props { incomingGoodsList: IncomingGoods[]; addNotification: (msg: string) => void }
 
 export default function StockView({ incomingGoodsList: _ig, addNotification }: Props) {
+  const { getSetting } = useCeoSettings();
   const [activeTab, setActiveTab] = useState<ActiveTab>('APPROVED_CARGO');
   const [approvedCargo, setApprovedCargo] = useState<ApprovedCargo[]>([]);
   const [stock, setStock] = useState<StockItem[]>([]);
@@ -405,6 +407,7 @@ export default function StockView({ incomingGoodsList: _ig, addNotification }: P
   // ── GP adjust ────────────────────────────────────────────────────────────
   const doAdjustGP = async () => {
     if (!adjustTarget || !adjustForm.quantity || submitting) return;
+    if (!getSetting('stock_adjustments_allowed', true)) { addNotification('Stock adjustments are currently disabled by the CEO.'); return; }
     setSubmitting(true);
     const delta = adjustForm.type === 'Add' ? parseInt(adjustForm.quantity) : -parseInt(adjustForm.quantity);
     const newQty = Math.max(0, Number(adjustTarget.quantity) + delta);

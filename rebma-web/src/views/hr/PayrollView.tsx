@@ -6,12 +6,13 @@ import {
 import { exportToCSV } from '../../utils/export';
 import { supabase } from '../../lib/supabaseClient';
 import CountUp from '../../components/CountUp';
+import { useCeoSettings } from '../../contexts/CeoSettingsContext';
 import type { StaffMember, CurrentUser } from '../../types/erp';
 
 interface PayrollBatch {
   id: string;
   period: string;
-  status: 'DRAFT' | 'PROCESSING' | 'PAID';
+  status: 'DRAFT' | 'PROCESSING' | 'PENDING_CEO_APPROVAL' | 'PAID';
   totalAmount: number;
   staffCount: number;
   processedAt?: string;
@@ -37,6 +38,7 @@ interface Props {
 }
 
 export default function PayrollView({ currentUser, staffList, addNotification }: Props) {
+  const { getSetting } = useCeoSettings();
   const [batches, setBatches] = useState<PayrollBatch[]>([]);
   const [entries, setEntries] = useState<PayrollEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -97,16 +99,42 @@ export default function PayrollView({ currentUser, staffList, addNotification }:
 
   const handleProcessBatch = async (batch: PayrollBatch) => {
     if (submitting) return;
+    if (!getSetting('payroll_processing_enabled', true)) { addNotification('Payroll processing is currently disabled by the CEO.'); return; }
+    setSubmitting(true);
+    try {
+      // When the CEO requires payroll sign-off, HR can only submit for
+      // approval — the RLS policy on payroll_batches independently blocks
+      // anyone but the CEO from setting PAID once this setting is on, so
+      // this mirrors the actual enforced rule rather than just the UI.
+      const needsCeoApproval = getSetting('ceo_must_approve_payroll', false);
+      const newStatus = needsCeoApproval ? 'PENDING_CEO_APPROVAL' : 'PAID';
+      const updated = { ...batch, status: newStatus as PayrollBatch['status'], processedAt: new Date().toISOString().split('T')[0] };
+      const { error } = await supabase.from('payroll_batches').update({ status: newStatus }).eq('id', batch.id);
+      if (error) throw error;
+      await supabase.from('global_audit_history').insert([{ department: 'HR', action: needsCeoApproval ? `Payroll submitted for CEO approval: ${batch.period}` : `Payroll processed: ${batch.period}`, performed_by: currentUser?.fullName || 'HR Admin', timestamp: new Date().toISOString() }]);
+      setBatches(prev => prev.map(b => b.id === batch.id ? updated : b));
+      if (activeBatch?.id === batch.id) setActiveBatch(updated);
+      addNotification(needsCeoApproval ? `Payroll batch ${batch.period} sent to the CEO for approval.` : `Payroll batch ${batch.period} processed`);
+    } catch (err: any) {
+      addNotification(`Error processing batch: ${err.message}`);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleCeoApproveBatch = async (batch: PayrollBatch) => {
+    if (submitting) return;
     setSubmitting(true);
     try {
       const updated = { ...batch, status: 'PAID' as const, processedAt: new Date().toISOString().split('T')[0] };
-      await supabase.from('payroll_batches').update({ status: 'PAID' }).eq('id', batch.id);
-      await supabase.from('global_audit_history').insert([{ department: 'HR', action: `Payroll processed: ${batch.period}`, performed_by: currentUser?.fullName || 'HR Admin', timestamp: new Date().toISOString() }]);
+      const { error } = await supabase.from('payroll_batches').update({ status: 'PAID' }).eq('id', batch.id);
+      if (error) throw error;
+      await supabase.from('global_audit_history').insert([{ department: 'HR', action: `Payroll approved by CEO: ${batch.period}`, performed_by: currentUser?.fullName || 'CEO', timestamp: new Date().toISOString() }]);
       setBatches(prev => prev.map(b => b.id === batch.id ? updated : b));
       if (activeBatch?.id === batch.id) setActiveBatch(updated);
-      addNotification(`Payroll batch ${batch.period} processed`);
+      addNotification(`Payroll batch ${batch.period} approved and marked paid.`);
     } catch (err: any) {
-      addNotification(`Error processing batch: ${err.message}`);
+      addNotification(`Error approving batch: ${err.message}`);
     } finally {
       setSubmitting(false);
     }
@@ -259,6 +287,16 @@ export default function PayrollView({ currentUser, staffList, addNotification }:
                             className="text-xs px-3 py-1.5 bg-[var(--accent)] text-white rounded-lg font-semibold hover:opacity-90 cursor-pointer disabled:opacity-50">
                             {submitting ? 'Processing...' : 'Process'}
                           </button>
+                        )}
+                        {batch.status === 'PENDING_CEO_APPROVAL' && (
+                          currentUser?.isAdmin ? (
+                            <button onClick={() => handleCeoApproveBatch(batch)} disabled={submitting}
+                              className="text-xs px-3 py-1.5 bg-emerald-600 text-white rounded-lg font-semibold hover:opacity-90 cursor-pointer disabled:opacity-50">
+                              {submitting ? 'Approving...' : 'Approve & Pay'}
+                            </button>
+                          ) : (
+                            <span className="text-[10px] font-bold uppercase tracking-wide text-amber-600">Awaiting CEO</span>
+                          )
                         )}
                         {batch.status === 'PAID' && (
                           <button onClick={() => exportToCSV(entries, ['staffName', 'department', 'role', 'baseSalary', 'allowances', 'deductions', 'netPay'], `payroll_${batch.id}`)}

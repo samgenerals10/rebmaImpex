@@ -8,6 +8,7 @@ import {
 import PendingApprovalsAlert from '../../components/global/PendingApprovalsAlert';
 import ProductCatalogCard from '../../components/ProductCatalogCard';
 import CountUp from '../../components/CountUp';
+import { useCeoSettings } from '../../contexts/CeoSettingsContext';
 import {
   ResponsiveContainer, AreaChart, Area, BarChart, Bar, LineChart, Line,
   XAxis, YAxis, Tooltip, PieChart, Pie, Cell
@@ -29,6 +30,7 @@ function timeGreeting() {
 }
 
 export default function MgmtOverviewView({ addNotification, setActiveSubTab, currentUser }: Props) {
+  const { getSetting } = useCeoSettings();
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState<any[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
@@ -82,7 +84,7 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
         Promise.resolve({ data: [] }),
         supabase.from('cargo_intake').select('*'),
         Promise.resolve({ data: [] }),
-        supabase.from('profiles').select('*'),
+        supabase.from('profiles_directory').select('*'),
         supabase.from('production_requests').select('*').then(r => r, () => ({ data: [] })),
         supabase.from('general_purchases').select('*').then(r => r, () => ({ data: [] })),
         supabase.from('attendance').select('*').then(r => r, () => ({ data: [] })),
@@ -568,6 +570,7 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
 
   async function saveCorrection() {
     if (!correctionTarget) return;
+    if (!getSetting('stock_adjustments_allowed', true)) { addNotification?.('Stock adjustments are currently disabled by the CEO.'); return; }
     if (!correctionForm.note.trim()) { addNotification?.('A reason for the correction is required.'); return; }
     const oldQty = Number(correctionTarget.quantity) || 0;
     const newQty = Number(correctionForm.quantity) || 0;

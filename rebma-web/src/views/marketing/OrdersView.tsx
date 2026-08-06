@@ -5,6 +5,7 @@ import { useFullscreenToggle, FullscreenButton } from '../../components/global/F
 import RatingBadge from '../../components/RatingBadge';
 import { computeCustomerRating, ordersForCustomer } from '../../utils/customerRating';
 import CountUp from '../../components/CountUp';
+import { useCeoSettings } from '../../contexts/CeoSettingsContext';
 import DestinationLocator, { type Coords } from '../../components/dispatch/DestinationLocator';
 import type { Order, OrderLineItem } from '../../types/erp';
 
@@ -47,6 +48,7 @@ interface Props {
 }
 
 export default function OrdersView({ ordersList, onCreateOrder, addNotification }: Props) {
+  const { getSetting } = useCeoSettings();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -208,6 +210,13 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
         return { productName: item.productName, quantity: qty, unitPrice, lineTotal: unitPrice * qty };
       });
       const orderTotal = itemsWithPricing.reduce((s, i) => s + i.lineTotal, 0);
+
+      const creditLimit = getSetting('max_credit_amount', 0);
+      if (form.paymentMode === 'CREDIT' && creditLimit > 0 && orderTotal > creditLimit) {
+        addNotification(`Credit orders are capped at GHS ${Number(creditLimit).toLocaleString()} by the CEO — this order is GHS ${orderTotal.toLocaleString()}.`);
+        setSubmitting(false);
+        return;
+      }
 
       // Product name display: join all product names with commas
       const productDisplay = itemsWithPricing.map(item => item.productName).join(', ');

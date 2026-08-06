@@ -11,6 +11,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../../lib/supabaseClient';
 import { messenger } from '../../services/apiClient';
+import { useCeoSettings } from '../../contexts/CeoSettingsContext';
 import JitsiCallModal from './JitsiCallModal';
 import type { CurrentUser } from '../../types/erp';
 
@@ -35,6 +36,10 @@ function initials(name: string) {
 }
 
 export default function Messenger({ isOpen, onClose, currentUser }: Props) {
+  const { getSetting } = useCeoSettings();
+  const globalChatEnabled = getSetting('global_chat_enabled', true);
+  const departmentChatEnabled = getSetting('department_chat_enabled', true);
+  const directMessagesEnabled = getSetting('direct_messages_enabled', true);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [channels, setChannels] = useState<Channel[]>([]);
   const [dmChannelByUser, setDmChannelByUser] = useState<Record<string, Channel>>({});
@@ -64,7 +69,7 @@ export default function Messenger({ isOpen, onClose, currentUser }: Props) {
   useEffect(() => {
     if (!isOpen || !myId) return;
     (async () => {
-      const { data } = await supabase.from('profiles').select('id, full_name, role').eq('status', 'ACTIVE').order('full_name', { ascending: true });
+      const { data } = await supabase.from('profiles_directory').select('id, full_name, role').eq('status', 'ACTIVE').order('full_name', { ascending: true });
       setProfiles((data || []).map((p: any) => ({ id: p.id, fullName: p.full_name || 'Unknown', department: p.role || '' })).filter(p => p.id !== myId));
 
       const everyoneId = await messenger.ensureEveryoneChannel();
@@ -206,6 +211,9 @@ export default function Messenger({ isOpen, onClose, currentUser }: Props) {
 
   const handleSend = async () => {
     if (!composer.trim() || !activeChannel) return;
+    if (activeChannel.type === 'everyone' && !globalChatEnabled) return;
+    if (activeChannel.type === 'group' && !departmentChatEnabled) return;
+    if (activeChannel.type === 'dm' && !directMessagesEnabled) return;
     const text = composer;
     setComposer('');
     setReplyTo(null);
@@ -276,17 +284,17 @@ export default function Messenger({ isOpen, onClose, currentUser }: Props) {
                 </div>
               </div>
               <div className="flex-1 overflow-y-auto px-2 pb-2">
-                {everyoneChannel && (
+                {everyoneChannel && globalChatEnabled && (
                   <button onClick={() => setActiveChannel(everyoneChannel)}
                     className={`w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl cursor-pointer text-left ${activeChannel?.id === everyoneChannel.id ? 'bg-[var(--accent-light)]' : 'hover:bg-[var(--accent-light)]'}`}>
                     <div className="w-9 h-9 rounded-full bg-[var(--accent)] text-white flex items-center justify-center shrink-0"><Users size={15} /></div>
                     <div className="min-w-0 flex-1"><p className="text-xs font-bold text-[var(--text-primary)]">Everyone</p><p className="text-[10px] text-[var(--text-muted)]">Company-wide broadcast</p></div>
                   </button>
                 )}
-                {groupChannels.length > 0 && (
+                {departmentChatEnabled && groupChannels.length > 0 && (
                   <p className="text-[9px] font-bold uppercase tracking-wider text-[var(--text-muted)] px-2.5 pt-3 pb-1">Groups</p>
                 )}
-                {groupChannels.map(ch => (
+                {departmentChatEnabled && groupChannels.map(ch => (
                   <button key={ch.id} onClick={() => setActiveChannel(ch)}
                     className={`w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl cursor-pointer text-left ${activeChannel?.id === ch.id ? 'bg-[var(--accent-light)]' : 'hover:bg-[var(--accent-light)]'}`}>
                     <div className="w-9 h-9 rounded-full bg-[var(--accent-light)] text-[var(--accent)] flex items-center justify-center text-xs font-bold shrink-0">{initials(ch.name || 'GC')}</div>

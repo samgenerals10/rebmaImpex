@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { Download, Save, FileText, Calculator } from 'lucide-react';
 import { exportToCSV, exportToPDF } from '../../utils/export';
 import CountUp from '../../components/CountUp';
+import { useCeoSettings } from '../../contexts/CeoSettingsContext';
 
 interface VATEntry {
   period: string;
@@ -29,6 +30,7 @@ interface Props {
 }
 
 export default function FinanceTaxVATView({ addNotification, currentUser }: Props) {
+  const { getSetting } = useCeoSettings();
   const [vatData, setVatData] = useState<VATEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [rates, setRates] = useState<TaxRates>({ vat: 15, nhil: 2.5, getfund: 2.5, covid: 1, autoCalculate: true });
@@ -114,6 +116,7 @@ export default function FinanceTaxVATView({ addNotification, currentUser }: Prop
   }
 
   function generateReport() {
+    if (!getSetting('report_generation_enabled', true)) { addNotification('Report generation is currently disabled by the CEO.'); return; }
     exportToPDF(
       `Tax Report — ${selectedPeriod}`,
       vatData.filter(v => v.period === selectedPeriod).map(v => ({

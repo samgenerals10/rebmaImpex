@@ -11,6 +11,7 @@ import MaterialRequisitionsPanel from './MaterialRequisitionsPanel';
 import ApprovalHistoryPanel from '../../components/global/ApprovalHistoryPanel';
 import { useFullscreenToggle, FullscreenButton } from '../../components/global/FullscreenToggle';
 import CountUp from '../../components/CountUp';
+import { useCeoSettings } from '../../contexts/CeoSettingsContext';
 
 interface ApprovalItem {
   id: string;
@@ -71,6 +72,7 @@ const TYPE_ICONS: Record<string, React.ElementType> = {
 const TABS = ['All', 'Cargo Intake', 'Sales Order', 'Production Request', 'General Purchase', 'Float Request'] as const;
 
 export default function MgmtApprovalsView({ addNotification, currentUser }: Props) {
+  const { getSetting } = useCeoSettings();
   const [items, setItems] = useState<ApprovalItem[]>([]);
   const [historyItems, setHistoryItems] = useState<ApprovalItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -404,7 +406,11 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
           if (notifyOps) {
             await supabase.from('supplier_order_notifications').insert([{ message: `Cargo intake APPROVED by Management: ${selectedItem.description}`, notified_department: 'OPERATIONS', read: false }]);
           }
-          if (notifyCeo) {
+          // When the CEO has turned on auto-alerting for discrepancies, a
+          // damaged-goods write-off notifies them regardless of whether
+          // Management left the "notify CEO" checkbox ticked.
+          const forceCeoAlert = confirmedDamages > 0 && getSetting('discrepancy_auto_alert_ceo', true);
+          if (notifyCeo || forceCeoAlert) {
             await supabase.from('supplier_order_notifications').insert([{ message: `Cargo intake APPROVED by Management: ${selectedItem.description}`, notified_department: 'CEO', read: false }]);
           }
           if (sellingPrice) {

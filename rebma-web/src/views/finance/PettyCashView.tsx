@@ -145,22 +145,19 @@ export default function FinancePettyCashView({ addNotification, currentUser }: P
     if (amount > currentFloat) { addNotification?.('Insufficient float balance'); return; }
     setSubmitting(true);
     try {
-      const newBalance = currentFloat - amount;
-      const { data, error } = await supabase.from('finance_petty_cash').insert([{
-        description: form.description,
-        amount,
-        disbursed_to: form.disbursedTo,
-        category: form.category,
-        notes: form.notes,
-        balance_after: newBalance,
-        type: 'disbursement',
-        recorded_by: currentUser?.fullName || 'Finance',
-        timestamp: new Date().toISOString()
-      }]).select();
+      // Atomic server-side function — computes the new balance and inserts
+      // in one step, so two concurrent disbursements can't both read the
+      // same starting float (see supabase_atomic_functions.sql).
+      const { data: newRow, error } = await supabase.rpc('disburse_petty_cash', {
+        p_amount: amount,
+        p_description: form.description,
+        p_disbursed_to: form.disbursedTo,
+        p_category: form.category,
+        p_notes: form.notes || null,
+      });
       if (error) throw error;
-      
-      const newId = data?.[0]?.id || Date.now().toString();
-      const entry: PettyCashEntry = { id: newId, date: new Date().toISOString().slice(0, 10), description: form.description, amount, disbursedTo: form.disbursedTo, category: form.category, receipt: false, balanceAfter: newBalance, type: 'disbursement' };
+
+      const entry: PettyCashEntry = { id: newRow.id, date: (newRow.timestamp || newRow.created_at || '').slice(0, 10), description: form.description, amount, disbursedTo: form.disbursedTo, category: form.category, receipt: false, balanceAfter: newRow.balance_after, type: 'disbursement' };
       setEntries(prev => [entry, ...prev]);
       addNotification?.(`Petty cash disbursed: GHS ${amount.toLocaleString()} to ${form.disbursedTo}`);
       setShowDisbForm(false);

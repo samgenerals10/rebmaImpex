@@ -89,26 +89,47 @@ export default function DriverTrackingView({ driver, onLogout }: DriverTrackingV
       setGpsActive(false);
       return;
     }
-    const id = navigator.geolocation.watchPosition(
-      async (pos) => {
-        const { latitude, longitude, accuracy } = pos.coords;
-        setLastLat(latitude);
-        setLastLng(longitude);
-        setLocationError(null);
-        const { error } = await supabase.from('driver_locations').insert({
-          driver_id: driver.driverId,
-          delivery_id: activeDeliveryId,
-          latitude,
-          longitude,
-          accuracy: accuracy ?? null,
-        });
-        if (!error) setLastSyncedAt(new Date());
-      },
-      (err) => setLocationError(err.message || 'Unable to read location.'),
-      { enableHighAccuracy: false, maximumAge: 10000, timeout: 20000 }
-    );
-    watchIdRef.current = id;
+    let cancelled = false;
+    let lastPingAt = 0;
+    (async () => {
+      // This view renders outside CeoSettingsProvider (drivers aren't
+      // logged into the main app shell), so the settings are read directly
+      // rather than via useCeoSettings().
+      const { data: rows } = await supabase.from('ceo_settings').select('setting_key, setting_value').in('setting_key', ['gps_tracking_enabled', 'gps_ping_interval']);
+      const trackingEnabled = rows?.find(r => r.setting_key === 'gps_tracking_enabled')?.setting_value;
+      const intervalMinutes = rows?.find(r => r.setting_key === 'gps_ping_interval')?.setting_value;
+      if (cancelled) return;
+      if (trackingEnabled === false) {
+        setLocationError('GPS tracking is currently disabled by the CEO.');
+        setGpsActive(false);
+        return;
+      }
+      const throttleMs = typeof intervalMinutes === 'number' && intervalMinutes > 0 ? intervalMinutes * 60000 : 0;
+
+      const id = navigator.geolocation.watchPosition(
+        async (pos) => {
+          const { latitude, longitude, accuracy } = pos.coords;
+          setLastLat(latitude);
+          setLastLng(longitude);
+          setLocationError(null);
+          if (throttleMs > 0 && Date.now() - lastPingAt < throttleMs) return;
+          lastPingAt = Date.now();
+          const { error } = await supabase.from('driver_locations').insert({
+            driver_id: driver.driverId,
+            delivery_id: activeDeliveryId,
+            latitude,
+            longitude,
+            accuracy: accuracy ?? null,
+          });
+          if (!error) setLastSyncedAt(new Date());
+        },
+        (err) => setLocationError(err.message || 'Unable to read location.'),
+        { enableHighAccuracy: false, maximumAge: 10000, timeout: 20000 }
+      );
+      watchIdRef.current = id;
+    })();
     return () => {
+      cancelled = true;
       if (watchIdRef.current !== null) {
         navigator.geolocation.clearWatch(watchIdRef.current);
         watchIdRef.current = null;
@@ -118,6 +139,21 @@ export default function DriverTrackingView({ driver, onLogout }: DriverTrackingV
 
   const handleMarkDelivered = async (stop: Stop) => {
     setMarkingId(stop.id);
+    // Rendered outside CeoSettingsProvider (see the GPS effect above for
+    // why) — read the flag directly, and check this specific row's own
+    // proof_photo rather than trusting local state, since this page has
+    // no camera-upload step of its own (proof is captured elsewhere, e.g.
+    // ProofOfDeliveryView) — a stale local flag could wrongly allow or
+    // block the action.
+    const { data: gate } = await supabase.from('ceo_settings').select('setting_value').eq('setting_key', 'proof_of_delivery_required').maybeSingle();
+    if (gate?.setting_value === true) {
+      const { data: row } = await supabase.from('delivery_logs').select('proof_photo').eq('id', stop.id).maybeSingle();
+      if (!row?.proof_photo) {
+        setMarkingId(null);
+        alert('A proof-of-delivery photo is required by the CEO before this can be marked delivered. Ask dispatch to upload it first.');
+        return;
+      }
+    }
     const { error } = await supabase
       .from('delivery_logs')
       .update({ status: 'DELIVERED', delivered_at: new Date().toISOString(), updated_at: new Date().toISOString() })

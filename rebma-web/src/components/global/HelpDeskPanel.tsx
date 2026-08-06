@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { BookOpen, Newspaper, Plus, Search, ChevronDown, ChevronUp, X, Check } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
+import { useCeoSettings } from '../../contexts/CeoSettingsContext';
 import type { CurrentUser } from '../../types/erp';
 
 interface HelpArticle {
@@ -144,7 +145,11 @@ export default function HelpDeskPanel({ currentUser, addNotification }: HelpDesk
   const [newsModal, setNewsModal]   = useState({ open: false, ...blankNews });
   const [saving, setSaving]         = useState(false);
 
+  const { getSetting } = useCeoSettings();
   const isManagement = currentUser?.isAdmin || currentUser?.department === 'MANAGEMENT' || currentUser?.department === 'CEO';
+  // When announcements_ceo_only is on, Management loses posting rights —
+  // only the CEO (isAdmin) may post/pin company news.
+  const canPostNews = getSetting('announcements_ceo_only', false) ? !!currentUser?.isAdmin : isManagement;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -201,6 +206,7 @@ export default function HelpDeskPanel({ currentUser, addNotification }: HelpDesk
 
   const saveNews = async () => {
     if (!currentUser || !newsModal.title.trim()) return;
+    if (!canPostNews) { addNotification('Only the CEO can post company news right now.'); return; }
     setSaving(true);
     try {
       await supabase.from('company_news').insert({ title: newsModal.title, body: newsModal.body, author: currentUser.fullName, pinned: newsModal.pinned });
@@ -241,7 +247,7 @@ export default function HelpDeskPanel({ currentUser, addNotification }: HelpDesk
               <Plus className="w-3.5 h-3.5" /> Article
             </button>
           )}
-          {isManagement && tab === 'news' && (
+          {canPostNews && tab === 'news' && (
             <button onClick={() => setNewsModal({ open: true, ...blankNews })}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--accent)] text-white text-xs font-semibold rounded-lg hover:opacity-90 cursor-pointer">
               <Plus className="w-3.5 h-3.5" /> Post

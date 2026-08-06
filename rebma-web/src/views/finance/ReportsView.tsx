@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { FileText, Download, BarChart2, TrendingUp, Users, CreditCard, Receipt, DollarSign, Calendar, RefreshCw } from 'lucide-react';
 import { exportToCSV, exportToPDF } from '../../utils/export';
+import { useCeoSettings } from '../../contexts/CeoSettingsContext';
 
 interface ReportCard {
   id: string;
@@ -40,6 +41,7 @@ interface Props {
 }
 
 export default function FinanceReportsView({ addNotification, currentUser }: Props) {
+  const { getSetting } = useCeoSettings();
   const [generating, setGenerating] = useState<string | null>(null);
   const [showPeriodModal, setShowPeriodModal] = useState<ReportCard | null>(null);
   const [selectedPeriod, setSelectedPeriod] = useState('This Month');
@@ -65,6 +67,7 @@ export default function FinanceReportsView({ addNotification, currentUser }: Pro
   }, []);
 
   async function generateReport(report: ReportCard) {
+    if (!getSetting('report_generation_enabled', true)) { addNotification('Report generation is currently disabled by the CEO.'); return; }
     setShowPeriodModal(null);
     setGenerating(report.id);
     const generatedAt = new Date();
@@ -156,7 +159,7 @@ export default function FinanceReportsView({ addNotification, currentUser }: Pro
 
       } else if (report.id === 'payroll') {
         // Payroll Summary: Active staff list by department
-        const { data } = await supabase.from('profiles').select('*').eq('status', 'ACTIVE');
+        const { data } = await supabase.from('profiles_directory').select('*').eq('status', 'ACTIVE');
         const staff = data || [];
         dataToExport = staff.map(s => ({
           'Staff ID': s.id.slice(0, 8).toUpperCase(),

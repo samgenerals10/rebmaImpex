@@ -72,7 +72,7 @@ export default function TasksPanel({ currentUser, addNotification }: TasksPanelP
       if (data) setTasks(data);
 
       const { data: profs } = await supabase
-        .from('profiles')
+        .from('profiles_directory')
         .select('id, full_name, department')
         .eq('department', currentUser.department)
         .neq('id', currentUser.id);

@@ -1,7 +1,8 @@
 // Cross-department real-time activity feed reading from global_audit_history
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../../lib/supabaseClient';
-import { Activity, RefreshCw, User, Clock } from 'lucide-react';
+import { Activity, RefreshCw, User, Clock, Lock } from 'lucide-react';
+import { useCeoSettings } from '../../contexts/CeoSettingsContext';
 
 interface AuditEntry {
   id: string;
@@ -61,9 +62,19 @@ interface Props {
   /** Compact single-column mode */
   compact?: boolean;
   title?: string;
+  /** Viewer's own department/isAdmin — used to enforce audit_log_access */
+  viewerDepartment?: string;
+  viewerIsAdmin?: boolean;
 }
 
-export default function ActivityFeed({ departments, limit = 30, compact = false, title = 'Live Activity Feed' }: Props) {
+export default function ActivityFeed({ departments, limit = 30, compact = false, title = 'Live Activity Feed', viewerDepartment, viewerIsAdmin }: Props) {
+  const { getSetting } = useCeoSettings();
+  const accessLevel = getSetting('audit_log_access', 'management_and_above');
+  const isManagementOrAbove = viewerDepartment === 'MANAGEMENT' || viewerDepartment === 'CEO';
+  // ceo_only is implicitly covered — only viewerIsAdmin ever satisfies it.
+  const accessAllowed = !!viewerIsAdmin
+    || accessLevel === 'all_staff'
+    || (accessLevel === 'management_and_above' && isManagementOrAbove);
   const [entries, setEntries] = useState<AuditEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [deptFilter, setDeptFilter] = useState('ALL');
@@ -136,6 +147,15 @@ export default function ActivityFeed({ departments, limit = 30, compact = false,
   const filtered = entries
     .filter(e => deptFilter === 'ALL' || e.department === deptFilter)
     .slice(0, limit);
+
+  if (!accessAllowed) {
+    return (
+      <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-[var(--box-shadow)] p-6 flex flex-col items-center text-center gap-2">
+        <Lock size={18} className="text-[var(--text-muted)]" />
+        <p className="text-xs text-[var(--text-muted)]">The audit log is currently restricted by the CEO to {accessLevel === 'ceo_only' ? 'the CEO only' : 'Management and above'}.</p>
+      </div>
+    );
+  }
 
   if (compact) {
     return (

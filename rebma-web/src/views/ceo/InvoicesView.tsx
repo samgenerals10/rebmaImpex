@@ -5,6 +5,7 @@ import QRCode from 'qrcode';
 import { invoices as invoicesApi, documentTemplates, type DocumentTemplate } from '../../services/apiClient';
 import { exportToCSV, safeDisplayName } from '../../utils/export';
 import EntityDetailPanel from '../../components/global/EntityDetailPanel';
+import { useCeoSettings } from '../../contexts/CeoSettingsContext';
 import type { CurrentUser } from '../../types/erp';
 
 interface LineItem {
@@ -215,8 +216,11 @@ export default function InvoicesView({ addNotification, currentUser }: Props) {
   const taxAmount = subtotal * 0.15;
   const grandTotal = subtotal + taxAmount;
 
+  const { getSetting } = useCeoSettings();
+
   const handleGenerate = async () => {
     if (submitting) return;
+    if (!getSetting('invoice_generation_enabled', true)) { addNotification('Invoice generation is currently disabled by the CEO.'); return; }
     if (!clientName.trim()) { addNotification('Client name is required.'); return; }
     const validItems = lineItems.filter(i => i.productName.trim() && i.quantity > 0);
     if (validItems.length === 0) { addNotification('Add at least one line item.'); return; }

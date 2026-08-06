@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
+import { useCeoSettings } from '../../contexts/CeoSettingsContext';
 import {
   Search, Download, Eye, MoreVertical, ArrowLeft, CreditCard,
   DollarSign, AlertTriangle, CheckCircle, Send, RefreshCw, Phone
@@ -34,6 +35,7 @@ interface Props {
 }
 
 export default function FinanceCreditMgmtView({ addNotification, currentUser }: Props) {
+  const { getSetting } = useCeoSettings();
   const [items, setItems] = useState<CreditEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -107,6 +109,8 @@ export default function FinanceCreditMgmtView({ addNotification, currentUser }: 
 
   async function sendReminder() {
     if (!reminderModal) return;
+    if (!getSetting('payment_reminders_enabled', true)) { addNotification?.('Payment reminders are currently disabled by the CEO.'); return; }
+    if (reminderType === 'whatsapp' && !getSetting('whatsapp_enabled', true)) { addNotification?.('WhatsApp is currently disabled by the CEO — switch to Email.'); return; }
     if (submitting) return;
     setSubmitting(true);
     try {
@@ -211,13 +215,22 @@ export default function FinanceCreditMgmtView({ addNotification, currentUser }: 
     setSubmitting(true);
     try {
       const amount = parseFloat(payAmount);
-      const { error } = await supabase.from('finance_payments').insert([{ client_name: payModal.customerName, amount, payment_mode: 'CASH', order_ref: payModal.orderRef, payment_type: 'CREDIT_SETTLEMENT', recorded_by: currentUser?.fullName || 'Finance', timestamp: payDate }]);
+      // Atomic server-side function — locks the order row, adds the
+      // payment to amount_paid, and records the finance_payments row in
+      // one transaction. The old code only updated local React state and
+      // never wrote amount_paid to the database at all (see
+      // supabase_atomic_functions.sql).
+      const { data: updatedOrder, error } = await supabase.rpc('record_credit_payment', {
+        p_order_id: payModal.id,
+        p_amount: amount,
+        p_payment_date: payDate,
+      });
       if (error) throw error;
-      
+
       setItems(prev => prev.map(i => {
         if (i.id !== payModal.id) return i;
-        const newPaid = i.amountPaid + amount;
-        const newOutstanding = Math.max(0, i.outstanding - amount);
+        const newPaid = updatedOrder.amount_paid ?? (i.amountPaid + amount);
+        const newOutstanding = Math.max(0, i.creditAmount - newPaid);
         return { ...i, amountPaid: newPaid, outstanding: newOutstanding, status: newOutstanding === 0 ? 'Paid' : i.status };
       }));
       addNotification?.(`Payment of GHS ${amount.toLocaleString()} recorded for ${payModal.customerName}`);

@@ -41,8 +41,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const callerRole = (callerProfile.role || '').toUpperCase();
-  if (callerRole !== 'HR' && !callerProfile.is_admin) {
-    return res.status(403).json({ error: 'Only HR or CEO can approve users.' });
+
+  // Who's allowed to approve is itself CEO-configurable (Control Center →
+  // Access Control). The CEO can always approve regardless of these.
+  if (!callerProfile.is_admin) {
+    const { data: settingRows } = await supabaseAdmin
+      .from('ceo_settings')
+      .select('setting_key, setting_value')
+      .in('setting_key', ['ceo_must_approve_registrations', 'hr_can_approve_registrations', 'management_can_approve_registrations']);
+    const setting = (key: string, fallback: boolean) => {
+      const row = settingRows?.find(r => r.setting_key === key);
+      return row ? row.setting_value !== false : fallback;
+    };
+    if (setting('ceo_must_approve_registrations', false)) {
+      return res.status(403).json({ error: 'The CEO must personally approve registrations right now.' });
+    }
+    const hrCanApprove = setting('hr_can_approve_registrations', true);
+    const managementCanApprove = setting('management_can_approve_registrations', true);
+    const callerCanApprove = (callerRole === 'HR' && hrCanApprove) || (callerRole === 'MANAGEMENT' && managementCanApprove);
+    if (!callerCanApprove) {
+      return res.status(403).json({ error: 'Only HR or CEO can approve users.' });
+    }
   }
 
   const { userId, approve, generatedPassword } = req.body || {};

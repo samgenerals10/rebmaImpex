@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Camera, CheckCircle, Clock, Upload, Eye } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { uploadFile } from '../../utils/uploadFile';
+import { useCeoSettings } from '../../contexts/CeoSettingsContext';
 import type { CurrentUser } from '../../types/erp';
 
 interface Delivery {
@@ -25,6 +26,7 @@ const STATUS_STYLES = {
 interface Props { currentUser: CurrentUser | null; addNotification: (msg: string) => void }
 
 export default function ProofOfDeliveryView({ addNotification }: Props) {
+  const { getSetting } = useCeoSettings();
   const [rows, setRows]       = useState<Delivery[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewProof, setViewProof] = useState<Delivery | null>(null);
@@ -77,6 +79,11 @@ export default function ProofOfDeliveryView({ addNotification }: Props) {
   }, []);
 
   const markConfirmed = async (id: string) => {
+    const target = rows.find(r => r.id === id);
+    if (getSetting('proof_of_delivery_required', false) && !target?.proof_url) {
+      addNotification('A proof-of-delivery photo is required by the CEO before this can be confirmed.');
+      return;
+    }
     setRows(prev => prev.map(r => r.id === id ? { ...r, status: 'confirmed', delivered_at: new Date().toISOString() } : r));
     try {
       await supabase

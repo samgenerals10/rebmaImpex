@@ -10,6 +10,8 @@ import { supabase } from '../../lib/supabaseClient';
 import { exportToCSV, exportToPDF } from '../../utils/export';
 import { ChevronRight as BcChevron } from 'lucide-react';
 import CountrySelect from '../../components/CountrySelect';
+import { waLink } from '../../utils/whatsapp';
+import { useCeoSettings } from '../../contexts/CeoSettingsContext';
 
 function InlineBreadcrumb({ crumbs, onBack }: { crumbs: string[]; onBack?: () => void }) {
   return (
@@ -330,6 +332,7 @@ export default function SupplierOrdersView({ currentUser, addNotification }: Pro
         <NewOrderForm
           orders={orders}
           currentUser={currentUser}
+          addNotification={addNotification}
           onClose={() => setShowForm(false)}
           onSave={(order) => {
             setOrders(prev => [order, ...prev]);
@@ -436,12 +439,14 @@ export default function SupplierOrdersView({ currentUser, addNotification }: Pro
 
 // ─── New Order Form ───────────────────────────────────────────────────────────
 
-function NewOrderForm({ orders, currentUser, onClose, onSave }: {
+function NewOrderForm({ orders, currentUser, addNotification, onClose, onSave }: {
   orders: SupplierOrder[];
   currentUser: { fullName: string; department: string } | null;
+  addNotification: (msg: string) => void;
   onClose: () => void;
   onSave: (order: SupplierOrder) => void;
 }) {
+  const { getSetting } = useCeoSettings();
   const [supplierName, setSupplierName] = useState('');
   const [supplierCountry, setSupplierCountry] = useState('Poland');
   const [supplierEmail, setSupplierEmail] = useState('');
@@ -599,8 +604,11 @@ function NewOrderForm({ orders, currentUser, onClose, onSave }: {
     setSaving(true);
     saveToSupabase(order);
     if (sendChannel === 'whatsapp') {
-      const num = sendWhatsapp.replace(/\D/g, '');
-      if (num) window.open(`https://wa.me/${num}?text=${buildWhatsAppMessage(order)}`, '_blank');
+      if (!getSetting('whatsapp_enabled', true)) {
+        addNotification('WhatsApp messaging is currently disabled by the CEO.');
+      } else if (sendWhatsapp.trim()) {
+        window.open(waLink(sendWhatsapp, buildWhatsAppMessage(order)), '_blank');
+      }
     }
     setSaving(false);
     onSave(order);

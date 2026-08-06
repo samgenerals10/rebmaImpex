@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { management } from '../../services/apiClient';
+import { useCeoSettings } from '../../contexts/CeoSettingsContext';
 import {
   Tag, TrendingUp, TrendingDown, Search, Plus, MoreVertical,
   Download, RefreshCw, CheckCircle, History, Save,
@@ -47,6 +48,7 @@ interface Props {
 }
 
 export default function MgmtPriceSettingView({ addNotification, currentUser }: Props) {
+  const { getSetting } = useCeoSettings();
   const [prices, setPrices] = useState<PriceEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -298,6 +300,7 @@ export default function MgmtPriceSettingView({ addNotification, currentUser }: P
   const lowMargin = pricedProducts.filter(p => p.margin < 40).length;
 
   async function savePrice() {
+    if (!getSetting('management_price_setting', true)) { addNotification('Price setting is currently disabled by the CEO.'); return; }
     if (!form.productName || !form.unitPrice) return;
     const unitPrice = parseFloat(form.unitPrice);
     // Leaving Cost Price blank means "not entered", not "assume 65% of

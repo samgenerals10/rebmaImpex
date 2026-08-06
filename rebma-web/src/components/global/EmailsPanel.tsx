@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Inbox, Send, Star, Trash2, Plus, Search, ChevronLeft, X, Check, Reply } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
+import { useCeoSettings } from '../../contexts/CeoSettingsContext';
 import type { CurrentUser } from '../../types/erp';
 
 interface Email {
@@ -30,6 +31,7 @@ interface EmailsPanelProps {
 const blankCompose = { to: '', subject: '', body: '', replyToId: null as string | null };
 
 export default function EmailsPanel({ currentUser, addNotification, onUnreadCountChange }: EmailsPanelProps) {
+  const { getSetting } = useCeoSettings();
   const [emails, setEmails]         = useState<Email[]>([]);
   const [profiles, setProfiles]     = useState<Profile[]>([]);
   const [loading, setLoading]       = useState(true);
@@ -44,18 +46,28 @@ export default function EmailsPanel({ currentUser, addNotification, onUnreadCoun
     if (!currentUser) return;
     setLoading(true);
     try {
+      // internal_emails doesn't have an FK to profiles' safe directory view
+      // (only to the base table), so sender/recipient names are fetched as
+      // a separate batched lookup below instead of a nested embed.
       const { data } = await supabase
         .from('internal_emails')
-        .select('*, from_profile:from_user_id(full_name,department), to_profile:to_user_id(full_name,department)')
+        .select('*')
         .or(`from_user_id.eq.${currentUser.id},to_user_id.eq.${currentUser.id}`)
         .order('created_at', { ascending: false });
+      const { data: profs } = await supabase.from('profiles_directory').select('id, full_name, department').neq('id', currentUser.id);
+      if (profs) setProfiles(profs);
       if (data) {
-        setEmails(data);
-        const unread = data.filter(e => e.to_user_id === currentUser.id && !e.read && !e.deleted).length;
+        const byId = new Map((profs || []).map((p: any) => [p.id, p]));
+        if (!byId.has(currentUser.id)) byId.set(currentUser.id, { full_name: currentUser.fullName, department: currentUser.department });
+        const withNames = data.map((e: any) => ({
+          ...e,
+          from_profile: byId.get(e.from_user_id) ? { full_name: byId.get(e.from_user_id).full_name, department: byId.get(e.from_user_id).department } : undefined,
+          to_profile: byId.get(e.to_user_id) ? { full_name: byId.get(e.to_user_id).full_name, department: byId.get(e.to_user_id).department } : undefined,
+        }));
+        setEmails(withNames);
+        const unread = withNames.filter(e => e.to_user_id === currentUser.id && !e.read && !e.deleted).length;
         onUnreadCountChange?.(unread);
       }
-      const { data: profs } = await supabase.from('profiles').select('id, full_name, department').neq('id', currentUser.id);
-      if (profs) setProfiles(profs);
     } catch { /* table may not exist yet */ }
     setLoading(false);
   }, [currentUser, onUnreadCountChange]);
@@ -112,6 +124,7 @@ export default function EmailsPanel({ currentUser, addNotification, onUnreadCoun
 
   const send = async () => {
     if (!currentUser || !compose.to || !compose.subject.trim()) return;
+    if (!getSetting('external_email_enabled', true)) { addNotification('Internal email is currently disabled by the CEO.'); return; }
     setSaving(true);
     try {
       await supabase.from('internal_emails').insert({

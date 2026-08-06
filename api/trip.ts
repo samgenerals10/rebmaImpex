@@ -71,7 +71,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { deliveryId } = req.body || {};
     const { data: rows } = await supabaseAdmin
       .from('delivery_logs')
-      .select('id, order_id, status')
+      .select('id, order_id, status, proof_photo')
       .eq('id', deliveryId)
       .eq('driver_id', driver.id)
       .limit(1);
@@ -85,6 +85,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         await supabaseAdmin.from('orders').update({ status: 'OUT_FOR_DELIVERY', updated_at: now }).eq('id', delivery.order_id);
       }
     } else {
+      const { data: podSetting } = await supabaseAdmin.from('ceo_settings').select('setting_value').eq('setting_key', 'proof_of_delivery_required').maybeSingle();
+      if (podSetting?.setting_value === true && !delivery.proof_photo) {
+        return res.status(403).json({ error: 'A proof-of-delivery photo is required by the CEO before this can be marked delivered.' });
+      }
       await supabaseAdmin.from('delivery_logs').update({ status: 'DELIVERED', delivered_at: now, updated_at: now }).eq('id', delivery.id);
       if (delivery.order_id) {
         await supabaseAdmin.from('orders').update({ status: 'DELIVERED', updated_at: now }).eq('id', delivery.order_id);
@@ -94,10 +98,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   if (action === 'ping') {
+    const { data: gpsSetting } = await supabaseAdmin.from('ceo_settings').select('setting_value').eq('setting_key', 'gps_tracking_enabled').maybeSingle();
+    if (gpsSetting && gpsSetting.setting_value === false) {
+      return res.status(403).json({ error: 'GPS tracking is currently disabled by the CEO.' });
+    }
     const { deliveryId, latitude, longitude, accuracy } = req.body || {};
     if (typeof latitude !== 'number' || typeof longitude !== 'number') {
       return res.status(400).json({ error: 'latitude and longitude are required.' });
     }
+
+    // Throttle to the CEO-configured cadence — the browser's watchPosition
+    // fires on every location update with no interval of its own, so this
+    // is the only place that setting can actually take effect.
+    const { data: intervalSetting } = await supabaseAdmin.from('ceo_settings').select('setting_value').eq('setting_key', 'gps_ping_interval').maybeSingle();
+    const intervalMinutes = typeof intervalSetting?.setting_value === 'number' ? intervalSetting.setting_value : 0;
+    if (intervalMinutes > 0) {
+      const { data: lastPing } = await supabaseAdmin.from('driver_locations').select('recorded_at').eq('driver_id', driver.driver_id).order('recorded_at', { ascending: false }).limit(1).maybeSingle();
+      if (lastPing?.recorded_at && Date.now() - new Date(lastPing.recorded_at).getTime() < intervalMinutes * 60000) {
+        return res.status(200).json({ ok: true, throttled: true });
+      }
+    }
+
     const { error } = await supabaseAdmin.from('driver_locations').insert({
       driver_id: driver.driver_id,
       delivery_id: deliveryId || null,

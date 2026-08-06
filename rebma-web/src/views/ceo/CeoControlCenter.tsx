@@ -755,6 +755,30 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
     }
   };
 
+  const terminateUser = async (userId: string, name: string) => {
+    if (submitting) return;
+    if (!await window.confirm(`Terminate ${name}? This revokes their login immediately.`)) return;
+    setSubmitting(true);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+      if (!accessToken) throw new Error('Not authenticated.');
+      const res = await fetch('/api/terminate-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({ userId }),
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error || 'Failed to terminate user.');
+      addNotification(body.message || `User ${name} terminated.`);
+      loadData();
+    } catch (err: any) {
+      addNotification(`Failed to terminate user: ${err.message}`);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const copyLink = () => {
     navigator.clipboard.writeText(generatedLink).then(() => {
       setLinkCopied(true);
@@ -762,11 +786,21 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
     }).catch(() => {});
   };
 
-  const PERMISSION_SECTIONS = [
-    'Access Control', 'Financial Controls', 'Operations Controls',
-    'Dispatch Controls', 'Data Controls', 'Communication Controls',
-    'System Controls', 'Approval Controls',
+  // Stable keys stored in ceo_delegations.permissions and checked by the
+  // has_delegated_permission() SQL function — the display label can be
+  // reworded freely without breaking existing grants, unlike storing the
+  // label string itself.
+  const PERMISSION_SECTIONS: { key: string; label: string }[] = [
+    { key: 'access_control', label: 'Access Control' },
+    { key: 'financial_controls', label: 'Financial Controls' },
+    { key: 'operations_controls', label: 'Operations Controls' },
+    { key: 'dispatch_controls', label: 'Dispatch Controls' },
+    { key: 'data_controls', label: 'Data Controls' },
+    { key: 'communication_controls', label: 'Communication Controls' },
+    { key: 'system_controls', label: 'System Controls' },
+    { key: 'approval_controls', label: 'Approval Controls' },
   ];
+  const permissionLabel = (key: string) => PERMISSION_SECTIONS.find(s => s.key === key)?.label || key;
 
   const filteredStaff = staffList.filter(s =>
     !staffSearch || s.full_name?.toLowerCase().includes(staffSearch.toLowerCase()) ||
@@ -1070,15 +1104,15 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
                 <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Permissions to Grant</p>
                 <div className="grid grid-cols-2 gap-1">
                   {PERMISSION_SECTIONS.map(sec => (
-                    <label key={sec} className="flex items-center gap-2 cursor-pointer">
+                    <label key={sec.key} className="flex items-center gap-2 cursor-pointer">
                       <input type="checkbox"
-                        checked={delegateForm.permissions.includes(sec)}
+                        checked={delegateForm.permissions.includes(sec.key)}
                         onChange={e => setDelegateForm(p => ({
                           ...p,
-                          permissions: e.target.checked ? [...p.permissions, sec] : p.permissions.filter(x => x !== sec)
+                          permissions: e.target.checked ? [...p.permissions, sec.key] : p.permissions.filter(x => x !== sec.key)
                         }))}
                         className="accent-[var(--accent)] w-3.5 h-3.5" />
-                      <span className="text-xs text-[var(--text-primary)]">{sec}</span>
+                      <span className="text-xs text-[var(--text-primary)]">{sec.label}</span>
                     </label>
                   ))}
                 </div>
@@ -1104,7 +1138,7 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
                     <tr key={d.id} className="border-b border-[var(--border)] hover:bg-[var(--accent-light)] transition-colors">
                       <td className="py-2 px-2 font-semibold text-[var(--text-primary)]">{d.delegated_to_name}</td>
                       <td className="py-2 px-2 text-[var(--text-muted)]">{d.delegated_to_email}</td>
-                      <td className="py-2 px-2 text-[var(--text-muted)]">{(d.permissions || []).slice(0, 2).join(', ')}{d.permissions?.length > 2 ? '…' : ''}</td>
+                      <td className="py-2 px-2 text-[var(--text-muted)]">{(d.permissions || []).slice(0, 2).map(permissionLabel).join(', ')}{d.permissions?.length > 2 ? '…' : ''}</td>
                       <td className="py-2 px-2 text-[var(--text-muted)] font-mono">{d.expires_at ? new Date(d.expires_at).toLocaleDateString() : 'No expiry'}</td>
                       <td className="py-2 px-2 text-center">
                         <button onClick={() => revokeDelegate(d.id)} className="p-1 hover:bg-rose-500/10 rounded text-rose-500 cursor-pointer">
@@ -1366,18 +1400,7 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
                               <Ban className="w-3.5 h-3.5" />
                             </button>
                           )}
-                          <button onClick={() => {
-                            supabase.auth.admin?.deleteUser(s.id).then(() => {
-                              supabase.from('profiles').delete().eq('id', s.id).then(() => {}, () => {});
-                              addNotification(`User ${s.full_name} terminated.`);
-                              loadData();
-                            }).catch(() => {
-                              supabase.from('profiles').update({ status: 'TERMINATED' }).eq('id', s.id).then(() => {
-                                addNotification(`User ${s.full_name} marked as terminated.`);
-                                loadData();
-                              }, () => {});
-                            });
-                          }} title="Terminate" className="p-1.5 hover:bg-rose-500/10 rounded-lg text-rose-500 cursor-pointer">
+                          <button onClick={() => terminateUser(s.id, s.full_name)} title="Terminate" className="p-1.5 hover:bg-rose-500/10 rounded-lg text-rose-500 cursor-pointer">
                             <UserX className="w-3.5 h-3.5" />
                           </button>
                         </div>

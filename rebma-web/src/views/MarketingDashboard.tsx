@@ -155,6 +155,11 @@ export default function MarketingDashboard({
       alert('Please fill all required fields');
       return;
     }
+    const creditLimit = getSetting('max_credit_amount', 0);
+    if (orderPayMode === 'CREDIT' && creditLimit > 0 && parseFloat(orderAmount) > creditLimit) {
+      alert(`Credit orders are capped at GHS ${Number(creditLimit).toLocaleString()} by the CEO — this order is GHS ${parseFloat(orderAmount).toLocaleString()}.`);
+      return;
+    }
     const ticketNum = `TKT-${Date.now().toString().slice(-5)}`;
     const newOrder: Order = {
       id: `ORD-${Math.floor(100 + Math.random() * 900)}`,

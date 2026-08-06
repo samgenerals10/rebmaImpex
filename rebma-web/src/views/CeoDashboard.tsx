@@ -907,6 +907,7 @@ export default function CeoDashboard({
           <ActivityFeed
             title="Live Organisation Activity"
             limit={30}
+            viewerIsAdmin
           />
         </div>
 

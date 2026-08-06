@@ -79,7 +79,7 @@ export default function BoardroomView({
     if (activeSubTab !== 'Meetings' || !myId) return;
     loadMeetings();
     (async () => {
-      const { data } = await supabase.from('profiles').select('id, full_name, role').eq('status', 'ACTIVE').order('full_name', { ascending: true });
+      const { data } = await supabase.from('profiles_directory').select('id, full_name, role').eq('status', 'ACTIVE').order('full_name', { ascending: true });
       setAttendeeProfiles((data || []).map((p: any) => ({ id: p.id, fullName: p.full_name || 'Unknown', department: p.role || '' })).filter(p => p.id !== myId));
     })();
     const ch = supabase.channel('boardroom-meetings')

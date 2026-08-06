@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { X, Package, Info, Factory, DollarSign, Camera, RefreshCw } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { operations } from '../services/apiClient';
+import { useCeoSettings } from '../contexts/CeoSettingsContext';
 
 interface StockIntakeFormProps {
   isOpen: boolean;
@@ -115,6 +116,7 @@ export default function StockIntakeForm({
   addNotification,
   onSuccess
 }: StockIntakeFormProps) {
+  const { getSetting } = useCeoSettings();
   const [classification, setClassification] = useState<'COMPANY_PRODUCT' | 'GENERAL_PURCHASE'>('COMPANY_PRODUCT');
   const [loading, setLoading] = useState(false);
 
@@ -174,6 +176,7 @@ export default function StockIntakeForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!getSetting('cargo_intake_enabled', true)) { addNotification('Cargo intake is currently disabled by the CEO.'); return; }
     setLoading(true);
 
     try {

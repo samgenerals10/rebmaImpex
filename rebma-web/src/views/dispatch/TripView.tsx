@@ -18,13 +18,15 @@ function mapsLink(address: string): string {
   return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}`;
 }
 
-async function callTripApi(token: string, action: string, payload: Record<string, unknown> = {}) {
+async function callTripApi(token: string, action: string, payload: Record<string, unknown> = {}): Promise<{ ok: boolean; error?: string }> {
   const res = await fetch('/api/trip', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ token, action, ...payload }),
   });
-  return res.ok;
+  if (res.ok) return { ok: true };
+  const body = await res.json().catch(() => ({}));
+  return { ok: false, error: body.error };
 }
 
 export default function TripView({ token }: TripViewProps) {
@@ -91,8 +93,8 @@ export default function TripView({ token }: TripViewProps) {
       async (pos) => {
         const { latitude, longitude, accuracy } = pos.coords;
         setLocationError(null);
-        const ok = await callTripApi(token, 'ping', { deliveryId: activeDeliveryId, latitude, longitude, accuracy: accuracy ?? null });
-        if (ok) setLastSyncedAt(new Date());
+        const result = await callTripApi(token, 'ping', { deliveryId: activeDeliveryId, latitude, longitude, accuracy: accuracy ?? null });
+        if (result.ok) setLastSyncedAt(new Date());
       },
       (err) => setLocationError(err.message || 'Unable to read location.'),
       { enableHighAccuracy: false, maximumAge: 10000, timeout: 20000 }
@@ -108,9 +110,9 @@ export default function TripView({ token }: TripViewProps) {
 
   const handleMarkDelivered = async (stop: Stop) => {
     setMarkingId(stop.id);
-    const ok = await callTripApi(token, 'deliver', { deliveryId: stop.id });
+    const result = await callTripApi(token, 'deliver', { deliveryId: stop.id });
     setMarkingId(null);
-    if (!ok) { alert('Failed to update delivery. Please try again.'); return; }
+    if (!result.ok) { alert(result.error || 'Failed to update delivery. Please try again.'); return; }
     setStops(prev => prev.filter(s => s.id !== stop.id));
   };
 

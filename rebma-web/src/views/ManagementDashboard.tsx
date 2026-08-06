@@ -1008,7 +1008,7 @@ export default function ManagementDashboard({
                 <Clipboard className="w-5 h-5 text-[var(--accent)]" />
                 <h3 className="text-sm font-bold text-[var(--text-primary)]">Global Audit Ledger</h3>
               </div>
-            <ActivityFeed title="Live Audit Log — All Departments" limit={50} />
+            <ActivityFeed title="Live Audit Log — All Departments" limit={50} viewerDepartment={currentUser?.department} />
           </div>
         )}
         {activeSubTab === 'Ledger_DISABLED_ORIGINAL' && (
@@ -1427,6 +1427,7 @@ export default function ManagementDashboard({
         <ActivityFeed
           title="Organisation Activity Feed"
           limit={25}
+          viewerDepartment={currentUser?.department}
         />
       </div>
 

@@ -142,7 +142,15 @@ import NotFoundView from './views/NotFoundView';
 
 const currentPath = window.location.pathname;
 const tripToken = currentPath.startsWith('/trip/') ? currentPath.split('/')[2] : null;
-const isUnknownRoute = currentPath !== '/' && !tripToken;
+const inviteToken = currentPath === '/register' ? new URLSearchParams(window.location.search).get('token') : null;
+const isUnknownRoute = currentPath !== '/' && !tripToken && currentPath !== '/register';
+
+const DEPT_CODE_TO_LABEL: Record<string, string> = {
+  CEO: 'CEO Office (OTP verification)', HR: 'Human Resources', MANAGEMENT: 'Management Office',
+  MARKETING: 'Marketing Department', OPERATIONS: 'Operations (Warehouse)', FINANCE: 'Finance (Ledgers)',
+  PRODUCTION: 'Production Line', RECEPTION: 'Reception Desk', RECEPTIONIST: 'Reception Desk',
+  DISPATCH: 'Dispatch Fleet', LOGISTICS: 'Logistics & Supply Chain',
+};
 
 export default function App() {
   if (tripToken) {
@@ -475,6 +483,31 @@ export default function App() {
     handleHashChange();
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
+  // A staff invite link (/register?token=...) lands here — resolve it and
+  // prefill the registration form, mirroring the #admin-access pattern above.
+  useEffect(() => {
+    if (!inviteToken) return;
+    (async () => {
+      try {
+        const res = await fetch(`/api/lookup-invite?token=${encodeURIComponent(inviteToken)}`);
+        const body = await res.json();
+        if (!res.ok) {
+          setRegistrationMessage(body.error || 'This invite link is no longer valid.');
+          setAuthScreen('register');
+          return;
+        }
+        if (body.email) setRegisterEmail(body.email);
+        if (body.fullName) setRegisterName(body.fullName);
+        if (body.department) setRegisterDept(DEPT_CODE_TO_LABEL[String(body.department).toUpperCase()] || body.department);
+        setAuthScreen('register');
+      } catch {
+        setRegistrationMessage('Could not verify this invite link. Please try again.');
+        setAuthScreen('register');
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -1588,7 +1621,8 @@ export default function App() {
           fullName: registerName,
           department: mappedDept,
           phone: registerPhone.trim() || undefined,
-          ghanaCardId: registerCard || undefined
+          ghanaCardId: registerCard || undefined,
+          inviteToken: inviteToken || undefined,
         });
         setRegistrationMessage(res.message);
         setAuthScreen('login');

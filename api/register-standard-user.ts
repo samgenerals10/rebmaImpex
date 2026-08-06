@@ -44,13 +44,47 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    const { email, fullName, department, phone, ghanaCardId } = req.body || {};
+    const { email, fullName, phone, ghanaCardId, inviteToken } = req.body || {};
+    let { department } = req.body || {};
     if (!email || !fullName || !department) {
       return res.status(400).json({ error: 'Email, Full Name, and Department are required.' });
     }
 
     const emailLower = email.trim().toLowerCase();
     const regPassword = generateSecurePassword(16);
+
+    const { data: gateRows } = await supabaseAdmin
+      .from('ceo_settings')
+      .select('setting_key, setting_value')
+      .in('setting_key', ['registrations_allowed', 'invitation_only']);
+    const registrationsAllowed = gateRows?.find(r => r.setting_key === 'registrations_allowed')?.setting_value !== false;
+    const invitationOnly = gateRows?.find(r => r.setting_key === 'invitation_only')?.setting_value === true;
+    if (!registrationsAllowed) {
+      return res.status(403).json({ error: 'New registrations are currently closed.' });
+    }
+    if (invitationOnly && !inviteToken) {
+      return res.status(403).json({ error: 'Registration currently requires an invite link — ask HR or the CEO for one.' });
+    }
+
+    // If an invite token is present, resolve it server-side and trust its
+    // department/role over whatever the client submitted (the client-side
+    // form is only ever pre-filled from the invite, never authoritative —
+    // a tampered request shouldn't be able to use a valid token to
+    // register into a different department than the one it was issued for).
+    let invite: { id: string; department: string; auto_approve: boolean } | null = null;
+    if (inviteToken) {
+      const { data: invites } = await supabaseAdmin
+        .from('staff_invites')
+        .select('id, department, auto_approve, status, expires_at')
+        .eq('token', inviteToken)
+        .limit(1);
+      const found = invites?.[0];
+      if (!found || found.status !== 'pending' || (found.expires_at && new Date(found.expires_at).getTime() < Date.now())) {
+        return res.status(410).json({ error: 'This invite link is no longer valid.' });
+      }
+      invite = found;
+      department = found.department;
+    }
 
     // List users to check if user already exists
     const foundUser = await findUserByEmail(supabaseAdmin, emailLower);
@@ -88,8 +122,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    // Upsert the profile table with PENDING_APPROVAL
-    const initialStatus = 'PENDING_APPROVAL';
+    // An invite with auto_approve skips the HR/CEO approval queue entirely.
+    const initialStatus = invite?.auto_approve ? 'ACTIVE' : 'PENDING_APPROVAL';
     await supabaseAdmin.from('profiles').upsert({
       id: userId,
       email: emailLower,
@@ -130,9 +164,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       updated_at: new Date().toISOString()
     }).eq('email', emailLower);
 
-    return res.status(200).json({ 
-      success: true, 
-      message: 'Registration submitted. Please await HR approval.',
+    if (invite) {
+      await supabaseAdmin.from('staff_invites').update({ status: 'used' }).eq('id', invite.id);
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: initialStatus === 'ACTIVE' ? 'Registration complete — you can sign in now.' : 'Registration submitted. Please await HR approval.',
       userId,
       status: initialStatus
     });

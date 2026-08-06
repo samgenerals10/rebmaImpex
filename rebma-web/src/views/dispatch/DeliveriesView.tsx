@@ -11,6 +11,7 @@ import type { DeliveryRecord, Driver } from '../../types/erp';
 import DispatchMap from '../../components/dispatch/DispatchMap';
 import { useFullscreenToggle, FullscreenButton } from '../../components/global/FullscreenToggle';
 import CountUp from '../../components/CountUp';
+import { useCeoSettings } from '../../contexts/CeoSettingsContext';
 
 
 // ── types ─────────────────────────────────────────────────────────────────────
@@ -325,6 +326,7 @@ function DeliveryDetail({
 
 // ── Main Component ─────────────────────────────────────────────────────────────
 export default function DeliveriesView({ addNotification, currentUser, setActiveSubTab }: Props) {
+  const { getSetting } = useCeoSettings();
   const [deliveries, setDeliveries] = useState<DeliveryRecord[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [loading, setLoading] = useState(true);
@@ -478,6 +480,10 @@ export default function DeliveriesView({ addNotification, currentUser, setActive
 
   const markDelivered = async (id: string) => {
     if (submitting) return;
+    if (getSetting('proof_of_delivery_required', false) && !deliveries.find(d => d.id === id)?.proofUrl) {
+      addNotification('A proof-of-delivery photo is required by the CEO before this can be marked delivered.');
+      return;
+    }
     setSubmitting(true);
     try {
       const now = new Date().toISOString();
@@ -521,6 +527,7 @@ export default function DeliveriesView({ addNotification, currentUser, setActive
   };
 
   const handleAssignDriver = async (delivery: DeliveryRecord, driverId: string, notes: string) => {
+    if (!getSetting('deliveries_enabled', true)) { addNotification('Dispatch deliveries are currently disabled by the CEO.'); return; }
     const driver = drivers.find(d => d.id === driverId);
     if (!driver) return;
     if (submitting) return;

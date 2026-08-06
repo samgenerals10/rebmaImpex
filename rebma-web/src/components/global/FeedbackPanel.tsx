@@ -49,10 +49,20 @@ export default function FeedbackPanel({ currentUser, addNotification }: Feedback
     if (!currentUser) return;
     setLoading(true);
     try {
-      let q = supabase.from('feedback').select('*, profiles(full_name)').order('created_at', { ascending: false });
+      // feedback doesn't have an FK to profiles' safe directory view (only
+      // to the base table), so submitter names are fetched as a separate
+      // batched lookup instead of a nested embed.
+      let q = supabase.from('feedback').select('*').order('created_at', { ascending: false });
       if (!isManagement) q = q.or(`user_id.eq.${currentUser.id},and(anonymous.eq.false,department.eq.${currentUser.department})`);
       const { data } = await q;
-      if (data) setItems(data.map(d => ({ ...d, submitter_name: (d as any).profiles?.full_name })));
+      if (data) {
+        const userIds = [...new Set(data.map(d => d.user_id).filter(Boolean))];
+        const { data: profs } = userIds.length
+          ? await supabase.from('profiles_directory').select('id, full_name').in('id', userIds)
+          : { data: [] as { id: string; full_name: string }[] };
+        const nameById = new Map((profs || []).map(p => [p.id, p.full_name]));
+        setItems(data.map(d => ({ ...d, submitter_name: nameById.get(d.user_id) })));
+      }
     } catch { /* table may not exist */ }
     setLoading(false);
   }, [currentUser, isManagement]);

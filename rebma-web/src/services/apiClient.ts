@@ -299,7 +299,7 @@ export const auth = {
 
   register: async (data: {
     email: string; fullName: string;
-    department: string; ghanaCardId?: string; phone?: string;
+    department: string; ghanaCardId?: string; phone?: string; inviteToken?: string;
   }) => {
     const res = await fetch('/api/register-standard-user', {
       method: 'POST',
@@ -1482,6 +1482,15 @@ export const dispatch = {
   // The tab is opened synchronously (before any await) so browsers don't
   // treat it as an unrequested popup once the Supabase queries resolve.
   sendWhatsAppDirections: async (driverId: string) => {
+    // apiClient isn't a React component, so it can't use the
+    // CeoSettingsContext hook — read the flag directly instead. This is the
+    // one shared implementation behind every "Send WhatsApp Directions"
+    // entry point (Deliveries row menu, Drivers page assign, Overview
+    // quick-assign), so gating it here covers all three at once.
+    const { data: waSetting } = await supabase.from('ceo_settings').select('setting_value').eq('setting_key', 'whatsapp_enabled').maybeSingle();
+    if (waSetting && waSetting.setting_value === false) {
+      throw new Error('WhatsApp messaging is currently disabled by the CEO.');
+    }
     const tab = window.open('', '_blank');
 
     const { data: driver, error: driverErr } = await supabase
