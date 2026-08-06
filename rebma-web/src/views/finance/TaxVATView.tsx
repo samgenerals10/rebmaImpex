@@ -116,7 +116,7 @@ export default function FinanceTaxVATView({ addNotification, currentUser }: Prop
   }
 
   function generateReport() {
-    if (!getSetting('report_generation_enabled', true)) { addNotification('Report generation is currently disabled by the CEO.'); return; }
+    if (!getSetting('report_generation_enabled', true)) { addNotification?.('Report generation is currently disabled by the CEO.'); return; }
     exportToPDF(
       `Tax Report — ${selectedPeriod}`,
       vatData.filter(v => v.period === selectedPeriod).map(v => ({

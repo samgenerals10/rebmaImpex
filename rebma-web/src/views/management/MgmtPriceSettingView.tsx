@@ -300,7 +300,7 @@ export default function MgmtPriceSettingView({ addNotification, currentUser }: P
   const lowMargin = pricedProducts.filter(p => p.margin < 40).length;
 
   async function savePrice() {
-    if (!getSetting('management_price_setting', true)) { addNotification('Price setting is currently disabled by the CEO.'); return; }
+    if (!getSetting('management_price_setting', true)) { addNotification?.('Price setting is currently disabled by the CEO.'); return; }
     if (!form.productName || !form.unitPrice) return;
     const unitPrice = parseFloat(form.unitPrice);
     // Leaving Cost Price blank means "not entered", not "assume 65% of

@@ -176,7 +176,7 @@ async function printOperationsTicket(order: ApprovedOrder, template: DocumentTem
           const items = (order.metadata?.items && order.metadata.items.length > 0)
             ? order.metadata.items
             : [{ productName: order.productName || 'Item', quantity: dispatchedQty || null }];
-          const totalQty = items.reduce((s, i) => s + (Number(i.quantity) || 0), 0);
+          const totalQty = (items as any[]).reduce((s: number, i: any) => s + (Number(i.quantity) || 0), 0);
           return `
         <div class="field full" style="background: #fafdfb; border: 1px solid #d1fae5; border-radius: 8px; padding: 12px; margin-bottom: 14px;">
           <div class="fl" style="color: ${BRAND.green}; font-weight: 800; font-size: 8.5px; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 6px;">Itemized Loading Dispatch List</div>

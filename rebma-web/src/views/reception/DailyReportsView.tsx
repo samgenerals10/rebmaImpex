@@ -183,7 +183,7 @@ export default function DailyReportsView({ addNotification }: Props) {
         const pastReportsList = past7Days.map(date => {
           const visCount = (visPast ?? []).filter((v: any) => v.check_in_time && v.check_in_time.startsWith(date)).length;
           const attCount = (attPast ?? []).filter((a: any) => a.date === date).length;
-          const totalStaffForRate = Object.values(deptMap).reduce((s: number, d: any) => s + d.total, 0) || 1;
+          const totalStaffForRate = Object.values(deptMap).reduce<number>((s, d: any) => s + d.total, 0) || 1;
           const rate = Math.round((attCount / totalStaffForRate) * 100);
           return {
             date,

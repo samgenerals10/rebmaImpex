@@ -67,7 +67,7 @@ export default function FinanceReportsView({ addNotification, currentUser }: Pro
   }, []);
 
   async function generateReport(report: ReportCard) {
-    if (!getSetting('report_generation_enabled', true)) { addNotification('Report generation is currently disabled by the CEO.'); return; }
+    if (!getSetting('report_generation_enabled', true)) { addNotification?.('Report generation is currently disabled by the CEO.'); return; }
     setShowPeriodModal(null);
     setGenerating(report.id);
     const generatedAt = new Date();
