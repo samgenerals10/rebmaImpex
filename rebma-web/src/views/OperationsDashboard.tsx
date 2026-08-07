@@ -326,6 +326,9 @@ export default function OperationsDashboard({
     loadRawMaterialTickets();
   };
 
+  const fetchLowStockRef = useRef<() => void>(() => {});
+  const fetchTotalQtyRef = useRef<() => void>(() => {});
+
   useEffect(() => {
     let active = true;
     const fetchLowStock = async () => {
@@ -353,29 +356,29 @@ export default function OperationsDashboard({
       } catch { /* ignore */ }
     };
 
+    fetchLowStockRef.current = fetchLowStock;
+    fetchTotalQtyRef.current = fetchTotalQty;
     fetchLowStock();
     fetchTotalQty();
     const interval = setInterval(fetchLowStock, 30000);
 
-    const channel = supabase.channel('operations-dashboard-stock-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'stock' }, () => {
-        fetchLowStock();
-        fetchTotalQty();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'cargo_intake' }, () => {
-        fetchTotalQty();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'general_purchases' }, () => {
-        fetchTotalQty();
-      })
-      .subscribe();
-
     return () => {
       active = false;
       clearInterval(interval);
-      supabase.removeChannel(channel);
     };
   }, []);
+
+  // renderWithShell() mounts a mobile and a desktop branch of this
+  // component at once (one CSS-hidden), so a raw supabase.channel() here
+  // would have two instances racing to subscribe the same named channel —
+  // Supabase throws if a second .on() lands after the first instance
+  // already called .subscribe(), crashing the whole app with no recovery.
+  // useRealtimeChannel (already used above for the ticket channels) shares
+  // one real subscription across every mounted instance instead.
+  useRealtimeChannel('operations-dashboard-stock-realtime', ['stock', 'cargo_intake', 'general_purchases'], (table) => {
+    if (table === 'stock') fetchLowStockRef.current();
+    fetchTotalQtyRef.current();
+  });
 
   // Click outside to close menus
   useEffect(() => {

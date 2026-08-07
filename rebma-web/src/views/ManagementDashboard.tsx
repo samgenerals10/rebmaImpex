@@ -1,6 +1,6 @@
 // rebma-web/src/views/ManagementDashboard.tsx
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { IncomingGoods, Order, Customer, GoodsPrice, AuditEntry } from '../types/erp';
 import { FileSpreadsheet, FileText, Clipboard, Activity, ShieldCheck, DollarSign, History, Tag, User, ChevronDown, ChevronUp, MoreVertical, TrendingUp, TrendingDown, Bell, Truck } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
@@ -12,6 +12,7 @@ import KpiDetailView from '../components/KpiDetailView';
 import { exportToCSV, exportToPDF } from '../utils/export';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { useCeoSettings } from '../contexts/CeoSettingsContext';
+import { useRealtimeChannel } from '../hooks/useRealtimeChannel';
 
 interface ManagementDashboardProps {
   incomingGoodsList: IncomingGoods[];
@@ -178,6 +179,8 @@ export default function ManagementDashboard({
   const [forwardedIds, setForwardedIds] = useState<Set<string>>(new Set());
   const [stockAlerts, setStockAlerts] = useState<{ name: string; sku: string; current: number; capacity: number }[]>([]);
 
+  const loadStockAlertsRef = useRef<() => void>(() => {});
+
   useEffect(() => {
     supabase
       .from('supplier_order_notifications')
@@ -192,18 +195,20 @@ export default function ManagementDashboard({
         if (data) setStockAlerts(data.map((d: any) => ({ name: d.product_name || '—', sku: d.product_code || '—', current: Number(d.quantity || 0), capacity: Number(d.maximum_level || 100) })));
       } catch { /* silent */ }
     };
+    loadStockAlertsRef.current = loadStockAlerts;
     loadStockAlerts();
-
-    const channel = supabase.channel('mgmt-dashboard-stock-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'stock' }, () => {
-        loadStockAlerts();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
   }, []);
+
+  // renderWithShell() mounts both a mobile and a desktop branch of this
+  // component at once (one CSS-hidden), so a raw supabase.channel() here
+  // has two instances racing to subscribe the same named channel — Supabase
+  // throws if a second .on() is added after the first instance already
+  // called .subscribe(), which crashes the whole app with no recovery.
+  // useRealtimeChannel shares one real subscription across every mounted
+  // instance instead.
+  useRealtimeChannel('mgmt-dashboard-stock-realtime', ['stock'], () => {
+    loadStockAlertsRef.current();
+  });
 
   const pendingCargoCount = localGoods.filter(i => i.status === 'PENDING_MANAGEMENT_APPROVAL').length;
   const totalPendingIntakes = pendingCargoCount + pendingGeneralPurchases.length;

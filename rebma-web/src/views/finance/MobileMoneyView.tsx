@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabaseClient';
+import { useRealtimeChannel } from '../../hooks/useRealtimeChannel';
 import { Search, Download, MoreVertical, Eye, CheckCircle, Clock, XCircle, Smartphone } from 'lucide-react';
 import { exportToCSV } from '../../utils/export';
 import { ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
@@ -42,6 +43,8 @@ export default function FinanceMobileMoneyView({ addNotification, currentUser }:
   const [showEditForm, setShowEditForm] = useState(false);
   const [editForm, setEditForm] = useState({ transactionId: '', network: 'MTN' as MomoTxn['network'], customerName: '', momoNumber: '', amount: '', date: '' });
 
+  const loadRef = useRef<() => void>(() => {});
+
   useEffect(() => {
     const load = async () => {
       setLoading(true);
@@ -69,18 +72,18 @@ export default function FinanceMobileMoneyView({ addNotification, currentUser }:
       }
       setLoading(false);
     };
+    loadRef.current = load;
     load();
-
-    const channel = supabase.channel('mobile-money-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'finance_payments' }, () => {
-        load();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
   }, []);
+
+  // renderWithShell() mounts both a mobile and a desktop branch of this
+  // component at once (one CSS-hidden), so a raw supabase.channel() here
+  // would have two instances racing to subscribe the same named channel —
+  // Supabase throws if a second .on() lands after the first instance
+  // already called .subscribe(), crashing the whole app with no recovery.
+  useRealtimeChannel('mobile-money-realtime', ['finance_payments'], () => {
+    loadRef.current();
+  });
 
   const filtered = txns.filter(t => {
     const matchSearch = !search || t.customerName.toLowerCase().includes(search.toLowerCase()) || t.transactionId.toLowerCase().includes(search.toLowerCase());

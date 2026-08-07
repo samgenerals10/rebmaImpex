@@ -1,8 +1,9 @@
 // rebma-web/src/views/CeoDashboard.tsx
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Layers, DollarSign, Truck, Users, FileSpreadsheet, FileText, MoreVertical, TrendingUp, TrendingDown, ShoppingBag, Clock, ChevronRight, CheckCircle, AlertCircle } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
+import { useRealtimeChannel } from '../hooks/useRealtimeChannel';
 import MiniSparkline from '../components/MiniSparkline';
 import CountUp from '../components/CountUp';
 import PendingApprovalsAlert from '../components/global/PendingApprovalsAlert';
@@ -96,6 +97,15 @@ export default function CeoDashboard({
       setTransitVehicles([]);
     }
   };
+
+  // renderWithShell() renders both a mobile and a desktop branch on every
+  // pass (one hidden via CSS, both present in the tree), so this component
+  // mounts twice at once — this ref lets the single shared realtime channel
+  // below (see useRealtimeChannel call) reach whichever instance's load
+  // functions are current without needing them hoisted out of the effect.
+  const loadFnsRef = useRef<{ load: () => void; loadPending: () => void; loadKPIs: () => void }>({
+    load: () => {}, loadPending: () => {}, loadKPIs: () => {},
+  });
 
   useEffect(() => {
     const load = async () => {
@@ -312,39 +322,44 @@ export default function CeoDashboard({
       }
     };
 
+    loadFnsRef.current = { load, loadPending, loadKPIs };
     load();
     loadPending();
     loadKPIs();
     loadTransit();
+  }, []);
 
-    // CeoDashboard is a top-level view that only ever mounts once, so a
-    // shared multi-instance channel doesn't apply here — this just drops
-    // the random suffix for a stable, debuggable name. load/loadPending/
-    // loadKPIs are declared inside this same effect, so the channel stays
-    // here too rather than moving to a separate top-level hook call.
-    const channel = supabase.channel('ceo-dashboard-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
-        loadKPIs();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'finance_payments' }, () => {
-        loadKPIs();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'cargo_intake' }, () => {
-        load();
-        loadPending();
-        loadKPIs();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'stock' }, () => {
-        loadKPIs();
-      })
-      .subscribe();
-
+  // gpsInterval-driven polling, split from the effect above so a settings
+  // change only restarts this timer, not any subscription.
+  useEffect(() => {
     const interval = setInterval(loadTransit, gpsInterval ? gpsInterval * 1000 : 5000);
-    return () => {
-      clearInterval(interval);
-      supabase.removeChannel(channel);
-    };
+    return () => clearInterval(interval);
   }, [gpsInterval]);
+
+  // renderWithShell() always renders both a mobile and a desktop branch
+  // (one CSS-hidden, both mounted), so two CeoDashboard instances exist
+  // simultaneously on every render — a raw supabase.channel('ceo-dashboard-
+  // realtime') here used to have both instances race to call .on()/.subscribe()
+  // on the same named channel; Supabase's realtime client forbids adding
+  // callbacks to a channel that's already subscribed, so the second instance
+  // threw "cannot add postgres_changes callbacks after subscribe()" — an
+  // uncaught render error that blanked the whole app on every fresh login,
+  // since activeDepartment briefly defaults to CEO before the real
+  // department loads. useRealtimeChannel is the shared-subscription hook
+  // built for exactly this: the first instance creates and subscribes the
+  // channel, every additional simultaneous instance just registers as a
+  // listener on the same one.
+  useRealtimeChannel(
+    'ceo-dashboard-realtime',
+    ['orders', 'finance_payments', 'cargo_intake', 'stock'],
+    (table) => {
+      if (table === 'cargo_intake') {
+        loadFnsRef.current.load();
+        loadFnsRef.current.loadPending();
+      }
+      loadFnsRef.current.loadKPIs();
+    }
+  );
 
   const handleExportCSV = () => {
     const data = [
