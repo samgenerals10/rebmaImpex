@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Plus, Search, X, LogOut, Eye, Users, UserCheck, UserMinus, Clock,
   MoreVertical, Printer, Download, CheckCircle, AlertCircle, FileText,
@@ -8,6 +8,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { exportToPDF } from '../../utils/export';
 import CountUp from '../../components/CountUp';
 import type { Visitor } from '../../types/erp';
+import { usePaginatedQuery } from '../../hooks/usePaginatedQuery';
 
 
 type VisitorRecord = Visitor & { company?: string; badgeNumber: string; expectedTime?: string; idType?: string; idNumber?: string; notes?: string };
@@ -65,9 +66,28 @@ function printVisitorPass(v: VisitorRecord) {
 
 interface Props { addNotification: (msg: string) => void }
 
+const mapToUI = (db: any): VisitorRecord => ({
+  id: db.id,
+  fullName: db.full_name || db.fullName || '',
+  purpose: db.purpose || '',
+  hostName: db.host_name || db.hostName || '',
+  checkInTime: db.check_in_time || db.checkInTime || '',
+  checkOutTime: db.check_out_time || db.checkOutTime || null,
+  badgeNumber: db.badge_number || db.badgeNumber || '',
+  company: db.company || '',
+  expectedTime: db.expected_time || db.expectedTime || '',
+  idType: db.id_type || db.idType || 'Ghana Card',
+  idNumber: db.id_number || db.idNumber || '',
+  notes: db.notes || '',
+});
+
 export default function VisitorsView({ addNotification }: Props) {
-  const [visitors, setVisitors] = useState<VisitorRecord[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { rows: visitors, setRows: setVisitors, loading, hasMore, total, loadMore } = usePaginatedQuery<VisitorRecord>({
+    table: 'visitors',
+    pageSize: 100,
+    orderColumn: 'check_in_time',
+    map: mapToUI,
+  });
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [purposeFilter, setPurposeFilter] = useState('All');
@@ -82,30 +102,6 @@ export default function VisitorsView({ addNotification }: Props) {
   const [showEdit, setShowEdit] = useState(false);
   const [editForm, setEditForm] = useState<VisitorRecord | null>(null);
   const [submitting, setSubmitting] = useState(false);
-
-  const mapToUI = (db: any): VisitorRecord => ({
-    id: db.id,
-    fullName: db.full_name || db.fullName || '',
-    purpose: db.purpose || '',
-    hostName: db.host_name || db.hostName || '',
-    checkInTime: db.check_in_time || db.checkInTime || '',
-    checkOutTime: db.check_out_time || db.checkOutTime || null,
-    badgeNumber: db.badge_number || db.badgeNumber || '',
-    company: db.company || '',
-    expectedTime: db.expected_time || db.expectedTime || '',
-    idType: db.id_type || db.idType || 'Ghana Card',
-    idNumber: db.id_number || db.idNumber || '',
-    notes: db.notes || '',
-  });
-
-  useEffect(() => {
-    setLoading(true);
-    supabase.from('visitors').select('*').order('check_in_time', { ascending: false }).then(({ data, error }) => {
-      if (!error && data) setVisitors(data.map(mapToUI));
-      else setVisitors([]);
-      setLoading(false);
-    });
-  }, []);
 
   const todayVisitors = visitors.filter(v => v.checkInTime.startsWith(dateFilter));
   const currentlyIn = todayVisitors.filter(v => !v.checkOutTime).length;
@@ -142,34 +138,33 @@ export default function VisitorsView({ addNotification }: Props) {
     if (!form.fullName.trim() || submitting) return;
     setSubmitting(true);
     try {
-      const newVisitor: VisitorRecord = {
-        id: Date.now().toString(),
-        fullName: form.fullName,
+      const badgeNumber = `V-${String(visitors.length + 1).padStart(3, '0')}`;
+      const dbVisitor = {
+        full_name: form.fullName,
         company: form.company,
         purpose: form.purpose,
-        hostName: form.hostName,
-        checkInTime: new Date().toISOString(),
-        expectedTime: form.expectedTime || undefined,
-        badgeNumber: `V-${String(visitors.length + 1).padStart(3, '0')}`,
-        idType: form.idType,
-        idNumber: form.idNumber,
+        host_name: form.hostName,
+        check_in_time: new Date().toISOString(),
+        badge_number: badgeNumber,
         notes: form.notes,
-      };
-      
-      const dbVisitor = {
-        id: newVisitor.id,
-        full_name: newVisitor.fullName,
-        company: newVisitor.company,
-        purpose: newVisitor.purpose,
-        host_name: newVisitor.hostName,
-        check_in_time: newVisitor.checkInTime,
-        badge_number: newVisitor.badgeNumber,
-        notes: newVisitor.notes,
         status: 'inside'
       };
 
-      const { error } = await supabase.from('visitors').insert([dbVisitor]);
+      const { data: inserted, error } = await supabase.from('visitors').insert([dbVisitor]).select().single();
       if (!error) {
+        const newVisitor: VisitorRecord = {
+          id: inserted.id,
+          fullName: form.fullName,
+          company: form.company,
+          purpose: form.purpose,
+          hostName: form.hostName,
+          checkInTime: dbVisitor.check_in_time,
+          expectedTime: form.expectedTime || undefined,
+          badgeNumber,
+          idType: form.idType,
+          idNumber: form.idNumber,
+          notes: form.notes,
+        };
         setVisitors(prev => [newVisitor, ...prev]);
         await supabase.from('supplier_order_notifications').insert([{
           message: `Visitor ${form.fullName} (${form.purpose}) has arrived to see ${form.hostName}. Badge: ${newVisitor.badgeNumber}`,
@@ -384,8 +379,11 @@ export default function VisitorsView({ addNotification }: Props) {
         {filtered.length === 0 && (
           <div className="py-12 text-center text-[var(--text-muted)] text-sm">No visitors found</div>
         )}
-        <div className="px-4 py-3 border-t border-[var(--border)] bg-[var(--bg)]">
-          <p className="text-[10px] text-[var(--text-muted)]">Showing {filtered.length} of {todayVisitors.length} visitors</p>
+        <div className="px-4 py-3 border-t border-[var(--border)] bg-[var(--bg)] flex items-center justify-between">
+          <p className="text-[10px] text-[var(--text-muted)]">Showing {filtered.length} of {todayVisitors.length} visitors ({visitors.length} loaded{typeof total === 'number' ? ` of ${total.toLocaleString()} all-time` : ''})</p>
+          {hasMore && (
+            <button onClick={loadMore} className="px-3 py-1.5 rounded-lg bg-[var(--bg-input)] text-[var(--text-secondary)] hover:opacity-90 text-[10px] font-medium">Load more</button>
+          )}
         </div>
       </div>}
 

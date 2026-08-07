@@ -176,9 +176,22 @@ export default function ProductionAnalyticsView({ addNotification }: Props) {
   const [outputRecords, setOutputRecords] = useState<OutputRecord[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Bounded to exactly the window the selected period needs, not a flat
+  // row cap — a flat cap silently drops older rows once daily volume push
+  // past it (was 2000 rows regardless of period, so a busy production line
+  // on the 12M view could already be missing months of history with no
+  // indication anything was cut off).
+  const PERIOD_DAYS: Record<Period, number> = { '7D': 7, '30D': 30, '90D': 90, '12M': 365 };
+
   const fetchData = () => {
     setLoading(true);
-    supabase.from('production_logs').select('date, product_name, boxes_produced, total_sachets, quality_result, goods_received').order('date', { ascending: false }).limit(2000)
+    const since = new Date();
+    since.setDate(since.getDate() - PERIOD_DAYS[period]);
+    supabase.from('production_logs')
+      .select('date, product_name, boxes_produced, total_sachets, quality_result, goods_received')
+      .gte('date', since.toISOString().slice(0, 10))
+      .order('date', { ascending: false })
+      .limit(5000)
       .then(({ data }) => {
         if (data) {
           setOutputRecords(data.map((row: any) => ({
@@ -194,7 +207,7 @@ export default function ProductionAnalyticsView({ addNotification }: Props) {
       }, () => { setLoading(false); });
   };
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => { fetchData(); }, [period]);
 
   const trend = buildOutputTrend(outputRecords, period);
   const eff = buildEfficiency(outputRecords, period);

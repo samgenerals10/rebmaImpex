@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabaseClient';
 import { applyAccentOverride, clearAccentOverride } from '../utils/accentOverride';
 import { playNotificationSound, getSavedSound, saveSound, getSavedVolume, saveVolume, stopAlertSound } from '../utils/notificationSound';
 import type { NotificationSoundType } from '../utils/notificationSound';
+import TwoFactorSetup from '../components/TwoFactorSetup';
 
 interface SettingsDashboardProps {
   theme: string;
@@ -525,6 +526,19 @@ export default function SettingsDashboard({
                 Update Password
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* TWO-FACTOR AUTHENTICATION */}
+      {activeSubTab === 'TwoFactor' && (
+        <div className="max-w-md">
+          <div className="p-4 md:p-6 bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-[var(--box-shadow)] space-y-5">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="w-5 h-5 text-[var(--accent)]" />
+              <h3 className="text-base md:text-lg font-bold text-[var(--text-primary)]">Two-Factor Authentication</h3>
+            </div>
+            <TwoFactorSetup />
           </div>
         </div>
       )}

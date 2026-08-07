@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   UserCheck, Search, Download, MapPin, Settings, CheckCircle, Clock,
   AlertCircle, X, Edit2, Trash2, Copy, Share2, MoreVertical, Plus
@@ -7,6 +7,7 @@ import { supabase } from '../../lib/supabaseClient';
 import CountUp from '../../components/CountUp';
 import { exportToCSV } from '../../utils/export';
 import type { Attendance } from '../../types/erp';
+import { usePaginatedQuery } from '../../hooks/usePaginatedQuery';
 
 interface WorkplaceSettings {
   lat: number;
@@ -29,8 +30,22 @@ interface Props {
   addNotification: (msg: string) => void;
 }
 
+const mapAttendanceRow = (a: any): Attendance => ({
+  id: a.id,
+  fullName: a.user?.full_name || a.fullName || 'Unknown',
+  checkInTime: a.check_in_time ? new Date(a.check_in_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
+  status: a.status as 'PRESENT' | 'LATE',
+  date: a.date || (a.check_in_time ? new Date(a.check_in_time).toLocaleString() : '')
+});
+
 export default function AttendanceView({ attendanceList, addNotification }: Props) {
-  const [records, setRecords] = useState<Attendance[]>(attendanceList);
+  const { rows: records, setRows: setRecords, hasMore, total, loadMore } = usePaginatedQuery<Attendance>({
+    table: 'attendance',
+    select: '*, user:profiles(full_name)',
+    pageSize: 100,
+    orderColumn: 'check_in_time',
+    map: mapAttendanceRow,
+  });
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [submitting, setSubmitting] = useState(false);
@@ -43,25 +58,6 @@ export default function AttendanceView({ attendanceList, addNotification }: Prop
   const [showAdd, setShowAdd] = useState(false);
   const [addForm, setAddForm] = useState({ fullName: '', checkInTime: '', status: 'PRESENT' as 'PRESENT' | 'LATE' });
 
-  const loadAttendance = async () => {
-    const { data, error } = await supabase
-      .from('attendance')
-      .select('*, user:profiles(full_name)')
-      .order('check_in_time', { ascending: false });
-    if (!error && data) {
-      setRecords(data.map((a: any) => ({
-        id: a.id,
-        fullName: a.user?.full_name || a.fullName || 'Unknown',
-        checkInTime: a.check_in_time ? new Date(a.check_in_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
-        status: a.status as 'PRESENT' | 'LATE',
-        date: a.date || (a.check_in_time ? new Date(a.check_in_time).toLocaleString() : '')
-      })));
-    }
-  };
-
-  useEffect(() => {
-    loadAttendance();
-  }, []);
 
   const filtered = records.filter(r => {
     const matchSearch = r.fullName.toLowerCase().includes(search.toLowerCase()) ||
@@ -115,24 +111,22 @@ export default function AttendanceView({ attendanceList, addNotification }: Prop
     if (submitting) return;
     setSubmitting(true);
     try {
-      const dupId = `ATT-${Date.now().toString().slice(-6)}`;
       const { data: prof } = await supabase.from('profiles').select('id').ilike('full_name', r.fullName).limit(1);
       const userId = prof && prof[0] ? prof[0].id : null;
-      
+
       // Default time is now
       const nowISO = new Date().toISOString();
-      const { error } = await supabase.from('attendance').insert([{
-        id: dupId,
+      const { data: inserted, error } = await supabase.from('attendance').insert([{
         user_id: userId,
         status: r.status,
         check_in_time: nowISO,
         date: nowISO.slice(0, 10)
-      }]);
+      }]).select().single();
 
       if (!error) {
         const dup: Attendance = {
           ...r,
-          id: dupId,
+          id: inserted.id,
           checkInTime: new Date(nowISO).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           date: new Date(nowISO).toLocaleDateString()
         };
@@ -190,18 +184,16 @@ export default function AttendanceView({ attendanceList, addNotification }: Prop
         checkInDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
       }
       
-      const newRecId = `ATT-${Date.now().toString().slice(-6)}`;
-      const { error } = await supabase.from('attendance').insert([{
-        id: newRecId,
+      const { data: inserted, error } = await supabase.from('attendance').insert([{
         user_id: userId,
         status: addForm.status,
         check_in_time: checkInDate.toISOString(),
         date: checkInDate.toISOString().slice(0, 10)
-      }]);
+      }]).select().single();
 
       if (!error) {
         const newRec: Attendance = {
-          id: newRecId,
+          id: inserted.id,
           fullName: addForm.fullName,
           checkInTime: addForm.checkInTime || checkInDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           status: addForm.status,
@@ -373,8 +365,11 @@ export default function AttendanceView({ attendanceList, addNotification }: Prop
             <div className="py-12 text-center text-[var(--text-muted)] text-sm">No attendance records found</div>
           )}
         </div>
-        <div className="px-4 py-3 border-t border-[var(--border)]">
-          <p className="text-xs text-[var(--text-muted)]">Showing {filtered.length} of {records.length} records</p>
+        <div className="px-4 py-3 border-t border-[var(--border)] flex items-center justify-between">
+          <p className="text-xs text-[var(--text-muted)]">Showing {filtered.length} of {records.length} loaded{typeof total === 'number' ? ` (${total.toLocaleString()} total)` : ''}</p>
+          {hasMore && (
+            <button onClick={loadMore} className="px-3 py-1.5 rounded-lg bg-[var(--bg-input)] text-[var(--text-secondary)] hover:opacity-90 text-xs font-medium">Load more</button>
+          )}
         </div>
       </div>
 

@@ -71,7 +71,7 @@ export default function FinanceMobileMoneyView({ addNotification, currentUser }:
     };
     load();
 
-    const channel = supabase.channel('mobile-money-realtime-' + Math.random().toString(36).substring(7))
+    const channel = supabase.channel('mobile-money-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'finance_payments' }, () => {
         load();
       })

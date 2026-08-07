@@ -8,6 +8,7 @@ import { meetingsApi } from '../services/apiClient';
 import JitsiCallModal from '../components/collaborative/JitsiCallModal';
 import CountUp from '../components/CountUp';
 import { useFullscreenToggle, FullscreenButton } from '../components/global/FullscreenToggle';
+import { useCeoSettings } from '../contexts/CeoSettingsContext';
 import type { ChatMessage, BoardroomMeeting, CurrentUser } from '../types/erp';
 
 interface BoardroomViewProps {
@@ -38,7 +39,8 @@ export default function BoardroomView({
   meetingsList,
   setMeetingsList
 }: BoardroomViewProps) {
-  
+  const { getSetting } = useCeoSettings();
+
   // Lets the video call card take over the full screen height — a fixed
   // ~480px max is cramped for an actual meeting.
   const videoFullscreen = useFullscreenToggle();
@@ -95,6 +97,7 @@ export default function BoardroomView({
 
   const handleScheduleRealMeeting = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!getSetting('forms_control', true)) { alert('Form submissions are currently disabled by the CEO.'); return; }
     if (!meetingTitle.trim() || !meetingDate || !meetingTime) {
       alert('Please fill out all meeting details');
       return;
@@ -134,6 +137,7 @@ export default function BoardroomView({
 
   const handleSendAnnouncement = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!getSetting('forms_control', true)) { alert('Form submissions are currently disabled by the CEO.'); return; }
     if (!announcementText.trim()) return;
     const newMsg: ChatMessage = {
       id: Date.now().toString(),
@@ -147,6 +151,7 @@ export default function BoardroomView({
 
   const handleSendDM = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!getSetting('forms_control', true)) { alert('Form submissions are currently disabled by the CEO.'); return; }
     if (!dmText.trim()) return;
     const newMsg: ChatMessage = {
       id: Date.now().toString(),

@@ -10,6 +10,7 @@ import {
   ResponsiveContainer, Legend, AreaChart, Area,
 } from 'recharts';
 import { supabase } from '../../lib/supabaseClient';
+import { useRealtimeChannel } from '../../hooks/useRealtimeChannel';
 
 interface WalletsViewProps { setActiveSubTab?: (tab: string) => void; }
 
@@ -87,28 +88,23 @@ export default function WalletsView({ setActiveSubTab }: WalletsViewProps) {
       const exps  = (expensesRes.data  || []) as any[];
       const purch = (purchasesRes.data || []) as any[];
 
-      // ── Wallet buckets by mode ──────────────────────────────────────────────
-      const modeMap: Record<string, { amount: number; count: number }> = {};
-      let tIn = 0;
-      for (const p of pays) {
-        const m = normalMode(p.payment_mode);
-        if (!modeMap[m]) modeMap[m] = { amount: 0, count: 0 };
-        const a = Number(p.amount || 0);
-        modeMap[m].amount += a;
-        modeMap[m].count  += 1;
-        tIn += a;
+      // Headline totals + mode breakdown from real SQL SUM()/GROUP BY over
+      // the full tables, not summed over this capped 500-row window —
+      // those numbers were silently wrong once real volume passed the cap.
+      const { data: totals } = await supabase.rpc('get_finance_wallet_totals').single();
+      setTotalIn(Number((totals as any)?.total_in || 0));
+      setTotalOut(Number((totals as any)?.total_out || 0));
+      // Re-merge after normalization — the SQL groups by raw payment_mode
+      // text, but variant spellings (e.g. "momo" vs "MOBILE_MONEY") should
+      // land in the same bucket, same as the normalization this replaced.
+      const normalizedModes: Record<string, { amount: number; count: number }> = {};
+      for (const m of ((totals as any)?.mode_breakdown || []) as any[]) {
+        const key = normalMode(m.mode);
+        if (!normalizedModes[key]) normalizedModes[key] = { amount: 0, count: 0 };
+        normalizedModes[key].amount += Number(m.amount || 0);
+        normalizedModes[key].count += Number(m.count || 0);
       }
-      setTotalIn(tIn);
-      setWallets(
-        Object.entries(modeMap)
-          .map(([mode, v]) => ({ mode, ...v }))
-          .sort((a, b) => b.amount - a.amount),
-      );
-
-      // ── Total out ────────────────────────────────────────────────────────────
-      const expOut   = exps.filter((e: any) => e.status !== 'Rejected').reduce((s: number, e: any) => s + Number(e.amount || 0), 0);
-      const purchOut = purch.filter((p: any) => p.status === 'APPROVED').reduce((s: number, p: any) => s + Number(p.cost || 0), 0);
-      setTotalOut(expOut + purchOut);
+      setWallets(Object.entries(normalizedModes).map(([mode, v]) => ({ mode, ...v })).sort((a, b) => b.amount - a.amount));
 
       // ── Monthly bar chart — last 6 months ───────────────────────────────────
       const monthInMap: Record<string, number>  = {};
@@ -163,25 +159,9 @@ export default function WalletsView({ setActiveSubTab }: WalletsViewProps) {
     }
   }, []);
 
-  useEffect(() => {
-    load();
+  useEffect(() => { load(); }, [load]);
 
-    const channel = supabase.channel('wallets-realtime-' + Math.random().toString(36).substring(7))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'finance_payments' }, () => {
-        load();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'finance_expenses' }, () => {
-        load();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'general_purchases' }, () => {
-        load();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [load]);
+  useRealtimeChannel('wallets-realtime', ['finance_payments', 'finance_expenses', 'general_purchases'], () => load());
 
   const net = totalIn - totalOut;
   const activeWallet = wallets[activeCard] || null;

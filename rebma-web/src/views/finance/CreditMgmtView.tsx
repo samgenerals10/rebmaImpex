@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { useCeoSettings } from '../../contexts/CeoSettingsContext';
 import {
@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { exportToCSV } from '../../utils/export';
 import CountUp from '../../components/CountUp';
+import { usePaginatedQuery } from '../../hooks/usePaginatedQuery';
 
 interface CreditEntry {
   id: string;
@@ -34,51 +35,43 @@ interface Props {
   currentUser?: { fullName: string; department: string } | null;
 }
 
+const mapCreditEntry = (o: any): CreditEntry => {
+  const today = new Date();
+  const due = new Date(o.due_date || o.created_at);
+  const diffDays = Math.floor((today.getTime() - due.getTime()) / 86400000);
+  const outstanding = (o.total_amount || 0) - (o.amount_paid || 0);
+  let status: CreditEntry['status'] = 'Current';
+  if (o.amount_paid >= o.total_amount) status = 'Paid';
+  else if (diffDays > 0) status = 'Overdue';
+  else if (diffDays > -7) status = 'Due Soon';
+  return {
+    id: o.id,
+    customerName: o.client_name || o.clientName || '',
+    orderRef: o.ticket_number || o.ticketNumber || o.id,
+    creditAmount: o.total_amount || o.totalAmount || 0,
+    amountPaid: o.amount_paid || 0,
+    outstanding,
+    dueDate: o.due_date || o.created_at?.split('T')[0] || '',
+    daysOverdue: diffDays > 0 ? diffDays : 0,
+    status,
+    phone: o.phone || '',
+  };
+};
+
+const creditOrdersOnly = (q: any) => q.eq('payment_mode', 'CREDIT');
+
 export default function FinanceCreditMgmtView({ addNotification, currentUser }: Props) {
   const { getSetting } = useCeoSettings();
   const handlePrint = () => {
     if (!getSetting('print_enabled', true)) { addNotification?.('Printing is currently disabled by the CEO.'); return; }
     window.print();
   };
-  const [items, setItems] = useState<CreditEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      try {
-        const { data } = await supabase.from('orders').select('*').eq('payment_mode', 'CREDIT').order('created_at', { ascending: false });
-        if (data) {
-          const today = new Date();
-          setItems(data.map((o: any) => {
-            const due = new Date(o.due_date || o.created_at);
-            const diffDays = Math.floor((today.getTime() - due.getTime()) / 86400000);
-            const outstanding = (o.total_amount || 0) - (o.amount_paid || 0);
-            let status: CreditEntry['status'] = 'Current';
-            if (o.amount_paid >= o.total_amount) status = 'Paid';
-            else if (diffDays > 0) status = 'Overdue';
-            else if (diffDays > -7) status = 'Due Soon';
-            return {
-              id: o.id,
-              customerName: o.client_name || o.clientName || '',
-              orderRef: o.ticket_number || o.ticketNumber || o.id,
-              creditAmount: o.total_amount || o.totalAmount || 0,
-              amountPaid: o.amount_paid || 0,
-              outstanding,
-              dueDate: o.due_date || o.created_at?.split('T')[0] || '',
-              daysOverdue: diffDays > 0 ? diffDays : 0,
-              status,
-              phone: o.phone || '',
-            } as CreditEntry;
-          }));
-        }
-      } catch {
-        // show empty state
-      }
-      setLoading(false);
-    };
-    load();
-  }, []);
+  const { rows: items, setRows: setItems, loading, hasMore, total, loadMore } = usePaginatedQuery<CreditEntry>({
+    table: 'orders',
+    pageSize: 100,
+    applyFilters: creditOrdersOnly,
+    map: mapCreditEntry,
+  });
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
@@ -388,6 +381,14 @@ export default function FinanceCreditMgmtView({ addNotification, currentUser }: 
             </tbody>
           </table>
         </div>
+        )}
+        {!loading && items.length > 0 && (
+          <div className="flex items-center justify-between px-4 py-3 border-t border-[var(--border)] text-xs text-[var(--text-muted)]">
+            <span>Showing {items.length}{typeof total === 'number' ? ` of ${total.toLocaleString()}` : ''}</span>
+            {hasMore && (
+              <button onClick={loadMore} className="px-3 py-1.5 rounded-lg bg-[var(--bg-input)] text-[var(--text-secondary)] hover:opacity-90 font-medium">Load more</button>
+            )}
+          </div>
         )}
       </div>
 

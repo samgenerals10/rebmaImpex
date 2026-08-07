@@ -217,6 +217,7 @@ export default function Sidebar({
       { id: 'Appearance',      label: 'Display & Appearance',  icon: Activity },
       { id: 'Profile',         label: 'Profile & Account',     icon: Users },
       { id: 'ChangePassword',  label: 'Change Password',       icon: ShieldCheck },
+      { id: 'TwoFactor',       label: 'Two-Factor Authentication', icon: ShieldCheck },
       { id: 'DeleteAccount',   label: 'Delete Account',        icon: LogOut },
     ]
   };

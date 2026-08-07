@@ -169,27 +169,21 @@ export default function HrOverviewView({ currentUser, addNotification, setActive
           ]);
         }
 
-        // 6. YoY Staff Growth (headcount by month for 2025 vs 2026)
-        const { data: profilesData } = await supabase
-          .from('profiles')
-          .select('created_at');
-        if (profilesData) {
+        // 6. YoY Staff Growth (headcount by month for 2025 vs 2026) — one
+        // server-side aggregate (get_yoy_headcount) instead of up to 24
+        // full-table client-side scans (12 months x 2 years).
+        const { data: headcountRows } = await supabase.rpc('get_yoy_headcount', { p_years: [2025, 2026] });
+        if (headcountRows) {
           const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
           const currentMonth = today.getMonth();
-          
-          const growth = months.slice(0, currentMonth + 1).map((m, idx) => {
-            const date2025 = new Date(2025, idx + 1, 0, 23, 59, 59);
-            const date2026 = new Date(2026, idx + 1, 0, 23, 59, 59);
+          const byYearMonth: Record<string, number> = {};
+          for (const r of headcountRows as any[]) byYearMonth[`${r.yr}-${r.month}`] = Number(r.headcount || 0);
 
-            const count2025 = profilesData.filter((p: any) => p.created_at && new Date(p.created_at) <= date2025).length;
-            const count2026 = profilesData.filter((p: any) => p.created_at && new Date(p.created_at) <= date2026).length;
-
-            return {
-              month: m,
-              '2025': count2025 || 3, 
-              '2026': count2026 || 4
-            };
-          });
+          const growth = months.slice(0, currentMonth + 1).map((m, idx) => ({
+            month: m,
+            '2025': byYearMonth[`2025-${idx + 1}`] || 3,
+            '2026': byYearMonth[`2026-${idx + 1}`] || 4,
+          }));
           setYoyGrowth(growth);
         }
       } catch (err) {

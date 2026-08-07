@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { Search, Download, Plus, Upload, Camera, AlertTriangle, MoreVertical } from 'lucide-react';
 import { exportToCSV } from '../../utils/export';
 import CountUp from '../../components/CountUp';
+import { usePaginatedQuery } from '../../hooks/usePaginatedQuery';
 
 interface PettyCashEntry {
   id: string;
@@ -25,38 +26,24 @@ interface Props {
   currentUser?: { fullName: string; department: string } | null;
 }
 
-export default function FinancePettyCashView({ addNotification, currentUser }: Props) {
-  const [entries, setEntries] = useState<PettyCashEntry[]>([]);
-  const [loading, setLoading] = useState(true);
+const mapPettyCash = (e: any): PettyCashEntry => ({
+  id: e.id,
+  date: e.date || e.created_at?.split('T')[0] || '',
+  description: e.description || '',
+  amount: e.amount || 0,
+  disbursedTo: e.disbursed_to || e.disbursedTo || '',
+  category: e.category || 'Other',
+  receipt: e.receipt || false,
+  balanceAfter: e.balance_after || e.balanceAfter || 0,
+  type: e.type || 'disbursement'
+});
 
-  useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      try {
-        const { data } = await supabase
-          .from('finance_petty_cash')
-          .select('*')
-          .order('created_at', { ascending: false });
-        if (data) {
-          setEntries(data.map((e: any) => ({
-            id: e.id,
-            date: e.date || e.created_at?.split('T')[0] || '',
-            description: e.description || '',
-            amount: e.amount || 0,
-            disbursedTo: e.disbursed_to || e.disbursedTo || '',
-            category: e.category || 'Other',
-            receipt: e.receipt || false,
-            balanceAfter: e.balance_after || e.balanceAfter || 0,
-            type: e.type || 'disbursement'
-          } as PettyCashEntry)));
-        }
-      } catch {
-        setEntries([]);
-      }
-      setLoading(false);
-    };
-    load();
-  }, []);
+export default function FinancePettyCashView({ addNotification, currentUser }: Props) {
+  const { rows: entries, setRows: setEntries, loading, hasMore, total, loadMore } = usePaginatedQuery<PettyCashEntry>({
+    table: 'finance_petty_cash',
+    pageSize: 100,
+    map: mapPettyCash,
+  });
   const [search, setSearch] = useState('');
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const [editEntry, setEditEntry] = useState<PettyCashEntry | null>(null);
@@ -274,6 +261,14 @@ export default function FinancePettyCashView({ addNotification, currentUser }: P
             </tbody>
           </table>
         </div>
+        )}
+        {!loading && entries.length > 0 && (
+          <div className="flex items-center justify-between px-4 py-3 border-t border-[var(--border)] text-xs text-[var(--text-muted)]">
+            <span>Showing {entries.length}{typeof total === 'number' ? ` of ${total.toLocaleString()}` : ''}</span>
+            {hasMore && (
+              <button onClick={loadMore} className="px-3 py-1.5 rounded-lg bg-[var(--bg-input)] text-[var(--text-secondary)] hover:opacity-90 font-medium">Load more</button>
+            )}
+          </div>
         )}
       </div>
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Search, Eye, Copy, X, ChevronRight, Package, Edit, Trash2, Boxes } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
+import { useRealtimeChannel } from '../../hooks/useRealtimeChannel';
 import { production } from '../../services/apiClient';
 
 const STATUS_COLORS: Record<string, string> = {
@@ -155,14 +156,9 @@ export default function InternalOrdersView({ productionRequests, addNotification
     setLoadingRequisitions(false);
   };
 
-  useEffect(() => {
-    loadRequisitions();
-    const channel = supabase
-      .channel('production-material-requisitions-' + Math.random().toString(36).slice(2))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'material_requisitions' }, () => loadRequisitions())
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, []);
+  useEffect(() => { loadRequisitions(); }, []);
+
+  useRealtimeChannel('production-material-requisitions', ['material_requisitions'], () => loadRequisitions());
 
   const handleSubmitMaterialRequest = async () => {
     if (!materialForm.materialName.trim() || materialForm.quantity <= 0) {

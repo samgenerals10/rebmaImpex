@@ -123,27 +123,16 @@ export default function ReceptionOverviewView({ visitorsList, onAddVisitor, onCh
   const checkedOut = visitorsList.filter(v => !!v.checkOutTime);
   const staffPresent = attendance.filter(a => a.status === 'PRESENT' || a.status === 'LATE');
 
-  const handleQuickCheckIn = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!quickForm.fullName) return;
-    const badge = `VIS-${String(Math.floor(Math.random() * 9000) + 1000)}`;
-    const newV = {
-      id: Date.now().toString(),
-      fullName: quickForm.fullName,
-      phone: quickForm.phone,
-      purpose: quickForm.purpose,
-      hostName: quickForm.host,
-      checkInTime: new Date().toISOString(),
-      badgeNumber: badge,
-    };
-    supabase.from('visitors').insert([newV]).then(() => {}, () => {});
-    supabase.from('supplier_order_notifications').insert([{
-      message: `${quickForm.fullName} has arrived to see you. Badge: ${badge}`,
-      notified_department: 'ALL',
-      read: false,
-      created_at: new Date().toISOString(),
-    }]).then(() => {}, () => {});
-    addNotification(`${quickForm.fullName} checked in — Badge: ${badge}`);
+  // Routed through the same onAddVisitor callback the rest of the app uses
+  // (App.tsx's handleAddVisitor -> reception.checkInVisitor), which does a
+  // real snake_case insert and lets the DB assign the id. The form's own
+  // direct supabase.from('visitors').insert(...) call used to send
+  // camelCase keys the live schema doesn't have, with its result ignored
+  // either way — so check-ins here never actually persisted.
+  const handleQuickCheckIn = (e: React.FormEvent<HTMLFormElement>) => {
+    if (!getSetting('forms_control', true)) { e.preventDefault(); addNotification('Form submissions are currently disabled by the CEO.'); return; }
+    if (!quickForm.fullName || !quickForm.host) return;
+    onAddVisitor(e);
     setQuickForm({ fullName: '', phone: '', host: '', purpose: 'Business Meeting' });
   };
 
@@ -285,7 +274,7 @@ export default function ReceptionOverviewView({ visitorsList, onAddVisitor, onCh
           <form onSubmit={handleQuickCheckIn} className="space-y-2.5">
             <div>
               <label className="block text-[10px] text-[var(--text-muted)] font-semibold uppercase mb-1">Visitor Name *</label>
-              <input value={quickForm.fullName} onChange={e => setQuickForm(p => ({ ...p, fullName: e.target.value }))} required placeholder="Full name"
+              <input name="visitor" value={quickForm.fullName} onChange={e => setQuickForm(p => ({ ...p, fullName: e.target.value }))} required placeholder="Full name"
                 className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-[var(--text-primary)] text-xs outline-none focus:border-[var(--accent)]" />
             </div>
             <div>
@@ -295,12 +284,12 @@ export default function ReceptionOverviewView({ visitorsList, onAddVisitor, onCh
             </div>
             <div>
               <label className="block text-[10px] text-[var(--text-muted)] font-semibold uppercase mb-1">Host *</label>
-              <input value={quickForm.host} onChange={e => setQuickForm(p => ({ ...p, host: e.target.value }))} required placeholder="Staff name"
+              <input name="host" value={quickForm.host} onChange={e => setQuickForm(p => ({ ...p, host: e.target.value }))} required placeholder="Staff name"
                 className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-[var(--text-primary)] text-xs outline-none focus:border-[var(--accent)]" />
             </div>
             <div>
               <label className="block text-[10px] text-[var(--text-muted)] font-semibold uppercase mb-1">Purpose</label>
-              <select value={quickForm.purpose} onChange={e => setQuickForm(p => ({ ...p, purpose: e.target.value }))}
+              <select name="purpose" value={quickForm.purpose} onChange={e => setQuickForm(p => ({ ...p, purpose: e.target.value }))}
                 className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-[var(--text-primary)] text-xs outline-none">
                 {['Business Meeting', 'Delivery', 'Personal', 'Interview', 'Other'].map(p => <option key={p}>{p}</option>)}
               </select>

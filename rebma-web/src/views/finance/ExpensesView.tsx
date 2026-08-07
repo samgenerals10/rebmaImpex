@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { Search, Download, Plus, MoreVertical, CheckCircle, XCircle, Clock, Upload, Camera } from 'lucide-react';
 import { exportToCSV } from '../../utils/export';
 import CountUp from '../../components/CountUp';
 import { useCeoSettings } from '../../contexts/CeoSettingsContext';
+import { usePaginatedQuery } from '../../hooks/usePaginatedQuery';
 
 interface Expense {
   id: string;
@@ -39,40 +40,29 @@ interface Props {
 
 const CATEGORIES = ['Rent', 'Utilities', 'Transport', 'Maintenance', 'Admin', 'Other'];
 
+const mapExpense = (e: any): Expense => ({
+  id: e.id,
+  category: e.category || 'Other',
+  description: e.description || '',
+  amount: e.amount || 0,
+  date: e.date || e.created_at?.split('T')[0] || '',
+  receipt: e.receipt || false,
+  submittedBy: e.submitted_by || e.submittedBy || '',
+  status: e.status || 'Pending',
+});
+
 export default function FinanceExpensesView({ addNotification, currentUser }: Props) {
   const { getSetting } = useCeoSettings();
-  const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [loadingExpenses, setLoadingExpenses] = useState(true);
+  const { rows: expenses, setRows: setExpenses, loading: loadingExpenses, hasMore, total, loadMore } = usePaginatedQuery<Expense>({
+    table: 'finance_expenses',
+    pageSize: 100,
+    map: mapExpense,
+  });
 
   const handlePrint = () => {
     if (!getSetting('print_enabled', true)) { addNotification?.('Printing is currently disabled by the CEO.'); return; }
     window.print();
   };
-
-  useEffect(() => {
-    const load = async () => {
-      setLoadingExpenses(true);
-      try {
-        const { data } = await supabase.from('finance_expenses').select('*').order('created_at', { ascending: false });
-        if (data) {
-          setExpenses(data.map((e: any) => ({
-            id: e.id,
-            category: e.category || 'Other',
-            description: e.description || '',
-            amount: e.amount || 0,
-            date: e.date || e.created_at?.split('T')[0] || '',
-            receipt: e.receipt || false,
-            submittedBy: e.submitted_by || e.submittedBy || '',
-            status: e.status || 'Pending',
-          } as Expense)));
-        }
-      } catch {
-        // show empty state
-      }
-      setLoadingExpenses(false);
-    };
-    load();
-  }, []);
   const [search, setSearch] = useState('');
   const [catFilter, setCatFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
@@ -292,6 +282,14 @@ export default function FinanceExpensesView({ addNotification, currentUser }: Pr
             </tbody>
           </table>
         </div>
+        )}
+        {!loadingExpenses && expenses.length > 0 && (
+          <div className="flex items-center justify-between px-4 py-3 border-t border-[var(--border)] text-xs text-[var(--text-muted)]">
+            <span>Showing {expenses.length}{typeof total === 'number' ? ` of ${total.toLocaleString()}` : ''}</span>
+            {hasMore && (
+              <button onClick={loadMore} className="px-3 py-1.5 rounded-lg bg-[var(--bg-input)] text-[var(--text-secondary)] hover:opacity-90 font-medium">Load more</button>
+            )}
+          </div>
         )}
       </div>
 

@@ -7,6 +7,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { Search, Receipt as ReceiptIcon, Download } from 'lucide-react';
 import QRCode from 'qrcode';
 import { supabase } from '../../lib/supabaseClient';
+import { useRealtimeChannel } from '../../hooks/useRealtimeChannel';
 import { exportToCSV, safeDisplayName } from '../../utils/export';
 import { documentTemplates, type DocumentTemplate } from '../../services/apiClient';
 import type { OrderLineItem } from '../../types/erp';
@@ -300,14 +301,9 @@ export default function FinanceReceiptsView({ addNotification }: Props) {
     setLoading(false);
   }, []);
 
-  useEffect(() => {
-    load();
-    const channel = supabase
-      .channel('finance-receipts-' + Math.random().toString(36).slice(2))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'finance_payments' }, () => load())
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [load]);
+  useEffect(() => { load(); }, [load]);
+
+  useRealtimeChannel('finance-receipts', ['finance_payments'], () => load());
 
   const filtered = receipts.filter(r =>
     !search ||

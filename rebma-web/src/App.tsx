@@ -54,6 +54,8 @@ import CeoSupplierOrdersView from './views/ceo/SupplierOrdersView';
 import CeoControlCenter from './views/ceo/CeoControlCenter';
 import MaintenancePage from './components/MaintenancePage';
 import { CeoSettingsProvider, useCeoSettings } from './contexts/CeoSettingsContext';
+import { useIdleTimeout } from './hooks/useIdleTimeout';
+import TwoFactorSetup from './components/TwoFactorSetup';
 import { playNotificationSound, getSavedSound, getSavedVolume, stopAlertSound, setAlertNotifId } from './utils/notificationSound';
 import { uploadFile } from './utils/uploadFile';
 import { usePendingBadges } from './hooks/usePendingBadges';
@@ -423,7 +425,7 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   
   // Multi-Step Registration UI
-  const [authScreen, setAuthScreen] = useState<'welcome' | 'login' | 'register' | 'otp' | 'forgot' | 'email_verification_sent' | 'activation_expired' | 'forgot_reset'>('login');
+  const [authScreen, setAuthScreen] = useState<'welcome' | 'login' | 'register' | 'forgot' | 'email_verification_sent' | 'activation_expired' | 'forgot_reset'>('login');
   const [resetPassword, setResetPassword] = useState<string>('');
   const [resetConfirmPassword, setResetConfirmPassword] = useState<string>('');
   const [showResetPassword, setShowResetPassword] = useState<boolean>(false);
@@ -437,10 +439,6 @@ export default function App() {
   const [registerDept, setRegisterDept] = useState<string>('Marketing Department');
   const [registerName, setRegisterName] = useState<string>('');
   const [registerCard, setRegisterCard] = useState<string>('');
-  const [otpCode, setOtpCode] = useState<string>('');
-  const [simulatedReceivedOtp, setSimulatedReceivedOtp] = useState<string>('');
-  const [otpResendCountdown, setOtpResendCountdown] = useState<number>(0);
-  const [otpExpireCountdown, setOtpExpireCountdown] = useState<number>(0);
   const [registrationMessage, setRegistrationMessage] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [confirmPassword, setConfirmPassword] = useState<string>('');
@@ -451,6 +449,14 @@ export default function App() {
   const [forgotSubmitted, setForgotSubmitted] = useState<boolean>(false);
   const [isLoggingIn, setIsLoggingIn] = useState<boolean>(false);
   const [loginError, setLoginError] = useState<string>('');
+  // Set when a password login succeeds but the account has a verified TOTP
+  // factor (aal2 required) — holds everything handleLogin already built so
+  // the MFA screen can finish signing the user in once the code checks out,
+  // without re-running the password step.
+  const [pendingMfa, setPendingMfa] = useState<{ factorId: string; user: CurrentUser; token?: string } | null>(null);
+  const [mfaCode, setMfaCode] = useState<string>('');
+  const [mfaError, setMfaError] = useState<string>('');
+  const [mfaSubmitting, setMfaSubmitting] = useState<boolean>(false);
   const [loginRole, setLoginRole] = useState<string>('Staff');
   const [loginMethod, setLoginMethod] = useState<'password' | 'magic_link'>('password');
   const [showMagicLinkRequest, setShowMagicLinkRequest] = useState<boolean>(false);
@@ -1246,7 +1252,11 @@ export default function App() {
   // Supabase Realtime subscriptions hook
   useEffect(() => {
     if (currentUser) {
-      const channel = supabase.channel('erp-realtime-' + Math.random().toString(36).substring(7))
+      // App() is the root component and only ever mounts once, so the
+      // "share across instances" benefit useRealtimeChannel gives doesn't
+      // apply here — this just drops the random suffix so the channel has
+      // a stable, debuggable name in Supabase's realtime inspector.
+      const channel = supabase.channel('erp-realtime')
         .on(
           'postgres_changes',
           { event: '*', schema: 'public', table: 'profiles' },
@@ -1658,8 +1668,7 @@ export default function App() {
       const res = await auth.login(loginEmail, loginPassword);
       
       if ('user' in res && res.user) {
-        if (res.token) setToken(res.token);
-        setCurrentUser({
+        const builtUser: CurrentUser = {
           id: res.user.id,
           fullName: res.user.fullName,
           email: res.user.email,
@@ -1668,7 +1677,26 @@ export default function App() {
           isSuperAdmin: (res.user as any).isSuperAdmin ?? false,
           requiresPasswordReset: res.user.requiresPasswordReset,
           photo: res.user.photo
-        });
+        };
+
+        // Password check passed — if this account has a verified TOTP
+        // factor, Supabase requires a second factor (aal2) before the
+        // session is actually usable. Hold everything here and show the
+        // code-entry screen instead of finishing sign-in.
+        const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+        if (aal && aal.nextLevel === 'aal2' && aal.currentLevel !== 'aal2') {
+          const { data: factors } = await supabase.auth.mfa.listFactors();
+          const totpFactor = factors?.totp.find(f => f.status === 'verified');
+          if (totpFactor) {
+            setPendingMfa({ factorId: totpFactor.id, user: builtUser, token: res.token });
+            setIsLoggingIn(false);
+            setLoginPassword('');
+            return;
+          }
+        }
+
+        if (res.token) setToken(res.token);
+        setCurrentUser(builtUser);
         setActiveDepartment(res.user.department);
         sessionStorage.setItem('rebma-last-dept', res.user.department);
         setIsAuthenticated(true);
@@ -2232,6 +2260,83 @@ export default function App() {
       );
     };
 
+    const handleMfaVerify = async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!pendingMfa || mfaCode.length !== 6) return;
+      setMfaSubmitting(true);
+      setMfaError('');
+      const { data: challenge, error: challengeError } = await supabase.auth.mfa.challenge({ factorId: pendingMfa.factorId });
+      if (challengeError || !challenge) {
+        setMfaError(challengeError?.message || 'Failed to start verification.');
+        setMfaSubmitting(false);
+        return;
+      }
+      const { error: verifyError } = await supabase.auth.mfa.verify({ factorId: pendingMfa.factorId, challengeId: challenge.id, code: mfaCode });
+      setMfaSubmitting(false);
+      if (verifyError) {
+        setMfaError('Incorrect code — check your authenticator app and try again.');
+        return;
+      }
+      if (pendingMfa.token) setToken(pendingMfa.token);
+      setCurrentUser(pendingMfa.user);
+      setActiveDepartment(pendingMfa.user.department);
+      sessionStorage.setItem('rebma-last-dept', pendingMfa.user.department);
+      setIsAuthenticated(true);
+      addNotification(`Logged in as ${pendingMfa.user.fullName} (${pendingMfa.user.department})`);
+      setPendingMfa(null);
+      setMfaCode('');
+    };
+
+    const renderMfaVerifyForm = () => (
+      <motion.form
+        key="mfa-verify"
+        initial={{ opacity: 0, x: -10 }}
+        animate={{ opacity: 1, x: 0 }}
+        exit={{ opacity: 0, x: 10 }}
+        onSubmit={handleMfaVerify}
+        className="space-y-4 text-text-primary"
+      >
+        <div className="text-center">
+          <h3 className="text-xl font-bold text-[var(--accent)]">Two-Factor Verification</h3>
+          <p className="text-[10px] text-text-muted mt-0.5 font-medium">Enter the 6-digit code from your authenticator app</p>
+        </div>
+
+        {mfaError && (
+          <div className="p-2.5 bg-rose-50 border border-rose-100 rounded-xl text-center text-xs text-rose-800 font-semibold">
+            {mfaError}
+          </div>
+        )}
+
+        <div className="flex items-center gap-2 border-b border-[var(--border)] focus-within:border-[var(--accent)] focus-within:border-b-2 pb-1.5 transition-all bg-transparent">
+          <Lock className="w-4 h-4 text-text-muted" />
+          <input
+            autoFocus
+            inputMode="numeric"
+            placeholder="000000"
+            value={mfaCode}
+            onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+            className="w-full bg-transparent border-0 p-0 text-sm text-center tracking-[0.3em] text-text-primary placeholder-slate-400 focus:ring-0 focus:outline-none"
+          />
+        </div>
+
+        <button
+          type="submit"
+          disabled={mfaSubmitting || mfaCode.length !== 6}
+          className="w-full py-3 bg-gradient-to-r from-[var(--accent)] to-[var(--accent-hover)] disabled:from-emerald-300 disabled:to-emerald-400 disabled:cursor-not-allowed rounded-full text-sm font-bold text-white shadow-card hover:shadow-lg transition-all cursor-pointer text-center"
+        >
+          {mfaSubmitting ? 'Verifying...' : 'Verify & Sign In'}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => { setPendingMfa(null); setMfaCode(''); setMfaError(''); }}
+          className="w-full text-center text-xs text-text-muted hover:text-emerald-600 hover:underline font-semibold transition-colors cursor-pointer"
+        >
+          Back to Sign In
+        </button>
+      </motion.form>
+    );
+
     const renderRegisterForm = () => (
       <motion.form 
         key="register"
@@ -2614,8 +2719,6 @@ export default function App() {
       );
     };
 
-    /* SMS OTP Form removed */
-
     const renderEmailVerificationSentCard = () => (
       <motion.div
         key="email_verification_sent"
@@ -2822,12 +2925,12 @@ export default function App() {
               )}
 
               <AnimatePresence mode="wait">
-                {authScreen === 'welcome' && renderWelcomeCard()}
-                {authScreen === 'login' && renderLoginForm()}
+                {pendingMfa ? renderMfaVerifyForm() : null}
+                {!pendingMfa && authScreen === 'welcome' && renderWelcomeCard()}
+                {!pendingMfa && authScreen === 'login' && renderLoginForm()}
                 {authScreen === 'register' && renderRegisterForm()}
                 {authScreen === 'forgot' && renderForgotForm()}
                 {authScreen === 'forgot_reset' && renderPasswordResetForm()}
-                {/* SMS OTP Flow retracted */}
                 {authScreen === 'email_verification_sent' && renderEmailVerificationSentCard()}
                 {authScreen === 'activation_expired' && renderActivationExpiredCard()}
               </AnimatePresence>
@@ -3878,8 +3981,53 @@ function AppInner({
   const appMasterSwitch = getSetting('app_master_switch', true);
   const [maintenanceRestored, setMaintenanceRestored] = useState(false);
 
+  useIdleTimeout(getSetting('session_timeout_minutes', 60), async () => {
+    alert('Your session has expired due to inactivity. Please sign back in.');
+    await auth.signOut();
+    setIsAuthenticated(false);
+    setCurrentUser(null);
+    setCurrentDriver(null);
+  });
+
+  // force_2fa_management / force_2fa_finance — checked here (not at login)
+  // because it needs ceo_settings, only reachable inside CeoSettingsProvider.
+  // null = still checking (avoids flashing the gate before we know), so
+  // nothing renders differently until the factor lookup actually resolves.
+  const force2faSetting = currentUser?.department === 'MANAGEMENT' ? 'force_2fa_management'
+    : currentUser?.department === 'FINANCE' ? 'force_2fa_finance' : null;
+  const force2faRequired = force2faSetting ? getSetting(force2faSetting, false) : false;
+  const [hasVerifiedMfaFactor, setHasVerifiedMfaFactor] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (!force2faRequired || isAdmin) { setHasVerifiedMfaFactor(true); return; }
+    supabase.auth.mfa.listFactors().then(({ data }) => {
+      setHasVerifiedMfaFactor(!!data?.totp.some(f => f.status === 'verified'));
+    }, () => setHasVerifiedMfaFactor(true));
+  }, [force2faRequired, isAdmin]);
+
   if (!isAdmin && (maintenanceMode || !appMasterSwitch) && !maintenanceRestored) {
     return <MaintenancePage onAccessRestored={() => setMaintenanceRestored(true)} />;
+  }
+
+  if (force2faRequired && hasVerifiedMfaFactor === false) {
+    return (
+      <div className="min-h-screen w-full flex items-center justify-center bg-[var(--bg-page)] p-4">
+        <div className="w-full max-w-md bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-[var(--box-shadow)] p-6 space-y-5">
+          <div className="text-center space-y-1">
+            <h2 className="text-lg font-bold text-[var(--text-primary)]">Two-Factor Authentication Required</h2>
+            <p className="text-xs text-[var(--text-muted)]">
+              The CEO requires two-factor authentication for the {currentUser?.department?.toLowerCase()} department. Set it up below to continue.
+            </p>
+          </div>
+          <TwoFactorSetup onEnrolled={() => setHasVerifiedMfaFactor(true)} />
+          <button
+            onClick={async () => { await auth.signOut(); setIsAuthenticated(false); setCurrentUser(null); setCurrentDriver(null); }}
+            className="w-full text-center text-xs text-[var(--text-muted)] hover:text-[var(--accent)] hover:underline font-semibold cursor-pointer"
+          >
+            Sign out instead
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (

@@ -45,47 +45,35 @@ export default function AccountsView({ setActiveSubTab }: AccountsViewProps) {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [paymentsRes, expensesRes, purchasesRes, ordersRes] = await Promise.all([
+      // Headline totals + mode/category breakdowns come from real SQL
+      // SUM()/GROUP BY over the full tables (get_finance_wallet_totals,
+      // get_orders_financial_summary) rather than summing a capped window
+      // client-side — those figures were silently wrong the moment real
+      // volume passed 500/500/200 rows. The chart/recent-activity queries
+      // below stay capped since they're explicitly "recent", not totals.
+      const [paymentsRes, expensesRes, purchasesRes, totalsRes, ordersSummaryRes] = await Promise.all([
         supabase.from('finance_payments').select('amount, payment_mode, client_name, created_at').order('created_at', { ascending: false }).limit(500),
-        supabase.from('finance_expenses').select('amount, category, created_at').limit(500),
-        supabase.from('general_purchases').select('cost, created_at').limit(200),
-        supabase.from('orders').select('total_amount, status, payment_mode, created_at').limit(500),
+        supabase.from('finance_expenses').select('amount, category, created_at').order('created_at', { ascending: false }).limit(500),
+        supabase.from('general_purchases').select('cost, created_at').order('created_at', { ascending: false }).limit(200),
+        supabase.rpc('get_finance_wallet_totals').single(),
+        supabase.rpc('get_orders_financial_summary').single(),
       ]);
 
       const payments  = (paymentsRes.data  || []) as any[];
       const expenses  = (expensesRes.data  || []) as any[];
       const purchases = (purchasesRes.data || []) as any[];
-      const orders    = (ordersRes.data    || []) as any[];
+      const totals = totalsRes.data as any;
+      const ordersSummary = ordersSummaryRes.data as any;
 
-      // ── Totals ──────────────────────────────────────────────────────────────
-      const tIn  = payments.reduce((s: number, p: any) => s + Number(p.amount || 0), 0);
-      const tOut = expenses.reduce((s: number, e: any) => s + Number(e.amount || 0), 0);
-      const tPurch = purchases.reduce((s: number, p: any) => s + Number(p.cost || 0), 0);
-      const tRev = orders
-        .filter((o: any) => ['APPROVED', 'DELIVERED', 'PROCESSING'].includes(o.status))
-        .reduce((s: number, o: any) => s + Number(o.total_amount || 0), 0);
-      const tPend = orders.filter((o: any) => o.status === 'PENDING_FINANCE').length;
-      const tCredit = orders
-        .filter((o: any) => o.payment_mode === 'CREDIT' && !['DELIVERED'].includes(o.status))
-        .reduce((s: number, o: any) => s + Number(o.total_amount || 0), 0);
+      setTotalIn(Number(totals?.total_in || 0));
+      setTotalOut(Number(totals?.total_out || 0));
+      setTotalPurchases(Number(totals?.total_purchases || 0));
+      setTotalRevenue(Number(ordersSummary?.total_revenue || 0));
+      setPendingOrders(Number(ordersSummary?.pending_orders_count || 0));
+      setCreditOutstanding(Number(ordersSummary?.credit_outstanding || 0));
 
-      setTotalIn(tIn); setTotalOut(tOut); setTotalPurchases(tPurch);
-      setTotalRevenue(tRev); setPendingOrders(tPend); setCreditOutstanding(tCredit);
-
-      // ── Payment mode breakdown ───────────────────────────────────────────────
-      const modeMap: Record<string, { amount: number; count: number }> = {};
-      for (const p of payments) {
-        const m = (p.payment_mode || 'CASH').replace(/_/g, ' ');
-        if (!modeMap[m]) modeMap[m] = { amount: 0, count: 0 };
-        modeMap[m].amount += Number(p.amount || 0);
-        modeMap[m].count  += 1;
-      }
-      setModeBreaks(Object.entries(modeMap).map(([mode, v]) => ({ mode, ...v })).sort((a, b) => b.amount - a.amount));
-
-      // ── Expense categories ───────────────────────────────────────────────────
-      const catMap: Record<string, number> = {};
-      for (const e of expenses) { const c = e.category || 'Other'; catMap[c] = (catMap[c] || 0) + Number(e.amount || 0); }
-      setExpenseCategories(Object.entries(catMap).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value).slice(0, 6));
+      setModeBreaks(((totals?.mode_breakdown || []) as any[]).map(m => ({ mode: String(m.mode).replace(/_/g, ' '), amount: Number(m.amount), count: Number(m.count) })));
+      setExpenseCategories(((totals?.expense_categories || []) as any[]).map(c => ({ name: c.name, value: Number(c.value) })));
 
       // ── Monthly trend (last 6 months) ────────────────────────────────────────
       const months: MonthPoint[] = Array.from({ length: 6 }, (_, i) => {

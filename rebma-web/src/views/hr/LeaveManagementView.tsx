@@ -225,11 +225,10 @@ export default function LeaveManagementView({ currentUser, addNotification }: Pr
     setSubmitting(true);
     try {
       const days = calcDays(form.startDate, form.endDate);
-      const newLeave: LeaveRequest = { id: Date.now().toString(), ...form, days, status: 'PENDING' };
-      const dbData = mapToDB(newLeave);
-      const { error } = await supabase.from('leave_requests').insert([dbData]);
+      const dbData = mapToDB({ ...form, days, status: 'PENDING' });
+      const { data: inserted, error } = await supabase.from('leave_requests').insert([dbData]).select().single();
       if (!error) {
-        setLeaves(prev => [newLeave, ...prev]);
+        setLeaves(prev => [mapToUI(inserted), ...prev]);
         addNotification(`Leave request submitted for ${form.employeeName}`);
         setShowAdd(false);
         setForm({ employeeName: '', department: 'Operations', leaveType: 'Annual', startDate: '', endDate: '', reason: '' });

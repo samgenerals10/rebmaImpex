@@ -7,6 +7,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Boxes, CheckCircle, XCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
+import { useRealtimeChannel } from '../../hooks/useRealtimeChannel';
 
 interface Props {
   addNotification?: (msg: string) => void;
@@ -37,14 +38,9 @@ export default function MaterialRequisitionsPanel({ addNotification, currentUser
     setLoading(false);
   }, []);
 
-  useEffect(() => {
-    load();
-    const channel = supabase
-      .channel('mgmt-material-requisitions-' + Math.random().toString(36).slice(2))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'material_requisitions' }, () => load())
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [load]);
+  useEffect(() => { load(); }, [load]);
+
+  useRealtimeChannel('mgmt-material-requisitions', ['material_requisitions'], () => load());
 
   const handleDecision = async (req: any, approve: boolean) => {
     if (submittingId) return;

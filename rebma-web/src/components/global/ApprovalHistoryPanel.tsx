@@ -7,6 +7,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { History, CheckCircle, XCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
+import { useRealtimeChannel } from '../../hooks/useRealtimeChannel';
 
 interface Props {
   department: string;
@@ -42,14 +43,13 @@ export default function ApprovalHistoryPanel({ department, title = 'Previous App
     setLoading(false);
   }, [department]);
 
-  useEffect(() => {
-    load();
-    const channel = supabase
-      .channel('approval-history-' + department.toLowerCase() + '-' + Math.random().toString(36).slice(2))
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'global_audit_history' }, () => load())
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [load, department]);
+  useEffect(() => { load(); }, [load]);
+
+  useRealtimeChannel(
+    'approval-history-' + department.toLowerCase(),
+    [{ table: 'global_audit_history', event: 'INSERT' }],
+    () => load()
+  );
 
   if (!loading && rows.length === 0) return null;
 

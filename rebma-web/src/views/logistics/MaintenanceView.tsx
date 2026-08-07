@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Plus, X, AlertTriangle, CheckCircle, Edit, Trash2 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { supabase } from '../../lib/supabaseClient';
+import { usePaginatedQuery } from '../../hooks/usePaginatedQuery';
 
 interface MaintenanceRecord {
   id: string;
@@ -51,8 +52,13 @@ const mapToDB = (ui: Partial<MaintenanceRecord>) => {
 };
 
 export default function MaintenanceView({ addNotification }: Props) {
-  const [records, setRecords] = useState<MaintenanceRecord[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { rows: records, setRows: setRecords, loading, hasMore, total, loadMore, reload } = usePaginatedQuery<MaintenanceRecord>({
+    table: 'maintenance_schedule',
+    pageSize: 100,
+    orderColumn: 'date',
+    map: mapToUI,
+  });
+  const loadData = reload;
   const [submitting, setSubmitting] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -61,25 +67,6 @@ export default function MaintenanceView({ addNotification }: Props) {
   const [filterStatus, setFilterStatus] = useState('All');
   const [filterType, setFilterType] = useState('All');
   const [form, setForm] = useState({ vehicleId: 'GR-1234-22', type: 'Service' as MaintenanceRecord['type'], date: '', description: '', mechanic: '', cost: '' });
-
-  const loadData = async () => {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase.from('maintenance_schedule').select('*').order('date', { ascending: false });
-      if (!error && data) {
-        setRecords(data.map(mapToUI));
-      } else {
-        setRecords([]);
-      }
-    } catch {
-      setRecords([]);
-    }
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    loadData();
-  }, []);
 
   const today = new Date().toISOString().split('T')[0];
   const sevenDays = new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0];
@@ -317,6 +304,14 @@ export default function MaintenanceView({ addNotification }: Props) {
               <AlertTriangle className="w-10 h-10 mx-auto mb-3 opacity-40" />
               <p className="font-semibold text-sm">No maintenance records yet</p>
               <p className="text-xs mt-1">They will appear here once added</p>
+            </div>
+          )}
+          {!loading && records.length > 0 && (
+            <div className="flex items-center justify-between px-4 py-3 border-t border-[var(--border)] text-xs text-[var(--text-muted)]">
+              <span>Showing {records.length}{typeof total === 'number' ? ` of ${total.toLocaleString()}` : ''}</span>
+              {hasMore && (
+                <button onClick={loadMore} className="px-3 py-1.5 rounded-lg bg-[var(--bg-input)] text-[var(--text-secondary)] hover:opacity-90 font-medium">Load more</button>
+              )}
             </div>
           )}
         </div>}

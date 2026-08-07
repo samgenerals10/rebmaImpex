@@ -181,6 +181,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       accuracy: accuracy ?? null,
     });
     if (error) return res.status(500).json({ error: error.message });
+
+    // No cron infrastructure exists in this repo, and every active driver
+    // pings roughly every 10-20s, so this endpoint is the cheapest place to
+    // self-prune — a global sweep (not just this driver's rows) so a driver
+    // who stops working still gets cleaned up whenever anyone else pings.
+    // Not awaited: retention isn't on the critical path for the driver's
+    // own ping response.
+    supabaseAdmin
+      .from('driver_locations')
+      .delete()
+      .lt('recorded_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
+      .then(() => {}, () => {});
+
     return res.status(200).json({ ok: true });
   }
 

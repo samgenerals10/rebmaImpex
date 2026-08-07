@@ -581,7 +581,7 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
   const [staffSearch, setStaffSearch] = useState('');
   const [invites, setInvites] = useState<any[]>([]);
   const [delegates, setDelegates] = useState<any[]>([]);
-  const [securityLog, setSecurityLog] = useState<any[]>([]);
+  const [settingChangesLog, setSecurityLog] = useState<any[]>([]);
   const [showInviteForm, setShowInviteForm] = useState(false);
   const [showDelegateForm, setShowDelegateForm] = useState(false);
   const [showUserModal, setShowUserModal] = useState(false);
@@ -973,24 +973,27 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
         </div>
       )}
 
-      {/* Recent Security Log */}
-      {securityLog.length > 0 && (
+      {/* Recent Setting Changes — this is exactly what it shows: the last 10
+          ceo_settings rows by updated_at. Not a security/auth event log
+          (no login attempts, no session/IP data), so it isn't labeled as
+          one. */}
+      {settingChangesLog.length > 0 && (
         <div className="bg-[var(--bg-card)] rounded-2xl border border-[var(--border)] shadow-[var(--box-shadow)] p-5 space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold text-[var(--text-primary)] flex items-center gap-2">
-              <Clock className="w-4 h-4 text-[var(--accent)]" /> Recent Security Log
+              <Clock className="w-4 h-4 text-[var(--accent)]" /> Recent Setting Changes
             </h3>
             <button onClick={() => {
-              const rows = securityLog.map(r => `${r.setting_key},${r.updated_at}`).join('\n');
+              const rows = settingChangesLog.map(r => `${r.setting_key},${r.updated_at}`).join('\n');
               const blob = new Blob([`Setting,Updated At\n${rows}`], { type: 'text/csv' });
               const url = URL.createObjectURL(blob);
-              const a = document.createElement('a'); a.href = url; a.download = 'security_log.csv'; a.click();
+              const a = document.createElement('a'); a.href = url; a.download = 'setting_changes_log.csv'; a.click();
             }} className="flex items-center gap-1 text-xs text-[var(--accent)] hover:underline cursor-pointer">
               <FileSpreadsheet className="w-3.5 h-3.5" /> Export
             </button>
           </div>
           <div className="space-y-1.5">
-            {securityLog.map((r, i) => (
+            {settingChangesLog.map((r, i) => (
               <div key={i} className="flex items-center justify-between text-xs py-1 border-b border-[var(--border)] last:border-0">
                 <span className="font-mono text-[var(--accent)] font-semibold">{r.setting_key}</span>
                 <span className="text-[var(--text-muted)]">{r.updated_at ? new Date(r.updated_at).toLocaleString() : '—'}</span>

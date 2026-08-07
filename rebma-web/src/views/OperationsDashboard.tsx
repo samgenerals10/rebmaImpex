@@ -13,11 +13,13 @@ import { ResponsiveContainer, BarChart, Bar, Cell, XAxis, YAxis, Tooltip, Cartes
 import type { Order, IncomingGoods } from '../types/erp';
 import { exportToCSV, exportToPDF } from '../utils/export';
 import { supabase } from '../lib/supabaseClient';
+import { useRealtimeChannel } from '../hooks/useRealtimeChannel';
 import PendingApprovalsAlert from '../components/global/PendingApprovalsAlert';
 import { stockApi } from '../services/apiClient';
 import StockIntakeForm from '../components/StockIntakeForm';
 import CountrySelect from '../components/CountrySelect';
 import CountUp from '../components/CountUp';
+import { useCeoSettings } from '../contexts/CeoSettingsContext';
 
 interface OperationsDashboardProps {
   ordersList: Order[];
@@ -65,6 +67,7 @@ export default function OperationsDashboard({
   setActiveSubTab,
   onRefresh
 }: OperationsDashboardProps) {
+  const { getSetting } = useCeoSettings();
 
   // Local state copies of lists to support edit, delete, duplicate actions locally
   const [kpiDetail, setKpiDetail] = useState<number | null>(null);
@@ -262,14 +265,9 @@ export default function OperationsDashboard({
     setProductionTickets(data || []);
   };
 
-  useEffect(() => {
-    loadProductionTickets();
-    const channel = supabase
-      .channel('ops-production-tickets-' + Math.random().toString(36).slice(2))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'fulfillment_tickets' }, () => loadProductionTickets())
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, []);
+  useEffect(() => { loadProductionTickets(); }, []);
+
+  useRealtimeChannel('ops-production-tickets', [{ table: 'fulfillment_tickets' }], () => loadProductionTickets());
 
   const markProductionTicketPrepared = async (ticketId: string) => {
     await supabase.from('fulfillment_tickets').update({ status: 'COMPLETED', updated_at: new Date().toISOString() }).eq('id', ticketId);
@@ -286,14 +284,9 @@ export default function OperationsDashboard({
     setRawMaterialTickets(data || []);
   };
 
-  useEffect(() => {
-    loadRawMaterialTickets();
-    const channel = supabase
-      .channel('ops-raw-material-tickets-' + Math.random().toString(36).slice(2))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'fulfillment_tickets' }, () => loadRawMaterialTickets())
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, []);
+  useEffect(() => { loadRawMaterialTickets(); }, []);
+
+  useRealtimeChannel('ops-raw-material-tickets', [{ table: 'fulfillment_tickets' }], () => loadRawMaterialTickets());
 
   // Releasing raw materials actually consumes company stock (unlike the
   // finished-goods PRODUCTION_RELEASE path above, which adds stock) — so this
@@ -364,7 +357,7 @@ export default function OperationsDashboard({
     fetchTotalQty();
     const interval = setInterval(fetchLowStock, 30000);
 
-    const channel = supabase.channel('operations-dashboard-stock-realtime-' + Math.random().toString(36).substring(7))
+    const channel = supabase.channel('operations-dashboard-stock-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'stock' }, () => {
         fetchLowStock();
         fetchTotalQty();
@@ -552,6 +545,7 @@ export default function OperationsDashboard({
 
   const handleSubmitIntake = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!getSetting('forms_control', true)) { addNotification('Form submissions are currently disabled by the CEO.'); return; }
     const target = e.target as any;
     onLogIntake({
       productName: productName || 'Unspecified Product',

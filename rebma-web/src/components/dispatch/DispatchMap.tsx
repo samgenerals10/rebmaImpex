@@ -3,6 +3,7 @@ import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-
 import L from 'leaflet';
 import { Truck, Satellite, Map as MapIcon } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
+import { useRealtimeChannel } from '../../hooks/useRealtimeChannel';
 
 type MapLayer = 'street' | 'satellite';
 
@@ -129,37 +130,39 @@ export default function DispatchMap({ deliveries, focusDeliveryId, height = 320,
   useEffect(() => {
     mountedRef.current = true;
     fetchLatest();
-
-    const channel = supabase.channel('dispatch-map-' + Math.random().toString(36).substring(7))
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'driver_locations' }, (payload: any) => {
-        const row = payload.new;
-        if (!driverIds.includes(row.driver_id)) return;
-        setLatestByDriver(prev => ({
-          ...prev,
-          [row.driver_id]: { lat: Number(row.latitude), lng: Number(row.longitude), recordedAt: row.recorded_at }
-        }));
-        if (focusDeliveryId) {
-          const focused = deliveries.find(d => d.id === focusDeliveryId);
-          if (focused?.driverId === row.driver_id) {
-            setTrail(prev => [...prev, { lat: Number(row.latitude), lng: Number(row.longitude), recordedAt: row.recorded_at }].slice(-20));
-          }
-        } else if (showTrails) {
-          setTrailsByDriver(prev => ({
-            ...prev,
-            [row.driver_id]: [...(prev[row.driver_id] || []), { lat: Number(row.latitude), lng: Number(row.longitude), recordedAt: row.recorded_at }].slice(-20),
-          }));
-        }
-      })
-      .subscribe();
-
     const poll = setInterval(fetchLatest, pollIntervalSeconds * 1000);
-
     return () => {
       mountedRef.current = false;
-      supabase.removeChannel(channel);
       clearInterval(poll);
     };
   }, [driverIds.join(','), focusDeliveryId]);
+
+  // Server-side filtering isn't possible here (driver_locations has no
+  // column to filter this component's own driverIds prop by), so the
+  // channel itself stays constant — shared across every mounted
+  // DispatchMap instance — and each instance's own closure (captured fresh
+  // every render via useRealtimeChannel's ref) does the per-instance
+  // driverIds/focusDeliveryId filtering that used to live inside the
+  // per-mount .on() callback.
+  useRealtimeChannel('dispatch-map', [{ table: 'driver_locations', event: 'INSERT' }], (_table, payload) => {
+    const row = payload.new;
+    if (!driverIds.includes(row.driver_id)) return;
+    setLatestByDriver(prev => ({
+      ...prev,
+      [row.driver_id]: { lat: Number(row.latitude), lng: Number(row.longitude), recordedAt: row.recorded_at }
+    }));
+    if (focusDeliveryId) {
+      const focused = deliveries.find(d => d.id === focusDeliveryId);
+      if (focused?.driverId === row.driver_id) {
+        setTrail(prev => [...prev, { lat: Number(row.latitude), lng: Number(row.longitude), recordedAt: row.recorded_at }].slice(-20));
+      }
+    } else if (showTrails) {
+      setTrailsByDriver(prev => ({
+        ...prev,
+        [row.driver_id]: [...(prev[row.driver_id] || []), { lat: Number(row.latitude), lng: Number(row.longitude), recordedAt: row.recorded_at }].slice(-20),
+      }));
+    }
+  });
 
   useEffect(() => {
     if (!focusDeliveryId) { setTrail([]); return; }

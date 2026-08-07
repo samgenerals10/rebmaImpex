@@ -12,6 +12,7 @@ import type { Order, FinancePayment, ProductionRequest } from '../types/erp';
 import { exportToCSV, exportToPDF } from '../utils/export';
 import { stockApi, operations } from '../services/apiClient';
 import { supabase } from '../lib/supabaseClient';
+import { useRealtimeChannel } from '../hooks/useRealtimeChannel';
 import ActivityFeed from '../components/global/ActivityFeed';
 import FinanceOverviewView from './finance/OverviewView';
 import CountUp from '../components/CountUp';
@@ -85,19 +86,9 @@ export default function FinanceDashboard({
       }, () => {});
   }, []);
 
-  useEffect(() => {
-    loadLiveOrders();
+  useEffect(() => { loadLiveOrders(); }, [loadLiveOrders]);
 
-    const channel = supabase.channel('finance-orders-realtime-' + Math.random().toString(36).substring(7))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
-        loadLiveOrders();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [loadLiveOrders]);
+  useRealtimeChannel('finance-orders-realtime', ['orders'], () => loadLiveOrders());
 
   // Use live fetch if available, fall back to prop
   const effectiveOrders = liveOrders.length > 0 ? liveOrders : ordersList;
@@ -286,6 +277,7 @@ export default function FinanceDashboard({
 
   const handleRecordPaymentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!getSetting('forms_control', true)) { alert('Form submissions are currently disabled by the CEO.'); return; }
     const now = new Date().toISOString();
     if (payType === 'DIRECT') {
       if (!clientName || !amount || parseFloat(amount) <= 0) {

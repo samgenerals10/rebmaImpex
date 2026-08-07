@@ -51,6 +51,7 @@ export default function WipStockView({ addNotification }: Props) {
   const [newUnit, setNewUnit] = useState('');
   const [newBatchRef, setNewBatchRef] = useState('');
   const [form, setForm] = useState({ productName: '', stage: 'Raw Materials', qty: '', unit: 'kg', batchRef: '', notes: '' });
+  const [submitting, setSubmitting] = useState(false);
 
   const loadData = async () => {
     setLoading(true);
@@ -81,7 +82,8 @@ export default function WipStockView({ addNotification }: Props) {
   ];
 
   const handleEditWipItem = async () => {
-    if (!updateModal) return;
+    if (!updateModal || submitting) return;
+    setSubmitting(true);
     try {
       await wipApi.updateWipStock(
         updateModal.id,
@@ -97,6 +99,7 @@ export default function WipStockView({ addNotification }: Props) {
     } catch (err: any) {
       alert(err.message || 'Failed to update WIP item.');
     }
+    setSubmitting(false);
     setUpdateModal(null);
     setNewProductName('');
     setNewStage('');
@@ -107,7 +110,8 @@ export default function WipStockView({ addNotification }: Props) {
   };
 
   const handleAddItem = async () => {
-    if (!form.productName || !form.qty) return;
+    if (!form.productName || !form.qty || submitting) return;
+    setSubmitting(true);
     try {
       await wipApi.addWipStock({
         productName: form.productName,
@@ -124,9 +128,12 @@ export default function WipStockView({ addNotification }: Props) {
     } catch (err: any) {
       alert(err.message || 'Failed to add WIP item.');
     }
+    setSubmitting(false);
   };
 
   const handleDelete = async (id: string) => {
+    if (submitting) return;
+    setSubmitting(true);
     try {
       await wipApi.deleteWipStock(id);
       addNotification('WIP item removed');
@@ -134,10 +141,13 @@ export default function WipStockView({ addNotification }: Props) {
     } catch (err: any) {
       alert(err.message || 'Failed to remove WIP item.');
     }
+    setSubmitting(false);
     setMenuOpen(null);
   };
 
   const handleDuplicate = async (item: WipItem) => {
+    if (submitting) return;
+    setSubmitting(true);
     try {
       await wipApi.addWipStock({
         productName: item.productName,
@@ -152,6 +162,7 @@ export default function WipStockView({ addNotification }: Props) {
     } catch (err: any) {
       alert(err.message || 'Failed to duplicate WIP item.');
     }
+    setSubmitting(false);
     setMenuOpen(null);
   };
 
@@ -294,8 +305,8 @@ export default function WipStockView({ addNotification }: Props) {
                           <button onClick={() => { setDetailModal(item); setMenuOpen(null); }} className="flex w-full px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg cursor-pointer">View Details</button>
                           <button onClick={() => { setUpdateModal(item); setNewProductName(item.productName); setNewStage(item.stage); setNewQty(String(item.qty)); setNewUnit(item.unit); setNewBatchRef(item.batchRef || ''); setNewNotes(item.notes || ''); setMenuOpen(null); }} className="flex w-full px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg cursor-pointer gap-2 items-center"><Edit2 className="w-3 h-3" /> Edit WIP Item</button>
                           <button onClick={() => { printWipItem(item); setMenuOpen(null); }} className="flex w-full px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg cursor-pointer gap-2 items-center"><Printer className="w-3 h-3" /> Print Record</button>
-                          <button onClick={() => handleDuplicate(item)} className="flex w-full px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg cursor-pointer">Duplicate</button>
-                          <button onClick={() => handleDelete(item.id)} className="flex w-full px-3 py-2 text-xs text-rose-500 hover:bg-rose-500/10 rounded-lg cursor-pointer">Delete</button>
+                          <button onClick={() => handleDuplicate(item)} disabled={submitting} className="flex w-full px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg cursor-pointer disabled:opacity-50">Duplicate</button>
+                          <button onClick={() => handleDelete(item.id)} disabled={submitting} className="flex w-full px-3 py-2 text-xs text-rose-500 hover:bg-rose-500/10 rounded-lg cursor-pointer disabled:opacity-50">Delete</button>
                         </div>
                       )}
                     </div>
@@ -358,7 +369,7 @@ export default function WipStockView({ addNotification }: Props) {
             </div>
             <div className="flex gap-3 mt-5">
               <button onClick={() => setUpdateModal(null)} className="flex-1 py-2.5 text-sm font-semibold bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-secondary)] rounded-xl cursor-pointer">Cancel</button>
-              <button onClick={handleEditWipItem} className="flex-1 py-2.5 text-sm font-semibold bg-[var(--accent)] text-white rounded-xl cursor-pointer hover:opacity-90">Save Changes</button>
+              <button onClick={handleEditWipItem} disabled={submitting} className="flex-1 py-2.5 text-sm font-semibold bg-[var(--accent)] text-white rounded-xl cursor-pointer hover:opacity-90 disabled:opacity-50">{submitting ? 'Saving...' : 'Save Changes'}</button>
             </div>
           </div>
         </div>
@@ -406,7 +417,7 @@ export default function WipStockView({ addNotification }: Props) {
             </div>
             <div className="flex gap-3 mt-5">
               <button onClick={() => setAddModal(false)} className="flex-1 py-2.5 text-sm font-semibold bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-secondary)] rounded-xl cursor-pointer">Cancel</button>
-              <button onClick={handleAddItem} className="flex-1 py-2.5 text-sm font-semibold bg-[var(--accent)] text-white rounded-xl cursor-pointer hover:opacity-90">Add Item</button>
+              <button onClick={handleAddItem} disabled={submitting} className="flex-1 py-2.5 text-sm font-semibold bg-[var(--accent)] text-white rounded-xl cursor-pointer hover:opacity-90 disabled:opacity-50">{submitting ? 'Adding...' : 'Add Item'}</button>
             </div>
           </div>
         </div>

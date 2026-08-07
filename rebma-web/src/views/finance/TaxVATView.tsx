@@ -50,52 +50,28 @@ export default function FinanceTaxVATView({ addNotification, currentUser }: Prop
         const { data } = await supabase
           .from('finance_vat_periods')
           .select('*')
-          .order('period', { ascending: false });
+          .order('period', { ascending: false })
+          .limit(500);
         const rows = (data ?? []) as VATEntry[];
         setVatData(rows);
         if (rows.length > 0) setSelectedPeriod(rows[0].period);
 
-        // Fetch orders to compute Invoice Aging Report
-        const { data: ordersData } = await supabase
-          .from('orders')
-          .select('id, total_amount, amount_paid, created_at, due_date');
-        
-        const orders = ordersData || [];
-        const now = new Date();
-        
-        const aging = [
-          { label: '0–30 days', invoices: 0, amount: 0, color: 'text-green-500' },
-          { label: '31–60 days', invoices: 0, amount: 0, color: 'text-yellow-500' },
-          { label: '61–90 days', invoices: 0, amount: 0, color: 'text-orange-500' },
-          { label: '90+ days', invoices: 0, amount: 0, color: 'text-red-500' },
-        ];
-        
-        orders.forEach(o => {
-          const totalAmt = Number(o.total_amount || 0);
-          const paidAmt = Number(o.amount_paid || 0);
-          const dueAmount = totalAmt - paidAmt;
-          if (dueAmount <= 0) return; // fully paid
-          
-          const orderDate = o.created_at ? new Date(o.created_at) : now;
-          const diffTime = Math.abs(now.getTime() - orderDate.getTime());
-          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-          
-          if (diffDays <= 30) {
-            aging[0].invoices += 1;
-            aging[0].amount += dueAmount;
-          } else if (diffDays <= 60) {
-            aging[1].invoices += 1;
-            aging[1].amount += dueAmount;
-          } else if (diffDays <= 90) {
-            aging[2].invoices += 1;
-            aging[2].amount += dueAmount;
-          } else {
-            aging[3].invoices += 1;
-            aging[3].amount += dueAmount;
-          }
-        });
-        
-        setAgingData(aging);
+        // Aging buckets computed server-side over the full orders table
+        // (get_vat_aging_summary) instead of pulling every order ever
+        // placed just to bucket the ones with a balance still due.
+        const { data: agingRows } = await supabase.rpc('get_vat_aging_summary');
+        const AGING_META: Record<string, string> = {
+          '0-30 days': 'text-green-500', '31-60 days': 'text-yellow-500',
+          '61-90 days': 'text-orange-500', '90+ days': 'text-red-500',
+        };
+        if (agingRows) {
+          setAgingData((agingRows as any[]).map(r => ({
+            label: r.bucket.replace('-', '–'),
+            invoices: Number(r.invoices || 0),
+            amount: Number(r.amount || 0),
+            color: AGING_META[r.bucket] || 'text-gray-500',
+          })));
+        }
       } catch {
         setVatData([]);
       }

@@ -243,12 +243,11 @@ export default function CeoDashboard({
           // deductStockForOrder). Filtered to that function's own reference text, since
           // movement_type='REMOVE' alone also covers non-sale deductions (raw material
           // sent to Production, manual stock adjustments) that must not count as "sold".
-          const { data: soldLedger } = await supabase
-            .from('stock_ledger')
-            .select('product_name, quantity')
-            .eq('movement_type', 'REMOVE')
-            .ilike('reference', '%Order Approved%');
-          if (soldLedger) setSoldLedger(soldLedger);
+          // Server-side aggregate — stock_ledger only ever grows (every
+          // sale appends a row), so summing it client-side re-downloads
+          // the entire sales-deduction history on every dashboard load.
+          const { data: soldLedger } = await supabase.rpc('get_sold_quantities_by_product');
+          if (soldLedger) setSoldLedger(soldLedger.map((r: any) => ({ product_name: r.product_name, quantity: r.quantity_sold })));
         } catch (e) {
           console.error(e);
         }
@@ -318,7 +317,12 @@ export default function CeoDashboard({
     loadKPIs();
     loadTransit();
 
-    const channel = supabase.channel('ceo-dashboard-realtime-' + Math.random().toString(36).substring(7))
+    // CeoDashboard is a top-level view that only ever mounts once, so a
+    // shared multi-instance channel doesn't apply here — this just drops
+    // the random suffix for a stable, debuggable name. load/loadPending/
+    // loadKPIs are declared inside this same effect, so the channel stays
+    // here too rather than moving to a separate top-level hook call.
+    const channel = supabase.channel('ceo-dashboard-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
         loadKPIs();
       })

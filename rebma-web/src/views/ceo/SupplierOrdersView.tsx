@@ -12,6 +12,7 @@ import { ChevronRight as BcChevron } from 'lucide-react';
 import CountrySelect from '../../components/CountrySelect';
 import { waLink } from '../../utils/whatsapp';
 import { useCeoSettings } from '../../contexts/CeoSettingsContext';
+import { usePaginatedQuery } from '../../hooks/usePaginatedQuery';
 
 function InlineBreadcrumb({ crumbs, onBack }: { crumbs: string[]; onBack?: () => void }) {
   return (
@@ -90,20 +91,13 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }
 };
 
 
-function generateOrderNumber(existing: SupplierOrder[]) {
-  const year = new Date().getFullYear();
-  const max = existing.reduce((m, o) => {
-    const n = parseInt(o.order_number.split('-')[2] || '0');
-    return n > m ? n : m;
-  }, 0);
-  return `SUP-${year}-${String(max + 1).padStart(3, '0')}`;
-}
-
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function SupplierOrdersView({ currentUser, addNotification }: Props) {
-  const [orders, setOrders] = useState<SupplierOrder[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { rows: orders, setRows: setOrders, loading, hasMore, total, loadMore } = usePaginatedQuery<SupplierOrder>({
+    table: 'supplier_orders',
+    pageSize: 100,
+  });
   const [showForm, setShowForm] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<SupplierOrder | null>(null);
   const [showDetail, setShowDetail] = useState(false);
@@ -114,23 +108,6 @@ export default function SupplierOrdersView({ currentUser, addNotification }: Pro
   const [searchText, setSearchText] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-
-  // ── Load orders ──
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('supplier_orders')
-          .select('*')
-          .order('created_at', { ascending: false });
-        setOrders(!error && data ? data : []);
-      } catch {
-        setOrders([]);
-      }
-      setLoading(false);
-    };
-    load();
-  }, []);
 
   useEffect(() => {
     const handler = () => setActiveMenu(null);
@@ -325,6 +302,14 @@ export default function SupplierOrdersView({ currentUser, addNotification }: Pro
             </table>
           </div>
         )}
+        {!loading && orders.length > 0 && (
+          <div className="flex items-center justify-between px-4 py-3 border-t border-[var(--border)] text-xs text-[var(--text-muted)]">
+            <span>Showing {orders.length}{typeof total === 'number' ? ` of ${total.toLocaleString()}` : ''}</span>
+            {hasMore && (
+              <button onClick={loadMore} className="px-3 py-1.5 rounded-lg bg-[var(--bg-input)] text-[var(--text-secondary)] hover:opacity-90 font-medium">Load more</button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* New Order Form Panel */}
@@ -504,47 +489,6 @@ function NewOrderForm({ orders, currentUser, addNotification, onClose, onSave }:
   const totalAmount = products.reduce((s, p) => s + p.total_price, 0);
   const totalGhs = totalAmount * exchangeRate;
 
-  const handleSubmit = async (draft = false) => {
-    if (!supplierName || products.some(p => !p.product_name)) return;
-    setSaving(true);
-    const orderNumber = generateOrderNumber(orders);
-    const order: SupplierOrder = {
-      id: String(Date.now()),
-      order_number: orderNumber,
-      supplier_name: supplierName,
-      supplier_country: supplierCountry,
-      supplier_email: supplierEmail,
-      products,
-      total_amount: totalAmount,
-      currency,
-      exchange_rate: exchangeRate,
-      total_amount_ghs: totalGhs,
-      expected_delivery_date: expectedDate,
-      shipping_method: shippingMethod,
-      shipping_details: shippingDetails,
-      port_of_entry: portOfEntry,
-      status: 'pending',
-      payment_authorised: false,
-      notes,
-      created_at: new Date().toISOString(),
-    };
-
-    // Save to Supabase
-    if (isNewSupplier && supplierName) {
-      await supabase.from('suppliers').insert([{
-        name: supplierName, country: supplierCountry,
-        contact_name: supplierContact, contact_email: supplierEmail,
-        currency,
-      }]);
-    }
-    await supabase.from('supplier_orders').insert([{
-      ...order, id: undefined,
-    }]);
-
-    setSaving(false);
-    onSave(order);
-  };
-
   const buildWhatsAppMessage = (order: SupplierOrder) => {
     const lines = [
       `*New Purchase Order — REBMA IMPEX Ghana Limited*`,
@@ -564,11 +508,47 @@ function NewOrderForm({ orders, currentUser, addNotification, onClose, onSave }:
     return encodeURIComponent(lines.join('\n'));
   };
 
-  const buildOrder = (): SupplierOrder | null => {
+  // Routed through an atomic DB function (not a plain insert with a
+  // client-computed order number) so two concurrent supplier orders can't
+  // both compute the same next SUP-{year}-{seq} off a stale snapshot and
+  // both insert it — the function locks, reads the live max under that
+  // lock, and inserts, all in one transaction.
+  const createSupplierOrder = async (): Promise<SupplierOrder | null> => {
     if (!supplierName || products.some(p => !p.product_name)) return null;
+
+    if (isNewSupplier && supplierName) {
+      await supabase.from('suppliers').insert([{
+        name: supplierName, country: supplierCountry,
+        contact_name: supplierContact, contact_email: supplierEmail, currency,
+      }]);
+    }
+
+    const { data: created, error } = await supabase.rpc('create_supplier_order', {
+      p_order: {
+        supplier_name: supplierName,
+        supplier_country: supplierCountry,
+        supplier_email: supplierEmail,
+        products,
+        total_amount: totalAmount,
+        currency,
+        exchange_rate: exchangeRate,
+        total_amount_ghs: totalGhs,
+        expected_delivery_date: expectedDate || null,
+        shipping_method: shippingMethod,
+        port_of_entry: portOfEntry,
+        status: 'pending',
+        notes,
+      },
+    });
+
+    if (error) {
+      addNotification(`Failed to create supplier order: ${error.message}`);
+      return null;
+    }
+
     return {
-      id: String(Date.now()),
-      order_number: generateOrderNumber(orders),
+      id: created.id,
+      order_number: created.order_number,
       supplier_name: supplierName,
       supplier_country: supplierCountry,
       supplier_email: supplierEmail,
@@ -584,25 +564,14 @@ function NewOrderForm({ orders, currentUser, addNotification, onClose, onSave }:
       status: 'pending',
       payment_authorised: false,
       notes,
-      created_at: new Date().toISOString(),
+      created_at: created.created_at,
     };
   };
 
-  const saveToSupabase = async (order: SupplierOrder) => {
-    if (isNewSupplier && supplierName) {
-      await supabase.from('suppliers').insert([{
-        name: supplierName, country: supplierCountry,
-        contact_name: supplierContact, contact_email: supplierEmail, currency,
-      }]);
-    }
-    await supabase.from('supplier_orders').insert([{ ...order, id: undefined }]);
-  };
-
   const handleSendNow = async () => {
-    const order = buildOrder();
-    if (!order) return;
     setSaving(true);
-    saveToSupabase(order);
+    const order = await createSupplierOrder();
+    if (!order) { setSaving(false); return; }
     if (sendChannel === 'whatsapp') {
       if (!getSetting('whatsapp_enabled', true)) {
         addNotification('WhatsApp messaging is currently disabled by the CEO.');
@@ -615,10 +584,9 @@ function NewOrderForm({ orders, currentUser, addNotification, onClose, onSave }:
   };
 
   const handleSaveDraft = async () => {
-    const order = buildOrder();
-    if (!order) return;
     setSaving(true);
-    saveToSupabase(order);
+    const order = await createSupplierOrder();
+    if (!order) { setSaving(false); return; }
     setSaving(false);
     onSave(order);
   };

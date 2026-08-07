@@ -10,6 +10,7 @@ import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianG
 import { useCeoSettings } from '../contexts/CeoSettingsContext';
 import ActivityFeed from '../components/global/ActivityFeed';
 import CountUp from '../components/CountUp';
+import { supabase } from '../lib/supabaseClient';
 
 interface MarketingDashboardProps {
   ordersList: Order[];
@@ -149,8 +150,9 @@ export default function MarketingDashboard({
   ];
 
 
-  const handleSubmitOrder = (e: React.FormEvent) => {
+  const handleSubmitOrder = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!getSetting('forms_control', true)) { addNotification('Form submissions are currently disabled by the CEO.'); return; }
     if (!orderClient || !orderProduct || !orderAmount) {
       alert('Please fill all required fields');
       return;
@@ -161,8 +163,30 @@ export default function MarketingDashboard({
       return;
     }
     const ticketNum = `TKT-${Date.now().toString().slice(-5)}`;
+    // This quick-create form has no quantity/line-item fields, so it
+    // inserts directly rather than going through OrdersView.tsx's
+    // create_order_with_stock_check RPC (that function needs a quantity per
+    // item to check against stock, which nothing here collects). It was
+    // previously never actually inserted at all — onCreateOrder only
+    // notifies + refreshes (OrdersView.tsx does its own insert before
+    // calling it), so this modal's "New order created" message was false;
+    // nothing was ever saved.
+    const { data: inserted, error } = await supabase.from('orders').insert({
+      ticket_number: ticketNum,
+      client_name: orderClient,
+      product_name: orderProduct,
+      destination: orderDestination || null,
+      payment_mode: orderPayMode,
+      total_amount: parseFloat(orderAmount),
+      status: orderPayMode === 'CREDIT' ? 'PENDING_MANAGEMENT' : 'PENDING_FINANCE',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      metadata: { ghanaCard: orderPayMode === 'CREDIT' ? orderGhanaCard : undefined },
+    }).select().single();
+    if (error) { alert(`Failed to create order: ${error.message}`); return; }
+
     const newOrder: Order = {
-      id: `ORD-${Math.floor(100 + Math.random() * 900)}`,
+      id: inserted.id,
       clientName: orderClient,
       productName: orderProduct,
       destination: orderDestination,
@@ -170,7 +194,7 @@ export default function MarketingDashboard({
       totalAmount: parseFloat(orderAmount),
       ghanaCard: orderPayMode === 'CREDIT' ? orderGhanaCard : undefined,
       ticketNumber: ticketNum,
-      status: orderPayMode === 'CREDIT' ? 'PENDING_MANAGEMENT' : 'PENDING_FINANCE',
+      status: inserted.status,
       createdAt: new Date().toLocaleString()
     };
     onCreateOrder(newOrder);
@@ -183,6 +207,7 @@ export default function MarketingDashboard({
 
   const handleSubmitCustomer = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!getSetting('forms_control', true)) { addNotification('Form submissions are currently disabled by the CEO.'); return; }
     if (!custName || !custPhone) {
       alert('Please fill required fields');
       return;

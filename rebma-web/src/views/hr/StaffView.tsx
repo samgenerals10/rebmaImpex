@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import type { StaffMember } from '../../types/erp';
+import { usePaginatedQuery } from '../../hooks/usePaginatedQuery';
 
 
 const DEPARTMENTS = ['All', 'Operations', 'Finance', 'Logistics', 'HR', 'Marketing', 'Reception', 'Production', 'Management'];
@@ -28,14 +29,29 @@ const statusColor = (s: string) => {
 
 const initials = (name: string) => name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
 
+const mapStaffRow = (p: any): StaffMember => ({
+  id: p.id,
+  fullName: p.full_name || 'Employee',
+  email: p.email || '',
+  department: roleToDeptLabel(p.role), // role column holds department!
+  role: p.is_admin ? 'CEO' : (p.metadata?.role || 'Staff'),
+  phone: p.phone || '',
+  ghanaCard: p.ghana_card_id || '',
+  joinedAt: p.created_at ? p.created_at.split('T')[0] : '',
+  status: p.status || 'ACTIVE'
+});
+
 interface Props {
   staffList: StaffMember[];
   addNotification: (msg: string) => void;
 }
 
 export default function StaffView({ staffList: propStaff, addNotification }: Props) {
-  const [staff, setStaff] = useState<StaffMember[]>([]);
-  const [loadingStaff, setLoadingStaff] = useState(true);
+  const { rows: staff, setRows: setStaff, loading: loadingStaff, hasMore, total, loadMore } = usePaginatedQuery<StaffMember>({
+    table: 'profiles',
+    pageSize: 100,
+    map: mapStaffRow,
+  });
   const [search, setSearch] = useState('');
   const [deptFilter, setDeptFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
@@ -56,48 +72,19 @@ export default function StaffView({ staffList: propStaff, addNotification }: Pro
   const [loadingDetails, setLoadingDetails] = useState(false);
 
   useEffect(() => {
-    const load = async () => {
-      setLoadingStaff(true);
-      try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .order('created_at', { ascending: false });
-        if (error) throw error;
-        if (data) {
-          const mapped: StaffMember[] = data.map((p: any) => ({
-            id: p.id,
-            fullName: p.full_name || 'Employee',
-            email: p.email || '',
-            department: roleToDeptLabel(p.role), // role column holds department!
-            role: p.is_admin ? 'CEO' : (p.metadata?.role || 'Staff'),
-            phone: p.phone || '',
-            ghanaCard: p.ghana_card_id || '',
-            joinedAt: p.created_at ? p.created_at.split('T')[0] : '',
-            status: p.status || 'ACTIVE'
-          }));
-          setStaff(mapped);
-        }
-
-        // Fetch leave requests to compute dynamic On Leave count
-        const { data: leavesData, error: leavesError } = await supabase
-          .from('leave_requests')
-          .select('status, start_date, end_date');
-        if (leavesError) throw leavesError;
-        if (leavesData) {
-          const count = leavesData.filter((l: any) => 
-            l.status === 'Approved' && 
-            l.start_date <= new Date().toISOString().split('T')[0] &&
-            l.end_date >= new Date().toISOString().split('T')[0]
-          ).length;
-          setTotalOnLeave(count);
-        }
-      } catch (err: any) {
-        addNotification(`Error loading staff: ${err.message}`);
-      }
-      setLoadingStaff(false);
-    };
-    load();
+    // Bounded to leave that actually overlaps today, rather than pulling
+    // every leave request ever filed company-wide just to count the ones
+    // currently active.
+    const today = new Date().toISOString().split('T')[0];
+    supabase
+      .from('leave_requests')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'Approved')
+      .lte('start_date', today)
+      .gte('end_date', today)
+      .then(({ count, error }) => {
+        if (!error && typeof count === 'number') setTotalOnLeave(count);
+      });
   }, []);
 
   // Fetch attendance and leaves when a staff is selected
@@ -577,6 +564,14 @@ export default function StaffView({ staffList: propStaff, addNotification }: Pro
         {filtered.length === 0 && !loadingStaff && (
           <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
             {staff.length === 0 ? 'No staff members yet — they will appear here once added' : 'No staff members found'}
+          </div>
+        )}
+        {!loadingStaff && staff.length > 0 && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem 1rem', borderTop: '1px solid var(--border)', fontSize: 12, color: 'var(--text-muted)' }}>
+            <span>Showing {staff.length}{typeof total === 'number' ? ` of ${total.toLocaleString()}` : ''}</span>
+            {hasMore && (
+              <button onClick={loadMore} style={{ padding: '0.4rem 0.75rem', borderRadius: 8, background: 'var(--bg-input)', color: 'var(--text-secondary)', border: 'none', cursor: 'pointer', fontWeight: 600 }}>Load more</button>
+            )}
           </div>
         )}
         </>

@@ -10,6 +10,8 @@ import { exportToCSV, exportToPDF } from '../utils/export';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import type { ProductionRequest } from '../types/erp';
 import CountUp from '../components/CountUp';
+import { useCeoSettings } from '../contexts/CeoSettingsContext';
+import { production } from '../services/apiClient';
 
 interface ProductionDashboardProps {
   productionRequests: ProductionRequest[];
@@ -47,6 +49,7 @@ export default function ProductionDashboard({
   activeSubTab = 'Requisition',
   addNotification
 }: ProductionDashboardProps) {
+  const { getSetting } = useCeoSettings();
 
   // Local state for WIP stock and syncing for requests
   const [kpiDetail, setKpiDetail] = useState<number | null>(null);
@@ -125,19 +128,29 @@ export default function ProductionDashboard({
   ];
 
 
-  const handleCreateRequisition = (e: React.FormEvent) => {
+  const handleCreateRequisition = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!getSetting('forms_control', true)) { addNotification('Form submissions are currently disabled by the CEO.'); return; }
     if (!newMaterial || !newQty) return;
-    const newReq: ProductionRequest = {
-      id: `PRD-${Date.now().toString().slice(-3)}`,
-      items: [{ materialName: newMaterial, quantity: parseInt(newQty) }],
-      status: 'PENDING_MANAGEMENT',
-      createdAt: new Date().toLocaleString()
-    };
-    setProductionRequests(prev => [newReq, ...prev]);
-    addNotification(`Production raised requisition for ${newMaterial} (${newQty} units). Forwarded to Management.`);
-    setNewMaterial('');
-    setNewQty('');
+    // This used to only update local React state — never actually inserted
+    // into material_requisitions, so "Forwarded to Management" was false;
+    // nothing was ever sent. Routed through the same production.requestMaterials
+    // call InternalOrdersView.tsx's (working) requisition form already uses.
+    try {
+      await production.requestMaterials([{ materialName: newMaterial, quantity: parseInt(newQty) }]);
+      const newReq: ProductionRequest = {
+        id: `PRD-${Date.now().toString().slice(-3)}`,
+        items: [{ materialName: newMaterial, quantity: parseInt(newQty) }],
+        status: 'PENDING_MANAGEMENT',
+        createdAt: new Date().toLocaleString()
+      };
+      setProductionRequests(prev => [newReq, ...prev]);
+      addNotification(`Production raised requisition for ${newMaterial} (${newQty} units). Forwarded to Management.`);
+      setNewMaterial('');
+      setNewQty('');
+    } catch (err: any) {
+      alert(err.message || 'Failed to submit requisition.');
+    }
   };
 
   const handleIssueTicket = (id: string) => {

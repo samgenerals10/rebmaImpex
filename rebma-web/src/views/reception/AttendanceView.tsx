@@ -32,6 +32,23 @@ const MOCK: (Attendance & { type?: string; gpsVerified?: boolean })[] = Array.fr
 
 type AttendanceRow = (typeof MOCK)[0];
 
+// The attendance table's real columns are snake_case (check_in_time,
+// staff_name, attendance_type, gps_verified) — this UI model is camelCase,
+// so reads/writes need an explicit mapping rather than a raw select('*')/
+// insert(rec) round-trip, which would silently 400 against the live schema.
+function mapRowToUI(row: any): AttendanceRow {
+  const checkIn = row.check_in_time ? new Date(row.check_in_time) : null;
+  return {
+    id: row.id,
+    fullName: row.staff_name || '',
+    checkInTime: checkIn ? `${String(checkIn.getHours()).padStart(2, '0')}:${String(checkIn.getMinutes()).padStart(2, '0')}` : '',
+    status: row.status || 'PRESENT',
+    date: row.date || '',
+    type: row.attendance_type || 'Physical',
+    gpsVerified: row.gps_verified ?? false,
+  };
+}
+
 interface Props { addNotification: (msg: string) => void }
 
 export default function AttendanceView({ addNotification }: Props) {
@@ -53,9 +70,9 @@ export default function AttendanceView({ addNotification }: Props) {
     const load = async () => {
       setLoading(true);
       try {
-        const { data, error } = await supabase.from('attendance').select('*').eq('date', filterDate).order('checkInTime');
+        const { data, error } = await supabase.from('attendance').select('*').eq('date', filterDate).order('check_in_time');
         if (error) throw error;
-        setRows((data || []) as AttendanceRow[]);
+        setRows((data || []).map(mapRowToUI));
       } catch { setRows(MOCK); }
       setLoading(false);
     };
@@ -96,19 +113,21 @@ export default function AttendanceView({ addNotification }: Props) {
     try {
       const now = new Date();
       const h = now.getHours(), m = now.getMinutes();
-      const time = `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}`;
       const isLate = h > 9 || (h === 9 && m > 0);
-      const rec: AttendanceRow = {
-        id: `ATT-${Date.now().toString().slice(-4)}`,
-        fullName: form.fullName,
-        checkInTime: time,
-        status: isLate ? 'LATE' : 'PRESENT',
-        date: filterDate,
-        type,
-        gpsVerified,
-      };
-      setRows(prev => [rec, ...prev]);
-      await supabase.from('attendance').insert({ ...rec, department: form.department });
+      const { data: inserted, error } = await supabase.from('attendance')
+        .insert({
+          staff_name: form.fullName,
+          check_in_time: now.toISOString(),
+          status: isLate ? 'LATE' : 'PRESENT',
+          date: filterDate,
+          attendance_type: type,
+          gps_verified: gpsVerified,
+          department: form.department,
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      setRows(prev => [mapRowToUI(inserted), ...prev]);
       addNotification(`${form.fullName} checked in${isLate ? ' (late)' : ''} — ${type}`);
       setForm({ fullName: '', department: 'HR', virtual: false });
       setGpsStatus('idle');

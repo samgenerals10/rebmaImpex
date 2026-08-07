@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { Search, Download, MoreVertical, Plus, CheckCircle, XCircle, Clock, AlertTriangle } from 'lucide-react';
 import { exportToCSV } from '../../utils/export';
 import EntityDetailPanel from '../../components/global/EntityDetailPanel';
 import CountUp from '../../components/CountUp';
 import { useCeoSettings } from '../../contexts/CeoSettingsContext';
+import { usePaginatedQuery } from '../../hooks/usePaginatedQuery';
 
 interface Cheque {
   id: string;
@@ -32,45 +33,32 @@ interface Props {
   currentUser?: { fullName: string; department: string } | null;
 }
 
+const mapCheque = (c: any): Cheque => ({
+  id: c.id,
+  chequeNumber: c.cheque_number || c.chequeNumber || '',
+  bankName: c.bank_name || c.bankName || '',
+  accountName: c.account_name || c.accountName || '',
+  amount: c.amount || 0,
+  chequeDate: c.cheque_date || c.chequeDate || '',
+  expectedClearing: c.expected_clearing || c.expectedClearing || '',
+  status: c.status || 'Received',
+  customerRef: c.customer_ref || c.customerRef || '',
+  orderRef: c.order_ref || c.orderRef || ''
+});
+
 export default function FinanceChequesView({ addNotification, currentUser }: Props) {
   const { getSetting } = useCeoSettings();
-  const [cheques, setCheques] = useState<Cheque[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { rows: cheques, setRows: setCheques, loading, hasMore, total, loadMore } = usePaginatedQuery<Cheque>({
+    table: 'finance_cheques',
+    pageSize: 100,
+    map: mapCheque,
+  });
 
   const handlePrint = () => {
     if (!getSetting('print_enabled', true)) { addNotification?.('Printing is currently disabled by the CEO.'); return; }
     window.print();
   };
 
-  useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      try {
-        const { data } = await supabase
-          .from('finance_cheques')
-          .select('*')
-          .order('created_at', { ascending: false });
-        if (data) {
-          setCheques(data.map((c: any) => ({
-            id: c.id,
-            chequeNumber: c.cheque_number || c.chequeNumber || '',
-            bankName: c.bank_name || c.bankName || '',
-            accountName: c.account_name || c.accountName || '',
-            amount: c.amount || 0,
-            chequeDate: c.cheque_date || c.chequeDate || '',
-            expectedClearing: c.expected_clearing || c.expectedClearing || '',
-            status: c.status || 'Received',
-            customerRef: c.customer_ref || c.customerRef || '',
-            orderRef: c.order_ref || c.orderRef || ''
-          } as Cheque)));
-        }
-      } catch {
-        setCheques([]);
-      }
-      setLoading(false);
-    };
-    load();
-  }, []);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
@@ -295,6 +283,14 @@ export default function FinanceChequesView({ addNotification, currentUser }: Pro
             </tbody>
           </table>
         </div>
+        )}
+        {!loading && cheques.length > 0 && (
+          <div className="flex items-center justify-between px-4 py-3 border-t border-[var(--border)] text-xs text-[var(--text-muted)]">
+            <span>Showing {cheques.length}{typeof total === 'number' ? ` of ${total.toLocaleString()}` : ''}</span>
+            {hasMore && (
+              <button onClick={loadMore} className="px-3 py-1.5 rounded-lg bg-[var(--bg-input)] text-[var(--text-secondary)] hover:opacity-90 font-medium">Load more</button>
+            )}
+          </div>
         )}
       </div>
 

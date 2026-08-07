@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabaseClient';
+import { useRealtimeChannel } from '../../hooks/useRealtimeChannel';
 import {
   TrendingUp, TrendingDown, Clock, CheckCircle, XCircle, AlertTriangle,
   Package, CreditCard, DollarSign, Activity, Users, BarChart2,
@@ -108,12 +109,11 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
         if (data) setGoodsPrices(data);
       }, () => {});
 
-      // Actual quantity sold — real deductions logged when a sale is confirmed (see
-      // deductStockForOrder). Filtered to that function's own reference text, since
-      // movement_type='REMOVE' alone also covers non-sale deductions (raw material
-      // sent to Production, manual stock adjustments) that must not count as "sold".
-      supabase.from('stock_ledger').select('product_name, quantity').eq('movement_type', 'REMOVE').ilike('reference', '%Order Approved%').then(({ data }) => {
-        if (data) setSoldLedger(data);
+      // Actual quantity sold — server-side aggregate (stock_ledger only
+      // ever grows, so summing it client-side re-downloads the entire
+      // sales-deduction history on every refresh).
+      supabase.rpc('get_sold_quantities_by_product').then(({ data }) => {
+        if (data) setSoldLedger(data.map((r: any) => ({ product_name: r.product_name, quantity: r.quantity_sold })));
       }, () => {});
     } catch (e) {
       console.error('Error fetching dashboard stats:', e);
@@ -126,30 +126,16 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
     fetchData();
     refreshFeed();
     feedRef.current = setInterval(refreshFeed, 30000);
-
-    const channel = supabase.channel('mgmt-overview-realtime-' + Math.random().toString(36).substring(7))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'stock' }, () => {
-        fetchData();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
-        fetchData();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'general_purchases' }, () => {
-        fetchData();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'cargo_intake' }, () => {
-        fetchData();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'goods_prices' }, () => {
-        fetchData();
-      })
-      .subscribe();
-
     return () => {
       if (feedRef.current) clearInterval(feedRef.current);
-      supabase.removeChannel(channel);
     };
   }, []);
+
+  useRealtimeChannel(
+    'mgmt-overview-realtime',
+    ['stock', 'orders', 'general_purchases', 'cargo_intake', 'goods_prices'],
+    () => fetchData()
+  );
 
   async function refreshFeed() {
     try {

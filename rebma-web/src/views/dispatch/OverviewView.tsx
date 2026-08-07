@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
+import { useRealtimeChannel } from '../../hooks/useRealtimeChannel';
 import {
   Truck, UserCheck, MapPin, Camera, History, BarChart2,
   TrendingUp, TrendingDown, RefreshCw, MoreVertical, ChevronRight,
@@ -141,18 +142,12 @@ export default function DispatchOverviewView({ addNotification, setActiveSubTab,
   useEffect(() => {
     loadDeliveries();
     loadDrivers();
-
-    const channel = supabase.channel('dispatch-overview-realtime-' + Math.random().toString(36).substring(7))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'delivery_logs' }, () => {
-        loadDeliveries();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'drivers' }, () => {
-        loadDrivers();
-      })
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
   }, []);
+
+  useRealtimeChannel('dispatch-overview-realtime', ['delivery_logs', 'drivers'], (table) => {
+    if (table === 'delivery_logs') loadDeliveries();
+    else loadDrivers();
+  });
 
   const handleRefresh = () => {
     loadDeliveries();

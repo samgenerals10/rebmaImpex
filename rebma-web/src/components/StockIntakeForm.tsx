@@ -176,6 +176,7 @@ export default function StockIntakeForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!getSetting('forms_control', true)) { addNotification('Form submissions are currently disabled by the CEO.'); return; }
     if (!getSetting('cargo_intake_enabled', true)) { addNotification('Cargo intake is currently disabled by the CEO.'); return; }
     setLoading(true);
 

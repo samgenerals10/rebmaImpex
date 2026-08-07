@@ -37,6 +37,25 @@ interface Props {
   addNotification: (msg: string) => void;
 }
 
+// payroll_batches' real columns are period_month/period_year/total_amount/
+// staff_count/paid_at (not the period/totalAmount/staffCount/processedAt
+// this UI model uses) — map at the boundary rather than casting select('*')
+// results directly, which was silently mismatching every field but id/status.
+function mapBatchRowToUI(row: any): PayrollBatch {
+  const label = row.period_month && row.period_year
+    ? new Date(row.period_year, row.period_month - 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+    : (row.notes || '');
+  return {
+    id: row.id,
+    period: label,
+    status: row.status ? (String(row.status).toUpperCase() as PayrollBatch['status']) : 'DRAFT',
+    totalAmount: Number(row.total_amount ?? 0),
+    staffCount: Number(row.staff_count ?? 0),
+    processedAt: row.paid_at || row.processed_at || undefined,
+    createdAt: row.created_at || new Date().toISOString(),
+  };
+}
+
 export default function PayrollView({ currentUser, staffList, addNotification }: Props) {
   const { getSetting } = useCeoSettings();
   const [batches, setBatches] = useState<PayrollBatch[]>([]);
@@ -55,10 +74,10 @@ export default function PayrollView({ currentUser, staffList, addNotification }:
       setLoading(true);
       try {
         const [{ data: bData }, { data: eData }] = await Promise.all([
-          supabase.from('payroll_batches').select('*').order('created_at', { ascending: false }),
-          supabase.from('payroll_entries').select('*').order('created_at', { ascending: false }),
+          supabase.from('payroll_batches').select('*').order('created_at', { ascending: false }).limit(500),
+          supabase.from('payroll_entries').select('*').order('created_at', { ascending: false }).limit(2000),
         ]);
-        if (bData) setBatches(bData as PayrollBatch[]);
+        if (bData) setBatches(bData.map(mapBatchRowToUI));
         if (eData) setEntries(eData as PayrollEntry[]);
       } catch {
         // leave empty — show empty state
@@ -108,8 +127,11 @@ export default function PayrollView({ currentUser, staffList, addNotification }:
       // this mirrors the actual enforced rule rather than just the UI.
       const needsCeoApproval = getSetting('ceo_must_approve_payroll', false);
       const newStatus = needsCeoApproval ? 'PENDING_CEO_APPROVAL' : 'PAID';
-      const updated = { ...batch, status: newStatus as PayrollBatch['status'], processedAt: new Date().toISOString().split('T')[0] };
-      const { error } = await supabase.from('payroll_batches').update({ status: newStatus }).eq('id', batch.id);
+      const nowIso = new Date().toISOString();
+      const updated = { ...batch, status: newStatus as PayrollBatch['status'], processedAt: nowIso.split('T')[0] };
+      const { error } = await supabase.from('payroll_batches')
+        .update({ status: newStatus, processed_at: nowIso, ...(newStatus === 'PAID' ? { paid_at: nowIso } : {}) })
+        .eq('id', batch.id);
       if (error) throw error;
       await supabase.from('global_audit_history').insert([{ department: 'HR', action: needsCeoApproval ? `Payroll submitted for CEO approval: ${batch.period}` : `Payroll processed: ${batch.period}`, performed_by: currentUser?.fullName || 'HR Admin', timestamp: new Date().toISOString() }]);
       setBatches(prev => prev.map(b => b.id === batch.id ? updated : b));
@@ -126,8 +148,9 @@ export default function PayrollView({ currentUser, staffList, addNotification }:
     if (submitting) return;
     setSubmitting(true);
     try {
-      const updated = { ...batch, status: 'PAID' as const, processedAt: new Date().toISOString().split('T')[0] };
-      const { error } = await supabase.from('payroll_batches').update({ status: 'PAID' }).eq('id', batch.id);
+      const nowIso = new Date().toISOString();
+      const updated = { ...batch, status: 'PAID' as const, processedAt: nowIso.split('T')[0] };
+      const { error } = await supabase.from('payroll_batches').update({ status: 'PAID', processed_at: nowIso, paid_at: nowIso }).eq('id', batch.id);
       if (error) throw error;
       await supabase.from('global_audit_history').insert([{ department: 'HR', action: `Payroll approved by CEO: ${batch.period}`, performed_by: currentUser?.fullName || 'CEO', timestamp: new Date().toISOString() }]);
       setBatches(prev => prev.map(b => b.id === batch.id ? updated : b));
@@ -144,13 +167,21 @@ export default function PayrollView({ currentUser, staffList, addNotification }:
     if (!newPeriod || submitting) return;
     setSubmitting(true);
     try {
-      const batch: PayrollBatch = {
-        id: `PAY-${Date.now()}`, period: newPeriod, status: 'DRAFT',
-        totalAmount: entries.reduce((s, e) => s + e.netPay, 0),
-        staffCount: entries.length, createdAt: new Date().toISOString().split('T')[0],
-      };
-      await supabase.from('payroll_batches').insert([batch]);
-      setBatches(prev => [batch, ...prev]);
+      const [yearStr, monthStr] = newPeriod.split('-');
+      const periodYear = parseInt(yearStr, 10);
+      const periodMonth = parseInt(monthStr, 10);
+      const totalAmount = entries.reduce((s, e) => s + e.netPay, 0);
+      const { data: inserted, error } = await supabase.from('payroll_batches').insert([{
+        batch_number: `PAY-${newPeriod}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`,
+        period_month: periodMonth,
+        period_year: periodYear,
+        status: 'DRAFT',
+        total_amount: totalAmount,
+        staff_count: entries.length,
+        submitted_by: null,
+      }]).select().single();
+      if (error) throw error;
+      setBatches(prev => [mapBatchRowToUI(inserted), ...prev]);
       addNotification(`Payroll batch created for ${newPeriod}`);
       setShowNewBatch(false);
       setNewPeriod('');
@@ -424,8 +455,8 @@ export default function PayrollView({ currentUser, staffList, addNotification }:
               <button onClick={() => setShowNewBatch(false)} disabled={submitting} className="text-[var(--text-muted)] cursor-pointer disabled:opacity-50"><X className="w-5 h-5" /></button>
             </div>
             <div>
-              <label className="block text-xs text-[var(--text-secondary)] mb-1">Period (e.g. July 2026)</label>
-              <input value={newPeriod} onChange={e => setNewPeriod(e.target.value)} placeholder="Month YYYY" disabled={submitting}
+              <label className="block text-xs text-[var(--text-secondary)] mb-1">Period</label>
+              <input type="month" value={newPeriod} onChange={e => setNewPeriod(e.target.value)} disabled={submitting}
                 className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-[var(--text-primary)] text-sm outline-none disabled:opacity-50" />
             </div>
             <div className="flex gap-2 mt-4 justify-end">

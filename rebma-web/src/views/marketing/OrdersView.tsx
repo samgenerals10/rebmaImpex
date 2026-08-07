@@ -221,40 +221,24 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
       // Product name display: join all product names with commas
       const productDisplay = itemsWithPricing.map(item => item.productName).join(', ');
 
-      const orderPayload = {
-        ticket_number: ticketNumber,
-        client_name: form.clientName.trim(),
-        product_name: productDisplay,
-        destination: form.destination || null,
-        payment_mode: form.paymentMode,
-        total_amount: orderTotal,
-        status: 'PENDING_MANAGEMENT',
-        created_at: now,
-        updated_at: now,
-        metadata: { items: itemsWithPricing, discountPercent: discountPct },
-      };
-      const insertPayload: Record<string, unknown> = { ...orderPayload, customer_id: resolvedCustomer?.id || null };
-      if (destinationCoords) {
-        insertPayload.destination_lat = destinationCoords.lat;
-        insertPayload.destination_lng = destinationCoords.lng;
-      }
-      let { data: inserted, error } = await supabase.from('orders').insert(insertPayload).select().single();
-      if (error?.message?.includes('customer_id') || error?.code === '22P02') {
-        // customer_id can't take this value right now — either the column isn't
-        // migrated yet, or (as on production) it's typed uuid while customers.id
-        // is a non-uuid string like "CUST-xxxxxxxx", which Postgres rejects with
-        // a 22P02 "invalid input syntax for type uuid" error. Either way, order
-        // creation shouldn't be blocked by a link that can't be saved yet — it'll
-        // just have no discount/customer tie until the column type is fixed.
-        const { customer_id, ...withoutCustomer } = insertPayload;
-        ({ data: inserted, error } = await supabase.from('orders').insert(withoutCustomer).select().single());
-      }
-      if (error?.message?.includes('destination_lat') || error?.message?.includes('destination_lng')) {
-        // Columns not migrated yet on this environment — don't let that block
-        // order creation, just save without the coordinates.
-        const { destination_lat, destination_lng, ...withoutCoords } = insertPayload;
-        ({ data: inserted, error } = await supabase.from('orders').insert(withoutCoords).select().single());
-      }
+      // Routed through an atomic DB function (not a plain insert) so two
+      // concurrent orders for the same product can't both pass a stock
+      // check against a stale snapshot and jointly oversell — it locks per
+      // product, checks stock minus everything already promised to open
+      // orders, and inserts, all in one transaction.
+      const { data: inserted, error } = await supabase.rpc('create_order_with_stock_check', {
+        p_ticket_number: ticketNumber,
+        p_client_name: form.clientName.trim(),
+        p_product_name: productDisplay,
+        p_destination: form.destination || null,
+        p_payment_mode: form.paymentMode,
+        p_total_amount: orderTotal,
+        p_status: 'PENDING_MANAGEMENT',
+        p_metadata: { items: itemsWithPricing, discountPercent: discountPct },
+        p_customer_id: resolvedCustomer?.id || null,
+        p_destination_lat: destinationCoords?.lat ?? null,
+        p_destination_lng: destinationCoords?.lng ?? null,
+      });
 
       if (error) { addNotification(`Failed to create order: ${error.message}`); return; }
       const newOrder = mapOrder(inserted || {

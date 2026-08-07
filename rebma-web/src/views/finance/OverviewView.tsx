@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
+import { useRealtimeChannel } from '../../hooks/useRealtimeChannel';
 import PendingApprovalsAlert from '../../components/global/PendingApprovalsAlert';
 import ApprovalHistoryPanel from '../../components/global/ApprovalHistoryPanel';
 import FinanceMaterialRequisitionsPanel from './MaterialRequisitionsPanel';
@@ -257,27 +258,9 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
 
   useEffect(() => {
     fetchAllData();
-
-    // Subscribe to real-time changes
-    const channel = supabase.channel('finance-overview-realtime-' + Math.random().toString(36).substring(7))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
-        fetchAllData();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'finance_payments' }, () => {
-        fetchAllData();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'finance_expenses' }, () => {
-        fetchAllData();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'stock' }, () => {
-        fetchAllData();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
   }, []);
+
+  useRealtimeChannel('finance-overview-realtime', ['orders', 'finance_payments', 'finance_expenses', 'stock'], () => fetchAllData());
 
   useEffect(() => {
     const effective = liveOrders.length > 0 ? liveOrders : ordersList;

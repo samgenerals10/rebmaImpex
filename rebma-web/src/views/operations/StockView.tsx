@@ -8,6 +8,7 @@ import EntityDetailPanel from '../../components/global/EntityDetailPanel';
 import { stockApi, operations } from '../../services/apiClient';
 import { exportToCSV } from '../../utils/export';
 import { supabase } from '../../lib/supabaseClient';
+import { useRealtimeChannel } from '../../hooks/useRealtimeChannel';
 import { useCeoSettings } from '../../contexts/CeoSettingsContext';
 import type { IncomingGoods, GeneralPurchase } from '../../types/erp';
 import StockIntakeForm from '../../components/StockIntakeForm';
@@ -307,28 +308,9 @@ export default function StockView({ incomingGoodsList: _ig, addNotification }: P
     setLoading(false);
   }, []);
 
-  useEffect(() => {
-    loadData();
+  useEffect(() => { loadData(); }, [loadData]);
 
-    const channel = supabase.channel('operations-stock-realtime-' + Math.random().toString(36).substring(7))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'stock' }, () => {
-        loadData();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'stock_ledger' }, () => {
-        loadData();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'cargo_intake' }, () => {
-        loadData();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'general_purchases' }, () => {
-        loadData();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [loadData]);
+  useRealtimeChannel('operations-stock-realtime', ['stock', 'stock_ledger', 'cargo_intake', 'general_purchases'], () => loadData());
 
   // ── derived totals ───────────────────────────────────────────────────────
   const cargoTotalIn = approvedCargo.reduce((s, c) => s + c.quantity, 0);

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabaseClient';
+import { useRealtimeChannel } from '../../hooks/useRealtimeChannel';
 import { dispatch as dispatchApi } from '../../services/apiClient';
 import {
   Truck, CheckCircle, XCircle, Search, Eye, X, Clock,
@@ -410,17 +411,9 @@ export default function DeliveriesView({ addNotification, currentUser, setActive
     setLoading(false);
   };
 
-  useEffect(() => {
-    loadData();
+  useEffect(() => { loadData(); }, []);
 
-    const channel = supabase.channel('dispatch-deliveries-realtime-' + Math.random().toString(36).substring(7))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'delivery_logs' }, () => {
-        loadData();
-      })
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
-  }, []);
+  useRealtimeChannel('dispatch-deliveries-realtime', ['delivery_logs'], () => loadData());
 
   const handleEditSave = async () => {
     if (!editingDelivery || !editingDelivery.clientName.trim() || !editingDelivery.orderId.trim()) {

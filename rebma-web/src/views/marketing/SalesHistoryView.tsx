@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useMemo } from 'react';
 import { Download, TrendingUp, Users, Package, RefreshCw, Search, Filter, X } from 'lucide-react';
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -8,6 +8,7 @@ import { supabase } from '../../lib/supabaseClient';
 import type { Order } from '../../types/erp';
 import InvoiceLineItems, { getLineItems } from '../../components/InvoiceLineItems';
 import CountUp from '../../components/CountUp';
+import { usePaginatedQuery } from '../../hooks/usePaginatedQuery';
 
 const STATUS_STYLES: Record<string, string> = {
   PENDING_FINANCE:     'bg-amber-100 text-amber-700',
@@ -64,28 +65,16 @@ interface Props {
 }
 
 export default function SalesHistoryView({ ordersList, addNotification }: Props) {
-  const [orders, setOrders]     = useState<Order[]>([]);
-  const [loading, setLoading]   = useState(true);
+  const { rows: orders, setRows: setOrders, loading, hasMore, total, loadMore, reload } = usePaginatedQuery<Order>({
+    table: 'orders',
+    pageSize: 200,
+    map: mapOrder,
+  });
   const [tab, setTab]           = useState<'sales' | 'credit'>('sales');
   const [search, setSearch]     = useState('');
   const [filterStatus, setFilterStatus] = useState('ALL');
   const [filterMode, setFilterMode]     = useState('ALL');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-
-  const load = useCallback(() => {
-    setLoading(true);
-    supabase.from('orders').select('*').order('created_at', { ascending: false }).limit(1000)
-      .then(({ data }) => {
-        const mapped = (data ?? []).map(mapOrder);
-        setOrders(mapped.length > 0 ? mapped : ordersList);
-        setLoading(false);
-      }, () => {
-        setOrders(ordersList);
-        setLoading(false);
-      });
-  }, [ordersList]);
-
-  useEffect(() => { load(); }, [load]);
 
   // ── Derived data ─────────────────────────────────────────────────────────────
   const completed = useMemo(() =>
@@ -197,7 +186,7 @@ export default function SalesHistoryView({ ordersList, addNotification }: Props)
           <p className="text-xs text-[var(--text-muted)]">Revenue analytics and credit tracking — {orders.length} total orders</p>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={load} className="flex items-center gap-1 px-3 py-1.5 bg-[var(--bg-card)] border border-[var(--border)] text-[var(--text-secondary)] text-xs font-semibold rounded-xl cursor-pointer hover:bg-[var(--accent-light)]">
+          <button onClick={reload} className="flex items-center gap-1 px-3 py-1.5 bg-[var(--bg-card)] border border-[var(--border)] text-[var(--text-secondary)] text-xs font-semibold rounded-xl cursor-pointer hover:bg-[var(--accent-light)]">
             <RefreshCw className="w-3.5 h-3.5" />
           </button>
           <div className="flex items-center gap-1 p-1 bg-[var(--bg-input)] rounded-xl">
@@ -408,6 +397,14 @@ export default function SalesHistoryView({ ordersList, addNotification }: Props)
                 </tbody>
               </table>
             </div>
+            {!loading && orders.length > 0 && (
+              <div className="flex items-center justify-between px-4 py-3 border-t border-[var(--border)] text-xs text-[var(--text-muted)]">
+                <span>Showing {orders.length}{typeof total === 'number' ? ` of ${total.toLocaleString()}` : ''}</span>
+                {hasMore && (
+                  <button onClick={loadMore} className="px-3 py-1.5 rounded-lg bg-[var(--bg-input)] text-[var(--text-secondary)] hover:opacity-90 font-medium">Load more</button>
+                )}
+              </div>
+            )}
           </div>
         </>
       ) : (

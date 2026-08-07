@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
+import { useRealtimeChannel } from '../../hooks/useRealtimeChannel';
 import {
   ShoppingCart, UserPlus, ClipboardList, CreditCard, FileText, BarChart2,
   TrendingUp, TrendingDown, ArrowRight, RefreshCw, MoreVertical,
@@ -131,12 +132,11 @@ export default function MarketingOverviewView({ addNotification, setActiveSubTab
       supabase.from('stock').select('product_name, quantity').then(({ data }) => {
         if (data) setStock(data as any[]);
       }, () => {});
-      // Actual quantity sold — real deductions logged when a sale is confirmed (see
-      // deductStockForOrder). Filtered to that function's own reference text, since
-      // movement_type='REMOVE' alone also covers non-sale deductions (raw material
-      // sent to Production, manual stock adjustments) that must not count as "sold".
-      supabase.from('stock_ledger').select('product_name, quantity').eq('movement_type', 'REMOVE').ilike('reference', '%Order Approved%').then(({ data }) => {
-        if (data) setSoldLedger(data as any[]);
+      // Actual quantity sold — server-side aggregate (stock_ledger only
+      // ever grows, so summing it client-side re-downloads the entire
+      // sales-deduction history on every refresh).
+      supabase.rpc('get_sold_quantities_by_product').then(({ data }) => {
+        if (data) setSoldLedger(data.map((r: any) => ({ product_name: r.product_name, quantity: r.quantity_sold })) as any[]);
       }, () => {});
     } catch (e) {
       console.error(e);
@@ -147,24 +147,9 @@ export default function MarketingOverviewView({ addNotification, setActiveSubTab
 
   useEffect(() => {
     fetchData();
-
-    // Subscribe to real-time changes
-    const channel = supabase.channel('marketing-overview-realtime-' + Math.random().toString(36).substring(7))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
-        fetchData();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'stock' }, () => {
-        fetchData();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'goods_prices' }, () => {
-        fetchData();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
   }, []);
+
+  useRealtimeChannel('marketing-overview-realtime', ['orders', 'stock', 'goods_prices'], () => fetchData());
 
   // Compute stats
   const totalOrders = orders.length;

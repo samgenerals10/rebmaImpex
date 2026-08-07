@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Plus, X, Fuel, Edit, Trash2 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { supabase } from '../../lib/supabaseClient';
+import { usePaginatedQuery } from '../../hooks/usePaginatedQuery';
 
 interface FuelLog {
   id: string;
@@ -54,8 +55,13 @@ const mapToDB = (ui: Partial<FuelLog>) => {
 };
 
 export default function FuelManagementView({ addNotification }: Props) {
-  const [logs, setLogs] = useState<FuelLog[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { rows: logs, setRows: setLogs, loading, hasMore, total, loadMore, reload } = usePaginatedQuery<FuelLog>({
+    table: 'fuel_logs',
+    pageSize: 100,
+    orderColumn: 'date',
+    map: mapToUI,
+  });
+  const loadData = reload;
   const [submitting, setSubmitting] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -63,25 +69,6 @@ export default function FuelManagementView({ addNotification }: Props) {
   const [filterVehicle, setFilterVehicle] = useState('All');
   const [filterDriver, setFilterDriver] = useState('');
   const [form, setForm] = useState({ vehicleId: 'GR-1234-22', driver: '', liters: '', cost: '', station: '', odometer: '', date: new Date().toISOString().split('T')[0] });
-
-  const loadData = async () => {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase.from('fuel_logs').select('*').order('date', { ascending: false });
-      if (!error && data) {
-        setLogs(data.map(mapToUI));
-      } else {
-        setLogs([]);
-      }
-    } catch {
-      setLogs([]);
-    }
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    loadData();
-  }, []);
 
   const filtered = logs.filter(l => {
     const matchV = filterVehicle === 'All' || l.vehicleId === filterVehicle;
@@ -277,6 +264,14 @@ export default function FuelManagementView({ addNotification }: Props) {
               <Fuel className="w-10 h-10 mx-auto mb-3 opacity-40" />
               <p className="font-semibold text-sm">No fuel logs yet</p>
               <p className="text-xs mt-1">They will appear here once added</p>
+            </div>
+          )}
+          {!loading && logs.length > 0 && (
+            <div className="flex items-center justify-between px-4 py-3 border-t border-[var(--border)] text-xs text-[var(--text-muted)]">
+              <span>Showing {logs.length}{typeof total === 'number' ? ` of ${total.toLocaleString()}` : ''}</span>
+              {hasMore && (
+                <button onClick={loadMore} className="px-3 py-1.5 rounded-lg bg-[var(--bg-input)] text-[var(--text-secondary)] hover:opacity-90 font-medium">Load more</button>
+              )}
             </div>
           )}
         </div>}

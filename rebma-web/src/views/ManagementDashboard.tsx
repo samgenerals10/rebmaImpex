@@ -11,6 +11,7 @@ import ActivityFeed from '../components/global/ActivityFeed';
 import KpiDetailView from '../components/KpiDetailView';
 import { exportToCSV, exportToPDF } from '../utils/export';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
+import { useCeoSettings } from '../contexts/CeoSettingsContext';
 
 interface ManagementDashboardProps {
   incomingGoodsList: IncomingGoods[];
@@ -66,6 +67,7 @@ export default function ManagementDashboard({
   addNotification,
   setActiveSubTab
 }: ManagementDashboardProps) {
+  const { getSetting } = useCeoSettings();
 
   // Local state copy of incomingGoods, orders, audit log to enable row-specific client-side actions
   const [kpiDetail, setKpiDetail] = useState<number | null>(null);
@@ -192,7 +194,7 @@ export default function ManagementDashboard({
     };
     loadStockAlerts();
 
-    const channel = supabase.channel('mgmt-dashboard-stock-realtime-' + Math.random().toString(36).substring(7))
+    const channel = supabase.channel('mgmt-dashboard-stock-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'stock' }, () => {
         loadStockAlerts();
       })
@@ -231,6 +233,7 @@ export default function ManagementDashboard({
 
   const handleSetPriceSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!getSetting('forms_control', true)) { addNotification?.('Form submissions are currently disabled by the CEO.'); return; }
     if (!priceForm.productName || !priceForm.unitPrice) return;
     onSetPrice({
       productName: priceForm.productName,
