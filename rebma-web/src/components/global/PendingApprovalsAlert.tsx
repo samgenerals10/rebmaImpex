@@ -38,11 +38,12 @@ export async function fetchPendingForDept(department: string): Promise<PendingIt
     }
 
     if (department === 'CEO') {
-      // Note: CEO electronic co-sign is currently just a toggle in Control
-      // Center — no order status routes to CEO for co-signing yet, so there
-      // is nothing real to check here beyond registrations.
-      const { count } = await supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('status', 'PENDING_APPROVAL');
-      if ((count ?? 0) > 0) items.push({ label: 'registration approvals', count: count!, tab: 'Approvals' });
+      const [registrations, priceRequests] = await Promise.all([
+        supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('status', 'PENDING_APPROVAL'),
+        supabase.from('goods_price_change_requests').select('id', { count: 'exact', head: true }).eq('status', 'PENDING').then(r => r, () => ({ count: 0 })),
+      ]);
+      if ((registrations.count ?? 0) > 0) items.push({ label: 'registration approvals', count: registrations.count!, tab: 'Approvals' });
+      if ((priceRequests.count ?? 0) > 0) items.push({ label: 'price changes awaiting approval', count: priceRequests.count!, tab: 'ControlCenter' });
     }
 
     if (department === 'FINANCE') {
@@ -84,13 +85,25 @@ export async function fetchPendingForDept(department: string): Promise<PendingIt
         // over. Matches the statuses ApprovedGoodsView's own Dispatch button
         // now acts on (Finance's synchronous APPROVED→PROCESSING bump means
         // APPROVED barely exists as an observable state on its own).
-        supabase.from('orders').select('id', { count: 'exact', head: true }).in('status', ['APPROVED', 'PROCESSING']),
+        supabase.from('orders').select('id').in('status', ['APPROVED', 'PROCESSING']),
       ]);
       if ((cargo.count ?? 0) > 0) items.push({ label: 'cargo pending management sign-off', count: cargo.count!, tab: 'PortIngestion' });
       if ((cargoApproved.count ?? 0) > 0) items.push({ label: 'cargo approved and ready to log into stock', count: cargoApproved.count!, tab: 'Stock' });
       if ((production.count ?? 0) > 0) items.push({ label: 'production releases to prepare', count: production.count!, tab: 'Releases' });
       if ((rawMaterial.count ?? 0) > 0) items.push({ label: 'raw material releases to prepare', count: rawMaterial.count!, tab: 'Releases' });
-      if ((orders.count ?? 0) > 0) items.push({ label: 'orders ready to dispatch', count: orders.count!, tab: 'ApprovedGoods' });
+      // Dispatching an order doesn't change its status away from
+      // APPROVED/PROCESSING (ApprovedGoodsView.tsx tracks "already handed to
+      // a driver" separately via a delivery_logs row) — without excluding
+      // those, this badge kept counting orders long after they'd actually
+      // been dispatched.
+      const orderIds = (orders.data || []).map((o: any) => o.id);
+      let readyToDispatchCount = orderIds.length;
+      if (orderIds.length > 0) {
+        const { data: deliveryLogRows } = await supabase.from('delivery_logs').select('order_id').in('order_id', orderIds);
+        const dispatchedIds = new Set((deliveryLogRows || []).map((d: any) => d.order_id).filter(Boolean));
+        readyToDispatchCount = orderIds.filter(id => !dispatchedIds.has(id)).length;
+      }
+      if (readyToDispatchCount > 0) items.push({ label: 'orders ready to dispatch', count: readyToDispatchCount, tab: 'ApprovedGoods' });
     }
 
     if (department === 'DISPATCH') {

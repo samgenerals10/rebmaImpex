@@ -51,6 +51,7 @@ interface CeoDashboardProps {
   gpsInterval: number;
   onNavigateToSupplierOrders?: () => void;
   setActiveSubTab?: (tab: string) => void;
+  addNotification?: (msg: string, link?: { dept?: string; tab: string }) => void;
 }
 
 const COUNTRY_FLAGS: Record<string, string> = { Poland: '🇵🇱', Turkey: '🇹🇷', Germany: '🇩🇪', UK: '🇬🇧', USA: '🇺🇸', Other: '🌍' };
@@ -59,6 +60,7 @@ export default function CeoDashboard({
   gpsInterval,
   onNavigateToSupplierOrders,
   setActiveSubTab,
+  addNotification,
 }: CeoDashboardProps) {
   const [recentOrders, setRecentOrders] = useState<SupplierOrderSummary[]>([]);
   const [pendingOrders, setPendingOrders] = useState<SupplierOrderSummary[]>([]);
@@ -351,11 +353,18 @@ export default function CeoDashboard({
   // listener on the same one.
   useRealtimeChannel(
     'ceo-dashboard-realtime',
-    ['orders', 'finance_payments', 'cargo_intake', 'stock'],
+    ['orders', 'finance_payments', 'cargo_intake', 'stock', 'goods_prices'],
     (table) => {
       if (table === 'cargo_intake') {
         loadFnsRef.current.load();
         loadFnsRef.current.loadPending();
+      } else if (table === 'stock' || table === 'goods_prices') {
+        // load() is what actually refreshes the "Products Available to
+        // Sell" card (goodsPrices/stockList/soldLedger) — it used to only
+        // run on cargo_intake changes, so a stock quantity change or a
+        // newly-approved price sat stale until the next cargo_intake event
+        // or a manual page reload.
+        loadFnsRef.current.load();
       }
       loadFnsRef.current.loadKPIs();
     }
@@ -417,7 +426,7 @@ export default function CeoDashboard({
         </div>
 
         {/* Pending approvals alert */}
-        <PendingApprovalsAlert department="CEO" onNavigate={setActiveSubTab} />
+        <PendingApprovalsAlert department="CEO" onNavigate={setActiveSubTab} addNotification={addNotification} />
 
         {/* Available Products — priced by Management, ready to sell */}
         {inventoryItems.length > 0 && (
@@ -633,7 +642,7 @@ export default function CeoDashboard({
           </div>
  
           {/* Pending approvals alert */}
-          <PendingApprovalsAlert department="CEO" onNavigate={setActiveSubTab} />
+          <PendingApprovalsAlert department="CEO" onNavigate={setActiveSubTab} addNotification={addNotification} />
 
           {/* Operational KPI Counters */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">

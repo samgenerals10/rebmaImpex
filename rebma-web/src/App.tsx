@@ -3200,6 +3200,7 @@ export default function App() {
             gpsInterval={gpsInterval}
             onNavigateToSupplierOrders={() => setActiveSubTab('SupplierOrders')}
             setActiveSubTab={setActiveSubTab}
+            addNotification={addNotification}
           />
         );
       case 'MANAGEMENT':
