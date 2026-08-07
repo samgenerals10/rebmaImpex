@@ -4128,7 +4128,7 @@ function AppInner({
 
           {/* 3. DYNAMIC PAGES VIEW SELECTOR CONTAINER — fills remaining height, scrollable */}
           <div className="flex-1 overflow-y-auto px-4 lg:px-6 pb-20 lg:pb-6 pt-2">
-            <AnimatePresence mode="wait">
+            <AnimatePresence>
               <motion.div
                 key={activeMobileView === 'dashboard' ? `${activeDepartment}-${activeSubTab}` : activeMobileView}
                 initial={{ opacity: 0, y: 15 }}
