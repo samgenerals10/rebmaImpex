@@ -43,7 +43,7 @@ export async function fetchPendingForDept(department: string): Promise<PendingIt
         supabase.from('goods_price_change_requests').select('id', { count: 'exact', head: true }).eq('status', 'PENDING').then(r => r, () => ({ count: 0 })),
       ]);
       if ((registrations.count ?? 0) > 0) items.push({ label: 'registration approvals', count: registrations.count!, tab: 'Approvals' });
-      if ((priceRequests.count ?? 0) > 0) items.push({ label: 'price changes awaiting approval', count: priceRequests.count!, tab: 'ControlCenter' });
+      if ((priceRequests.count ?? 0) > 0) items.push({ label: 'price changes awaiting approval', count: priceRequests.count!, tab: 'Approvals' });
     }
 
     if (department === 'FINANCE') {

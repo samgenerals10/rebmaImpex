@@ -575,7 +575,7 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
 
   // Pending approvals
   const [pendingCounts, setPendingCounts] = useState({
-    registrations: 0, prices: 0, departments: 0, payroll: 0, cosigns: 0,
+    registrations: 0, departments: 0, payroll: 0, cosigns: 0,
   });
   const [staffList, setStaffList] = useState<any[]>([]);
   const [staffSearch, setStaffSearch] = useState('');
@@ -599,8 +599,6 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
   const [editingDeptId, setEditingDeptId] = useState<string | null>(null);
   const [editingDeptName, setEditingDeptName] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [pendingPrices, setPendingPrices] = useState<any[]>([]);
-  const [decidingPriceId, setDecidingPriceId] = useState<string | null>(null);
   const [decidingDeptId, setDecidingDeptId] = useState<string | null>(null);
 
   const handleRenameDept = async (id: string, oldName: string, newName: string) => {
@@ -656,43 +654,6 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
         }
       }, () => {});
 
-    // Pending price change requests
-    supabase.from('goods_price_change_requests').select('*').eq('status', 'PENDING').order('created_at', { ascending: false })
-      .then(({ data }) => {
-        setPendingPrices(data || []);
-        setPendingCounts(p => ({ ...p, prices: data?.length ?? 0 }));
-      }, () => {});
-  };
-
-  const decidePriceChange = async (id: string, approve: boolean) => {
-    setDecidingPriceId(id);
-    const req = pendingPrices.find(p => p.id === id);
-    try {
-      if (approve && req) {
-        const { error } = await supabase.from('goods_prices').upsert([{
-          product_name: req.product_name,
-          unit_price: req.unit_price,
-          cost_price: req.cost_price,
-          category: req.category,
-          currency: req.currency,
-          product_image: req.product_image,
-          updated_by: req.requested_by_name,
-          updated_at: new Date().toISOString(),
-          status: 'active',
-        }], { onConflict: 'product_name' });
-        if (error) throw error;
-      }
-      await supabase.from('goods_price_change_requests').update({
-        status: approve ? 'APPROVED' : 'REJECTED', decided_at: new Date().toISOString(),
-      }).eq('id', id);
-      setPendingPrices(prev => prev.filter(p => p.id !== id));
-      setPendingCounts(p => ({ ...p, prices: Math.max(0, p.prices - 1) }));
-      addNotification(approve ? `Price change for ${req?.product_name} approved.` : `Price change for ${req?.product_name} rejected.`);
-    } catch (e: any) {
-      addNotification(`Failed to record decision: ${e.message}`);
-    } finally {
-      setDecidingPriceId(null);
-    }
   };
 
   const decideDepartment = async (id: string, approve: boolean) => {
@@ -973,47 +934,10 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
         </div>
       )}
 
-      {/* Pending Price Changes — surfaced here, immediately visible and
-          actionable, instead of buried at the bottom of Section 8 with the
-          other approval-control toggles. The CEO landing here from the
-          dashboard's "Review →" banner used to have to scroll past 7 other
-          settings sections to find something to actually act on. */}
-      {pendingPrices.length > 0 && (
-        <div className="p-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 space-y-3">
-          <div className="flex items-center gap-2">
-            <Bell className="w-4 h-4 text-amber-500" />
-            <span className="text-sm font-semibold text-[var(--text-primary)]">
-              {pendingPrices.length} Pending Price Change{pendingPrices.length !== 1 ? 's' : ''} — Awaiting Your Approval
-            </span>
-          </div>
-          <div className="space-y-2">
-            {pendingPrices.map(req => (
-              <div key={req.id} className="flex items-center justify-between gap-3 p-3 rounded-xl border border-amber-200 dark:border-amber-900 bg-[var(--bg-card)] flex-wrap">
-                <div>
-                  <p className="text-xs font-semibold text-[var(--text-primary)]">{req.product_name} → {req.currency} {Number(req.unit_price).toLocaleString()}</p>
-                  <p className="text-[10px] text-[var(--text-muted)]">Requested by {req.requested_by_name || 'Management'}</p>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <button
-                    onClick={() => decidePriceChange(req.id, true)}
-                    disabled={decidingPriceId === req.id}
-                    className="px-2.5 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-xs font-semibold cursor-pointer disabled:opacity-60"
-                  >
-                    Approve
-                  </button>
-                  <button
-                    onClick={() => decidePriceChange(req.id, false)}
-                    disabled={decidingPriceId === req.id}
-                    className="px-2.5 py-1.5 bg-[var(--bg-input)] hover:bg-rose-100 text-rose-500 rounded-lg text-xs font-semibold cursor-pointer disabled:opacity-60"
-                  >
-                    Reject
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* Pending price change approvals live on the CEO's Approvals page
+          (ApprovalsView.tsx, "price" tab) alongside every other approval
+          type, not here — Control Center is settings/configuration, not an
+          approvals inbox. */}
 
       {/* Recent Setting Changes — this is exactly what it shows: the last 10
           ceo_settings rows by updated_at. Not a security/auth event log

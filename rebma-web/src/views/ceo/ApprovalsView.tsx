@@ -20,6 +20,9 @@ interface Approval {
   amount?: number;
   date_submitted: string;
   status: 'pending' | 'approved' | 'rejected';
+  // Full source row for types (price) whose approve/reject needs fields
+  // beyond what the summary card displays.
+  raw?: any;
 }
 
 const TYPE_STYLES: Record<string, string> = {
@@ -67,6 +70,17 @@ export default function ApprovalsView({ currentUser, addNotification }: Props) {
         .eq('status', 'PENDING_APPROVAL')
         .limit(50);
 
+      // Query pending price change requests (ceo_must_approve_prices) —
+      // 'price' was already a defined category/tab here, just never wired
+      // to real data; the live requests lived only in CEO Control Center.
+      const { data: priceRequests } = await supabase
+        .from('goods_price_change_requests')
+        .select('*')
+        .eq('status', 'PENDING')
+        .order('created_at', { ascending: false })
+        .limit(50)
+        .then(r => r, () => ({ data: [] }));
+
       const approvals: Approval[] = [
         ...(orders || []).map((o: any) => ({
           id: o.id,
@@ -95,6 +109,17 @@ export default function ApprovalsView({ currentUser, addNotification }: Props) {
           description: `Sign-up approval for role: ${p.role}`,
           date_submitted: p.created_at?.split('T')[0] || '',
           status: 'pending' as const,
+        })),
+        ...(priceRequests || []).map((r: any) => ({
+          id: r.id,
+          type: 'price' as const,
+          requester: r.requested_by_name || 'Management',
+          department: 'MANAGEMENT',
+          description: `${r.product_name} → ${r.currency} ${Number(r.unit_price).toLocaleString()}`,
+          amount: Number(r.unit_price || 0),
+          date_submitted: r.created_at?.split('T')[0] || '',
+          status: 'pending' as const,
+          raw: r,
         })),
       ];
 
@@ -151,9 +176,25 @@ export default function ApprovalsView({ currentUser, addNotification }: Props) {
         const pw = generateTempPassword();
         await hr.approveUser(id, true, pw);
         setCredPopup({ fullName: item.requester, password: pw });
+      } else if (item.type === 'price' && item.raw) {
+        const req = item.raw;
+        await supabase.from('goods_prices').upsert([{
+          product_name: req.product_name,
+          unit_price: req.unit_price,
+          cost_price: req.cost_price,
+          category: req.category,
+          currency: req.currency,
+          product_image: req.product_image,
+          updated_by: req.requested_by_name,
+          updated_at: new Date().toISOString(),
+          status: 'active',
+        }], { onConflict: 'product_name' });
+        await supabase.from('goods_price_change_requests').update({
+          status: 'APPROVED', decided_at: new Date().toISOString(),
+        }).eq('id', id);
       }
 
-      if (item.type !== 'registration') {
+      if (item.type !== 'registration' && item.type !== 'price') {
         // approve-user.ts already writes its own audit entry for registrations.
         await supabase.from('global_audit_history').insert({
           action: `Approved ${item.type} request`,
@@ -182,9 +223,13 @@ export default function ApprovalsView({ currentUser, addNotification }: Props) {
         await supabase.from('cargo_intake').update({ status: 'REJECTED' }).eq('id', id);
       } else if (item.type === 'registration') {
         await hr.approveUser(id, false);
+      } else if (item.type === 'price') {
+        await supabase.from('goods_price_change_requests').update({
+          status: 'REJECTED', decided_at: new Date().toISOString(),
+        }).eq('id', id);
       }
 
-      if (item.type !== 'registration') {
+      if (item.type !== 'registration' && item.type !== 'price') {
         await supabase.from('global_audit_history').insert({
           action: `Rejected ${item.type} request`,
           department: item.department,
