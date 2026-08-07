@@ -5,6 +5,7 @@ import { Video, Users, FileSpreadsheet, FileText, Send, Calendar, Clock, Check, 
 import { exportToCSV, exportToPDF } from '../utils/export';
 import { supabase } from '../lib/supabaseClient';
 import { meetingsApi } from '../services/apiClient';
+import { useRealtimeChannel } from '../hooks/useRealtimeChannel';
 import JitsiCallModal from '../components/collaborative/JitsiCallModal';
 import CountUp from '../components/CountUp';
 import { useFullscreenToggle, FullscreenButton } from '../components/global/FullscreenToggle';
@@ -84,12 +85,21 @@ export default function BoardroomView({
       const { data } = await supabase.from('profiles_directory').select('id, full_name, role').eq('status', 'ACTIVE').order('full_name', { ascending: true });
       setAttendeeProfiles((data || []).map((p: any) => ({ id: p.id, fullName: p.full_name || 'Unknown', department: p.role || '' })).filter(p => p.id !== myId));
     })();
-    const ch = supabase.channel('boardroom-meetings')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'meetings' }, () => loadMeetings())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'meeting_attendees' }, () => loadMeetings())
-      .subscribe();
-    return () => { supabase.removeChannel(ch); };
   }, [activeSubTab, myId, loadMeetings]);
+
+  // renderWithShell() mounts both a mobile and a desktop branch of this
+  // component at once (one CSS-hidden, both present), so a raw
+  // supabase.channel() here had two instances racing to subscribe the same
+  // named channel every time activeSubTab/myId changed and re-ran this
+  // effect — Supabase throws if a second .on() lands after the first
+  // instance already called .subscribe(), which crashed the whole app with
+  // no recovery (the exact "Something went wrong" screen seen in
+  // Boardroom). useRealtimeChannel shares one real subscription across
+  // every mounted instance instead, called unconditionally (hooks can't be
+  // conditional) with the tab check moved inside the callback.
+  useRealtimeChannel('boardroom-meetings', ['meetings', 'meeting_attendees'], () => {
+    if (activeSubTab === 'Meetings' && myId) loadMeetings();
+  });
 
   const handleAttendeeToggle = (id: string) => {
     setSelectedAttendeeIds(prev => prev.includes(id) ? prev.filter(a => a !== id) : [...prev, id]);
