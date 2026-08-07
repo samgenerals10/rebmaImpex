@@ -973,6 +973,48 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
         </div>
       )}
 
+      {/* Pending Price Changes — surfaced here, immediately visible and
+          actionable, instead of buried at the bottom of Section 8 with the
+          other approval-control toggles. The CEO landing here from the
+          dashboard's "Review →" banner used to have to scroll past 7 other
+          settings sections to find something to actually act on. */}
+      {pendingPrices.length > 0 && (
+        <div className="p-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 space-y-3">
+          <div className="flex items-center gap-2">
+            <Bell className="w-4 h-4 text-amber-500" />
+            <span className="text-sm font-semibold text-[var(--text-primary)]">
+              {pendingPrices.length} Pending Price Change{pendingPrices.length !== 1 ? 's' : ''} — Awaiting Your Approval
+            </span>
+          </div>
+          <div className="space-y-2">
+            {pendingPrices.map(req => (
+              <div key={req.id} className="flex items-center justify-between gap-3 p-3 rounded-xl border border-amber-200 dark:border-amber-900 bg-[var(--bg-card)] flex-wrap">
+                <div>
+                  <p className="text-xs font-semibold text-[var(--text-primary)]">{req.product_name} → {req.currency} {Number(req.unit_price).toLocaleString()}</p>
+                  <p className="text-[10px] text-[var(--text-muted)]">Requested by {req.requested_by_name || 'Management'}</p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={() => decidePriceChange(req.id, true)}
+                    disabled={decidingPriceId === req.id}
+                    className="px-2.5 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-xs font-semibold cursor-pointer disabled:opacity-60"
+                  >
+                    Approve
+                  </button>
+                  <button
+                    onClick={() => decidePriceChange(req.id, false)}
+                    disabled={decidingPriceId === req.id}
+                    className="px-2.5 py-1.5 bg-[var(--bg-input)] hover:bg-rose-100 text-rose-500 rounded-lg text-xs font-semibold cursor-pointer disabled:opacity-60"
+                  >
+                    Reject
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Recent Setting Changes — this is exactly what it shows: the last 10
           ceo_settings rows by updated_at. Not a security/auth event log
           (no login attempts, no session/IP data), so it isn't labeled as
@@ -1451,38 +1493,6 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
           description="When ON HR cannot activate new departments without CEO approval. Department is created but stays inactive until CEO approves." />
         <SettingToggle settingKey="ceo_must_approve_registrations" label="CEO Registration Approval"
           description="All new staff registrations go directly to CEO first before HR review. Highest level of staff access control." />
-
-        {pendingPrices.length > 0 && (
-          <div className="mt-5 pt-5 border-t border-[var(--border)]">
-            <h4 className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wide mb-3">Pending Price Changes ({pendingPrices.length})</h4>
-            <div className="space-y-2">
-              {pendingPrices.map(req => (
-                <div key={req.id} className="flex items-center justify-between gap-3 p-3 rounded-xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/20 flex-wrap">
-                  <div>
-                    <p className="text-xs font-semibold text-[var(--text-primary)]">{req.product_name} → {req.currency} {Number(req.unit_price).toLocaleString()}</p>
-                    <p className="text-[10px] text-[var(--text-muted)]">Requested by {req.requested_by_name || 'Management'}</p>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <button
-                      onClick={() => decidePriceChange(req.id, true)}
-                      disabled={decidingPriceId === req.id}
-                      className="px-2.5 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-xs font-semibold cursor-pointer disabled:opacity-60"
-                    >
-                      Approve
-                    </button>
-                    <button
-                      onClick={() => decidePriceChange(req.id, false)}
-                      disabled={decidingPriceId === req.id}
-                      className="px-2.5 py-1.5 bg-[var(--bg-input)] hover:bg-rose-100 text-rose-500 rounded-lg text-xs font-semibold cursor-pointer disabled:opacity-60"
-                    >
-                      Reject
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
       </Section>
 
       {/* ── SECTION 9: SPREADSHEETS CONTROL ──────────────────────────── */}
