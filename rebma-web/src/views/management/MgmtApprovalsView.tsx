@@ -8,6 +8,7 @@ import {
 import { exportToCSV } from '../../utils/export';
 import InvoiceLineItems from '../../components/InvoiceLineItems';
 import MaterialRequisitionsPanel from './MaterialRequisitionsPanel';
+import DriverAssignmentApprovalsPanel from './DriverAssignmentApprovalsPanel';
 import ApprovalHistoryPanel from '../../components/global/ApprovalHistoryPanel';
 import { useFullscreenToggle, FullscreenButton } from '../../components/global/FullscreenToggle';
 import CountUp from '../../components/CountUp';
@@ -733,6 +734,7 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
       </div>
 
       <MaterialRequisitionsPanel addNotification={addNotification} currentUser={currentUser} />
+      <DriverAssignmentApprovalsPanel addNotification={addNotification} />
 
       {/* Summary Cards */}
 

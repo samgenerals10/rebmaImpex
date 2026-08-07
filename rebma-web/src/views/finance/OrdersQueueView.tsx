@@ -10,6 +10,7 @@ import type { Order } from '../../types/erp';
 import InvoiceLineItems, { getProductSummary, getProductSummaryWithQty } from '../../components/InvoiceLineItems';
 import { useFullscreenToggle, FullscreenButton } from '../../components/global/FullscreenToggle';
 import CountUp from '../../components/CountUp';
+import { useCeoSettings } from '../../contexts/CeoSettingsContext';
 import { generateReceiptNumber, printReceipt } from './ReceiptsView';
 import { documentTemplates } from '../../services/apiClient';
 
@@ -95,6 +96,11 @@ function mapRow(r: any): Order {
 }
 
 export default function FinanceOrdersQueueView({ addNotification, ordersList: propOrders, setOrdersList, onEvaluateOrder, currentUser }: Props) {
+  const { getSetting } = useCeoSettings();
+  const handlePrint = () => {
+    if (!getSetting('print_enabled', true)) { addNotification?.('Printing is currently disabled by the CEO.'); return; }
+    window.print();
+  };
   const [orders, setOrders] = useState<Order[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(!propOrders || propOrders.length === 0);
   const [search, setSearch] = useState('');
@@ -292,7 +298,7 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
           status: 'CONFIRMED',
           createdAt,
           customerPhone: (order as any).phone || '',
-        }, order.metadata?.items || null, template);
+        }, order.metadata?.items || null, template, getSetting('print_enabled', true));
       }
     } catch (e) {
       console.error(e);
@@ -660,7 +666,7 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
                               <button onClick={() => { setSelected(order); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-sm text-green-600 hover:bg-[var(--bg-input)]">Approve Order</button>
                               <button onClick={() => { setRejectModal(order.id); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-[var(--bg-input)]">Reject Order</button>
                             </>}
-                            <button onClick={() => { window.print(); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-input)]">Export PDF</button>
+                            <button onClick={() => { handlePrint(); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-input)]">Export PDF</button>
                           </div>
                         )}
                       </div>

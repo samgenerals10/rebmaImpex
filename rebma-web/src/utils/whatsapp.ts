@@ -17,6 +17,10 @@ export interface WhatsAppStop {
   sequence: number;
   customerName: string;
   deliveryAddress: string;
+  phone?: string;
+  itemsSummary?: string;
+  paymentMode?: string;
+  totalAmount?: number;
 }
 
 export function buildDirectionsMessage(driverName: string, stops: WhatsAppStop[], tripToken: string): string {
@@ -24,11 +28,17 @@ export function buildDirectionsMessage(driverName: string, stops: WhatsAppStop[]
   const lines = [`Hi ${driverName}, you have ${stops.length} ${stops.length === 1 ? 'delivery' : 'deliveries'} today:`, ''];
   for (const stop of stops) {
     lines.push(`Stop ${stop.sequence}: ${stop.customerName}`);
+    if (stop.phone) lines.push(`Tel: ${stop.phone}`);
     if (stop.deliveryAddress) lines.push(stop.deliveryAddress);
+    if (stop.itemsSummary) lines.push(`Items: ${stop.itemsSummary}`);
+    if (stop.paymentMode) {
+      const amount = typeof stop.totalAmount === 'number' ? ` (GHS ${stop.totalAmount.toLocaleString()})` : '';
+      lines.push(`Payment: ${stop.paymentMode}${amount}`);
+    }
     lines.push('');
   }
   lines.push(`Tap to start your trip: ${tripUrl}`);
-  lines.push('This opens Google Maps for each stop and shares your location with dispatch — no login needed.');
+  lines.push('This opens Google Maps for each stop, shows the full order details, and shares your location with dispatch — no login needed.');
   return lines.join('\n');
 }
 

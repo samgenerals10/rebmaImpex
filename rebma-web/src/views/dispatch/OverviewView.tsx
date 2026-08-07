@@ -186,14 +186,13 @@ export default function DispatchOverviewView({ addNotification, setActiveSubTab,
     if (!driver || !delivery) { addNotification?.('Selection no longer valid — please try again.'); setAssigning(false); return; }
     const now = new Date().toISOString();
     try {
-      const { error } = await supabase.from('delivery_logs').update({
-        driver_name: driver.fullName,
-        driver_id: driver.id,
-        vehicle_id: driver.truckId || null,
-        status: 'ASSIGNED',
-        updated_at: now,
-      }).eq('id', assignDeliveryId);
-      if (error) throw error;
+      const { pending } = await dispatchApi.assignDriverToDelivery(assignDeliveryId, driver.id, driver.fullName, driver.truckId || null);
+      if (pending) {
+        addNotification?.(`Assignment of ${driver.fullName} to ${delivery.orderId} sent to Management for approval.`);
+        setAssignDeliveryId(''); setAssignDriverId('');
+        setAssigning(false);
+        return;
+      }
 
       setDeliveries(prev => prev.map(d => d.id === assignDeliveryId
         ? { ...d, driverName: driver.fullName, driverId: driver.id, vehicleId: driver.truckId, status: 'ASSIGNED' }

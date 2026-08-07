@@ -164,6 +164,7 @@ export default function TrackingView({ addNotification: _addNotification }: Prop
         <DispatchMap
           deliveries={mapDeliveries}
           height={640}
+          showTrails
           onMarkerClick={(d) => { const v = vehicles.find(v => v.id === d.id); if (v) setSelected(v); }}
         />
       </div>

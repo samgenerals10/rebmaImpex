@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Plus, Pencil, Trash2, X, Check, Building2, ChevronDown, ChevronUp } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import type { CurrentUser } from '../types/erp';
+import { useCeoSettings } from '../contexts/CeoSettingsContext';
 
 interface DeptRecord {
   id: string;
@@ -24,6 +25,8 @@ interface DepartmentManagerProps {
 const blank = { name: '', code: '', description: '', head_user_id: '', active: true, nav_items: [] as string[], workflows: [] as string[] };
 
 export default function DepartmentManager({ currentUser, addNotification }: DepartmentManagerProps) {
+  const { getSetting } = useCeoSettings();
+  const ceoMustApproveDepartments = getSetting('ceo_must_approve_departments', false);
   const [depts, setDepts] = useState<DeptRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -60,13 +63,18 @@ export default function DepartmentManager({ currentUser, addNotification }: Depa
         }).eq('id', modal.id);
         addNotification(`Department "${modal.name}" updated.`);
       } else {
-        await supabase.from('departments').insert({
-          name: modal.name, code: modal.code.toUpperCase(), description: modal.description,
-          active: modal.active, nav_items: modal.nav_items, workflows: modal.workflows,
-          head_user_id: modal.head_user_id || null,
-          created_by: currentUser?.id,
+        // departments only has id/name/head_name/head_role/budget/headcount/
+        // active_projects/performance_score/status live — code, description,
+        // active, nav_items, workflows and head_user_id (used above) don't
+        // exist on the table, so only name (+status) is written here.
+        const { error } = await supabase.from('departments').insert({
+          name: modal.name,
+          status: ceoMustApproveDepartments ? 'pending' : 'active',
         });
-        addNotification(`Department "${modal.name}" created.`);
+        if (error) throw error;
+        addNotification(ceoMustApproveDepartments
+          ? `Department "${modal.name}" submitted — pending CEO approval.`
+          : `Department "${modal.name}" created.`);
       }
       setModal({ open: false, id: '', ...blank });
       load();

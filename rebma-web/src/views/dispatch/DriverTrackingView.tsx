@@ -1,10 +1,16 @@
 import { useState, useEffect, useRef } from 'react';
-import { LogOut, MapPin, Navigation, Package, Wifi, WifiOff, RefreshCw, ExternalLink } from 'lucide-react';
+import { LogOut, MapPin, Navigation, Package, Wifi, WifiOff, RefreshCw, ExternalLink, Phone, CreditCard, Camera } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
+import { uploadFile } from '../../utils/uploadFile';
 
 interface DriverTrackingViewProps {
   driver: { id: string; driverId: string; fullName: string; vehicleId: string | null };
   onLogout: () => void;
+}
+
+interface StopItem {
+  productName: string;
+  quantity: number | null;
 }
 
 interface Stop {
@@ -14,6 +20,10 @@ interface Stop {
   deliveryAddress: string;
   sequence: number | null;
   status: string;
+  phone?: string | null;
+  paymentMode?: string | null;
+  totalAmount?: number | null;
+  items?: StopItem[];
 }
 
 function mapsLink(address: string): string {
@@ -29,7 +39,11 @@ export default function DriverTrackingView({ driver, onLogout }: DriverTrackingV
   const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [markingId, setMarkingId] = useState<string | null>(null);
+  const [markingStage, setMarkingStage] = useState<'photo' | 'confirming' | null>(null);
+  const [proofError, setProofError] = useState<string | null>(null);
   const watchIdRef = useRef<number | null>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const captureStopRef = useRef<Stop | null>(null);
   const activeDeliveryId = stops[0]?.id || null;
 
   const loadStops = async () => {
@@ -41,14 +55,36 @@ export default function DriverTrackingView({ driver, onLogout }: DriverTrackingV
       .in('status', ['ASSIGNED', 'IN_TRANSIT'])
       .order('dispatch_sequence', { ascending: true, nullsFirst: false })
       .order('created_at', { ascending: true });
-    setStops((data || []).map(row => ({
-      id: row.id,
-      orderId: row.order_id,
-      customerName: row.customer_name || 'Client',
-      deliveryAddress: row.delivery_address || '',
-      sequence: row.dispatch_sequence,
-      status: row.status,
-    })));
+    const rows = data || [];
+
+    const orderIds = [...new Set(rows.map((r: any) => r.order_id).filter(Boolean))];
+    const ordersById = new Map<string, any>();
+    if (orderIds.length > 0) {
+      const { data: orderRows } = await supabase
+        .from('orders')
+        .select('id, phone, total_amount, payment_mode, product_name, quantity, metadata')
+        .in('id', orderIds);
+      for (const o of orderRows || []) ordersById.set(o.id, o);
+    }
+
+    setStops(rows.map((row: any) => {
+      const order = row.order_id ? ordersById.get(row.order_id) : null;
+      const items = order?.metadata?.items;
+      return {
+        id: row.id,
+        orderId: row.order_id,
+        customerName: row.customer_name || 'Client',
+        deliveryAddress: row.delivery_address || '',
+        sequence: row.dispatch_sequence,
+        status: row.status,
+        phone: order?.phone || null,
+        paymentMode: order?.payment_mode || null,
+        totalAmount: typeof order?.total_amount === 'number' ? order.total_amount : null,
+        items: Array.isArray(items) && items.length > 0
+          ? items.map((i: any) => ({ productName: i.productName || '', quantity: i.quantity ?? null }))
+          : (order?.product_name ? [{ productName: order.product_name, quantity: order.quantity ?? null }] : []),
+      };
+    }));
     setLoading(false);
   };
 
@@ -137,20 +173,19 @@ export default function DriverTrackingView({ driver, onLogout }: DriverTrackingV
     };
   }, [gpsActive, activeDeliveryId, driver.driverId]);
 
-  const handleMarkDelivered = async (stop: Stop) => {
-    setMarkingId(stop.id);
+  const finishDelivery = async (stop: Stop) => {
+    setMarkingStage('confirming');
     // Rendered outside CeoSettingsProvider (see the GPS effect above for
     // why) — read the flag directly, and check this specific row's own
-    // proof_photo rather than trusting local state, since this page has
-    // no camera-upload step of its own (proof is captured elsewhere, e.g.
-    // ProofOfDeliveryView) — a stale local flag could wrongly allow or
-    // block the action.
+    // proof_photo rather than trusting local state, since the photo may
+    // have just been uploaded in this same action.
     const { data: gate } = await supabase.from('ceo_settings').select('setting_value').eq('setting_key', 'proof_of_delivery_required').maybeSingle();
     if (gate?.setting_value === true) {
       const { data: row } = await supabase.from('delivery_logs').select('proof_photo').eq('id', stop.id).maybeSingle();
       if (!row?.proof_photo) {
         setMarkingId(null);
-        alert('A proof-of-delivery photo is required by the CEO before this can be marked delivered. Ask dispatch to upload it first.');
+        setMarkingStage(null);
+        setProofError('A proof-of-delivery photo is required by the CEO before this can be marked delivered.');
         return;
       }
     }
@@ -159,8 +194,9 @@ export default function DriverTrackingView({ driver, onLogout }: DriverTrackingV
       .update({ status: 'DELIVERED', delivered_at: new Date().toISOString(), updated_at: new Date().toISOString() })
       .eq('id', stop.id);
     setMarkingId(null);
+    setMarkingStage(null);
     if (error) {
-      alert(`Failed to update delivery: ${error.message}`);
+      setProofError(`Failed to update delivery: ${error.message}`);
       return;
     }
     if (stop.orderId) {
@@ -169,8 +205,41 @@ export default function DriverTrackingView({ driver, onLogout }: DriverTrackingV
     setStops(prev => prev.filter(s => s.id !== stop.id));
   };
 
+  // "Arrived" opens the camera first — proof-of-delivery at the point of
+  // arrival, not an after-the-fact upload from a desk. Cancelling the
+  // camera (no file picked) falls through to a plain delivery confirmation
+  // so the driver never gets stuck; the setting above still enforces the
+  // photo requirement server-side either way.
+  const handleArrived = (stop: Stop) => {
+    setProofError(null);
+    setMarkingId(stop.id);
+    captureStopRef.current = stop;
+    photoInputRef.current?.click();
+  };
+
+  const handlePhotoSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    const stop = captureStopRef.current;
+    if (!stop) return;
+    if (!file) { await finishDelivery(stop); return; }
+    setMarkingStage('photo');
+    const url = await uploadFile(file, 'delivery-proofs', stop.id);
+    if (!url) { setMarkingId(null); setMarkingStage(null); setProofError('Photo upload failed.'); return; }
+    const { error } = await supabase.from('delivery_logs').update({ proof_photo: url }).eq('id', stop.id);
+    if (error) { setMarkingId(null); setMarkingStage(null); setProofError('Photo upload failed.'); return; }
+    await finishDelivery(stop);
+  };
+
+  const skipPhoto = async (stop: Stop) => {
+    setProofError(null);
+    setMarkingId(stop.id);
+    await finishDelivery(stop);
+  };
+
   return (
     <div className="min-h-screen w-full bg-[var(--bg-page)] flex flex-col items-center">
+      <input ref={photoInputRef} type="file" accept="image/*" capture="environment" onChange={handlePhotoSelected} style={{ display: 'none' }} />
       <div className="w-full max-w-xl flex flex-col min-h-screen sm:min-h-0 sm:my-8 sm:rounded-3xl sm:border sm:border-[var(--border)] sm:shadow-[var(--box-shadow)] overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)] bg-[var(--bg-card)]">
           <div>
@@ -205,6 +274,10 @@ export default function DriverTrackingView({ driver, onLogout }: DriverTrackingV
               </button>
             </div>
 
+            {proofError && (
+              <div className="mb-3 px-3 py-2 rounded-lg bg-rose-50 dark:bg-rose-950/20 text-rose-500 text-[11px] font-semibold">{proofError}</div>
+            )}
+
             {loading ? (
               <p className="text-xs text-text-muted">Checking for assignments...</p>
             ) : stops.length === 0 ? (
@@ -228,6 +301,24 @@ export default function DriverTrackingView({ driver, onLogout }: DriverTrackingV
                         <MapPin className="w-3 h-3 shrink-0" /> {stop.deliveryAddress}
                       </p>
                     )}
+                    {stop.phone && (
+                      <a href={`tel:${stop.phone}`} className="text-[11px] text-text-muted mt-0.5 flex items-center gap-1 w-fit">
+                        <Phone className="w-3 h-3 shrink-0" /> {stop.phone}
+                      </a>
+                    )}
+                    {stop.items && stop.items.length > 0 && (
+                      <div className="mt-1.5 text-[11px] text-text-secondary">
+                        {stop.items.map((it, i) => (
+                          <p key={i} className="leading-snug">{it.quantity != null ? `${it.quantity}x ` : ''}{it.productName}</p>
+                        ))}
+                      </div>
+                    )}
+                    {stop.paymentMode && (
+                      <p className="text-[11px] text-text-muted mt-1 flex items-center gap-1">
+                        <CreditCard className="w-3 h-3 shrink-0" /> {stop.paymentMode}
+                        {typeof stop.totalAmount === 'number' && ` — GHS ${stop.totalAmount.toLocaleString()}`}
+                      </p>
+                    )}
                     <div className="flex gap-2 mt-2.5">
                       {stop.deliveryAddress && (
                         <a
@@ -242,13 +333,20 @@ export default function DriverTrackingView({ driver, onLogout }: DriverTrackingV
                       )}
                       <button
                         type="button"
-                        onClick={() => handleMarkDelivered(stop)}
+                        onClick={() => handleArrived(stop)}
                         disabled={markingId === stop.id}
-                        className="flex-1 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold disabled:opacity-50"
+                        className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold disabled:opacity-50"
                       >
-                        {markingId === stop.id ? 'Updating...' : 'Mark Delivered'}
+                        {markingId === stop.id
+                          ? (markingStage === 'photo' ? 'Uploading proof...' : 'Confirming...')
+                          : <><Camera className="w-3 h-3" /> Arrived</>}
                       </button>
                     </div>
+                    {markingId !== stop.id && (
+                      <button type="button" onClick={() => skipPhoto(stop)} className="mt-1.5 text-[10px] text-text-muted underline w-full text-center">
+                        Skip photo & mark delivered
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>

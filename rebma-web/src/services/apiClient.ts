@@ -1477,6 +1477,79 @@ export const dispatch = {
     return (data || []).reverse().map((r: any) => ({ lat: Number(r.latitude), lng: Number(r.longitude), recordedAt: r.recorded_at }));
   },
 
+  // Single choke point for "assign this driver to this delivery" — used by
+  // Deliveries, Drivers, and the Dispatch Overview quick-assign, so the
+  // dispatch_needs_management gate only has to live in one place. When the
+  // setting is on and the caller isn't Management/CEO, this files an
+  // approval request instead of writing the assignment directly; RLS
+  // (delivery_logs_staff_update) backs this up server-side regardless of
+  // what the client does.
+  assignDriverToDelivery: async (deliveryId: string, driverId: string, driverName: string, vehicleId: string | null, notes?: string): Promise<{ pending: boolean }> => {
+    const { data: gate } = await supabase.from('ceo_settings').select('setting_value').eq('setting_key', 'dispatch_needs_management').maybeSingle();
+    const needsApproval = gate?.setting_value === true;
+
+    let isManagementOrAdmin = true;
+    if (needsApproval) {
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data: profile } = await supabase.from('profiles').select('role, is_admin').eq('id', user?.id).maybeSingle();
+      isManagementOrAdmin = !!profile?.is_admin || profile?.role === 'management';
+    }
+
+    if (needsApproval && !isManagementOrAdmin) {
+      const { error } = await supabase.from('driver_assignment_approvals').insert({
+        delivery_id: deliveryId, driver_id: driverId, status: 'PENDING',
+      });
+      if (error) throw new Error(error.message);
+      return { pending: true };
+    }
+
+    const { error } = await supabase.from('delivery_logs').update({
+      driver_id: driverId, driver_name: driverName, vehicle_id: vehicleId, status: 'ASSIGNED',
+      notes: notes || null, updated_at: new Date().toISOString(),
+    }).eq('id', deliveryId);
+    if (error) throw new Error(error.message);
+    return { pending: false };
+  },
+
+  // Lists open driver-assignment approval requests for Management/CEO to
+  // action, joined with the delivery/driver names they need to decide.
+  getPendingDriverAssignments: async () => {
+    const { data, error } = await supabase
+      .from('driver_assignment_approvals')
+      .select('id, delivery_id, driver_id, created_at, delivery:delivery_logs(customer_name, delivery_address), driver:drivers(full_name, vehicle_id)')
+      .eq('status', 'PENDING')
+      .order('created_at', { ascending: true });
+    if (error) throw new Error(error.message);
+    return (data || []).map((r: any) => ({
+      id: r.id,
+      deliveryId: r.delivery_id,
+      driverId: r.driver_id,
+      customerName: r.delivery?.customer_name || 'Client',
+      deliveryAddress: r.delivery?.delivery_address || '',
+      driverName: r.driver?.full_name || 'Driver',
+      vehicleId: r.driver?.vehicle_id || null,
+      createdAt: r.created_at,
+    }));
+  },
+
+  decideDriverAssignment: async (approvalId: string, approve: boolean) => {
+    const { data: reqRow, error: reqErr } = await supabase.from('driver_assignment_approvals').select('*').eq('id', approvalId).single();
+    if (reqErr || !reqRow) throw new Error(reqErr?.message || 'Request not found.');
+    const { data: { user } } = await supabase.auth.getUser();
+    await supabase.from('driver_assignment_approvals').update({
+      status: approve ? 'APPROVED' : 'REJECTED', decided_at: new Date().toISOString(), decided_by: user?.id || null,
+    }).eq('id', approvalId);
+    if (!approve) return;
+
+    const { data: driver } = await supabase.from('drivers').select('full_name, vehicle_id').eq('id', reqRow.driver_id).single();
+    const { error } = await supabase.from('delivery_logs').update({
+      driver_id: reqRow.driver_id, driver_name: driver?.full_name || null, vehicle_id: driver?.vehicle_id || null,
+      status: 'ASSIGNED', updated_at: new Date().toISOString(),
+    }).eq('id', reqRow.delivery_id);
+    if (error) throw new Error(error.message);
+    await dispatch.sendWhatsAppDirections(reqRow.driver_id);
+  },
+
   // Opens a pre-filled WhatsApp chat (wa.me) for a dispatcher to review and
   // tap Send themselves — no Twilio/Meta business API, no account, no fee.
   // The tab is opened synchronously (before any await) so browsers don't
@@ -1507,13 +1580,23 @@ export const dispatch = {
 
     const { data: stops, error: stopsErr } = await supabase
       .from('delivery_logs')
-      .select('id, customer_name, delivery_address, dispatch_sequence, created_at')
+      .select('id, order_id, customer_name, delivery_address, dispatch_sequence, created_at')
       .eq('driver_id', driverId)
       .in('status', ['ASSIGNED', 'IN_TRANSIT'])
       .order('dispatch_sequence', { ascending: true, nullsFirst: false })
       .order('created_at', { ascending: true });
     if (stopsErr) { tab?.close(); throw new Error(stopsErr.message); }
     if (!stops || stops.length === 0) { tab?.close(); throw new Error('This driver has no active deliveries to send.'); }
+
+    const orderIds = [...new Set(stops.map((s: any) => s.order_id).filter(Boolean))];
+    const ordersById = new Map<string, any>();
+    if (orderIds.length > 0) {
+      const { data: orderRows } = await supabase
+        .from('orders')
+        .select('id, phone, total_amount, payment_mode, product_name, quantity, metadata')
+        .in('id', orderIds);
+      for (const o of orderRows || []) ordersById.set(o.id, o);
+    }
 
     // Backfill dispatch_sequence for any stop that doesn't have one yet.
     let nextSeq = 1;
@@ -1528,11 +1611,22 @@ export const dispatch = {
     }
     stops.sort((a: any, b: any) => (a.dispatch_sequence || 0) - (b.dispatch_sequence || 0));
 
-    const message = buildDirectionsMessage(driver.full_name, stops.map((s: any) => ({
-      sequence: s.dispatch_sequence,
-      customerName: s.customer_name || 'Client',
-      deliveryAddress: s.delivery_address || '',
-    })), tripToken);
+    const message = buildDirectionsMessage(driver.full_name, stops.map((s: any) => {
+      const order = s.order_id ? ordersById.get(s.order_id) : null;
+      const items = order?.metadata?.items;
+      const itemsSummary = Array.isArray(items) && items.length > 0
+        ? items.map((i: any) => `${i.quantity ?? ''}x ${i.productName ?? ''}`.trim()).join(', ')
+        : order?.product_name ? `${order.quantity ?? ''}x ${order.product_name}`.trim() : '';
+      return {
+        sequence: s.dispatch_sequence,
+        customerName: s.customer_name || 'Client',
+        deliveryAddress: s.delivery_address || '',
+        phone: order?.phone || undefined,
+        itemsSummary: itemsSummary || undefined,
+        paymentMode: order?.payment_mode || undefined,
+        totalAmount: typeof order?.total_amount === 'number' ? order.total_amount : undefined,
+      };
+    }), tripToken);
     const link = waLink(driver.phone, message);
 
     if (tab) tab.location.href = link; else window.open(link, '_blank');
@@ -2076,9 +2170,25 @@ export const messenger = {
     return data?.signedUrl || null;
   },
 
+  // Writes to `notifications` (recipient_id/message) — the table the bell
+  // icon (NotificationsPanel.tsx, via Header.tsx) actually reads. This used
+  // to insert into `user_notifications`, a table nothing else in the app
+  // ever queries, so call-started/meeting-invite pings silently never
+  // reached anyone.
   notifyUsers: async (userIds: string[], type: string, title: string, body: string, linkRef?: string) => {
     if (userIds.length === 0) return;
-    await supabase.from('user_notifications').insert(userIds.map(uid => ({ user_id: uid, type, title, body, link_ref: linkRef || null })));
+    const { data: { user } } = await supabase.auth.getUser();
+    await supabase.from('notifications').insert(userIds.map(uid => ({
+      recipient_id: uid,
+      sender_id: user?.id ?? null,
+      sender_name: user?.email ?? null,
+      title,
+      message: body,
+      type,
+      action_url: linkRef || null,
+      read: false,
+      created_at: new Date().toISOString(),
+    })));
   },
 
   // Ad-hoc voice/video call from a chat channel — creates a real meeting row

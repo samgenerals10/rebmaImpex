@@ -10,6 +10,7 @@ import {
 import { supabase } from '../../lib/supabaseClient';
 import { exportToCSV, exportToPDF } from '../../utils/export';
 import CountUp from '../../components/CountUp';
+import { useCeoSettings } from '../../contexts/CeoSettingsContext';
 import type { ProductionRequest, CurrentUser } from '../../types/erp';
 
 interface OutputRecord {
@@ -90,6 +91,11 @@ const priorityBadge = (p: string) => {
 };
 
 export default function ProductionOverviewView({ currentUser, productionRequests, addNotification, setActiveSubTab }: Props) {
+  const { getSetting } = useCeoSettings();
+  const handlePrint = () => {
+    if (!getSetting('print_enabled', true)) { addNotification('Printing is currently disabled by the CEO.'); return; }
+    window.print();
+  };
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
   const name = currentUser?.fullName?.split(' ')[0] || 'Supervisor';
@@ -225,7 +231,7 @@ export default function ProductionOverviewView({ currentUser, productionRequests
             className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 bg-[var(--bg-card)] border border-[var(--border)] text-[var(--text-secondary)] rounded-xl hover:bg-[var(--accent-light)] cursor-pointer transition-colors">
             <Download className="w-3.5 h-3.5" /> Export
           </button>
-          <button onClick={() => window.print()}
+          <button onClick={handlePrint}
             className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 bg-[var(--bg-card)] border border-[var(--border)] text-[var(--text-secondary)] rounded-xl hover:bg-[var(--accent-light)] cursor-pointer transition-colors">
             <Printer className="w-3.5 h-3.5" /> Print
           </button>

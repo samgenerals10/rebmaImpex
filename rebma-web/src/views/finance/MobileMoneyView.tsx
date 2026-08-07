@@ -4,6 +4,7 @@ import { Search, Download, MoreVertical, Eye, CheckCircle, Clock, XCircle, Smart
 import { exportToCSV } from '../../utils/export';
 import { ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import CountUp from '../../components/CountUp';
+import { useCeoSettings } from '../../contexts/CeoSettingsContext';
 
 interface MomoTxn {
   id: string;
@@ -26,6 +27,11 @@ interface Props {
 }
 
 export default function FinanceMobileMoneyView({ addNotification, currentUser }: Props) {
+  const { getSetting } = useCeoSettings();
+  const handlePrint = () => {
+    if (!getSetting('print_enabled', true)) { addNotification?.('Printing is currently disabled by the CEO.'); return; }
+    window.print();
+  };
   const [txns, setTxns] = useState<MomoTxn[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -248,7 +254,7 @@ export default function FinanceMobileMoneyView({ addNotification, currentUser }:
                             {t.status === 'Pending' && <button onClick={() => verify(t.id)} className="w-full text-left px-3 py-2 text-sm text-green-600 hover:bg-[var(--bg-input)]">Verify</button>}
                             <button onClick={() => openEditForm(t)} className="w-full text-left px-3 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-input)]">Edit Txn</button>
                             <button onClick={() => deleteTxn(t.id)} className="w-full text-left px-3 py-2 text-sm text-rose-600 hover:bg-[var(--bg-input)]">Delete Txn</button>
-                            <button onClick={() => { window.print(); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-input)]">Export Receipt</button>
+                            <button onClick={() => { handlePrint(); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-input)]">Export Receipt</button>
                           </div>
                         )}
                       </div>

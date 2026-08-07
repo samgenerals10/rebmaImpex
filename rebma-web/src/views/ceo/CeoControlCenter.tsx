@@ -599,6 +599,9 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
   const [editingDeptId, setEditingDeptId] = useState<string | null>(null);
   const [editingDeptName, setEditingDeptName] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [pendingPrices, setPendingPrices] = useState<any[]>([]);
+  const [decidingPriceId, setDecidingPriceId] = useState<string | null>(null);
+  const [decidingDeptId, setDecidingDeptId] = useState<string | null>(null);
 
   const handleRenameDept = async (id: string, oldName: string, newName: string) => {
     if (!newName.trim() || newName === oldName) {
@@ -646,7 +649,72 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
 
     // Departments
     supabase.from('departments').select('*').order('name')
-      .then(({ data }) => { if (data) setDbDepartments(data); }, () => {});
+      .then(({ data }) => {
+        if (data) {
+          setDbDepartments(data);
+          setPendingCounts(p => ({ ...p, departments: data.filter((d: any) => d.status === 'pending').length }));
+        }
+      }, () => {});
+
+    // Pending price change requests
+    supabase.from('goods_price_change_requests').select('*').eq('status', 'PENDING').order('created_at', { ascending: false })
+      .then(({ data }) => {
+        setPendingPrices(data || []);
+        setPendingCounts(p => ({ ...p, prices: data?.length ?? 0 }));
+      }, () => {});
+  };
+
+  const decidePriceChange = async (id: string, approve: boolean) => {
+    setDecidingPriceId(id);
+    const req = pendingPrices.find(p => p.id === id);
+    try {
+      if (approve && req) {
+        const { error } = await supabase.from('goods_prices').upsert([{
+          product_name: req.product_name,
+          unit_price: req.unit_price,
+          cost_price: req.cost_price,
+          category: req.category,
+          currency: req.currency,
+          product_image: req.product_image,
+          updated_by: req.requested_by_name,
+          updated_at: new Date().toISOString(),
+          status: 'active',
+        }], { onConflict: 'product_name' });
+        if (error) throw error;
+      }
+      await supabase.from('goods_price_change_requests').update({
+        status: approve ? 'APPROVED' : 'REJECTED', decided_at: new Date().toISOString(),
+      }).eq('id', id);
+      setPendingPrices(prev => prev.filter(p => p.id !== id));
+      setPendingCounts(p => ({ ...p, prices: Math.max(0, p.prices - 1) }));
+      addNotification(approve ? `Price change for ${req?.product_name} approved.` : `Price change for ${req?.product_name} rejected.`);
+    } catch (e: any) {
+      addNotification(`Failed to record decision: ${e.message}`);
+    } finally {
+      setDecidingPriceId(null);
+    }
+  };
+
+  const decideDepartment = async (id: string, approve: boolean) => {
+    setDecidingDeptId(id);
+    const dept = dbDepartments.find(d => d.id === id);
+    try {
+      if (approve) {
+        const { error } = await supabase.from('departments').update({ status: 'active' }).eq('id', id);
+        if (error) throw error;
+        setDbDepartments(prev => prev.map(d => d.id === id ? { ...d, status: 'active' } : d));
+      } else {
+        const { error } = await supabase.from('departments').delete().eq('id', id);
+        if (error) throw error;
+        setDbDepartments(prev => prev.filter(d => d.id !== id));
+      }
+      setPendingCounts(p => ({ ...p, departments: Math.max(0, p.departments - 1) }));
+      addNotification(approve ? `Department "${dept?.name}" approved.` : `Department "${dept?.name}" rejected and removed.`);
+    } catch (e: any) {
+      addNotification(`Failed to record decision: ${e.message}`);
+    } finally {
+      setDecidingDeptId(null);
+    }
   };
 
   const generateInviteLink = async () => {
@@ -774,6 +842,29 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
       loadData();
     } catch (err: any) {
       addNotification(`Failed to terminate user: ${err.message}`);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const resetUserPassword = async (userId: string, name: string) => {
+    if (submitting) return;
+    if (!await window.confirm(`Send a password reset email to ${name}?`)) return;
+    setSubmitting(true);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+      if (!accessToken) throw new Error('Not authenticated.');
+      const res = await fetch('/api/reset-user-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({ userId }),
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error || 'Failed to send reset email.');
+      addNotification(body.message || `Password reset email sent to ${name}.`);
+    } catch (err: any) {
+      addNotification(`Failed to reset password: ${err.message}`);
     } finally {
       setSubmitting(false);
     }
@@ -1267,12 +1358,42 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
           description="Control who can permanently delete staff accounts. This action cannot be undone."
           options={[{ value: 'ceo_only', label: 'CEO Only' }, { value: 'specific_user', label: 'Specific User' }]} />
         
+        {/* Pending department approvals */}
+        {dbDepartments.some(d => d.status === 'pending') && (
+          <div className="mt-6 border-t border-[var(--border)] pt-6">
+            <h4 className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wide mb-3">Pending Department Approvals</h4>
+            <div className="space-y-2">
+              {dbDepartments.filter(d => d.status === 'pending').map(dept => (
+                <div key={dept.id} className="flex items-center justify-between gap-3 p-3 rounded-xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/20">
+                  <span className="text-xs font-semibold text-[var(--text-primary)]">{dept.name}</span>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={() => decideDepartment(dept.id, true)}
+                      disabled={decidingDeptId === dept.id}
+                      className="px-2.5 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-xs font-semibold cursor-pointer disabled:opacity-60"
+                    >
+                      Approve
+                    </button>
+                    <button
+                      onClick={() => decideDepartment(dept.id, false)}
+                      disabled={decidingDeptId === dept.id}
+                      className="px-2.5 py-1.5 bg-[var(--bg-input)] hover:bg-rose-100 text-rose-500 rounded-lg text-xs font-semibold cursor-pointer disabled:opacity-60"
+                    >
+                      Reject
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Department Name Management */}
         <div className="mt-6 border-t border-[var(--border)] pt-6">
           <h4 className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wide mb-3">Department Settings</h4>
           <p className="text-xs text-[var(--text-muted)] mb-4">Rename configured system departments. This updates dashboard headers and rosters.</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {dbDepartments.map(dept => (
+            {dbDepartments.filter(d => d.status !== 'pending').map(dept => (
               <div key={dept.id} className="flex items-center justify-between p-3 rounded-xl border border-[var(--border)] bg-[var(--bg)]">
                 {editingDeptId === dept.id ? (
                   <div className="flex items-center gap-2 w-full" onClick={e => e.stopPropagation()}>
@@ -1327,6 +1448,38 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
           description="When ON HR cannot activate new departments without CEO approval. Department is created but stays inactive until CEO approves." />
         <SettingToggle settingKey="ceo_must_approve_registrations" label="CEO Registration Approval"
           description="All new staff registrations go directly to CEO first before HR review. Highest level of staff access control." />
+
+        {pendingPrices.length > 0 && (
+          <div className="mt-5 pt-5 border-t border-[var(--border)]">
+            <h4 className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wide mb-3">Pending Price Changes ({pendingPrices.length})</h4>
+            <div className="space-y-2">
+              {pendingPrices.map(req => (
+                <div key={req.id} className="flex items-center justify-between gap-3 p-3 rounded-xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/20 flex-wrap">
+                  <div>
+                    <p className="text-xs font-semibold text-[var(--text-primary)]">{req.product_name} → {req.currency} {Number(req.unit_price).toLocaleString()}</p>
+                    <p className="text-[10px] text-[var(--text-muted)]">Requested by {req.requested_by_name || 'Management'}</p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={() => decidePriceChange(req.id, true)}
+                      disabled={decidingPriceId === req.id}
+                      className="px-2.5 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-xs font-semibold cursor-pointer disabled:opacity-60"
+                    >
+                      Approve
+                    </button>
+                    <button
+                      onClick={() => decidePriceChange(req.id, false)}
+                      disabled={decidingPriceId === req.id}
+                      className="px-2.5 py-1.5 bg-[var(--bg-input)] hover:bg-rose-100 text-rose-500 rounded-lg text-xs font-semibold cursor-pointer disabled:opacity-60"
+                    >
+                      Reject
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </Section>
 
       {/* ── SECTION 9: SPREADSHEETS CONTROL ──────────────────────────── */}
@@ -1400,6 +1553,9 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
                               <Ban className="w-3.5 h-3.5" />
                             </button>
                           )}
+                          <button onClick={() => resetUserPassword(s.id, s.full_name)} title="Reset Password" className="p-1.5 hover:bg-[var(--accent-light)] rounded-lg text-[var(--accent)] cursor-pointer">
+                            <Key className="w-3.5 h-3.5" />
+                          </button>
                           <button onClick={() => terminateUser(s.id, s.full_name)} title="Terminate" className="p-1.5 hover:bg-rose-500/10 rounded-lg text-rose-500 cursor-pointer">
                             <UserX className="w-3.5 h-3.5" />
                           </button>

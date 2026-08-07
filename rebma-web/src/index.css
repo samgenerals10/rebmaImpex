@@ -396,7 +396,13 @@ body.font-family-dmsans    { --font-base: 'DM Sans', sans-serif; }
 body.font-family-nunito    { --font-base: 'Nunito', sans-serif; }
 body.font-family-outfit    { --font-base: 'Outfit', sans-serif; }
 
-/* ─── GLOBAL BASE STYLES — cascade defaults for all elements ─── */
+/* ─── GLOBAL BASE STYLES — cascade defaults for all elements ───
+   Wrapped in @layer base so Tailwind utility classes (e.g. text-white on
+   a <a>) can still override these element defaults — unlayered CSS always
+   beats layered CSS regardless of specificity, which was silently making
+   any colored-background link's text-white invisible (text color stuck
+   on var(--accent), same green as bg-[var(--accent)] buttons). */
+@layer base {
 *, *::before, *::after { box-sizing: border-box; }
 
 body {
@@ -429,6 +435,7 @@ textarea::placeholder { color: var(--text-muted); }
 table { color: var(--text-primary); }
 th    { color: var(--text-muted); border-bottom-color: var(--border); }
 td    { color: var(--text-primary); border-bottom-color: var(--border); }
+}
 
 /* ─── DARK SIDEBAR THEME: scope text vars inside sidebar-shell ─── */
 /* Foodie sidebar is #1e1b4b — text must be white inside it */

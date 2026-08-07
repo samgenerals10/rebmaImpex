@@ -1,8 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
-import { MapPin, Navigation, Package, Wifi, WifiOff, RefreshCw, ExternalLink, CheckCircle2 } from 'lucide-react';
+import { MapPin, Navigation, Package, Wifi, WifiOff, RefreshCw, ExternalLink, CheckCircle2, Phone, CreditCard, Camera } from 'lucide-react';
+import { compressImageToDataUrl } from '../../utils/compressImage';
 
 interface TripViewProps {
   token: string;
+}
+
+interface StopItem {
+  productName: string;
+  quantity: number | null;
 }
 
 interface Stop {
@@ -12,6 +18,11 @@ interface Stop {
   deliveryAddress: string;
   sequence: number | null;
   status: string;
+  hasProof?: boolean;
+  phone?: string | null;
+  paymentMode?: string | null;
+  totalAmount?: number | null;
+  items?: StopItem[];
 }
 
 function mapsLink(address: string): string {
@@ -41,7 +52,11 @@ export default function TripView({ token }: TripViewProps) {
   const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [markingId, setMarkingId] = useState<string | null>(null);
+  const [markingStage, setMarkingStage] = useState<'photo' | 'confirming' | null>(null);
+  const [proofError, setProofError] = useState<string | null>(null);
   const watchIdRef = useRef<number | null>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const captureStopRef = useRef<Stop | null>(null);
   const activeDeliveryId = stops[0]?.id || null;
 
   const loadStops = async () => {
@@ -108,12 +123,48 @@ export default function TripView({ token }: TripViewProps) {
     };
   }, [gpsActive, activeDeliveryId, token]);
 
-  const handleMarkDelivered = async (stop: Stop) => {
-    setMarkingId(stop.id);
+  const finishDelivery = async (stop: Stop) => {
+    setMarkingStage('confirming');
     const result = await callTripApi(token, 'deliver', { deliveryId: stop.id });
     setMarkingId(null);
-    if (!result.ok) { alert(result.error || 'Failed to update delivery. Please try again.'); return; }
+    setMarkingStage(null);
+    if (!result.ok) { setProofError(result.error || 'Failed to update delivery. Please try again.'); return; }
     setStops(prev => prev.filter(s => s.id !== stop.id));
+  };
+
+  // "Arrived" opens the camera first — the ask is proof-of-delivery at the
+  // point of arrival, not an after-the-fact upload from a desk. Cancelling
+  // the camera (no file picked) falls straight through to a plain delivery
+  // confirmation so a driver never gets stuck if a photo isn't practical;
+  // the server still enforces proof_of_delivery_required either way.
+  const handleArrived = (stop: Stop) => {
+    setProofError(null);
+    setMarkingId(stop.id);
+    captureStopRef.current = stop;
+    photoInputRef.current?.click();
+  };
+
+  const handlePhotoSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    const stop = captureStopRef.current;
+    if (!stop) return;
+    if (!file) { await finishDelivery(stop); return; }
+    setMarkingStage('photo');
+    try {
+      const dataUrl = await compressImageToDataUrl(file);
+      const result = await callTripApi(token, 'proof', { deliveryId: stop.id, photoDataUrl: dataUrl });
+      if (!result.ok) { setMarkingId(null); setMarkingStage(null); setProofError(result.error || 'Photo upload failed.'); return; }
+    } catch {
+      setMarkingId(null); setMarkingStage(null); setProofError('Photo upload failed.'); return;
+    }
+    await finishDelivery(stop);
+  };
+
+  const skipPhoto = async (stop: Stop) => {
+    setProofError(null);
+    setMarkingId(stop.id);
+    await finishDelivery(stop);
   };
 
   const handleReturn = async () => {
@@ -143,6 +194,7 @@ export default function TripView({ token }: TripViewProps) {
 
   return (
     <div className="min-h-screen w-full bg-[var(--bg-page)] flex flex-col items-center">
+      <input ref={photoInputRef} type="file" accept="image/*" capture="environment" onChange={handlePhotoSelected} style={{ display: 'none' }} />
       <div className="w-full max-w-xl flex flex-col min-h-screen sm:min-h-0 sm:my-8 sm:rounded-3xl sm:border sm:border-[var(--border)] sm:shadow-[var(--box-shadow)] overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)] bg-[var(--bg-card)]">
           <div>
@@ -169,6 +221,10 @@ export default function TripView({ token }: TripViewProps) {
                 <RefreshCw className="w-3.5 h-3.5" />
               </button>
             </div>
+
+            {proofError && (
+              <div className="mb-3 px-3 py-2 rounded-lg bg-rose-50 dark:bg-rose-950/20 text-rose-500 text-[11px] font-semibold">{proofError}</div>
+            )}
 
             {loading ? (
               <p className="text-xs text-text-muted">Loading your trip...</p>
@@ -198,6 +254,24 @@ export default function TripView({ token }: TripViewProps) {
                         <MapPin className="w-3 h-3 shrink-0" /> {stop.deliveryAddress}
                       </p>
                     )}
+                    {stop.phone && (
+                      <a href={`tel:${stop.phone}`} className="text-[11px] text-text-muted mt-0.5 flex items-center gap-1 w-fit">
+                        <Phone className="w-3 h-3 shrink-0" /> {stop.phone}
+                      </a>
+                    )}
+                    {stop.items && stop.items.length > 0 && (
+                      <div className="mt-1.5 text-[11px] text-text-secondary">
+                        {stop.items.map((it, i) => (
+                          <p key={i} className="leading-snug">{it.quantity != null ? `${it.quantity}x ` : ''}{it.productName}</p>
+                        ))}
+                      </div>
+                    )}
+                    {stop.paymentMode && (
+                      <p className="text-[11px] text-text-muted mt-1 flex items-center gap-1">
+                        <CreditCard className="w-3 h-3 shrink-0" /> {stop.paymentMode}
+                        {typeof stop.totalAmount === 'number' && ` — GHS ${stop.totalAmount.toLocaleString()}`}
+                      </p>
+                    )}
                     <div className="flex gap-2 mt-2.5">
                       {stop.deliveryAddress && (
                         <a
@@ -212,13 +286,20 @@ export default function TripView({ token }: TripViewProps) {
                       )}
                       <button
                         type="button"
-                        onClick={() => handleMarkDelivered(stop)}
+                        onClick={() => handleArrived(stop)}
                         disabled={markingId === stop.id}
-                        className="flex-1 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold disabled:opacity-50"
+                        className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold disabled:opacity-50"
                       >
-                        {markingId === stop.id ? 'Updating...' : 'Mark Delivered'}
+                        {markingId === stop.id
+                          ? (markingStage === 'photo' ? 'Uploading proof...' : 'Confirming...')
+                          : <><Camera className="w-3 h-3" /> Arrived</>}
                       </button>
                     </div>
+                    {markingId !== stop.id && (
+                      <button type="button" onClick={() => skipPhoto(stop)} className="mt-1.5 text-[10px] text-text-muted underline w-full text-center">
+                        Skip photo & mark delivered
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>

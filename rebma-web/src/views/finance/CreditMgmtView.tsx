@@ -36,6 +36,10 @@ interface Props {
 
 export default function FinanceCreditMgmtView({ addNotification, currentUser }: Props) {
   const { getSetting } = useCeoSettings();
+  const handlePrint = () => {
+    if (!getSetting('print_enabled', true)) { addNotification?.('Printing is currently disabled by the CEO.'); return; }
+    window.print();
+  };
   const [items, setItems] = useState<CreditEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -280,7 +284,7 @@ export default function FinanceCreditMgmtView({ addNotification, currentUser }: 
           <div className="flex items-center gap-3 flex-wrap">
             <button onClick={() => openReminder(selected)} className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-input)]"><Send size={14} /> Send Reminder</button>
             {selected.outstanding > 0 && <button onClick={() => { setPayModal(selected); setSelected(null); }} className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-white text-sm font-medium hover:opacity-90" style={{ background: 'var(--accent)' }}><DollarSign size={14} /> Record Payment</button>}
-            <button onClick={() => window.print()} className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-input)]"><Download size={14} /> Print Statement</button>
+            <button onClick={handlePrint} className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-input)]"><Download size={14} /> Print Statement</button>
           </div>
         </div>
       </div>
@@ -373,7 +377,7 @@ export default function FinanceCreditMgmtView({ addNotification, currentUser }: 
                             <button onClick={(e) => { e.stopPropagation(); openReminder(item); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-input)]">Send Reminder</button>
                             <button onClick={(e) => { e.stopPropagation(); openEditForm(item); }} className="w-full text-left px-3 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-input)]">Edit Credit Order</button>
                             <button onClick={(e) => { e.stopPropagation(); deleteCredit(item.id); }} className="w-full text-left px-3 py-2 text-sm text-rose-600 hover:bg-[var(--bg-input)]">Delete Credit</button>
-                            <button onClick={(e) => { e.stopPropagation(); window.print(); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-input)]">Export PDF</button>
+                            <button onClick={(e) => { e.stopPropagation(); handlePrint(); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-input)]">Export PDF</button>
                           </div>
                         )}
                       </div>

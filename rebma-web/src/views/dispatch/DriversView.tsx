@@ -321,13 +321,12 @@ export default function DriversView({ addNotification }: Props) {
     if (!assignTarget || submitting) return;
     setSubmitting(true);
     try {
-      const { error } = await supabase.from('delivery_logs').update({
-        driver_id: assignTarget.id,
-        driver_name: assignTarget.fullName,
-        vehicle_id: assignTarget.truckId,
-        status: 'ASSIGNED',
-      }).eq('id', deliveryId);
-      if (error) throw error;
+      const { pending } = await dispatchApi.assignDriverToDelivery(deliveryId, assignTarget.id, assignTarget.fullName, assignTarget.truckId);
+      if (pending) {
+        addNotification(`Assignment of ${assignTarget.fullName} to ${deliveryId} sent to Management for approval.`);
+        setAssignTarget(null);
+        return;
+      }
       addNotification(`Driver ${assignTarget.fullName} assigned to ${deliveryId}.`);
       setAssignTarget(null);
       try {

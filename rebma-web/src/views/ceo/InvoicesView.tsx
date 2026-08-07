@@ -43,7 +43,7 @@ interface Props {
   currentUser?: CurrentUser | null;
 }
 
-async function printProforma(r: ProformaRow, issuedBy: string, template: DocumentTemplate) {
+async function printProforma(r: ProformaRow, issuedBy: string, template: DocumentTemplate, printEnabled: boolean = true) {
   const GREEN = '#1a5c32', BLUE = '#29a9dc', LIME = '#7fc241';
   const t = template;
   const customerPhone = r.contact_info?.customerPhone || '';
@@ -158,7 +158,7 @@ async function printProforma(r: ProformaRow, issuedBy: string, template: Documen
     </div>
   </div>
   <div style="text-align:center;margin:16px 0 32px">
-    <button onclick="window.print()" style="background:${GREEN};color:#fff;border:none;padding:11px 32px;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer;margin-right:10px">🖨 Print</button>
+    ${printEnabled ? `<button onclick="window.print()" style="background:${GREEN};color:#fff;border:none;padding:11px 32px;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer;margin-right:10px">🖨 Print</button>` : `<button disabled title="Printing is currently disabled by the CEO" style="background:#cbd5e1;color:#64748b;border:none;padding:11px 32px;border-radius:9px;font-size:14px;font-weight:700;cursor:not-allowed;margin-right:10px">🖨 Print (disabled)</button>`}
     <button onclick="window.close()" style="background:#f1f5f9;color:#334155;border:1px solid #e2e8f0;padding:11px 28px;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer">Close</button>
   </div>
   </body></html>`;
@@ -239,7 +239,7 @@ export default function InvoicesView({ addNotification, currentUser }: Props) {
       await load();
       if (created) {
         const template = await documentTemplates.get('INVOICE');
-        printProforma(created as ProformaRow, currentUser?.fullName || 'REBMA IMPEX Staff', template);
+        printProforma(created as ProformaRow, currentUser?.fullName || 'REBMA IMPEX Staff', template, getSetting('print_enabled', true));
       }
     } catch (e: any) {
       addNotification(e.message || 'Failed to generate proforma invoice.');
@@ -365,7 +365,7 @@ export default function InvoicesView({ addNotification, currentUser }: Props) {
           <button
             onClick={async () => {
               const template = await documentTemplates.get('INVOICE');
-              printProforma(selected, currentUser?.fullName || 'REBMA IMPEX Staff', template);
+              printProforma(selected, currentUser?.fullName || 'REBMA IMPEX Staff', template, getSetting('print_enabled', true));
             }}
             style={{ background: 'var(--accent)', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
           >

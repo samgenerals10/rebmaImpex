@@ -69,8 +69,8 @@ export default function Messenger({ isOpen, onClose, currentUser }: Props) {
   useEffect(() => {
     if (!isOpen || !myId) return;
     (async () => {
-      const { data } = await supabase.from('profiles_directory').select('id, full_name, role').eq('status', 'ACTIVE').order('full_name', { ascending: true });
-      setProfiles((data || []).map((p: any) => ({ id: p.id, fullName: p.full_name || 'Unknown', department: p.role || '' })).filter(p => p.id !== myId));
+      const { data } = await supabase.from('profiles_directory').select('id, full_name, department').eq('status', 'ACTIVE').order('full_name', { ascending: true });
+      setProfiles((data || []).map((p: any) => ({ id: p.id, fullName: p.full_name || 'Unknown', department: p.department || '' })).filter(p => p.id !== myId));
 
       const everyoneId = await messenger.ensureEveryoneChannel();
       if (everyoneId) await messenger.joinChannel(everyoneId, myId);

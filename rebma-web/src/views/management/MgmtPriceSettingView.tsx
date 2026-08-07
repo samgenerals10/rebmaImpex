@@ -308,6 +308,35 @@ export default function MgmtPriceSettingView({ addNotification, currentUser }: P
     const costPrice = form.costPrice ? parseFloat(form.costPrice) : null;
     const margin = costPrice !== null && costPrice > 0 ? ((unitPrice - costPrice) / costPrice) * 100 : null;
 
+    // The live catalog (goods_prices) stays untouched — a pending change
+    // goes into its own request queue so the CEO reviews the exact
+    // proposed price, not something that already broadcast to Finance and
+    // Marketing while "pending".
+    if (getSetting('ceo_must_approve_prices', false)) {
+      const { data: { user } } = await supabase.auth.getUser();
+      const { error: reqError } = await supabase.from('goods_price_change_requests').insert({
+        product_name: form.productName,
+        category: form.category || null,
+        unit_price: unitPrice,
+        cost_price: costPrice,
+        currency: form.currency,
+        product_image: imagePreview || cameraPreview || null,
+        requested_by: user?.id || null,
+        requested_by_name: currentUser?.fullName || 'Management',
+        status: 'PENDING',
+      });
+      if (reqError) {
+        addNotification?.(`Failed to submit price change: ${reqError.message}`);
+        return;
+      }
+      addNotification?.(`Price change for ${form.productName} sent to the CEO for approval.`);
+      setImagePreview('');
+      setCameraPreview('');
+      setDocBase64('');
+      setDocName('');
+      return;
+    }
+
     const newId = editing?.id || 'PRC-' + Math.random().toString(36).substring(2, 9);
     const newEntry: PriceEntry = {
       id: newId,

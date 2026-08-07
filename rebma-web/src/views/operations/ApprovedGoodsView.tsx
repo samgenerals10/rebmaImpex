@@ -8,6 +8,7 @@ import QRCode from 'qrcode';
 import { exportToCSV, safeDisplayName } from '../../utils/export';
 import CountUp from '../../components/CountUp';
 import { documentTemplates, type DocumentTemplate } from '../../services/apiClient';
+import { useCeoSettings } from '../../contexts/CeoSettingsContext';
 
 // ── Brand colors from REBMA logo ──────────────────────────────────────────
 const BRAND = {
@@ -41,7 +42,7 @@ type OrderSort = { field: keyof ApprovedOrder; dir: 'asc' | 'desc' };
 interface Props { addNotification?: (msg: string) => void; setActiveSubTab?: (t: string) => void }
 
 // ── ticket printer ──────────────────────────────────────────────────────────
-async function printOperationsTicket(order: ApprovedOrder, template: DocumentTemplate, dispatchedQty?: number, printedBy?: string) {
+async function printOperationsTicket(order: ApprovedOrder, template: DocumentTemplate, dispatchedQty?: number, printedBy?: string, printEnabled: boolean = true) {
   const t = template;
   // Shown on the printed ticket itself exactly as before — an email here is
   // legitimate identification, not a bug. Only the copy embedded in the QR
@@ -237,7 +238,7 @@ async function printOperationsTicket(order: ApprovedOrder, template: DocumentTem
       </div>
     </div>
     <div style="text-align:center;margin-top:16px;display:flex;gap:10px;justify-content:center">
-      <button onclick="window.print()" style="background:${BRAND.green};color:#fff;border:none;padding:11px 30px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer">🖨 Print Ticket</button>
+      ${printEnabled ? `<button onclick="window.print()" style="background:${BRAND.green};color:#fff;border:none;padding:11px 30px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer">🖨 Print Ticket</button>` : `<button disabled title="Printing is currently disabled by the CEO" style="background:#cbd5e1;color:#64748b;border:none;padding:11px 30px;border-radius:9px;font-size:13px;font-weight:700;cursor:not-allowed">🖨 Print (disabled)</button>`}
       <button onclick="window.close()" style="background:#f1f5f9;color:#334155;border:1px solid #e2e8f0;padding:11px 26px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer">Close</button>
     </div>
   </div>
@@ -266,6 +267,7 @@ const SortIco = ({ field, sort }: { field: string; sort: { field: string; dir: s
 
 // ── component ──────────────────────────────────────────────────────────────
 export default function ApprovedGoodsView({ addNotification, setActiveSubTab: _sat }: Props) {
+  const { getSetting } = useCeoSettings();
   const [goods, setGoods] = useState<ApprovedGood[]>([]);
   const [orders, setOrders] = useState<ApprovedOrder[]>([]);
   // Orders already handed to a driver (a delivery_logs row exists) — since
@@ -570,7 +572,7 @@ export default function ApprovedGoodsView({ addNotification, setActiveSubTab: _s
                                     ? o.metadata.items.reduce((sum: number, it: any) => sum + (Number(it.quantity) || 0), 0)
                                     : Number(o.metadata?.quantity || (o as any).quantity || 1);
                                   const template = await documentTemplates.get('TICKET');
-                                  printOperationsTicket(o, template, totalQty, currentUserEmail);
+                                  printOperationsTicket(o, template, totalQty, currentUserEmail, getSetting('print_enabled', true));
                                 }}
                                 title="Print Operations Ticket"
                                 className="flex items-center gap-1 px-2.5 py-1.5 bg-[var(--bg)] border border-[var(--border)] rounded-lg text-[10px] font-semibold text-[var(--text-secondary)] hover:bg-[var(--accent-light)] cursor-pointer whitespace-nowrap transition-colors">

@@ -25,19 +25,42 @@ async function resolveDriver(token: string) {
 async function loadStops(driverId: string) {
   const { data } = await supabaseAdmin
     .from('delivery_logs')
-    .select('id, order_id, customer_name, delivery_address, dispatch_sequence, status')
+    .select('id, order_id, customer_name, delivery_address, dispatch_sequence, status, proof_photo')
     .eq('driver_id', driverId)
     .in('status', ['ASSIGNED', 'IN_TRANSIT'])
     .order('dispatch_sequence', { ascending: true, nullsFirst: false })
     .order('created_at', { ascending: true });
-  return (data || []).map(row => ({
-    id: row.id,
-    orderId: row.order_id,
-    customerName: row.customer_name || 'Client',
-    deliveryAddress: row.delivery_address || '',
-    sequence: row.dispatch_sequence,
-    status: row.status,
-  }));
+  const rows = data || [];
+
+  const orderIds = [...new Set(rows.map(r => r.order_id).filter(Boolean))];
+  const ordersById = new Map<string, any>();
+  if (orderIds.length > 0) {
+    const { data: orderRows } = await supabaseAdmin
+      .from('orders')
+      .select('id, phone, total_amount, payment_mode, product_name, quantity, metadata')
+      .in('id', orderIds);
+    for (const o of orderRows || []) ordersById.set(o.id, o);
+  }
+
+  return rows.map(row => {
+    const order = row.order_id ? ordersById.get(row.order_id) : null;
+    const items = order?.metadata?.items;
+    return {
+      id: row.id,
+      orderId: row.order_id,
+      customerName: row.customer_name || 'Client',
+      deliveryAddress: row.delivery_address || '',
+      sequence: row.dispatch_sequence,
+      status: row.status,
+      hasProof: !!row.proof_photo,
+      phone: order?.phone || null,
+      paymentMode: order?.payment_mode || null,
+      totalAmount: typeof order?.total_amount === 'number' ? order.total_amount : null,
+      items: Array.isArray(items) && items.length > 0
+        ? items.map((i: any) => ({ productName: i.productName || '', quantity: i.quantity ?? null }))
+        : (order?.product_name ? [{ productName: order.product_name, quantity: order.quantity ?? null }] : []),
+    };
+  });
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -66,6 +89,37 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!driver) return res.status(404).json({ error: 'Trip link not found or no longer active.' });
 
   const now = new Date().toISOString();
+
+  if (action === 'proof') {
+    // The driver has no Supabase session on this unauthenticated page, so a
+    // direct client -> storage upload (the pattern every other proof-photo
+    // uploader in the app uses) can't pass storage RLS here. This proxies
+    // the write through the service-role key instead, after the same
+    // token -> driver -> delivery ownership check as every other action.
+    const { deliveryId, photoDataUrl } = req.body || {};
+    const { data: rows } = await supabaseAdmin
+      .from('delivery_logs')
+      .select('id')
+      .eq('id', deliveryId)
+      .eq('driver_id', driver.id)
+      .limit(1);
+    if (!rows?.[0]) return res.status(403).json({ error: 'Stop not found for this trip.' });
+
+    const match = /^data:(image\/\w+);base64,(.+)$/.exec(String(photoDataUrl || ''));
+    if (!match) return res.status(400).json({ error: 'Invalid photo data.' });
+    const [, contentType, base64] = match;
+    const buffer = Buffer.from(base64, 'base64');
+    if (buffer.length > 8 * 1024 * 1024) return res.status(413).json({ error: 'Photo is too large.' });
+
+    const ext = contentType.split('/')[1] || 'jpg';
+    const path = `${deliveryId}/${Date.now()}.${ext}`;
+    const { error: uploadErr } = await supabaseAdmin.storage.from('delivery-proofs').upload(path, buffer, { contentType, upsert: true });
+    if (uploadErr) return res.status(500).json({ error: uploadErr.message });
+
+    const { data: urlData } = supabaseAdmin.storage.from('delivery-proofs').getPublicUrl(path);
+    await supabaseAdmin.from('delivery_logs').update({ proof_photo: urlData.publicUrl, updated_at: now }).eq('id', deliveryId);
+    return res.status(200).json({ ok: true, url: urlData.publicUrl });
+  }
 
   if (action === 'start' || action === 'deliver') {
     const { deliveryId } = req.body || {};

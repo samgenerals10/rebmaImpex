@@ -7,6 +7,7 @@ import {
 import { exportToPDF } from '../../utils/export';
 import { supabase } from '../../lib/supabaseClient';
 import CountUp from '../../components/CountUp';
+import { useCeoSettings } from '../../contexts/CeoSettingsContext';
 
 interface VisitorToday {
   id: string;
@@ -26,6 +27,12 @@ const STAFF_EMAILS = [
 interface Props { addNotification: (msg: string) => void }
 
 export default function DailyReportsView({ addNotification }: Props) {
+  const { getSetting } = useCeoSettings();
+  const handlePrint = () => {
+    if (!getSetting('print_enabled', true)) { addNotification('Printing is currently disabled by the CEO.'); return; }
+    window.print();
+    addNotification('Print dialog opened.');
+  };
   const today = new Date().toISOString().slice(0,10);
   const [selectedDate, setSelectedDate] = useState(today);
   const [notes, setNotes] = useState('');
@@ -250,7 +257,7 @@ export default function DailyReportsView({ addNotification }: Props) {
             className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-secondary)] text-xs font-semibold rounded-xl cursor-pointer hover:bg-[var(--accent-light)]">
             <Mail className="w-3.5 h-3.5" /> Email
           </button>
-          <button onClick={() => { window.print(); addNotification('Print dialog opened.'); }}
+          <button onClick={handlePrint}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-secondary)] text-xs font-semibold rounded-xl cursor-pointer hover:bg-[var(--accent-light)]">
             <Printer className="w-3.5 h-3.5" /> Print
           </button>

@@ -42,6 +42,10 @@ interface Props {
 
 export default function FinanceReportsView({ addNotification, currentUser }: Props) {
   const { getSetting } = useCeoSettings();
+  const handlePrint = () => {
+    if (!getSetting('print_enabled', true)) { addNotification?.('Printing is currently disabled by the CEO.'); return; }
+    window.print();
+  };
   const [generating, setGenerating] = useState<string | null>(null);
   const [showPeriodModal, setShowPeriodModal] = useState<ReportCard | null>(null);
   const [selectedPeriod, setSelectedPeriod] = useState('This Month');
@@ -340,7 +344,7 @@ export default function FinanceReportsView({ addNotification, currentUser }: Pro
                   <td className="px-4 py-3 text-[var(--text-secondary)]">{h.period}</td>
                   <td className="px-4 py-3 text-[var(--text-secondary)] whitespace-nowrap">{h.generatedBy}</td>
                   <td className="px-4 py-3">
-                    <button onClick={() => window.print()} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--border)] text-xs text-[var(--text-secondary)] hover:bg-[var(--bg-input)]"><Download size={12} /> Download PDF</button>
+                    <button onClick={handlePrint} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--border)] text-xs text-[var(--text-secondary)] hover:bg-[var(--bg-input)]"><Download size={12} /> Download PDF</button>
                   </td>
                 </tr>
               ))}

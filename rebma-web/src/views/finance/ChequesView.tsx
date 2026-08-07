@@ -4,6 +4,7 @@ import { Search, Download, MoreVertical, Plus, CheckCircle, XCircle, Clock, Aler
 import { exportToCSV } from '../../utils/export';
 import EntityDetailPanel from '../../components/global/EntityDetailPanel';
 import CountUp from '../../components/CountUp';
+import { useCeoSettings } from '../../contexts/CeoSettingsContext';
 
 interface Cheque {
   id: string;
@@ -32,8 +33,14 @@ interface Props {
 }
 
 export default function FinanceChequesView({ addNotification, currentUser }: Props) {
+  const { getSetting } = useCeoSettings();
   const [cheques, setCheques] = useState<Cheque[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const handlePrint = () => {
+    if (!getSetting('print_enabled', true)) { addNotification?.('Printing is currently disabled by the CEO.'); return; }
+    window.print();
+  };
 
   useEffect(() => {
     const load = async () => {
@@ -278,7 +285,7 @@ export default function FinanceChequesView({ addNotification, currentUser }: Pro
                           {c.status === 'Received' && <button onClick={() => updateStatus(c.id, 'Deposited')} className="w-full text-left px-3 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-input)]">Mark Deposited</button>}
                           <button onClick={() => openEditForm(c)} className="w-full text-left px-3 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-input)]">Edit Cheque</button>
                           <button onClick={() => deleteCheque(c.id)} className="w-full text-left px-3 py-2 text-sm text-rose-600 hover:bg-[var(--bg-input)]">Delete Cheque</button>
-                          <button onClick={() => { window.print(); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-input)]">Export PDF</button>
+                          <button onClick={() => { handlePrint(); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-input)]">Export PDF</button>
                         </div>
                       )}
                     </div>

@@ -53,6 +53,10 @@ interface Props {
   // Default false — always centers on Accra/Ghana on load rather than
   // jumping to wherever the first marker happens to be.
   followFirstMarker?: boolean;
+  // Default false — draws a recent-movement trail behind every marker, not
+  // just a focused one. Off by default so compact map embeds (dashboard
+  // widgets) stay uncluttered; the full Live GPS Tracking page turns it on.
+  showTrails?: boolean;
 }
 
 function truckIcon(color: string) {
@@ -92,9 +96,10 @@ function Recenter({ center }: { center: [number, number] }) {
   return null;
 }
 
-export default function DispatchMap({ deliveries, focusDeliveryId, height = 320, compact = false, pollIntervalSeconds = 20, onMarkerClick, followFirstMarker = false }: Props) {
+export default function DispatchMap({ deliveries, focusDeliveryId, height = 320, compact = false, pollIntervalSeconds = 20, onMarkerClick, followFirstMarker = false, showTrails = false }: Props) {
   const [latestByDriver, setLatestByDriver] = useState<Record<string, LivePoint>>({});
   const [trail, setTrail] = useState<LivePoint[]>([]);
+  const [trailsByDriver, setTrailsByDriver] = useState<Record<string, LivePoint[]>>({});
   const [layer, setLayer] = useState<MapLayer>('street');
   const mountedRef = useRef(true);
 
@@ -138,6 +143,11 @@ export default function DispatchMap({ deliveries, focusDeliveryId, height = 320,
           if (focused?.driverId === row.driver_id) {
             setTrail(prev => [...prev, { lat: Number(row.latitude), lng: Number(row.longitude), recordedAt: row.recorded_at }].slice(-20));
           }
+        } else if (showTrails) {
+          setTrailsByDriver(prev => ({
+            ...prev,
+            [row.driver_id]: [...(prev[row.driver_id] || []), { lat: Number(row.latitude), lng: Number(row.longitude), recordedAt: row.recorded_at }].slice(-20),
+          }));
         }
       })
       .subscribe();
@@ -166,6 +176,32 @@ export default function DispatchMap({ deliveries, focusDeliveryId, height = 320,
         setTrail(data.reverse().map((r: any) => ({ lat: Number(r.latitude), lng: Number(r.longitude), recordedAt: r.recorded_at })));
       });
   }, [focusDeliveryId]);
+
+  // Seed a short recent-movement trail per driver when showTrails is on
+  // (the overview map, unlike the single-delivery focus view above, has no
+  // one driver to key off — so this fetches the last few pings for every
+  // driver currently shown, in one batched query).
+  useEffect(() => {
+    if (!showTrails || focusDeliveryId || driverIds.length === 0) { setTrailsByDriver({}); return; }
+    let cancelled = false;
+    supabase
+      .from('driver_locations')
+      .select('driver_id, latitude, longitude, recorded_at')
+      .in('driver_id', driverIds)
+      .order('recorded_at', { ascending: false })
+      .limit(driverIds.length * 20)
+      .then(({ data }) => {
+        if (cancelled || !data) return;
+        const byDriver: Record<string, LivePoint[]> = {};
+        for (const r of (data as any[]).reverse()) {
+          const arr = byDriver[r.driver_id] || (byDriver[r.driver_id] = []);
+          arr.push({ lat: Number(r.latitude), lng: Number(r.longitude), recordedAt: r.recorded_at });
+          if (arr.length > 20) arr.shift();
+        }
+        setTrailsByDriver(byDriver);
+      });
+    return () => { cancelled = true; };
+  }, [showTrails, focusDeliveryId, driverIds.join(',')]);
 
   const markers = deliveries
     .filter(d => !focusDeliveryId || d.id === focusDeliveryId)
@@ -215,6 +251,18 @@ export default function DispatchMap({ deliveries, focusDeliveryId, height = 320,
         {trail.length > 1 && (
           <Polyline positions={trail.map(p => [p.lat, p.lng])} pathOptions={{ color: '#3b82f6', weight: 3, opacity: 0.6 }} />
         )}
+        {showTrails && !focusDeliveryId && markers.map(({ delivery }) => {
+          const driverTrail = delivery.driverId ? trailsByDriver[delivery.driverId] : undefined;
+          if (!driverTrail || driverTrail.length < 2) return null;
+          const color = delivery.driverState ? DRIVER_STATE_COLOR[delivery.driverState] || '#3b82f6' : '#3b82f6';
+          return (
+            <Polyline
+              key={`trail-${delivery.id}`}
+              positions={driverTrail.map(p => [p.lat, p.lng])}
+              pathOptions={{ color, weight: 3, opacity: 0.55 }}
+            />
+          );
+        })}
         {markers.map(({ delivery, point, isLive }) => {
           const color = delivery.driverState
             ? DRIVER_STATE_COLOR[delivery.driverState] || '#64748b'

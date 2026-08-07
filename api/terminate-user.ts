@@ -45,6 +45,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(403).json({ error: 'Only HR or CEO can terminate accounts.' });
   }
 
+  // account_deletion_authority (Control Center, System Controls): when set
+  // to 'ceo_only' (or 'specific_user' — that option has no configured user
+  // to fall back on, so it's treated the same as ceo_only), this narrows
+  // the HR-or-CEO rule above to CEO-only. Left unset, today's default
+  // (HR or CEO) stands.
+  const { data: authoritySetting } = await supabaseAdmin
+    .from('ceo_settings')
+    .select('setting_value')
+    .eq('setting_key', 'account_deletion_authority')
+    .maybeSingle();
+  const authorityValue = authoritySetting?.setting_value;
+  if ((authorityValue === 'ceo_only' || authorityValue === 'specific_user') && !callerProfile.is_admin) {
+    return res.status(403).json({ error: 'Only the CEO can terminate accounts.' });
+  }
+
   const { userId } = req.body || {};
   if (!userId) {
     return res.status(400).json({ error: 'userId is required.' });

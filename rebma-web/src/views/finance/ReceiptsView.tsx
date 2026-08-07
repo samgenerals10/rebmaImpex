@@ -10,6 +10,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { exportToCSV, safeDisplayName } from '../../utils/export';
 import { documentTemplates, type DocumentTemplate } from '../../services/apiClient';
 import type { OrderLineItem } from '../../types/erp';
+import { useCeoSettings } from '../../contexts/CeoSettingsContext';
 
 const BRAND = { green: '#1a5c32', blue: '#29a9dc', lime: '#7fc241' };
 
@@ -76,7 +77,7 @@ export function generateReceiptNumber(): string {
 // receipt carries the same security features as every other REBMA IMPEX
 // document. Renders an itemized table when the underlying order's line
 // items are available, rather than summary cards.
-export async function printReceipt(r: ReceiptRow, lineItems: OrderLineItem[] | null, template: DocumentTemplate) {
+export async function printReceipt(r: ReceiptRow, lineItems: OrderLineItem[] | null, template: DocumentTemplate, printEnabled: boolean = true) {
   const t = template;
   // Shown on the printed receipt itself exactly as before — including a raw
   // email if that's what's on file, which is legitimate identification, not
@@ -250,7 +251,7 @@ export async function printReceipt(r: ReceiptRow, lineItems: OrderLineItem[] | n
       </div>
     </div>
     <div style="text-align:center;margin-top:16px;display:flex;gap:10px;justify-content:center">
-      <button onclick="window.print()" style="background:${BRAND.green};color:#fff;border:none;padding:11px 30px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer">🖨 Print Receipt</button>
+      ${printEnabled ? `<button onclick="window.print()" style="background:${BRAND.green};color:#fff;border:none;padding:11px 30px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer">🖨 Print Receipt</button>` : `<button disabled title="Printing is currently disabled by the CEO" style="background:#cbd5e1;color:#64748b;border:none;padding:11px 30px;border-radius:9px;font-size:13px;font-weight:700;cursor:not-allowed">🖨 Print (disabled)</button>`}
       <button onclick="window.close()" style="background:#f1f5f9;color:#334155;border:1px solid #e2e8f0;padding:11px 26px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer">Close</button>
     </div>
   </div>
@@ -266,6 +267,7 @@ interface Props {
 }
 
 export default function FinanceReceiptsView({ addNotification }: Props) {
+  const { getSetting } = useCeoSettings();
   const [receipts, setReceipts] = useState<ReceiptRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -329,7 +331,7 @@ export default function FinanceReceiptsView({ addNotification }: Props) {
       } catch { /* falls back to the no-items message on the receipt */ }
     }
     const template = await documentTemplates.get('RECEIPT');
-    printReceipt({ ...r, customerPhone: orderPhone }, lineItems, template);
+    printReceipt({ ...r, customerPhone: orderPhone }, lineItems, template, getSetting('print_enabled', true));
     addNotification?.(`Opened receipt ${r.receiptNumber} for printing.`);
   };
 

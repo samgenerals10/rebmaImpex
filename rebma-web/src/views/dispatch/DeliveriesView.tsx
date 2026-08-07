@@ -7,6 +7,7 @@ import {
   Calendar, User, Package, UserCheck, Edit, Trash2, MessageCircle
 } from 'lucide-react';
 import { exportToCSV, exportToPDF, downloadRowPDF } from '../../utils/export';
+import { uploadFile } from '../../utils/uploadFile';
 import type { DeliveryRecord, Driver } from '../../types/erp';
 import DispatchMap from '../../components/dispatch/DispatchMap';
 import { useFullscreenToggle, FullscreenButton } from '../../components/global/FullscreenToggle';
@@ -122,7 +123,7 @@ function AssignDriverModal({
 
 // ── Delivery Detail View ───────────────────────────────────────────────────────
 function DeliveryDetail({
-  delivery, drivers, onBack, onMarkDelivered, onAssign, addNotification,
+  delivery, drivers, onBack, onMarkDelivered, onAssign, addNotification, onUploadProof,
 }: {
   delivery: DeliveryRecord;
   drivers: Driver[];
@@ -130,7 +131,30 @@ function DeliveryDetail({
   onMarkDelivered: (id: string) => void;
   onAssign: (delivery: DeliveryRecord) => void;
   addNotification: (msg: string) => void;
+  onUploadProof: (id: string, url: string) => void;
 }) {
+  const proofInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingProof, setUploadingProof] = useState(false);
+
+  const handleProofFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setUploadingProof(true);
+    try {
+      const url = await uploadFile(file, 'delivery-proofs', delivery.id);
+      if (!url) throw new Error('Upload failed.');
+      const { error } = await supabase.from('delivery_logs').update({ proof_photo: url }).eq('id', delivery.id);
+      if (error) throw error;
+      onUploadProof(delivery.id, url);
+      addNotification('Proof of delivery uploaded.');
+    } catch (err: any) {
+      addNotification(`Upload failed: ${err.message || 'please try again.'}`);
+    } finally {
+      setUploadingProof(false);
+    }
+  };
+
   const badge = STATUS_META[delivery.status];
   const driver = drivers.find(d => d.id === delivery.driverId);
   const timeline = [
@@ -264,11 +288,12 @@ function DeliveryDetail({
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-semibold text-[var(--text-primary)]">Proof of Delivery</h3>
               {!delivery.proofUrl && delivery.status !== 'DELIVERED' && (
-                <button onClick={() => addNotification('Proof of delivery camera opened')}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-white text-xs font-medium" style={{ background: 'var(--accent)' }}>
-                  <Camera size={12} /> Upload Proof
+                <button onClick={() => proofInputRef.current?.click()} disabled={uploadingProof}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-white text-xs font-medium disabled:opacity-60" style={{ background: 'var(--accent)' }}>
+                  <Camera size={12} /> {uploadingProof ? 'Uploading...' : 'Upload Proof'}
                 </button>
               )}
+              <input ref={proofInputRef} type="file" accept="image/*" onChange={handleProofFileChange} style={{ display: 'none' }} />
             </div>
             {delivery.proofUrl ? (
               <img src={delivery.proofUrl} alt="Proof of delivery" className="w-full aspect-video object-cover rounded-xl border border-[var(--border)]" />
@@ -534,8 +559,14 @@ export default function DeliveriesView({ addNotification, currentUser, setActive
     setSubmitting(true);
     try {
       const now = new Date().toISOString();
-      const { error } = await supabase.from('delivery_logs').update({ driver_id: driverId, driver_name: driver.fullName, vehicle_id: driver.truckId, status: 'ASSIGNED', notes: notes || null }).eq('id', delivery.id);
-      if (error) throw error;
+      const { pending } = await dispatchApi.assignDriverToDelivery(delivery.id, driverId, driver.fullName, driver.truckId, notes);
+
+      if (pending) {
+        addNotification(`Assignment of ${driver.fullName} to ${delivery.id} sent to Management for approval.`);
+        setAssignTarget(null);
+        setSubmitting(false);
+        return;
+      }
 
       setDeliveries(prev => prev.map(d => d.id === delivery.id
         ? { ...d, driverId, driverName: driver.fullName, vehicleId: driver.truckId, status: 'ASSIGNED', deliveryNotes: notes || d.deliveryNotes }
@@ -570,6 +601,10 @@ export default function DeliveriesView({ addNotification, currentUser, setActive
         onMarkDelivered={markDelivered}
         onAssign={del => { setAssignTarget(del); }}
         addNotification={addNotification}
+        onUploadProof={(id, url) => {
+          setDeliveries(prev => prev.map(d => d.id === id ? { ...d, proofUrl: url } : d));
+          setDetailRecord(prev => prev && prev.id === id ? { ...prev, proofUrl: url } : prev);
+        }}
       />
     );
   }
