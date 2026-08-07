@@ -13,16 +13,13 @@ function generateTempPassword(): string {
 
 interface Approval {
   id: string;
-  type: 'credit' | 'cargo' | 'payment' | 'registration' | 'price';
+  type: 'credit' | 'cargo' | 'payment' | 'registration';
   requester: string;
   department: string;
   description: string;
   amount?: number;
   date_submitted: string;
   status: 'pending' | 'approved' | 'rejected';
-  // Full source row for types (price) whose approve/reject needs fields
-  // beyond what the summary card displays.
-  raw?: any;
 }
 
 const TYPE_STYLES: Record<string, string> = {
@@ -30,7 +27,6 @@ const TYPE_STYLES: Record<string, string> = {
   cargo:        'bg-amber-100 text-amber-700',
   payment:      'bg-emerald-100 text-emerald-700',
   registration: 'bg-purple-100 text-purple-700',
-  price:        'bg-indigo-100 text-indigo-700',
 };
 
 interface Props { currentUser: CurrentUser | null; addNotification: (msg: string) => void }
@@ -38,7 +34,7 @@ interface Props { currentUser: CurrentUser | null; addNotification: (msg: string
 export default function ApprovalsView({ currentUser, addNotification }: Props) {
   const [rows, setRows]           = useState<Approval[]>([]);
   const [loading, setLoading]     = useState(true);
-  const [tab, setTab]             = useState<'all'|'credit'|'cargo'|'payment'|'registration'|'price'>('all');
+  const [tab, setTab]             = useState<'all'|'credit'|'cargo'|'payment'|'registration'>('all');
   const [history, setHistory]     = useState<Approval[]>([]);
   const [credPopup, setCredPopup] = useState<{ fullName: string; password: string } | null>(null);
 
@@ -70,17 +66,6 @@ export default function ApprovalsView({ currentUser, addNotification }: Props) {
         .eq('status', 'PENDING_APPROVAL')
         .limit(50);
 
-      // Query pending price change requests (ceo_must_approve_prices) —
-      // 'price' was already a defined category/tab here, just never wired
-      // to real data; the live requests lived only in CEO Control Center.
-      const { data: priceRequests } = await supabase
-        .from('goods_price_change_requests')
-        .select('*')
-        .eq('status', 'PENDING')
-        .order('created_at', { ascending: false })
-        .limit(50)
-        .then(r => r, () => ({ data: [] }));
-
       const approvals: Approval[] = [
         ...(orders || []).map((o: any) => ({
           id: o.id,
@@ -110,17 +95,6 @@ export default function ApprovalsView({ currentUser, addNotification }: Props) {
           date_submitted: p.created_at?.split('T')[0] || '',
           status: 'pending' as const,
         })),
-        ...(priceRequests || []).map((r: any) => ({
-          id: r.id,
-          type: 'price' as const,
-          requester: r.requested_by_name || 'Management',
-          department: 'MANAGEMENT',
-          description: `${r.product_name} → ${r.currency} ${Number(r.unit_price).toLocaleString()}`,
-          amount: Number(r.unit_price || 0),
-          date_submitted: r.created_at?.split('T')[0] || '',
-          status: 'pending' as const,
-          raw: r,
-        })),
       ];
 
       setRows(approvals);
@@ -132,19 +106,22 @@ export default function ApprovalsView({ currentUser, addNotification }: Props) {
         .order('timestamp', { ascending: false })
         .limit(50);
 
-      const historyLogs: Approval[] = (auditLogs || []).map((log: any) => ({
-        id: log.id,
-        type: log.action.toLowerCase().includes('price') ? 'price'
-              : log.action.toLowerCase().includes('cargo') ? 'cargo'
-              : log.action.toLowerCase().includes('payment') ? 'payment'
-              : log.action.toLowerCase().includes('credit') ? 'credit'
-              : 'registration',
-        requester: log.performed_by || 'System',
-        department: log.department || 'GENERAL',
-        description: log.details || log.action,
-        date_submitted: log.timestamp ? log.timestamp.split('T')[0] : '',
-        status: log.action.toLowerCase().includes('reject') ? 'rejected' : 'approved',
-      }));
+      // Price-request decisions get their own recent-decisions list on the
+      // dedicated Price Approvals page — excluded here so they don't dupe.
+      const historyLogs: Approval[] = (auditLogs || [])
+        .filter((log: any) => !log.action.toLowerCase().includes('price'))
+        .map((log: any) => ({
+          id: log.id,
+          type: log.action.toLowerCase().includes('cargo') ? 'cargo'
+                : log.action.toLowerCase().includes('payment') ? 'payment'
+                : log.action.toLowerCase().includes('credit') ? 'credit'
+                : 'registration',
+          requester: log.performed_by || 'System',
+          department: log.department || 'GENERAL',
+          description: log.details || log.action,
+          date_submitted: log.timestamp ? log.timestamp.split('T')[0] : '',
+          status: log.action.toLowerCase().includes('reject') ? 'rejected' : 'approved',
+        }));
 
       setHistory(historyLogs);
     } catch (e) {
@@ -176,25 +153,9 @@ export default function ApprovalsView({ currentUser, addNotification }: Props) {
         const pw = generateTempPassword();
         await hr.approveUser(id, true, pw);
         setCredPopup({ fullName: item.requester, password: pw });
-      } else if (item.type === 'price' && item.raw) {
-        const req = item.raw;
-        await supabase.from('goods_prices').upsert([{
-          product_name: req.product_name,
-          unit_price: req.unit_price,
-          cost_price: req.cost_price,
-          category: req.category,
-          currency: req.currency,
-          product_image: req.product_image,
-          updated_by: req.requested_by_name,
-          updated_at: new Date().toISOString(),
-          status: 'active',
-        }], { onConflict: 'product_name' });
-        await supabase.from('goods_price_change_requests').update({
-          status: 'APPROVED', decided_at: new Date().toISOString(),
-        }).eq('id', id);
       }
 
-      if (item.type !== 'registration' && item.type !== 'price') {
+      if (item.type !== 'registration') {
         // approve-user.ts already writes its own audit entry for registrations.
         await supabase.from('global_audit_history').insert({
           action: `Approved ${item.type} request`,
@@ -223,13 +184,9 @@ export default function ApprovalsView({ currentUser, addNotification }: Props) {
         await supabase.from('cargo_intake').update({ status: 'REJECTED' }).eq('id', id);
       } else if (item.type === 'registration') {
         await hr.approveUser(id, false);
-      } else if (item.type === 'price') {
-        await supabase.from('goods_price_change_requests').update({
-          status: 'REJECTED', decided_at: new Date().toISOString(),
-        }).eq('id', id);
       }
 
-      if (item.type !== 'registration' && item.type !== 'price') {
+      if (item.type !== 'registration') {
         await supabase.from('global_audit_history').insert({
           action: `Rejected ${item.type} request`,
           department: item.department,
@@ -247,7 +204,7 @@ export default function ApprovalsView({ currentUser, addNotification }: Props) {
     }
   };
 
-  const TABS = ['all','credit','cargo','payment','registration','price'] as const;
+  const TABS = ['all','credit','cargo','payment','registration'] as const;
 
   return (
     <div className="space-y-5">

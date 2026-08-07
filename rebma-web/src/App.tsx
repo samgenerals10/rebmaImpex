@@ -50,6 +50,7 @@ import FinanceStatementView from './views/finance/StatementView';
 import CeoWalletsView from './views/ceo/WalletsView';
 import CeoAccountsView from './views/ceo/AccountsView';
 import CeoApprovalsView from './views/ceo/ApprovalsView';
+import CeoPriceApprovalsView from './views/ceo/PriceApprovalsView';
 import CeoSupplierOrdersView from './views/ceo/SupplierOrdersView';
 import CeoControlCenter from './views/ceo/CeoControlCenter';
 import MaintenancePage from './components/MaintenancePage';
@@ -3075,6 +3076,7 @@ export default function App() {
       if (activeSubTab === 'Wallets')         return <CeoWalletsView setActiveSubTab={setActiveSubTab} />;
       if (activeSubTab === 'Accounts')        return <CeoAccountsView setActiveSubTab={setActiveSubTab} />;
       if (activeSubTab === 'Approvals')       return <CeoApprovalsView currentUser={currentUser} addNotification={addNotification} />;
+      if (activeSubTab === 'PriceApprovals')  return <CeoPriceApprovalsView currentUser={currentUser} addNotification={addNotification} />;
       if (activeSubTab === 'PriceCatalog')    return <GoodsPriceCatalogView addNotification={addNotification} />;
       if (activeSubTab === 'SupplierOrders')  return <CeoSupplierOrdersView currentUser={currentUser} addNotification={addNotification} />;
       if (activeSubTab === 'DeptActivity')    return <DeptActivityView currentUser={currentUser} addNotification={addNotification} />;

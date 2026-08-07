@@ -95,6 +95,7 @@ export default function Sidebar({
       { id: 'Wallets',         label: 'Wallets',               icon: Wallet },
       { id: 'Accounts',        label: 'Accounts',              icon: CreditCard },
       { id: 'Approvals',       label: 'Approvals',             icon: ClipboardCheck },
+      { id: 'PriceApprovals',  label: 'Price Approvals',       icon: Banknote },
       { id: 'Tracking',        label: 'GPS Tracking',          icon: MapPin },
       { id: 'Messages',        label: 'Messages & Boardroom',  icon: MessageCircle },
       { id: 'DeptActivity',    label: 'Dept Activity',          icon: Activity },
