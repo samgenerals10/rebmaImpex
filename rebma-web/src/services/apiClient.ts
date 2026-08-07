@@ -890,69 +890,80 @@ export const management = {
       .select();
     if (error) throw new Error(error.message);
 
-    // If approved cargo intake is in-house production, sync it to stock table
+    // Sync approved cargo into the real stock table — this used to only run
+    // for company === 'REBMA IN-HOUSE PRODUCTION', so approving a normal
+    // imported shipment (the majority case: goods from an actual supplier/
+    // port of origin) never touched `stock` at all. Everything downstream
+    // that reads live stock — the CEO dashboard's Products Available to
+    // Sell card, order stock-availability checks, deductStockForOrder —
+    // reads `stock.quantity` directly, so that cargo was approved but
+    // effectively invisible as sellable inventory until someone manually
+    // re-entered it via "Log Stock Intake". Operations' own Stock page
+    // showed a plausible number regardless, since its per-batch "REMAINING"
+    // figure is computed independently from cargo_intake.quantity minus
+    // stock_ledger history, not from stock.quantity — which is exactly why
+    // the two pages could show different numbers for the same product.
     if (approve && intake && intake.length > 0) {
       const approvedCargo = intake[0];
-      if (approvedCargo.company === 'REBMA IN-HOUSE PRODUCTION') {
-        try {
-          const { data: existingStock } = await supabase
+      const isInHouse = approvedCargo.company === 'REBMA IN-HOUSE PRODUCTION';
+      try {
+        const { data: existingStock } = await supabase
+          .from('stock')
+          .select('*')
+          .eq('product_code', approvedCargo.goods_code)
+          .limit(1);
+
+        if (existingStock && existingStock.length > 0) {
+          const newQty = (existingStock[0].quantity || 0) + approvedCargo.quantity;
+          await supabase
             .from('stock')
-            .select('*')
-            .eq('product_code', approvedCargo.goods_code)
-            .limit(1);
+            .update({
+              quantity: newQty,
+              last_updated: new Date().toISOString(),
+              updated_by: performerId
+            })
+            .eq('id', existingStock[0].id);
 
-          if (existingStock && existingStock.length > 0) {
-            const newQty = (existingStock[0].quantity || 0) + approvedCargo.quantity;
-            await supabase
-              .from('stock')
-              .update({
-                quantity: newQty,
-                last_updated: new Date().toISOString(),
-                updated_by: performerId
-              })
-              .eq('id', existingStock[0].id);
+          await supabase
+            .from('stock_ledger')
+            .insert({
+              product_name: approvedCargo.product_name,
+              movement_type: 'ADD',
+              quantity: approvedCargo.quantity,
+              reference: isInHouse ? 'In-House Production Approved' : 'Cargo Approved',
+              notes: `Cargo Intake ID: ${intakeId}`,
+              performed_by: performerId,
+              created_at: new Date().toISOString()
+            });
+        } else {
+          await supabase
+            .from('stock')
+            .insert({
+              product_name: approvedCargo.product_name,
+              product_code: approvedCargo.goods_code,
+              category: isInHouse ? 'In-House Production' : (approvedCargo.destination || 'Imported Cargo'),
+              quantity: approvedCargo.quantity,
+              maximum_level: 1000,
+              minimum_level: 10,
+              unit: 'units',
+              last_updated: new Date().toISOString(),
+              updated_by: performerId
+            });
 
-            await supabase
-              .from('stock_ledger')
-              .insert({
-                product_name: approvedCargo.product_name,
-                movement_type: 'ADD',
-                quantity: approvedCargo.quantity,
-                reference: 'In-House Production Approved',
-                notes: `Cargo Intake ID: ${intakeId}`,
-                performed_by: performerId,
-                created_at: new Date().toISOString()
-              });
-          } else {
-            await supabase
-              .from('stock')
-              .insert({
-                product_name: approvedCargo.product_name,
-                product_code: approvedCargo.goods_code,
-                category: 'In-House Production',
-                quantity: approvedCargo.quantity,
-                maximum_level: 1000,
-                minimum_level: 10,
-                unit: 'units',
-                last_updated: new Date().toISOString(),
-                updated_by: performerId
-              });
-
-            await supabase
-              .from('stock_ledger')
-              .insert({
-                product_name: approvedCargo.product_name,
-                movement_type: 'ADD',
-                quantity: approvedCargo.quantity,
-                reference: 'In-House Production Approved',
-                notes: `Cargo Intake ID: ${intakeId}`,
-                performed_by: performerId,
-                created_at: new Date().toISOString()
-              });
-          }
-        } catch (e) {
-          console.error('Error auto-syncing to stock table:', e);
+          await supabase
+            .from('stock_ledger')
+            .insert({
+              product_name: approvedCargo.product_name,
+              movement_type: 'ADD',
+              quantity: approvedCargo.quantity,
+              reference: isInHouse ? 'In-House Production Approved' : 'Cargo Approved',
+              notes: `Cargo Intake ID: ${intakeId}`,
+              performed_by: performerId,
+              created_at: new Date().toISOString()
+            });
         }
+      } catch (e) {
+        console.error('Error auto-syncing to stock table:', e);
       }
     }
 
