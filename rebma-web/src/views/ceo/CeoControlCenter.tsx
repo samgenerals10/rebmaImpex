@@ -1250,6 +1250,8 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
           description="Allow Operations to log new cargo receipts from the port. When OFF the Log Intake button is disabled." />
         <SettingToggle settingKey="stock_adjustments_allowed" label="Stock Adjustments Allowed"
           description="Allow manual stock level adjustments in Operations. When OFF only system-generated stock movements are allowed." />
+        <SettingToggle settingKey="management_can_delete_stock" label="Management Can Delete Stock"
+          description="Allow Management to permanently remove stock items from the Manage Stock section on their dashboard. When OFF the delete controls there are hidden." />
         <SettingToggle settingKey="quality_check_needs_cosign" label="Require Co-sign on Quality Check"
           description="When ON quality check results require CEO or Management approval before stock is updated. Operations cannot pass goods independently." />
         <SettingToggle settingKey="discrepancy_auto_alert_ceo" label="CEO Discrepancy Alerts"

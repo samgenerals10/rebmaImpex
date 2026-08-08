@@ -68,7 +68,10 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
   const [selectedStockIds, setSelectedStockIds] = useState<Set<string>>(new Set());
   const [deleteTargets, setDeleteTargets] = useState<any[] | null>(null);
   const [deleteReason, setDeleteReason] = useState('');
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [deletingStock, setDeletingStock] = useState(false);
+  const [loadingDeleteContext, setLoadingDeleteContext] = useState(false);
+  const [openOrdersWarning, setOpenOrdersWarning] = useState<{ product: string; count: number }[]>([]);
 
   const firstName = currentUser?.fullName?.split(' ')[0] || 'Manager';
 
@@ -642,15 +645,66 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
     });
   }
 
-  function openDeleteStock(rows: any[]) {
+  const OPEN_ORDER_STATUSES_EXCLUDED = ['DELIVERED', 'REJECTED', 'CANCELLED', 'COMPLETED'];
+
+  // Expected text a manager must type to unlock the Delete button — the exact
+  // product name for a single item, or "DELETE" for a batch. Scales the
+  // friction to the blast radius instead of one shared reason unlocking an
+  // arbitrarily large "select all" batch.
+  const deleteConfirmExpected = deleteTargets && deleteTargets.length === 1
+    ? deleteTargets[0].product_name
+    : 'DELETE';
+
+  async function openDeleteStock(rows: any[]) {
+    if (!getSetting('management_can_delete_stock', true)) {
+      addNotification?.('Stock deletion is currently disabled by the CEO.');
+      return;
+    }
     setDeleteTargets(rows);
     setDeleteReason('');
+    setDeleteConfirmText('');
+    setOpenOrdersWarning([]);
+    setLoadingDeleteContext(true);
+    try {
+      // Re-fetch current quantity right before showing the confirmation —
+      // the list in memory can be stale by the time a manager gets here, and
+      // the ledger should log what actually existed, not what was on screen
+      // when the page loaded.
+      const ids = rows.map(r => r.id);
+      const { data: freshRows } = await supabase.from('stock').select('*').in('id', ids);
+      if (freshRows && freshRows.length) {
+        setDeleteTargets(prev => (prev || []).map(r => freshRows.find((f: any) => f.id === r.id) || r));
+      }
+
+      // Warn if any of these products still have unfulfilled orders against
+      // them — deletion doesn't touch orders, so this is informational, not
+      // a block, but a manager should see it before confirming.
+      const productNames = Array.from(new Set(rows.map(r => r.product_name).filter(Boolean)));
+      if (productNames.length) {
+        const { data: openOrders } = await supabase
+          .from('orders')
+          .select('product_name, status')
+          .in('product_name', productNames)
+          .not('status', 'in', `(${OPEN_ORDER_STATUSES_EXCLUDED.join(',')})`);
+        const counts: Record<string, number> = {};
+        (openOrders || []).forEach((o: any) => { counts[o.product_name] = (counts[o.product_name] || 0) + 1; });
+        setOpenOrdersWarning(Object.entries(counts).map(([product, count]) => ({ product, count })));
+      }
+    } catch (e) {
+      console.error('Error loading delete context:', e);
+    } finally {
+      setLoadingDeleteContext(false);
+    }
   }
 
   async function confirmDeleteStock() {
     if (!deleteTargets || deleteTargets.length === 0) return;
-    if (!getSetting('stock_adjustments_allowed', true)) { addNotification?.('Stock adjustments are currently disabled by the CEO.'); return; }
+    if (!getSetting('management_can_delete_stock', true)) { addNotification?.('Stock deletion is currently disabled by the CEO.'); return; }
     if (!deleteReason.trim()) { addNotification?.('A reason for deletion is required.'); return; }
+    if (deleteConfirmText.trim() !== deleteConfirmExpected) {
+      addNotification?.(`Type "${deleteConfirmExpected}" to confirm.`);
+      return;
+    }
     const performedBy = currentUser?.fullName || 'Management';
     const { data: sessionData } = await supabase.auth.getSession();
     const performerId = sessionData.session?.user?.id || null;
@@ -675,11 +729,15 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
         if (delErr) throw delErr;
       }
 
+      // The ledger row above only ever preserves product_name + quantity —
+      // stash a full snapshot of every deleted row in the audit trail so a
+      // mistaken delete is actually reconstructable (category, min/max
+      // levels, product_code, etc. would otherwise be gone for good).
       await supabase.from('global_audit_history').insert({
         action: deleteTargets.length === 1 ? `DELETE_STOCK: ${deleteTargets[0].product_name}` : `DELETE_STOCK: ${deleteTargets.length} items`,
         department: 'MANAGEMENT',
         performed_by: performedBy,
-        details: `Deleted ${deleteTargets.map(r => `${r.product_name} (${r.quantity} ${r.unit || 'units'})`).join(', ')}. Reason: ${deleteReason.trim()}`,
+        details: `Deleted ${deleteTargets.map(r => `${r.product_name} (${r.quantity} ${r.unit || 'units'})`).join(', ')}. Reason: ${deleteReason.trim()}. Snapshot: ${JSON.stringify(deleteTargets)}`,
         timestamp: new Date().toISOString(),
       });
 
@@ -687,6 +745,8 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
       setSelectedStockIds(new Set());
       setDeleteTargets(null);
       setDeleteReason('');
+      setDeleteConfirmText('');
+      setOpenOrdersWarning([]);
       fetchData();
     } catch (e: any) {
       console.error(e);
@@ -1413,10 +1473,14 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
             <h3 className="font-bold text-lg text-[var(--text-primary)] flex items-center gap-2">
               <Trash2 size={16} className="text-[var(--accent)]" /> Manage Stock
             </h3>
-            <p className="text-xs text-[var(--text-muted)] mt-0.5">Remove a stock item entirely — this cannot be undone. A reason is logged to the audit trail.</p>
+            <p className="text-xs text-[var(--text-muted)] mt-0.5">
+              {getSetting('management_can_delete_stock', true)
+                ? 'Remove a stock item entirely — this cannot be undone. A reason is logged to the audit trail.'
+                : 'Stock deletion is currently disabled by the CEO.'}
+            </p>
           </div>
           <div className="flex items-center gap-2 w-full sm:w-auto">
-            {selectedStockIds.size > 0 && (
+            {getSetting('management_can_delete_stock', true) && selectedStockIds.size > 0 && (
               <button onClick={() => openDeleteStock(filteredStock.filter(s => selectedStockIds.has(s.id)))}
                 className="flex items-center gap-1 px-3 py-2 rounded-xl bg-rose-500 text-white text-xs font-semibold hover:bg-rose-600 cursor-pointer whitespace-nowrap">
                 <Trash2 size={12} /> Delete {selectedStockIds.size} Selected
@@ -1439,6 +1503,7 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
               <tr className="border-b border-[var(--border)]">
                 <th className="py-2 px-3 w-8">
                   <input type="checkbox"
+                    disabled={!getSetting('management_can_delete_stock', true)}
                     checked={filteredStock.length > 0 && filteredStock.every(s => selectedStockIds.has(s.id))}
                     onChange={e => {
                       setSelectedStockIds(prev => {
@@ -1448,7 +1513,7 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
                         return next;
                       });
                     }}
-                    className="cursor-pointer" />
+                    className="cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed" />
                 </th>
                 {['Product', 'Category', 'Qty', 'Unit', ''].map(h => (
                   <th key={h} className="py-2 px-3 text-[var(--text-muted)] font-semibold">{h}</th>
@@ -1461,15 +1526,18 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
               ) : filteredStock.map(s => (
                 <tr key={s.id} className="hover:bg-[var(--accent-light)]">
                   <td className="py-2.5 px-3">
-                    <input type="checkbox" checked={selectedStockIds.has(s.id)} onChange={() => toggleStockSelect(s.id)} className="cursor-pointer" />
+                    <input type="checkbox" disabled={!getSetting('management_can_delete_stock', true)}
+                      checked={selectedStockIds.has(s.id)} onChange={() => toggleStockSelect(s.id)}
+                      className="cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed" />
                   </td>
                   <td className="py-2.5 px-3 font-semibold text-[var(--text-primary)]">{s.product_name}</td>
                   <td className="py-2.5 px-3 text-[var(--text-secondary)]">{s.category || '—'}</td>
                   <td className="py-2.5 px-3 text-[var(--text-secondary)]">{s.quantity}</td>
                   <td className="py-2.5 px-3 text-[var(--text-secondary)]">{s.unit || 'units'}</td>
                   <td className="py-2.5 px-3">
-                    <button onClick={() => openDeleteStock([s])}
-                      className="px-2.5 py-1 rounded-lg text-[10px] font-semibold border border-rose-300 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 cursor-pointer">
+                    <button onClick={() => openDeleteStock([s])} disabled={!getSetting('management_can_delete_stock', true)}
+                      title={!getSetting('management_can_delete_stock', true) ? 'Stock deletion is currently disabled by the CEO' : undefined}
+                      className="px-2.5 py-1 rounded-lg text-[10px] font-semibold border border-rose-300 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent">
                       Delete
                     </button>
                   </td>
@@ -1483,7 +1551,7 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
       {/* Delete stock confirmation modal */}
       {deleteTargets && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-2xl bg-[var(--bg-card)] border border-[var(--border)] shadow-xl p-6 space-y-4">
+          <div className="w-full max-w-md rounded-2xl bg-[var(--bg-card)] border border-[var(--border)] shadow-xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
             <div>
               <h3 className="font-bold text-[var(--text-primary)] flex items-center gap-2">
                 <AlertTriangle size={16} className="text-rose-500" /> Delete {deleteTargets.length === 1 ? 'Stock Item' : `${deleteTargets.length} Stock Items`}
@@ -1501,17 +1569,36 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
                 ))}
               </div>
             )}
+            {loadingDeleteContext ? (
+              <p className="text-[11px] text-[var(--text-muted)] flex items-center gap-1.5"><RefreshCw size={11} className="animate-spin" /> Checking current stock and open orders…</p>
+            ) : openOrdersWarning.length > 0 && (
+              <div className="text-[11px] text-amber-700 dark:text-amber-400 bg-amber-500/10 rounded-lg px-3 py-2 space-y-0.5">
+                <p className="font-semibold">Heads up — these products still have unfulfilled orders:</p>
+                {openOrdersWarning.map(w => (
+                  <p key={w.product}>• {w.product}: {w.count} open order{w.count !== 1 ? 's' : ''}</p>
+                ))}
+                <p>Deleting stock won't cancel or change those orders.</p>
+              </div>
+            )}
             <div>
               <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Reason for deletion <span className="text-rose-500">*</span></label>
               <textarea value={deleteReason} onChange={e => setDeleteReason(e.target.value)} rows={2}
                 placeholder="E.g. Discontinued product, duplicate entry, written off"
                 className="w-full px-3 py-2 text-sm rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-primary)] resize-none focus:outline-none focus:border-[var(--accent)]" />
             </div>
+            <div>
+              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">
+                Type <span className="font-mono font-bold text-[var(--text-primary)]">{deleteConfirmExpected}</span> to confirm <span className="text-rose-500">*</span>
+              </label>
+              <input value={deleteConfirmText} onChange={e => setDeleteConfirmText(e.target.value)}
+                placeholder={deleteConfirmExpected}
+                className="w-full px-3 py-2 text-sm rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />
+            </div>
             <div className="flex gap-3 pt-2">
-              <button onClick={() => { setDeleteTargets(null); setDeleteReason(''); }} disabled={deletingStock}
+              <button onClick={() => { setDeleteTargets(null); setDeleteReason(''); setDeleteConfirmText(''); setOpenOrdersWarning([]); }} disabled={deletingStock}
                 className="flex-1 py-2 rounded-xl border border-[var(--border)] text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-input)] cursor-pointer disabled:opacity-50">Cancel</button>
-              <button onClick={confirmDeleteStock} disabled={deletingStock}
-                className="flex-1 py-2 rounded-xl bg-rose-500 text-white text-sm font-semibold hover:bg-rose-600 cursor-pointer disabled:opacity-50">
+              <button onClick={confirmDeleteStock} disabled={deletingStock || deleteConfirmText.trim() !== deleteConfirmExpected || !deleteReason.trim()}
+                className="flex-1 py-2 rounded-xl bg-rose-500 text-white text-sm font-semibold hover:bg-rose-600 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
                 {deletingStock ? 'Deleting…' : 'Delete'}
               </button>
             </div>
