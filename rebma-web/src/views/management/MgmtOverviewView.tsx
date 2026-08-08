@@ -4,7 +4,7 @@ import { useRealtimeChannel } from '../../hooks/useRealtimeChannel';
 import {
   TrendingUp, TrendingDown, Clock, CheckCircle, XCircle, AlertTriangle,
   Package, CreditCard, DollarSign, Activity, Users, BarChart2,
-  ArrowRight, RefreshCw, Edit3, Search
+  ArrowRight, RefreshCw, Edit3, Search, Trash2
 } from 'lucide-react';
 import PendingApprovalsAlert from '../../components/global/PendingApprovalsAlert';
 import ProductCatalogCard from '../../components/ProductCatalogCard';
@@ -63,6 +63,12 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
     country: '', company: '', quantity: '', weight: '', destination: '', discrepancies: '', unitPrice: '', note: '',
   });
   const [savingCorrection, setSavingCorrection] = useState(false);
+
+  const [stockSearch, setStockSearch] = useState('');
+  const [selectedStockIds, setSelectedStockIds] = useState<Set<string>>(new Set());
+  const [deleteTargets, setDeleteTargets] = useState<any[] | null>(null);
+  const [deleteReason, setDeleteReason] = useState('');
+  const [deletingStock, setDeletingStock] = useState(false);
 
   const firstName = currentUser?.fullName?.split(' ')[0] || 'Manager';
 
@@ -618,6 +624,75 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
       addNotification?.(e.message || 'Failed to save correction.');
     } finally {
       setSavingCorrection(false);
+    }
+  }
+
+  const filteredStock = stockList.filter(s =>
+    !stockSearch ||
+    String(s.product_name || '').toLowerCase().includes(stockSearch.toLowerCase()) ||
+    String(s.product_code || '').toLowerCase().includes(stockSearch.toLowerCase()) ||
+    String(s.category || '').toLowerCase().includes(stockSearch.toLowerCase())
+  );
+
+  function toggleStockSelect(id: string) {
+    setSelectedStockIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  function openDeleteStock(rows: any[]) {
+    setDeleteTargets(rows);
+    setDeleteReason('');
+  }
+
+  async function confirmDeleteStock() {
+    if (!deleteTargets || deleteTargets.length === 0) return;
+    if (!getSetting('stock_adjustments_allowed', true)) { addNotification?.('Stock adjustments are currently disabled by the CEO.'); return; }
+    if (!deleteReason.trim()) { addNotification?.('A reason for deletion is required.'); return; }
+    const performedBy = currentUser?.fullName || 'Management';
+    const { data: sessionData } = await supabase.auth.getSession();
+    const performerId = sessionData.session?.user?.id || null;
+
+    setDeletingStock(true);
+    try {
+      for (const row of deleteTargets) {
+        // Log the removal before deleting the row so the ledger keeps a
+        // record of what quantity existed at time of deletion.
+        const { error: ledgerErr } = await supabase.from('stock_ledger').insert({
+          product_name: row.product_name,
+          movement_type: 'DELETION',
+          quantity: -(Number(row.quantity) || 0),
+          reference: row.id,
+          notes: `Deleted by ${performedBy}. Reason: ${deleteReason.trim()}`,
+          performed_by: performerId,
+          created_at: new Date().toISOString(),
+        });
+        if (ledgerErr) throw ledgerErr;
+
+        const { error: delErr } = await supabase.from('stock').delete().eq('id', row.id);
+        if (delErr) throw delErr;
+      }
+
+      await supabase.from('global_audit_history').insert({
+        action: deleteTargets.length === 1 ? `DELETE_STOCK: ${deleteTargets[0].product_name}` : `DELETE_STOCK: ${deleteTargets.length} items`,
+        department: 'MANAGEMENT',
+        performed_by: performedBy,
+        details: `Deleted ${deleteTargets.map(r => `${r.product_name} (${r.quantity} ${r.unit || 'units'})`).join(', ')}. Reason: ${deleteReason.trim()}`,
+        timestamp: new Date().toISOString(),
+      });
+
+      addNotification?.(`${deleteTargets.length} stock item${deleteTargets.length !== 1 ? 's' : ''} deleted.`);
+      setSelectedStockIds(new Set());
+      setDeleteTargets(null);
+      setDeleteReason('');
+      fetchData();
+    } catch (e: any) {
+      console.error(e);
+      addNotification?.(e.message || 'Failed to delete stock.');
+    } finally {
+      setDeletingStock(false);
     }
   }
 
@@ -1330,6 +1405,119 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
           </table>
         </div>
       </div>
+
+      {/* ROW 10: Manage Stock — delete stock items */}
+      <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5 shadow-[var(--box-shadow)]">
+        <div className="flex items-center justify-between mb-4 border-b border-[var(--border)] pb-3 flex-wrap gap-3">
+          <div>
+            <h3 className="font-bold text-lg text-[var(--text-primary)] flex items-center gap-2">
+              <Trash2 size={16} className="text-[var(--accent)]" /> Manage Stock
+            </h3>
+            <p className="text-xs text-[var(--text-muted)] mt-0.5">Remove a stock item entirely — this cannot be undone. A reason is logged to the audit trail.</p>
+          </div>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            {selectedStockIds.size > 0 && (
+              <button onClick={() => openDeleteStock(filteredStock.filter(s => selectedStockIds.has(s.id)))}
+                className="flex items-center gap-1 px-3 py-2 rounded-xl bg-rose-500 text-white text-xs font-semibold hover:bg-rose-600 cursor-pointer whitespace-nowrap">
+                <Trash2 size={12} /> Delete {selectedStockIds.size} Selected
+              </button>
+            )}
+            <div className="relative flex-1 sm:w-64">
+              <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
+              <input
+                value={stockSearch}
+                onChange={e => setStockSearch(e.target.value)}
+                placeholder="Search by product, code, category..."
+                className="w-full pl-8 pr-3 py-2 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent)]"
+              />
+            </div>
+          </div>
+        </div>
+        <div className="overflow-x-auto max-h-80 overflow-y-auto">
+          <table className="w-full text-xs text-left">
+            <thead className="sticky top-0 bg-[var(--bg-input)]">
+              <tr className="border-b border-[var(--border)]">
+                <th className="py-2 px-3 w-8">
+                  <input type="checkbox"
+                    checked={filteredStock.length > 0 && filteredStock.every(s => selectedStockIds.has(s.id))}
+                    onChange={e => {
+                      setSelectedStockIds(prev => {
+                        const next = new Set(prev);
+                        if (e.target.checked) filteredStock.forEach(s => next.add(s.id));
+                        else filteredStock.forEach(s => next.delete(s.id));
+                        return next;
+                      });
+                    }}
+                    className="cursor-pointer" />
+                </th>
+                {['Product', 'Category', 'Qty', 'Unit', ''].map(h => (
+                  <th key={h} className="py-2 px-3 text-[var(--text-muted)] font-semibold">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[var(--border)]">
+              {filteredStock.length === 0 ? (
+                <tr><td colSpan={6} className="py-8 text-center text-[var(--text-muted)]">No stock items found.</td></tr>
+              ) : filteredStock.map(s => (
+                <tr key={s.id} className="hover:bg-[var(--accent-light)]">
+                  <td className="py-2.5 px-3">
+                    <input type="checkbox" checked={selectedStockIds.has(s.id)} onChange={() => toggleStockSelect(s.id)} className="cursor-pointer" />
+                  </td>
+                  <td className="py-2.5 px-3 font-semibold text-[var(--text-primary)]">{s.product_name}</td>
+                  <td className="py-2.5 px-3 text-[var(--text-secondary)]">{s.category || '—'}</td>
+                  <td className="py-2.5 px-3 text-[var(--text-secondary)]">{s.quantity}</td>
+                  <td className="py-2.5 px-3 text-[var(--text-secondary)]">{s.unit || 'units'}</td>
+                  <td className="py-2.5 px-3">
+                    <button onClick={() => openDeleteStock([s])}
+                      className="px-2.5 py-1 rounded-lg text-[10px] font-semibold border border-rose-300 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 cursor-pointer">
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Delete stock confirmation modal */}
+      {deleteTargets && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-[var(--bg-card)] border border-[var(--border)] shadow-xl p-6 space-y-4">
+            <div>
+              <h3 className="font-bold text-[var(--text-primary)] flex items-center gap-2">
+                <AlertTriangle size={16} className="text-rose-500" /> Delete {deleteTargets.length === 1 ? 'Stock Item' : `${deleteTargets.length} Stock Items`}
+              </h3>
+              <p className="text-xs text-[var(--text-muted)] mt-1">
+                {deleteTargets.length === 1
+                  ? <>This permanently removes <strong className="text-[var(--text-primary)]">{deleteTargets[0].product_name}</strong> ({deleteTargets[0].quantity} {deleteTargets[0].unit || 'units'}) from inventory. This cannot be undone.</>
+                  : `This permanently removes ${deleteTargets.length} stock items from inventory. This cannot be undone.`}
+              </p>
+            </div>
+            {deleteTargets.length > 1 && (
+              <div className="max-h-32 overflow-y-auto bg-[var(--bg-input)] rounded-xl p-2 space-y-1">
+                {deleteTargets.map(t => (
+                  <p key={t.id} className="text-[11px] text-[var(--text-secondary)]">• {t.product_name} — {t.quantity} {t.unit || 'units'}</p>
+                ))}
+              </div>
+            )}
+            <div>
+              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Reason for deletion <span className="text-rose-500">*</span></label>
+              <textarea value={deleteReason} onChange={e => setDeleteReason(e.target.value)} rows={2}
+                placeholder="E.g. Discontinued product, duplicate entry, written off"
+                className="w-full px-3 py-2 text-sm rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-primary)] resize-none focus:outline-none focus:border-[var(--accent)]" />
+            </div>
+            <div className="flex gap-3 pt-2">
+              <button onClick={() => { setDeleteTargets(null); setDeleteReason(''); }} disabled={deletingStock}
+                className="flex-1 py-2 rounded-xl border border-[var(--border)] text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-input)] cursor-pointer disabled:opacity-50">Cancel</button>
+              <button onClick={confirmDeleteStock} disabled={deletingStock}
+                className="flex-1 py-2 rounded-xl bg-rose-500 text-white text-sm font-semibold hover:bg-rose-600 cursor-pointer disabled:opacity-50">
+                {deletingStock ? 'Deleting…' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Correct cargo entry modal */}
       {correctionTarget && (
