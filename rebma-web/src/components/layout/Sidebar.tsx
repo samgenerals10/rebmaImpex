@@ -133,6 +133,7 @@ export default function Sidebar({
       { id: 'Ledger',          label: 'Audit Log',            icon: History },
       { id: 'Payroll',         label: 'Payroll Overview',     icon: Banknote },
       { id: 'MgmtAnalytics',   label: 'Analytics',            icon: BarChart2 },
+      { id: 'StockManagement', label: 'Stock Management',     icon: Package },
       { id: 'DeptActivity',    label: 'Dept Activity',        icon: Activity },
       { id: 'PerformanceAlerts', label: 'Performance Alerts', icon: AlertCircle },
       { id: 'Spreadsheets',      label: 'Spreadsheets',       icon: FileSpreadsheet },

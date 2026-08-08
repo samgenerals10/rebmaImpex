@@ -121,6 +121,7 @@ import OperationsApprovedGoodsView from './views/operations/ApprovedGoodsView';
 import MgmtAnalyticsView from './views/management/MgmtAnalyticsView';
 import DeptActivityView from './views/management/DeptActivityView';
 import MgmtOverviewView from './views/management/MgmtOverviewView';
+import MgmtStockManagementView from './views/management/MgmtStockManagementView';
 import MgmtApprovalsView from './views/management/MgmtApprovalsView';
 import MgmtPriceSettingView from './views/management/MgmtPriceSettingView';
 import DocumentTemplatesView from './views/management/DocumentTemplatesView';
@@ -3117,6 +3118,7 @@ export default function App() {
       if (activeSubTab === 'SetPrices')       return <MgmtPriceSettingView addNotification={addNotification} currentUser={currentUser} />;
       if (activeSubTab === 'Transactions')    return <ManagementTransactionsView addNotification={addNotification} />;
       if (activeSubTab === 'MgmtAnalytics')   return <MgmtAnalyticsView addNotification={addNotification} />;
+      if (activeSubTab === 'StockManagement') return <MgmtStockManagementView addNotification={addNotification} currentUser={currentUser} />;
       if (activeSubTab === 'DeptActivity')    return <DeptActivityView currentUser={currentUser} addNotification={addNotification} />;
       if (activeSubTab === 'FleetOverview')   return <LogisticsFleetOverviewView addNotification={addNotification} />;
       if (activeSubTab === 'FuelManagement')  return <LogisticsFuelManagementView addNotification={addNotification} />;
