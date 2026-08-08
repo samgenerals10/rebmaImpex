@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { Edit3, Trash2, Search, AlertTriangle, RefreshCw } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useCeoSettings } from '../../contexts/CeoSettingsContext';
+import { useRealtimeChannel } from '../../hooks/useRealtimeChannel';
 
 interface Props {
   addNotification?: (msg: string) => void;
@@ -50,6 +51,12 @@ export default function MgmtStockManagementView({ addNotification, currentUser }
   };
 
   useEffect(() => { fetchData(); }, []);
+
+  useRealtimeChannel(
+    'mgmt-stock-management-realtime',
+    ['stock', 'cargo_intake'],
+    () => fetchData()
+  );
 
   const approvedCargo = approvedCargoAll.filter(c =>
     !cargoSearch ||
