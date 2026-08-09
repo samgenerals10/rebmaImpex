@@ -1,8 +1,8 @@
 // rebma-web/src/views/management/DocumentTemplatesView.tsx
-// Management-only control over the header and footer printed on every
-// receipt, dispatch ticket, and proforma invoice. Finance/Operations/
-// Marketing view and issue these documents but don't edit them — this page
-// is the one place that does. Saved once per document type, applied to
+// CEO-only control over the header and footer printed on every receipt,
+// dispatch ticket, and proforma invoice. Finance/Operations/Marketing/
+// Management view and issue these documents but don't edit them — this
+// page is the one place that does. Saved once per document type, applied to
 // every document of that type from then on (not per-transaction). The
 // per-transaction content — customer, amounts, line items, who issued it,
 // the document number, the QR code — is system-generated and untouched here.
@@ -103,7 +103,7 @@ export default function DocumentTemplatesView({ addNotification, currentUser }: 
         <h2 className="text-lg font-bold text-[var(--text-primary)]">Document Templates</h2>
         <p className="text-xs text-[var(--text-muted)] mt-0.5">
           Control the header and footer printed on every receipt, dispatch ticket, and proforma invoice.
-          Changes apply to every document of that type going forward — Finance and Operations can view and issue these documents but not edit them.
+          Changes apply to every document of that type going forward — Finance, Operations, and Management can view and issue these documents but not edit them.
         </p>
       </div>
 
