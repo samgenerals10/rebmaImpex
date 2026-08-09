@@ -4,7 +4,7 @@ import { useRealtimeChannel } from '../../hooks/useRealtimeChannel';
 import {
   Truck, UserCheck, MapPin, Camera, History, BarChart2,
   TrendingUp, TrendingDown, RefreshCw, MoreVertical, ChevronRight,
-  Plus, AlertCircle, CheckCircle, Clock, Navigation, Eye
+  Plus, AlertCircle, CheckCircle, Clock, Eye
 } from 'lucide-react';
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip
@@ -24,13 +24,6 @@ interface Props {
 // ── seed data ─────────────────────────────────────────────────────────────────
 // Seed arrays removed — data loaded from Supabase in component
 
-const VOL_DATA = [
-  { day: 'Mon', assigned: 8, completed: 6 }, { day: 'Tue', assigned: 12, completed: 9 },
-  { day: 'Wed', assigned: 7,  completed: 7 }, { day: 'Thu', assigned: 15, completed: 11 },
-  { day: 'Fri', assigned: 18, completed: 14 }, { day: 'Sat', assigned: 10, completed: 8 },
-  { day: 'Sun', assigned: 5,  completed: 4 },
-];
-
 // UPCOMING removed — scheduled deliveries derived from Supabase data in component
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -46,6 +39,15 @@ function timeAgo(iso: string) {
   if (m < 1) return 'just now';
   if (m < 60) return `${m}m ago`;
   return `${Math.floor(m / 60)}h ago`;
+}
+const DAY_MS = 24 * 60 * 60 * 1000;
+function startOfDay(d: Date) { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; }
+function daysAgo(n: number) { return new Date(Date.now() - n * DAY_MS); }
+function formatDuration(ms: number | null) {
+  if (ms == null) return '—';
+  const totalMin = Math.round(ms / 60000);
+  const h = Math.floor(totalMin / 60), m = totalMin % 60;
+  return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
 const STATUS_BADGE: Record<string, { bg: string; color: string; label: string }> = {
@@ -84,6 +86,7 @@ export default function DispatchOverviewView({ addNotification, setActiveSubTab,
   const [menuOpen, setMenuOpen]     = useState<string | null>(null);
   const [menuOpenUp, setMenuOpenUp] = useState(false);
   const [volPeriod, setVolPeriod]   = useState('This Week');
+  const [perfPeriod, setPerfPeriod] = useState('This Week');
 
   // Assign driver form state
   const [assignDeliveryId, setAssignDeliveryId] = useState('');
@@ -166,6 +169,87 @@ export default function DispatchOverviewView({ addNotification, setActiveSubTab,
   const availableDrivers = drivers.filter(d => d.status === 'ACTIVE');
   const upcoming = deliveries.filter(d => ['PENDING_ASSIGNMENT', 'ASSIGNED'].includes(d.status)).slice(0, 4);
   const pendingDeliveries = deliveries.filter(d => d.status === 'PENDING_ASSIGNMENT');
+
+  // ── Delivery Performance card — computed from delivery_logs, not mocked.
+  // "On-time" isn't a concept the schema tracks (no SLA/expected-time field),
+  // so this measures success rate (delivered vs failed among ones that have
+  // actually resolved) rather than inventing a fake on-time threshold.
+  const perfWindowDays = perfPeriod === 'Today' ? 1 : perfPeriod === 'This Week' ? 7 : 30;
+  const perfWindowStart = startOfDay(daysAgo(perfWindowDays - 1));
+  const perfPrevStart = startOfDay(daysAgo(perfWindowDays * 2 - 1));
+  const perfPrevEnd = perfWindowStart;
+  const inPerfWindow = deliveries.filter(d => new Date(d.dispatchedAt) >= perfWindowStart);
+  const inPerfPrevWindow = deliveries.filter(d => {
+    const t = new Date(d.dispatchedAt);
+    return t >= perfPrevStart && t < perfPrevEnd;
+  });
+  const successStats = (list: DeliveryRecord[]) => {
+    const delivered = list.filter(d => d.status === 'DELIVERED').length;
+    const failed = list.filter(d => d.status === 'FAILED').length;
+    const finished = delivered + failed;
+    return { delivered, failed, finished, rate: finished ? (delivered / finished) * 100 : null };
+  };
+  const perfNow = successStats(inPerfWindow);
+  const perfPrev = successStats(inPerfPrevWindow);
+  const successTrend = (perfNow.rate !== null && perfPrev.rate !== null) ? perfNow.rate - perfPrev.rate : null;
+  const inProgressCount = inPerfWindow.length - perfNow.delivered - perfNow.failed;
+  const deliveredPct = inPerfWindow.length ? Math.round((perfNow.delivered / inPerfWindow.length) * 100) : 0;
+  const inProgressPct = inPerfWindow.length ? Math.round((inProgressCount / inPerfWindow.length) * 100) : 0;
+  const failedPct = inPerfWindow.length ? Math.max(0, 100 - deliveredPct - inProgressPct) : 0;
+  const deliveredWithTimes = inPerfWindow.filter(d => d.status === 'DELIVERED' && d.deliveredAt);
+  const avgDeliveryMs = deliveredWithTimes.length
+    ? deliveredWithTimes.reduce((sum, d) => sum + (new Date(d.deliveredAt!).getTime() - new Date(d.dispatchedAt).getTime()), 0) / deliveredWithTimes.length
+    : null;
+  const perfTrendLabel = perfPeriod === 'Today' ? 'vs yesterday' : perfPeriod === 'This Week' ? 'vs last week' : 'vs last month';
+
+  // ── Deliveries Movement / Delivery Volume charts — buckets computed from
+  // delivery_logs, not mocked. Both cards share the same `volPeriod` control.
+  const buildVolumeBuckets = (period: string): { day: string; assigned: number; completed: number }[] => {
+    if (period === 'This Month') {
+      return Array.from({ length: 4 }).map((_, i) => {
+        const weeksBack = 3 - i;
+        const start = startOfDay(daysAgo(weeksBack * 7 + 6));
+        const end = new Date(startOfDay(daysAgo(weeksBack * 7)).getTime() + DAY_MS);
+        const assigned = deliveries.filter(d => { const t = new Date(d.dispatchedAt); return t >= start && t < end; }).length;
+        const completed = deliveries.filter(d => d.deliveredAt && new Date(d.deliveredAt) >= start && new Date(d.deliveredAt) < end).length;
+        return { day: `Wk ${i + 1}`, assigned, completed };
+      });
+    }
+    if (period === 'This Quarter') {
+      const now = new Date();
+      return Array.from({ length: 3 }).map((_, i) => {
+        const monthsBack = 2 - i;
+        const start = new Date(now.getFullYear(), now.getMonth() - monthsBack, 1);
+        const end = new Date(now.getFullYear(), now.getMonth() - monthsBack + 1, 1);
+        const assigned = deliveries.filter(d => { const t = new Date(d.dispatchedAt); return t >= start && t < end; }).length;
+        const completed = deliveries.filter(d => d.deliveredAt && new Date(d.deliveredAt) >= start && new Date(d.deliveredAt) < end).length;
+        return { day: start.toLocaleDateString('en-GB', { month: 'short' }), assigned, completed };
+      });
+    }
+    // This Week — last 7 days ending today
+    return Array.from({ length: 7 }).map((_, i) => {
+      const dayStart = startOfDay(daysAgo(6 - i));
+      const dayEnd = new Date(dayStart.getTime() + DAY_MS);
+      const assigned = deliveries.filter(d => { const t = new Date(d.dispatchedAt); return t >= dayStart && t < dayEnd; }).length;
+      const completed = deliveries.filter(d => d.deliveredAt && new Date(d.deliveredAt) >= dayStart && new Date(d.deliveredAt) < dayEnd).length;
+      return { day: dayStart.toLocaleDateString('en-GB', { weekday: 'short' }), assigned, completed };
+    });
+  };
+  // delivery_logs is loaded capped at 50 rows (see loadDeliveries above) — fine
+  // for the current data volume, but Month/Quarter buckets will silently under-
+  // count once the account has more than 50 recent deliveries. Flagging rather
+  // than solving here since a real fix means paginating loadDeliveries itself.
+  const volumeData = buildVolumeBuckets(volPeriod);
+  const totalAssigned = volumeData.reduce((s, b) => s + b.assigned, 0);
+  const totalCompleted = volumeData.reduce((s, b) => s + b.completed, 0);
+  const volPeriodDays = volPeriod === 'This Week' ? 7 : volPeriod === 'This Month' ? 30 : 90;
+  const volPrevStart = startOfDay(daysAgo(volPeriodDays * 2 - 1));
+  const volPrevEnd = startOfDay(daysAgo(volPeriodDays - 1));
+  const prevAssigned = deliveries.filter(d => { const t = new Date(d.dispatchedAt); return t >= volPrevStart && t < volPrevEnd; }).length;
+  const prevCompleted = deliveries.filter(d => d.deliveredAt && new Date(d.deliveredAt) >= volPrevStart && new Date(d.deliveredAt) < volPrevEnd).length;
+  const assignedDelta = totalAssigned - prevAssigned;
+  const completedDelta = totalCompleted - prevCompleted;
+  const volTrendLabel = volPeriod === 'This Week' ? 'vs last week' : volPeriod === 'This Month' ? 'vs last month' : 'vs last quarter';
 
   // Assign driver handler — updates a delivery Operations already created
   // (status PENDING_ASSIGNMENT) rather than inserting a brand new one from a
@@ -461,40 +545,56 @@ export default function DispatchOverviewView({ addNotification, setActiveSubTab,
         <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-semibold text-[var(--text-primary)]">Delivery Performance</h3>
-            <select className="text-xs px-2 py-1.5 rounded-lg bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-secondary)] focus:outline-none">
+            <select value={perfPeriod} onChange={e => setPerfPeriod(e.target.value)}
+              className="text-xs px-2 py-1.5 rounded-lg bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-secondary)] focus:outline-none">
               {['Today', 'This Week', 'This Month'].map(p => <option key={p}>{p}</option>)}
             </select>
           </div>
-          {/* On-Time Rate */}
+          {/* Success Rate */}
           <div className="flex items-end gap-3 mb-5">
-            <p className="text-4xl font-bold text-[var(--text-primary)]"><CountUp value={96.8} decimals={1} /><span className="text-xl">%</span></p>
+            <p className="text-4xl font-bold text-[var(--text-primary)]">
+              {perfNow.rate !== null ? <><CountUp value={perfNow.rate} decimals={1} /><span className="text-xl">%</span></> : <span className="text-2xl text-[var(--text-muted)]">—</span>}
+            </p>
             <div className="pb-1">
-              <div className="flex items-center gap-1 text-xs text-green-500"><TrendingUp size={11} /> +1.2% vs last week</div>
-              <p className="text-xs text-[var(--text-muted)]">on-time rate</p>
+              {successTrend !== null ? (
+                <div className={`flex items-center gap-1 text-xs ${successTrend >= 0 ? 'text-green-500' : 'text-red-400'}`}>
+                  {successTrend >= 0 ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
+                  {successTrend >= 0 ? '+' : ''}{successTrend.toFixed(1)}% {perfTrendLabel}
+                </div>
+              ) : (
+                <p className="text-xs text-[var(--text-muted)]">no prior data to compare</p>
+              )}
+              <p className="text-xs text-[var(--text-muted)]">success rate (delivered vs failed)</p>
             </div>
           </div>
           {/* Performance bar */}
           <div className="mb-4">
             <div className="flex items-center justify-between text-xs text-[var(--text-muted)] mb-1.5">
-              <span>Performance Breakdown</span>
-              <span className="text-[var(--text-secondary)]">This week</span>
+              <span>Status Breakdown</span>
+              <span className="text-[var(--text-secondary)]">{perfPeriod}</span>
             </div>
-            <div className="h-4 rounded-full overflow-hidden flex">
-              <div className="bg-green-500 h-full" style={{ width: '72%' }} title="On Time" />
-              <div className="bg-yellow-400 h-full" style={{ width: '18%' }} title="Late" />
-              <div className="bg-red-400 h-full" style={{ width: '10%' }} title="Failed" />
-            </div>
-            <div className="flex items-center gap-4 mt-2">
-              <span className="flex items-center gap-1.5 text-xs text-[var(--text-muted)]"><span className="w-2 h-2 rounded-full bg-green-500" />On Time (72%)</span>
-              <span className="flex items-center gap-1.5 text-xs text-[var(--text-muted)]"><span className="w-2 h-2 rounded-full bg-yellow-400" />Late (18%)</span>
-              <span className="flex items-center gap-1.5 text-xs text-[var(--text-muted)]"><span className="w-2 h-2 rounded-full bg-red-400" />Failed (10%)</span>
-            </div>
+            {inPerfWindow.length === 0 ? (
+              <p className="text-xs text-[var(--text-muted)] py-2">No deliveries dispatched in this period yet.</p>
+            ) : (
+              <>
+                <div className="h-4 rounded-full overflow-hidden flex">
+                  <div className="bg-green-500 h-full" style={{ width: `${deliveredPct}%` }} title="Delivered" />
+                  <div className="bg-yellow-400 h-full" style={{ width: `${inProgressPct}%` }} title="In Progress" />
+                  <div className="bg-red-400 h-full" style={{ width: `${failedPct}%` }} title="Failed" />
+                </div>
+                <div className="flex items-center gap-4 mt-2">
+                  <span className="flex items-center gap-1.5 text-xs text-[var(--text-muted)]"><span className="w-2 h-2 rounded-full bg-green-500" />Delivered ({deliveredPct}%)</span>
+                  <span className="flex items-center gap-1.5 text-xs text-[var(--text-muted)]"><span className="w-2 h-2 rounded-full bg-yellow-400" />In Progress ({inProgressPct}%)</span>
+                  <span className="flex items-center gap-1.5 text-xs text-[var(--text-muted)]"><span className="w-2 h-2 rounded-full bg-red-400" />Failed ({failedPct}%)</span>
+                </div>
+              </>
+            )}
           </div>
           {/* Stats */}
           <div className="grid grid-cols-2 gap-3">
             {[
-              { label: 'Avg Delivery Time', value: '2h 34m', numeric: null, suffix: '', icon: Clock },
-              { label: 'Distance Today',    value: null, numeric: 247, suffix: ' km', icon: Navigation },
+              { label: 'Avg Delivery Time', value: formatDuration(avgDeliveryMs), numeric: null, suffix: '', icon: Clock },
+              { label: 'Failed',            value: null, numeric: perfNow.failed, suffix: '', icon: AlertCircle },
               { label: 'Active Drivers',    value: `${availableDrivers.length} / ${drivers.length}`, numeric: null, suffix: '', icon: UserCheck },
               { label: 'Completed Today',   value: null, numeric: deliveredToday, suffix: '', icon: CheckCircle },
             ].map(({ label, value, numeric, suffix, icon: Icon }) => (
@@ -525,20 +625,26 @@ export default function DispatchOverviewView({ addNotification, setActiveSubTab,
           <div className="grid grid-cols-2 gap-4 mb-4">
             <div>
               <p className="text-xs text-[var(--text-muted)]">Deliveries Dispatched</p>
-              <p className="text-3xl font-bold text-[var(--text-primary)]"><CountUp value={75} /></p>
-              <div className="flex items-center gap-1 mt-0.5"><TrendingUp size={11} className="text-green-500" /><span className="text-xs text-green-500">+8 vs last week</span></div>
+              <p className="text-3xl font-bold text-[var(--text-primary)]"><CountUp value={totalAssigned} /></p>
+              <div className={`flex items-center gap-1 mt-0.5 ${assignedDelta >= 0 ? 'text-green-500' : 'text-red-400'}`}>
+                {assignedDelta >= 0 ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
+                <span className="text-xs">{assignedDelta >= 0 ? '+' : ''}{assignedDelta} {volTrendLabel}</span>
+              </div>
             </div>
             <div>
               <p className="text-xs text-[var(--text-muted)]">Deliveries Completed</p>
-              <p className="text-3xl font-bold text-[var(--text-primary)]"><CountUp value={59} /></p>
-              <div className="flex items-center gap-1 mt-0.5"><TrendingUp size={11} className="text-green-500" /><span className="text-xs text-green-500">+5 vs last week</span></div>
+              <p className="text-3xl font-bold text-[var(--text-primary)]"><CountUp value={totalCompleted} /></p>
+              <div className={`flex items-center gap-1 mt-0.5 ${completedDelta >= 0 ? 'text-green-500' : 'text-red-400'}`}>
+                {completedDelta >= 0 ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
+                <span className="text-xs">{completedDelta >= 0 ? '+' : ''}{completedDelta} {volTrendLabel}</span>
+              </div>
             </div>
           </div>
           <div className="h-40">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={VOL_DATA}>
+              <BarChart data={volumeData}>
                 <XAxis dataKey="day" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
                 <Tooltip content={<ChartTt />} />
                 <Bar dataKey="assigned" name="Assigned" fill="var(--accent)" radius={[4, 4, 0, 0]} opacity={0.7} />
                 <Bar dataKey="completed" name="Completed" fill="#10b981" radius={[4, 4, 0, 0]} />
@@ -596,7 +702,7 @@ export default function DispatchOverviewView({ addNotification, setActiveSubTab,
         <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
           <div>
             <h3 className="font-semibold text-[var(--text-primary)]">Delivery Volume</h3>
-            <p className="text-sm text-[var(--text-secondary)] mt-0.5">Assigned vs completed deliveries this week</p>
+            <p className="text-sm text-[var(--text-secondary)] mt-0.5">Assigned vs completed deliveries — {volPeriod.toLowerCase()}</p>
           </div>
           <div className="flex items-center gap-2">
             <select value={volPeriod} onChange={e => setVolPeriod(e.target.value)}
@@ -604,7 +710,7 @@ export default function DispatchOverviewView({ addNotification, setActiveSubTab,
               {['This Week', 'This Month', 'This Quarter'].map(p => <option key={p}>{p}</option>)}
             </select>
             <button
-              onClick={() => exportToCSV(VOL_DATA, ['day', 'assigned', 'completed'], 'delivery_volume')}
+              onClick={() => exportToCSV(volumeData, ['day', 'assigned', 'completed'], 'delivery_volume')}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[var(--border)] text-xs text-[var(--text-secondary)] hover:bg-[var(--bg-input)] transition-colors">
               <BarChart2 size={12} /> Export
             </button>
@@ -612,9 +718,9 @@ export default function DispatchOverviewView({ addNotification, setActiveSubTab,
         </div>
         <div className="h-52">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={VOL_DATA} barGap={4}>
+            <BarChart data={volumeData} barGap={4}>
               <XAxis dataKey="day" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
               <Tooltip content={<ChartTt />} cursor={{ fill: 'var(--accent-light)' }} />
               <Bar dataKey="assigned" name="Assigned" fill="var(--accent)" radius={[5, 5, 0, 0]} opacity={0.8} />
               <Bar dataKey="completed" name="Completed" fill="#10b981" radius={[5, 5, 0, 0]} />
