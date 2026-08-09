@@ -4,6 +4,7 @@ import L from 'leaflet';
 import { Truck, Satellite, Map as MapIcon } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useRealtimeChannel } from '../../hooks/useRealtimeChannel';
+import { documentTemplates } from '../../services/apiClient';
 
 type MapLayer = 'street' | 'satellite';
 
@@ -82,6 +83,41 @@ function formatDuration(seconds: number): string {
 
 function formatDistance(meters: number): string {
   return meters >= 1000 ? `${(meters / 1000).toFixed(1)} km` : `${Math.round(meters)} m`;
+}
+
+// A driver who's ASSIGNED but hasn't started their trip yet has, by
+// definition, not begun sharing live location for this job (see
+// DispatchMapDelivery.driverState below) — so their last driver_locations
+// row is either absent or leftover from whatever they were doing on a
+// PREVIOUS delivery, which is a real, misleading "the trip started from a
+// different location" bug, not just an empty-state gap. The correct
+// standard-practice origin before a trip starts is the depot: geocode the
+// company's own configured address (Management > Document Templates —
+// the same field already printed on tickets/receipts, not a fabricated
+// coordinate) and use that. Module-level cache since it almost never
+// changes and every mounted map instance would otherwise re-geocode it.
+let companyLocationCache: { lat: number; lng: number } | null | undefined;
+let companyLocationPromise: Promise<{ lat: number; lng: number } | null> | null = null;
+
+function getCompanyLocation(): Promise<{ lat: number; lng: number } | null> {
+  if (companyLocationCache !== undefined) return Promise.resolve(companyLocationCache);
+  if (companyLocationPromise) return companyLocationPromise;
+  companyLocationPromise = (async () => {
+    try {
+      const template = await documentTemplates.get('TICKET');
+      const address = template.companyAddress?.trim();
+      if (!address) { companyLocationCache = null; return null; }
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=gh&q=${encodeURIComponent(address)}`);
+      const data = await res.json();
+      const loc = data?.[0] ? { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) } : null;
+      companyLocationCache = loc;
+      return loc;
+    } catch {
+      companyLocationCache = null;
+      return null;
+    }
+  })();
+  return companyLocationPromise;
 }
 
 function destinationIcon(color: string) {
@@ -180,7 +216,10 @@ export default function DispatchMap({ deliveries, focusDeliveryId, height = 320,
   const [routesByDelivery, setRoutesByDelivery] = useState<Record<string, RouteInfo>>({});
   const routeOriginRef = useRef<Record<string, { lat: number; lng: number }>>({});
   const [layer, setLayer] = useState<MapLayer>('street');
+  const [companyLocation, setCompanyLocation] = useState<{ lat: number; lng: number } | null>(null);
   const mountedRef = useRef(true);
+
+  useEffect(() => { getCompanyLocation().then(loc => { if (mountedRef.current) setCompanyLocation(loc); }); }, []);
 
   const driverIds = useMemo(
     () => Array.from(new Set(deliveries.map(d => d.driverId).filter((x): x is string => !!x))),
@@ -287,16 +326,22 @@ export default function DispatchMap({ deliveries, focusDeliveryId, height = 320,
   const markers = deliveries
     .filter(d => !focusDeliveryId || d.id === focusDeliveryId)
     .map(d => {
+      // ASSIGNED = hasn't started sharing live location for this job yet —
+      // any driver_locations row on file is either absent or leftover from
+      // a previous, unrelated delivery. Anchor at the depot instead of
+      // showing (or routing from) a stale/wrong position.
+      if (d.driverState === 'ASSIGNED' && companyLocation) {
+        return { delivery: d, point: { lat: companyLocation.lat, lng: companyLocation.lng, recordedAt: '' }, isLive: false, atCompany: true };
+      }
       const live = d.driverId ? latestByDriver[d.driverId] : undefined;
       const point = live || (d.active_coordinates ? { lat: d.active_coordinates.lat, lng: d.active_coordinates.lng, recordedAt: '' } : null);
-      return point ? { delivery: d, point, isLive: !!live } : null;
+      return point ? { delivery: d, point, isLive: !!live, atCompany: false } : null;
     })
-    .filter((x): x is { delivery: DispatchMapDelivery; point: LivePoint; isLive: boolean } => !!x);
+    .filter((x): x is { delivery: DispatchMapDelivery; point: LivePoint; isLive: boolean; atCompany: boolean } => !!x);
 
   // A route only makes sense while the driver is actually headed toward the
-  // destination — once assigned, or already en route. RETURNING/AT_COMPANY
-  // have no real destination to route to here (we don't have a company-base
-  // coordinate on hand), so they just keep showing as a plain marker.
+  // destination — once assigned (from the depot, per above) or already en
+  // route. RETURNING/AT_COMPANY have no real destination to route to here.
   const routeEligible = markers.filter(
     m => m.delivery.destinationCoordinates && (m.delivery.driverState === 'ASSIGNED' || m.delivery.driverState === 'ON_THE_WAY')
   );
@@ -421,7 +466,7 @@ export default function DispatchMap({ deliveries, focusDeliveryId, height = 320,
             />
           );
         })}
-        {markers.map(({ delivery, point, isLive }) => {
+        {markers.map(({ delivery, point, isLive, atCompany }) => {
           const color = delivery.driverState
             ? DRIVER_STATE_COLOR[delivery.driverState] || '#64748b'
             : STATUS_COLOR[delivery.status || ''] || '#64748b';
@@ -446,7 +491,9 @@ export default function DispatchMap({ deliveries, focusDeliveryId, height = 320,
                     </p>
                   )}
                   <p style={{ margin: 0, color: isLive ? '#10b981' : '#94a3b8' }}>
-                    {isLive ? `Live · ${point.recordedAt ? new Date(point.recordedAt).toLocaleTimeString() : 'now'}` : 'No GPS ping yet — last known position'}
+                    {isLive
+                      ? `Live · ${point.recordedAt ? new Date(point.recordedAt).toLocaleTimeString() : 'now'}`
+                      : atCompany ? 'At the depot — trip not started yet' : 'No GPS ping yet — last known position'}
                   </p>
                   {onMarkerClick && <p style={{ margin: '4px 0 0', color: '#94a3b8', fontStyle: 'italic' }}>Click marker for full details</p>}
                 </div>
