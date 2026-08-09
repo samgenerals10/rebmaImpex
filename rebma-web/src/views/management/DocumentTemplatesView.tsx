@@ -180,6 +180,20 @@ export default function DocumentTemplatesView({ addNotification, currentUser, hi
                     ? `Pinned at ${draft.companyLat.toFixed(5)}, ${draft.companyLng?.toFixed(5)}`
                     : 'Not pinned yet — click the locate icon or the map to drop an exact pin'}
                 </p>
+                {/* Each doc type has its own address/pin — only the Dispatch
+                    Ticket tab's pin is what the GPS map actually reads,
+                    since that's the only tab a route origin could sensibly
+                    come from. Said explicitly here so pinning the Receipt
+                    or Invoice tab doesn't look like it silently did nothing. */}
+                {activeTab === 'TICKET' ? (
+                  <p className="text-[11px] mt-1 text-[var(--text-muted)]">
+                    This is also the pin the Dispatch GPS map uses as the depot location.
+                  </p>
+                ) : (
+                  <p className="text-[11px] mt-1 text-[var(--text-muted)]">
+                    Only for what's printed on this document. The Dispatch GPS map uses the pin on the <button type="button" onClick={() => setActiveTab('TICKET')} className="underline font-semibold cursor-pointer">Dispatch Ticket</button> tab.
+                  </p>
+                )}
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
