@@ -124,7 +124,6 @@ import MgmtOverviewView from './views/management/MgmtOverviewView';
 import MgmtStockManagementView from './views/management/MgmtStockManagementView';
 import MgmtApprovalsView from './views/management/MgmtApprovalsView';
 import MgmtPriceSettingView from './views/management/MgmtPriceSettingView';
-import DocumentTemplatesView from './views/management/DocumentTemplatesView';
 import GoodsPriceCatalogView from './views/shared/GoodsPriceCatalogView';
 import SpreadsheetView from './views/shared/SpreadsheetView';
 
@@ -3078,7 +3077,6 @@ export default function App() {
       if (activeSubTab === 'Accounts')        return <CeoAccountsView setActiveSubTab={setActiveSubTab} />;
       if (activeSubTab === 'Approvals')       return <CeoApprovalsView currentUser={currentUser} addNotification={addNotification} />;
       if (activeSubTab === 'PriceApprovals')  return <CeoPriceApprovalsView currentUser={currentUser} addNotification={addNotification} />;
-      if (activeSubTab === 'DocumentTemplates') return <DocumentTemplatesView addNotification={addNotification} currentUser={currentUser} />;
       if (activeSubTab === 'PriceCatalog')    return <GoodsPriceCatalogView addNotification={addNotification} currentUser={currentUser} />;
       if (activeSubTab === 'SupplierOrders')  return <CeoSupplierOrdersView currentUser={currentUser} addNotification={addNotification} />;
       if (activeSubTab === 'DeptActivity')    return <DeptActivityView currentUser={currentUser} addNotification={addNotification} />;

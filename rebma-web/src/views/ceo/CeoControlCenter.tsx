@@ -5,10 +5,11 @@ import {
   Database, MessageCircle, Settings, CheckSquare, AlertTriangle, Bell,
   UserPlus, Copy, Check, Trash2, ToggleLeft, ToggleRight, Eye, EyeOff,
   Clock, Lock, Globe, Mail, Phone, Building2, RefreshCw, X, Plus, Search,
-  FileSpreadsheet, Package, ShoppingCart, Camera, Ban, UserX, Key
+  FileSpreadsheet, Package, ShoppingCart, Camera, Ban, UserX, Key, FileEdit
 } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useCeoSettings } from '../../contexts/CeoSettingsContext';
+import DocumentTemplatesView from '../management/DocumentTemplatesView';
 
 interface Props {
   currentUser: { id?: string; fullName: string; department: string; isAdmin?: boolean } | null;
@@ -968,6 +969,16 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
           </div>
         </div>
       )}
+
+      {/* ── DOCUMENT TEMPLATES ──────────────────────────────────────────── */}
+      {/* Company-wide branding on every receipt, dispatch ticket, and
+          proforma invoice — a CEO-level setting, so it lives here rather
+          than as its own top-level nav item. Collapsed by default since
+          it's a full editor (form + live preview + map picker), not a
+          quick toggle like the sections below. */}
+      <Section title="Document Templates" icon={FileEdit} defaultOpen={false}>
+        <DocumentTemplatesView addNotification={addNotification} currentUser={currentUser} hideHeader />
+      </Section>
 
       {/* ── SECTION 1: ACCESS CONTROL ──────────────────────────────────── */}
       <Section title="Section 1 — Access Control" icon={Shield}>

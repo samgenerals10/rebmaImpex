@@ -15,6 +15,10 @@ import DestinationLocator from '../../components/dispatch/DestinationLocator';
 interface Props {
   addNotification?: (msg: string) => void;
   currentUser?: { fullName: string; department: string } | null;
+  // Set when embedded inside another settings page (CEO Control Center)
+  // that already provides its own section heading — skips this component's
+  // own "Document Templates" title/description so it isn't shown twice.
+  hideHeader?: boolean;
 }
 
 const TABS: { key: DocumentTemplate['docType']; label: string; icon: typeof Receipt }[] = [
@@ -26,7 +30,7 @@ const TABS: { key: DocumentTemplate['docType']; label: string; icon: typeof Rece
 const inputCls = 'w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]';
 const labelCls = 'text-xs font-semibold text-[var(--text-secondary)] mb-1 block';
 
-export default function DocumentTemplatesView({ addNotification, currentUser }: Props) {
+export default function DocumentTemplatesView({ addNotification, currentUser, hideHeader = false }: Props) {
   const [activeTab, setActiveTab] = useState<DocumentTemplate['docType']>('RECEIPT');
   const [templates, setTemplates] = useState<Record<DocumentTemplate['docType'], DocumentTemplate> | null>(null);
   const [drafts, setDrafts] = useState<Record<DocumentTemplate['docType'], DocumentTemplate> | null>(null);
@@ -99,13 +103,15 @@ export default function DocumentTemplatesView({ addNotification, currentUser }: 
 
   return (
     <div className="space-y-5 max-w-4xl">
-      <div>
-        <h2 className="text-lg font-bold text-[var(--text-primary)]">Document Templates</h2>
-        <p className="text-xs text-[var(--text-muted)] mt-0.5">
-          Control the header and footer printed on every receipt, dispatch ticket, and proforma invoice.
-          Changes apply to every document of that type going forward — Finance, Operations, and Management can view and issue these documents but not edit them.
-        </p>
-      </div>
+      {!hideHeader && (
+        <div>
+          <h2 className="text-lg font-bold text-[var(--text-primary)]">Document Templates</h2>
+          <p className="text-xs text-[var(--text-muted)] mt-0.5">
+            Control the header and footer printed on every receipt, dispatch ticket, and proforma invoice.
+            Changes apply to every document of that type going forward — Finance, Operations, and Management can view and issue these documents but not edit them.
+          </p>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="flex gap-2 bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-1.5 w-fit">

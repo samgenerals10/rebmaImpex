@@ -9,7 +9,7 @@ import {
   CreditCard, ClipboardCheck, MapPin, MessageCircle, RefreshCw, Banknote, ShoppingCart,
   Package, AlertTriangle, UserCheck, Camera, UserPlus, Calendar, Building2, AlertCircle,
   FileBarChart, ClipboardList, Factory, Wrench, BarChart3, Gauge, Plus, ShoppingBag,
-  Smartphone, Receipt, Calculator, PiggyBank, Shield, FileSpreadsheet, FileEdit
+  Smartphone, Receipt, Calculator, PiggyBank, Shield, FileSpreadsheet
 } from 'lucide-react';
 import type { CurrentUser } from '../../types/erp';
 import MiniCalendar from './MiniCalendar';
@@ -96,7 +96,6 @@ export default function Sidebar({
       { id: 'Accounts',        label: 'Accounts',              icon: CreditCard },
       { id: 'Approvals',       label: 'Approvals',             icon: ClipboardCheck },
       { id: 'PriceApprovals',  label: 'Price Approvals',       icon: Banknote },
-      { id: 'DocumentTemplates', label: 'Document Templates',  icon: FileEdit },
       { id: 'Tracking',        label: 'GPS Tracking',          icon: MapPin },
       { id: 'Messages',        label: 'Messages & Boardroom',  icon: MessageCircle },
       { id: 'DeptActivity',    label: 'Dept Activity',          icon: Activity },
