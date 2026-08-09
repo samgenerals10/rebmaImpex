@@ -528,7 +528,7 @@ export const operations = {
   },
 
   releaseToDispatch: async (orderId: string, vehicleId: string, driverName?: string, driverId?: string) => {
-    const { data: orders, error: orderErr } = await supabase.from('orders').select('id, client_name, customer_name, destination').eq('id', orderId).limit(1);
+    const { data: orders, error: orderErr } = await supabase.from('orders').select('id, client_name, customer_name, destination, destination_lat, destination_lng').eq('id', orderId).limit(1);
     if (orderErr || !orders || orders.length === 0) throw new Error('Order not found');
     const order = orders[0];
 
@@ -541,6 +541,8 @@ export const operations = {
         driver_id: driverId || null,
         customer_name: order.customer_name || order.client_name || null,
         delivery_address: order.destination || null,
+        destination_lat: order.destination_lat ?? null,
+        destination_lng: order.destination_lng ?? null,
         status: 'ASSIGNED',
         updated_at: new Date().toISOString()
       }).select();

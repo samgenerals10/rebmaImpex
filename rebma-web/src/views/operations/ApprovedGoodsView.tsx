@@ -30,6 +30,7 @@ interface ApprovedOrder {
   destination: string; totalAmount: number; status: string; paymentMode: string;
   createdAt: string; submittedBy: string; issuedBy: string; issuedByEmail: string;
   phone: string;
+  destinationLat: number | null; destinationLng: number | null;
   metadata?: {
     items?: Array<{ productName: string; quantity: number; unitPrice: number; lineTotal: number }>;
     [key: string]: any;
@@ -337,6 +338,8 @@ export default function ApprovedGoodsView({ addNotification, setActiveSubTab: _s
           issuedBy: r.finance_approved_by || r.created_by || '—',
           issuedByEmail: r.finance_approved_by_email || '',
           phone: r.phone || '',
+          destinationLat: r.destination_lat != null ? Number(r.destination_lat) : null,
+          destinationLng: r.destination_lng != null ? Number(r.destination_lng) : null,
           metadata: r.metadata || null,
         })));
       } catch (e) {
@@ -370,6 +373,8 @@ export default function ApprovedGoodsView({ addNotification, setActiveSubTab: _s
         order_id: dispatchTarget.id,
         customer_name: dispatchTarget.clientName,
         delivery_address: dispatchTarget.destination,
+        destination_lat: dispatchTarget.destinationLat,
+        destination_lng: dispatchTarget.destinationLng,
         vehicle_id: dispatchForm.vehicleId || 'TBD',
         driver_name: dispatchForm.driverName || null,
         status: dispatchForm.driverName ? 'ASSIGNED' : 'PENDING_ASSIGNMENT',

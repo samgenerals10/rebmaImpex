@@ -18,7 +18,7 @@ interface VehicleRecord {
   photo?: string;
   lastKnownLocation: string;
   lastUpdated: string;
-  lastDelivery?: { id: string; destination: string; status: string } | null;
+  lastDelivery?: { id: string; destination: string; status: string; coordinates?: { lat: number; lng: number } | null } | null;
 }
 
 const fmtAgo = (iso: string) => {
@@ -70,7 +70,7 @@ export default function TrackingView({ addNotification: _addNotification }: Prop
           const driverRowIds = data.map((d: any) => d.id).filter(Boolean);
           const { data: recentDeliveries } = await supabase
             .from('delivery_logs')
-            .select('id, driver_id, delivery_address, status, created_at, delivered_at')
+            .select('id, driver_id, delivery_address, status, created_at, delivered_at, destination_lat, destination_lng')
             .in('driver_id', driverRowIds)
             .order('created_at', { ascending: false })
             .limit(200);
@@ -105,7 +105,14 @@ export default function TrackingView({ addNotification: _addNotification }: Prop
               photo: d.photo || undefined,
               lastKnownLocation: lastPing ? `Live GPS · updated ${fmtAgo(lastPing)}` : 'No GPS ping yet — driver hasn’t opened the mobile app during a delivery',
               lastUpdated: lastPing || new Date().toISOString(),
-              lastDelivery: lastDelivery ? { id: lastDelivery.id, destination: lastDelivery.delivery_address || '—', status: lastDelivery.status } : null,
+              lastDelivery: lastDelivery ? {
+                id: lastDelivery.id,
+                destination: lastDelivery.delivery_address || '—',
+                status: lastDelivery.status,
+                coordinates: (lastDelivery.destination_lat != null && lastDelivery.destination_lng != null)
+                  ? { lat: Number(lastDelivery.destination_lat), lng: Number(lastDelivery.destination_lng) }
+                  : null,
+              } : null,
             };
           }));
         } else {
@@ -125,6 +132,7 @@ export default function TrackingView({ addNotification: _addNotification }: Prop
     driverName: v.driverName,
     vehicleId: v.truckId,
     driverState: v.driverState,
+    destinationCoordinates: v.lastDelivery?.coordinates || null,
   }));
 
   const onTheWay = vehicles.filter(v => v.driverState === 'ON_THE_WAY').length;

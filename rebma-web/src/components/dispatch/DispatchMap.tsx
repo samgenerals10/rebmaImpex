@@ -36,6 +36,61 @@ export interface DispatchMapDelivery {
   // location yet — distinct from ON_THE_WAY, which only applies once they
   // actually start the trip.
   driverState?: 'ON_THE_WAY' | 'AT_COMPANY' | 'RETURNING' | 'ASSIGNED' | null;
+  // Where this delivery is actually headed — when set (and the delivery is
+  // ASSIGNED or ON_THE_WAY), a real road-following route is drawn from the
+  // driver's current position to here, same idea as the turn-by-turn line
+  // in the driver's own Google Maps navigation, just mirrored on our map.
+  destinationCoordinates?: { lat: number; lng: number } | null;
+}
+
+interface RouteInfo {
+  coords: [number, number][];
+  distanceMeters: number;
+  durationSeconds: number;
+}
+
+// Public OSRM demo server — free, no API key, no signup, same bar as the
+// Nominatim geocoding and OSM/Esri tiles already used in this app. It's a
+// shared demo instance (fair-use, not for heavy production traffic), which
+// is fine at this app's scale of a handful of concurrent deliveries.
+async function fetchRoute(from: { lat: number; lng: number }, to: { lat: number; lng: number }): Promise<RouteInfo | null> {
+  try {
+    const res = await fetch(
+      `https://router.project-osrm.org/route/v1/driving/${from.lng},${from.lat};${to.lng},${to.lat}?overview=full&geometries=geojson`
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    const route = data?.routes?.[0];
+    if (!route?.geometry?.coordinates) return null;
+    return {
+      coords: route.geometry.coordinates.map((c: [number, number]) => [c[1], c[0]] as [number, number]),
+      distanceMeters: Number(route.distance) || 0,
+      durationSeconds: Number(route.duration) || 0,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function formatDuration(seconds: number): string {
+  const mins = Math.round(seconds / 60);
+  if (mins < 60) return `${mins} min`;
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return m > 0 ? `${h} hr ${m} min` : `${h} hr`;
+}
+
+function formatDistance(meters: number): string {
+  return meters >= 1000 ? `${(meters / 1000).toFixed(1)} km` : `${Math.round(meters)} m`;
+}
+
+function destinationIcon(color: string) {
+  return L.divIcon({
+    className: 'dispatch-destination-marker',
+    html: `<div style="width:18px;height:18px;display:flex;align-items:center;justify-content:center;"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="${color}" stroke="#fff" stroke-width="1.5"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/></svg></div>`,
+    iconSize: [18, 18],
+    iconAnchor: [9, 18],
+  });
 }
 
 interface LivePoint {
@@ -97,10 +152,33 @@ function Recenter({ center }: { center: [number, number] }) {
   return null;
 }
 
+// Zooms/pans the map to frame whatever routes and points are currently on
+// it — the "it also zooms the navigation" part. Keyed off a signature
+// (delivery ids + rounded coordinates) rather than running on every render,
+// so a live GPS ping nudging a driver's position by a few meters doesn't
+// keep yanking the view out from under someone who's panned around.
+function FitToBounds({ points, signature }: { points: [number, number][]; signature: string }) {
+  const map = useMap();
+  const lastFitted = useRef<string>('');
+  useEffect(() => {
+    if (points.length === 0 || signature === lastFitted.current) return;
+    lastFitted.current = signature;
+    if (points.length === 1) {
+      map.setView(points[0], 14);
+      return;
+    }
+    const bounds = L.latLngBounds(points);
+    map.fitBounds(bounds, { padding: [48, 48], maxZoom: 16 });
+  }, [signature]);
+  return null;
+}
+
 export default function DispatchMap({ deliveries, focusDeliveryId, height = 320, compact = false, pollIntervalSeconds = 20, onMarkerClick, followFirstMarker = false, showTrails = false }: Props) {
   const [latestByDriver, setLatestByDriver] = useState<Record<string, LivePoint>>({});
   const [trail, setTrail] = useState<LivePoint[]>([]);
   const [trailsByDriver, setTrailsByDriver] = useState<Record<string, LivePoint[]>>({});
+  const [routesByDelivery, setRoutesByDelivery] = useState<Record<string, RouteInfo>>({});
+  const routeOriginRef = useRef<Record<string, { lat: number; lng: number }>>({});
   const [layer, setLayer] = useState<MapLayer>('street');
   const mountedRef = useRef(true);
 
@@ -215,11 +293,55 @@ export default function DispatchMap({ deliveries, focusDeliveryId, height = 320,
     })
     .filter((x): x is { delivery: DispatchMapDelivery; point: LivePoint; isLive: boolean } => !!x);
 
+  // A route only makes sense while the driver is actually headed toward the
+  // destination — once assigned, or already en route. RETURNING/AT_COMPANY
+  // have no real destination to route to here (we don't have a company-base
+  // coordinate on hand), so they just keep showing as a plain marker.
+  const routeEligible = markers.filter(
+    m => m.delivery.destinationCoordinates && (m.delivery.driverState === 'ASSIGNED' || m.delivery.driverState === 'ON_THE_WAY')
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    for (const { delivery, point } of routeEligible) {
+      const dest = delivery.destinationCoordinates!;
+      const lastOrigin = routeOriginRef.current[delivery.id];
+      // Skip refetching for a few-meter GPS jitter — only recompute once the
+      // driver has actually moved a meaningful distance (~150m) from where
+      // the last route was drawn from, so the free routing server isn't hit
+      // on every single ping.
+      const movedEnough = !lastOrigin || Math.hypot(lastOrigin.lat - point.lat, lastOrigin.lng - point.lng) > 0.0015;
+      if (!movedEnough) continue;
+      routeOriginRef.current[delivery.id] = { lat: point.lat, lng: point.lng };
+      fetchRoute({ lat: point.lat, lng: point.lng }, dest).then(route => {
+        if (cancelled || !route) return;
+        setRoutesByDelivery(prev => ({ ...prev, [delivery.id]: route }));
+      });
+    }
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [routeEligible.map(m => `${m.delivery.id}:${m.point.lat.toFixed(4)}:${m.point.lng.toFixed(4)}`).join(',')]);
+
   const center: [number, number] = focusDeliveryId && markers[0]
     ? [markers[0].point.lat, markers[0].point.lng]
     : followFirstMarker && markers.length > 0
       ? [markers[0].point.lat, markers[0].point.lng]
       : ACCRA;
+
+  const fitPoints: [number, number][] = markers.flatMap(({ delivery, point }) => {
+    const route = routesByDelivery[delivery.id];
+    if (route) return route.coords;
+    const pts: [number, number][] = [[point.lat, point.lng]];
+    if (delivery.destinationCoordinates) pts.push([delivery.destinationCoordinates.lat, delivery.destinationCoordinates.lng]);
+    return pts;
+  });
+  // Coarse-rounded position included so the fit re-runs as a vehicle makes
+  // real progress along its route (not on every few-meter GPS jitter, but
+  // also not frozen at the very first fit for the whole trip).
+  const fitSignature = markers
+    .map(({ delivery, point }) => `${delivery.id}:${!!routesByDelivery[delivery.id]}:${point.lat.toFixed(2)}:${point.lng.toFixed(2)}`)
+    .join(',');
+  const hasAnyRoute = Object.keys(routesByDelivery).some(id => markers.some(m => m.delivery.id === id));
 
   return (
     <div style={{ height, borderRadius: compact ? 16 : 20, overflow: 'hidden', border: '1px solid var(--border)', position: 'relative', zIndex: 0 }}>
@@ -250,7 +372,15 @@ export default function DispatchMap({ deliveries, focusDeliveryId, height = 320,
           attribution={TILE_LAYERS[layer].attribution}
           url={TILE_LAYERS[layer].url}
         />
-        {focusDeliveryId && markers[0] && <Recenter center={[markers[0].point.lat, markers[0].point.lng]} />}
+        {/* Route present → fit/frame the whole trip like a nav view; no route
+            for the focused delivery → fall back to plain continuous
+            recenter-on-the-marker (old behavior, unchanged). */}
+        {focusDeliveryId && markers[0] && !routesByDelivery[markers[0].delivery.id] && (
+          <Recenter center={[markers[0].point.lat, markers[0].point.lng]} />
+        )}
+        {fitPoints.length > 0 && (focusDeliveryId ? hasAnyRoute : true) && (
+          <FitToBounds points={fitPoints} signature={fitSignature} />
+        )}
         {trail.length > 1 && (
           <Polyline positions={trail.map(p => [p.lat, p.lng])} pathOptions={{ color: '#3b82f6', weight: 3, opacity: 0.6 }} />
         )}
@@ -266,10 +396,36 @@ export default function DispatchMap({ deliveries, focusDeliveryId, height = 320,
             />
           );
         })}
+        {/* Real road-following navigation line to the delivery destination —
+            colored to match the same driver-state legend as the marker. */}
+        {markers.map(({ delivery }) => {
+          const route = routesByDelivery[delivery.id];
+          if (!route) return null;
+          const color = delivery.driverState ? DRIVER_STATE_COLOR[delivery.driverState] || '#3b82f6' : '#3b82f6';
+          return (
+            <Polyline
+              key={`route-${delivery.id}`}
+              positions={route.coords}
+              pathOptions={{ color, weight: 5, opacity: 0.85 }}
+            />
+          );
+        })}
+        {markers.map(({ delivery }) => {
+          if (!delivery.destinationCoordinates || !routesByDelivery[delivery.id]) return null;
+          const color = delivery.driverState ? DRIVER_STATE_COLOR[delivery.driverState] || '#3b82f6' : '#3b82f6';
+          return (
+            <Marker
+              key={`dest-${delivery.id}`}
+              position={[delivery.destinationCoordinates.lat, delivery.destinationCoordinates.lng]}
+              icon={destinationIcon(color)}
+            />
+          );
+        })}
         {markers.map(({ delivery, point, isLive }) => {
           const color = delivery.driverState
             ? DRIVER_STATE_COLOR[delivery.driverState] || '#64748b'
             : STATUS_COLOR[delivery.status || ''] || '#64748b';
+          const route = routesByDelivery[delivery.id];
           return (
             <Marker
               key={delivery.id}
@@ -283,6 +439,11 @@ export default function DispatchMap({ deliveries, focusDeliveryId, height = 320,
                   <p style={{ margin: '0 0 4px', color: '#64748b' }}>{delivery.vehicleId || 'Unassigned vehicle'}</p>
                   {delivery.driverState && (
                     <p style={{ margin: '0 0 4px', fontWeight: 600, color }}>{DRIVER_STATE_LABEL[delivery.driverState]}</p>
+                  )}
+                  {route && (
+                    <p style={{ margin: '0 0 4px', fontWeight: 700, color: '#0f172a' }}>
+                      {formatDuration(route.durationSeconds)} · {formatDistance(route.distanceMeters)}
+                    </p>
                   )}
                   <p style={{ margin: 0, color: isLive ? '#10b981' : '#94a3b8' }}>
                     {isLive ? `Live · ${point.recordedAt ? new Date(point.recordedAt).toLocaleTimeString() : 'now'}` : 'No GPS ping yet — last known position'}
