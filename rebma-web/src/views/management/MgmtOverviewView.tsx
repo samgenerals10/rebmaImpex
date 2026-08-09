@@ -433,17 +433,45 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
     score: d.performance_score || 0
   }));
 
-  // Inventory: join goods_prices × approved cargo_intake by product name, subtract sold orders
-  const inventoryItems = goodsPrices.map(gp => {
-    const key = String(gp.product_name || '').toLowerCase().trim();
+  // Inventory: union of every product that has a price, has stock, or has been
+  // sold — not just goods_prices rows. A product sold before ever being priced
+  // through Set Prices used to be silently dropped from this card entirely
+  // (absent, not shown as GHS 0), which is why Revenue Earned could read 0
+  // even with a real delivered sale behind it.
+  const clearedOrdersForInventory = (orders as any[]).filter(o => ['APPROVED','PROCESSING','DELIVERED','OUT_FOR_DELIVERY'].includes(o.status));
+  const inventoryProductKeys = new Map<string, string>(); // lowercase key -> a display name
+  goodsPrices.forEach(gp => { const k = String(gp.product_name || '').toLowerCase().trim(); if (k) inventoryProductKeys.set(k, gp.product_name); });
+  stockList.forEach(s => { const k = String(s.product_name || '').toLowerCase().trim(); if (k && !inventoryProductKeys.has(k)) inventoryProductKeys.set(k, s.product_name); });
+  clearedOrdersForInventory.forEach((o: any) => {
+    const items = o.metadata?.items;
+    if (Array.isArray(items) && items.length > 0) {
+      items.forEach((it: any) => {
+        const nm = it.productName || it.product_name || '';
+        const k = String(nm).toLowerCase().trim();
+        if (k && !inventoryProductKeys.has(k)) inventoryProductKeys.set(k, nm);
+      });
+    } else {
+      // Only a candidate new key when it's unambiguously a single product —
+      // a comma means this is the order's flattened multi-item display string
+      // (e.g. "city flour, milk powder"), which isn't a real product name and
+      // would otherwise show up as its own fake zero-value row.
+      const nm = o.product_name || '';
+      if (!nm.includes(',')) {
+        const k = String(nm).toLowerCase().trim();
+        if (k && !inventoryProductKeys.has(k)) inventoryProductKeys.set(k, nm);
+      }
+    }
+  });
+
+  const inventoryItems = Array.from(inventoryProductKeys.entries()).map(([key, displayName]) => {
+    const gp = goodsPrices.find(g => String(g.product_name || '').toLowerCase().trim() === key);
     // Get live quantity directly from the stock table instead of summing historical cargo intakes
     const stockItem = stockList.find(s => String(s.product_name || '').toLowerCase().trim() === key);
     const qty = stockItem ? Number(stockItem.quantity || 0) : 0;
     const category = stockItem ? stockItem.category : 'INCOMING_GOODS';
-    
-    const clearedForKey = (orders as any[]).filter(o => ['APPROVED','PROCESSING','DELIVERED','OUT_FOR_DELIVERY'].includes(o.status));
+
     let soldRevenue = 0;
-    for (const o of clearedForKey) {
+    for (const o of clearedOrdersForInventory) {
       const items = o.metadata?.items;
       if (Array.isArray(items) && items.length > 0) {
         for (const it of items) {
@@ -459,17 +487,17 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
     const soldQty = soldLedger.filter(l => String(l.product_name || '').toLowerCase().trim() === key)
       .reduce((sum, l) => sum + (Number(l.quantity) || 0), 0);
     return {
-      name: gp.product_name,
+      name: gp?.product_name || displayName,
       category,
-      unitPrice: Number(gp.unit_price || 0),
-      costPrice: Number(gp.cost_price || 0),
-      currency: gp.currency || 'GHS',
+      unitPrice: Number(gp?.unit_price || 0),
+      costPrice: Number(gp?.cost_price || 0),
+      currency: gp?.currency || 'GHS',
       qty,
-      sellingValue: Number(gp.unit_price || 0) * qty,
-      costValue: Number(gp.cost_price || 0) * qty,
+      sellingValue: Number(gp?.unit_price || 0) * qty,
+      costValue: Number(gp?.cost_price || 0) * qty,
       soldQty,
       soldRevenue,
-      image: gp.product_image || '',
+      image: gp?.product_image || '',
     };
   });
   const totalSellingValue = inventoryItems.reduce((s, i) => s + i.sellingValue, 0);

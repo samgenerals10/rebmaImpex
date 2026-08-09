@@ -22,7 +22,7 @@ interface Props {
   addNotification?: (msg: string) => void;
   setActiveSubTab?: (tab: string) => void;
   currentUser?: { fullName: string; department: string } | null;
-  ordersList?: { id: string; clientName: string; totalAmount: number; status: string; paymentMode?: string; createdAt?: string; productName?: string; quantity?: number }[];
+  ordersList?: { id: string; clientName: string; totalAmount: number; status: string; paymentMode?: string; createdAt?: string; productName?: string; quantity?: number; metadata?: any }[];
   onEvaluateOrder?: (id: string, approve: boolean) => void;
 }
 
@@ -129,7 +129,7 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
         id: r.id, clientName: r.client_name || '', productName: r.product_name || '',
         totalAmount: Number(r.total_amount || 0), status: r.status || 'PENDING_FINANCE',
         paymentMode: r.payment_mode || 'CASH', createdAt: r.created_at || '',
-        quantity: Number(r.quantity || 1)
+        quantity: Number(r.quantity || 1), metadata: r.metadata || null
       }));
       setLiveOrders(mapped as any);
     }, () => {});
@@ -386,16 +386,44 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
   const finRemainingGoodsCount = stock.filter(s => s.category !== 'INCOMING_GOODS' && Number(s.quantity || s.current || 0) > 0).length;
   const totalRemainingGoodsCount = rawRemainingGoodsCount + finRemainingGoodsCount;
 
-  // Compute inventory valuation
-  const inventoryItems = goodsPrices.map((gp: any) => {
-    const key = String(gp.product_name || '').toLowerCase().trim();
+  // Compute inventory valuation — union of every product that has a price, has
+  // unsold stock, or has been sold, not just goods_prices rows. A product sold
+  // before ever being explicitly priced through Set Prices used to be silently
+  // dropped from this card entirely (absent, not shown as GHS 0), which is why
+  // Revenue Earned could read 0 even with real delivered sales behind it.
+  const clearedOrdersForInventory = (effective as any[]).filter(o => ['APPROVED','PROCESSING','DELIVERED','OUT_FOR_DELIVERY'].includes(o.status));
+  const inventoryProductKeys = new Map<string, string>(); // lowercase key -> a display name
+  goodsPrices.forEach((gp: any) => { const k = String(gp.product_name || '').toLowerCase().trim(); if (k) inventoryProductKeys.set(k, gp.product_name); });
+  stock.forEach((s: any) => { const k = String(s.product_name || '').toLowerCase().trim(); if (k && !inventoryProductKeys.has(k)) inventoryProductKeys.set(k, s.product_name); });
+  clearedOrdersForInventory.forEach((o: any) => {
+    const items = o.metadata?.items;
+    if (Array.isArray(items) && items.length > 0) {
+      items.forEach((it: any) => {
+        const nm = it.productName || it.product_name || '';
+        const k = String(nm).toLowerCase().trim();
+        if (k && !inventoryProductKeys.has(k)) inventoryProductKeys.set(k, nm);
+      });
+    } else {
+      // Only a candidate new key when it's unambiguously a single product —
+      // a comma means this is the order's flattened multi-item display string
+      // (e.g. "city flour, milk powder"), which isn't a real product name and
+      // would otherwise show up as its own fake zero-value row.
+      const nm = o.productName || o.product_name || '';
+      if (!nm.includes(',')) {
+        const k = String(nm).toLowerCase().trim();
+        if (k && !inventoryProductKeys.has(k)) inventoryProductKeys.set(k, nm);
+      }
+    }
+  });
+
+  const inventoryItems = Array.from(inventoryProductKeys.entries()).map(([key, displayName]) => {
+    const gp = goodsPrices.find((g: any) => String(g.product_name || '').toLowerCase().trim() === key);
     const qty = stock.filter((s: any) => String(s.product_name || '').toLowerCase().trim() === key).reduce((sum: number, s: any) => sum + (Number(s.quantity || s.current || 0)), 0);
     // Match per line-item (metadata.items), not the order's flattened product_name —
     // multi-item orders join names as "Flour Nice, Milk Powder, ..." which never
     // equals a single product key, silently zeroing revenue for every product.
-    const clearedOrders = (effective as any[]).filter(o => ['APPROVED','PROCESSING','DELIVERED','OUT_FOR_DELIVERY'].includes(o.status));
     let soldRevenue = 0;
-    for (const o of clearedOrders) {
+    for (const o of clearedOrdersForInventory) {
       const items = o.metadata?.items;
       if (Array.isArray(items) && items.length > 0) {
         for (const it of items) {
@@ -410,7 +438,7 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
     // Actual quantity sold — real stock_ledger deductions, not order line-item estimates
     const soldQty = stockLedger.filter(l => l.movement_type === 'REMOVE' && String(l.product_name || '').toLowerCase().trim() === key)
       .reduce((s, l) => s + (Number(l.quantity) || 0), 0);
-    return { name: gp.product_name, unitPrice: Number(gp.unit_price || 0), costPrice: Number(gp.cost_price || 0), currency: gp.currency || 'GHS', qty, sellingValue: Number(gp.unit_price || 0) * qty, costValue: Number(gp.cost_price || 0) * qty, soldRevenue, soldQty, image: gp.product_image || '' };
+    return { name: gp?.product_name || displayName, unitPrice: Number(gp?.unit_price || 0), costPrice: Number(gp?.cost_price || 0), currency: gp?.currency || 'GHS', qty, sellingValue: Number(gp?.unit_price || 0) * qty, costValue: Number(gp?.cost_price || 0) * qty, soldRevenue, soldQty, image: gp?.product_image || '' };
   });
   const totalSell = inventoryItems.reduce((s, i) => s + i.sellingValue, 0);
   const totalCost = inventoryItems.reduce((s, i) => s + i.costValue, 0);

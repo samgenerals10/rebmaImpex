@@ -61,13 +61,13 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
 
   const [productPrices, setProductPrices] = useState<Record<string, number>>({});
   const [stockLevels, setStockLevels] = useState<Record<string, number>>({});
-  const [customers, setCustomers] = useState<{ id: string; name: string; discountPercent: number; isSpecialCustomer: boolean }[]>([]);
+  const [customers, setCustomers] = useState<{ id: string; name: string; phone: string; discountPercent: number; isSpecialCustomer: boolean }[]>([]);
   const [destinationCoords, setDestinationCoords] = useState<Coords | null>(null);
 
   const openNewOrderModal = () => {
     setShowNewModal(true);
     setLineItems([{ productName: '', quantity: 1 }]);
-    setForm({ clientName: '', destination: '', paymentMode: 'CASH', customerId: '' });
+    setForm({ clientName: '', destination: '', paymentMode: 'CASH', customerId: '', phone: '' });
     setDestinationCoords(null);
     supabase.from('goods_prices').select('product_name, unit_price').order('product_name').then(({ data }) => {
       setAvailableProducts((data || []).map((r: any) => String(r.product_name)));
@@ -95,6 +95,7 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
       setCustomers(unique.map((r: any) => ({
         id: String(r.id),
         name: String(r.name).trim(),
+        phone: String(r.phone || '').trim(),
         discountPercent: Number(r.discount_percent) || 0,
         isSpecialCustomer: r.is_special_customer ?? false,
       })));
@@ -118,7 +119,7 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  const [form, setForm] = useState({ clientName: '', destination: '', paymentMode: 'CASH' as Order['paymentMode'], customerId: '' });
+  const [form, setForm] = useState({ clientName: '', destination: '', paymentMode: 'CASH' as Order['paymentMode'], customerId: '', phone: '' });
   const [lineItems, setLineItems] = useState<{ productName: string; quantity: number }[]>([{ productName: '', quantity: 1 }]);
   const [availableProducts, setAvailableProducts] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -129,6 +130,7 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
     ticketNumber: r.ticket_number || r.ticketNumber || r.id,
     clientName: r.client_name || r.clientName || '',
     customerId: r.customer_id || r.customerId || undefined,
+    phone: r.phone || undefined,
     productName: r.product_name || r.productName || '',
     destination: r.destination || '',
     totalAmount: Number(r.total_amount ?? r.totalAmount ?? 0),
@@ -238,6 +240,7 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
         p_customer_id: resolvedCustomer?.id || null,
         p_destination_lat: destinationCoords?.lat ?? null,
         p_destination_lng: destinationCoords?.lng ?? null,
+        p_phone: form.phone.trim() || resolvedCustomer?.phone || null,
       });
 
       if (error) { addNotification(`Failed to create order: ${error.message}`); return; }
@@ -251,7 +254,7 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
       setOrders(prev => [newOrder, ...prev]);
       setShowNewModal(false);
       setLineItems([{ productName: '', quantity: 1 }]);
-      setForm({ clientName: '', destination: '', paymentMode: 'CASH', customerId: '' });
+      setForm({ clientName: '', destination: '', paymentMode: 'CASH', customerId: '', phone: '' });
       setDestinationCoords(null);
       addNotification('Order created successfully. Routed to Management for review.');
     } catch (e: any) {
@@ -447,7 +450,9 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
                       onChange={e => {
                         const name = e.target.value;
                         const match = resolveCustomer(name);
-                        setForm(prev => ({ ...prev, clientName: name, customerId: match?.id || '' }));
+                        // Auto-fill phone from a matched customer, but don't clobber
+                        // a phone the user already typed manually for a new customer.
+                        setForm(prev => ({ ...prev, clientName: name, customerId: match?.id || '', phone: match?.phone || prev.phone }));
                       }}
                       placeholder="Type or select customer name..."
                       className="w-full px-3 py-2 text-sm rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />
@@ -456,6 +461,13 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
                         {customers.find(c => c.id === form.customerId)?.discountPercent}% customer discount will be applied
                       </p>
                     )}
+                  </div>
+                  <div className="col-span-2">
+                    <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Customer Phone</label>
+                    <input type="tel" value={form.phone}
+                      onChange={e => setForm(prev => ({ ...prev, phone: e.target.value }))}
+                      placeholder="e.g. 024 123 4567 — sent to the driver so they can reach the customer"
+                      className="w-full px-3 py-2 text-sm rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />
                   </div>
                   <div className="col-span-2">
                     <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Destination</label>

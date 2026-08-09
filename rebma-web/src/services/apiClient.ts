@@ -637,7 +637,7 @@ export const operations = {
 // returns the list of items that don't have enough stock so the caller can
 // block the approval with a clear message instead of silently going
 // negative (this is what let Statement's "Remaining Stock" show -13,853).
-async function checkStockAvailability(order: any): Promise<{ productName: string; requested: number; available: number }[]> {
+export async function checkStockAvailability(order: any): Promise<{ productName: string; requested: number; available: number }[]> {
   const meta = order.metadata || {};
   const metaItems = meta.items || [];
   const lineItems = metaItems.length > 0
@@ -658,7 +658,7 @@ async function checkStockAvailability(order: any): Promise<{ productName: string
   return shortages;
 }
 
-function shortageMessage(shortages: { productName: string; requested: number; available: number }[]): string {
+export function shortageMessage(shortages: { productName: string; requested: number; available: number }[]): string {
   const list = shortages.map(s => `${s.productName} (need ${s.requested}, only ${s.available} in stock)`).join('; ');
   return `Insufficient stock — cannot approve: ${list}`;
 }
@@ -670,7 +670,7 @@ function shortageMessage(shortages: { productName: string; requested: number; av
 // to be invoiced/dispatched later. Never throws: a stock hiccup shouldn't block
 // the approval itself, it just logs. Availability itself is checked separately,
 // before this runs, via checkStockAvailability — see evaluateOrder/approveCreditOrder.
-async function deductStockForOrder(order: any, reference: string) {
+export async function deductStockForOrder(order: any, reference: string) {
   try {
     const { data: sessionData } = await supabase.auth.getSession();
     // performed_by / updated_by are UUID FKs to auth.users — must be a real session id or null, never a name/placeholder string

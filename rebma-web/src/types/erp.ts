@@ -12,6 +12,7 @@ export interface Order {
   ticketNumber?: string;
   clientName: string;
   customerId?: string;
+  phone?: string;
   productName?: string;
   destination?: string;
   ghanaCard?: string;

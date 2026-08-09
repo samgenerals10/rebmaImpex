@@ -12,7 +12,7 @@ import { useFullscreenToggle, FullscreenButton } from '../../components/global/F
 import CountUp from '../../components/CountUp';
 import { useCeoSettings } from '../../contexts/CeoSettingsContext';
 import { generateReceiptNumber, printReceipt } from './ReceiptsView';
-import { documentTemplates } from '../../services/apiClient';
+import { documentTemplates, checkStockAvailability, shortageMessage, deductStockForOrder } from '../../services/apiClient';
 
 interface Props {
   addNotification?: (msg: string) => void;
@@ -82,6 +82,7 @@ function mapRow(r: any): Order {
     id: String(r.id || ''),
     ticketNumber: r.ticket_number || r.ticketNumber || r.id,
     clientName: r.client_name || r.clientName || '',
+    phone: r.phone || undefined,
     productName: r.product_name || r.productName || '',
     destination: r.destination || '',
     paymentMode: r.payment_mode || r.paymentMode || 'CASH',
@@ -175,6 +176,16 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
     if (submitting) return;
     setSubmitting(true);
     try {
+      // Guard against overselling — same check apiClient's finance.evaluateOrder()
+      // already does; this screen's own approve button never called it, which is
+      // how stock could reach 0 available while an order still went through.
+      const shortages = await checkStockAvailability(order);
+      if (shortages.length > 0) {
+        addNotification?.(shortageMessage(shortages));
+        setSubmitting(false);
+        return;
+      }
+
       const updateLocal = (prev: Order[]) => prev.map(o => o.id === order.id ? { ...o, status: updatedStatus } : o);
       setAllOrders(updateLocal);
       setOrdersList?.(prev => prev.map(o => o.id === order.id ? { ...o, status: updatedStatus } : o));
@@ -183,9 +194,22 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
       const { data: sessionData } = await supabase.auth.getSession();
       const userId = sessionData?.session?.user?.id || '';
       const performedBy = currentUser?.fullName || 'Finance';
+      const performedByEmail = sessionData?.session?.user?.email || null;
       const now = new Date().toISOString();
 
-      await supabase.from('orders').update({ status: updatedStatus }).eq('id', order.id);
+      await supabase.from('orders').update({
+        status: updatedStatus,
+        finance_approved_by: performedBy,
+        finance_approved_by_email: performedByEmail,
+      }).eq('id', order.id);
+
+      // Deduct sold stock the moment the sale is confirmed — same trigger point
+      // finance.evaluateOrder() uses in apiClient.ts. That function is correct
+      // but was never actually called by this screen's Approve button, which is
+      // why stock quantities never moved for orders approved here.
+      const ticketRef = order.ticketNumber || `ORD-${String(order.id).slice(0, 6).toUpperCase()}`;
+      await deductStockForOrder(order, `Order Approved: ${ticketRef}`);
+
       // No delivery_logs row here — creating one the instant Finance approves
       // is what let an order show up in Dispatch's driver-assignment screen
       // before Operations had done anything at all. That handoff now only
@@ -297,7 +321,7 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
           recordedBy,
           status: 'CONFIRMED',
           createdAt,
-          customerPhone: (order as any).phone || '',
+          customerPhone: order.phone || '',
         }, order.metadata?.items || null, template, getSetting('print_enabled', true));
       }
     } catch (e) {
