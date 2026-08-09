@@ -3080,7 +3080,6 @@ export default function App() {
       if (activeSubTab === 'PriceCatalog')    return <GoodsPriceCatalogView addNotification={addNotification} currentUser={currentUser} />;
       if (activeSubTab === 'SupplierOrders')  return <CeoSupplierOrdersView currentUser={currentUser} addNotification={addNotification} />;
       if (activeSubTab === 'DeptActivity')    return <DeptActivityView currentUser={currentUser} addNotification={addNotification} />;
-      if (activeSubTab === 'ControlCenter')   return <CeoControlCenter currentUser={currentUser} addNotification={addNotification} />;
       if (activeSubTab === 'FleetOverview')  return <LogisticsFleetOverviewView addNotification={addNotification} />;
       if (activeSubTab === 'FuelManagement') return <LogisticsFuelManagementView addNotification={addNotification} />;
       if (activeSubTab === 'Maintenance')    return <LogisticsMaintenanceView addNotification={addNotification} />;
@@ -3296,6 +3295,13 @@ export default function App() {
           />
         );
       case 'SETTINGS':
+        // Lives under Settings rather than its own CEO nav item, but stays
+        // gated to CEO/admin here too — not just by hiding the sidebar
+        // button — in case a stale lastTab ever puts a non-CEO session on
+        // this subTab.
+        if (activeSubTab === 'ControlCenter' && (currentUser?.isAdmin || currentUser?.department === 'CEO')) {
+          return <CeoControlCenter currentUser={currentUser} addNotification={addNotification} />;
+        }
         return (
           <SettingsDashboard
             theme={theme}

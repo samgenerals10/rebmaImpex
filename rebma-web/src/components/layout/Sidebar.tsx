@@ -99,7 +99,6 @@ export default function Sidebar({
       { id: 'Tracking',        label: 'GPS Tracking',          icon: MapPin },
       { id: 'Messages',        label: 'Messages & Boardroom',  icon: MessageCircle },
       { id: 'DeptActivity',    label: 'Dept Activity',          icon: Activity },
-      { id: 'ControlCenter',   label: 'Control Center',         icon: Shield },
       { id: 'Spreadsheets',    label: 'Spreadsheets',           icon: FileSpreadsheet },
     ],
     FINANCE: [
@@ -219,6 +218,10 @@ export default function Sidebar({
       { id: 'Profile',         label: 'Profile & Account',     icon: Users },
       { id: 'ChangePassword',  label: 'Change Password',       icon: ShieldCheck },
       { id: 'TwoFactor',       label: 'Two-Factor Authentication', icon: ShieldCheck },
+      // CEO-only — filtered out below for everyone else. Settings is the
+      // one nav destination every department shares, so this is the only
+      // array that needs a per-item (not per-department) visibility check.
+      { id: 'ControlCenter',   label: 'Control Center',        icon: Shield },
       { id: 'DeleteAccount',   label: 'Delete Account',        icon: LogOut },
     ]
   };
@@ -328,7 +331,7 @@ export default function Sidebar({
     </div>
   );
 
-  const currentTabs = departmentTabs[activeDepartment] || [];
+  const currentTabs = (departmentTabs[activeDepartment] || []).filter(t => t.id !== 'ControlCenter' || isAdmin);
 
   return (
     <aside
