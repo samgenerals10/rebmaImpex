@@ -18,6 +18,28 @@ interface PendingItem {
   tab: string;
 }
 
+// "Newly priced items" has no real resolution action (unlike every other
+// item here, which clears when someone actually approves/rejects it) — it's
+// purely a "have you looked at the catalog" nudge, so it needs real
+// last-viewed tracking per user rather than a fixed rolling window, or it
+// can never clear no matter how many times the page is opened. Stored on
+// the user's own profile row (same metadata JSONB used for notification
+// preferences elsewhere) — GoodsPriceCatalogView.tsx writes this timestamp
+// on mount. Never-viewed defaults to the epoch, so a first-time visitor
+// correctly sees every currently-priced item as new.
+async function priceCatalogLastViewed(): Promise<string> {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    const uid = session?.user?.id;
+    if (!uid) return new Date(0).toISOString();
+    const { data } = await supabase.from('profiles').select('metadata').eq('id', uid).limit(1).maybeSingle();
+    const lastViewed = (data as any)?.metadata?.price_catalog_last_viewed_at;
+    return typeof lastViewed === 'string' ? lastViewed : new Date(0).toISOString();
+  } catch {
+    return new Date(0).toISOString();
+  }
+}
+
 export async function fetchPendingForDept(department: string): Promise<PendingItem[]> {
   const items: PendingItem[] = [];
 
@@ -47,11 +69,11 @@ export async function fetchPendingForDept(department: string): Promise<PendingIt
     }
 
     if (department === 'FINANCE') {
-      const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const sincePriceView = await priceCatalogLastViewed();
       const [orders, requisitions, newPrices] = await Promise.all([
         supabase.from('orders').select('id', { count: 'exact', head: true }).eq('status', 'PENDING_FINANCE'),
         supabase.from('material_requisitions').select('id', { count: 'exact', head: true }).eq('status', 'PENDING_FINANCE'),
-        supabase.from('goods_prices').select('id', { count: 'exact', head: true }).gte('updated_at', since),
+        supabase.from('goods_prices').select('id', { count: 'exact', head: true }).gte('updated_at', sincePriceView),
       ]);
       if ((orders.count ?? 0) > 0) items.push({ label: 'orders awaiting evaluation', count: orders.count!, tab: 'OrdersQueue' });
       if ((requisitions.count ?? 0) > 0) items.push({ label: 'material requisitions to record', count: requisitions.count!, tab: 'Evaluation' });
@@ -59,8 +81,8 @@ export async function fetchPendingForDept(department: string): Promise<PendingIt
     }
 
     if (department === 'MARKETING') {
-      const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-      const { count } = await supabase.from('goods_prices').select('id', { count: 'exact', head: true }).gte('updated_at', since);
+      const sincePriceView = await priceCatalogLastViewed();
+      const { count } = await supabase.from('goods_prices').select('id', { count: 'exact', head: true }).gte('updated_at', sincePriceView);
       if ((count ?? 0) > 0) items.push({ label: 'newly priced items ready to sell', count: count!, tab: 'PriceCatalog' });
     }
 

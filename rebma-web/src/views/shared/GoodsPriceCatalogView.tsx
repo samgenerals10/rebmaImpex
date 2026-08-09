@@ -19,12 +19,29 @@ interface PriceRow {
 
 interface Props {
   addNotification?: (msg: string) => void;
+  currentUser?: { id: string } | null;
 }
 
-export default function GoodsPriceCatalogView({ addNotification }: Props) {
+export default function GoodsPriceCatalogView({ addNotification, currentUser }: Props) {
   const [prices, setPrices] = useState<PriceRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+
+  // Clears the "newly priced items" sidebar badge — that badge counts
+  // goods_prices rows updated since this timestamp (PendingApprovalsAlert.tsx),
+  // so simply having opened this page is what's supposed to make it go away.
+  useEffect(() => {
+    if (!currentUser?.id) return;
+    (async () => {
+      try {
+        const { data } = await supabase.from('profiles').select('metadata').eq('id', currentUser.id).limit(1).maybeSingle();
+        const existingMetadata = (data as any)?.metadata || {};
+        await supabase.from('profiles').update({
+          metadata: { ...existingMetadata, price_catalog_last_viewed_at: new Date().toISOString() }
+        }).eq('id', currentUser.id);
+      } catch {}
+    })();
+  }, [currentUser?.id]);
 
   useEffect(() => {
     async function load() {

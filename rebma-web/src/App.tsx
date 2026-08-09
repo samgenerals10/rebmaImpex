@@ -3078,7 +3078,7 @@ export default function App() {
       if (activeSubTab === 'Accounts')        return <CeoAccountsView setActiveSubTab={setActiveSubTab} />;
       if (activeSubTab === 'Approvals')       return <CeoApprovalsView currentUser={currentUser} addNotification={addNotification} />;
       if (activeSubTab === 'PriceApprovals')  return <CeoPriceApprovalsView currentUser={currentUser} addNotification={addNotification} />;
-      if (activeSubTab === 'PriceCatalog')    return <GoodsPriceCatalogView addNotification={addNotification} />;
+      if (activeSubTab === 'PriceCatalog')    return <GoodsPriceCatalogView addNotification={addNotification} currentUser={currentUser} />;
       if (activeSubTab === 'SupplierOrders')  return <CeoSupplierOrdersView currentUser={currentUser} addNotification={addNotification} />;
       if (activeSubTab === 'DeptActivity')    return <DeptActivityView currentUser={currentUser} addNotification={addNotification} />;
       if (activeSubTab === 'ControlCenter')   return <CeoControlCenter currentUser={currentUser} addNotification={addNotification} />;
@@ -3097,7 +3097,7 @@ export default function App() {
       if (activeSubTab === 'Wallets')           return <FinanceWalletsView />;
       if (activeSubTab === 'Transactions')      return <FinanceTransactionsView addNotification={addNotification} />;
       if (activeSubTab === 'Invoices')          return <CeoInvoicesView addNotification={addNotification} currentUser={currentUser} />;
-      if (activeSubTab === 'PriceCatalog')      return <GoodsPriceCatalogView addNotification={addNotification} />;
+      if (activeSubTab === 'PriceCatalog')      return <GoodsPriceCatalogView addNotification={addNotification} currentUser={currentUser} />;
       if (activeSubTab === 'RecurringPayments') return <FinanceRecurringView currentUser={currentUser} addNotification={addNotification} />;
       if (activeSubTab === 'CreditMgmt')        return <FinanceCreditMgmtView addNotification={addNotification} currentUser={currentUser} />;
       if (activeSubTab === 'Expenses')          return <FinanceExpensesView addNotification={addNotification} currentUser={currentUser} />;
@@ -3131,7 +3131,7 @@ export default function App() {
       if (activeSubTab === 'Overview')          return <MarketingOverviewView addNotification={addNotification} setActiveSubTab={setActiveSubTab} currentUser={currentUser} ordersList={ordersList} customersList={customersList} />;
       if (activeSubTab === 'Invoices')          return <MarketingInvoicesView addNotification={addNotification} currentUser={currentUser} />;
       if (activeSubTab === 'Receipts')          return <FinanceReceiptsView addNotification={addNotification} />;
-      if (activeSubTab === 'PriceCatalog')      return <GoodsPriceCatalogView addNotification={addNotification} />;
+      if (activeSubTab === 'PriceCatalog')      return <GoodsPriceCatalogView addNotification={addNotification} currentUser={currentUser} />;
       if (activeSubTab === 'CreateOrder')       return <MarketingOrdersView ordersList={ordersList} onCreateOrder={handleCreateOrder} addNotification={addNotification} />;
       if (activeSubTab === 'RegisterCustomer')  return <MarketingCustomersView customersList={customersList} onRegisterCustomer={handleRegisterCustomer} addNotification={addNotification} />;
       if (activeSubTab === 'SalesHistory')      return <MarketingSalesHistoryView ordersList={ordersList} addNotification={addNotification} />;
