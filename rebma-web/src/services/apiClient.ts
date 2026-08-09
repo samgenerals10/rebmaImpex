@@ -1983,6 +1983,12 @@ export interface DocumentTemplate {
   companyName: string;
   subtitle: string;
   companyAddress: string;
+  // Exact pin dropped on the map picker (Document Templates > Dispatch
+  // Ticket) — null until Management sets one, in which case anything that
+  // needs "where is the company" (the dispatch map's depot fallback) uses
+  // these directly instead of re-geocoding companyAddress's free text.
+  companyLat: number | null;
+  companyLng: number | null;
   companyPhone: string;
   companyEmail: string;
   website: string;
@@ -1990,9 +1996,9 @@ export interface DocumentTemplate {
 }
 
 const DOC_TEMPLATE_FALLBACKS: Record<DocumentTemplate['docType'], DocumentTemplate> = {
-  RECEIPT: { docType: 'RECEIPT', logoUrl: '/logo.png', companyName: 'REBMA IMPEX', subtitle: 'Official Payment Receipt', companyAddress: 'Accra Business District, Accra, Ghana', companyPhone: '', companyEmail: '', website: 'rebmaimpex.com', footerNote: 'This receipt is issued by REBMA IMPEX Ghana Limited Finance. It confirms payment has been received and recorded against the order referenced above.' },
-  TICKET: { docType: 'TICKET', logoUrl: '/logo.png', companyName: 'REBMA IMPEX', subtitle: 'Operations Dispatch Ticket', companyAddress: 'Accra Business District, Accra, Ghana', companyPhone: '', companyEmail: '', website: 'rebmaimpex.com', footerNote: 'This ticket is issued by REBMA IMPEX Ghana Limited Operations. It authorises the loading and dispatch of the above goods to the stated destination.' },
-  INVOICE: { docType: 'INVOICE', logoUrl: '/logo.png', companyName: 'REBMA IMPEX', subtitle: 'Proforma Invoice — Quote Only', companyAddress: 'Accra Business District, Accra, Ghana', companyPhone: '', companyEmail: '', website: 'rebmaimpex.com', footerNote: 'This is a proforma invoice — a quotation only, not a demand for payment or a tax invoice.' },
+  RECEIPT: { docType: 'RECEIPT', logoUrl: '/logo.png', companyName: 'REBMA IMPEX', subtitle: 'Official Payment Receipt', companyAddress: 'Accra Business District, Accra, Ghana', companyLat: null, companyLng: null, companyPhone: '', companyEmail: '', website: 'rebmaimpex.com', footerNote: 'This receipt is issued by REBMA IMPEX Ghana Limited Finance. It confirms payment has been received and recorded against the order referenced above.' },
+  TICKET: { docType: 'TICKET', logoUrl: '/logo.png', companyName: 'REBMA IMPEX', subtitle: 'Operations Dispatch Ticket', companyAddress: 'Accra Business District, Accra, Ghana', companyLat: null, companyLng: null, companyPhone: '', companyEmail: '', website: 'rebmaimpex.com', footerNote: 'This ticket is issued by REBMA IMPEX Ghana Limited Operations. It authorises the loading and dispatch of the above goods to the stated destination.' },
+  INVOICE: { docType: 'INVOICE', logoUrl: '/logo.png', companyName: 'REBMA IMPEX', subtitle: 'Proforma Invoice — Quote Only', companyAddress: 'Accra Business District, Accra, Ghana', companyLat: null, companyLng: null, companyPhone: '', companyEmail: '', website: 'rebmaimpex.com', footerNote: 'This is a proforma invoice — a quotation only, not a demand for payment or a tax invoice.' },
 };
 
 function mapDocTemplate(row: any, docType: DocumentTemplate['docType']): DocumentTemplate {
@@ -2004,6 +2010,8 @@ function mapDocTemplate(row: any, docType: DocumentTemplate['docType']): Documen
     companyName: row.company_name || fallback.companyName,
     subtitle: row.subtitle ?? fallback.subtitle,
     companyAddress: row.company_address ?? fallback.companyAddress,
+    companyLat: row.company_lat != null ? Number(row.company_lat) : null,
+    companyLng: row.company_lng != null ? Number(row.company_lng) : null,
     companyPhone: row.company_phone ?? fallback.companyPhone,
     companyEmail: row.company_email ?? fallback.companyEmail,
     website: row.website || fallback.website,
@@ -2048,6 +2056,8 @@ export const documentTemplates = {
       company_name: template.companyName,
       subtitle: template.subtitle,
       company_address: template.companyAddress,
+      company_lat: template.companyLat,
+      company_lng: template.companyLng,
       company_phone: template.companyPhone,
       company_email: template.companyEmail,
       website: template.website,

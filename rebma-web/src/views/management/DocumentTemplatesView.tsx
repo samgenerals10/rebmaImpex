@@ -7,9 +7,10 @@
 // per-transaction content — customer, amounts, line items, who issued it,
 // the document number, the QR code — is system-generated and untouched here.
 import { useState, useEffect, useRef } from 'react';
-import { Receipt, Ticket, FileText, Save, Image as ImageIcon, Upload, X, Loader2 } from 'lucide-react';
+import { Receipt, Ticket, FileText, Save, Image as ImageIcon, Upload, X, Loader2, MapPin } from 'lucide-react';
 import { documentTemplates, type DocumentTemplate } from '../../services/apiClient';
 import { uploadFile } from '../../utils/uploadFile';
+import DestinationLocator from '../../components/dispatch/DestinationLocator';
 
 interface Props {
   addNotification?: (msg: string) => void;
@@ -51,8 +52,15 @@ export default function DocumentTemplatesView({ addNotification, currentUser }: 
   const saved = templates?.[activeTab];
   const dirty = draft && saved && JSON.stringify(draft) !== JSON.stringify(saved);
 
-  const setField = (key: keyof DocumentTemplate, value: string) => {
+  const setField = (key: keyof DocumentTemplate, value: string | number | null) => {
     setDrafts(prev => prev ? { ...prev, [activeTab]: { ...prev[activeTab], [key]: value } } : prev);
+  };
+
+  const setCompanyPin = (coords: { lat: number; lng: number } | null) => {
+    setDrafts(prev => prev ? {
+      ...prev,
+      [activeTab]: { ...prev[activeTab], companyLat: coords?.lat ?? null, companyLng: coords?.lng ?? null }
+    } : prev);
   };
 
   const handleLogoFile = async (file: File | undefined) => {
@@ -154,7 +162,18 @@ export default function DocumentTemplatesView({ addNotification, currentUser }: 
               </div>
               <div>
                 <label className={labelCls}>Company Address</label>
-                <input className={inputCls} value={draft.companyAddress} onChange={e => setField('companyAddress', e.target.value)} placeholder="Accra Business District, Accra, Ghana" />
+                <DestinationLocator
+                  value={draft.companyAddress}
+                  onChange={text => setField('companyAddress', text)}
+                  onResolve={setCompanyPin}
+                  placeholder="Accra Business District, Accra, Ghana"
+                />
+                <p className={`text-[11px] mt-1.5 flex items-center gap-1 ${draft.companyLat != null ? 'text-emerald-600' : 'text-[var(--text-muted)]'}`}>
+                  <MapPin size={11} />
+                  {draft.companyLat != null
+                    ? `Pinned at ${draft.companyLat.toFixed(5)}, ${draft.companyLng?.toFixed(5)}`
+                    : 'Not pinned yet — click the locate icon or the map to drop an exact pin'}
+                </p>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>

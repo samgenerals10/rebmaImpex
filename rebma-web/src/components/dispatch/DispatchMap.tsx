@@ -105,6 +105,14 @@ function getCompanyLocation(): Promise<{ lat: number; lng: number } | null> {
   companyLocationPromise = (async () => {
     try {
       const template = await documentTemplates.get('TICKET');
+      // An exact pin (Document Templates > Dispatch Ticket) always wins —
+      // only fall back to guessing from the free-text address when
+      // Management hasn't dropped one yet.
+      if (template.companyLat != null && template.companyLng != null) {
+        const loc = { lat: template.companyLat, lng: template.companyLng };
+        companyLocationCache = loc;
+        return loc;
+      }
       const address = template.companyAddress?.trim();
       if (!address) { companyLocationCache = null; return null; }
       const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=gh&q=${encodeURIComponent(address)}`);
