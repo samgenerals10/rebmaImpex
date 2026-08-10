@@ -1768,3 +1768,25 @@ button:not(.nav-item):not(.lf-nav-item):not(.tab-item):active {
   }
 }
 
+/* Driver name label beside the truck marker on the dispatch map — a plain
+   Leaflet tooltip defaults to a white box with a pointer arrow, which reads
+   as a hover hint rather than a permanent map label. Selectors are
+   compounded with Leaflet's own class (.leaflet-tooltip, .leaflet-tooltip-right)
+   rather than just .dispatch-driver-label alone — leaflet.css is imported
+   AFTER this file in main.tsx, so a same-specificity single-class rule here
+   would lose the cascade to Leaflet's defaults (#fff background, white
+   arrow) regardless of source order in this file. */
+.leaflet-tooltip.dispatch-driver-label {
+  background: rgba(15, 23, 42, 0.88);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+}
+.leaflet-tooltip-right.dispatch-driver-label::before {
+  border-right-color: rgba(15, 23, 42, 0.88);
+}
+

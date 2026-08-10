@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
+import type { ReactNode } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, Tooltip, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { Truck, Satellite, Map as MapIcon } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
@@ -215,6 +216,59 @@ function FitToBounds({ points, signature }: { points: [number, number][]; signat
     map.fitBounds(bounds, { padding: [48, 48], maxZoom: 16 });
   }, [signature]);
   return null;
+}
+
+// Smoothly eases a marker's displayed position toward a new GPS ping
+// instead of snapping to it — pings only land every `pollIntervalSeconds`,
+// so without this the truck visibly teleports across the map each time.
+// Skips animating (snaps instantly) on a large jump — a driver's first ping
+// of the day, or switching to a different driver's marker — since a slow
+// glide across half of Accra reads as broken, not smooth.
+function useAnimatedPosition(target: [number, number], durationMs = 1400): [number, number] {
+  const [pos, setPos] = useState<[number, number]>(target);
+  const posRef = useRef<[number, number]>(target);
+  const rafRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const from = posRef.current;
+    const to = target;
+    if (from[0] === to[0] && from[1] === to[1]) return;
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    const dist = Math.hypot(from[0] - to[0], from[1] - to[1]);
+    if (dist > 0.05) { // roughly 5km+ — a real jump, not incremental movement
+      posRef.current = to;
+      setPos(to);
+      return;
+    }
+    const start = performance.now();
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - start) / durationMs);
+      const eased = t * (2 - t); // ease-out
+      const next: [number, number] = [from[0] + (to[0] - from[0]) * eased, from[1] + (to[1] - from[1]) * eased];
+      posRef.current = next;
+      setPos(next);
+      if (t < 1) rafRef.current = requestAnimationFrame(tick);
+    };
+    rafRef.current = requestAnimationFrame(tick);
+    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [target[0], target[1], durationMs]);
+
+  return pos;
+}
+
+function AnimatedTruckMarker({ position, icon, eventHandlers, children }: {
+  position: [number, number];
+  icon: L.DivIcon;
+  eventHandlers?: L.LeafletEventHandlerFnMap;
+  children?: ReactNode;
+}) {
+  const animatedPosition = useAnimatedPosition(position);
+  return (
+    <Marker position={animatedPosition} icon={icon} eventHandlers={eventHandlers}>
+      {children}
+    </Marker>
+  );
 }
 
 export default function DispatchMap({ deliveries, focusDeliveryId, height = 320, compact = false, pollIntervalSeconds = 20, onMarkerClick, followFirstMarker = false, showTrails = false }: Props) {
@@ -480,12 +534,17 @@ export default function DispatchMap({ deliveries, focusDeliveryId, height = 320,
             : STATUS_COLOR[delivery.status || ''] || '#64748b';
           const route = routesByDelivery[delivery.id];
           return (
-            <Marker
+            <AnimatedTruckMarker
               key={delivery.id}
               position={[point.lat, point.lng]}
               icon={truckIcon(color)}
               eventHandlers={onMarkerClick ? { click: () => onMarkerClick(delivery) } : undefined}
             >
+              {delivery.driverName && (
+                <Tooltip permanent direction="right" offset={[14, 0]} className="dispatch-driver-label" opacity={1}>
+                  {delivery.driverName}
+                </Tooltip>
+              )}
               <Popup>
                 <div style={{ fontSize: 12, minWidth: 140 }}>
                   <p style={{ margin: '0 0 4px', fontWeight: 700 }}>{delivery.driverName || 'Driver'}</p>
@@ -506,7 +565,7 @@ export default function DispatchMap({ deliveries, focusDeliveryId, height = 320,
                   {onMarkerClick && <p style={{ margin: '4px 0 0', color: '#94a3b8', fontStyle: 'italic' }}>Click marker for full details</p>}
                 </div>
               </Popup>
-            </Marker>
+            </AnimatedTruckMarker>
           );
         })}
       </MapContainer>
