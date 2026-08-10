@@ -1581,14 +1581,21 @@ export const dispatch = {
 
     const { data: driver, error: driverErr } = await supabase
       .from('drivers')
-      .select('id, full_name, phone')
+      .select('id, full_name, phone, trip_token, returned_at')
       .eq('id', driverId)
       .single();
     if (driverErr || !driver) { tab?.close(); throw new Error('Driver not found.'); }
     if (!driver.phone) { tab?.close(); throw new Error(`${driver.full_name} has no phone number on file.`); }
 
-    // Fresh token per trip — invalidates whatever link was sent last time.
-    const tripToken = crypto.randomUUID();
+    // Reuse the driver's existing token if they're still mid-route (no
+    // returned_at yet) — the trip page loads stops live by driver_id/status,
+    // so a new stop shows up on their CURRENT link automatically. Minting a
+    // fresh token here would silently kill whatever trip page they already
+    // have open, which is exactly what made reassigning/adding a stop look
+    // like it "broke" the driver's link mid-delivery. Only rotate the token
+    // when they've actually returned to base (or never had one) — that's a
+    // genuinely new session and deserves a new link.
+    const tripToken = (driver.trip_token && !driver.returned_at) ? driver.trip_token : crypto.randomUUID();
     await supabase.from('drivers').update({ trip_token: tripToken, returned_at: null }).eq('id', driverId);
 
     const { data: stops, error: stopsErr } = await supabase

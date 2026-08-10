@@ -57,6 +57,7 @@ export default function TripView({ token }: TripViewProps) {
   const watchIdRef = useRef<number | null>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
   const captureStopRef = useRef<Stop | null>(null);
+  const wakeLockRef = useRef<WakeLockSentinel | null>(null);
   const activeDeliveryId = stops[0]?.id || null;
 
   const loadStops = async () => {
@@ -122,6 +123,41 @@ export default function TripView({ token }: TripViewProps) {
       }
     };
   }, [gpsActive, activeDeliveryId, token]);
+
+  // Keeps the screen from auto-locking while a trip is live — the phone
+  // dimming/locking from inactivity (the driver isn't touching the screen
+  // while driving) is what actually kills GPS sharing in practice, since a
+  // locked screen suspends the tab. The Wake Lock API only prevents THAT —
+  // it can't keep tracking alive if the driver manually locks the phone or
+  // switches away from the browser; those genuinely stop a plain web page,
+  // no workaround exists short of a native app. Also re-acquires on
+  // visibilitychange, since the OS releases the lock whenever the tab is
+  // backgrounded even briefly (e.g. a phone call) and it isn't restored
+  // automatically once the tab is foregrounded again.
+  useEffect(() => {
+    if (!gpsActive || !('wakeLock' in navigator)) return;
+    let cancelled = false;
+    const acquire = async () => {
+      try {
+        const lock = await (navigator as any).wakeLock.request('screen');
+        if (cancelled) { lock.release(); return; }
+        wakeLockRef.current = lock;
+      } catch {
+        // Best-effort — e.g. denied, or unsupported despite the feature check.
+      }
+    };
+    acquire();
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && !wakeLockRef.current) acquire();
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => {
+      cancelled = true;
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      wakeLockRef.current?.release().catch(() => {});
+      wakeLockRef.current = null;
+    };
+  }, [gpsActive]);
 
   const finishDelivery = async (stop: Stop) => {
     setMarkingStage('confirming');
