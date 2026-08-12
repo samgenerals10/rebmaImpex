@@ -4,6 +4,7 @@ import { Inbox, Send, Star, Trash2, Plus, Search, ChevronLeft, X, Check, Reply }
 import { supabase } from '../../lib/supabaseClient';
 import { useCeoSettings } from '../../contexts/CeoSettingsContext';
 import type { CurrentUser } from '../../types/erp';
+import SidePanel from '../ui/SidePanel';
 
 interface Email {
   id: string;
@@ -251,55 +252,51 @@ export default function EmailsPanel({ currentUser, addNotification, onUnreadCoun
       </div>
 
       {/* Compose Modal */}
-      {compose.open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-          <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-2xl w-full max-w-lg p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-sm text-[var(--text-primary)]">{compose.replyToId ? 'Reply' : 'New Email'}</h3>
-              <button onClick={() => setCompose({ ...blankCompose, open: false })} className="p-1 rounded-lg hover:bg-[var(--bg-input)] cursor-pointer">
-                <X className="w-4 h-4 text-[var(--text-muted)]" />
-              </button>
+      <SidePanel
+        open={compose.open}
+        onClose={() => setCompose({ ...blankCompose, open: false })}
+        title={compose.replyToId ? 'Reply' : 'New Email'}
+        footer={
+          <div className="flex justify-end gap-2">
+            <button onClick={() => setCompose({ ...blankCompose, open: false })} className="px-4 py-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-input)] rounded-lg cursor-pointer">Cancel</button>
+            <button onClick={send} disabled={saving || !compose.to || !compose.subject.trim()}
+              className="flex items-center gap-1.5 px-4 py-1.5 bg-[var(--accent)] text-white text-xs font-semibold rounded-lg hover:opacity-90 disabled:opacity-50 cursor-pointer">
+              <Check className="w-3.5 h-3.5" /> {saving ? 'Sending...' : 'Send'}
+            </button>
+          </div>
+        }
+      >
+        {/* To field */}
+        <div className="mb-3 relative">
+          <label className="block text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-1">To</label>
+          {selectedTo ? (
+            <div className="flex items-center gap-2 px-3 py-2 bg-[var(--bg-input)] border border-[var(--border)] rounded-lg">
+              <span className="text-xs text-[var(--text-primary)] flex-1">{selectedTo.full_name} <span className="text-[var(--text-muted)]">({selectedTo.department})</span></span>
+              <button onClick={() => setCompose(c => ({ ...c, to: '' }))} className="cursor-pointer"><X className="w-3 h-3 text-[var(--text-muted)]" /></button>
             </div>
-            {/* To field */}
-            <div className="mb-3 relative">
-              <label className="block text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-1">To</label>
-              {selectedTo ? (
-                <div className="flex items-center gap-2 px-3 py-2 bg-[var(--bg-input)] border border-[var(--border)] rounded-lg">
-                  <span className="text-xs text-[var(--text-primary)] flex-1">{selectedTo.full_name} <span className="text-[var(--text-muted)]">({selectedTo.department})</span></span>
-                  <button onClick={() => setCompose(c => ({ ...c, to: '' }))} className="cursor-pointer"><X className="w-3 h-3 text-[var(--text-muted)]" /></button>
-                </div>
-              ) : (
-                <div>
-                  <input value={toSearch} onChange={e => setToSearch(e.target.value)} placeholder="Search people…"
-                    className="w-full px-3 py-2 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none focus:ring-1 focus:ring-[var(--accent)]" />
-                  {toSearch && (
-                    <div className="absolute z-10 left-0 right-0 mt-1 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl overflow-hidden max-h-36 overflow-y-auto">
-                      {filteredProfiles.map(p => (
-                        <button key={p.id} onClick={() => { setCompose(c => ({ ...c, to: p.id })); setToSearch(''); }}
-                          className="w-full text-left px-3 py-2 text-xs hover:bg-[var(--accent-light)] cursor-pointer text-[var(--text-primary)]">
-                          {p.full_name} <span className="text-[var(--text-muted)]">· {p.department}</span>
-                        </button>
-                      ))}
-                      {filteredProfiles.length === 0 && <p className="px-3 py-2 text-xs text-[var(--text-muted)]">No results</p>}
-                    </div>
-                  )}
+          ) : (
+            <div>
+              <input value={toSearch} onChange={e => setToSearch(e.target.value)} placeholder="Search people..."
+                className="w-full px-3 py-2 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none focus:ring-1 focus:ring-[var(--accent)]" />
+              {toSearch && (
+                <div className="absolute z-10 left-0 right-0 mt-1 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl overflow-hidden max-h-36 overflow-y-auto">
+                  {filteredProfiles.map(p => (
+                    <button key={p.id} onClick={() => { setCompose(c => ({ ...c, to: p.id })); setToSearch(''); }}
+                      className="w-full text-left px-3 py-2 text-xs hover:bg-[var(--accent-light)] cursor-pointer text-[var(--text-primary)]">
+                      {p.full_name} <span className="text-[var(--text-muted)]">· {p.department}</span>
+                    </button>
+                  ))}
+                  {filteredProfiles.length === 0 && <p className="px-3 py-2 text-xs text-[var(--text-muted)]">No results</p>}
                 </div>
               )}
             </div>
-            <input value={compose.subject} onChange={e => setCompose(c => ({ ...c, subject: e.target.value }))} placeholder="Subject…"
-              className="w-full px-3 py-2 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none focus:ring-1 focus:ring-[var(--accent)] mb-3" />
-            <textarea value={compose.body} onChange={e => setCompose(c => ({ ...c, body: e.target.value }))} placeholder="Write your message…" rows={6}
-              className="w-full px-3 py-2 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none focus:ring-1 focus:ring-[var(--accent)] resize-none mb-4" />
-            <div className="flex justify-end gap-2">
-              <button onClick={() => setCompose({ ...blankCompose, open: false })} className="px-4 py-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-input)] rounded-lg cursor-pointer">Cancel</button>
-              <button onClick={send} disabled={saving || !compose.to || !compose.subject.trim()}
-                className="flex items-center gap-1.5 px-4 py-1.5 bg-[var(--accent)] text-white text-xs font-semibold rounded-lg hover:opacity-90 disabled:opacity-50 cursor-pointer">
-                <Check className="w-3.5 h-3.5" /> {saving ? 'Sending…' : 'Send'}
-              </button>
-            </div>
-          </div>
+          )}
         </div>
-      )}
+        <input value={compose.subject} onChange={e => setCompose(c => ({ ...c, subject: e.target.value }))} placeholder="Subject..."
+          className="w-full px-3 py-2 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none focus:ring-1 focus:ring-[var(--accent)] mb-3" />
+        <textarea value={compose.body} onChange={e => setCompose(c => ({ ...c, body: e.target.value }))} placeholder="Write your message..." rows={6}
+          className="w-full px-3 py-2 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none focus:ring-1 focus:ring-[var(--accent)] resize-none" />
+      </SidePanel>
     </div>
   );
 }

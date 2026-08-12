@@ -1,8 +1,9 @@
 // src/components/global/NotesPanel.tsx
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Search, Pin, Share2, Pencil, Trash2, X, Check } from 'lucide-react';
+import { Plus, Search, Pin, Share2, Pencil, Trash2, Check } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import type { CurrentUser } from '../../types/erp';
+import SidePanel from '../ui/SidePanel';
 
 interface Note {
   id: string;
@@ -206,49 +207,45 @@ export default function NotesPanel({ currentUser, addNotification }: NotesPanelP
       )}
 
       {/* Note Modal */}
-      {modal.open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-          <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-2xl w-full max-w-md p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-sm text-[var(--text-primary)]">{modal.id ? 'Edit Note' : 'New Note'}</h3>
-              <button onClick={closeModal} className="p-1 rounded-lg hover:bg-[var(--bg-input)] cursor-pointer">
-                <X className="w-4 h-4 text-[var(--text-muted)]" />
-              </button>
-            </div>
-            <input value={modal.title} onChange={e => setModal(m => ({ ...m, title: e.target.value }))}
-              placeholder="Note title…"
-              className="w-full px-3 py-2 text-sm bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none focus:ring-1 focus:ring-[var(--accent)] mb-3" />
-            <textarea value={modal.content} onChange={e => setModal(m => ({ ...m, content: e.target.value }))}
-              placeholder="Write your note…" rows={5}
-              className="w-full px-3 py-2 text-sm bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none focus:ring-1 focus:ring-[var(--accent)] resize-none mb-3" />
-            {/* Color picker */}
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wide">Color</span>
-              {COLORS.map(c => (
-                <button key={c.id} onClick={() => setModal(m => ({ ...m, color: c.id }))}
-                  className="w-6 h-6 rounded-full border-2 cursor-pointer transition-transform hover:scale-110"
-                  style={{ background: c.bg, borderColor: modal.color === c.id ? c.text : 'transparent' }}
-                />
-              ))}
-            </div>
-            {/* Share toggle */}
-            <label className="flex items-center gap-2 cursor-pointer mb-4">
-              <div onClick={() => setModal(m => ({ ...m, shared: !m.shared }))}
-                className={`w-9 h-5 rounded-full transition-colors relative ${modal.shared ? 'bg-[var(--accent)]' : 'bg-[var(--border)]'}`}>
-                <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all ${modal.shared ? 'left-4' : 'left-0.5'}`} />
-              </div>
-              <span className="text-xs text-[var(--text-secondary)]">Share with my department</span>
-            </label>
-            <div className="flex items-center justify-end gap-2">
-              <button onClick={closeModal} className="px-4 py-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-input)] rounded-lg transition-colors cursor-pointer">Cancel</button>
-              <button onClick={save} disabled={saving || !modal.title.trim()}
-                className="flex items-center gap-1.5 px-4 py-1.5 bg-[var(--accent)] text-white text-xs font-semibold rounded-lg hover:opacity-90 disabled:opacity-50 transition-opacity cursor-pointer">
-                <Check className="w-3.5 h-3.5" /> {saving ? 'Saving…' : 'Save'}
-              </button>
-            </div>
+      <SidePanel
+        open={modal.open}
+        onClose={closeModal}
+        title={modal.id ? 'Edit Note' : 'New Note'}
+        footer={
+          <div className="flex items-center justify-end gap-2">
+            <button onClick={closeModal} className="px-4 py-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-input)] rounded-lg transition-colors cursor-pointer">Cancel</button>
+            <button onClick={save} disabled={saving || !modal.title.trim()}
+              className="flex items-center gap-1.5 px-4 py-1.5 bg-[var(--accent)] text-white text-xs font-semibold rounded-lg hover:opacity-90 disabled:opacity-50 transition-opacity cursor-pointer">
+              <Check className="w-3.5 h-3.5" /> {saving ? 'Saving...' : 'Save'}
+            </button>
           </div>
+        }
+      >
+        <input value={modal.title} onChange={e => setModal(m => ({ ...m, title: e.target.value }))}
+          placeholder="Note title..."
+          className="w-full px-3 py-2 text-sm bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none focus:ring-1 focus:ring-[var(--accent)] mb-3" />
+        <textarea value={modal.content} onChange={e => setModal(m => ({ ...m, content: e.target.value }))}
+          placeholder="Write your note..." rows={5}
+          className="w-full px-3 py-2 text-sm bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none focus:ring-1 focus:ring-[var(--accent)] resize-none mb-3" />
+        {/* Color picker */}
+        <div className="flex items-center gap-2 mb-3">
+          <span className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wide">Color</span>
+          {COLORS.map(c => (
+            <button key={c.id} onClick={() => setModal(m => ({ ...m, color: c.id }))}
+              className="w-6 h-6 rounded-full border-2 cursor-pointer transition-transform hover:scale-110"
+              style={{ background: c.bg, borderColor: modal.color === c.id ? c.text : 'transparent' }}
+            />
+          ))}
         </div>
-      )}
+        {/* Share toggle */}
+        <label className="flex items-center gap-2 cursor-pointer">
+          <div onClick={() => setModal(m => ({ ...m, shared: !m.shared }))}
+            className={`w-9 h-5 rounded-full transition-colors relative ${modal.shared ? 'bg-[var(--accent)]' : 'bg-[var(--border)]'}`}>
+            <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all ${modal.shared ? 'left-4' : 'left-0.5'}`} />
+          </div>
+          <span className="text-xs text-[var(--text-secondary)]">Share with my department</span>
+        </label>
+      </SidePanel>
 
       {/* Delete confirm */}
       {deleteId && (

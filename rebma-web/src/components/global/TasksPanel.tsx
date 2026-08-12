@@ -1,9 +1,10 @@
 // src/components/global/TasksPanel.tsx
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Calendar, ChevronRight, MoreVertical, X, Check, ArrowUpCircle, AlertCircle } from 'lucide-react';
+import { Plus, Calendar, ChevronRight, MoreVertical, Check, ArrowUpCircle, AlertCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import type { CurrentUser } from '../../types/erp';
 import SearchableDropdown from '../ui/SearchableDropdown';
+import SidePanel from '../ui/SidePanel';
 
 interface Task {
   id: string;
@@ -253,91 +254,87 @@ export default function TasksPanel({ currentUser, addNotification }: TasksPanelP
       )}
 
       {/* Task Modal */}
-      {taskModal.open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-          <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-2xl w-full max-w-md p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-sm text-[var(--text-primary)]">{taskModal.id ? 'Edit Task' : 'New Task'}</h3>
-              <button onClick={closeTask} className="p-1 rounded-lg hover:bg-[var(--bg-input)] cursor-pointer"><X className="w-4 h-4 text-[var(--text-muted)]" /></button>
-            </div>
-            <input value={taskModal.title} onChange={e => setTaskModal(m => ({ ...m, title: e.target.value }))}
-              placeholder="Task title…" className="w-full px-3 py-2 text-sm bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none focus:ring-1 focus:ring-[var(--accent)] mb-3" />
-            <textarea value={taskModal.description} onChange={e => setTaskModal(m => ({ ...m, description: e.target.value }))}
-              placeholder="Description…" rows={3}
-              className="w-full px-3 py-2 text-sm bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none focus:ring-1 focus:ring-[var(--accent)] resize-none mb-3" />
-            <div className="grid grid-cols-2 gap-3 mb-3">
-              <div>
-                <label className="block text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-1">Priority</label>
-                <SearchableDropdown
-                  value={taskModal.priority}
-                  onChange={v => setTaskModal(m => ({ ...m, priority: v as any }))}
-                  options={[{ value: 'low', label: 'Low' }, { value: 'medium', label: 'Medium' }, { value: 'high', label: 'High' }]}
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-1">Due Date</label>
-                <input type="date" value={taskModal.due_date} onChange={e => setTaskModal(m => ({ ...m, due_date: e.target.value }))}
-                  className="w-full px-3 py-2 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] outline-none cursor-pointer" />
-              </div>
-            </div>
-            {colleagues.length > 0 && (
-              <div className="mb-3">
-                <label className="block text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-1">Assign to (optional)</label>
-                <select value={taskModal.assigned_to} onChange={e => setTaskModal(m => ({ ...m, assigned_to: e.target.value }))}
-                  className="w-full px-3 py-2 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] outline-none cursor-pointer">
-                  <option value="">Nobody</option>
-                  {colleagues.map(c => <option key={c.id} value={c.id}>{c.full_name}</option>)}
-                </select>
-              </div>
-            )}
-            <label className="flex items-center gap-2 cursor-pointer mb-4">
-              <div onClick={() => setTaskModal(m => ({ ...m, shared: !m.shared }))}
-                className={`w-9 h-5 rounded-full transition-colors relative ${taskModal.shared ? 'bg-[var(--accent)]' : 'bg-[var(--border)]'}`}>
-                <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all ${taskModal.shared ? 'left-4' : 'left-0.5'}`} />
-              </div>
-              <span className="text-xs text-[var(--text-secondary)]">Share with my department</span>
-            </label>
-            <div className="flex items-center justify-end gap-2">
-              <button onClick={closeTask} className="px-4 py-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-input)] rounded-lg cursor-pointer">Cancel</button>
-              <button onClick={saveTask} disabled={saving || !taskModal.title.trim()}
-                className="flex items-center gap-1.5 px-4 py-1.5 bg-[var(--accent)] text-white text-xs font-semibold rounded-lg hover:opacity-90 disabled:opacity-50 cursor-pointer">
-                <Check className="w-3.5 h-3.5" /> {saving ? 'Saving…' : 'Save'}
-              </button>
-            </div>
+      <SidePanel
+        open={taskModal.open}
+        onClose={closeTask}
+        title={taskModal.id ? 'Edit Task' : 'New Task'}
+        footer={
+          <div className="flex items-center justify-end gap-2">
+            <button onClick={closeTask} className="px-4 py-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-input)] rounded-lg cursor-pointer">Cancel</button>
+            <button onClick={saveTask} disabled={saving || !taskModal.title.trim()}
+              className="flex items-center gap-1.5 px-4 py-1.5 bg-[var(--accent)] text-white text-xs font-semibold rounded-lg hover:opacity-90 disabled:opacity-50 cursor-pointer">
+              <Check className="w-3.5 h-3.5" /> {saving ? 'Saving...' : 'Save'}
+            </button>
+          </div>
+        }
+      >
+        <input value={taskModal.title} onChange={e => setTaskModal(m => ({ ...m, title: e.target.value }))}
+          placeholder="Task title..." className="w-full px-3 py-2 text-sm bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none focus:ring-1 focus:ring-[var(--accent)] mb-3" />
+        <textarea value={taskModal.description} onChange={e => setTaskModal(m => ({ ...m, description: e.target.value }))}
+          placeholder="Description..." rows={3}
+          className="w-full px-3 py-2 text-sm bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none focus:ring-1 focus:ring-[var(--accent)] resize-none mb-3" />
+        <div className="grid grid-cols-2 gap-3 mb-3">
+          <div>
+            <label className="block text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-1">Priority</label>
+            <SearchableDropdown
+              value={taskModal.priority}
+              onChange={v => setTaskModal(m => ({ ...m, priority: v as any }))}
+              options={[{ value: 'low', label: 'Low' }, { value: 'medium', label: 'Medium' }, { value: 'high', label: 'High' }]}
+            />
+          </div>
+          <div>
+            <label className="block text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-1">Due Date</label>
+            <input type="date" value={taskModal.due_date} onChange={e => setTaskModal(m => ({ ...m, due_date: e.target.value }))}
+              className="w-full px-3 py-2 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] outline-none cursor-pointer" />
           </div>
         </div>
-      )}
+        {colleagues.length > 0 && (
+          <div className="mb-3">
+            <label className="block text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-1">Assign to (optional)</label>
+            <SearchableDropdown
+              value={taskModal.assigned_to}
+              onChange={v => setTaskModal(m => ({ ...m, assigned_to: v }))}
+              options={[{ value: '', label: 'Nobody' }, ...colleagues.map(c => ({ value: c.id, label: c.full_name }))]}
+            />
+          </div>
+        )}
+        <label className="flex items-center gap-2 cursor-pointer mb-1">
+          <div onClick={() => setTaskModal(m => ({ ...m, shared: !m.shared }))}
+            className={`w-9 h-5 rounded-full transition-colors relative ${taskModal.shared ? 'bg-[var(--accent)]' : 'bg-[var(--border)]'}`}>
+            <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all ${taskModal.shared ? 'left-4' : 'left-0.5'}`} />
+          </div>
+          <span className="text-xs text-[var(--text-secondary)]">Share with my department</span>
+        </label>
+      </SidePanel>
 
       {/* Escalation Modal */}
-      {escModal.open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-          <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-2xl w-full max-w-sm p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-sm text-[var(--text-primary)]">Escalate Task</h3>
-              <button onClick={closeEsc} className="p-1 rounded-lg hover:bg-[var(--bg-input)] cursor-pointer"><X className="w-4 h-4 text-[var(--text-muted)]" /></button>
-            </div>
-            <p className="text-xs text-[var(--text-muted)] mb-4 truncate">"{escModal.taskTitle}"</p>
-            <div className="mb-3">
-              <label className="block text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-1">Escalate to</label>
-              <select value={escModal.escalate_to} onChange={e => setEscModal(m => ({ ...m, escalate_to: e.target.value }))}
-                className="w-full px-3 py-2 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] outline-none cursor-pointer">
-                <option value="MANAGEMENT">Management</option>
-                <option value="CEO">CEO</option>
-              </select>
-            </div>
-            <textarea value={escModal.reason} onChange={e => setEscModal(m => ({ ...m, reason: e.target.value }))}
-              placeholder="Reason for escalation (required)…" rows={3}
-              className="w-full px-3 py-2 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none focus:ring-1 focus:ring-[var(--accent)] resize-none mb-4" />
-            <div className="flex justify-end gap-2">
-              <button onClick={closeEsc} className="px-4 py-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-input)] rounded-lg cursor-pointer">Cancel</button>
-              <button onClick={escalate} disabled={saving || !escModal.reason.trim()}
-                className="flex items-center gap-1.5 px-4 py-1.5 bg-orange-500 text-white text-xs font-semibold rounded-lg hover:bg-orange-600 disabled:opacity-50 cursor-pointer">
-                <ArrowUpCircle className="w-3.5 h-3.5" /> {saving ? 'Escalating…' : 'Escalate'}
-              </button>
-            </div>
+      <SidePanel
+        open={escModal.open}
+        onClose={closeEsc}
+        title="Escalate Task"
+        subtitle={escModal.taskTitle}
+        footer={
+          <div className="flex justify-end gap-2">
+            <button onClick={closeEsc} className="px-4 py-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-input)] rounded-lg cursor-pointer">Cancel</button>
+            <button onClick={escalate} disabled={saving || !escModal.reason.trim()}
+              className="flex items-center gap-1.5 px-4 py-1.5 bg-orange-500 text-white text-xs font-semibold rounded-lg hover:bg-orange-600 disabled:opacity-50 cursor-pointer">
+              <ArrowUpCircle className="w-3.5 h-3.5" /> {saving ? 'Escalating...' : 'Escalate'}
+            </button>
           </div>
+        }
+      >
+        <div className="mb-3">
+          <label className="block text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-1">Escalate to</label>
+          <SearchableDropdown
+            value={escModal.escalate_to}
+            onChange={v => setEscModal(m => ({ ...m, escalate_to: v }))}
+            options={[{ value: 'MANAGEMENT', label: 'Management' }, { value: 'CEO', label: 'CEO' }]}
+          />
         </div>
-      )}
+        <textarea value={escModal.reason} onChange={e => setEscModal(m => ({ ...m, reason: e.target.value }))}
+          placeholder="Reason for escalation (required)..." rows={3}
+          className="w-full px-3 py-2 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none focus:ring-1 focus:ring-[var(--accent)] resize-none" />
+      </SidePanel>
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { Activity, RefreshCw, User, Clock, Lock } from 'lucide-react';
 import { useCeoSettings } from '../../contexts/CeoSettingsContext';
 import { useRealtimeChannel } from '../../hooks/useRealtimeChannel';
+import SearchableDropdown from '../ui/SearchableDropdown';
 
 interface AuditEntry {
   id: string;
@@ -212,10 +213,12 @@ export default function ActivityFeed({ departments, limit = 30, compact = false,
         </div>
         <div className="flex items-center gap-2">
           {/* Department filter */}
-          <select value={deptFilter} onChange={e => setDeptFilter(e.target.value)}
-            className="px-2 py-1.5 rounded-lg bg-[var(--bg)] border border-[var(--border)] text-[10px] text-[var(--text-primary)] focus:outline-none cursor-pointer">
-            {allDepts.map(d => <option key={d} value={d}>{d === 'ALL' ? 'All Departments' : d}</option>)}
-          </select>
+          <SearchableDropdown
+            value={deptFilter}
+            onChange={setDeptFilter}
+            className="min-w-[140px] text-[10px]"
+            options={allDepts.map(d => ({ value: d, label: d === 'ALL' ? 'All Departments' : d }))}
+          />
           <button onClick={loadEntries} title="Refresh"
             className="p-1.5 rounded-lg hover:bg-[var(--accent-light)] cursor-pointer transition-colors text-[var(--text-muted)] hover:text-[var(--accent)]">
             <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
