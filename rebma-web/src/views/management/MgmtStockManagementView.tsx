@@ -4,6 +4,7 @@ import { Edit3, Trash2, Search, AlertTriangle, RefreshCw } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useCeoSettings } from '../../contexts/CeoSettingsContext';
 import { useRealtimeChannel } from '../../hooks/useRealtimeChannel';
+import SidePanel from '../../components/ui/SidePanel';
 
 interface Props {
   addNotification?: (msg: string) => void;
@@ -418,23 +419,33 @@ export default function MgmtStockManagementView({ addNotification, currentUser }
       </div>
 
       {/* Delete stock confirmation modal */}
-      {deleteTargets && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-2xl bg-[var(--bg-card)] border border-[var(--border)] shadow-xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
-            <div>
-              <h3 className="font-bold text-[var(--text-primary)] flex items-center gap-2">
-                <AlertTriangle size={16} className="text-rose-500" /> Delete {deleteTargets.length === 1 ? 'Stock Item' : `${deleteTargets.length} Stock Items`}
-              </h3>
-              <p className="text-xs text-[var(--text-muted)] mt-1">
-                {deleteTargets.length === 1
-                  ? <>This permanently removes <strong className="text-[var(--text-primary)]">{deleteTargets[0].product_name}</strong> ({deleteTargets[0].quantity} {deleteTargets[0].unit || 'units'}) from inventory. This cannot be undone.</>
-                  : `This permanently removes ${deleteTargets.length} stock items from inventory. This cannot be undone.`}
-              </p>
-            </div>
+      <SidePanel
+        open={!!deleteTargets}
+        onClose={() => { setDeleteTargets(null); setDeleteReason(''); setDeleteConfirmText(''); setOpenOrdersWarning([]); }}
+        title={deleteTargets ? `Delete ${deleteTargets.length === 1 ? 'Stock Item' : `${deleteTargets.length} Stock Items`}` : ''}
+        badge={<AlertTriangle size={16} className="text-rose-500" />}
+        footer={
+          <>
+            <button onClick={() => { setDeleteTargets(null); setDeleteReason(''); setDeleteConfirmText(''); setOpenOrdersWarning([]); }} disabled={deletingStock}
+              className="erp-btn erp-btn-ghost disabled:opacity-50">Cancel</button>
+            <button onClick={confirmDeleteStock} disabled={deletingStock || deleteConfirmText.trim() !== deleteConfirmExpected || !deleteReason.trim()}
+              className="erp-btn erp-btn-danger disabled:opacity-50 disabled:cursor-not-allowed">
+              {deletingStock ? 'Deleting…' : 'Delete'}
+            </button>
+          </>
+        }
+      >
+        {deleteTargets && (
+          <div className="space-y-4">
+            <p className="text-sm text-[var(--text-secondary)]">
+              {deleteTargets.length === 1
+                ? <>This permanently removes <strong className="text-[var(--text-primary)]">{deleteTargets[0].product_name}</strong> ({deleteTargets[0].quantity} {deleteTargets[0].unit || 'units'}) from inventory. This cannot be undone.</>
+                : `This permanently removes ${deleteTargets.length} stock items from inventory. This cannot be undone.`}
+            </p>
             {deleteTargets.length > 1 && (
               <div className="max-h-32 overflow-y-auto bg-[var(--bg-input)] rounded-xl p-2 space-y-1">
                 {deleteTargets.map(t => (
-                  <p key={t.id} className="text-[11px] text-[var(--text-secondary)]">• {t.product_name} — {t.quantity} {t.unit || 'units'}</p>
+                  <p key={t.id} className="text-[11px] text-[var(--text-secondary)]">• {t.product_name}, {t.quantity} {t.unit || 'units'}</p>
                 ))}
               </div>
             )}
@@ -442,47 +453,48 @@ export default function MgmtStockManagementView({ addNotification, currentUser }
               <p className="text-[11px] text-[var(--text-muted)] flex items-center gap-1.5"><RefreshCw size={11} className="animate-spin" /> Checking current stock and open orders…</p>
             ) : openOrdersWarning.length > 0 && (
               <div className="text-[11px] text-amber-700 dark:text-amber-400 bg-amber-500/10 rounded-lg px-3 py-2 space-y-0.5">
-                <p className="font-semibold">Heads up — these products still have unfulfilled orders:</p>
+                <p className="font-semibold">Heads up. These products still have unfulfilled orders:</p>
                 {openOrdersWarning.map(w => (
                   <p key={w.product}>• {w.product}: {w.count} open order{w.count !== 1 ? 's' : ''}</p>
                 ))}
                 <p>Deleting stock won't cancel or change those orders.</p>
               </div>
             )}
-            <div>
-              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Reason for deletion <span className="text-rose-500">*</span></label>
+            <div className="erp-form-group">
+              <label className="erp-label">Reason for deletion <span className="text-rose-500">*</span></label>
               <textarea value={deleteReason} onChange={e => setDeleteReason(e.target.value)} rows={2}
                 placeholder="E.g. Discontinued product, duplicate entry, written off"
-                className="w-full px-3 py-2 text-sm rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-primary)] resize-none focus:outline-none focus:border-[var(--accent)]" />
+                className="erp-input resize-none" />
             </div>
-            <div>
-              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">
+            <div className="erp-form-group">
+              <label className="erp-label">
                 Type <span className="font-mono font-bold text-[var(--text-primary)]">{deleteConfirmExpected}</span> to confirm <span className="text-rose-500">*</span>
               </label>
               <input value={deleteConfirmText} onChange={e => setDeleteConfirmText(e.target.value)}
                 placeholder={deleteConfirmExpected}
-                className="w-full px-3 py-2 text-sm rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />
-            </div>
-            <div className="flex gap-3 pt-2">
-              <button onClick={() => { setDeleteTargets(null); setDeleteReason(''); setDeleteConfirmText(''); setOpenOrdersWarning([]); }} disabled={deletingStock}
-                className="flex-1 py-2 rounded-xl border border-[var(--border)] text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-input)] cursor-pointer disabled:opacity-50">Cancel</button>
-              <button onClick={confirmDeleteStock} disabled={deletingStock || deleteConfirmText.trim() !== deleteConfirmExpected || !deleteReason.trim()}
-                className="flex-1 py-2 rounded-xl bg-rose-500 text-white text-sm font-semibold hover:bg-rose-600 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
-                {deletingStock ? 'Deleting…' : 'Delete'}
-              </button>
+                className="erp-input" />
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </SidePanel>
 
       {/* Correct cargo entry modal */}
-      {correctionTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-lg rounded-2xl bg-[var(--bg-card)] border border-[var(--border)] shadow-xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
-            <div>
-              <h3 className="font-bold text-[var(--text-primary)]">Correct Entry — {correctionTarget.product_name}</h3>
-              <p className="text-xs text-[var(--text-muted)] mt-0.5">Goods Code: {correctionTarget.goods_code || correctionTarget.id}</p>
-            </div>
+      <SidePanel
+        open={!!correctionTarget}
+        onClose={() => setCorrectionTarget(null)}
+        title={correctionTarget ? `Correct Entry: ${correctionTarget.product_name}` : ''}
+        subtitle={correctionTarget ? `Goods Code: ${correctionTarget.goods_code || correctionTarget.id}` : undefined}
+        footer={
+          <>
+            <button onClick={() => setCorrectionTarget(null)} disabled={savingCorrection} className="erp-btn erp-btn-ghost disabled:opacity-50">Cancel</button>
+            <button onClick={saveCorrection} disabled={savingCorrection} className="erp-btn erp-btn-primary disabled:opacity-50">
+              {savingCorrection ? 'Saving…' : 'Save Correction'}
+            </button>
+          </>
+        }
+      >
+        {correctionTarget && (
+          <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Quantity</label>
@@ -529,18 +541,12 @@ export default function MgmtStockManagementView({ addNotification, currentUser }
             </div>
             {Number(correctionForm.quantity) !== (Number(correctionTarget.quantity) || 0) && (
               <p className="text-[11px] text-amber-600 bg-amber-500/10 rounded-lg px-3 py-2">
-                Stock will be adjusted by {Number(correctionForm.quantity) - (Number(correctionTarget.quantity) || 0) > 0 ? '+' : ''}{Number(correctionForm.quantity) - (Number(correctionTarget.quantity) || 0)} units — not overwritten, since some may already be sold or dispatched. Selling price and any related damaged-goods expense record are not auto-updated; review those separately if this correction is material.
+                Stock will be adjusted by {Number(correctionForm.quantity) - (Number(correctionTarget.quantity) || 0) > 0 ? '+' : ''}{Number(correctionForm.quantity) - (Number(correctionTarget.quantity) || 0)} units. Not overwritten, since some may already be sold or dispatched. Selling price and any related damaged-goods expense record are not auto-updated; review those separately if this correction is material.
               </p>
             )}
-            <div className="flex gap-3 pt-2">
-              <button onClick={() => setCorrectionTarget(null)} disabled={savingCorrection} className="flex-1 py-2 rounded-xl border border-[var(--border)] text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-input)] cursor-pointer disabled:opacity-50">Cancel</button>
-              <button onClick={saveCorrection} disabled={savingCorrection} className="flex-1 py-2 rounded-xl bg-[var(--accent)] text-white text-sm font-semibold hover:opacity-90 cursor-pointer disabled:opacity-50">
-                {savingCorrection ? 'Saving…' : 'Save Correction'}
-              </button>
-            </div>
           </div>
-        </div>
-      )}
+        )}
+      </SidePanel>
     </div>
   );
 }

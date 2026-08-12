@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import {
-  CheckCircle, XCircle, Clock, AlertTriangle, Search, Filter,
+  CheckCircle, XCircle, Clock, AlertTriangle, Search,
   MoreVertical, ArrowLeft, Package, CreditCard,
   UserPlus, FileText, Tag, RefreshCw, Download, Eye, ShoppingCart, Wallet
 } from 'lucide-react';
 import { exportToCSV } from '../../utils/export';
 import InvoiceLineItems from '../../components/InvoiceLineItems';
+import SidePanel from '../../components/ui/SidePanel';
+import SearchableDropdown from '../../components/ui/SearchableDropdown';
 import MaterialRequisitionsPanel from './MaterialRequisitionsPanel';
 import DriverAssignmentApprovalsPanel from './DriverAssignmentApprovalsPanel';
 import ApprovalHistoryPanel from '../../components/global/ApprovalHistoryPanel';
@@ -791,23 +793,12 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
             className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent)]"
           />
         </div>
-        <div className="relative">
-          <button
-            onClick={() => {}}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-secondary)]"
-          >
-            <Filter size={14} />
-            <select
-              value={statusFilter}
-              onChange={e => setStatusFilter(e.target.value)}
-              className="bg-transparent text-[var(--text-secondary)] text-sm focus:outline-none cursor-pointer"
-            >
-              {['All', 'Pending', 'Approved', 'Rejected'].map(s => (
-                <option key={s} value={s}>{s}</option>
-              ))}
-            </select>
-          </button>
-        </div>
+        <SearchableDropdown
+          value={statusFilter}
+          onChange={setStatusFilter}
+          options={['All', 'Pending', 'Approved', 'Rejected'].map(s => ({ value: s, label: s }))}
+          className="w-40"
+        />
       </div>
 
       {/* Table */}
@@ -898,19 +889,27 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
       <ApprovalHistoryPanel department="MANAGEMENT" />
 
       {/* Action Modal */}
-      {showModal && selectedItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setShowModal(null)}>
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div className="relative bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center gap-3 mb-4 shrink-0">
-              {showModal === 'approve' && <CheckCircle size={20} className="text-green-500" />}
-              {showModal === 'reject' && <XCircle size={20} className="text-red-500" />}
-              <h3 className="text-base font-semibold text-[var(--text-primary)]">
-                {showModal === 'approve' ? 'Approve' : 'Reject'}: {selectedItem.requestId}
-              </h3>
-            </div>
-
-            <div className="flex-1 overflow-y-auto pr-1 mb-4 min-h-0 space-y-4">
+      <SidePanel
+        open={!!(showModal && selectedItem)}
+        onClose={() => setShowModal(null)}
+        title={selectedItem ? `${showModal === 'approve' ? 'Approve' : 'Reject'}: ${selectedItem.requestId}` : ''}
+        badge={showModal === 'approve' ? <CheckCircle size={16} className="text-green-500" /> : showModal === 'reject' ? <XCircle size={16} className="text-red-500" /> : undefined}
+        width="lg"
+        footer={
+          <>
+            <button disabled={submitting} onClick={() => setShowModal(null)} className="erp-btn erp-btn-ghost disabled:opacity-50">Cancel</button>
+            <button
+              disabled={submitting}
+              onClick={confirmAction}
+              className={`erp-btn text-white disabled:opacity-50 ${showModal === 'approve' ? 'bg-green-500 hover:bg-green-600' : 'bg-red-500 hover:bg-red-600'}`}
+            >
+              {submitting ? 'Processing...' : (showModal === 'approve' ? 'Confirm Approval' : 'Confirm Rejection')}
+            </button>
+          </>
+        }
+      >
+        {selectedItem && (
+          <div className="space-y-4">
               <p className="text-sm text-[var(--text-secondary)]">{selectedItem.description}</p>
 
               {showModal === 'approve' && selectedItem.type === 'Cargo Intake' && (
@@ -1082,21 +1081,9 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
                   className="w-full px-3 py-2 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent)] resize-none"
                 />
               </div>
-            </div>
-
-            <div className="flex items-center gap-3 justify-end pt-3 border-t border-[var(--border)] shrink-0">
-              <button disabled={submitting} onClick={() => setShowModal(null)} className="px-4 py-2 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-input)] disabled:opacity-50">Cancel</button>
-              <button
-                disabled={submitting}
-                onClick={confirmAction}
-                className={`px-4 py-2 rounded-xl text-white text-sm font-medium disabled:opacity-50 ${showModal === 'approve' ? 'bg-green-500 hover:bg-green-600' : 'bg-red-500 hover:bg-red-600'}`}
-              >
-                {submitting ? 'Processing...' : (showModal === 'approve' ? 'Confirm Approval' : 'Confirm Rejection')}
-              </button>
-            </div>
           </div>
-        </div>
-      )}
+        )}
+      </SidePanel>
     </div>
   );
 }

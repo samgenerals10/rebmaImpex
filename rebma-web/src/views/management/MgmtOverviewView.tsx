@@ -2,11 +2,13 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { useRealtimeChannel } from '../../hooks/useRealtimeChannel';
 import {
-  TrendingUp, TrendingDown, Clock, CheckCircle, XCircle, AlertTriangle,
+  TrendingUp, TrendingDown, Clock, CheckCircle, AlertTriangle,
   Package, CreditCard, DollarSign, Activity, Users, BarChart2,
   ArrowRight, RefreshCw
 } from 'lucide-react';
 import PendingApprovalsAlert from '../../components/global/PendingApprovalsAlert';
+import SidePanel from '../../components/ui/SidePanel';
+import SearchableDropdown from '../../components/ui/SearchableDropdown';
 import ProductCatalogCard from '../../components/ProductCatalogCard';
 import CountUp from '../../components/CountUp';
 import {
@@ -797,11 +799,12 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
               <h3 className="font-semibold text-[var(--text-primary)]">Earning Overview</h3>
               <p className="text-xs text-[var(--text-muted)]">Total revenue trend</p>
             </div>
-            <select value={earnPeriod} onChange={e => setEarnPeriod(e.target.value)} className="text-xs px-2 py-1.5 rounded-lg bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-secondary)] focus:outline-none">
-              <option value="3M">3 Months</option>
-              <option value="6M">6 Months</option>
-              <option value="12M">12 Months</option>
-            </select>
+            <SearchableDropdown
+              value={earnPeriod}
+              onChange={setEarnPeriod}
+              options={[{ value: '3M', label: '3 Months' }, { value: '6M', label: '6 Months' }, { value: '12M', label: '12 Months' }]}
+              className="w-32"
+            />
           </div>
           <div className="h-44">
             {earningData.every(e => e.value === 0) ? (
@@ -1213,25 +1216,21 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
       </div>
 
       {/* Revenue drill-down modal */}
-      {showRevenueModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-4xl rounded-2xl bg-[var(--bg-card)] border border-[var(--border)] shadow-xl flex flex-col max-h-[85vh] overflow-hidden">
-            {/* Header */}
-            <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-[var(--border)] bg-[var(--bg-card)]">
-              <div>
-                <h3 className="font-bold text-lg text-[var(--text-primary)]">Revenue Drill-Down Analysis</h3>
-                <p className="text-xs text-[var(--text-muted)]">Analysis of sales revenue split by inventory types</p>
-              </div>
-              <button 
-                onClick={() => setShowRevenueModal(false)}
-                className="p-1.5 rounded-lg hover:bg-[var(--bg-input)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
-              >
-                <XCircle size={20} />
-              </button>
-            </div>
-
+      <SidePanel
+        open={showRevenueModal}
+        onClose={() => setShowRevenueModal(false)}
+        title="Revenue Drill-Down Analysis"
+        subtitle="Analysis of sales revenue split by inventory types"
+        width="lg"
+        footer={
+          <button onClick={() => setShowRevenueModal(false)} className="erp-btn erp-btn-primary w-full">
+            Close Analysis
+          </button>
+        }
+      >
+        <div className="flex flex-col h-full -mx-5 -my-4">
             {/* Tab Switched Header */}
-            <div className="flex border-b border-[var(--border)] bg-[var(--bg-input)] px-6 py-2 gap-4">
+            <div className="flex border-b border-[var(--border)] bg-[var(--bg-input)] px-5 py-2 gap-4 shrink-0">
               <button
                 onClick={() => setRevenueModalTab('raw')}
                 className={`pb-1 text-xs font-bold border-b-2 transition-all ${revenueModalTab === 'raw' ? 'border-[var(--accent)] text-[var(--accent)]' : 'border-transparent text-[var(--text-muted)]'}`}
@@ -1247,7 +1246,7 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
             </div>
 
             {/* Modal Body */}
-            <div className="overflow-y-auto p-6 flex-1 bg-[var(--bg-card)]">
+            <div className="overflow-y-auto p-5 flex-1">
               <table className="w-full text-xs text-left">
                 <thead>
                   <tr className="border-b border-[var(--border)] bg-[var(--bg-input)]">
@@ -1280,19 +1279,8 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
                 </tbody>
               </table>
             </div>
-
-            {/* Footer */}
-            <div className="px-6 py-4 border-t border-[var(--border)] bg-[var(--bg-input)] flex justify-end">
-              <button 
-                onClick={() => setShowRevenueModal(false)}
-                className="px-4 py-2 bg-[var(--accent)] text-white text-xs font-bold rounded-xl hover:opacity-90 transition-opacity"
-              >
-                Close Analysis
-              </button>
-            </div>
-          </div>
         </div>
-      )}
+      </SidePanel>
     </div>
   );
 }

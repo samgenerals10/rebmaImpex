@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { management } from '../../services/apiClient';
 import { useCeoSettings } from '../../contexts/CeoSettingsContext';
+import SidePanel, { SidePanelSection } from '../../components/ui/SidePanel';
+import SearchableDropdown from '../../components/ui/SearchableDropdown';
 import {
   Tag, TrendingUp, TrendingDown, Search, Plus, MoreVertical,
   Download, RefreshCw, CheckCircle, History, Save,
@@ -710,173 +712,166 @@ export default function MgmtPriceSettingView({ addNotification, currentUser }: P
       </div>
 
       {/* Delete Confirmation Modal */}
-      {deleteTarget && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-sm rounded-2xl bg-[var(--bg-card)] border border-rose-300 shadow-xl p-6 space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-rose-100 flex items-center justify-center shrink-0">
-                <Trash2 className="w-5 h-5 text-rose-500" />
-              </div>
-              <div>
-                <h3 className="font-bold text-[var(--text-primary)]">Remove Price Entry</h3>
-                <p className="text-xs text-[var(--text-muted)]">This cannot be undone.</p>
-              </div>
-            </div>
-            <p className="text-sm text-[var(--text-secondary)]">
-              Remove <strong>{deleteTarget.productName}</strong> ({deleteTarget.currency} {deleteTarget.unitPrice.toFixed(2)}) from the price catalog?
-            </p>
-            <div className="flex gap-3">
-              <button onClick={() => setDeleteTarget(null)} className="flex-1 py-2 rounded-xl border border-[var(--border)] text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-input)] cursor-pointer">Cancel</button>
-              <button onClick={confirmDelete} className="flex-1 py-2 rounded-xl bg-rose-500 text-white text-sm font-semibold hover:bg-rose-600 cursor-pointer">Remove</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <SidePanel
+        open={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        title="Remove Price Entry"
+        subtitle="This cannot be undone."
+        badge={<Trash2 className="w-4 h-4 text-rose-500" />}
+        footer={
+          <>
+            <button onClick={() => setDeleteTarget(null)} className="erp-btn erp-btn-ghost">Cancel</button>
+            <button onClick={confirmDelete} className="erp-btn erp-btn-danger">Remove</button>
+          </>
+        }
+      >
+        {deleteTarget && (
+          <p className="text-sm text-[var(--text-secondary)]">
+            Remove <strong>{deleteTarget.productName}</strong> ({deleteTarget.currency} {deleteTarget.unitPrice.toFixed(2)}) from the price catalog?
+          </p>
+        )}
+      </SidePanel>
 
       {/* Price Form Modal */}
-      {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setShowForm(false)}>
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div className="relative bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-6 w-full max-w-4xl shadow-2xl" onClick={e => e.stopPropagation()}>
-            <h3 className="text-base font-semibold text-[var(--text-primary)] mb-5">{editing ? 'Update Price' : 'Set New Price'}</h3>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Column 1: Product & Pricing Details */}
-              <div className="space-y-4">
-                <div>
-                  <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Product Name *</label>
-                  <input
-                    list="approved-goods-list"
-                    value={form.productName}
-                    onChange={e => setForm(f => ({ ...f, productName: e.target.value }))}
-                    placeholder={approvedGoods.length > 0 ? 'Select or type product name…' : 'Enter product name'}
-                    className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
-                  />
-                  <datalist id="approved-goods-list">
-                    {approvedGoods.map(name => <option key={name} value={name} />)}
-                  </datalist>
-                  {approvedGoods.length > 0 && (
-                    <p className="text-[10px] text-[var(--text-muted)] mt-1">{approvedGoods.length} approved goods available to price</p>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Category</label>
-                    <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]">
-                      <option value="INCOMING_GOODS">Incoming Goods</option>
-                      <option value="SERVICES">Services</option>
-                      <option value="FINISHED_GOODS">Finished Goods</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Currency</label>
-                    <select value={form.currency} onChange={e => setForm(f => ({ ...f, currency: e.target.value as 'GHS' | 'USD' }))} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]">
-                      <option value="GHS">GHS</option>
-                      <option value="USD">USD</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Cost Price *</label>
-                    <input type="number" value={form.costPrice} onChange={e => setForm(f => ({ ...f, costPrice: e.target.value }))} placeholder="e.g. 62.00" className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Selling Price *</label>
-                    <input type="number" value={form.unitPrice} onChange={e => setForm(f => ({ ...f, unitPrice: e.target.value }))} placeholder="e.g. 95.00" className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />
-                  </div>
-                </div>
-
-                {form.costPrice && form.unitPrice && (
-                  <div className="bg-[var(--bg-input)] rounded-xl p-3 flex items-center gap-2">
-                    <TrendingUp size={14} className="text-green-500" />
-                    <span className="text-sm text-[var(--text-secondary)]">Margin: <strong className="text-green-500">{(((parseFloat(form.unitPrice) - parseFloat(form.costPrice)) / parseFloat(form.costPrice)) * 100).toFixed(1)}%</strong></span>
-                  </div>
+      <SidePanel
+        open={showForm}
+        onClose={() => setShowForm(false)}
+        title={editing ? 'Update Price' : 'Set New Price'}
+        width="lg"
+        footer={
+          <>
+            <button onClick={() => setShowForm(false)} className="erp-btn erp-btn-ghost">Cancel</button>
+            <button onClick={savePrice} className="erp-btn erp-btn-primary">
+              <Save size={14} /> {editing ? 'Update Price' : 'Save & Radio'}
+            </button>
+          </>
+        }
+      >
+        <SidePanelSection label="Product & Pricing Details">
+              <div className="erp-form-group">
+                <label className="erp-label">Product Name *</label>
+                <input
+                  list="approved-goods-list"
+                  value={form.productName}
+                  onChange={e => setForm(f => ({ ...f, productName: e.target.value }))}
+                  placeholder={approvedGoods.length > 0 ? 'Select or type product name…' : 'Enter product name'}
+                  className="erp-input"
+                />
+                <datalist id="approved-goods-list">
+                  {approvedGoods.map(name => <option key={name} value={name} />)}
+                </datalist>
+                {approvedGoods.length > 0 && (
+                  <p className="text-[10px] text-[var(--text-muted)] mt-1">{approvedGoods.length} approved goods available to price</p>
                 )}
               </div>
 
-              {/* Column 2: Date, Notifications & Attachments */}
-              <div className="space-y-4">
-                <div>
-                  <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Effective Date</label>
-                  <input type="date" value={form.effectiveDate} onChange={e => setForm(f => ({ ...f, effectiveDate: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />
+              <div className="grid grid-cols-2 gap-3">
+                <div className="erp-form-group">
+                  <label className="erp-label">Category</label>
+                  <SearchableDropdown
+                    value={form.category}
+                    onChange={v => setForm(f => ({ ...f, category: v }))}
+                    options={[{ value: 'INCOMING_GOODS', label: 'Incoming Goods' }, { value: 'SERVICES', label: 'Services' }, { value: 'FINISHED_GOODS', label: 'Finished Goods' }]}
+                  />
                 </div>
-
-                <div>
-                  <label className="text-xs font-medium text-[var(--text-secondary)] mb-2 block flex items-center gap-1"><Bell size={12} /> Notify Departments</label>
-                  <div className="flex items-center gap-4 flex-wrap">
-                    {[{ label: 'Finance', state: broadcastFinance, set: setRadioFinance }, { label: 'Marketing', state: broadcastMarketing, set: setRadioMarketing }, { label: 'CEO', state: broadcastCeo, set: setRadioCeo }].map(({ label, state, set }) => (
-                      <label key={label} className="flex items-center gap-2 text-sm text-[var(--text-primary)] cursor-pointer">
-                        <input type="checkbox" checked={state} onChange={e => set(e.target.checked)} className="rounded" /> {label}
-                      </label>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Camera, Document, Image Uploads */}
-                <div className="space-y-2">
-                  <label className="text-xs font-medium text-[var(--text-secondary)] block">Attachments (Image, Camera Photo, Document)</label>
-                  <div className="flex flex-wrap gap-2">
-                    <button type="button" onClick={() => fileInputRef.current?.click()} className="flex items-center gap-1.5 px-3 py-1.5 border border-dashed border-[var(--border)] rounded-xl text-xs text-[var(--text-secondary)] cursor-pointer hover:border-[var(--accent)] hover:text-[var(--accent)]">
-                      <ImageIcon size={14} /> Upload Image
-                    </button>
-                    <button type="button" onClick={() => cameraInputRef.current?.click()} className="flex items-center gap-1.5 px-3 py-1.5 border border-dashed border-[var(--border)] rounded-xl text-xs text-[var(--text-secondary)] cursor-pointer hover:border-[var(--accent)] hover:text-[var(--accent)]">
-                      <Camera size={14} /> Take Photo
-                    </button>
-                    <button type="button" onClick={() => docInputRef.current?.click()} className="flex items-center gap-1.5 px-3 py-1.5 border border-dashed border-[var(--border)] rounded-xl text-xs text-[var(--text-secondary)] cursor-pointer hover:border-[var(--accent)] hover:text-[var(--accent)]">
-                      <FileText size={14} /> Attach Doc
-                    </button>
-                    <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
-                    <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" onChange={handleCameraChange} className="hidden" />
-                    <input ref={docInputRef} type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.txt" onChange={handleDocChange} className="hidden" />
-                  </div>
-                  
-                  {/* Previews */}
-                  <div className="flex flex-wrap gap-3 mt-2">
-                    {imagePreview && (
-                      <div className="relative">
-                        <p className="text-[9px] text-[var(--text-muted)] mb-1">Image Preview</p>
-                        <img src={imagePreview} alt="Image Upload" className="w-12 h-12 object-cover rounded-lg border border-[var(--border)]" />
-                        <button type="button" onClick={() => setImagePreview('')} className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-rose-500 text-white rounded-full text-[9px] flex items-center justify-center">✕</button>
-                      </div>
-                    )}
-                    {cameraPreview && (
-                      <div className="relative">
-                        <p className="text-[9px] text-[var(--text-muted)] mb-1">Camera Preview</p>
-                        <img src={cameraPreview} alt="Camera Upload" className="w-12 h-12 object-cover rounded-lg border border-[var(--border)]" />
-                        <button type="button" onClick={() => setCameraPreview('')} className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-rose-500 text-white rounded-full text-[9px] flex items-center justify-center">✕</button>
-                      </div>
-                    )}
-                    {docName && (
-                      <div className="relative p-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl flex items-center gap-2">
-                        <FileText size={16} className="text-emerald-500" />
-                        <div className="text-[10px]">
-                          <p className="font-semibold truncate max-w-[100px]">{docName}</p>
-                        </div>
-                        <button type="button" onClick={() => { setDocName(''); setDocBase64(''); }} className="w-4 h-4 bg-rose-500 text-white rounded-full text-[9px] flex items-center justify-center">✕</button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Note (optional)</label>
-                  <input value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))} placeholder="Reason for price change..." className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />
+                <div className="erp-form-group">
+                  <label className="erp-label">Currency</label>
+                  <SearchableDropdown
+                    value={form.currency}
+                    onChange={v => setForm(f => ({ ...f, currency: v as 'GHS' | 'USD' }))}
+                    options={[{ value: 'GHS', label: 'GHS' }, { value: 'USD', label: 'USD' }]}
+                  />
                 </div>
               </div>
-            </div>
 
-            <div className="flex items-center gap-3 justify-end mt-5">
-              <button onClick={() => setShowForm(false)} className="px-4 py-2 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-input)]">Cancel</button>
-              <button onClick={savePrice} className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-white text-sm font-medium" style={{ background: 'var(--accent)' }}>
-                <Save size={14} /> {editing ? 'Update Price' : 'Save & Radio'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="erp-form-group">
+                  <label className="erp-label">Cost Price *</label>
+                  <input type="number" value={form.costPrice} onChange={e => setForm(f => ({ ...f, costPrice: e.target.value }))} placeholder="e.g. 62.00" className="erp-input" />
+                </div>
+                <div className="erp-form-group">
+                  <label className="erp-label">Selling Price *</label>
+                  <input type="number" value={form.unitPrice} onChange={e => setForm(f => ({ ...f, unitPrice: e.target.value }))} placeholder="e.g. 95.00" className="erp-input" />
+                </div>
+              </div>
+
+              {form.costPrice && form.unitPrice && (
+                <div className="bg-[var(--bg-input)] rounded-xl p-3 flex items-center gap-2">
+                  <TrendingUp size={14} className="text-green-500" />
+                  <span className="text-sm text-[var(--text-secondary)]">Margin: <strong className="text-green-500">{(((parseFloat(form.unitPrice) - parseFloat(form.costPrice)) / parseFloat(form.costPrice)) * 100).toFixed(1)}%</strong></span>
+                </div>
+              )}
+        </SidePanelSection>
+
+        <SidePanelSection label="Date, Notifications & Attachments">
+              <div className="erp-form-group">
+                <label className="erp-label">Effective Date</label>
+                <input type="date" value={form.effectiveDate} onChange={e => setForm(f => ({ ...f, effectiveDate: e.target.value }))} className="erp-input" />
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-[var(--text-secondary)] mb-2 block flex items-center gap-1"><Bell size={12} /> Notify Departments</label>
+                <div className="flex items-center gap-4 flex-wrap">
+                  {[{ label: 'Finance', state: broadcastFinance, set: setRadioFinance }, { label: 'Marketing', state: broadcastMarketing, set: setRadioMarketing }, { label: 'CEO', state: broadcastCeo, set: setRadioCeo }].map(({ label, state, set }) => (
+                    <label key={label} className="flex items-center gap-2 text-sm text-[var(--text-primary)] cursor-pointer">
+                      <input type="checkbox" checked={state} onChange={e => set(e.target.checked)} className="rounded" /> {label}
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Camera, Document, Image Uploads */}
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-[var(--text-secondary)] block">Attachments (Image, Camera Photo, Document)</label>
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" onClick={() => fileInputRef.current?.click()} className="flex items-center gap-1.5 px-3 py-1.5 border border-dashed border-[var(--border)] rounded-xl text-xs text-[var(--text-secondary)] cursor-pointer hover:border-[var(--accent)] hover:text-[var(--accent)]">
+                    <ImageIcon size={14} /> Upload Image
+                  </button>
+                  <button type="button" onClick={() => cameraInputRef.current?.click()} className="flex items-center gap-1.5 px-3 py-1.5 border border-dashed border-[var(--border)] rounded-xl text-xs text-[var(--text-secondary)] cursor-pointer hover:border-[var(--accent)] hover:text-[var(--accent)]">
+                    <Camera size={14} /> Take Photo
+                  </button>
+                  <button type="button" onClick={() => docInputRef.current?.click()} className="flex items-center gap-1.5 px-3 py-1.5 border border-dashed border-[var(--border)] rounded-xl text-xs text-[var(--text-secondary)] cursor-pointer hover:border-[var(--accent)] hover:text-[var(--accent)]">
+                    <FileText size={14} /> Attach Doc
+                  </button>
+                  <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
+                  <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" onChange={handleCameraChange} className="hidden" />
+                  <input ref={docInputRef} type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.txt" onChange={handleDocChange} className="hidden" />
+                </div>
+
+                {/* Previews */}
+                <div className="flex flex-wrap gap-3 mt-2">
+                  {imagePreview && (
+                    <div className="relative">
+                      <p className="text-[9px] text-[var(--text-muted)] mb-1">Image Preview</p>
+                      <img src={imagePreview} alt="Image Upload" className="w-12 h-12 object-cover rounded-lg border border-[var(--border)]" />
+                      <button type="button" onClick={() => setImagePreview('')} className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-rose-500 text-white rounded-full text-[9px] flex items-center justify-center">✕</button>
+                    </div>
+                  )}
+                  {cameraPreview && (
+                    <div className="relative">
+                      <p className="text-[9px] text-[var(--text-muted)] mb-1">Camera Preview</p>
+                      <img src={cameraPreview} alt="Camera Upload" className="w-12 h-12 object-cover rounded-lg border border-[var(--border)]" />
+                      <button type="button" onClick={() => setCameraPreview('')} className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-rose-500 text-white rounded-full text-[9px] flex items-center justify-center">✕</button>
+                    </div>
+                  )}
+                  {docName && (
+                    <div className="relative p-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl flex items-center gap-2">
+                      <FileText size={16} className="text-emerald-500" />
+                      <div className="text-[10px]">
+                        <p className="font-semibold truncate max-w-[100px]">{docName}</p>
+                      </div>
+                      <button type="button" onClick={() => { setDocName(''); setDocBase64(''); }} className="w-4 h-4 bg-rose-500 text-white rounded-full text-[9px] flex items-center justify-center">✕</button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="erp-form-group">
+                <label className="erp-label">Note (optional)</label>
+                <input value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))} placeholder="Reason for price change..." className="erp-input" />
+              </div>
+        </SidePanelSection>
+      </SidePanel>
     </div>
   );
 }

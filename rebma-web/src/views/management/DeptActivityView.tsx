@@ -2,9 +2,10 @@ import { useState, useEffect, useRef } from 'react';
 import {
   Activity, Search, RefreshCw, ChevronRight, Building2, Package, DollarSign,
   Truck, Users, ShoppingCart, Factory, UserCheck, Clock, Trash2, Eye,
-  Download, Share2, MoreVertical, X, FileSpreadsheet, FileText,
+  Download, Share2, MoreVertical, FileSpreadsheet, FileText,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
+import SidePanel from '../../components/ui/SidePanel';
 import { exportToCSV, exportToPDF } from '../../utils/export';
 import { useCeoSettings } from '../../contexts/CeoSettingsContext';
 import CountUp from '../../components/CountUp';
@@ -370,19 +371,14 @@ export default function DeptActivityView({ addNotification, currentUser }: Props
     </div>
 
     {/* View More Detail Modal */}
-    {detailItem && (
-      <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 p-4" onClick={() => setDetailItem(null)}>
-        <div className="bg-[var(--bg-card)] rounded-2xl border border-[var(--border)] shadow-2xl max-w-lg w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <h2 className="text-base font-bold text-[var(--text-primary)]">Activity Detail</h2>
-              <p className="text-xs text-[var(--text-muted)] mt-0.5 font-mono">{detailItem.id}</p>
-            </div>
-            <button onClick={() => setDetailItem(null)} className="p-1.5 rounded-lg hover:bg-[var(--accent-light)] cursor-pointer text-[var(--text-muted)]">
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-
+    <SidePanel
+      open={!!detailItem}
+      onClose={() => setDetailItem(null)}
+      title="Activity Detail"
+      subtitle={detailItem?.id}
+    >
+      {detailItem && (
+        <>
           <div className="space-y-3 text-sm">
             {[
               { label: 'Department', value: detailItem.department },
@@ -399,7 +395,7 @@ export default function DeptActivityView({ addNotification, currentUser }: Props
             ))}
           </div>
 
-          <div className="flex gap-2 pt-2 flex-wrap">
+          <div className="flex gap-2 pt-4 flex-wrap">
             <button onClick={() => handleExportSingle(detailItem)}
               className="flex items-center gap-1.5 px-3 py-2 bg-[var(--accent-light)] text-[var(--accent)] rounded-xl text-xs font-semibold border border-[var(--border)] cursor-pointer hover:opacity-90">
               <Download className="w-3.5 h-3.5" /> Export
@@ -415,9 +411,9 @@ export default function DeptActivityView({ addNotification, currentUser }: Props
               </button>
             )}
           </div>
-        </div>
-      </div>
-    )}
+        </>
+      )}
+    </SidePanel>
     </>
   );
 }
