@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { MapPin, Truck, Clock, Info, X, Phone, CreditCard, Package, Navigation } from 'lucide-react';
+import { MapPin, Truck, Clock, Info, Phone, CreditCard, Package, Navigation } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import DispatchMap, { type DispatchMapDelivery } from '../../components/dispatch/DispatchMap';
+import SidePanel from '../../components/ui/SidePanel';
 
 type DriverState = 'ON_THE_WAY' | 'AT_COMPANY' | 'RETURNING' | 'ASSIGNED';
 
@@ -249,18 +250,13 @@ export default function TrackingView({ addNotification: _addNotification }: Prop
       </div>
 
       {/* Driver detail sheet — slides in from the right on marker/row click */}
-      {selected && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 200, display: 'flex', justifyContent: 'flex-end' }}>
-          <div onClick={() => setSelected(null)} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)' }} />
-          <div style={{ position: 'relative', width: 'min(420px, 100%)', height: '100%', background: 'var(--bg-card)', boxShadow: '-8px 0 30px rgba(0,0,0,0.2)', overflowY: 'auto', animation: 'slideIn 0.2s ease-out' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 20px 16px', borderBottom: '1px solid var(--border)' }}>
-              <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text-primary)' }}>Driver Details</h3>
-              <button onClick={() => setSelected(null)} style={{ padding: 6, borderRadius: 8, border: 'none', background: 'var(--bg-input)', cursor: 'pointer', color: 'var(--text-muted)' }}>
-                <X size={16} />
-              </button>
-            </div>
-
-            <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <SidePanel
+        open={!!selected}
+        onClose={() => setSelected(null)}
+        title="Driver Details"
+      >
+        {selected && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                 {selected.photo ? (
                   <img src={selected.photo} alt={selected.driverName} style={{ width: 56, height: 56, borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--border)' }} />
@@ -309,13 +305,11 @@ export default function TrackingView({ addNotification: _addNotification }: Prop
                 </div>
               )}
             </div>
-          </div>
-        </div>
-      )}
+        )}
+      </SidePanel>
 
       <style>{`
         @keyframes ping { 75%,100% { transform: scale(2); opacity: 0; } }
-        @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
       `}</style>
     </div>
   );

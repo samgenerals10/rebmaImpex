@@ -3,6 +3,8 @@ import { Search, Plus, ArrowLeft, X, Edit2, UserMinus, Truck, Trash2, Edit, Smar
 import { supabase } from '../../lib/supabaseClient';
 import { dispatch as dispatchApi } from '../../services/apiClient';
 import type { Driver, DeliveryRecord } from '../../types/erp';
+import SidePanel from '../../components/ui/SidePanel';
+import SearchableDropdown from '../../components/ui/SearchableDropdown';
 
 const statusColors: Record<Driver['status'], { bg: string; color: string; label: string }> = {
   ACTIVE:      { bg: '#d1fae5', color: '#065f46', label: 'Active' },
@@ -58,12 +60,17 @@ interface DriverFormModalProps {
 }
 function DriverFormModal({ title, form, submitting, onClose, onSave, onChange }: DriverFormModalProps) {
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-      <div style={{ background: 'var(--bg-card)', borderRadius: 20, padding: 32, width: '100%', maxWidth: 460, boxShadow: '0 20px 60px rgba(0,0,0,0.3)', border: '1px solid var(--border)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-          <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: 'var(--text-primary)' }}>{title}</h2>
-          <button onClick={onClose} disabled={submitting} style={{ background: 'none', border: 'none', cursor: submitting ? 'not-allowed' : 'pointer', color: 'var(--text-muted)' }}><X size={20} /></button>
-        </div>
+    <SidePanel
+      open
+      onClose={onClose}
+      title={title}
+      footer={
+        <>
+          <button onClick={onClose} disabled={submitting} style={{ flex: 1, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 12, padding: '12px', fontWeight: 600, color: 'var(--text-secondary)', cursor: submitting ? 'not-allowed' : 'pointer', fontSize: 14, opacity: submitting ? 0.6 : 1 }}>Cancel</button>
+          <button onClick={onSave} disabled={submitting} style={{ flex: 1, background: 'var(--accent)', border: 'none', borderRadius: 12, padding: '12px', fontWeight: 600, color: '#fff', cursor: submitting ? 'not-allowed' : 'pointer', fontSize: 14, opacity: submitting ? 0.6 : 1 }}>{submitting ? 'Saving...' : 'Save'}</button>
+        </>
+      }
+    >
         {[
           { label: 'Full Name', key: 'fullName', placeholder: 'e.g. Kwesi Asante' },
           { label: 'Phone', key: 'phone', placeholder: '0244123456' },
@@ -82,12 +89,7 @@ function DriverFormModal({ title, form, submitting, onClose, onSave, onChange }:
             />
           </div>
         ))}
-        <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
-          <button onClick={onClose} disabled={submitting} style={{ flex: 1, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 12, padding: '12px', fontWeight: 600, color: 'var(--text-secondary)', cursor: submitting ? 'not-allowed' : 'pointer', fontSize: 14, opacity: submitting ? 0.6 : 1 }}>Cancel</button>
-          <button onClick={onSave} disabled={submitting} style={{ flex: 1, background: 'var(--accent)', border: 'none', borderRadius: 12, padding: '12px', fontWeight: 600, color: '#fff', cursor: submitting ? 'not-allowed' : 'pointer', fontSize: 14, opacity: submitting ? 0.6 : 1 }}>{submitting ? 'Saving...' : 'Save'}</button>
-        </div>
-      </div>
-    </div>
+    </SidePanel>
   );
 }
 
@@ -135,15 +137,12 @@ function InviteDriverModal({ driver, onClose, onInvited }: InviteDriverModalProp
   };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-      <div style={{ background: 'var(--bg-card)', borderRadius: 20, padding: 32, width: '100%', maxWidth: 440, boxShadow: '0 20px 60px rgba(0,0,0,0.3)', border: '1px solid var(--border)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Smartphone size={18} /> Invite to Mobile App
-          </h2>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={20} /></button>
-        </div>
-
+    <SidePanel
+      open
+      onClose={onClose}
+      title="Invite to Mobile App"
+      badge={<Smartphone size={16} />}
+    >
         {!result ? (
           <>
             <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '0 0 16px' }}>
@@ -165,7 +164,7 @@ function InviteDriverModal({ driver, onClose, onInvited }: InviteDriverModalProp
           </>
         ) : (
           <>
-            <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '0 0 16px' }}>Account created. Share these credentials with the driver now — the password won't be shown again.</p>
+            <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '0 0 16px' }}>Account created. Share these credentials with the driver now. The password won't be shown again.</p>
             <div style={{ background: 'var(--bg)', borderRadius: 12, padding: '14px 16px', marginBottom: 16, fontFamily: 'monospace', fontSize: 13 }}>
               <p style={{ margin: '0 0 6px', color: 'var(--text-primary)' }}>Email: {result.email}</p>
               <p style={{ margin: 0, color: 'var(--text-primary)' }}>Password: {result.password}</p>
@@ -178,8 +177,7 @@ function InviteDriverModal({ driver, onClose, onInvited }: InviteDriverModalProp
             </div>
           </>
         )}
-      </div>
-    </div>
+    </SidePanel>
   );
 }
 
@@ -194,12 +192,20 @@ interface AssignDeliveryModalProps {
 function AssignDeliveryModal({ driver, deliveries, loading, submitting, onAssign, onClose }: AssignDeliveryModalProps) {
   const [deliveryId, setDeliveryId] = useState('');
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-      <div style={{ background: 'var(--bg-card)', borderRadius: 20, padding: 32, width: '100%', maxWidth: 440, boxShadow: '0 20px 60px rgba(0,0,0,0.3)', border: '1px solid var(--border)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--text-primary)' }}>Assign Delivery to {driver.fullName}</h2>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={20} /></button>
-        </div>
+    <SidePanel
+      open
+      onClose={onClose}
+      title={`Assign Delivery to ${driver.fullName}`}
+      footer={
+        <>
+          <button onClick={onClose} disabled={submitting} style={{ flex: 1, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 12, padding: '12px', fontWeight: 600, color: 'var(--text-secondary)', cursor: submitting ? 'not-allowed' : 'pointer', fontSize: 14 }}>Cancel</button>
+          <button onClick={() => deliveryId && onAssign(deliveryId)} disabled={!deliveryId || submitting}
+            style={{ flex: 1, background: 'var(--accent)', border: 'none', borderRadius: 12, padding: '12px', fontWeight: 600, color: '#fff', cursor: (!deliveryId || submitting) ? 'not-allowed' : 'pointer', fontSize: 14, opacity: (!deliveryId || submitting) ? 0.6 : 1 }}>
+            {submitting ? 'Assigning...' : 'Assign'}
+          </button>
+        </>
+      }
+    >
         {loading ? (
           <p style={{ color: 'var(--text-muted)', fontSize: 13, textAlign: 'center', padding: '20px 0' }}>Loading pending deliveries...</p>
         ) : deliveries.length === 0 ? (
@@ -207,24 +213,15 @@ function AssignDeliveryModal({ driver, deliveries, loading, submitting, onAssign
         ) : (
           <>
             <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 5 }}>Select Delivery</label>
-            <select value={deliveryId} onChange={e => setDeliveryId(e.target.value)}
-              style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'var(--text-primary)', fontSize: 14, boxSizing: 'border-box' }}>
-              <option value="">Choose a delivery...</option>
-              {deliveries.map(d => (
-                <option key={d.id} value={d.id}>{d.orderId} — {d.clientName} ({d.destination})</option>
-              ))}
-            </select>
+            <SearchableDropdown
+              value={deliveryId}
+              onChange={setDeliveryId}
+              placeholder="Choose a delivery..."
+              options={deliveries.map(d => ({ value: d.id, label: `${d.orderId}, ${d.clientName}`, sublabel: d.destination }))}
+            />
           </>
         )}
-        <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
-          <button onClick={onClose} disabled={submitting} style={{ flex: 1, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 12, padding: '12px', fontWeight: 600, color: 'var(--text-secondary)', cursor: submitting ? 'not-allowed' : 'pointer', fontSize: 14 }}>Cancel</button>
-          <button onClick={() => deliveryId && onAssign(deliveryId)} disabled={!deliveryId || submitting}
-            style={{ flex: 1, background: 'var(--accent)', border: 'none', borderRadius: 12, padding: '12px', fontWeight: 600, color: '#fff', cursor: (!deliveryId || submitting) ? 'not-allowed' : 'pointer', fontSize: 14, opacity: (!deliveryId || submitting) ? 0.6 : 1 }}>
-            {submitting ? 'Assigning...' : 'Assign'}
-          </button>
-        </div>
-      </div>
-    </div>
+    </SidePanel>
   );
 }
 
@@ -610,12 +607,12 @@ export default function DriversView({ addNotification }: Props) {
           <Search size={16} style={{ color: 'var(--text-muted)' }} />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name or ID..." style={{ border: 'none', background: 'transparent', outline: 'none', color: 'var(--text-primary)', fontSize: 14, width: '100%' }} />
         </div>
-        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value as typeof statusFilter)} style={{ flex: '0 0 160px', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '8px 12px', color: 'var(--text-primary)', fontSize: 14 }}>
-          <option value="ALL">All Status</option>
-          <option value="ACTIVE">Active</option>
-          <option value="ON_DELIVERY">On Delivery</option>
-          <option value="OFFLINE">Offline</option>
-        </select>
+        <SearchableDropdown
+          value={statusFilter}
+          onChange={v => setStatusFilter(v as typeof statusFilter)}
+          options={[{ value: 'ALL', label: 'All Status' }, { value: 'ACTIVE', label: 'Active' }, { value: 'ON_DELIVERY', label: 'On Delivery' }, { value: 'OFFLINE', label: 'Offline' }]}
+          className="shrink-0 w-40"
+        />
       </div>
 
       {loading ? (

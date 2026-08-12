@@ -14,6 +14,8 @@ import DispatchMap from '../../components/dispatch/DispatchMap';
 import { useFullscreenToggle, FullscreenButton } from '../../components/global/FullscreenToggle';
 import CountUp from '../../components/CountUp';
 import { useCeoSettings } from '../../contexts/CeoSettingsContext';
+import SidePanel from '../../components/ui/SidePanel';
+import SearchableDropdown from '../../components/ui/SearchableDropdown';
 
 
 // ── types ─────────────────────────────────────────────────────────────────────
@@ -70,17 +72,20 @@ function AssignDriverModal({
   const availableDrivers = drivers.filter(d => d.status !== 'OFFLINE');
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-      <div className="relative bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-6 w-full max-w-2xl shadow-2xl" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between mb-5">
-          <div>
-            <h3 className="text-base font-semibold text-[var(--text-primary)]">Assign Driver</h3>
-            <p className="text-xs text-[var(--text-muted)]">{delivery.id} · {delivery.orderId}</p>
-          </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-[var(--bg-input)]"><X size={16} className="text-[var(--text-muted)]" /></button>
-        </div>
-
+    <SidePanel
+      open
+      onClose={onClose}
+      title="Assign Driver"
+      subtitle={`${delivery.id} · ${delivery.orderId}`}
+      footer={
+        <>
+          <button onClick={onClose} className="erp-btn erp-btn-ghost">Cancel</button>
+          <button onClick={() => driverId && onAssign(driverId, notes)} disabled={!driverId} className="erp-btn erp-btn-primary disabled:opacity-50">
+            Assign Driver
+          </button>
+        </>
+      }
+    >
         <div className="p-3 bg-[var(--bg-input)] rounded-xl mb-4 space-y-1">
           <p className="text-xs font-medium text-[var(--text-primary)]">{delivery.clientName}</p>
           <p className="text-xs text-[var(--text-muted)]">{delivery.destination}</p>
@@ -89,13 +94,12 @@ function AssignDriverModal({
         <div className="space-y-4">
           <div>
             <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Select Driver</label>
-            <select value={driverId} onChange={e => setDriverId(e.target.value)}
-              className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm focus:outline-none focus:border-[var(--accent)] text-[var(--text-primary)]">
-              <option value="">Choose a driver...</option>
-              {availableDrivers.map(d => (
-                <option key={d.id} value={d.id}>{d.fullName} — {d.truckId} ({d.status === 'ACTIVE' ? 'Available' : 'On Delivery'})</option>
-              ))}
-            </select>
+            <SearchableDropdown
+              value={driverId}
+              onChange={setDriverId}
+              placeholder="Choose a driver..."
+              options={availableDrivers.map(d => ({ value: d.id, label: `${d.fullName}, ${d.truckId}`, sublabel: d.status === 'ACTIVE' ? 'Available' : 'On Delivery' }))}
+            />
             {driverId && (
               <div className="mt-2 p-2 bg-[var(--bg-input)] rounded-lg text-xs text-[var(--text-muted)]">
                 Vehicle: <strong className="text-[var(--text-primary)]">{availableDrivers.find(d => d.id === driverId)?.truckId}</strong>
@@ -109,16 +113,7 @@ function AssignDriverModal({
               className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm focus:outline-none focus:border-[var(--accent)] text-[var(--text-primary)] placeholder-[var(--text-muted)] resize-none" />
           </div>
         </div>
-
-        <div className="flex items-center gap-3 mt-5">
-          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-input)]">Cancel</button>
-          <button onClick={() => driverId && onAssign(driverId, notes)} disabled={!driverId}
-            className="flex-1 py-2.5 rounded-xl text-white text-sm font-semibold disabled:opacity-50" style={{ background: 'var(--accent)' }}>
-            Assign Driver
-          </button>
-        </div>
-      </div>
-    </div>
+    </SidePanel>
   );
 }
 
@@ -662,11 +657,12 @@ export default function DeliveriesView({ addNotification, currentUser, setActive
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search client, driver, order ID…"
               className="w-full pl-8 pr-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm focus:outline-none focus:border-[var(--accent)] text-[var(--text-primary)] placeholder-[var(--text-muted)]" />
           </div>
-          <select value={driverFilter} onChange={e => setDriverFilter(e.target.value)}
-            className="px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-secondary)] focus:outline-none">
-            <option value="">All Drivers</option>
-            {drivers.map(d => <option key={d.id} value={d.id}>{d.fullName}</option>)}
-          </select>
+          <SearchableDropdown
+            value={driverFilter}
+            onChange={setDriverFilter}
+            options={[{ value: '', label: 'All Drivers' }, ...drivers.map(d => ({ value: d.id, label: d.fullName }))]}
+            className="w-44"
+          />
           <input type="date" value={dateFilter} onChange={e => setDateFilter(e.target.value)}
             className="px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-secondary)] focus:outline-none" />
         </div>
@@ -790,64 +786,62 @@ export default function DeliveriesView({ addNotification, currentUser, setActive
         />
       )}
 
-      {showEdit && editingDelivery && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => { setShowEdit(false); setEditingDelivery(null); }}>
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div className="relative bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-6 w-full max-w-2xl shadow-2xl" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="text-lg font-bold text-[var(--text-primary)]">Edit Delivery</h2>
-              <button onClick={() => { setShowEdit(false); setEditingDelivery(null); }} className="p-1.5 rounded-lg hover:bg-[var(--bg-input)]"><X size={16} className="text-[var(--text-muted)]" /></button>
-            </div>
-            <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
-              <div>
-                <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Customer Name</label>
-                <input value={editingDelivery.clientName} onChange={e => setEditingDelivery((prev: any) => ({ ...prev, clientName: e.target.value }))}
-                  className="w-full px-3 py-2 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />
+      <SidePanel
+        open={showEdit && !!editingDelivery}
+        onClose={() => { setShowEdit(false); setEditingDelivery(null); }}
+        title="Edit Delivery"
+        footer={
+          <>
+            <button onClick={() => { setShowEdit(false); setEditingDelivery(null); }} disabled={submitting} className="erp-btn erp-btn-ghost disabled:opacity-50">Cancel</button>
+            <button onClick={handleEditSave} disabled={submitting} className="erp-btn erp-btn-primary disabled:opacity-50">{submitting ? 'Saving...' : 'Save Changes'}</button>
+          </>
+        }
+      >
+        {editingDelivery && (
+          <div className="flex flex-col gap-4">
+              <div className="erp-form-group">
+                <label className="erp-label">Customer Name</label>
+                <input value={editingDelivery.clientName} onChange={e => setEditingDelivery((prev: any) => ({ ...prev, clientName: e.target.value }))} className="erp-input" />
               </div>
-              <div>
-                <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Order ID</label>
-                <input value={editingDelivery.orderId} onChange={e => setEditingDelivery((prev: any) => ({ ...prev, orderId: e.target.value }))}
-                  className="w-full px-3 py-2 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />
+              <div className="erp-form-group">
+                <label className="erp-label">Order ID</label>
+                <input value={editingDelivery.orderId} onChange={e => setEditingDelivery((prev: any) => ({ ...prev, orderId: e.target.value }))} className="erp-input" />
               </div>
-              <div>
-                <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Destination / Delivery Address</label>
-                <input value={editingDelivery.destination} onChange={e => setEditingDelivery((prev: any) => ({ ...prev, destination: e.target.value }))}
-                  className="w-full px-3 py-2 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />
+              <div className="erp-form-group">
+                <label className="erp-label">Destination / Delivery Address</label>
+                <input value={editingDelivery.destination} onChange={e => setEditingDelivery((prev: any) => ({ ...prev, destination: e.target.value }))} className="erp-input" />
               </div>
-              <div>
-                <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Driver ID / Name</label>
-                <select value={editingDelivery.driverId} onChange={e => setEditingDelivery((prev: any) => ({ ...prev, driverId: e.target.value }))}
-                  className="w-full px-3 py-2 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]">
-                  <option value="">Assign later (Pending Assignment)</option>
-                  {drivers.map(d => (
-                    <option key={d.id} value={d.id}>{d.fullName} ({d.truckId})</option>
-                  ))}
-                </select>
+              <div className="erp-form-group">
+                <label className="erp-label">Driver ID / Name</label>
+                <SearchableDropdown
+                  value={editingDelivery.driverId}
+                  onChange={v => setEditingDelivery((prev: any) => ({ ...prev, driverId: v }))}
+                  placeholder="Assign later (Pending Assignment)"
+                  options={drivers.map(d => ({ value: d.id, label: `${d.fullName} (${d.truckId})` }))}
+                />
               </div>
-              <div>
-                <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Status</label>
-                <select value={editingDelivery.status} onChange={e => setEditingDelivery((prev: any) => ({ ...prev, status: e.target.value }))}
-                  className="w-full px-3 py-2 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]">
-                  <option value="PENDING_ASSIGNMENT">Pending Assignment</option>
-                  <option value="ASSIGNED">Assigned</option>
-                  <option value="IN_TRANSIT">In Transit</option>
-                  <option value="DELIVERED">Delivered</option>
-                  <option value="FAILED">Failed</option>
-                </select>
+              <div className="erp-form-group">
+                <label className="erp-label">Status</label>
+                <SearchableDropdown
+                  value={editingDelivery.status}
+                  onChange={v => setEditingDelivery((prev: any) => ({ ...prev, status: v }))}
+                  options={[
+                    { value: 'PENDING_ASSIGNMENT', label: 'Pending Assignment' },
+                    { value: 'ASSIGNED', label: 'Assigned' },
+                    { value: 'IN_TRANSIT', label: 'In Transit' },
+                    { value: 'DELIVERED', label: 'Delivered' },
+                    { value: 'FAILED', label: 'Failed' },
+                  ]}
+                />
               </div>
-              <div>
-                <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Notes / Special Instructions</label>
+              <div className="erp-form-group">
+                <label className="erp-label">Notes / Special Instructions</label>
                 <textarea value={editingDelivery.deliveryNotes || ''} onChange={e => setEditingDelivery((prev: any) => ({ ...prev, deliveryNotes: e.target.value }))} rows={2}
-                  className="w-full px-3 py-2 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)] resize-none" />
+                  className="erp-input resize-none" />
               </div>
-            </div>
-            <div className="flex items-center gap-3 mt-5">
-              <button onClick={() => { setShowEdit(false); setEditingDelivery(null); }} disabled={submitting} className="flex-1 py-2.5 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-input)] disabled:opacity-50">Cancel</button>
-              <button onClick={handleEditSave} disabled={submitting} className="flex-1 py-2.5 rounded-xl text-white text-sm font-semibold disabled:opacity-50" style={{ background: 'var(--accent)' }}>{submitting ? 'Saving...' : 'Save Changes'}</button>
-            </div>
           </div>
-        </div>
-      )}
+        )}
+      </SidePanel>
     </div>
   );
 }

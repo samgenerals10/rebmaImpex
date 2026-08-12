@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { useRealtimeChannel } from '../../hooks/useRealtimeChannel';
+import SearchableDropdown from '../../components/ui/SearchableDropdown';
 import {
   Truck, UserCheck, MapPin, Camera, History, BarChart2,
   TrendingUp, TrendingDown, RefreshCw, MoreVertical, ChevronRight,
@@ -473,24 +474,22 @@ export default function DispatchOverviewView({ addNotification, setActiveSubTab,
           <div className="space-y-3">
             <div>
               <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Delivery Awaiting Driver</label>
-              <select value={assignDeliveryId} onChange={e => setAssignDeliveryId(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm focus:outline-none focus:border-[var(--accent)] text-[var(--text-primary)]">
-                <option value="">
-                  {pendingDeliveries.length === 0 ? 'No deliveries awaiting a driver' : 'Choose a delivery...'}
-                </option>
-                {pendingDeliveries.map(d => (
-                  <option key={d.id} value={d.id}>{d.orderId} — {d.clientName || 'Unnamed client'}</option>
-                ))}
-              </select>
+              <SearchableDropdown
+                value={assignDeliveryId}
+                onChange={setAssignDeliveryId}
+                placeholder={pendingDeliveries.length === 0 ? 'No deliveries awaiting a driver' : 'Choose a delivery...'}
+                options={pendingDeliveries.map(d => ({ value: d.id, label: `${d.orderId}, ${d.clientName || 'Unnamed client'}` }))}
+              />
               <p className="text-[11px] text-[var(--text-muted)] mt-1">Only deliveries Operations has already sent over show up here.</p>
             </div>
             <div>
               <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Select Driver</label>
-              <select value={assignDriverId} onChange={e => setAssignDriverId(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm focus:outline-none focus:border-[var(--accent)] text-[var(--text-primary)]">
-                <option value="">Choose a driver...</option>
-                {availableDrivers.map(d => <option key={d.id} value={d.id}>{d.fullName} — {d.truckId}</option>)}
-              </select>
+              <SearchableDropdown
+                value={assignDriverId}
+                onChange={setAssignDriverId}
+                placeholder="Choose a driver..."
+                options={availableDrivers.map(d => ({ value: d.id, label: `${d.fullName}, ${d.truckId}` }))}
+              />
             </div>
             <button onClick={handleAssign} disabled={assigning || !assignDeliveryId || !assignDriverId}
               className="w-full py-2.5 rounded-xl text-white text-sm font-semibold disabled:opacity-50 transition-opacity hover:opacity-90" style={{ background: 'var(--accent)' }}>
@@ -545,10 +544,7 @@ export default function DispatchOverviewView({ addNotification, setActiveSubTab,
         <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-semibold text-[var(--text-primary)]">Delivery Performance</h3>
-            <select value={perfPeriod} onChange={e => setPerfPeriod(e.target.value)}
-              className="text-xs px-2 py-1.5 rounded-lg bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-secondary)] focus:outline-none">
-              {['Today', 'This Week', 'This Month'].map(p => <option key={p}>{p}</option>)}
-            </select>
+            <SearchableDropdown value={perfPeriod} onChange={setPerfPeriod} options={['Today', 'This Week', 'This Month'].map(p => ({ value: p, label: p }))} className="w-32" />
           </div>
           {/* Success Rate */}
           <div className="flex items-end gap-3 mb-5">
@@ -617,10 +613,7 @@ export default function DispatchOverviewView({ addNotification, setActiveSubTab,
         <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-semibold text-[var(--text-primary)]">Deliveries Movement</h3>
-            <select value={volPeriod} onChange={e => setVolPeriod(e.target.value)}
-              className="text-xs px-2 py-1.5 rounded-lg bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-secondary)] focus:outline-none">
-              {['This Week', 'This Month', 'This Quarter'].map(p => <option key={p}>{p}</option>)}
-            </select>
+            <SearchableDropdown value={volPeriod} onChange={setVolPeriod} options={['This Week', 'This Month', 'This Quarter'].map(p => ({ value: p, label: p }))} className="w-36" />
           </div>
           <div className="grid grid-cols-2 gap-4 mb-4">
             <div>
@@ -705,10 +698,7 @@ export default function DispatchOverviewView({ addNotification, setActiveSubTab,
             <p className="text-sm text-[var(--text-secondary)] mt-0.5">Assigned vs completed deliveries — {volPeriod.toLowerCase()}</p>
           </div>
           <div className="flex items-center gap-2">
-            <select value={volPeriod} onChange={e => setVolPeriod(e.target.value)}
-              className="text-xs px-2 py-1.5 rounded-lg bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-secondary)] focus:outline-none">
-              {['This Week', 'This Month', 'This Quarter'].map(p => <option key={p}>{p}</option>)}
-            </select>
+            <SearchableDropdown value={volPeriod} onChange={setVolPeriod} options={['This Week', 'This Month', 'This Quarter'].map(p => ({ value: p, label: p }))} className="w-36" />
             <button
               onClick={() => exportToCSV(volumeData, ['day', 'assigned', 'completed'], 'delivery_volume')}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[var(--border)] text-xs text-[var(--text-secondary)] hover:bg-[var(--bg-input)] transition-colors">

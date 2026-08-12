@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Camera, CheckCircle, Clock, Upload, Eye } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
+import SidePanel from '../../components/ui/SidePanel';
 import { uploadFile } from '../../utils/uploadFile';
 import { useCeoSettings } from '../../contexts/CeoSettingsContext';
 import type { CurrentUser } from '../../types/erp';
@@ -210,22 +211,23 @@ export default function ProofOfDeliveryView({ addNotification }: Props) {
       )}
 
       {/* Proof viewer modal */}
-      {viewProof && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-4" onClick={() => setViewProof(null)}>
-          <div className="bg-[var(--bg-card)] rounded-2xl overflow-hidden max-w-sm w-full shadow-2xl" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between p-4 border-b border-[var(--border)]">
-              <h3 className="font-bold text-sm text-[var(--text-primary)]">Proof of Delivery — {viewProof.order_id}</h3>
-              <button onClick={() => setViewProof(null)} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer font-bold text-xs">Close</button>
-            </div>
+      <SidePanel
+        open={!!viewProof}
+        onClose={() => setViewProof(null)}
+        title="Proof of Delivery"
+        subtitle={viewProof?.order_id}
+      >
+        {viewProof && (
+          <div className="flex flex-col gap-4 -mx-5 -mt-4">
             <img src={viewProof.proof_url} alt="Proof of delivery" className="w-full object-cover max-h-80" />
-            <div className="p-4">
+            <div className="px-5">
               <p className="text-xs text-[var(--text-secondary)]"><strong>Customer:</strong> {viewProof.customer}</p>
               <p className="text-xs text-[var(--text-secondary)]"><strong>Driver:</strong> {viewProof.driver}</p>
               {viewProof.delivered_at && <p className="text-xs text-emerald-600 font-semibold mt-1">{new Date(viewProof.delivered_at).toLocaleString('en-GB')}</p>}
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </SidePanel>
     </div>
   );
 }
