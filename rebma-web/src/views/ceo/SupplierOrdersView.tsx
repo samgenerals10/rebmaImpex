@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import {
-  ShoppingBag, Plus, FileSpreadsheet, FileText, X, ChevronDown,
+  ShoppingBag, Plus, FileSpreadsheet, FileText, ChevronDown,
   MoreVertical, Bell, CheckCircle, Trash2, Search, Filter,
   Package, DollarSign, Truck, Clock, AlertCircle, Mail, MessageCircle
 } from 'lucide-react';
@@ -13,6 +13,8 @@ import CountrySelect from '../../components/CountrySelect';
 import { waLink } from '../../utils/whatsapp';
 import { useCeoSettings } from '../../contexts/CeoSettingsContext';
 import { usePaginatedQuery } from '../../hooks/usePaginatedQuery';
+import SidePanel, { SidePanelSection } from '../../components/ui/SidePanel';
+import SearchableDropdown from '../../components/ui/SearchableDropdown';
 
 function InlineBreadcrumb({ crumbs, onBack }: { crumbs: string[]; onBack?: () => void }) {
   return (
@@ -231,11 +233,12 @@ export default function SupplierOrdersView({ currentUser, addNotification }: Pro
             placeholder="Search by order #, supplier, product..."
             className="w-full pl-8 pr-3 py-2 rounded-xl border border-[var(--border)] bg-[var(--bg-input)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />
         </div>
-        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
-          className="px-3 py-2 rounded-xl border border-[var(--border)] bg-[var(--bg-input)] text-sm text-[var(--text-primary)] focus:outline-none">
-          <option value="ALL">All Statuses</option>
-          {Object.entries(STATUS_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-        </select>
+        <SearchableDropdown
+          value={statusFilter}
+          onChange={setStatusFilter}
+          options={[{ value: 'ALL', label: 'All Statuses' }, ...Object.entries(STATUS_CONFIG).map(([k, v]) => ({ value: k, label: v.label }))]}
+          className="sm:w-48"
+        />
       </div>
 
       {/* Orders table */}
@@ -594,30 +597,24 @@ function NewOrderForm({ orders, currentUser, addNotification, onClose, onSave }:
   const inputCls = "w-full px-3 py-[7px] rounded-xl border border-[var(--border)] bg-[var(--bg-input)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-
-      {/* Panel */}
-      <div
-        className="relative w-full max-w-[580px] max-h-[90vh] overflow-y-auto bg-[var(--bg-card)] rounded-2xl shadow-2xl flex flex-col"
-        onClick={e => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-[var(--border)] sticky top-0 bg-[var(--bg-card)] z-10">
-          <div>
-            <h3 className="text-base font-bold text-[var(--text-primary)]">New Supplier Order</h3>
-            <p className="text-xs text-[var(--text-muted)]">International procurement order</p>
-          </div>
-          <button onClick={onClose} className="p-2 rounded-xl hover:bg-[var(--accent-light)] transition-colors">
-            <X className="w-4 h-4 text-[var(--text-muted)]" />
+    <SidePanel
+      open
+      onClose={onClose}
+      title="New Supplier Order"
+      subtitle="International procurement order"
+      width="lg"
+      footer={
+        <div className="w-full">
+          <button onClick={handleSaveDraft} disabled={saving}
+            className="w-full px-4 py-2.5 border border-[var(--border)] rounded-xl text-sm font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-input)] transition-colors">
+            {saving ? 'Saving…' : 'Save as Draft'}
           </button>
+          <p className="text-[11px] text-[var(--text-muted)] text-center mt-2">Saves without sending. Status set to Pending.</p>
         </div>
-
-        <div className="p-5 space-y-6 flex-1">
-          {/* ── Supplier Details ── */}
-          <section>
-            <h4 className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider mb-3">Supplier Details</h4>
+      }
+    >
+        <div className="space-y-6">
+          <SidePanelSection label="Supplier Details">
             <div className="space-y-3">
               <div className="relative">
                 <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Supplier Name *</label>
@@ -658,18 +655,13 @@ function NewOrderForm({ orders, currentUser, addNotification, onClose, onSave }:
                 </div>
               )}
             </div>
-          </section>
+          </SidePanelSection>
 
-          {/* ── Order Details ── */}
-          <section>
-            <h4 className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider mb-3">Order Details</h4>
+          <SidePanelSection label="Order Details">
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Port of Entry</label>
-                <select value={portOfEntry} onChange={e => setPortOfEntry(e.target.value)} className={inputCls}>
-                  <option>Tema Port</option>
-                  <option>Takoradi Port</option>
-                </select>
+                <SearchableDropdown value={portOfEntry} onChange={setPortOfEntry} options={[{ value: 'Tema Port', label: 'Tema Port' }, { value: 'Takoradi Port', label: 'Takoradi Port' }]} />
               </div>
               <div>
                 <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Expected Delivery</label>
@@ -677,30 +669,20 @@ function NewOrderForm({ orders, currentUser, addNotification, onClose, onSave }:
               </div>
               <div>
                 <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Shipping Method</label>
-                <select value={shippingMethod} onChange={e => setShippingMethod(e.target.value)} className={inputCls}>
-                  <option>Sea Freight</option>
-                  <option>Air Freight</option>
-                  <option>Road Freight</option>
-                </select>
+                <SearchableDropdown value={shippingMethod} onChange={setShippingMethod} options={['Sea Freight', 'Air Freight', 'Road Freight'].map(m => ({ value: m, label: m }))} />
               </div>
               <div>
                 <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Currency</label>
-                <select value={currency} onChange={e => setCurrency(e.target.value)} className={inputCls}>
-                  <option>USD</option>
-                  <option>EUR</option>
-                  <option>GBP</option>
-                </select>
+                <SearchableDropdown value={currency} onChange={setCurrency} options={['USD', 'EUR', 'GBP'].map(c => ({ value: c, label: c }))} />
               </div>
             </div>
             <div className="mt-3">
               <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Shipping Details</label>
               <input value={shippingDetails} onChange={e => setShippingDetails(e.target.value)} placeholder="Vessel name, tracking # ..." className={inputCls} />
             </div>
-          </section>
+          </SidePanelSection>
 
-          {/* ── Products ── */}
-          <section>
-            <h4 className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider mb-3">Products Ordered</h4>
+          <SidePanelSection label="Products Ordered">
             <div className="space-y-3">
               {products.map((p, i) => (
                 <div key={i} className="bg-[var(--bg-input)] rounded-xl p-3 space-y-2 border border-[var(--border)]">
@@ -718,9 +700,7 @@ function NewOrderForm({ orders, currentUser, addNotification, onClose, onSave }:
                     </div>
                     <input value={p.quantity || ''} onChange={e => updateProduct(i, 'quantity', Number(e.target.value))}
                       placeholder="Quantity" type="number" className={inputCls} />
-                    <select value={p.unit} onChange={e => updateProduct(i, 'unit', e.target.value)} className={inputCls}>
-                      {['Tons','Kg','Cartons','Units'].map(u => <option key={u}>{u}</option>)}
-                    </select>
+                    <SearchableDropdown value={p.unit} onChange={v => updateProduct(i, 'unit', v)} options={['Tons','Kg','Cartons','Units'].map(u => ({ value: u, label: u }))} />
                     <input value={p.unit_price || ''} onChange={e => updateProduct(i, 'unit_price', Number(e.target.value))}
                       placeholder="Unit price" type="number" className={inputCls} />
                     <div className="flex items-center px-3 py-2 rounded-xl border border-[var(--border)] bg-[var(--bg-card)] text-sm font-semibold text-emerald-600">
@@ -751,28 +731,20 @@ function NewOrderForm({ orders, currentUser, addNotification, onClose, onSave }:
                 <span className="text-emerald-600">GHS {totalGhs.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
               </div>
             </div>
-          </section>
+          </SidePanelSection>
 
-          {/* ── Payment Details ── */}
-          <section>
-            <h4 className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider mb-3">Payment Details</h4>
-            <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)} className={inputCls}>
-              <option>Wire Transfer</option>
-              <option>Letter of Credit</option>
-              <option>Documentary Collection</option>
-            </select>
-          </section>
+          <SidePanelSection label="Payment Details">
+            <SearchableDropdown value={paymentMethod} onChange={setPaymentMethod} options={['Wire Transfer', 'Letter of Credit', 'Documentary Collection'].map(m => ({ value: m, label: m }))} />
+          </SidePanelSection>
 
-          {/* ── Notes ── */}
-          <section>
-            <h4 className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider mb-3">Notes</h4>
+          <SidePanelSection label="Notes">
             <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3}
               placeholder="Additional notes..." className={`${inputCls} resize-none`} />
-          </section>
+          </SidePanelSection>
         </div>
 
         {/* ── Send Channel Selection ── */}
-        <div className="px-5 pb-2 space-y-4">
+        <div className="pt-2 space-y-4">
           <h4 className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">Send Order Via</h4>
 
           <div className="grid grid-cols-2 gap-3">
@@ -862,17 +834,7 @@ function NewOrderForm({ orders, currentUser, addNotification, onClose, onSave }:
             </div>
           )}
         </div>
-
-        {/* Always-visible Save as Draft */}
-        <div className="px-5 pb-5 border-t border-[var(--border)] pt-4 sticky bottom-0 bg-[var(--bg-card)]">
-          <button onClick={handleSaveDraft} disabled={saving}
-            className="w-full px-4 py-2.5 border border-[var(--border)] rounded-xl text-sm font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-input)] transition-colors">
-            {saving ? 'Saving…' : 'Save as Draft'}
-          </button>
-          <p className="text-[11px] text-[var(--text-muted)] text-center mt-2">Saves without sending. Status set to Pending.</p>
-        </div>
-      </div>
-    </div>
+    </SidePanel>
   );
 }
 
@@ -1022,15 +984,23 @@ function PaymentAuthModal({ order, currentUser, onClose, onAuthorise }: {
   const inputCls = "w-full px-3 py-2 rounded-xl border border-[var(--border)] bg-[var(--bg-input)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]";
 
   return (
-    <div className="fixed inset-0 z-60 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
-      <div className="relative w-full max-w-lg bg-[var(--bg-card)] rounded-2xl shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between p-5 border-b border-[var(--border)]">
-          <h3 className="font-bold text-[var(--text-primary)]">Authorise Payment</h3>
-          <button onClick={onClose} className="p-2 rounded-xl hover:bg-[var(--accent-light)]"><X className="w-4 h-4 text-[var(--text-muted)]" /></button>
-        </div>
-
-        <div className="p-5 space-y-4">
+    <SidePanel
+      open
+      onClose={onClose}
+      title="Authorise Payment"
+      footer={
+        <>
+          <button onClick={onClose} className="erp-btn erp-btn-ghost">Cancel</button>
+          <button
+            onClick={() => { if (ref && confirmed) onAuthorise(ref, bank, payDate); }}
+            disabled={!ref || !confirmed}
+            className="erp-btn bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed">
+            Authorise & Send
+          </button>
+        </>
+      }
+    >
+        <div className="space-y-4">
           {/* Order summary */}
           <div className="bg-[var(--bg-input)] rounded-xl p-4 space-y-1.5 text-sm">
             <div className="flex justify-between"><span className="text-[var(--text-muted)]">Order</span><span className="font-mono font-semibold text-[var(--text-primary)]">{order.order_number}</span></div>
@@ -1065,18 +1035,7 @@ function PaymentAuthModal({ order, currentUser, onClose, onAuthorise }: {
             </span>
           </label>
         </div>
-
-        <div className="flex gap-3 p-5 border-t border-[var(--border)]">
-          <button onClick={onClose} className="flex-1 px-4 py-2.5 border border-[var(--border)] rounded-xl text-sm font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-input)]">Cancel</button>
-          <button
-            onClick={() => { if (ref && confirmed) onAuthorise(ref, bank, payDate); }}
-            disabled={!ref || !confirmed}
-            className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed">
-            Authorise & Send
-          </button>
-        </div>
-      </div>
-    </div>
+    </SidePanel>
   );
 }
 
@@ -1104,34 +1063,38 @@ function NotifyOperationsModal({ order, onClose, currentUser, onSend }: {
   const inputCls = 'w-full px-3 py-2 rounded-xl border border-[var(--border)] bg-[var(--bg-input)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]';
 
   return (
-    <div className="fixed inset-0 z-60 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
-      <div className="relative w-full max-w-md bg-[var(--bg-card)] rounded-2xl shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between p-5 border-b border-[var(--border)]">
-          <h3 className="font-bold text-[var(--text-primary)] flex items-center gap-2">
-            <Bell className="w-4 h-4 text-[var(--accent)]" /> Notify Department
-          </h3>
-          <button onClick={onClose} className="p-2 rounded-xl hover:bg-[var(--accent-light)] cursor-pointer"><X className="w-4 h-4 text-[var(--text-muted)]" /></button>
-        </div>
-        <div className="p-5 space-y-4">
+    <SidePanel
+      open
+      onClose={onClose}
+      title="Notify Department"
+      badge={<Bell className="w-4 h-4 text-[var(--accent)]" />}
+      footer={
+        <>
+          <button onClick={onClose} className="erp-btn erp-btn-ghost">Cancel</button>
+          <button onClick={() => onSend(msg, dept, specificUserId || null)} className="erp-btn bg-indigo-600 text-white hover:bg-indigo-700">
+            Send Notification
+          </button>
+        </>
+      }
+    >
+        <div className="space-y-4">
           <div className="p-3 bg-[var(--bg)] rounded-xl text-xs text-[var(--text-muted)] border border-[var(--border)]">
             Order <span className="font-mono font-semibold text-[var(--text-primary)]">{order.order_number}</span> · {order.supplier_name} · {order.currency} {order.total_amount?.toLocaleString()}
           </div>
 
           <div>
             <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Department <span className="text-rose-500">*</span></label>
-            <select value={dept} onChange={e => setDept(e.target.value)} className={inputCls}>
-              {NOTIFY_DEPTS.map(d => <option key={d} value={d}>{d.charAt(0) + d.slice(1).toLowerCase()}</option>)}
-            </select>
+            <SearchableDropdown value={dept} onChange={setDept} options={NOTIFY_DEPTS.map(d => ({ value: d, label: d.charAt(0) + d.slice(1).toLowerCase() }))} />
           </div>
 
           {staffList.length > 0 && (
             <div>
               <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Also notify specific person (optional)</label>
-              <select value={specificUserId} onChange={e => setSpecificUserId(e.target.value)} className={inputCls}>
-                <option value="">— Department only —</option>
-                {staffList.map(s => <option key={s.id} value={s.id}>{s.full_name}</option>)}
-              </select>
+              <SearchableDropdown
+                value={specificUserId}
+                onChange={setSpecificUserId}
+                options={[{ value: '', label: 'Department only' }, ...staffList.map(s => ({ value: s.id, label: s.full_name }))]}
+              />
             </div>
           )}
 
@@ -1140,14 +1103,6 @@ function NotifyOperationsModal({ order, onClose, currentUser, onSend }: {
             <textarea value={msg} onChange={e => setMsg(e.target.value)} rows={5} className={`${inputCls} resize-none`} />
           </div>
         </div>
-        <div className="flex gap-3 p-5 border-t border-[var(--border)]">
-          <button onClick={onClose} className="flex-1 px-4 py-2.5 border border-[var(--border)] rounded-xl text-sm font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-input)] cursor-pointer">Cancel</button>
-          <button onClick={() => onSend(msg, dept, specificUserId || null)}
-            className="flex-1 px-4 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 cursor-pointer">
-            Send Notification
-          </button>
-        </div>
-      </div>
-    </div>
+    </SidePanel>
   );
 }

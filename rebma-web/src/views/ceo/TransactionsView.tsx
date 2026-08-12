@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { Download, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownLeft, RefreshCw } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
+import SearchableDropdown from '../../components/ui/SearchableDropdown';
 import { exportToCSV, exportToPDF } from '../../utils/export';
 
 interface Transaction {
@@ -227,22 +228,24 @@ export default function TransactionsView({ addNotification }: Props) {
           className="px-3 py-1.5 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-[var(--accent)]" />
         <input type="date" value={toDate} onChange={e => { setToDate(e.target.value); setPage(0); }}
           className="px-3 py-1.5 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-[var(--accent)]" />
-        <select value={typeFilter} onChange={e => { setTypeFilter(e.target.value as any); setPage(0); }}
-          className="px-3 py-1.5 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] outline-none cursor-pointer">
-          <option value="all">All Types</option>
-          <option value="in">Money In</option>
-          <option value="out">Money Out</option>
-        </select>
-        <select value={deptFilter} onChange={e => { setDeptFilter(e.target.value); setPage(0); }}
-          className="px-3 py-1.5 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] outline-none cursor-pointer">
-          <option value="all">All Departments</option>
-          {departments.map(d => <option key={d} value={d}>{d}</option>)}
-        </select>
-        <select value={sourceFilter} onChange={e => { setSourceFilter(e.target.value); setPage(0); }}
-          className="px-3 py-1.5 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] outline-none cursor-pointer">
-          <option value="all">All Sources</option>
-          {sources.map(s => <option key={s} value={s}>{s}</option>)}
-        </select>
+        <SearchableDropdown
+          value={typeFilter}
+          onChange={v => { setTypeFilter(v as any); setPage(0); }}
+          options={[{ value: 'all', label: 'All Types' }, { value: 'in', label: 'Money In' }, { value: 'out', label: 'Money Out' }]}
+          className="w-36"
+        />
+        <SearchableDropdown
+          value={deptFilter}
+          onChange={v => { setDeptFilter(v); setPage(0); }}
+          options={[{ value: 'all', label: 'All Departments' }, ...departments.map(d => ({ value: d, label: d }))]}
+          className="w-44"
+        />
+        <SearchableDropdown
+          value={sourceFilter}
+          onChange={v => { setSourceFilter(v); setPage(0); }}
+          options={[{ value: 'all', label: 'All Sources' }, ...sources.map(s => ({ value: s, label: s }))]}
+          className="w-40"
+        />
       </div>
 
       {/* Table */}

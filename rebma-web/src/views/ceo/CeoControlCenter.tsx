@@ -10,6 +10,8 @@ import {
 import { supabase } from '../../lib/supabaseClient';
 import { useCeoSettings } from '../../contexts/CeoSettingsContext';
 import DocumentTemplatesView from '../management/DocumentTemplatesView';
+import SidePanel from '../../components/ui/SidePanel';
+import SearchableDropdown from '../../components/ui/SearchableDropdown';
 
 interface Props {
   currentUser: { id?: string; fullName: string; department: string; isAdmin?: boolean } | null;
@@ -48,21 +50,20 @@ function SettingToggle({
             : <ToggleLeft className="w-8 h-8 text-[var(--text-muted)]" />}
         </button>
       </div>
-      {showWarn && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 p-4">
-          <div className="bg-[var(--bg-card)] rounded-2xl border border-amber-400 shadow-2xl max-w-md w-full p-6 space-y-4">
-            <div className="flex items-center gap-2 text-amber-500">
-              <AlertTriangle className="w-5 h-5 shrink-0" />
-              <h3 className="font-bold text-sm">Warning</h3>
-            </div>
-            <p className="text-xs text-[var(--text-secondary)] leading-relaxed">{warning}</p>
-            <div className="flex gap-2 justify-end">
-              <button onClick={() => setShowWarn(false)} className="px-4 py-2 text-xs font-bold bg-[var(--bg)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] hover:bg-[var(--accent-light)] cursor-pointer">Cancel</button>
-              <button onClick={() => { setShowWarn(false); if (pendingValue !== null) { updateSetting(settingKey, pendingValue); setPendingValue(null); } }} className="px-4 py-2 text-xs font-bold bg-rose-600 text-white rounded-xl hover:bg-rose-700 cursor-pointer">Confirm</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <SidePanel
+        open={showWarn}
+        onClose={() => setShowWarn(false)}
+        title="Warning"
+        badge={<AlertTriangle className="w-4 h-4 text-amber-500" />}
+        footer={
+          <>
+            <button onClick={() => setShowWarn(false)} className="erp-btn erp-btn-ghost">Cancel</button>
+            <button onClick={() => { setShowWarn(false); if (pendingValue !== null) { updateSetting(settingKey, pendingValue); setPendingValue(null); } }} className="erp-btn erp-btn-danger">Confirm</button>
+          </>
+        }
+      >
+        <p className="text-sm text-[var(--text-secondary)] leading-relaxed">{warning}</p>
+      </SidePanel>
     </>
   );
 }
@@ -146,13 +147,12 @@ function SettingToggleWithException({
                 placeholder="user@example.com"
                 className="flex-1 min-w-[180px] px-3 py-1.5 rounded-xl bg-[var(--bg-card)] border border-[var(--border)] text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
               />
-              <select
+              <SearchableDropdown
                 value={newAllowed ? 'allow' : 'block'}
-                onChange={e => setNewAllowed(e.target.value === 'allow')}
-                className="px-2 py-1.5 rounded-xl bg-[var(--bg-card)] border border-[var(--border)] text-xs text-[var(--text-primary)] focus:outline-none cursor-pointer">
-                <option value="block">Block this user</option>
-                <option value="allow">Allow this user</option>
-              </select>
+                onChange={v => setNewAllowed(v === 'allow')}
+                options={[{ value: 'block', label: 'Block this user' }, { value: 'allow', label: 'Allow this user' }]}
+                className="min-w-[160px]"
+              />
               <button
                 onClick={addException}
                 disabled={!newEmail.trim()}
@@ -240,13 +240,12 @@ function SettingSelect({ label, description, settingKey, options }: {
         <p className="text-sm font-semibold text-[var(--text-primary)]">{label}</p>
         <p className="text-xs text-[var(--text-muted)] mt-0.5 leading-relaxed">{description}</p>
       </div>
-      <select
+      <SearchableDropdown
         value={value}
-        onChange={e => updateSetting(settingKey, e.target.value)}
-        className="shrink-0 px-3 py-1.5 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)] cursor-pointer"
-      >
-        {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-      </select>
+        onChange={v => updateSetting(settingKey, v)}
+        options={options}
+        className="shrink-0 min-w-[160px]"
+      />
     </div>
   );
 }
@@ -475,28 +474,28 @@ function DataResetSection({ addNotification }: { addNotification: (m: string) =>
         const cfg = DEPT_TABLES[selectedDept];
         const ready = confirmText === 'CONFIRM DELETE';
         return (
-          <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/70 p-4">
-            <div className="bg-[var(--bg-card)] rounded-2xl border border-rose-400 shadow-2xl max-w-lg w-full flex flex-col max-h-[85vh]">
-              {/* Header — always visible */}
-              <div className="flex items-center gap-3 p-6 pb-4 shrink-0">
-                <div className="w-10 h-10 rounded-xl bg-rose-100 flex items-center justify-center shrink-0">
-                  <AlertTriangle className="w-5 h-5 text-rose-500" />
-                </div>
-                <div>
-                  <h3 className="font-extrabold text-[var(--text-primary)]">
-                    {done ? 'Reset Complete' : `Clear ${cfg.label} Data`}
-                  </h3>
-                  <p className="text-xs text-[var(--text-muted)]">
-                    {done ? 'Review results below.' : 'This action is irreversible.'}
-                  </p>
-                </div>
-                <button onClick={close} className="ml-auto p-1.5 hover:bg-[var(--bg-input)] rounded-lg cursor-pointer">
-                  <X className="w-4 h-4 text-[var(--text-muted)]" />
-                </button>
-              </div>
-
-              {/* Scrollable body */}
-              <div className="overflow-y-auto flex-1 px-6 space-y-4">
+          <SidePanel
+            open
+            onClose={close}
+            title={done ? 'Reset Complete' : `Clear ${cfg.label} Data`}
+            subtitle={done ? 'Review results below.' : 'This action is irreversible.'}
+            badge={<AlertTriangle className="w-4 h-4 text-rose-500" />}
+            footer={
+              !done ? (
+                <>
+                  <button onClick={close} disabled={running} className="erp-btn erp-btn-ghost disabled:opacity-40">Cancel</button>
+                  <button onClick={run} disabled={!ready || running}
+                    className="erp-btn text-white disabled:opacity-40 disabled:cursor-not-allowed"
+                    style={{ background: ready ? '#ef4444' : '#fca5a5' }}>
+                    {running ? 'Deleting…' : `Delete ${cfg.label} Data`}
+                  </button>
+                </>
+              ) : (
+                <button onClick={close} className="erp-btn erp-btn-primary w-full">Done. Start Fresh Workflow</button>
+              )
+            }
+          >
+              <div className="space-y-4">
                 {!done ? (
                   <>
                     {/* What will be deleted */}
@@ -540,30 +539,7 @@ function DataResetSection({ addNotification }: { addNotification: (m: string) =>
                   </div>
                 )}
               </div>
-
-              {/* Footer buttons — always visible at bottom */}
-              <div className="p-6 pt-4 shrink-0">
-                {!done ? (
-                  <div className="flex gap-3">
-                    <button onClick={close} disabled={running}
-                      className="flex-1 py-2 rounded-xl border border-[var(--border)] text-xs font-bold text-[var(--text-primary)] hover:bg-[var(--accent-light)] cursor-pointer disabled:opacity-40">
-                      Cancel
-                    </button>
-                    <button onClick={run} disabled={!ready || running}
-                      className="flex-1 py-2 rounded-xl text-xs font-bold text-white cursor-pointer transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                      style={{ background: ready ? '#ef4444' : '#fca5a5' }}>
-                      {running ? 'Deleting…' : `Delete ${cfg.label} Data`}
-                    </button>
-                  </div>
-                ) : (
-                  <button onClick={close}
-                    className="w-full py-2.5 rounded-xl bg-[var(--accent)] text-white text-xs font-bold cursor-pointer hover:opacity-90">
-                    Done — Start Fresh Workflow
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
+          </SidePanel>
         );
       })()}
     </>
@@ -1028,27 +1004,27 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
                   </div>
                   <div>
                     <label className="block text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider mb-1">Department</label>
-                    <select value={inviteForm.department} onChange={e => setInviteForm(p => ({ ...p, department: e.target.value }))}
-                      className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)] cursor-pointer">
-                      {['MARKETING','FINANCE','OPERATIONS','DISPATCH','HR','PRODUCTION','RECEPTION','MANAGEMENT','LOGISTICS'].map(d =>
-                        <option key={d} value={d}>{d}</option>)}
-                    </select>
+                    <SearchableDropdown
+                      value={inviteForm.department}
+                      onChange={v => setInviteForm(p => ({ ...p, department: v }))}
+                      options={['MARKETING','FINANCE','OPERATIONS','DISPATCH','HR','PRODUCTION','RECEPTION','MANAGEMENT','LOGISTICS'].map(d => ({ value: d, label: d }))}
+                    />
                   </div>
                   <div>
                     <label className="block text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider mb-1">Role</label>
-                    <select value={inviteForm.role} onChange={e => setInviteForm(p => ({ ...p, role: e.target.value }))}
-                      className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)] cursor-pointer">
-                      {['staff','supervisor','manager'].map(r => <option key={r} value={r}>{r}</option>)}
-                    </select>
+                    <SearchableDropdown
+                      value={inviteForm.role}
+                      onChange={v => setInviteForm(p => ({ ...p, role: v }))}
+                      options={['staff','supervisor','manager'].map(r => ({ value: r, label: r }))}
+                    />
                   </div>
                   <div>
                     <label className="block text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider mb-1">Link Expiry</label>
-                    <select value={inviteForm.expiry} onChange={e => setInviteForm(p => ({ ...p, expiry: e.target.value }))}
-                      className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)] cursor-pointer">
-                      <option value="24h">24 hours</option>
-                      <option value="48h">48 hours</option>
-                      <option value="7d">7 days</option>
-                    </select>
+                    <SearchableDropdown
+                      value={inviteForm.expiry}
+                      onChange={v => setInviteForm(p => ({ ...p, expiry: v }))}
+                      options={[{ value: '24h', label: '24 hours' }, { value: '48h', label: '48 hours' }, { value: '7d', label: '7 days' }]}
+                    />
                   </div>
                   <div className="flex items-center gap-3 pt-4">
                     <span className="text-xs font-semibold text-[var(--text-primary)]">Auto-approve on register</span>
@@ -1447,17 +1423,14 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
       </Section>
 
       {/* ── USER MANAGEMENT MODAL ───────────────────────────────────────── */}
-      {showUserModal && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 p-4">
-          <div className="bg-[var(--bg-card)] rounded-2xl border border-[var(--border)] shadow-2xl w-full max-w-4xl max-h-[85vh] flex flex-col">
-            <div className="flex items-center justify-between p-5 border-b border-[var(--border)]">
-              <h3 className="font-bold text-[var(--text-primary)] flex items-center gap-2">
-                <Users className="w-4 h-4 text-[var(--accent)]" /> All Staff — User Management
-              </h3>
-              <button onClick={() => setShowUserModal(false)} className="p-1.5 hover:bg-[var(--accent-light)] rounded-lg cursor-pointer">
-                <X className="w-4 h-4 text-[var(--text-muted)]" />
-              </button>
-            </div>
+      <SidePanel
+        open={showUserModal}
+        onClose={() => setShowUserModal(false)}
+        title="User Management"
+        subtitle="All staff directory"
+        width="lg"
+      >
+        <div className="flex flex-col h-full -mx-5 -my-4">
             <div className="p-4 border-b border-[var(--border)]">
               <div className="flex items-center gap-2 px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl">
                 <Search className="w-4 h-4 text-[var(--text-muted)]" />
@@ -1466,7 +1439,7 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
                   className="flex-1 bg-transparent text-xs text-[var(--text-primary)] focus:outline-none placeholder-[var(--text-muted)]" />
               </div>
             </div>
-            <div className="overflow-auto flex-1">
+            <div className="overflow-auto flex-1 p-4">
               <table className="w-full text-xs">
                 <thead className="sticky top-0 bg-[var(--bg-card)] z-10">
                   <tr className="border-b border-[var(--border)] text-[var(--text-muted)]">
@@ -1519,9 +1492,8 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
                 </tbody>
               </table>
             </div>
-          </div>
         </div>
-      )}
+      </SidePanel>
     </div>
   );
 }

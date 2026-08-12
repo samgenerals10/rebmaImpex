@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { CheckCircle, XCircle, Download } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
+import SidePanel from '../../components/ui/SidePanel';
 import { hr } from '../../services/apiClient';
 import type { CurrentUser } from '../../types/erp';
 import { exportToCSV } from '../../utils/export';
@@ -298,12 +299,16 @@ export default function ApprovalsView({ currentUser, addNotification }: Props) {
       )}
 
       {/* Temp credentials after approving a registration */}
-      {credPopup && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5 w-full max-w-md">
-            <h3 className="font-bold text-lg text-emerald-500 mb-1">Account approved</h3>
-            <p className="text-xs text-[var(--text-muted)] mb-3">
-              Share this temporary password with <strong className="text-[var(--text-primary)]">{credPopup.fullName}</strong> — they'll be asked to change it on first login.
+      <SidePanel
+        open={!!credPopup}
+        onClose={() => setCredPopup(null)}
+        title="Account approved"
+        footer={<button onClick={() => setCredPopup(null)} className="erp-btn erp-btn-ghost w-full">Close</button>}
+      >
+        {credPopup && (
+          <>
+            <p className="text-sm text-[var(--text-secondary)] mb-3">
+              Share this temporary password with <strong className="text-[var(--text-primary)]">{credPopup.fullName}</strong>. They'll be asked to change it on first login.
             </p>
             <div className="bg-[var(--bg)] rounded-xl p-3 border border-[var(--border)] flex items-center justify-between gap-2">
               <p className="text-sm font-bold text-emerald-500 font-mono break-all select-all">{credPopup.password}</p>
@@ -313,13 +318,9 @@ export default function ApprovalsView({ currentUser, addNotification }: Props) {
                 Copy
               </button>
             </div>
-            <button onClick={() => setCredPopup(null)}
-              className="w-full mt-4 px-4 py-2.5 bg-[var(--bg)] border border-[var(--border)] text-[var(--text-primary)] rounded-xl text-sm cursor-pointer hover:bg-[var(--accent-light)]">
-              Close
-            </button>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </SidePanel>
     </div>
   );
 }

@@ -1,12 +1,14 @@
 // src/views/ceo/InvoicesView.tsx
 import { useState, useEffect } from 'react';
-import { Download, Eye, Printer, Plus, X, Trash2 } from 'lucide-react';
+import { Download, Eye, Printer, Plus, Trash2 } from 'lucide-react';
 import QRCode from 'qrcode';
 import { invoices as invoicesApi, documentTemplates, type DocumentTemplate } from '../../services/apiClient';
 import { exportToCSV, safeDisplayName } from '../../utils/export';
 import EntityDetailPanel from '../../components/global/EntityDetailPanel';
 import { useCeoSettings } from '../../contexts/CeoSettingsContext';
 import type { CurrentUser } from '../../types/erp';
+import SidePanel from '../../components/ui/SidePanel';
+import SearchableDropdown from '../../components/ui/SearchableDropdown';
 
 interface LineItem {
   productName: string;
@@ -272,13 +274,17 @@ export default function InvoicesView({ addNotification, currentUser }: Props) {
       <div className="flex flex-wrap gap-2 bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-3">
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search proforma # / customer…"
           className="px-3 py-1.5 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-[var(--accent)] w-56" />
-        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
-          className="px-3 py-1.5 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] outline-none cursor-pointer">
-          <option value="all">All Statuses</option>
-          <option value="DRAFT">Draft</option>
-          <option value="SENT">Sent</option>
-          <option value="CONVERTED">Converted</option>
-        </select>
+        <SearchableDropdown
+          value={statusFilter}
+          onChange={setStatusFilter}
+          options={[
+            { value: 'all', label: 'All Statuses' },
+            { value: 'DRAFT', label: 'Draft' },
+            { value: 'SENT', label: 'Sent' },
+            { value: 'CONVERTED', label: 'Converted' },
+          ]}
+          className="w-40"
+        />
       </div>
 
       {/* Table */}
@@ -376,71 +382,65 @@ export default function InvoicesView({ addNotification, currentUser }: Props) {
       </EntityDetailPanel>
     )}
 
-    {showGenerate && (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-        <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)]">
-            <h3 className="font-bold text-base text-[var(--text-primary)]">Generate Proforma Invoice</h3>
-            <button onClick={() => setShowGenerate(false)} className="p-1.5 rounded-lg hover:bg-[var(--bg-input)] cursor-pointer"><X className="w-4 h-4 text-[var(--text-muted)]" /></button>
+    <SidePanel
+      open={showGenerate}
+      onClose={() => setShowGenerate(false)}
+      title="Generate Proforma Invoice"
+      footer={
+        <>
+          <button onClick={() => setShowGenerate(false)} className="erp-btn erp-btn-ghost">Cancel</button>
+          <button onClick={handleGenerate} disabled={submitting} className="erp-btn erp-btn-primary disabled:opacity-50">
+            <Printer className="w-4 h-4" /> {submitting ? 'Generating…' : 'Generate & Print'}
+          </button>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-4">
+        <div className="erp-form-group">
+          <label className="erp-label">Client Name</label>
+          <input value={clientName} onChange={e => setClientName(e.target.value)} placeholder="Customer or company name" className="erp-input" />
+        </div>
+
+        <div className="erp-form-group">
+          <label className="erp-label">Client Phone <span className="font-normal text-[var(--text-muted)] normal-case">(optional, editable later)</span></label>
+          <input value={clientPhone} onChange={e => setClientPhone(e.target.value)} placeholder="e.g. +233 24 123 4567" className="erp-input" />
+        </div>
+
+        <div>
+          <div className="flex items-center justify-between mb-1.5">
+            <label className="erp-label mb-0">Line Items</label>
+            <button onClick={() => setLineItems(prev => [...prev, emptyLine()])} className="text-xs font-semibold text-[var(--accent)] hover:underline cursor-pointer">+ Add item</button>
           </div>
-          <div className="px-6 py-4 space-y-4">
-            <div>
-              <label className="text-xs font-semibold text-[var(--text-secondary)] mb-1 block">Client Name</label>
-              <input value={clientName} onChange={e => setClientName(e.target.value)} placeholder="Customer or company name"
-                className="w-full px-3 py-2 text-sm bg-[var(--bg-input)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-[var(--accent)]" />
-            </div>
-
-            <div>
-              <label className="text-xs font-semibold text-[var(--text-secondary)] mb-1 block">Client Phone <span className="font-normal text-[var(--text-muted)]">(optional, editable later)</span></label>
-              <input value={clientPhone} onChange={e => setClientPhone(e.target.value)} placeholder="e.g. +233 24 123 4567"
-                className="w-full px-3 py-2 text-sm bg-[var(--bg-input)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-[var(--accent)]" />
-            </div>
-
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="text-xs font-semibold text-[var(--text-secondary)]">Line Items</label>
-                <button onClick={() => setLineItems(prev => [...prev, emptyLine()])} className="text-xs font-semibold text-[var(--accent)] hover:underline cursor-pointer">+ Add item</button>
+          <div className="space-y-2">
+            {lineItems.map((item, idx) => (
+              <div key={idx} className="flex gap-2 items-center">
+                <input value={item.productName} onChange={e => setLineItems(prev => prev.map((it, i) => i === idx ? { ...it, productName: e.target.value } : it))}
+                  placeholder="Product / service" className="flex-1 px-2.5 py-1.5 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] outline-none" />
+                <input type="number" min={1} value={item.quantity} onChange={e => setLineItems(prev => prev.map((it, i) => i === idx ? { ...it, quantity: Number(e.target.value) || 0 } : it))}
+                  placeholder="Qty" className="w-16 px-2 py-1.5 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] outline-none" />
+                <input type="number" min={0} value={item.unitPrice} onChange={e => setLineItems(prev => prev.map((it, i) => i === idx ? { ...it, unitPrice: Number(e.target.value) || 0 } : it))}
+                  placeholder="Unit price" className="w-24 px-2 py-1.5 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] outline-none" />
+                <button onClick={() => setLineItems(prev => prev.filter((_, i) => i !== idx))} disabled={lineItems.length === 1}
+                  className="p-1.5 text-rose-500 hover:bg-rose-500/10 rounded-lg cursor-pointer disabled:opacity-30">
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
               </div>
-              <div className="space-y-2">
-                {lineItems.map((item, idx) => (
-                  <div key={idx} className="flex gap-2 items-center">
-                    <input value={item.productName} onChange={e => setLineItems(prev => prev.map((it, i) => i === idx ? { ...it, productName: e.target.value } : it))}
-                      placeholder="Product / service" className="flex-1 px-2.5 py-1.5 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] outline-none" />
-                    <input type="number" min={1} value={item.quantity} onChange={e => setLineItems(prev => prev.map((it, i) => i === idx ? { ...it, quantity: Number(e.target.value) || 0 } : it))}
-                      placeholder="Qty" className="w-16 px-2 py-1.5 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] outline-none" />
-                    <input type="number" min={0} value={item.unitPrice} onChange={e => setLineItems(prev => prev.map((it, i) => i === idx ? { ...it, unitPrice: Number(e.target.value) || 0 } : it))}
-                      placeholder="Unit price" className="w-24 px-2 py-1.5 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] outline-none" />
-                    <button onClick={() => setLineItems(prev => prev.filter((_, i) => i !== idx))} disabled={lineItems.length === 1}
-                      className="p-1.5 text-rose-500 hover:bg-rose-500/10 rounded-lg cursor-pointer disabled:opacity-30">
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="bg-[var(--bg)] rounded-xl p-3 border border-[var(--border)] space-y-1 text-xs">
-              <div className="flex justify-between text-[var(--text-secondary)]"><span>Subtotal</span><span>GHS {subtotal.toLocaleString()}</span></div>
-              <div className="flex justify-between text-[var(--text-secondary)]"><span>Tax (15%)</span><span>GHS {taxAmount.toLocaleString()}</span></div>
-              <div className="flex justify-between font-bold text-[var(--text-primary)] text-sm pt-1 border-t border-[var(--border)]"><span>Grand Total</span><span>GHS {grandTotal.toLocaleString()}</span></div>
-            </div>
-
-            <div>
-              <label className="text-xs font-semibold text-[var(--text-secondary)] mb-1 block">Notes (optional)</label>
-              <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2}
-                className="w-full px-3 py-2 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] outline-none resize-none" />
-            </div>
-          </div>
-          <div className="flex justify-end gap-2 px-6 py-4 border-t border-[var(--border)]">
-            <button onClick={() => setShowGenerate(false)} className="px-4 py-2 text-sm font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-input)] rounded-xl cursor-pointer border border-[var(--border)]">Cancel</button>
-            <button onClick={handleGenerate} disabled={submitting}
-              className="flex items-center gap-2 px-5 py-2 text-sm font-bold text-white rounded-xl cursor-pointer hover:opacity-90 disabled:opacity-50" style={{ background: 'var(--accent)' }}>
-              <Printer className="w-4 h-4" /> {submitting ? 'Generating…' : 'Generate & Print'}
-            </button>
+            ))}
           </div>
         </div>
+
+        <div className="bg-[var(--bg)] rounded-xl p-3 border border-[var(--border)] space-y-1 text-xs">
+          <div className="flex justify-between text-[var(--text-secondary)]"><span>Subtotal</span><span>GHS {subtotal.toLocaleString()}</span></div>
+          <div className="flex justify-between text-[var(--text-secondary)]"><span>Tax (15%)</span><span>GHS {taxAmount.toLocaleString()}</span></div>
+          <div className="flex justify-between font-bold text-[var(--text-primary)] text-sm pt-1 border-t border-[var(--border)]"><span>Grand Total</span><span>GHS {grandTotal.toLocaleString()}</span></div>
+        </div>
+
+        <div className="erp-form-group">
+          <label className="erp-label">Notes (optional)</label>
+          <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} className="erp-input resize-none" />
+        </div>
       </div>
-    )}
+    </SidePanel>
     </>
   );
 }
