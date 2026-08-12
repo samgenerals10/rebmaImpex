@@ -1,11 +1,12 @@
 // src/views/PayrollPanel.tsx
 // HR: full CRUD, creates batches + items; Finance: totals only (no individual amounts); Staff: own items only
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Check, X, ChevronDown, ChevronUp, Download, Banknote, Users, DollarSign } from 'lucide-react';
+import { Plus, Check, ChevronDown, ChevronUp, Download, Banknote, Users, DollarSign } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import type { CurrentUser } from '../types/erp';
 import { exportToCSV } from '../utils/export';
 import CountUp from '../components/CountUp';
+import SidePanel from '../components/ui/SidePanel';
 
 interface PayrollBatch {
   id: string;
@@ -323,72 +324,68 @@ export default function PayrollPanel({ currentUser, addNotification }: PayrollPa
       )}
 
       {/* New Batch Modal */}
-      {batchModal.open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-          <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-2xl w-full max-w-sm p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-sm text-[var(--text-primary)]">New Payroll Batch</h3>
-              <button onClick={() => setBatchModal({ open: false, ...blankBatch })} className="p-1 rounded-lg hover:bg-[var(--bg-input)] cursor-pointer"><X className="w-4 h-4 text-[var(--text-muted)]" /></button>
-            </div>
-            <input value={batchModal.name} onChange={e => setBatchModal(m => ({ ...m, name: e.target.value }))} placeholder="Batch name (e.g. June 2026 Payroll)…"
-              className="w-full px-3 py-2 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-[var(--accent)] mb-3" />
-            <div className="grid grid-cols-2 gap-3 mb-4">
-              <div>
-                <label className="block text-[9px] font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-1">Period Start</label>
-                <input type="date" value={batchModal.period_start} onChange={e => setBatchModal(m => ({ ...m, period_start: e.target.value }))}
-                  className="w-full px-3 py-2 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-[var(--accent)]" />
-              </div>
-              <div>
-                <label className="block text-[9px] font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-1">Period End</label>
-                <input type="date" value={batchModal.period_end} onChange={e => setBatchModal(m => ({ ...m, period_end: e.target.value }))}
-                  className="w-full px-3 py-2 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-[var(--accent)]" />
-              </div>
-            </div>
-            <div className="flex justify-end gap-2">
-              <button onClick={() => setBatchModal({ open: false, ...blankBatch })} className="px-4 py-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-input)] rounded-lg cursor-pointer">Cancel</button>
-              <button onClick={saveBatch} disabled={saving || !batchModal.name.trim()}
-                className="flex items-center gap-1.5 px-4 py-1.5 bg-[var(--accent)] text-white text-xs font-semibold rounded-lg hover:opacity-90 disabled:opacity-50 cursor-pointer">
-                <Check className="w-3.5 h-3.5" /> Create
-              </button>
-            </div>
+      <SidePanel
+        open={batchModal.open}
+        onClose={() => setBatchModal({ open: false, ...blankBatch })}
+        title="New Payroll Batch"
+        footer={
+          <div className="flex justify-end gap-2">
+            <button onClick={() => setBatchModal({ open: false, ...blankBatch })} className="px-4 py-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-input)] rounded-lg cursor-pointer">Cancel</button>
+            <button onClick={saveBatch} disabled={saving || !batchModal.name.trim()}
+              className="flex items-center gap-1.5 px-4 py-1.5 bg-[var(--accent)] text-white text-xs font-semibold rounded-lg hover:opacity-90 disabled:opacity-50 cursor-pointer">
+              <Check className="w-3.5 h-3.5" /> Create
+            </button>
+          </div>
+        }
+      >
+        <input value={batchModal.name} onChange={e => setBatchModal(m => ({ ...m, name: e.target.value }))} placeholder="Batch name (e.g. June 2026 Payroll)..."
+          className="w-full px-3 py-2 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-[var(--accent)] mb-3" />
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-[9px] font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-1">Period Start</label>
+            <input type="date" value={batchModal.period_start} onChange={e => setBatchModal(m => ({ ...m, period_start: e.target.value }))}
+              className="w-full px-3 py-2 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-[var(--accent)]" />
+          </div>
+          <div>
+            <label className="block text-[9px] font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-1">Period End</label>
+            <input type="date" value={batchModal.period_end} onChange={e => setBatchModal(m => ({ ...m, period_end: e.target.value }))}
+              className="w-full px-3 py-2 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-[var(--accent)]" />
           </div>
         </div>
-      )}
+      </SidePanel>
 
       {/* Add Item Modal */}
-      {itemModal.open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-          <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-2xl w-full max-w-sm p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-sm text-[var(--text-primary)]">Add Staff to Batch</h3>
-              <button onClick={() => setItemModal(m => ({ ...m, open: false }))} className="p-1 rounded-lg hover:bg-[var(--bg-input)] cursor-pointer"><X className="w-4 h-4 text-[var(--text-muted)]" /></button>
-            </div>
-            <input value={itemModal.employee_name} onChange={e => setItemModal(m => ({ ...m, employee_name: e.target.value }))} placeholder="Employee name…"
-              className="w-full px-3 py-2 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-[var(--accent)] mb-3" />
-            <input value={itemModal.department} onChange={e => setItemModal(m => ({ ...m, department: e.target.value }))} placeholder="Department…"
-              className="w-full px-3 py-2 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-[var(--accent)] mb-3" />
-            <div className="grid grid-cols-2 gap-3 mb-3">
-              <div>
-                <label className="block text-[9px] font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-1">Gross (GHS)</label>
-                <input type="number" value={itemModal.gross_amount} onChange={e => setItemModal(m => ({ ...m, gross_amount: e.target.value }))}
-                  className="w-full px-3 py-2 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-[var(--accent)]" />
-              </div>
-              <div>
-                <label className="block text-[9px] font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-1">Deductions (GHS)</label>
-                <input type="number" value={itemModal.deductions} onChange={e => setItemModal(m => ({ ...m, deductions: e.target.value }))}
-                  className="w-full px-3 py-2 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-[var(--accent)]" />
-              </div>
-            </div>
-            <div className="flex justify-end gap-2">
-              <button onClick={() => setItemModal(m => ({ ...m, open: false }))} className="px-4 py-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-input)] rounded-lg cursor-pointer">Cancel</button>
-              <button onClick={saveItem} disabled={saving || !itemModal.employee_name.trim() || !itemModal.gross_amount}
-                className="flex items-center gap-1.5 px-4 py-1.5 bg-[var(--accent)] text-white text-xs font-semibold rounded-lg hover:opacity-90 disabled:opacity-50 cursor-pointer">
-                <Check className="w-3.5 h-3.5" /> Add
-              </button>
-            </div>
+      <SidePanel
+        open={itemModal.open}
+        onClose={() => setItemModal(m => ({ ...m, open: false }))}
+        title="Add Staff to Batch"
+        footer={
+          <div className="flex justify-end gap-2">
+            <button onClick={() => setItemModal(m => ({ ...m, open: false }))} className="px-4 py-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-input)] rounded-lg cursor-pointer">Cancel</button>
+            <button onClick={saveItem} disabled={saving || !itemModal.employee_name.trim() || !itemModal.gross_amount}
+              className="flex items-center gap-1.5 px-4 py-1.5 bg-[var(--accent)] text-white text-xs font-semibold rounded-lg hover:opacity-90 disabled:opacity-50 cursor-pointer">
+              <Check className="w-3.5 h-3.5" /> Add
+            </button>
+          </div>
+        }
+      >
+        <input value={itemModal.employee_name} onChange={e => setItemModal(m => ({ ...m, employee_name: e.target.value }))} placeholder="Employee name..."
+          className="w-full px-3 py-2 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-[var(--accent)] mb-3" />
+        <input value={itemModal.department} onChange={e => setItemModal(m => ({ ...m, department: e.target.value }))} placeholder="Department..."
+          className="w-full px-3 py-2 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-[var(--accent)] mb-3" />
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-[9px] font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-1">Gross (GHS)</label>
+            <input type="number" value={itemModal.gross_amount} onChange={e => setItemModal(m => ({ ...m, gross_amount: e.target.value }))}
+              className="w-full px-3 py-2 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-[var(--accent)]" />
+          </div>
+          <div>
+            <label className="block text-[9px] font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-1">Deductions (GHS)</label>
+            <input type="number" value={itemModal.deductions} onChange={e => setItemModal(m => ({ ...m, deductions: e.target.value }))}
+              className="w-full px-3 py-2 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-[var(--accent)]" />
           </div>
         </div>
-      )}
+      </SidePanel>
     </div>
   );
 }

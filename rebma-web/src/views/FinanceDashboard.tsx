@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import {
-  FileSpreadsheet, FileText, DollarSign, Clipboard, ShieldCheck, Activity, X, ExternalLink, ChevronRight, MoreVertical, TrendingUp, TrendingDown
+  FileSpreadsheet, FileText, DollarSign, Clipboard, ShieldCheck, Activity, ExternalLink, ChevronRight, MoreVertical, TrendingUp, TrendingDown
 } from 'lucide-react';
 import { useCeoSettings } from '../contexts/CeoSettingsContext';
 import MiniSparkline from '../components/MiniSparkline';
@@ -16,6 +16,8 @@ import { useRealtimeChannel } from '../hooks/useRealtimeChannel';
 import ActivityFeed from '../components/global/ActivityFeed';
 import FinanceOverviewView from './finance/OverviewView';
 import CountUp from '../components/CountUp';
+import SidePanel from '../components/ui/SidePanel';
+import SearchableDropdown from '../components/ui/SearchableDropdown';
 
 interface FinanceDashboardProps {
   ordersList: Order[];
@@ -854,62 +856,54 @@ export default function FinanceDashboard({
         {activeSubTab !== 'Evaluation' && (
         <div className="space-y-6">
           {/* Ticket Modal */}
-          {selectedTicket && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-0 sm:p-4" onClick={() => setSelectedTicket(null)}>
-              <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-none sm:rounded-2xl shadow-2xl w-full h-full sm:h-auto sm:max-w-md overflow-y-auto" onClick={e => e.stopPropagation()}>
-                {/* Receipt header */}
-                <div className="bg-gradient-to-r from-[var(--accent)] to-[#0298d0] p-6 text-white">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h2 className="font-bold text-lg">REBMA IMPEX GHANA LTD</h2>
-                      <p className="text-white/70 text-xs mt-1">Official Payment Receipt</p>
+          <SidePanel
+            open={!!selectedTicket}
+            onClose={() => setSelectedTicket(null)}
+            title="REBMA IMPEX GHANA LTD"
+            subtitle="Official Payment Receipt"
+          >
+            {selectedTicket && (
+              <div className="space-y-4 text-[var(--text-primary)]">
+                <div className="text-center">
+                  <p className="text-2xl font-bold font-mono">GHS <CountUp value={selectedTicket.amount} /></p>
+                  <span className="px-3 py-1 bg-emerald-500/15 text-emerald-450 rounded-full text-xs font-bold mt-1 inline-block">PAID</span>
+                </div>
+
+                <div className="border border-dashed border-[var(--border)] rounded-xl divide-y divide-dashed divide-[var(--border)] bg-[var(--bg)]">
+                  <div className="flex justify-between items-center p-3 text-xs">
+                    <span className="text-[var(--text-secondary)]">Receipt #</span>
+                    <span className="font-mono font-bold text-[var(--text-primary)]">{selectedTicket.id}</span>
+                  </div>
+                  <div className="flex justify-between items-center p-3 text-xs">
+                    <span className="text-[var(--text-secondary)]">Client</span>
+                    <span className="font-bold text-[var(--text-primary)]">{selectedTicket.clientName}</span>
+                  </div>
+                  <div className="flex justify-between items-center p-3 text-xs">
+                    <span className="text-[var(--text-secondary)]">Payment Type</span>
+                    <span className="font-bold text-[var(--text-primary)]">{selectedTicket.paymentType === 'DIRECT' ? 'Direct Receipt' : 'Credit Settlement'}</span>
+                  </div>
+                  <div className="flex justify-between items-center p-3 text-xs">
+                    <span className="text-[var(--text-secondary)]">Payment Mode</span>
+                    <span className="font-bold text-[var(--text-primary)]">{selectedTicket.paymentMode.replace('_', ' ')}</span>
+                  </div>
+                  {selectedTicket.orderId && (
+                    <div className="flex justify-between items-center p-3 text-xs">
+                      <span className="text-[var(--text-secondary)]">Settled Order</span>
+                      <span className="font-mono font-bold text-[var(--accent)]">{selectedTicket.orderId}</span>
                     </div>
-                    <button onClick={() => setSelectedTicket(null)} className="p-1.5 hover:bg-bg-card/10 rounded-full cursor-pointer"><X className="w-5 h-5" /></button>
+                  )}
+                  <div className="flex justify-between items-center p-3 text-xs">
+                    <span className="text-[var(--text-secondary)]">Date & Time</span>
+                    <span className="text-[var(--text-secondary)] font-mono">{selectedTicket.createdAt}</span>
                   </div>
                 </div>
 
-                <div className="p-6 space-y-4 text-[var(--text-primary)]">
-                  <div className="text-center">
-                    <p className="text-2xl font-bold font-mono">GHS <CountUp value={selectedTicket.amount} /></p>
-                    <span className="px-3 py-1 bg-emerald-500/15 text-emerald-450 rounded-full text-xs font-bold mt-1 inline-block">PAID</span>
-                  </div>
-                  
-                  <div className="border border-dashed border-[var(--border)] rounded-xl divide-y divide-dashed divide-[var(--border)] bg-[var(--bg)]">
-                    <div className="flex justify-between items-center p-3 text-xs">
-                      <span className="text-[var(--text-secondary)]">Receipt #</span>
-                      <span className="font-mono font-bold text-[var(--text-primary)]">{selectedTicket.id}</span>
-                    </div>
-                    <div className="flex justify-between items-center p-3 text-xs">
-                      <span className="text-[var(--text-secondary)]">Client</span>
-                      <span className="font-bold text-[var(--text-primary)]">{selectedTicket.clientName}</span>
-                    </div>
-                    <div className="flex justify-between items-center p-3 text-xs">
-                      <span className="text-[var(--text-secondary)]">Payment Type</span>
-                      <span className="font-bold text-[var(--text-primary)]">{selectedTicket.paymentType === 'DIRECT' ? 'Direct Receipt' : 'Credit Settlement'}</span>
-                    </div>
-                    <div className="flex justify-between items-center p-3 text-xs">
-                      <span className="text-[var(--text-secondary)]">Payment Mode</span>
-                      <span className="font-bold text-[var(--text-primary)]">{selectedTicket.paymentMode.replace('_', ' ')}</span>
-                    </div>
-                    {selectedTicket.orderId && (
-                      <div className="flex justify-between items-center p-3 text-xs">
-                        <span className="text-[var(--text-secondary)]">Settled Order</span>
-                        <span className="font-mono font-bold text-[var(--accent)]">{selectedTicket.orderId}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between items-center p-3 text-xs">
-                      <span className="text-[var(--text-secondary)]">Date & Time</span>
-                      <span className="text-[var(--text-secondary)] font-mono">{selectedTicket.createdAt}</span>
-                    </div>
-                  </div>
-
-                  <button onClick={() => printTicket(selectedTicket)} className="w-full py-2.5 bg-[var(--accent)] hover:opacity-90 text-white rounded-xl text-xs font-bold cursor-pointer flex items-center justify-center gap-2 transition-opacity">
-                    <FileText className="w-4 h-4" /> Print / Export PDF Ticket
-                  </button>
-                </div>
+                <button onClick={() => printTicket(selectedTicket)} className="w-full py-2.5 bg-[var(--accent)] hover:opacity-90 text-white rounded-xl text-xs font-bold cursor-pointer flex items-center justify-center gap-2 transition-opacity">
+                  <FileText className="w-4 h-4" /> Print / Export PDF Ticket
+                </button>
               </div>
-            </div>
-          )}
+            )}
+          </SidePanel>
 
           {/* Header */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-[var(--text-primary)]">
@@ -1041,12 +1035,15 @@ export default function FinanceDashboard({
                   <div className="space-y-3">
                     <div>
                       <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Select Unsettled Credit Order</label>
-                      <select value={selectedOrderId} onChange={e => setSelectedOrderId(e.target.value)} className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]">
-                        <option value="" className="bg-[var(--bg-card)]">-- Choose Credit Order --</option>
-                        {effectiveOrders.filter(o => o.paymentMode === 'CREDIT' && o.status === 'PENDING_FINANCE').map(o => (
-                          <option key={o.id} value={o.id} className="bg-[var(--bg-card)]">{o.id} - {o.clientName} (GHS {o.totalAmount.toLocaleString()}) [{o.status}]</option>
-                        ))}
-                      </select>
+                      <SearchableDropdown
+                        value={selectedOrderId}
+                        onChange={setSelectedOrderId}
+                        placeholder="-- Choose Credit Order --"
+                        options={effectiveOrders.filter(o => o.paymentMode === 'CREDIT' && o.status === 'PENDING_FINANCE').map(o => ({
+                          value: o.id,
+                          label: `${o.id} - ${o.clientName} (GHS ${o.totalAmount.toLocaleString()}) [${o.status}]`,
+                        }))}
+                      />
                       {effectiveOrders.filter(o => o.paymentMode === 'CREDIT' && o.status === 'PENDING_FINANCE').length === 0 && (
                         <p className="text-[10px] text-amber-500 mt-1">No pending credit orders found. Check Finance queue first.</p>
                       )}
@@ -1082,12 +1079,16 @@ export default function FinanceDashboard({
 
                 <div>
                   <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Payment Mode</label>
-                  <select value={payMode} onChange={e => setPayMode(e.target.value as any)} className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]">
-                    {cashEnabled && <option value="CASH" className="bg-[var(--bg-card)]">Cash</option>}
-                    {chequeEnabled && <option value="CHEQUE" className="bg-[var(--bg-card)]">Cheque</option>}
-                    {momoEnabled && <option value="MOBILE_MONEY" className="bg-[var(--bg-card)]">Mobile Money (MTN/Telecel)</option>}
-                    <option value="CREDIT" className="bg-[var(--bg-card)]">Credit</option>
-                  </select>
+                  <SearchableDropdown
+                    value={payMode}
+                    onChange={v => setPayMode(v as any)}
+                    options={[
+                      ...(cashEnabled ? [{ value: 'CASH', label: 'Cash' }] : []),
+                      ...(chequeEnabled ? [{ value: 'CHEQUE', label: 'Cheque' }] : []),
+                      ...(momoEnabled ? [{ value: 'MOBILE_MONEY', label: 'Mobile Money (MTN/Telecel)' }] : []),
+                      { value: 'CREDIT', label: 'Credit' },
+                    ]}
+                  />
                 </div>
 
                 <button type="submit" title="Saves the payment to finance_payments and, for direct payments, generates the operations dispatch ticket" className="w-full py-2.5 bg-[var(--accent)] hover:opacity-90 text-white rounded-xl text-xs font-bold cursor-pointer transition-all shadow">
@@ -1987,15 +1988,12 @@ export default function FinanceDashboard({
                             className="pl-3 pr-3 py-1.5 text-[11px] rounded-full outline-none transition bg-white border border-slate-200 text-slate-800 focus:border-[var(--accent)] w-36 font-semibold"
                           />
                         </div>
-                        <select
+                        <SearchableDropdown
                           value={catalogCategory}
-                          onChange={e => setCatalogCategory(e.target.value)}
-                          className="px-2 py-1.5 text-[11px] rounded-full outline-none transition bg-white border border-slate-200 text-slate-800 font-semibold"
-                        >
-                          {catalogCategories.map(cat => (
-                            <option key={cat} value={cat}>{cat === 'ALL' ? 'All categories' : cat}</option>
-                          ))}
-                        </select>
+                          onChange={setCatalogCategory}
+                          className="min-w-[140px]"
+                          options={catalogCategories.map(cat => ({ value: cat, label: cat === 'ALL' ? 'All categories' : cat }))}
+                        />
                       </div>
                     </div>
 

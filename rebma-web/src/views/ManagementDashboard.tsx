@@ -8,6 +8,7 @@ import { operations, management } from '../services/apiClient';
 import MiniSparkline from '../components/MiniSparkline';
 import CountUp from '../components/CountUp';
 import ActivityFeed from '../components/global/ActivityFeed';
+import SearchableDropdown from '../components/ui/SearchableDropdown';
 import KpiDetailView from '../components/KpiDetailView';
 import { exportToCSV, exportToPDF } from '../utils/export';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
@@ -1194,15 +1195,15 @@ export default function ManagementDashboard({
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Goods Category</label>
-                  <select
+                  <SearchableDropdown
                     value={priceForm.category}
-                    onChange={e => setPriceForm(p => ({ ...p, category: e.target.value as GoodsPrice['category'] }))}
-                    className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs focus:outline-none focus:border-[var(--accent)] text-[var(--text-primary)]"
-                  >
-                    <option value="NEW_GOODS">New Goods</option>
-                    <option value="INCOMING_GOODS">Incoming Goods (Port)</option>
-                    <option value="OLD_GOODS">Old / Existing Stock</option>
-                  </select>
+                    onChange={v => setPriceForm(p => ({ ...p, category: v as GoodsPrice['category'] }))}
+                    options={[
+                      { value: 'NEW_GOODS', label: 'New Goods' },
+                      { value: 'INCOMING_GOODS', label: 'Incoming Goods (Port)' },
+                      { value: 'OLD_GOODS', label: 'Old / Existing Stock' },
+                    ]}
+                  />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
@@ -1219,14 +1220,14 @@ export default function ManagementDashboard({
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Currency</label>
-                    <select
+                    <SearchableDropdown
                       value={priceForm.currency}
-                      onChange={e => setPriceForm(p => ({ ...p, currency: e.target.value as 'GHS' | 'USD' }))}
-                      className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs focus:outline-none focus:border-[var(--accent)] text-[var(--text-primary)]"
-                    >
-                      <option value="GHS">GHS (Ghana Cedis)</option>
-                      <option value="USD">USD (US Dollar)</option>
-                    </select>
+                      onChange={v => setPriceForm(p => ({ ...p, currency: v as 'GHS' | 'USD' }))}
+                      options={[
+                        { value: 'GHS', label: 'GHS (Ghana Cedis)' },
+                        { value: 'USD', label: 'USD (US Dollar)' },
+                      ]}
+                    />
                   </div>
                 </div>
                 <button type="submit" className="w-full py-2.5 bg-[var(--accent)] hover:opacity-90 text-white rounded-xl text-xs font-bold cursor-pointer transition-opacity shadow">

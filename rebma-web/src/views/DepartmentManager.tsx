@@ -4,6 +4,7 @@ import { Plus, Pencil, Trash2, X, Check, Building2, ChevronDown, ChevronUp } fro
 import { supabase } from '../lib/supabaseClient';
 import type { CurrentUser } from '../types/erp';
 import { useCeoSettings } from '../contexts/CeoSettingsContext';
+import SidePanel from '../components/ui/SidePanel';
 
 interface DeptRecord {
   id: string;
@@ -200,14 +201,21 @@ export default function DepartmentManager({ currentUser, addNotification }: Depa
       </div>
 
       {/* Modal */}
-      {modal.open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-6">
-          <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-2xl w-full max-w-lg overflow-y-auto" style={{ maxHeight: '90vh' }}>
-            <div className="flex items-center justify-between p-5 border-b border-[var(--border)]">
-              <h3 className="font-bold text-sm text-[var(--text-primary)]">{modal.id ? 'Edit Department' : 'New Department'}</h3>
-              <button onClick={() => setModal({ open: false, id: '', ...blank })} className="p-1 rounded-lg hover:bg-[var(--bg-input)] cursor-pointer"><X className="w-4 h-4 text-[var(--text-muted)]" /></button>
-            </div>
-            <div className="p-5 space-y-4">
+      <SidePanel
+        open={modal.open}
+        onClose={() => setModal({ open: false, id: '', ...blank })}
+        title={modal.id ? 'Edit Department' : 'New Department'}
+        footer={
+          <div className="flex items-center justify-end gap-2">
+            <button onClick={() => setModal({ open: false, id: '', ...blank })} className="px-4 py-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-input)] rounded-lg cursor-pointer">Cancel</button>
+            <button onClick={save} disabled={saving || !modal.name.trim() || !modal.code.trim()}
+              className="flex items-center gap-1.5 px-4 py-1.5 bg-[var(--accent)] text-white text-xs font-semibold rounded-lg hover:opacity-90 disabled:opacity-50 cursor-pointer">
+              <Check className="w-3.5 h-3.5" /> {saving ? 'Saving...' : 'Save Department'}
+            </button>
+          </div>
+        }
+      >
+            <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-1">Department Name *</label>
@@ -272,16 +280,7 @@ export default function DepartmentManager({ currentUser, addNotification }: Depa
                 <span className="text-xs text-[var(--text-secondary)]">Department is active</span>
               </label>
             </div>
-            <div className="flex items-center justify-end gap-2 p-5 border-t border-[var(--border)]">
-              <button onClick={() => setModal({ open: false, id: '', ...blank })} className="px-4 py-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-input)] rounded-lg cursor-pointer">Cancel</button>
-              <button onClick={save} disabled={saving || !modal.name.trim() || !modal.code.trim()}
-                className="flex items-center gap-1.5 px-4 py-1.5 bg-[var(--accent)] text-white text-xs font-semibold rounded-lg hover:opacity-90 disabled:opacity-50 cursor-pointer">
-                <Check className="w-3.5 h-3.5" /> {saving ? 'Saving…' : 'Save Department'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      </SidePanel>
 
       {/* Delete confirm */}
       {deleteId && (

@@ -3,6 +3,7 @@ import { Settings, User, Lock, Trash2, Camera, ShieldCheck, Eye, EyeOff, Volume2
 import type { CurrentUser } from '../types/erp';
 import { auth } from '../services/apiClient';
 import { supabase } from '../lib/supabaseClient';
+import SearchableDropdown from '../components/ui/SearchableDropdown';
 import { applyAccentOverride, clearAccentOverride } from '../utils/accentOverride';
 import { playNotificationSound, getSavedSound, saveSound, getSavedVolume, saveVolume, stopAlertSound } from '../utils/notificationSound';
 import type { NotificationSoundType } from '../utils/notificationSound';
@@ -1064,11 +1065,15 @@ export default function SettingsDashboard({
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">SMS Gateway</label>
-                    <select value={smsGateway} onChange={e => setSmsGateway(e.target.value)} className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]">
-                      <option value="arkesel">Arkesel (Ghana)</option>
-                      <option value="twilio">Twilio (International)</option>
-                      <option value="hubtel">Hubtel Ghana</option>
-                    </select>
+                    <SearchableDropdown
+                      value={smsGateway}
+                      onChange={setSmsGateway}
+                      options={[
+                        { value: 'arkesel', label: 'Arkesel (Ghana)' },
+                        { value: 'twilio', label: 'Twilio (International)' },
+                        { value: 'hubtel', label: 'Hubtel Ghana' },
+                      ]}
+                    />
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">GPS Ping Interval (seconds)</label>

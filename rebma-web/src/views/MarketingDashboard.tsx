@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import type { Order, Customer } from '../types/erp';
-import { FileSpreadsheet, FileText, UserPlus, Users, DollarSign, Clipboard, ShieldCheck, X, Camera, ChevronRight, History, MoreVertical, TrendingUp, TrendingDown } from 'lucide-react';
+import { FileSpreadsheet, FileText, UserPlus, Users, DollarSign, Clipboard, ShieldCheck, Camera, ChevronRight, History, MoreVertical, TrendingUp, TrendingDown } from 'lucide-react';
 import MiniSparkline from '../components/MiniSparkline';
 import KpiDetailView from '../components/KpiDetailView';
 import { exportToCSV, exportToPDF } from '../utils/export';
@@ -11,6 +11,8 @@ import { useCeoSettings } from '../contexts/CeoSettingsContext';
 import ActivityFeed from '../components/global/ActivityFeed';
 import CountUp from '../components/CountUp';
 import { supabase } from '../lib/supabaseClient';
+import SidePanel from '../components/ui/SidePanel';
+import SearchableDropdown from '../components/ui/SearchableDropdown';
 
 interface MarketingDashboardProps {
   ordersList: Order[];
@@ -611,253 +613,241 @@ export default function MarketingDashboard({
       <div className="space-y-6">
 
       {/* ── ORDER MODAL ── */}
-      {showOrderModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-0 md:p-4" onClick={() => setShowOrderModal(false)}>
-          <div className="bg-[var(--bg-card)] border-0 md:border border-[var(--border)] rounded-none md:rounded-2xl shadow-2xl w-full h-full md:h-auto md:max-w-lg overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <div className="bg-gradient-to-r from-[var(--accent)] to-indigo-600 p-5 flex justify-between items-center text-white">
-              <div>
-                <h2 className="font-bold text-lg text-white">Create Client Sales Order</h2>
-                <p className="text-white/70 text-xs mt-0.5">Fill all required fields to book a new sales order</p>
-              </div>
-              <button onClick={() => setShowOrderModal(false)} className="p-1.5 hover:bg-bg-card/10 rounded-full cursor-pointer"><X className="w-5 h-5 text-white" /></button>
-            </div>
-            <form onSubmit={handleSubmitOrder} className="p-6 space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Client Customer <span className="text-rose-500">*</span></label>
-                <select value={orderClient} onChange={e => setOrderClient(e.target.value)} required className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs focus:outline-none focus:border-[var(--accent)] text-[var(--text-primary)]">
-                  <option value="">-- Select a registered customer --</option>
-                  {localCustomers.map(c => <option key={c.id} value={c.name}>{c.name} ({c.companyName})</option>)}
-                  <option value="Walk-in Customer">Walk-in Customer</option>
-                </select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Product Name <span className="text-rose-500">*</span></label>
-                  <input type="text" value={orderProduct} onChange={e => setOrderProduct(e.target.value)} required placeholder="E.g., Palm Oil Barrel" className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs focus:outline-none focus:border-[var(--accent)] text-[var(--text-primary)]" />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Payment Mode</label>
-                  <select value={orderPayMode} onChange={e => setOrderPayMode(e.target.value as any)} className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs focus:outline-none focus:border-[var(--accent)] text-[var(--text-primary)]">
-                    <option value="CASH">Cash Payment</option>
-                    <option value="MOBILE_MONEY">Mobile Money</option>
-                    <option value="CHEQUE">Cheque</option>
-                    {creditSalesEnabled && <option value="CREDIT">On Credit Terms</option>}
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Delivery Destination</label>
-                <input type="text" value={orderDestination} onChange={e => setOrderDestination(e.target.value)} placeholder="E.g., Kumasi Central Depot" className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs focus:outline-none focus:border-[var(--accent)] text-[var(--text-primary)]" />
-              </div>
-
-              {orderPayMode === 'CREDIT' && (
-                <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl space-y-3">
-                  <p className="text-xs font-semibold text-amber-700">Credit Order — Ghana Card Required</p>
-                  <input type="text" value={orderGhanaCard} onChange={e => setOrderGhanaCard(e.target.value)} required placeholder="E.g., GHA-1234567-8" className="w-full px-3 py-2 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl text-xs focus:outline-none focus:border-[var(--accent)] text-[var(--text-primary)]" />
-                </div>
-              )}
-
-              <div>
-                <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Order Amount (GHS) <span className="text-rose-500">*</span></label>
-                <input type="number" value={orderAmount} onChange={e => setOrderAmount(e.target.value)} required placeholder="35000" className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs focus:outline-none focus:border-[var(--accent)] text-[var(--text-primary)]" />
-              </div>
-
-              <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setShowOrderModal(false)} className="flex-1 py-2.5 bg-[var(--bg-card)] hover:bg-[var(--accent-light)] border border-[var(--border)] text-[var(--text-primary)] rounded-xl text-xs font-bold cursor-pointer transition-colors">Cancel</button>
-                <button type="submit" className="flex-1 py-2.5 bg-[var(--accent)] hover:opacity-90 text-white rounded-xl text-xs font-bold cursor-pointer shadow transition-opacity">Submit Order</button>
-              </div>
-            </form>
+      <SidePanel
+        open={showOrderModal}
+        onClose={() => setShowOrderModal(false)}
+        title="Create Client Sales Order"
+        subtitle="Fill all required fields to book a new sales order"
+      >
+        <form onSubmit={handleSubmitOrder} className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Client Customer <span className="text-rose-500">*</span></label>
+            <SearchableDropdown
+              value={orderClient}
+              onChange={setOrderClient}
+              placeholder="-- Select a registered customer --"
+              options={[
+                ...localCustomers.map(c => ({ value: c.name, label: `${c.name} (${c.companyName})` })),
+                { value: 'Walk-in Customer', label: 'Walk-in Customer' },
+              ]}
+            />
           </div>
-        </div>
-      )}
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Product Name <span className="text-rose-500">*</span></label>
+              <input type="text" value={orderProduct} onChange={e => setOrderProduct(e.target.value)} required placeholder="E.g., Palm Oil Barrel" className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs focus:outline-none focus:border-[var(--accent)] text-[var(--text-primary)]" />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Payment Mode</label>
+              <SearchableDropdown
+                value={orderPayMode}
+                onChange={v => setOrderPayMode(v as any)}
+                options={[
+                  { value: 'CASH', label: 'Cash Payment' },
+                  { value: 'MOBILE_MONEY', label: 'Mobile Money' },
+                  { value: 'CHEQUE', label: 'Cheque' },
+                  ...(creditSalesEnabled ? [{ value: 'CREDIT', label: 'On Credit Terms' }] : []),
+                ]}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Delivery Destination</label>
+            <input type="text" value={orderDestination} onChange={e => setOrderDestination(e.target.value)} placeholder="E.g., Kumasi Central Depot" className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs focus:outline-none focus:border-[var(--accent)] text-[var(--text-primary)]" />
+          </div>
+
+          {orderPayMode === 'CREDIT' && (
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl space-y-3">
+              <p className="text-xs font-semibold text-amber-700">Credit Order, Ghana Card Required</p>
+              <input type="text" value={orderGhanaCard} onChange={e => setOrderGhanaCard(e.target.value)} required placeholder="E.g., GHA-1234567-8" className="w-full px-3 py-2 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl text-xs focus:outline-none focus:border-[var(--accent)] text-[var(--text-primary)]" />
+            </div>
+          )}
+
+          <div>
+            <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Order Amount (GHS) <span className="text-rose-500">*</span></label>
+            <input type="number" value={orderAmount} onChange={e => setOrderAmount(e.target.value)} required placeholder="35000" className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs focus:outline-none focus:border-[var(--accent)] text-[var(--text-primary)]" />
+          </div>
+
+          <div className="flex gap-3 pt-2">
+            <button type="button" onClick={() => setShowOrderModal(false)} className="flex-1 py-2.5 bg-[var(--bg-card)] hover:bg-[var(--accent-light)] border border-[var(--border)] text-[var(--text-primary)] rounded-xl text-xs font-bold cursor-pointer transition-colors">Cancel</button>
+            <button type="submit" className="flex-1 py-2.5 bg-[var(--accent)] hover:opacity-90 text-white rounded-xl text-xs font-bold cursor-pointer shadow transition-opacity">Submit Order</button>
+          </div>
+        </form>
+      </SidePanel>
 
       {/* ── REGISTER CUSTOMER MODAL ── */}
-      {showCustomerModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-0 md:p-4" onClick={() => setShowCustomerModal(false)}>
-          <div className="bg-[var(--bg-card)] border-0 md:border border-[var(--border)] rounded-none md:rounded-2xl shadow-2xl w-full h-full md:h-auto md:max-w-lg overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <div className="bg-gradient-to-r from-emerald-600 to-teal-600 p-5 flex justify-between items-center text-white">
-              <div>
-                <h2 className="font-bold text-white text-lg">Register New Customer</h2>
-                <p className="text-white/70 text-xs mt-0.5">Add a new client to the customer directory</p>
-              </div>
-              <button onClick={() => setShowCustomerModal(false)} className="p-1.5 hover:bg-bg-card/10 rounded-full cursor-pointer"><X className="w-5 h-5 text-white" /></button>
-            </div>
-            <form onSubmit={handleSubmitCustomer} className="p-6 space-y-4">
-              {/* Photo upload */}
-              <div className="flex items-center gap-4">
-                <div className="relative">
-                  {custPhoto ? (
-                    <img src={custPhoto} alt="Customer" className="w-16 h-16 rounded-full object-cover border-2 border-emerald-400" />
-                  ) : (
-                    <div className="w-16 h-16 rounded-full bg-[var(--bg)] border-2 border-dashed border-[var(--border)] flex items-center justify-center">
-                      <Camera className="w-6 h-6 text-[var(--text-muted)]" />
-                    </div>
-                  )}
-                  <button type="button" onClick={() => photoRef.current?.click()} className="absolute -bottom-1 -right-1 w-6 h-6 bg-emerald-500 text-white rounded-full flex items-center justify-center cursor-pointer text-[10px]">+</button>
-                  <input ref={photoRef} type="file" accept="image/*" onChange={handlePhotoChange} className="hidden" />
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-[var(--text-primary)]">Customer Photo <span className="text-[var(--text-muted)] font-normal">(optional)</span></p>
-                  <p className="text-[10px] text-[var(--text-muted)] mt-0.5">Click the + button to upload a photo</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Customer Name <span className="text-rose-500">*</span></label>
-                  <input type="text" value={custName} onChange={e => setCustName(e.target.value)} required placeholder="E.g., Kofi Owusu" className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs focus:outline-none focus:border-[var(--accent)] text-[var(--text-primary)]" />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Company Name</label>
-                  <input type="text" value={custCompany} onChange={e => setCustCompany(e.target.value)} placeholder="E.g., Owusu Retail Hub" className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs focus:outline-none focus:border-[var(--accent)] text-[var(--text-primary)]" />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Phone Number <span className="text-rose-500">*</span></label>
-                  <input type="tel" value={custPhone} onChange={e => setCustPhone(e.target.value)} required placeholder="+233 24 123 4567" className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs focus:outline-none focus:border-[var(--accent)] text-[var(--text-primary)]" />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">City / Location</label>
-                  <input type="text" value={custLocation} onChange={e => setCustLocation(e.target.value)} placeholder="E.g., Kumasi" className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs focus:outline-none focus:border-[var(--accent)] text-[var(--text-primary)]" />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Email Address</label>
-                  <input type="email" value={custEmail} onChange={e => setCustEmail(e.target.value)} placeholder="client@company.com" className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs focus:outline-none focus:border-[var(--accent)] text-[var(--text-primary)]" />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Ghana Card ID</label>
-                  <input type="text" value={custGhanaCard} onChange={e => setCustGhanaCard(e.target.value)} placeholder="GHA-XXXXXXX-X" className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs focus:outline-none focus:border-[var(--accent)] text-[var(--text-primary)]" />
-                </div>
-              </div>
-
-              <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setShowCustomerModal(false)} className="flex-1 py-2.5 bg-[var(--bg-card)] hover:bg-[var(--accent-light)] border border-[var(--border)] text-[var(--text-primary)] rounded-xl text-xs font-bold cursor-pointer transition-colors">Cancel</button>
-                <button type="submit" className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold cursor-pointer shadow transition-colors">Add to Directory</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* ── CUSTOMER PROFILE MODAL ── */}
-      {selectedCustomer && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-0 md:p-4" onClick={() => setSelectedCustomer(null)}>
-          <div className="bg-[var(--bg-card)] border-0 md:border border-[var(--border)] rounded-none md:rounded-2xl shadow-2xl w-full h-full md:h-auto md:max-w-lg overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <div className="bg-gradient-to-r from-slate-800 to-slate-700 p-5 text-white">
-              <div className="flex justify-between items-center">
-                <h2 className="font-bold text-lg text-white">Customer Profile</h2>
-                <button onClick={() => setSelectedCustomer(null)} className="p-1.5 hover:bg-bg-card/10 rounded-full cursor-pointer"><X className="w-5 h-5 text-white" /></button>
-              </div>
-            </div>
-            <div className="p-6 space-y-4">
-              {/* Profile header */}
-              <div className="flex items-center gap-4">
-                {selectedCustomer.photo ? (
-                  <img src={selectedCustomer.photo} alt={selectedCustomer.name} className="w-16 h-16 rounded-full object-cover border-2 border-[var(--border)]" />
-                ) : (
-                  <div className="w-16 h-16 rounded-full bg-[var(--accent-light)] flex items-center justify-center border border-[var(--border)]">
-                    <Users className="w-7 h-7 text-[var(--accent)]" />
-                  </div>
-                )}
-                <div>
-                  <h3 className="font-bold text-[var(--text-primary)]">{selectedCustomer.name}</h3>
-                  <p className="text-xs text-[var(--text-muted)]">{selectedCustomer.companyName}</p>
-                  <p className="text-[10px] text-[var(--text-muted)] mt-0.5 font-mono">Registered: {selectedCustomer.registeredAt}</p>
-                </div>
-              </div>
-
-              {/* Details */}
-              <div className="grid grid-cols-2 gap-3 text-xs">
-                <div className="p-3 bg-[var(--bg)] border border-[var(--border)] rounded-xl">
-                  <p className="text-[var(--text-muted)] text-[10px] uppercase font-semibold">Phone</p>
-                  <p className="font-medium mt-0.5 font-mono text-[var(--text-primary)]">{selectedCustomer.phone}</p>
-                </div>
-                <div className="p-3 bg-[var(--bg)] border border-[var(--border)] rounded-xl">
-                  <p className="text-[var(--text-muted)] text-[10px] uppercase font-semibold">Location</p>
-                  <p className="font-medium mt-0.5 text-[var(--text-primary)]">{selectedCustomer.location || '—'}</p>
-                </div>
-                {selectedCustomer.email && (
-                  <div className="p-3 bg-[var(--bg)] border border-[var(--border)] rounded-xl">
-                    <p className="text-[var(--text-muted)] text-[10px] uppercase font-semibold">Email</p>
-                    <p className="font-medium mt-0.5 font-mono text-[var(--text-primary)]">{selectedCustomer.email}</p>
-                  </div>
-                )}
-                {selectedCustomer.ghanaCard && (
-                  <div className="p-3 bg-[var(--bg)] border border-[var(--border)] rounded-xl">
-                    <p className="text-[var(--text-muted)] text-[10px] uppercase font-semibold">Ghana Card</p>
-                    <p className="font-mono font-medium mt-0.5 text-[var(--text-primary)]">{selectedCustomer.ghanaCard}</p>
-                  </div>
-                )}
-              </div>
-
-              {/* Order history */}
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <History className="w-4 h-4 text-[var(--accent)]" />
-                  <p className="text-xs font-bold text-[var(--text-primary)]">Order History ({customerOrders(selectedCustomer).length})</p>
-                </div>
-                <div className="space-y-1.5 max-h-40 overflow-y-auto border-t border-[var(--border)] pt-1.5">
-                  {customerOrders(selectedCustomer).length === 0 && (
-                    <p className="text-[10px] text-[var(--text-muted)] text-center py-3">No orders found for this customer.</p>
-                  )}
-                  {customerOrders(selectedCustomer).map(o => (
-                    <div key={o.id} className="flex justify-between items-center p-2 bg-[var(--bg)] border border-[var(--border)] rounded-lg text-[10px]">
-                      <span className="font-mono text-[var(--text-primary)]">{o.id}</span>
-                      <span className="text-[var(--text-muted)]">{o.productName || '—'}</span>
-                      <span className="font-bold font-mono text-[var(--text-primary)]">GHS {o.totalAmount.toLocaleString()}</span>
-                      <span className={`px-1.5 py-0.5 rounded font-bold text-[8px] ${statusColor(o.status)}`}>{o.status.replace(/_/g, ' ')}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── ORDER DETAIL MODAL ── */}
-      {selectedOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-0 md:p-4" onClick={() => setSelectedOrder(null)}>
-          <div className="bg-[var(--bg-card)] border-0 md:border border-[var(--border)] rounded-none md:rounded-2xl shadow-2xl w-full h-full md:h-auto md:max-w-md overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-5 flex justify-between items-center text-white">
-              <div>
-                <h2 className="font-bold text-white">Order Details</h2>
-                <p className="text-white/70 text-xs mt-0.5 font-mono">{selectedOrder.id}</p>
-              </div>
-              <button onClick={() => setSelectedOrder(null)} className="p-1.5 hover:bg-bg-card/10 rounded-full cursor-pointer"><X className="w-5 h-5 text-white" /></button>
-            </div>
-            <div className="p-6 space-y-3 text-xs">
-              {selectedOrder.ticketNumber && (
-                <div className="text-center">
-                  <span className="px-4 py-1.5 bg-emerald-500/10 text-emerald-600 rounded-full text-xs font-bold font-mono">🎫 Ticket: {selectedOrder.ticketNumber}</span>
+      <SidePanel
+        open={showCustomerModal}
+        onClose={() => setShowCustomerModal(false)}
+        title="Register New Customer"
+        subtitle="Add a new client to the customer directory"
+      >
+        <form onSubmit={handleSubmitCustomer} className="space-y-4">
+          {/* Photo upload */}
+          <div className="flex items-center gap-4">
+            <div className="relative">
+              {custPhoto ? (
+                <img src={custPhoto} alt="Customer" className="w-16 h-16 rounded-full object-cover border-2 border-emerald-400" />
+              ) : (
+                <div className="w-16 h-16 rounded-full bg-[var(--bg)] border-2 border-dashed border-[var(--border)] flex items-center justify-center">
+                  <Camera className="w-6 h-6 text-[var(--text-muted)]" />
                 </div>
               )}
-              {[
-                ['Client', selectedOrder.clientName],
-                ['Product', selectedOrder.productName || '—'],
-                ['Destination', selectedOrder.destination || '—'],
-                ['Payment Mode', selectedOrder.paymentMode],
-                ['Amount', `GHS ${selectedOrder.totalAmount.toLocaleString()}`],
-                ['Status', selectedOrder.status.replace(/_/g, ' ')],
-                ['Submitted', selectedOrder.createdAt],
-                ...(selectedOrder.ghanaCard ? [['Ghana Card', selectedOrder.ghanaCard]] : [])
-              ].map(([label, value], idx) => (
-                <div key={idx} className="flex justify-between items-center py-2 border-b border-[var(--border)]">
-                  <span className="text-[var(--text-muted)] font-semibold uppercase text-[10px]">{label}</span>
-                  <span className="font-medium text-[var(--text-primary)]">{value}</span>
-                </div>
-              ))}
+              <button type="button" onClick={() => photoRef.current?.click()} className="absolute -bottom-1 -right-1 w-6 h-6 bg-emerald-500 text-white rounded-full flex items-center justify-center cursor-pointer text-[10px]">+</button>
+              <input ref={photoRef} type="file" accept="image/*" onChange={handlePhotoChange} className="hidden" />
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-[var(--text-primary)]">Customer Photo <span className="text-[var(--text-muted)] font-normal">(optional)</span></p>
+              <p className="text-[10px] text-[var(--text-muted)] mt-0.5">Click the + button to upload a photo</p>
             </div>
           </div>
-        </div>
-      )}
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Customer Name <span className="text-rose-500">*</span></label>
+              <input type="text" value={custName} onChange={e => setCustName(e.target.value)} required placeholder="E.g., Kofi Owusu" className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs focus:outline-none focus:border-[var(--accent)] text-[var(--text-primary)]" />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Company Name</label>
+              <input type="text" value={custCompany} onChange={e => setCustCompany(e.target.value)} placeholder="E.g., Owusu Retail Hub" className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs focus:outline-none focus:border-[var(--accent)] text-[var(--text-primary)]" />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Phone Number <span className="text-rose-500">*</span></label>
+              <input type="tel" value={custPhone} onChange={e => setCustPhone(e.target.value)} required placeholder="+233 24 123 4567" className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs focus:outline-none focus:border-[var(--accent)] text-[var(--text-primary)]" />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">City / Location</label>
+              <input type="text" value={custLocation} onChange={e => setCustLocation(e.target.value)} placeholder="E.g., Kumasi" className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs focus:outline-none focus:border-[var(--accent)] text-[var(--text-primary)]" />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Email Address</label>
+              <input type="email" value={custEmail} onChange={e => setCustEmail(e.target.value)} placeholder="client@company.com" className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs focus:outline-none focus:border-[var(--accent)] text-[var(--text-primary)]" />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Ghana Card ID</label>
+              <input type="text" value={custGhanaCard} onChange={e => setCustGhanaCard(e.target.value)} placeholder="GHA-XXXXXXX-X" className="w-full px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-xs focus:outline-none focus:border-[var(--accent)] text-[var(--text-primary)]" />
+            </div>
+          </div>
+
+          <div className="flex gap-3 pt-2">
+            <button type="button" onClick={() => setShowCustomerModal(false)} className="flex-1 py-2.5 bg-[var(--bg-card)] hover:bg-[var(--accent-light)] border border-[var(--border)] text-[var(--text-primary)] rounded-xl text-xs font-bold cursor-pointer transition-colors">Cancel</button>
+            <button type="submit" className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold cursor-pointer shadow transition-colors">Add to Directory</button>
+          </div>
+        </form>
+      </SidePanel>
+
+      {/* ── CUSTOMER PROFILE MODAL ── */}
+      <SidePanel
+        open={!!selectedCustomer}
+        onClose={() => setSelectedCustomer(null)}
+        title="Customer Profile"
+      >
+        {selectedCustomer && (
+          <div className="space-y-4">
+            {/* Profile header */}
+            <div className="flex items-center gap-4">
+              {selectedCustomer.photo ? (
+                <img src={selectedCustomer.photo} alt={selectedCustomer.name} className="w-16 h-16 rounded-full object-cover border-2 border-[var(--border)]" />
+              ) : (
+                <div className="w-16 h-16 rounded-full bg-[var(--accent-light)] flex items-center justify-center border border-[var(--border)]">
+                  <Users className="w-7 h-7 text-[var(--accent)]" />
+                </div>
+              )}
+              <div>
+                <h3 className="font-bold text-[var(--text-primary)]">{selectedCustomer.name}</h3>
+                <p className="text-xs text-[var(--text-muted)]">{selectedCustomer.companyName}</p>
+                <p className="text-[10px] text-[var(--text-muted)] mt-0.5 font-mono">Registered: {selectedCustomer.registeredAt}</p>
+              </div>
+            </div>
+
+            {/* Details */}
+            <div className="grid grid-cols-2 gap-3 text-xs">
+              <div className="p-3 bg-[var(--bg)] border border-[var(--border)] rounded-xl">
+                <p className="text-[var(--text-muted)] text-[10px] uppercase font-semibold">Phone</p>
+                <p className="font-medium mt-0.5 font-mono text-[var(--text-primary)]">{selectedCustomer.phone}</p>
+              </div>
+              <div className="p-3 bg-[var(--bg)] border border-[var(--border)] rounded-xl">
+                <p className="text-[var(--text-muted)] text-[10px] uppercase font-semibold">Location</p>
+                <p className="font-medium mt-0.5 text-[var(--text-primary)]">{selectedCustomer.location || '—'}</p>
+              </div>
+              {selectedCustomer.email && (
+                <div className="p-3 bg-[var(--bg)] border border-[var(--border)] rounded-xl">
+                  <p className="text-[var(--text-muted)] text-[10px] uppercase font-semibold">Email</p>
+                  <p className="font-medium mt-0.5 font-mono text-[var(--text-primary)]">{selectedCustomer.email}</p>
+                </div>
+              )}
+              {selectedCustomer.ghanaCard && (
+                <div className="p-3 bg-[var(--bg)] border border-[var(--border)] rounded-xl">
+                  <p className="text-[var(--text-muted)] text-[10px] uppercase font-semibold">Ghana Card</p>
+                  <p className="font-mono font-medium mt-0.5 text-[var(--text-primary)]">{selectedCustomer.ghanaCard}</p>
+                </div>
+              )}
+            </div>
+
+            {/* Order history */}
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <History className="w-4 h-4 text-[var(--accent)]" />
+                <p className="text-xs font-bold text-[var(--text-primary)]">Order History ({customerOrders(selectedCustomer).length})</p>
+              </div>
+              <div className="space-y-1.5 max-h-40 overflow-y-auto border-t border-[var(--border)] pt-1.5">
+                {customerOrders(selectedCustomer).length === 0 && (
+                  <p className="text-[10px] text-[var(--text-muted)] text-center py-3">No orders found for this customer.</p>
+                )}
+                {customerOrders(selectedCustomer).map(o => (
+                  <div key={o.id} className="flex justify-between items-center p-2 bg-[var(--bg)] border border-[var(--border)] rounded-lg text-[10px]">
+                    <span className="font-mono text-[var(--text-primary)]">{o.id}</span>
+                    <span className="text-[var(--text-muted)]">{o.productName || '—'}</span>
+                    <span className="font-bold font-mono text-[var(--text-primary)]">GHS {o.totalAmount.toLocaleString()}</span>
+                    <span className={`px-1.5 py-0.5 rounded font-bold text-[8px] ${statusColor(o.status)}`}>{o.status.replace(/_/g, ' ')}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </SidePanel>
+
+      {/* ── ORDER DETAIL MODAL ── */}
+      <SidePanel
+        open={!!selectedOrder}
+        onClose={() => setSelectedOrder(null)}
+        title="Order Details"
+        subtitle={selectedOrder?.id}
+      >
+        {selectedOrder && (
+          <div className="space-y-3 text-xs">
+            {selectedOrder.ticketNumber && (
+              <div className="text-center">
+                <span className="px-4 py-1.5 bg-emerald-500/10 text-emerald-600 rounded-full text-xs font-bold font-mono">🎫 Ticket: {selectedOrder.ticketNumber}</span>
+              </div>
+            )}
+            {[
+              ['Client', selectedOrder.clientName],
+              ['Product', selectedOrder.productName || '—'],
+              ['Destination', selectedOrder.destination || '—'],
+              ['Payment Mode', selectedOrder.paymentMode],
+              ['Amount', `GHS ${selectedOrder.totalAmount.toLocaleString()}`],
+              ['Status', selectedOrder.status.replace(/_/g, ' ')],
+              ['Submitted', selectedOrder.createdAt],
+              ...(selectedOrder.ghanaCard ? [['Ghana Card', selectedOrder.ghanaCard]] : [])
+            ].map(([label, value], idx) => (
+              <div key={idx} className="flex justify-between items-center py-2 border-b border-[var(--border)]">
+                <span className="text-[var(--text-muted)] font-semibold uppercase text-[10px]">{label}</span>
+                <span className="font-medium text-[var(--text-primary)]">{value}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </SidePanel>
 
       {/* Header */}
       <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4">

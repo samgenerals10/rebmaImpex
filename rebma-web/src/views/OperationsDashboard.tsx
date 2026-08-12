@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import {
   FileSpreadsheet, FileText, Layers, Truck, AlertTriangle, CheckCircle,
   Image as ImageIcon, History, PackageCheck, TicketCheck, ChevronRight,
-  MoreVertical, TrendingUp, TrendingDown, Camera, X, RefreshCw,
+  MoreVertical, TrendingUp, TrendingDown, Camera, RefreshCw,
   Ship, Factory, Calendar, Package
 } from 'lucide-react';
 import MiniSparkline from '../components/MiniSparkline';
@@ -20,6 +20,7 @@ import StockIntakeForm from '../components/StockIntakeForm';
 import CountrySelect from '../components/CountrySelect';
 import CountUp from '../components/CountUp';
 import { useCeoSettings } from '../contexts/CeoSettingsContext';
+import SidePanel from '../components/ui/SidePanel';
 
 interface OperationsDashboardProps {
   ordersList: Order[];
@@ -1251,19 +1252,12 @@ export default function OperationsDashboard({
                 </div>
 
                 {/* PORT CARGO MODAL */}
-                {showPortModal && (
-                  <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-                    <div className="bg-[var(--bg-card)] rounded-2xl shadow-2xl border border-[var(--border)] w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-                      <div className="flex items-center justify-between p-5 border-b border-[var(--border)] sticky top-0 bg-[var(--bg-card)] z-10">
-                        <div className="flex items-center gap-2">
-                          <Ship className="w-5 h-5 text-[var(--accent)]" />
-                          <h3 className="text-base font-bold text-[var(--text-primary)]">Workflow A: Log Incoming Port Cargo</h3>
-                        </div>
-                        <button onClick={() => setShowPortModal(false)} className="p-1.5 rounded-lg hover:bg-[var(--accent-light)] cursor-pointer transition-colors">
-                          <X className="w-4 h-4 text-[var(--text-muted)]" />
-                        </button>
-                      </div>
-                      <div className="p-5">
+                <SidePanel
+                  open={showPortModal}
+                  onClose={() => setShowPortModal(false)}
+                  title="Workflow A: Log Incoming Port Cargo"
+                  width="lg"
+                >
                 <form onSubmit={(e) => { handleSubmitIntake(e); setShowPortModal(false); }} className="space-y-4">
                   {/* Product Name & Goods Code */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1441,10 +1435,7 @@ export default function OperationsDashboard({
                     Submit Cargo Logs
                   </button>
                 </form>
-                      </div>
-                    </div>
-                  </div>
-                )}
+                </SidePanel>
 
                 {/* IN-HOUSE PRODUCTION / GENERAL PURCHASES UNIFIED MODAL */}
                 <StockIntakeForm
@@ -2079,31 +2070,22 @@ export default function OperationsDashboard({
       </div>
 
       {/* Live Webcam Capture Modal */}
-      {isCameraActive && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-3xl overflow-hidden w-full max-w-md shadow-2xl flex flex-col animate-fade-in-up">
-            <div className="p-4 border-b border-[var(--border)] flex items-center justify-between">
-              <h3 className="font-bold text-[var(--text-primary)] text-sm flex items-center gap-2">
-                <Camera className="w-4 h-4 text-[var(--accent)]" /> Live Camera Ingestion
-              </h3>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={toggleFacingMode}
-                  className="p-1.5 hover:bg-[var(--accent-light)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-lg cursor-pointer transition-colors"
-                  title="Switch Camera"
-                >
-                  <RefreshCw className="w-4 h-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={stopCamera}
-                  className="p-1.5 hover:bg-[var(--accent-light)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-lg cursor-pointer transition-colors"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
+      <SidePanel
+        open={isCameraActive}
+        onClose={stopCamera}
+        title="Live Camera Ingestion"
+        badge={
+          <button
+            type="button"
+            onClick={toggleFacingMode}
+            className="p-1.5 hover:bg-[var(--accent-light)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-lg cursor-pointer transition-colors"
+            title="Switch Camera"
+          >
+            <RefreshCw className="w-4 h-4" />
+          </button>
+        }
+      >
+        <div className="-mx-5 -my-4 flex flex-col">
             {cameraError ? (
               <div className="p-6 text-center space-y-4 flex flex-col items-center justify-center min-h-[220px]">
                 <AlertTriangle className="w-12 h-12 text-amber-500 animate-pulse" />
@@ -2164,43 +2146,40 @@ export default function OperationsDashboard({
               </>
             )}
           </div>
-        </div>
-      )}
+        </SidePanel>
       </div>
       </div>
 
       {/* Edit Order Modal */}
-      {editingOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-[var(--bg-card)] rounded-2xl shadow-2xl border border-[var(--border)] w-full max-w-md">
-            <div className="flex items-center justify-between p-5 border-b border-[var(--border)]">
-              <h3 className="font-bold text-[var(--text-primary)] text-sm">Edit Order Details</h3>
-              <button onClick={() => setEditingOrder(null)} className="p-1.5 rounded-lg hover:bg-[var(--accent-light)] cursor-pointer">
-                <X className="w-4 h-4 text-[var(--text-muted)]" />
-              </button>
+      <SidePanel
+        open={!!editingOrder}
+        onClose={() => setEditingOrder(null)}
+        title="Edit Order Details"
+        footer={
+          <div className="flex gap-3">
+            <button onClick={() => setEditingOrder(null)} className="flex-1 py-2 border border-[var(--border)] rounded-xl text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--accent-light)] cursor-pointer">Cancel</button>
+            <button onClick={handleSaveOrder} className="flex-1 py-2 bg-[var(--accent)] text-white rounded-xl text-xs font-bold hover:opacity-90 cursor-pointer shadow">Save Changes</button>
+          </div>
+        }
+      >
+        {editingOrder && (
+          <div className="space-y-4">
+            <div className="p-3 bg-[var(--accent-light)] rounded-xl text-xs text-[var(--text-muted)]">
+              <span className="font-mono font-bold text-[var(--accent)]">{editingOrder.ticketNumber || editingOrder.id}</span> · {editingOrder.productName}
             </div>
-            <div className="p-5 space-y-4">
-              <div className="p-3 bg-[var(--accent-light)] rounded-xl text-xs text-[var(--text-muted)]">
-                <span className="font-mono font-bold text-[var(--accent)]">{editingOrder.ticketNumber || editingOrder.id}</span> · {editingOrder.productName}
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Client Name</label>
-                <input value={editForm.clientName} onChange={e => setEditForm(f => ({ ...f, clientName: e.target.value }))}
-                  className="w-full px-3 py-2 bg-[var(--bg)] text-[var(--text-primary)] border border-[var(--border)] focus:border-[var(--accent)] rounded-xl text-xs focus:outline-none" />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Destination</label>
-                <input value={editForm.destination} onChange={e => setEditForm(f => ({ ...f, destination: e.target.value }))}
-                  className="w-full px-3 py-2 bg-[var(--bg)] text-[var(--text-primary)] border border-[var(--border)] focus:border-[var(--accent)] rounded-xl text-xs focus:outline-none" />
-              </div>
-              <div className="flex gap-3 pt-2">
-                <button onClick={() => setEditingOrder(null)} className="flex-1 py-2 border border-[var(--border)] rounded-xl text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--accent-light)] cursor-pointer">Cancel</button>
-                <button onClick={handleSaveOrder} className="flex-1 py-2 bg-[var(--accent)] text-white rounded-xl text-xs font-bold hover:opacity-90 cursor-pointer shadow">Save Changes</button>
-              </div>
+            <div>
+              <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Client Name</label>
+              <input value={editForm.clientName} onChange={e => setEditForm(f => ({ ...f, clientName: e.target.value }))}
+                className="w-full px-3 py-2 bg-[var(--bg)] text-[var(--text-primary)] border border-[var(--border)] focus:border-[var(--accent)] rounded-xl text-xs focus:outline-none" />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Destination</label>
+              <input value={editForm.destination} onChange={e => setEditForm(f => ({ ...f, destination: e.target.value }))}
+                className="w-full px-3 py-2 bg-[var(--bg)] text-[var(--text-primary)] border border-[var(--border)] focus:border-[var(--accent)] rounded-xl text-xs focus:outline-none" />
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </SidePanel>
     </>
   );
 }

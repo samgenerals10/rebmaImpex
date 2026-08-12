@@ -3,11 +3,12 @@
 import { useState, useEffect } from 'react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, BarChart, Bar } from 'recharts';
 import type { Attendance, PendingRegistration, StaffMember } from '../types/erp';
-import { FileSpreadsheet, FileText, Users, Clipboard, ShieldCheck, Activity, UserCheck, UserX, X, Copy, ChevronRight, User, MoreVertical, TrendingUp, TrendingDown } from 'lucide-react';
+import { FileSpreadsheet, FileText, Users, Clipboard, ShieldCheck, Activity, UserCheck, UserX, Copy, ChevronRight, User, MoreVertical, TrendingUp, TrendingDown } from 'lucide-react';
 import MiniSparkline from '../components/MiniSparkline';
 import KpiDetailView from '../components/KpiDetailView';
 import CountUp from '../components/CountUp';
 import { exportToCSV, exportToPDF } from '../utils/export';
+import SidePanel from '../components/ui/SidePanel';
 
 interface HrDashboardProps {
   attendanceList: Attendance[];
@@ -1212,49 +1213,46 @@ export default function HrDashboard({
       </div>
 
       {/* INSTANT HR POPUP MODAL */}
-        {credentialsPopup && credentialsPopup.show && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-0 md:p-4 animate-fade-in">
-            <div className="bg-[var(--bg-card)] border-0 md:border border-[var(--border)] rounded-none md:rounded-2xl shadow-2xl w-full h-full md:h-auto md:max-w-md overflow-y-auto p-6 space-y-4 text-[var(--text-primary)] flex flex-col justify-center md:block">
-              <div className="flex items-center justify-between border-b border-[var(--border)] pb-3">
-                <h3 className="font-bold text-lg text-emerald-500">Account Credentials Generated</h3>
-                <button 
-                  onClick={() => setCredentialsPopup(null)}
-                  className="text-text-muted hover:text-slate-650 dark:hover:text-slate-200 transition-colors cursor-pointer"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-              <div className="space-y-3 text-xs leading-relaxed text-[var(--text-primary)] opacity-90">
-                <p><strong>Employee:</strong> {credentialsPopup.fullName} ({credentialsPopup.email})</p>
-                <div className="bg-[var(--bg)] p-3 rounded-xl border border-[var(--border)] font-mono space-y-2 relative">
-                  <p className="text-[10px] uppercase tracking-wider text-[var(--text-muted)] font-bold">Temporary Password</p>
-                  <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400 break-all select-all">{credentialsPopup.password}</p>
-                  <div className="h-px bg-[var(--border)] my-2"></div>
-                  <p className="text-[10px] uppercase tracking-wider text-[var(--text-muted)] font-bold">Magic Link URL</p>
-                  <p className="text-[11px] text-blue-500 hover:underline break-all select-all">{credentialsPopup.magicLink}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 pt-2">
-                <button
-                  onClick={() => {
-                    const text = `Dear ${credentialsPopup.fullName},\n\nYour REBMA ERP account has been approved!\n\nStandard Login:\nEmail: ${credentialsPopup.email}\nTemporary Password: ${credentialsPopup.password}\n\nOne-Click Magic Link:\n${credentialsPopup.magicLink}\n\nPlease reset your password upon login.\nRebma Impex Ghana Ltd.`;
-                    navigator.clipboard.writeText(text);
-                    alert('Credentials copied to clipboard!');
-                  }}
-                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl py-2.5 font-bold transition-all text-sm cursor-pointer shadow-card shadow-emerald-600/20 text-center"
-                >
-                  📋 Copy Credentials
-                </button>
-                <button
-                  onClick={() => setCredentialsPopup(null)}
-                  className="px-4 py-2.5 bg-[var(--bg)] hover:bg-[var(--accent-light)] text-[var(--text-primary)] rounded-xl transition-all font-semibold text-xs border border-[var(--border)] cursor-pointer"
-                >
-                  Close
-                </button>
-              </div>
+      <SidePanel
+        open={!!(credentialsPopup && credentialsPopup.show)}
+        onClose={() => setCredentialsPopup(null)}
+        title="Account Credentials Generated"
+        footer={
+          credentialsPopup && (
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => {
+                  const text = `Dear ${credentialsPopup.fullName},\n\nYour REBMA ERP account has been approved!\n\nStandard Login:\nEmail: ${credentialsPopup.email}\nTemporary Password: ${credentialsPopup.password}\n\nOne-Click Magic Link:\n${credentialsPopup.magicLink}\n\nPlease reset your password upon login.\nRebma Impex Ghana Ltd.`;
+                  navigator.clipboard.writeText(text);
+                  alert('Credentials copied to clipboard!');
+                }}
+                className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl py-2.5 font-bold transition-all text-sm cursor-pointer shadow-card shadow-emerald-600/20 text-center"
+              >
+                📋 Copy Credentials
+              </button>
+              <button
+                onClick={() => setCredentialsPopup(null)}
+                className="px-4 py-2.5 bg-[var(--bg)] hover:bg-[var(--accent-light)] text-[var(--text-primary)] rounded-xl transition-all font-semibold text-xs border border-[var(--border)] cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          )
+        }
+      >
+        {credentialsPopup && (
+          <div className="space-y-3 text-xs leading-relaxed text-[var(--text-primary)] opacity-90">
+            <p><strong>Employee:</strong> {credentialsPopup.fullName} ({credentialsPopup.email})</p>
+            <div className="bg-[var(--bg)] p-3 rounded-xl border border-[var(--border)] font-mono space-y-2 relative">
+              <p className="text-[10px] uppercase tracking-wider text-[var(--text-muted)] font-bold">Temporary Password</p>
+              <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400 break-all select-all">{credentialsPopup.password}</p>
+              <div className="h-px bg-[var(--border)] my-2"></div>
+              <p className="text-[10px] uppercase tracking-wider text-[var(--text-muted)] font-bold">Magic Link URL</p>
+              <p className="text-[11px] text-blue-500 hover:underline break-all select-all">{credentialsPopup.magicLink}</p>
             </div>
           </div>
         )}
+      </SidePanel>
       </div>
       </div>
     </>
