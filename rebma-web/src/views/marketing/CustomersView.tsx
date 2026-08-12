@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Plus, Search, ArrowLeft, X, Pencil, Trash2, Download, Star, Camera } from 'lucide-react';
+import { Plus, Search, ArrowLeft, Pencil, Trash2, Download, Star, Camera } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import type { Customer, Order } from '../../types/erp';
 import CustomerAvatar from '../../components/CustomerAvatar';

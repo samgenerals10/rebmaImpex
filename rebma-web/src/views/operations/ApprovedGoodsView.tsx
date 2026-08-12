@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import {
   Search, Download, Package, PackageCheck, TicketCheck,
-  ChevronUp, ChevronDown, Truck, Printer, X, AlertCircle,
+  ChevronUp, ChevronDown, Truck, Printer, AlertCircle,
 } from 'lucide-react';
 import QRCode from 'qrcode';
 import { exportToCSV, safeDisplayName } from '../../utils/export';

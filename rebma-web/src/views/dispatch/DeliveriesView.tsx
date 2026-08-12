@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { useRealtimeChannel } from '../../hooks/useRealtimeChannel';
 import { dispatch as dispatchApi } from '../../services/apiClient';
 import {
-  Truck, CheckCircle, XCircle, Search, Eye, X, Clock,
+  Truck, CheckCircle, XCircle, Search, Eye, Clock,
   Download, MoreVertical, ChevronLeft, MapPin, Camera, AlertCircle,
   Calendar, User, Package, UserCheck, Edit, Trash2, MessageCircle
 } from 'lucide-react';

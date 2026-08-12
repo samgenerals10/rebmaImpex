@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Download, TrendingUp, Users, Package, RefreshCw, Search, Filter, X } from 'lucide-react';
+import { Download, TrendingUp, Users, Package, RefreshCw, Search } from 'lucide-react';
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend,

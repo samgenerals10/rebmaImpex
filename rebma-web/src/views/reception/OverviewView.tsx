@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   UserPlus, UserCheck, UserMinus, FileBarChart, Users, Calendar,
   MoreVertical, ChevronRight, Clock, TrendingUp, TrendingDown,
-  Printer, Download, X, Search, CheckCircle
+  Printer, Download, Search, CheckCircle
 } from 'lucide-react';
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,

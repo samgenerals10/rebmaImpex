@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Plus, ArrowLeft, X, Edit2, UserMinus, Truck, Trash2, Edit, Smartphone, Copy, Check } from 'lucide-react';
+import { Search, Plus, ArrowLeft, Edit2, UserMinus, Truck, Trash2, Edit, Smartphone, Copy, Check } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { dispatch as dispatchApi } from '../../services/apiClient';
 import type { Driver, DeliveryRecord } from '../../types/erp';
