@@ -3,10 +3,11 @@ import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from 'recharts';
-import { Package, PackageCheck, AlertTriangle, BarChart2, Download, Clock, X } from 'lucide-react';
+import { Package, PackageCheck, AlertTriangle, BarChart2, Download, Clock } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { exportToCSV } from '../../utils/export';
 import CountUp from '../../components/CountUp';
+import SidePanel from '../../components/ui/SidePanel';
 
 interface AddNotificationProps { addNotification: (msg: string) => void; }
 
@@ -20,44 +21,40 @@ function KpiDetailModal({ title, rows, onClose }: { title: string; rows: CargoRo
     r.supplier.toLowerCase().includes(search.toLowerCase()) || r.status.toLowerCase().includes(search.toLowerCase())
   );
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4 backdrop-blur-sm" onClick={onClose}>
-      <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
-          <h3 className="font-bold text-[var(--text-primary)]">{title}</h3>
-          <button onClick={onClose} className="p-1.5 hover:bg-[var(--bg)] rounded-lg cursor-pointer"><X className="w-4 h-4 text-[var(--text-muted)]" /></button>
+    <SidePanel open onClose={onClose} title={title} width="lg">
+        <div className="flex flex-col h-full -mx-5 -my-4">
+          <div className="px-5 py-3 border-b border-[var(--border)]">
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Filter records…"
+              className="w-full px-3 py-2 rounded-xl bg-[var(--bg)] border border-[var(--border)] text-xs text-[var(--text-primary)] focus:outline-none" />
+          </div>
+          <div className="overflow-auto flex-1">
+            <table className="w-full text-xs">
+              <thead className="sticky top-0 bg-[var(--bg)] border-b border-[var(--border)]">
+                <tr>{['Date','Product','Quantity','Supplier','Status'].map(h => (
+                  <th key={h} className="px-4 py-2.5 text-left text-[10px] font-semibold text-[var(--text-muted)] uppercase whitespace-nowrap">{h}</th>
+                ))}</tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--border)]">
+                {filtered.length === 0
+                  ? <tr><td colSpan={5} className="px-4 py-8 text-center text-[var(--text-muted)]">No records found.</td></tr>
+                  : filtered.map((r, i) => (
+                    <tr key={i} className="hover:bg-[var(--accent-light)] transition-colors">
+                      <td className="px-4 py-2.5 text-[var(--text-muted)]">{r.date}</td>
+                      <td className="px-4 py-2.5 font-semibold text-[var(--text-primary)]">{r.product}</td>
+                      <td className="px-4 py-2.5 font-mono text-[var(--accent)]">{r.quantity.toLocaleString()}</td>
+                      <td className="px-4 py-2.5 text-[var(--text-secondary)]">{r.supplier}</td>
+                      <td className="px-4 py-2.5">
+                        <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${r.status === 'APPROVED' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>{r.status}</span>
+                      </td>
+                    </tr>
+                  ))
+                }
+              </tbody>
+            </table>
+          </div>
+          <div className="px-5 py-3 border-t border-[var(--border)] text-xs text-[var(--text-muted)]">{filtered.length} records</div>
         </div>
-        <div className="px-5 py-3 border-b border-[var(--border)]">
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Filter records…"
-            className="w-full px-3 py-2 rounded-xl bg-[var(--bg)] border border-[var(--border)] text-xs text-[var(--text-primary)] focus:outline-none" />
-        </div>
-        <div className="overflow-auto flex-1">
-          <table className="w-full text-xs">
-            <thead className="sticky top-0 bg-[var(--bg)] border-b border-[var(--border)]">
-              <tr>{['Date','Product','Quantity','Supplier','Status'].map(h => (
-                <th key={h} className="px-4 py-2.5 text-left text-[10px] font-semibold text-[var(--text-muted)] uppercase whitespace-nowrap">{h}</th>
-              ))}</tr>
-            </thead>
-            <tbody className="divide-y divide-[var(--border)]">
-              {filtered.length === 0
-                ? <tr><td colSpan={5} className="px-4 py-8 text-center text-[var(--text-muted)]">No records found.</td></tr>
-                : filtered.map((r, i) => (
-                  <tr key={i} className="hover:bg-[var(--accent-light)] transition-colors">
-                    <td className="px-4 py-2.5 text-[var(--text-muted)]">{r.date}</td>
-                    <td className="px-4 py-2.5 font-semibold text-[var(--text-primary)]">{r.product}</td>
-                    <td className="px-4 py-2.5 font-mono text-[var(--accent)]">{r.quantity.toLocaleString()}</td>
-                    <td className="px-4 py-2.5 text-[var(--text-secondary)]">{r.supplier}</td>
-                    <td className="px-4 py-2.5">
-                      <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${r.status === 'APPROVED' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>{r.status}</span>
-                    </td>
-                  </tr>
-                ))
-              }
-            </tbody>
-          </table>
-        </div>
-        <div className="px-5 py-3 border-t border-[var(--border)] text-xs text-[var(--text-muted)]">{filtered.length} records</div>
-      </div>
-    </div>
+    </SidePanel>
   );
 }
 

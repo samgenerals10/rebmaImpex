@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
-  Search, Plus, X, Package, TrendingDown, TrendingUp,
+  Search, Plus, Package, TrendingDown, TrendingUp,
   History, Download, Lock, ChevronUp, ChevronDown, ArrowUpRight,
   ArrowDownLeft, Layers, Truck, User, FileText,
 } from 'lucide-react';
@@ -8,6 +8,8 @@ import EntityDetailPanel from '../../components/global/EntityDetailPanel';
 import { stockApi, operations } from '../../services/apiClient';
 import { exportToCSV } from '../../utils/export';
 import { supabase } from '../../lib/supabaseClient';
+import SidePanel from '../../components/ui/SidePanel';
+import SearchableDropdown from '../../components/ui/SearchableDropdown';
 import { useRealtimeChannel } from '../../hooks/useRealtimeChannel';
 import { useCeoSettings } from '../../contexts/CeoSettingsContext';
 import type { IncomingGoods, GeneralPurchase } from '../../types/erp';
@@ -554,13 +556,12 @@ export default function StockView({ incomingGoodsList: _ig, addNotification }: P
             style={{ border: 'none', background: 'transparent', outline: 'none', color: 'var(--text-primary)', fontSize: 14, width: '100%' }} />
         </div>
         {activeTab === 'PRODUCTS' && (
-          <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
-            style={{ flex: '0 0 150px', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '8px 12px', color: 'var(--text-primary)', fontSize: 14 }}>
-            <option value="All">All Status</option>
-            <option value="In Stock">In Stock</option>
-            <option value="Low Stock">Low Stock</option>
-            <option value="Out of Stock">Out of Stock</option>
-          </select>
+          <SearchableDropdown
+            value={statusFilter}
+            onChange={setStatusFilter}
+            options={[{ value: 'All', label: 'All Status' }, { value: 'In Stock', label: 'In Stock' }, { value: 'Low Stock', label: 'Low Stock' }, { value: 'Out of Stock', label: 'Out of Stock' }]}
+            className="shrink-0 w-40"
+          />
         )}
         <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
           style={{ flex: '0 0 140px', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '8px 12px', color: 'var(--text-primary)', fontSize: 14 }} />
@@ -891,26 +892,33 @@ export default function StockView({ incomingGoodsList: _ig, addNotification }: P
       })()}
 
       {/* Adjust GP modal */}
-      {showAdjust && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-          <div style={{ background: 'var(--bg-card)', borderRadius: 20, padding: 32, width: '100%', maxWidth: 460, boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: 'var(--text-primary)' }}>Adjust Stock Quantity</h2>
-              <button onClick={() => { setShowAdjust(false); setAdjustTarget(null); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={20} /></button>
-            </div>
+      <SidePanel
+        open={showAdjust}
+        onClose={() => { setShowAdjust(false); setAdjustTarget(null); }}
+        title="Adjust Stock Quantity"
+        footer={
+          <>
+            <button onClick={() => { setShowAdjust(false); setAdjustTarget(null); setAdjustForm({ type: 'Add', quantity: '', reason: '', notes: '' }); }} disabled={submitting}
+              style={{ flex: 1, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 12, padding: '12px', fontWeight: 600, color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 14, opacity: submitting ? 0.5 : 1 }}>Cancel</button>
+            <button onClick={doAdjustGP} disabled={!adjustTarget || !adjustForm.quantity || submitting}
+              style={{ flex: 1, background: 'var(--accent)', border: 'none', borderRadius: 12, padding: '12px', fontWeight: 600, color: '#fff', cursor: 'pointer', fontSize: 14, opacity: (!adjustTarget || !adjustForm.quantity || submitting) ? 0.5 : 1 }}>{submitting ? 'Applying...' : 'Apply'}</button>
+          </>
+        }
+      >
             {!adjustTarget && (
               <div style={{ marginBottom: 14 }}>
                 <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 5 }}>Select Item</label>
-                <select onChange={e => { const gp = generalPurchases.find(x => x.id === e.target.value); setAdjustTarget(gp || null); }}
-                  style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'var(--text-primary)', fontSize: 14 }}>
-                  <option value="">Select item…</option>
-                  {generalPurchases.map(gp => <option key={gp.id} value={gp.id}>{gp.itemName} (current: {gp.quantity})</option>)}
-                </select>
+                <SearchableDropdown
+                  value=""
+                  onChange={v => { const gp = generalPurchases.find(x => x.id === v); setAdjustTarget(gp || null); }}
+                  placeholder="Select item…"
+                  options={generalPurchases.map(gp => ({ value: gp.id, label: gp.itemName, sublabel: `current: ${gp.quantity}` }))}
+                />
               </div>
             )}
             {adjustTarget && (
               <div style={{ background: 'var(--bg-input)', borderRadius: 10, padding: '10px 14px', marginBottom: 14, fontSize: 13, color: 'var(--text-secondary)' }}>
-                <strong style={{ color: 'var(--text-primary)' }}>{adjustTarget.itemName}</strong> — Current qty: <strong>{adjustTarget.quantity}</strong>
+                <strong style={{ color: 'var(--text-primary)' }}>{adjustTarget.itemName}</strong>. Current qty: <strong>{adjustTarget.quantity}</strong>
               </div>
             )}
             <div style={{ marginBottom: 14 }}>
@@ -933,15 +941,7 @@ export default function StockView({ incomingGoodsList: _ig, addNotification }: P
                   style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'var(--text-primary)', fontSize: 14, boxSizing: 'border-box' }} />
               </div>
             ))}
-            <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
-              <button onClick={() => { setShowAdjust(false); setAdjustTarget(null); setAdjustForm({ type: 'Add', quantity: '', reason: '', notes: '' }); }} disabled={submitting}
-                style={{ flex: 1, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 12, padding: '12px', fontWeight: 600, color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 14, opacity: submitting ? 0.5 : 1 }}>Cancel</button>
-              <button onClick={doAdjustGP} disabled={!adjustTarget || !adjustForm.quantity || submitting}
-                style={{ flex: 1, background: 'var(--accent)', border: 'none', borderRadius: 12, padding: '12px', fontWeight: 600, color: '#fff', cursor: 'pointer', fontSize: 14, opacity: (!adjustTarget || !adjustForm.quantity || submitting) ? 0.5 : 1 }}>{submitting ? 'Applying...' : 'Apply'}</button>
-            </div>
-          </div>
-        </div>
-      )}
+      </SidePanel>
 
       <StockIntakeForm
         isOpen={showAddProduct}

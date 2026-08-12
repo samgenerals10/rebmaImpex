@@ -6,6 +6,8 @@ import {
 } from 'lucide-react';
 import QRCode from 'qrcode';
 import { exportToCSV, safeDisplayName } from '../../utils/export';
+import SidePanel from '../../components/ui/SidePanel';
+import SearchableDropdown from '../../components/ui/SearchableDropdown';
 import CountUp from '../../components/CountUp';
 import { documentTemplates, type DocumentTemplate } from '../../services/apiClient';
 import { useCeoSettings } from '../../contexts/CeoSettingsContext';
@@ -521,14 +523,18 @@ export default function ApprovedGoodsView({ addNotification, setActiveSubTab: _s
                 <input value={ordersSearch} onChange={e => setOrdersSearch(e.target.value)} placeholder="Search client, ticket…"
                   className="pl-8 pr-3 py-2 rounded-lg bg-[var(--bg)] border border-[var(--border)] text-xs text-[var(--text-primary)] focus:outline-none w-52" />
               </div>
-              <select value={ordersStatusFilter} onChange={e => setOrdersStatusFilter(e.target.value)}
-                className="px-3 py-2 rounded-lg bg-[var(--bg)] border border-[var(--border)] text-xs text-[var(--text-primary)] focus:outline-none cursor-pointer">
-                <option value="ALL">All Statuses</option>
-                <option value="APPROVED">Approved — Awaiting Dispatch</option>
-                <option value="PROCESSING">Processing</option>
-                <option value="OUT_FOR_DELIVERY">Out for Delivery</option>
-                <option value="DELIVERED">Delivered</option>
-              </select>
+              <SearchableDropdown
+                value={ordersStatusFilter}
+                onChange={setOrdersStatusFilter}
+                options={[
+                  { value: 'ALL', label: 'All Statuses' },
+                  { value: 'APPROVED', label: 'Approved, Awaiting Dispatch' },
+                  { value: 'PROCESSING', label: 'Processing' },
+                  { value: 'OUT_FOR_DELIVERY', label: 'Out for Delivery' },
+                  { value: 'DELIVERED', label: 'Delivered' },
+                ]}
+                className="w-56"
+              />
             </div>
             <button onClick={() => exportToCSV(filteredOrders.map(o => ({ Ticket: o.ticketNumber, Client: o.clientName, Product: o.productName, Status: o.status, 'Issued By': o.issuedBy, Date: o.createdAt })), ['Ticket','Client','Product','Status','Issued By','Date'], 'approved_orders')}
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[var(--border)] text-xs text-[var(--text-secondary)] hover:bg-[var(--bg-card)] cursor-pointer whitespace-nowrap">
@@ -674,17 +680,24 @@ export default function ApprovedGoodsView({ addNotification, setActiveSubTab: _s
       )}
 
       {/* ── DISPATCH MODAL ── */}
-      {dispatchTarget && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-          <div className="bg-[var(--bg-card)] rounded-2xl p-6 w-full max-w-md shadow-2xl border border-[var(--border)]">
-            <div className="flex items-center justify-between mb-5">
-              <div>
-                <h3 className="text-base font-bold text-[var(--text-primary)]">Load to Dispatch</h3>
-                <p className="text-xs text-[var(--text-muted)] mt-0.5">Confirm goods, vehicle and driver to release this order</p>
-              </div>
-              <button onClick={() => setDispatchTarget(null)} className="p-1.5 hover:bg-[var(--bg)] rounded-lg cursor-pointer"><X size={16} className="text-[var(--text-muted)]" /></button>
-            </div>
-
+      <SidePanel
+        open={!!dispatchTarget}
+        onClose={() => setDispatchTarget(null)}
+        title="Load to Dispatch"
+        subtitle="Confirm goods, vehicle and driver to release this order"
+        footer={
+          <>
+            <button onClick={() => setDispatchTarget(null)} className="erp-btn erp-btn-ghost">Cancel</button>
+            <button onClick={handleDispatch} disabled={dispatching}
+              title="Deducts stock, creates a delivery log, and releases this order to the assigned driver"
+              className="erp-btn erp-btn-primary disabled:opacity-50">
+              <Truck size={13} /> {dispatching ? 'Sending…' : 'Confirm & Load to Dispatch'}
+            </button>
+          </>
+        }
+      >
+        {dispatchTarget && (
+          <div>
             {/* Order summary */}
             <div className="bg-[var(--bg)] border border-[var(--border)] rounded-xl p-4 mb-4 space-y-1.5">
               {[
@@ -713,17 +726,15 @@ export default function ApprovedGoodsView({ addNotification, setActiveSubTab: _s
                 </div>
                 <p className="text-[10px] text-[var(--text-muted)]">This quantity will be recorded as OUT in the stock ledger</p>
               </div>
-              <div>
-                <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Vehicle ID / Plate Number</label>
+              <div className="erp-form-group">
+                <label className="erp-label">Vehicle ID / Plate Number</label>
                 <input value={dispatchForm.vehicleId} onChange={e => setDispatchForm(f => ({ ...f, vehicleId: e.target.value }))}
-                  placeholder="e.g. GH-1234-22"
-                  className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg)] border border-[var(--border)] text-xs text-[var(--text-primary)] focus:outline-none" />
+                  placeholder="e.g. GH-1234-22" className="erp-input" />
               </div>
-              <div>
-                <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Driver Name <span className="font-normal text-[var(--text-muted)]">(optional)</span></label>
+              <div className="erp-form-group">
+                <label className="erp-label">Driver Name <span className="font-normal normal-case text-[var(--text-muted)]">(optional)</span></label>
                 <input value={dispatchForm.driverName} onChange={e => setDispatchForm(f => ({ ...f, driverName: e.target.value }))}
-                  placeholder="e.g. Kofi Mensah"
-                  className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg)] border border-[var(--border)] text-xs text-[var(--text-primary)] focus:outline-none" />
+                  placeholder="e.g. Kofi Mensah" className="erp-input" />
               </div>
             </div>
 
@@ -733,23 +744,12 @@ export default function ApprovedGoodsView({ addNotification, setActiveSubTab: _s
               </div>
             )}
 
-            <div className="flex gap-3">
-              <button onClick={() => setDispatchTarget(null)}
-                className="flex-1 py-2.5 border border-[var(--border)] rounded-xl text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg)] cursor-pointer">Cancel</button>
-              <button onClick={handleDispatch} disabled={dispatching}
-                title="Deducts stock, creates a delivery log, and releases this order to the assigned driver"
-                className="flex-1 py-2.5 text-white rounded-xl text-xs font-bold hover:opacity-90 cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
-                style={{ background: 'var(--accent)' }}>
-                <Truck size={13} /> {dispatching ? 'Sending…' : 'Confirm & Load to Dispatch'}
-              </button>
-            </div>
-
-            <p className="text-[10px] text-[var(--text-muted)] text-center mt-3">
-              Order → <strong>OUT_FOR_DELIVERY</strong> · Stock ledger REMOVE entry created · Audit trail recorded
+            <p className="text-[10px] text-[var(--text-muted)] text-center">
+              Order to <strong>OUT_FOR_DELIVERY</strong>. Stock ledger REMOVE entry created. Audit trail recorded
             </p>
           </div>
-        </div>
-      )}
+        )}
+      </SidePanel>
     </div>
   );
 }
