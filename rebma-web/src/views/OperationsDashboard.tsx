@@ -147,6 +147,7 @@ export default function OperationsDashboard({
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [hasGetUserMedia] = useState(() => !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia));
 
   const startCamera = async (mode = cameraFacingMode) => {
     setIsCameraActive(true);
@@ -201,9 +202,11 @@ export default function OperationsDashboard({
   };
 
   const handleTakePhoto = () => {
-    // Logic for triggering camera UI goes here, if separate camera modal exists.
-    // Otherwise keep current simple file input trigger.
-    cameraInputRef.current?.click();
+    if (hasGetUserMedia) {
+      startCamera();
+    } else {
+      cameraInputRef.current?.click();
+    }
   };
 
   useEffect(() => {
@@ -1253,7 +1256,7 @@ export default function OperationsDashboard({
 
                 {/* PORT CARGO MODAL */}
                 <SidePanel
-                  open={showPortModal}
+                  open={showPortModal && !isCameraActive}
                   onClose={() => setShowPortModal(false)}
                   title="Workflow A: Log Incoming Port Cargo"
                   width="lg"
