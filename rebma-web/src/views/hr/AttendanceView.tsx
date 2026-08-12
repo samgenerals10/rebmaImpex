@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import {
   UserCheck, Search, Download, MapPin, Settings, CheckCircle, Clock,
-  AlertCircle, X, Edit2, Trash2, Copy, Share2, MoreVertical, Plus
+  AlertCircle, Edit2, Trash2, Copy, Share2, MoreVertical, Plus
 } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import CountUp from '../../components/CountUp';
 import { exportToCSV } from '../../utils/export';
+import SidePanel from '../../components/ui/SidePanel';
+import SearchableDropdown from '../../components/ui/SearchableDropdown';
 import type { Attendance } from '../../types/erp';
 import { usePaginatedQuery } from '../../hooks/usePaginatedQuery';
 
@@ -289,10 +291,7 @@ export default function AttendanceView({ attendanceList, addNotification }: Prop
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name or ID..."
             className="bg-transparent border-none outline-none text-[var(--text-primary)] text-xs w-full" />
         </div>
-        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
-          className="bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-[var(--text-primary)] text-xs">
-          {['All', 'PRESENT', 'LATE'].map(s => <option key={s}>{s}</option>)}
-        </select>
+        <SearchableDropdown value={statusFilter} onChange={setStatusFilter} options={['All', 'PRESENT', 'LATE'].map(s => ({ value: s, label: s }))} className="w-36" />
         <button onClick={() => exportToCSV(filtered, ['id', 'fullName', 'checkInTime', 'status'], 'attendance_export')}
           className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 bg-[var(--accent-light)] text-[var(--accent)] border border-[var(--border)] rounded-xl hover:opacity-80 cursor-pointer transition-opacity">
           <Download className="w-3.5 h-3.5" /> Export
@@ -376,15 +375,19 @@ export default function AttendanceView({ attendanceList, addNotification }: Prop
       {menuOpen && <div className="fixed inset-0 z-20" onClick={() => setMenuOpen(null)} />}
 
       {/* Edit modal */}
-      {editRec && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5 w-full max-w-sm">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-[var(--text-primary)]">Edit Attendance Log</h3>
-              <button onClick={() => setEditRec(null)} className="text-[var(--text-muted)] cursor-pointer"><X className="w-5 h-5" /></button>
-            </div>
-            <p className="text-xs text-[var(--text-muted)] mb-3">{editRec.fullName}</p>
-            <div className="space-y-3">
+      <SidePanel
+        open={!!editRec}
+        onClose={() => setEditRec(null)}
+        title="Edit Attendance Log"
+        subtitle={editRec?.fullName}
+        footer={
+          <>
+            <button onClick={() => setEditRec(null)} disabled={submitting} className="erp-btn erp-btn-ghost disabled:opacity-50">Cancel</button>
+            <button onClick={handleEditSave} disabled={submitting} className="erp-btn erp-btn-primary disabled:opacity-50">{submitting ? 'Saving...' : 'Save Changes'}</button>
+          </>
+        }
+      >
+        <div className="space-y-3">
               <div>
                 <label className="block text-xs text-[var(--text-secondary)] mb-1 font-semibold">Check-In Time</label>
                 <input type="time" value={editTime} onChange={e => setEditTime(e.target.value)}
@@ -401,24 +404,22 @@ export default function AttendanceView({ attendanceList, addNotification }: Prop
                   ))}
                 </div>
               </div>
-            </div>
-            <div className="flex gap-2 mt-4 justify-end">
-              <button onClick={() => setEditRec(null)} disabled={submitting} className="px-4 py-2 text-xs border border-[var(--border)] rounded-xl text-[var(--text-secondary)] cursor-pointer disabled:opacity-50">Cancel</button>
-              <button onClick={handleEditSave} disabled={submitting} className="px-4 py-2 text-xs bg-[var(--accent)] text-white rounded-xl font-semibold cursor-pointer disabled:opacity-50">{submitting ? 'Saving...' : 'Save Changes'}</button>
-            </div>
-          </div>
         </div>
-      )}
+      </SidePanel>
 
       {/* Add modal */}
-      {showAdd && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5 w-full max-w-sm">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-[var(--text-primary)]">Add Attendance Log</h3>
-              <button onClick={() => setShowAdd(false)} className="text-[var(--text-muted)] cursor-pointer"><X className="w-5 h-5" /></button>
-            </div>
-            <div className="space-y-3">
+      <SidePanel
+        open={showAdd}
+        onClose={() => setShowAdd(false)}
+        title="Add Attendance Log"
+        footer={
+          <>
+            <button onClick={() => setShowAdd(false)} disabled={submitting} className="erp-btn erp-btn-ghost disabled:opacity-50">Cancel</button>
+            <button onClick={handleAdd} disabled={submitting} className="erp-btn erp-btn-primary disabled:opacity-50">{submitting ? 'Adding...' : 'Add'}</button>
+          </>
+        }
+      >
+        <div className="space-y-3">
               <div>
                 <label className="block text-xs text-[var(--text-secondary)] mb-1">Full Name</label>
                 <input value={addForm.fullName} onChange={e => setAddForm(p => ({ ...p, fullName: e.target.value }))}
@@ -440,26 +441,23 @@ export default function AttendanceView({ attendanceList, addNotification }: Prop
                   ))}
                 </div>
               </div>
-            </div>
-            <div className="flex gap-2 mt-4 justify-end">
-              <button onClick={() => setShowAdd(false)} disabled={submitting} className="px-4 py-2 text-xs border border-[var(--border)] rounded-xl text-[var(--text-secondary)] cursor-pointer disabled:opacity-50">Cancel</button>
-              <button onClick={handleAdd} disabled={submitting} className="px-4 py-2 text-xs bg-[var(--accent)] text-white rounded-xl font-semibold cursor-pointer disabled:opacity-50">{submitting ? 'Adding...' : 'Add'}</button>
-            </div>
-          </div>
         </div>
-      )}
+      </SidePanel>
 
       {/* Workplace Settings modal */}
-      {showSettings && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5 w-full max-w-md">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-[var(--text-primary)] flex items-center gap-2">
-                <MapPin className="w-4 h-4 text-[var(--accent)]" /> Workplace Settings
-              </h3>
-              <button onClick={() => setShowSettings(false)} className="text-[var(--text-muted)] cursor-pointer"><X className="w-5 h-5" /></button>
-            </div>
-            <div className="space-y-3">
+      <SidePanel
+        open={showSettings}
+        onClose={() => setShowSettings(false)}
+        title="Workplace Settings"
+        badge={<MapPin className="w-4 h-4 text-[var(--accent)]" />}
+        footer={
+          <>
+            <button onClick={() => setShowSettings(false)} className="erp-btn erp-btn-ghost">Cancel</button>
+            <button onClick={handleSaveSettings} className="erp-btn erp-btn-primary">Save Settings</button>
+          </>
+        }
+      >
+        <div className="space-y-3">
               <div>
                 <label className="block text-xs text-[var(--text-secondary)] mb-1">Office Name</label>
                 <input value={settings.officeName} onChange={e => setSettings(p => ({ ...p, officeName: e.target.value }))}
@@ -492,17 +490,11 @@ export default function AttendanceView({ attendanceList, addNotification }: Prop
                   <div className={`w-4 h-4 bg-white rounded-full shadow transition-transform mx-1 ${settings.allowVirtual ? 'translate-x-5' : 'translate-x-0'}`} />
                 </button>
               </div>
-            </div>
-            <p className="text-[10px] text-[var(--text-muted)] mt-3">
-              Rule: Within {settings.radiusMeters}m = Physical · Outside = Virtual (if enabled) · No GPS = Fail
-            </p>
-            <div className="flex gap-2 mt-4 justify-end">
-              <button onClick={() => setShowSettings(false)} className="px-4 py-2 text-xs border border-[var(--border)] rounded-xl text-[var(--text-secondary)] cursor-pointer">Cancel</button>
-              <button onClick={handleSaveSettings} className="px-4 py-2 text-xs bg-[var(--accent)] text-white rounded-xl font-semibold cursor-pointer">Save Settings</button>
-            </div>
-          </div>
         </div>
-      )}
+        <p className="text-[10px] text-[var(--text-muted)] mt-3">
+          Rule: Within {settings.radiusMeters}m equals Physical. Outside equals Virtual (if enabled). No GPS equals Fail
+        </p>
+      </SidePanel>
     </div>
   );
 }

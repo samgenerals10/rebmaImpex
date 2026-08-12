@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import {
   UserPlus, CheckCircle, XCircle, Search, Filter, Clock,
-  Copy, Eye, EyeOff, X, Mail, Phone, CreditCard, Building2, Calendar,
+  Copy, Eye, EyeOff, Mail, Phone, CreditCard, Building2, Calendar,
   Edit, Trash2
 } from 'lucide-react';
 import type { PendingRegistration } from '../../types/erp';
 import { supabase } from '../../lib/supabaseClient';
 import CountUp from '../../components/CountUp';
 import { useFullscreenToggle, FullscreenButton } from '../../components/global/FullscreenToggle';
+import SidePanel from '../../components/ui/SidePanel';
+import SearchableDropdown from '../../components/ui/SearchableDropdown';
 
 const DEPARTMENTS = ['All', 'Operations', 'Finance', 'Logistics', 'HR', 'Marketing', 'Reception', 'Production', 'Management', 'Dispatch'];
 const STATUSES = ['All', 'PENDING', 'APPROVED', 'REJECTED'];
@@ -221,14 +223,8 @@ export default function RegistrationsView({ pendingRegistrations, addNotificatio
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name, email, Ghana Card..."
             className="bg-transparent border-none outline-none text-[var(--text-primary)] text-xs w-full" />
         </div>
-        <select value={deptFilter} onChange={e => setDeptFilter(e.target.value)}
-          className="bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-[var(--text-primary)] text-xs">
-          {DEPARTMENTS.map(d => <option key={d}>{d}</option>)}
-        </select>
-        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
-          className="bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-[var(--text-primary)] text-xs">
-          {STATUSES.map(s => <option key={s}>{s}</option>)}
-        </select>
+        <SearchableDropdown value={deptFilter} onChange={setDeptFilter} options={DEPARTMENTS.map(d => ({ value: d, label: d }))} className="w-40" />
+        <SearchableDropdown value={statusFilter} onChange={setStatusFilter} options={STATUSES.map(s => ({ value: s, label: s }))} className="w-36" />
         <FullscreenButton expanded={tableFullscreen.expanded} onClick={tableFullscreen.toggle} />
       </div>
 
@@ -315,37 +311,31 @@ export default function RegistrationsView({ pendingRegistrations, addNotificatio
       </div>
 
       {/* Deny reason modal */}
-      {denyId && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5 w-full max-w-sm">
-            <h3 className="font-bold text-[var(--text-primary)] mb-3">Deny Registration</h3>
-            <p className="text-xs text-[var(--text-muted)] mb-3">Please provide a reason for denying this registration:</p>
-            <textarea value={denyReason} onChange={e => setDenyReason(e.target.value)} rows={3} placeholder="Reason..."
-              className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-[var(--text-primary)] text-sm resize-none outline-none" />
-            <div className="flex gap-2 mt-3 justify-end">
-              <button onClick={() => setDenyId(null)} disabled={submitting}
-                className="px-4 py-2 text-xs border border-[var(--border)] rounded-xl text-[var(--text-secondary)] hover:bg-[var(--accent-light)] cursor-pointer disabled:opacity-50">
-                Cancel
-              </button>
-              <button onClick={handleDeny} disabled={submitting}
-                className="px-4 py-2 text-xs bg-rose-500 text-white rounded-xl font-semibold hover:bg-rose-600 cursor-pointer disabled:opacity-50">
-                {submitting ? 'Denying...' : 'Confirm Deny'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <SidePanel
+        open={!!denyId}
+        onClose={() => setDenyId(null)}
+        title="Deny Registration"
+        subtitle="Please provide a reason for denying this registration."
+        footer={
+          <>
+            <button onClick={() => setDenyId(null)} disabled={submitting} className="erp-btn erp-btn-ghost disabled:opacity-50">Cancel</button>
+            <button onClick={handleDeny} disabled={submitting} className="erp-btn erp-btn-danger disabled:opacity-50">
+              {submitting ? 'Denying...' : 'Confirm Deny'}
+            </button>
+          </>
+        }
+      >
+        <textarea value={denyReason} onChange={e => setDenyReason(e.target.value)} rows={3} placeholder="Reason..." className="erp-input resize-none" />
+      </SidePanel>
 
       {/* Detail modal */}
-      {detailReg && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5 w-full max-w-2xl">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-[var(--text-primary)]">Registration Detail</h3>
-              <button onClick={() => setDetailReg(null)} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+      <SidePanel
+        open={!!detailReg}
+        onClose={() => setDetailReg(null)}
+        title="Registration Detail"
+      >
+        {detailReg && (
+          <>
             <div className="flex items-center gap-3 mb-4 p-3 bg-[var(--bg)] rounded-xl border border-[var(--border)]">
               <div className="w-12 h-12 rounded-full bg-[var(--accent)] text-white flex items-center justify-center font-bold text-lg">
                 {detailReg.fullName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
@@ -382,20 +372,18 @@ export default function RegistrationsView({ pendingRegistrations, addNotificatio
                 </button>
               </div>
             )}
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </SidePanel>
 
       {/* Credentials Popup */}
-      {credPopup?.show && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5 w-full max-w-2xl">
-            <div className="flex items-center justify-between mb-4 border-b border-[var(--border)] pb-3">
-              <h3 className="font-bold text-lg text-emerald-500">Account Credentials Generated</h3>
-              <button onClick={() => setCredPopup(null)} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+      <SidePanel
+        open={!!credPopup?.show}
+        onClose={() => setCredPopup(null)}
+        title="Account Credentials Generated"
+      >
+        {credPopup && (
+          <>
             <p className="text-xs text-[var(--text-muted)] mb-3">
               <strong className="text-[var(--text-primary)]">{credPopup.fullName}</strong> ({credPopup.email})
             </p>
@@ -431,18 +419,25 @@ export default function RegistrationsView({ pendingRegistrations, addNotificatio
                 Close
               </button>
             </div>
-          </div>
-        </div>
-      )}
-      {showEdit && editForm && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5 w-full max-w-2xl">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-[var(--text-primary)]">Edit Registration Detail</h3>
-              <button onClick={() => { setShowEdit(false); setEditForm(null); }} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+          </>
+        )}
+      </SidePanel>
+
+      <SidePanel
+        open={showEdit && !!editForm}
+        onClose={() => { setShowEdit(false); setEditForm(null); }}
+        title="Edit Registration Detail"
+        footer={
+          <>
+            <button onClick={() => { setShowEdit(false); setEditForm(null); }} disabled={submitting}
+              className="erp-btn erp-btn-ghost disabled:opacity-50">Cancel</button>
+            <button onClick={handleEditSave} disabled={submitting} className="erp-btn erp-btn-primary disabled:opacity-50">
+              {submitting ? 'Saving...' : 'Save Changes'}
+            </button>
+          </>
+        }
+      >
+        {editForm && (
             <div className="space-y-3">
               <div>
                 <label className="block text-xs text-[var(--text-secondary)] mb-1 font-semibold">Full Name</label>
@@ -461,10 +456,7 @@ export default function RegistrationsView({ pendingRegistrations, addNotificatio
               </div>
               <div>
                 <label className="block text-xs text-[var(--text-secondary)] mb-1 font-semibold">Department / Role</label>
-                <select value={editForm.department} onChange={e => setEditForm({ ...editForm, department: e.target.value })}
-                  className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-[var(--text-primary)] text-sm outline-none">
-                  {DEPARTMENTS.filter(d => d !== 'All').map(d => <option key={d} value={d}>{d}</option>)}
-                </select>
+                <SearchableDropdown value={editForm.department} onChange={v => setEditForm({ ...editForm, department: v })} options={DEPARTMENTS.filter(d => d !== 'All').map(d => ({ value: d, label: d }))} />
               </div>
               <div>
                 <label className="block text-xs text-[var(--text-secondary)] mb-1 font-semibold">Ghana Card ID</label>
@@ -472,19 +464,8 @@ export default function RegistrationsView({ pendingRegistrations, addNotificatio
                   className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 font-mono text-[var(--text-primary)] text-sm outline-none" />
               </div>
             </div>
-            <div className="flex gap-2 mt-5 justify-end">
-              <button onClick={() => { setShowEdit(false); setEditForm(null); }} disabled={submitting}
-                className="px-4 py-2 text-xs border border-[var(--border)] rounded-xl text-[var(--text-secondary)] hover:bg-[var(--accent-light)] cursor-pointer disabled:opacity-50">
-                Cancel
-              </button>
-              <button onClick={handleEditSave} disabled={submitting}
-                className="px-4 py-2 text-xs bg-[var(--accent)] text-white rounded-xl font-semibold hover:opacity-90 cursor-pointer disabled:opacity-50">
-                {submitting ? 'Saving...' : 'Save Changes'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+        )}
+      </SidePanel>
     </div>
   );
 }

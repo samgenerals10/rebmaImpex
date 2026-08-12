@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import {
   Users, Plus, Search, MoreVertical, ChevronLeft, Mail, Phone, CreditCard,
-  Calendar, Award, Clock, X, Edit2, UserX, Eye, TrendingUp
+  Calendar, Award, Clock, Edit2, UserX, Eye, TrendingUp
 } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import type { StaffMember } from '../../types/erp';
 import { usePaginatedQuery } from '../../hooks/usePaginatedQuery';
+import SidePanel from '../../components/ui/SidePanel';
+import SearchableDropdown from '../../components/ui/SearchableDropdown';
 
 
 const DEPARTMENTS = ['All', 'Operations', 'Finance', 'Logistics', 'HR', 'Marketing', 'Reception', 'Production', 'Management'];
@@ -235,27 +237,37 @@ export default function StaffView({ staffList: propStaff, addNotification }: Pro
     }
   };
 
-  const CredentialsModal = () => newCredentials ? (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
-      <div style={{ background: 'var(--bg-card)', borderRadius: 12, padding: '1.5rem', width: '100%', maxWidth: 440, border: '1px solid var(--border)' }}>
-        <h3 style={{ margin: '0 0 0.75rem', color: 'var(--text-primary)', fontWeight: 600 }}>Staff Account Created</h3>
-        <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '0 0 1rem' }}>Share these credentials with the new staff member now — the password won't be shown again.</p>
-        <div style={{ background: 'var(--bg)', borderRadius: 8, padding: '0.75rem 1rem', marginBottom: '1rem', fontFamily: 'monospace', fontSize: 13 }}>
-          <p style={{ margin: '0 0 6px', color: 'var(--text-primary)' }}>Email: {newCredentials.email}</p>
-          <p style={{ margin: 0, color: 'var(--text-primary)' }}>Password: {newCredentials.password}</p>
-        </div>
-        <button onClick={() => setNewCredentials(null)} style={{ width: '100%', padding: '0.6rem', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#fff', cursor: 'pointer', fontWeight: 600 }}>Done</button>
-      </div>
-    </div>
-  ) : null;
+  const CredentialsModal = () => (
+    <SidePanel
+      open={!!newCredentials}
+      onClose={() => setNewCredentials(null)}
+      title="Staff Account Created"
+      footer={<button onClick={() => setNewCredentials(null)} className="erp-btn erp-btn-primary w-full">Done</button>}
+    >
+      {newCredentials && (
+        <>
+          <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '0 0 1rem' }}>Share these credentials with the new staff member now. The password won't be shown again.</p>
+          <div style={{ background: 'var(--bg)', borderRadius: 8, padding: '0.75rem 1rem', fontFamily: 'monospace', fontSize: 13 }}>
+            <p style={{ margin: '0 0 6px', color: 'var(--text-primary)' }}>Email: {newCredentials.email}</p>
+            <p style={{ margin: 0, color: 'var(--text-primary)' }}>Password: {newCredentials.password}</p>
+          </div>
+        </>
+      )}
+    </SidePanel>
+  );
 
   const FormModal = ({ title, onClose, onSave }: { title: string; onClose: () => void; onSave: () => void }) => (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
-      <div style={{ background: 'var(--bg-card)', borderRadius: 12, padding: '1.5rem', width: '100%', maxWidth: 500, border: '1px solid var(--border)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-          <h3 style={{ margin: 0, color: 'var(--text-primary)', fontWeight: 600 }}>{title}</h3>
-          <button onClick={onClose} disabled={submitting} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', opacity: submitting ? 0.5 : 1 }}><X size={20} /></button>
-        </div>
+    <SidePanel
+      open
+      onClose={onClose}
+      title={title}
+      footer={
+        <>
+          <button onClick={onClose} disabled={submitting} style={{ padding: '0.5rem 1.25rem', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer', opacity: submitting ? 0.5 : 1 }}>Cancel</button>
+          <button onClick={onSave} disabled={submitting} style={{ padding: '0.5rem 1.25rem', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#fff', cursor: 'pointer', fontWeight: 600, opacity: submitting ? 0.5 : 1 }}>{submitting ? 'Saving...' : 'Save'}</button>
+        </>
+      }
+    >
         <div style={{ display: 'grid', gap: '0.75rem' }}>
           {(['fullName', 'email', 'role', 'phone', 'ghanaCard'] as const).map(field => (
             <div key={field}>
@@ -272,18 +284,14 @@ export default function StaffView({ staffList: propStaff, addNotification }: Pro
           ))}
           <div>
             <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Department</label>
-            <select value={form.department} onChange={e => setForm(p => ({ ...p, department: e.target.value }))} disabled={submitting}
-              style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.75rem', color: 'var(--text-primary)', fontSize: 14, opacity: submitting ? 0.5 : 1 }}>
-              {DEPARTMENTS.filter(d => d !== 'All').map(d => <option key={d}>{d}</option>)}
-            </select>
+            <SearchableDropdown
+              value={form.department}
+              onChange={v => setForm(p => ({ ...p, department: v }))}
+              options={DEPARTMENTS.filter(d => d !== 'All').map(d => ({ value: d, label: d }))}
+            />
           </div>
         </div>
-        <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.25rem', justifyContent: 'flex-end' }}>
-          <button onClick={onClose} disabled={submitting} style={{ padding: '0.5rem 1.25rem', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer', opacity: submitting ? 0.5 : 1 }}>Cancel</button>
-          <button onClick={onSave} disabled={submitting} style={{ padding: '0.5rem 1.25rem', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#fff', cursor: 'pointer', fontWeight: 600, opacity: submitting ? 0.5 : 1 }}>{submitting ? 'Saving...' : 'Save'}</button>
-        </div>
-      </div>
-    </div>
+    </SidePanel>
   );
 
   if (selected) {
@@ -476,14 +484,8 @@ export default function StaffView({ staffList: propStaff, addNotification }: Pro
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name or email..."
             style={{ background: 'none', border: 'none', outline: 'none', color: 'var(--text-primary)', fontSize: 13, width: '100%' }} />
         </div>
-        <select value={deptFilter} onChange={e => setDeptFilter(e.target.value)}
-          style={{ background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.75rem', color: 'var(--text-primary)', fontSize: 13 }}>
-          {DEPARTMENTS.map(d => <option key={d}>{d}</option>)}
-        </select>
-        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
-          style={{ background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.75rem', color: 'var(--text-primary)', fontSize: 13 }}>
-          {['All', 'ACTIVE', 'INACTIVE', 'SUSPENDED'].map(s => <option key={s}>{s}</option>)}
-        </select>
+        <SearchableDropdown value={deptFilter} onChange={setDeptFilter} options={DEPARTMENTS.map(d => ({ value: d, label: d }))} className="w-40" />
+        <SearchableDropdown value={statusFilter} onChange={setStatusFilter} options={['All', 'ACTIVE', 'INACTIVE', 'SUSPENDED'].map(s => ({ value: s, label: s }))} className="w-36" />
         <input value={roleFilter} onChange={e => setRoleFilter(e.target.value)} placeholder="Filter by role..."
           style={{ background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.75rem', color: 'var(--text-primary)', fontSize: 13, minWidth: 140 }} />
       </div>

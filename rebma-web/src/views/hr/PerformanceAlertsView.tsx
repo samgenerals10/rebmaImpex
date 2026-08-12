@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import {
-  AlertTriangle, AlertCircle, CheckCircle, Clock, X, Bell,
+  AlertTriangle, AlertCircle, CheckCircle, Clock, Bell,
   TrendingDown, UserX, Calendar, MessageSquare, Filter, Search
 } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import type { CurrentUser } from '../../types/erp';
 import CountUp from '../../components/CountUp';
+import SidePanel from '../../components/ui/SidePanel';
+import SearchableDropdown from '../../components/ui/SearchableDropdown';
 
 type AlertLevel = 'critical' | 'high' | 'medium' | 'low';
 type AlertStatus = 'OPEN' | 'IN_REVIEW' | 'RESOLVED';
@@ -176,14 +178,18 @@ export default function PerformanceAlertsView({ currentUser, addNotification }: 
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search staff, dept, issue..."
             className="bg-transparent border-none outline-none text-[var(--text-primary)] text-xs w-full" />
         </div>
-        <select value={levelFilter} onChange={e => setLevelFilter(e.target.value as any)}
-          className="bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-[var(--text-primary)] text-xs">
-          {['All', 'critical', 'high', 'medium', 'low'].map(l => <option key={l} value={l}>{l === 'All' ? 'All Levels' : l.charAt(0).toUpperCase() + l.slice(1)}</option>)}
-        </select>
-        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value as any)}
-          className="bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-[var(--text-primary)] text-xs">
-          {['All', 'OPEN', 'IN_REVIEW', 'RESOLVED'].map(s => <option key={s} value={s}>{s === 'All' ? 'All Statuses' : s.replace('_', ' ')}</option>)}
-        </select>
+        <SearchableDropdown
+          value={levelFilter}
+          onChange={v => setLevelFilter(v as any)}
+          options={['All', 'critical', 'high', 'medium', 'low'].map(l => ({ value: l, label: l === 'All' ? 'All Levels' : l.charAt(0).toUpperCase() + l.slice(1) }))}
+          className="w-36"
+        />
+        <SearchableDropdown
+          value={statusFilter}
+          onChange={v => setStatusFilter(v as any)}
+          options={['All', 'OPEN', 'IN_REVIEW', 'RESOLVED'].map(s => ({ value: s, label: s === 'All' ? 'All Statuses' : s.replace('_', ' ') }))}
+          className="w-40"
+        />
       </div>
 
       {/* Alerts List */}
@@ -263,13 +269,13 @@ export default function PerformanceAlertsView({ currentUser, addNotification }: 
       </div>
 
       {/* Detail modal */}
-      {selected && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5 w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-[var(--text-primary)]">Alert Detail</h3>
-              <button onClick={() => setSelected(null)} className="text-[var(--text-muted)] cursor-pointer"><X className="w-5 h-5" /></button>
-            </div>
+      <SidePanel
+        open={!!selected}
+        onClose={() => setSelected(null)}
+        title="Alert Detail"
+      >
+        {selected && (
+          <>
             <div className="flex items-center gap-3 mb-4">
               <div className="w-12 h-12 rounded-full bg-[var(--accent)] text-white flex items-center justify-center font-bold text-lg shrink-0">
                 {selected.staffName.split(' ').map(n => n[0]).join('').slice(0, 2)}
@@ -321,9 +327,9 @@ export default function PerformanceAlertsView({ currentUser, addNotification }: 
                 <CheckCircle className="w-3.5 h-3.5" /> Resolved on {selected.resolvedAt} by {selected.resolvedBy}
               </p>
             )}
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </SidePanel>
     </div>
   );
 }

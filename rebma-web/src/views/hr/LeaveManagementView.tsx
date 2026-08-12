@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, X, CheckCircle, XCircle, Clock, Calendar, Users, Filter, LayoutList, CalendarDays, Wallet, Edit, Trash2 } from 'lucide-react';
+import { Plus, CheckCircle, XCircle, Clock, Calendar, Users, Filter, LayoutList, CalendarDays, Wallet, Edit, Trash2 } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import type { CurrentUser } from '../../types/erp';
 import EntityDetailPanel from '../../components/global/EntityDetailPanel';
+import SidePanel from '../../components/ui/SidePanel';
+import SearchableDropdown from '../../components/ui/SearchableDropdown';
 
 interface LeaveRequest {
   id: string;
@@ -345,18 +347,9 @@ export default function LeaveManagementView({ currentUser, addNotification }: Pr
 
       <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.25rem', flexWrap: 'wrap', alignItems: 'center' }}>
         <Filter size={14} style={{ color: 'var(--text-muted)' }} />
-        <select value={deptFilter} onChange={e => setDeptFilter(e.target.value)}
-          style={{ background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.75rem', color: 'var(--text-primary)', fontSize: 13 }}>
-          {DEPARTMENTS.map(d => <option key={d}>{d}</option>)}
-        </select>
-        <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)}
-          style={{ background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.75rem', color: 'var(--text-primary)', fontSize: 13 }}>
-          {LEAVE_TYPES.map(t => <option key={t}>{t}</option>)}
-        </select>
-        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
-          style={{ background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.75rem', color: 'var(--text-primary)', fontSize: 13 }}>
-          {STATUSES.map(s => <option key={s}>{s}</option>)}
-        </select>
+        <SearchableDropdown value={deptFilter} onChange={setDeptFilter} options={DEPARTMENTS.map(d => ({ value: d, label: d }))} className="w-40" />
+        <SearchableDropdown value={typeFilter} onChange={setTypeFilter} options={LEAVE_TYPES.map(t => ({ value: t, label: t }))} className="w-40" />
+        <SearchableDropdown value={statusFilter} onChange={setStatusFilter} options={STATUSES.map(s => ({ value: s, label: s }))} className="w-36" />
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -518,13 +511,17 @@ export default function LeaveManagementView({ currentUser, addNotification }: Pr
         );
       })()}
 
-      {showAdd && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
-          <div style={{ background: 'var(--bg-card)', borderRadius: 12, padding: '1.5rem', width: '100%', maxWidth: 480, border: '1px solid var(--border)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-              <h3 style={{ margin: 0, color: 'var(--text-primary)', fontWeight: 600 }}>New Leave Request</h3>
-              <button onClick={() => setShowAdd(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={20} /></button>
-            </div>
+      <SidePanel
+        open={showAdd}
+        onClose={() => setShowAdd(false)}
+        title="New Leave Request"
+        footer={
+          <>
+            <button onClick={() => setShowAdd(false)} disabled={submitting} style={{ padding: '0.5rem 1.25rem', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-secondary)', cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.6 : 1 }}>Cancel</button>
+            <button onClick={handleAdd} disabled={submitting} style={{ padding: '0.5rem 1.25rem', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#fff', cursor: submitting ? 'not-allowed' : 'pointer', fontWeight: 600, opacity: submitting ? 0.6 : 1 }}>{submitting ? 'Submitting...' : 'Submit'}</button>
+          </>
+        }
+      >
             <div style={{ display: 'grid', gap: '0.75rem' }}>
               <div>
                 <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Employee Name</label>
@@ -533,17 +530,11 @@ export default function LeaveManagementView({ currentUser, addNotification }: Pr
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Department</label>
-                <select value={form.department} onChange={e => setForm(p => ({ ...p, department: e.target.value }))}
-                  style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.75rem', color: 'var(--text-primary)', fontSize: 14 }}>
-                  {DEPARTMENTS.filter(d => d !== 'All').map(d => <option key={d}>{d}</option>)}
-                </select>
+                <SearchableDropdown value={form.department} onChange={v => setForm(p => ({ ...p, department: v }))} options={DEPARTMENTS.filter(d => d !== 'All').map(d => ({ value: d, label: d }))} />
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Leave Type</label>
-                <select value={form.leaveType} onChange={e => setForm(p => ({ ...p, leaveType: e.target.value as LeaveRequest['leaveType'] }))}
-                  style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.75rem', color: 'var(--text-primary)', fontSize: 14 }}>
-                  {['Annual', 'Sick', 'Personal', 'Emergency'].map(t => <option key={t}>{t}</option>)}
-                </select>
+                <SearchableDropdown value={form.leaveType} onChange={v => setForm(p => ({ ...p, leaveType: v as LeaveRequest['leaveType'] }))} options={['Annual', 'Sick', 'Personal', 'Emergency'].map(t => ({ value: t, label: t }))} />
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
                 <div>
@@ -563,21 +554,20 @@ export default function LeaveManagementView({ currentUser, addNotification }: Pr
                   style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.75rem', color: 'var(--text-primary)', fontSize: 14, resize: 'vertical', boxSizing: 'border-box' }} />
               </div>
             </div>
-            <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.25rem', justifyContent: 'flex-end' }}>
-              <button onClick={() => setShowAdd(false)} disabled={submitting} style={{ padding: '0.5rem 1.25rem', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-secondary)', cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.6 : 1 }}>Cancel</button>
-              <button onClick={handleAdd} disabled={submitting} style={{ padding: '0.5rem 1.25rem', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#fff', cursor: submitting ? 'not-allowed' : 'pointer', fontWeight: 600, opacity: submitting ? 0.6 : 1 }}>{submitting ? 'Submitting...' : 'Submit'}</button>
-            </div>
-          </div>
-        </div>
-      )}
+      </SidePanel>
 
-      {showEdit && editForm && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
-          <div style={{ background: 'var(--bg-card)', borderRadius: 12, padding: '1.5rem', width: '100%', maxWidth: 480, border: '1px solid var(--border)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-              <h3 style={{ margin: 0, color: 'var(--text-primary)', fontWeight: 600 }}>Edit Leave Request</h3>
-              <button onClick={() => { setShowEdit(false); setEditForm(null); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={20} /></button>
-            </div>
+      <SidePanel
+        open={showEdit && !!editForm}
+        onClose={() => { setShowEdit(false); setEditForm(null); }}
+        title="Edit Leave Request"
+        footer={
+          <>
+            <button onClick={() => { setShowEdit(false); setEditForm(null); }} disabled={submitting} style={{ padding: '0.5rem 1.25rem', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-secondary)', cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.6 : 1 }}>Cancel</button>
+            <button onClick={handleEditSave} disabled={submitting} style={{ padding: '0.5rem 1.25rem', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#fff', cursor: submitting ? 'not-allowed' : 'pointer', fontWeight: 600, opacity: submitting ? 0.6 : 1 }}>{submitting ? 'Saving...' : 'Save Changes'}</button>
+          </>
+        }
+      >
+        {editForm && (
             <div style={{ display: 'grid', gap: '0.75rem' }}>
               <div>
                 <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Employee Name</label>
@@ -586,17 +576,11 @@ export default function LeaveManagementView({ currentUser, addNotification }: Pr
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Department</label>
-                <select value={editForm.department} onChange={e => setEditForm(p => p ? ({ ...p, department: e.target.value }) : null)}
-                  style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.75rem', color: 'var(--text-primary)', fontSize: 14 }}>
-                  {DEPARTMENTS.filter(d => d !== 'All').map(d => <option key={d}>{d}</option>)}
-                </select>
+                <SearchableDropdown value={editForm.department} onChange={v => setEditForm(p => p ? ({ ...p, department: v }) : null)} options={DEPARTMENTS.filter(d => d !== 'All').map(d => ({ value: d, label: d }))} />
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Leave Type</label>
-                <select value={editForm.leaveType} onChange={e => setEditForm(p => p ? ({ ...p, leaveType: e.target.value as LeaveRequest['leaveType'] }) : null)}
-                  style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.75rem', color: 'var(--text-primary)', fontSize: 14 }}>
-                  {['Annual', 'Sick', 'Personal', 'Emergency'].map(t => <option key={t}>{t}</option>)}
-                </select>
+                <SearchableDropdown value={editForm.leaveType} onChange={v => setEditForm(p => p ? ({ ...p, leaveType: v as LeaveRequest['leaveType'] }) : null)} options={['Annual', 'Sick', 'Personal', 'Emergency'].map(t => ({ value: t, label: t }))} />
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
                 <div>
@@ -617,10 +601,7 @@ export default function LeaveManagementView({ currentUser, addNotification }: Pr
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Status</label>
-                <select value={editForm.status} onChange={e => setEditForm(p => p ? ({ ...p, status: e.target.value as LeaveRequest['status'] }) : null)}
-                  style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.75rem', color: 'var(--text-primary)', fontSize: 14 }}>
-                  {['PENDING', 'APPROVED', 'REJECTED'].map(s => <option key={s}>{s}</option>)}
-                </select>
+                <SearchableDropdown value={editForm.status} onChange={v => setEditForm(p => p ? ({ ...p, status: v as LeaveRequest['status'] }) : null)} options={['PENDING', 'APPROVED', 'REJECTED'].map(s => ({ value: s, label: s }))} />
               </div>
               {editForm.status === 'REJECTED' && (
                 <div>
@@ -630,13 +611,8 @@ export default function LeaveManagementView({ currentUser, addNotification }: Pr
                 </div>
               )}
             </div>
-            <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.25rem', justifyContent: 'flex-end' }}>
-              <button onClick={() => { setShowEdit(false); setEditForm(null); }} disabled={submitting} style={{ padding: '0.5rem 1.25rem', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-secondary)', cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.6 : 1 }}>Cancel</button>
-              <button onClick={handleEditSave} disabled={submitting} style={{ padding: '0.5rem 1.25rem', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#fff', cursor: submitting ? 'not-allowed' : 'pointer', fontWeight: 600, opacity: submitting ? 0.6 : 1 }}>{submitting ? 'Saving...' : 'Save Changes'}</button>
-            </div>
-          </div>
-        </div>
-      )}
+        )}
+      </SidePanel>
     </div>
   );
 }

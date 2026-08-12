@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import {
   DollarSign, Download, Plus, Eye, EyeOff, CheckCircle, Clock,
-  AlertCircle, X, FileText, Users, Search
+  AlertCircle, FileText, Users, Search
 } from 'lucide-react';
 import { exportToCSV } from '../../utils/export';
 import { supabase } from '../../lib/supabaseClient';
 import CountUp from '../../components/CountUp';
+import SidePanel from '../../components/ui/SidePanel';
+import SearchableDropdown from '../../components/ui/SearchableDropdown';
 import { useCeoSettings } from '../../contexts/CeoSettingsContext';
 import type { StaffMember, CurrentUser } from '../../types/erp';
 
@@ -375,10 +377,7 @@ export default function PayrollView({ currentUser, staffList, addNotification }:
               <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search staff..."
                 className="bg-transparent border-none outline-none text-[var(--text-primary)] text-xs w-full" />
             </div>
-            <select value={deptFilter} onChange={e => setDeptFilter(e.target.value)}
-              className="bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-[var(--text-primary)] text-xs">
-              {depts.map(d => <option key={d}>{d}</option>)}
-            </select>
+            <SearchableDropdown value={deptFilter} onChange={setDeptFilter} options={depts.map(d => ({ value: d, label: d }))} className="w-40" />
           </div>
 
           <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl overflow-hidden">
@@ -447,25 +446,22 @@ export default function PayrollView({ currentUser, staffList, addNotification }:
       )}
 
       {/* New Batch Modal */}
-      {showNewBatch && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5 w-full max-w-sm">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-[var(--text-primary)]">New Payroll Batch</h3>
-              <button onClick={() => setShowNewBatch(false)} disabled={submitting} className="text-[var(--text-muted)] cursor-pointer disabled:opacity-50"><X className="w-5 h-5" /></button>
-            </div>
-            <div>
-              <label className="block text-xs text-[var(--text-secondary)] mb-1">Period</label>
-              <input type="month" value={newPeriod} onChange={e => setNewPeriod(e.target.value)} disabled={submitting}
-                className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-[var(--text-primary)] text-sm outline-none disabled:opacity-50" />
-            </div>
-            <div className="flex gap-2 mt-4 justify-end">
-              <button onClick={() => setShowNewBatch(false)} disabled={submitting} className="px-4 py-2 text-xs border border-[var(--border)] rounded-xl text-[var(--text-secondary)] cursor-pointer disabled:opacity-50">Cancel</button>
-              <button onClick={handleCreateBatch} disabled={submitting} className="px-4 py-2 text-xs bg-[var(--accent)] text-white rounded-xl font-semibold cursor-pointer disabled:opacity-50">{submitting ? 'Creating...' : 'Create'}</button>
-            </div>
-          </div>
+      <SidePanel
+        open={showNewBatch}
+        onClose={() => setShowNewBatch(false)}
+        title="New Payroll Batch"
+        footer={
+          <>
+            <button onClick={() => setShowNewBatch(false)} disabled={submitting} className="erp-btn erp-btn-ghost disabled:opacity-50">Cancel</button>
+            <button onClick={handleCreateBatch} disabled={submitting} className="erp-btn erp-btn-primary disabled:opacity-50">{submitting ? 'Creating...' : 'Create'}</button>
+          </>
+        }
+      >
+        <div className="erp-form-group">
+          <label className="erp-label">Period</label>
+          <input type="month" value={newPeriod} onChange={e => setNewPeriod(e.target.value)} disabled={submitting} className="erp-input disabled:opacity-50" />
         </div>
-      )}
+      </SidePanel>
     </div>
   );
 }

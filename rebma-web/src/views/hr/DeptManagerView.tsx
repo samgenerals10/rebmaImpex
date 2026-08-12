@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import {
-  Building2, Users, TrendingUp, Edit2, X, Plus, CheckCircle,
+  Building2, Users, TrendingUp, Edit2, Plus, CheckCircle,
   BarChart2, AlertCircle, UserCheck
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import type { StaffMember } from '../../types/erp';
+import SidePanel from '../../components/ui/SidePanel';
 import CountUp from '../../components/CountUp';
 
 interface Department {
@@ -227,14 +228,24 @@ export default function DeptManagerView({ staffList, addNotification }: Props) {
       </div>
 
       {/* Detail panel */}
-      {selected && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5 w-full max-w-md">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-[var(--text-primary)] text-lg">{selected.name} Department</h3>
-              <button onClick={() => setSelected(null)} className="text-[var(--text-muted)] cursor-pointer"><X className="w-5 h-5" /></button>
-            </div>
-            <div className="space-y-3">
+      <SidePanel
+        open={!!selected}
+        onClose={() => setSelected(null)}
+        title={selected ? `${selected.name} Department` : ''}
+        footer={
+          selected ? (
+            <>
+              <button onClick={() => { openEdit(selected); setSelected(null); }}
+                className="erp-btn erp-btn-primary flex-1">
+                <Edit2 className="w-3.5 h-3.5" /> Edit
+              </button>
+              <button onClick={() => setSelected(null)} className="erp-btn erp-btn-ghost">Close</button>
+            </>
+          ) : undefined
+        }
+      >
+        {selected && (
+          <div className="space-y-3">
               <div className="flex items-center gap-3 p-3 bg-[var(--bg)] rounded-xl border border-[var(--border)]">
                 <div className="w-10 h-10 rounded-full bg-[var(--accent)] text-white flex items-center justify-center font-bold text-sm">
                   {selected.headName.split(' ').map(n => n[0]).join('').slice(0, 2)}
@@ -257,30 +268,24 @@ export default function DeptManagerView({ staffList, addNotification }: Props) {
                   </div>
                 ))}
               </div>
-              <div className="flex gap-2 mt-3">
-                <button onClick={() => { openEdit(selected); setSelected(null); }}
-                  className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-[var(--accent)] text-white rounded-xl text-sm font-semibold cursor-pointer">
-                  <Edit2 className="w-3.5 h-3.5" /> Edit
-                </button>
-                <button onClick={() => setSelected(null)}
-                  className="px-4 py-2 border border-[var(--border)] rounded-xl text-sm text-[var(--text-secondary)] cursor-pointer">
-                  Close
-                </button>
-              </div>
-            </div>
           </div>
-        </div>
-      )}
+        )}
+      </SidePanel>
 
       {/* Edit modal */}
-      {editDept && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5 w-full max-w-sm">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-[var(--text-primary)]">Edit {editDept.name}</h3>
-              <button onClick={() => setEditDept(null)} disabled={submitting} className="text-[var(--text-muted)] cursor-pointer disabled:opacity-50"><X className="w-5 h-5" /></button>
-            </div>
-            <div className="space-y-3">
+      <SidePanel
+        open={!!editDept}
+        onClose={() => setEditDept(null)}
+        title={editDept ? `Edit ${editDept.name}` : ''}
+        footer={
+          <>
+            <button onClick={() => setEditDept(null)} disabled={submitting} className="erp-btn erp-btn-ghost disabled:opacity-50">Cancel</button>
+            <button onClick={handleSaveEdit} disabled={submitting} className="erp-btn erp-btn-primary disabled:opacity-50">{submitting ? 'Saving...' : 'Save'}</button>
+          </>
+        }
+      >
+        {editDept && (
+          <div className="space-y-3">
               {[
                 { label: 'Department Head', key: 'headName' as const, type: 'text' },
                 { label: 'Head Role', key: 'headRole' as const, type: 'text' },
@@ -294,14 +299,9 @@ export default function DeptManagerView({ staffList, addNotification }: Props) {
                     className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-[var(--text-primary)] text-sm outline-none disabled:opacity-50" />
                 </div>
               ))}
-            </div>
-            <div className="flex gap-2 mt-4 justify-end">
-              <button onClick={() => setEditDept(null)} disabled={submitting} className="px-4 py-2 text-xs border border-[var(--border)] rounded-xl text-[var(--text-secondary)] cursor-pointer disabled:opacity-50">Cancel</button>
-              <button onClick={handleSaveEdit} disabled={submitting} className="px-4 py-2 text-xs bg-[var(--accent)] text-white rounded-xl font-semibold cursor-pointer disabled:opacity-50">{submitting ? 'Saving...' : 'Save'}</button>
-            </div>
           </div>
-        </div>
-      )}
+        )}
+      </SidePanel>
     </div>
   );
 }
