@@ -1,6 +1,6 @@
 // src/views/dispatch/ProofOfDeliveryView.tsx
 import { useState, useEffect, useRef } from 'react';
-import { Camera, CheckCircle, Clock, Upload, Eye } from 'lucide-react';
+import { Camera, CheckCircle, Clock, Upload, Eye, RefreshCw, AlertTriangle } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import SidePanel from '../../components/ui/SidePanel';
 import { uploadFile } from '../../utils/uploadFile';
@@ -106,16 +106,7 @@ export default function ProofOfDeliveryView({ addNotification }: Props) {
   const [uploadTargetId, setUploadTargetId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
 
-  const handleUpload = (id: string) => {
-    setUploadTargetId(id);
-    fileInputRef.current?.click();
-  };
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    const targetId = uploadTargetId;
-    e.target.value = '';
-    if (!file || !targetId) return;
+  const uploadProof = async (file: File, targetId: string) => {
     setUploading(true);
     try {
       const url = await uploadFile(file, 'delivery-proofs', targetId);
@@ -130,6 +121,94 @@ export default function ProofOfDeliveryView({ addNotification }: Props) {
       setUploading(false);
       setUploadTargetId(null);
     }
+  };
+
+  // Live camera state
+  const [isCameraActive, setIsCameraActive] = useState(false);
+  const [cameraFacingMode, setCameraFacingMode] = useState<'user' | 'environment'>('environment');
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [hasGetUserMedia] = useState(() => !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia));
+
+  const handleUpload = (id: string) => {
+    setUploadTargetId(id);
+    if (hasGetUserMedia) {
+      startCamera();
+    } else {
+      fileInputRef.current?.click();
+    }
+  };
+
+  const startCamera = async (mode = cameraFacingMode) => {
+    setIsCameraActive(true);
+    setCameraError(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: mode } });
+      setCameraStream(stream);
+    } catch (err: any) {
+      setCameraError(err.message || 'Webcam access is restricted by your browser permissions or environment.');
+    }
+  };
+
+  // The <video> element only mounts once isCameraActive is true, so the
+  // stream has to be attached here (after that render commits) rather than
+  // inline in startCamera, where videoRef.current would still be null.
+  useEffect(() => {
+    if (isCameraActive && cameraStream && videoRef.current) {
+      videoRef.current.srcObject = cameraStream;
+      videoRef.current.play().catch(() => {});
+    }
+  }, [isCameraActive, cameraStream]);
+
+  const stopCamera = () => {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(track => track.stop());
+      setCameraStream(null);
+    }
+    setIsCameraActive(false);
+    setCameraError(null);
+  };
+
+  const toggleFacingMode = async () => {
+    const nextMode = cameraFacingMode === 'user' ? 'environment' : 'user';
+    setCameraFacingMode(nextMode);
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(track => track.stop());
+    }
+    await startCamera(nextMode);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (cameraStream) cameraStream.getTracks().forEach(track => track.stop());
+    };
+  }, [cameraStream]);
+
+  const capturePhoto = () => {
+    const video = videoRef.current;
+    const targetId = uploadTargetId;
+    if (!video || !targetId) return;
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    canvas.toBlob(async blob => {
+      if (!blob) return;
+      const file = new File([blob], `proof-${Date.now()}.jpg`, { type: 'image/jpeg' });
+      stopCamera();
+      await uploadProof(file, targetId);
+    }, 'image/jpeg', 0.85);
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    const targetId = uploadTargetId;
+    e.target.value = '';
+    if (!file || !targetId) return;
+    await uploadProof(file, targetId);
   };
 
   const pending   = rows.filter(r => r.status === 'pending_proof');
@@ -196,7 +275,13 @@ export default function ProofOfDeliveryView({ addNotification }: Props) {
                         disabled={uploading && uploadTargetId === row.id}
                         className="flex items-center gap-1 px-2.5 py-1 bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-secondary)] text-xs font-semibold rounded-lg cursor-pointer hover:bg-[var(--accent-light)] disabled:opacity-60"
                       >
-                        <Upload className="w-3.5 h-3.5" /> {uploading && uploadTargetId === row.id ? 'Uploading...' : 'Upload'}
+                        {uploading && uploadTargetId === row.id ? (
+                          <>Uploading...</>
+                        ) : hasGetUserMedia ? (
+                          <><Camera className="w-3.5 h-3.5" /> Take Photo</>
+                        ) : (
+                          <><Upload className="w-3.5 h-3.5" /> Upload</>
+                        )}
                       </button>
                       <button onClick={() => markConfirmed(row.id)} className="flex items-center gap-1 px-2.5 py-1 bg-emerald-500 text-white text-xs font-semibold rounded-lg cursor-pointer hover:bg-emerald-600">
                         <CheckCircle className="w-3.5 h-3.5" /> Confirm
@@ -209,6 +294,77 @@ export default function ProofOfDeliveryView({ addNotification }: Props) {
           ))}
         </div>
       )}
+
+      {/* Live camera capture modal */}
+      <SidePanel
+        open={isCameraActive}
+        onClose={stopCamera}
+        title="Capture Delivery Proof"
+        badge={
+          <button
+            type="button"
+            onClick={toggleFacingMode}
+            className="p-1.5 hover:bg-[var(--accent-light)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-lg cursor-pointer transition-colors"
+            title="Switch Camera"
+          >
+            <RefreshCw className="w-4 h-4" />
+          </button>
+        }
+      >
+        <div className="-mx-5 -my-4 flex flex-col">
+          {cameraError ? (
+            <div className="p-6 text-center space-y-4 flex flex-col items-center justify-center min-h-[220px]">
+              <AlertTriangle className="w-12 h-12 text-amber-500 animate-pulse" />
+              <div>
+                <h4 className="text-sm font-bold text-[var(--text-primary)]">Webcam Stream Restricted</h4>
+                <p className="text-[11px] text-[var(--text-secondary)] mt-2 max-w-[260px] mx-auto leading-relaxed">
+                  Live video is blocked by browser permissions, iframe sandboxing, or non-secure context settings.
+                </p>
+              </div>
+              <div className="flex flex-col gap-2 w-full pt-2">
+                <button
+                  type="button"
+                  onClick={() => { stopCamera(); fileInputRef.current?.click(); }}
+                  className="w-full py-2.5 bg-[var(--accent)] text-white text-xs font-bold rounded-xl shadow-md hover:opacity-95 cursor-pointer transition-opacity"
+                >
+                  Use System Camera / Upload
+                </button>
+                <button
+                  type="button"
+                  onClick={stopCamera}
+                  className="w-full py-2 border border-[var(--border)] text-[var(--text-secondary)] hover:bg-[var(--accent-light)] text-xs font-semibold rounded-xl cursor-pointer"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="relative aspect-video bg-black flex items-center justify-center overflow-hidden">
+                <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
+                <div className="absolute inset-0 border-2 border-white/20 pointer-events-none rounded-xl m-4 border-dashed" />
+              </div>
+              <div className="p-4 flex gap-3 justify-end bg-[var(--bg)]">
+                <button
+                  type="button"
+                  onClick={stopCamera}
+                  className="px-4 py-2 border border-[var(--border)] text-xs font-semibold rounded-xl text-[var(--text-secondary)] hover:bg-[var(--accent-light)] cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={capturePhoto}
+                  disabled={uploading}
+                  className="px-4 py-2 bg-[var(--accent)] text-white text-xs font-bold rounded-xl shadow-md hover:opacity-90 cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
+                >
+                  <Camera className="w-3.5 h-3.5" /> {uploading ? 'Uploading...' : 'Capture & Upload'}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </SidePanel>
 
       {/* Proof viewer modal */}
       <SidePanel
