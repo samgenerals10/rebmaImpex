@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Truck, Wrench, Settings, Package, Plus, X, Edit, ChevronLeft } from 'lucide-react';
+import { Truck, Wrench, Settings, Package, Plus, Edit, ChevronLeft } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
+import SidePanel from '../../components/ui/SidePanel';
+import SearchableDropdown from '../../components/ui/SearchableDropdown';
 
 interface Vehicle {
   id: string;
@@ -109,7 +111,7 @@ export default function FleetOverviewView({ addNotification }: Props) {
 
   const inputStyle: React.CSSProperties = { background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'var(--text-primary)', fontSize: 14, width: '100%', boxSizing: 'border-box' };
 
-  const VehicleForm = ({ onSave, onClose }: { onSave: () => void; onClose: () => void }) => (
+  const VehicleForm = () => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div>
         <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Vehicle ID</label>
@@ -117,11 +119,15 @@ export default function FleetOverviewView({ addNotification }: Props) {
       </div>
       <div>
         <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Type</label>
-        <select value={formData.type} onChange={e => setFormData(f => ({ ...f, type: e.target.value as Vehicle['type'] }))} style={inputStyle}>
-          <option value="Pickup">Pickup</option>
-          <option value="Container">Container</option>
-          <option value="Tanker">Tanker</option>
-        </select>
+        <SearchableDropdown
+          value={formData.type}
+          onChange={v => setFormData(f => ({ ...f, type: v as Vehicle['type'] }))}
+          options={[
+            { value: 'Pickup', label: 'Pickup' },
+            { value: 'Container', label: 'Container' },
+            { value: 'Tanker', label: 'Tanker' },
+          ]}
+        />
       </div>
       <div>
         <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Driver Assigned</label>
@@ -129,19 +135,19 @@ export default function FleetOverviewView({ addNotification }: Props) {
       </div>
       <div>
         <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Status</label>
-        <select value={formData.status} onChange={e => setFormData(f => ({ ...f, status: e.target.value as Vehicle['status'] }))} style={inputStyle}>
-          <option value="Operational">Operational</option>
-          <option value="In Maintenance">In Maintenance</option>
-          <option value="Retired">Retired</option>
-        </select>
+        <SearchableDropdown
+          value={formData.status}
+          onChange={v => setFormData(f => ({ ...f, status: v as Vehicle['status'] }))}
+          options={[
+            { value: 'Operational', label: 'Operational' },
+            { value: 'In Maintenance', label: 'In Maintenance' },
+            { value: 'Retired', label: 'Retired' },
+          ]}
+        />
       </div>
       <div>
         <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Last Maintenance Date</label>
         <input type="date" value={formData.lastMaintenance} onChange={e => setFormData(f => ({ ...f, lastMaintenance: e.target.value }))} style={inputStyle} />
-      </div>
-      <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
-        <button onClick={onClose} style={{ flex: 1, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 12, padding: 12, color: 'var(--text-secondary)', cursor: 'pointer', fontWeight: 600 }}>Cancel</button>
-        <button onClick={onSave} style={{ flex: 2, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 12, padding: 12, fontWeight: 700, cursor: 'pointer', fontSize: 15 }}>Save</button>
       </div>
     </div>
   );
@@ -280,17 +286,19 @@ export default function FleetOverviewView({ addNotification }: Props) {
         ))}
       </div>}
 
-      {(showAddModal || editVehicle) && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}>
-          <div style={{ background: 'var(--bg-card)', borderRadius: 20, padding: 28, width: '100%', maxWidth: 460, border: '1px solid var(--border)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>{editVehicle ? 'Edit Vehicle' : 'Add Vehicle'}</h2>
-              <button onClick={() => { setShowAddModal(false); setEditVehicle(null); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={20} /></button>
-            </div>
-            <VehicleForm onSave={editVehicle ? handleSaveEdit : handleSaveAdd} onClose={() => { setShowAddModal(false); setEditVehicle(null); }} />
+      <SidePanel
+        open={showAddModal || !!editVehicle}
+        onClose={() => { setShowAddModal(false); setEditVehicle(null); }}
+        title={editVehicle ? 'Edit Vehicle' : 'Add Vehicle'}
+        footer={
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button onClick={() => { setShowAddModal(false); setEditVehicle(null); }} style={{ flex: 1, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 12, padding: 12, color: 'var(--text-secondary)', cursor: 'pointer', fontWeight: 600 }}>Cancel</button>
+            <button onClick={editVehicle ? handleSaveEdit : handleSaveAdd} style={{ flex: 2, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 12, padding: 12, fontWeight: 700, cursor: 'pointer', fontSize: 15 }}>Save</button>
           </div>
-        </div>
-      )}
+        }
+      >
+        <VehicleForm />
+      </SidePanel>
     </div>
   );
 }

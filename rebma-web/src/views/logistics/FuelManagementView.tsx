@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { Plus, X, Fuel, Edit, Trash2 } from 'lucide-react';
+import { Plus, Fuel, Edit, Trash2 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { supabase } from '../../lib/supabaseClient';
 import { usePaginatedQuery } from '../../hooks/usePaginatedQuery';
+import SidePanel from '../../components/ui/SidePanel';
+import SearchableDropdown from '../../components/ui/SearchableDropdown';
 
 interface FuelLog {
   id: string;
@@ -200,10 +202,12 @@ export default function FuelManagementView({ addNotification }: Props) {
       </div>
 
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-        <select value={filterVehicle} onChange={e => setFilterVehicle(e.target.value)} style={{ background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 12, padding: '8px 14px', color: 'var(--text-primary)', fontSize: 14 }}>
-          <option value="All">All Vehicles</option>
-          {VEHICLES.map(v => <option key={v} value={v}>{v}</option>)}
-        </select>
+        <SearchableDropdown
+          value={filterVehicle}
+          onChange={setFilterVehicle}
+          className="min-w-[180px]"
+          options={[{ value: 'All', label: 'All Vehicles' }, ...VEHICLES.map(v => ({ value: v, label: v }))]}
+        />
         <input value={filterDriver} onChange={e => setFilterDriver(e.target.value)} placeholder="Filter by driver..." style={{ background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 12, padding: '8px 14px', color: 'var(--text-primary)', fontSize: 14 }} />
       </div>
 
@@ -277,77 +281,71 @@ export default function FuelManagementView({ addNotification }: Props) {
         </div>}
       </div>
 
-      {showModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}>
-          <div style={{ background: 'var(--bg-card)', borderRadius: 20, padding: 28, width: '100%', maxWidth: 520, border: '1px solid var(--border)', maxHeight: '90vh', overflowY: 'auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Log Fuel Entry</h2>
-              <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={20} /></button>
+      <SidePanel
+        open={showModal}
+        onClose={() => setShowModal(false)}
+        title="Log Fuel Entry"
+        footer={
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button onClick={() => setShowModal(false)} disabled={submitting} style={{ flex: 1, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 12, padding: 12, color: 'var(--text-secondary)', cursor: submitting ? 'not-allowed' : 'pointer', fontWeight: 600, opacity: submitting ? 0.7 : 1 }}>Cancel</button>
+            <button onClick={handleSubmit} disabled={submitting} style={{ flex: 2, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 12, padding: 12, fontWeight: 700, cursor: submitting ? 'not-allowed' : 'pointer', fontSize: 15, opacity: submitting ? 0.7 : 1 }}>{submitting ? 'Logging...' : 'Log Entry'}</button>
+          </div>
+        }
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {([
+            { label: 'Date', key: 'date', type: 'date' },
+            { label: 'Driver', key: 'driver', type: 'text', placeholder: 'Driver name' },
+            { label: 'Liters', key: 'liters', type: 'number', placeholder: '0' },
+            { label: 'Cost (GHS)', key: 'cost', type: 'number', placeholder: '0' },
+            { label: 'Fuel Station', key: 'station', type: 'text', placeholder: 'Station name' },
+            { label: 'Odometer Reading (km)', key: 'odometer', type: 'number', placeholder: '0' },
+          ] as Array<{ label: string; key: keyof typeof form; type: string; placeholder?: string }>).map(field => (
+            <div key={field.key}>
+              <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>{field.label}</label>
+              <input type={field.type} value={form[field.key]} onChange={e => setForm(f => ({ ...f, [field.key]: e.target.value }))} placeholder={field.placeholder} style={inputStyle} />
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              {([
-                { label: 'Date', key: 'date', type: 'date' },
-                { label: 'Driver', key: 'driver', type: 'text', placeholder: 'Driver name' },
-                { label: 'Liters', key: 'liters', type: 'number', placeholder: '0' },
-                { label: 'Cost (GHS)', key: 'cost', type: 'number', placeholder: '0' },
-                { label: 'Fuel Station', key: 'station', type: 'text', placeholder: 'Station name' },
-                { label: 'Odometer Reading (km)', key: 'odometer', type: 'number', placeholder: '0' },
-              ] as Array<{ label: string; key: keyof typeof form; type: string; placeholder?: string }>).map(field => (
-                <div key={field.key}>
-                  <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>{field.label}</label>
-                  <input type={field.type} value={form[field.key]} onChange={e => setForm(f => ({ ...f, [field.key]: e.target.value }))} placeholder={field.placeholder} style={inputStyle} />
-                </div>
-              ))}
-              <div>
-                <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Vehicle ID</label>
-                <select value={form.vehicleId} onChange={e => setForm(f => ({ ...f, vehicleId: e.target.value }))} style={inputStyle}>
-                  {VEHICLES.map(v => <option key={v} value={v}>{v}</option>)}
-                </select>
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
-              <button onClick={() => setShowModal(false)} disabled={submitting} style={{ flex: 1, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 12, padding: 12, color: 'var(--text-secondary)', cursor: submitting ? 'not-allowed' : 'pointer', fontWeight: 600, opacity: submitting ? 0.7 : 1 }}>Cancel</button>
-              <button onClick={handleSubmit} disabled={submitting} style={{ flex: 2, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 12, padding: 12, fontWeight: 700, cursor: submitting ? 'not-allowed' : 'pointer', fontSize: 15, opacity: submitting ? 0.7 : 1 }}>{submitting ? 'Logging...' : 'Log Entry'}</button>
-            </div>
+          ))}
+          <div>
+            <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Vehicle ID</label>
+            <SearchableDropdown value={form.vehicleId} onChange={v => setForm(f => ({ ...f, vehicleId: v }))} options={VEHICLES.map(v => ({ value: v, label: v }))} />
           </div>
         </div>
-      )}
+      </SidePanel>
 
-      {showEditModal && editForm && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}>
-          <div style={{ background: 'var(--bg-card)', borderRadius: 20, padding: 28, width: '100%', maxWidth: 520, border: '1px solid var(--border)', maxHeight: '90vh', overflowY: 'auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Edit Fuel Entry</h2>
-              <button onClick={() => { setShowEditModal(false); setEditForm(null); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={20} /></button>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              {([
-                { label: 'Date', key: 'date', type: 'date' },
-                { label: 'Driver', key: 'driver', type: 'text', placeholder: 'Driver name' },
-                { label: 'Liters', key: 'liters', type: 'number', placeholder: '0' },
-                { label: 'Cost (GHS)', key: 'cost', type: 'number', placeholder: '0' },
-                { label: 'Fuel Station', key: 'station', type: 'text', placeholder: 'Station name' },
-                { label: 'Odometer Reading (km)', key: 'odometer', type: 'number', placeholder: '0' },
-              ] as Array<{ label: string; key: keyof typeof form; type: string; placeholder?: string }>).map(field => (
-                <div key={field.key}>
-                  <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>{field.label}</label>
-                  <input type={field.type} value={editForm[field.key]} onChange={e => setEditForm(f => f ? ({ ...f, [field.key]: e.target.value }) : null)} placeholder={field.placeholder} style={inputStyle} />
-                </div>
-              ))}
-              <div>
-                <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Vehicle ID</label>
-                <select value={editForm.vehicleId} onChange={e => setEditForm(f => f ? ({ ...f, vehicleId: e.target.value }) : null)} style={inputStyle}>
-                  {VEHICLES.map(v => <option key={v} value={v}>{v}</option>)}
-                </select>
+      <SidePanel
+        open={showEditModal && !!editForm}
+        onClose={() => { setShowEditModal(false); setEditForm(null); }}
+        title="Edit Fuel Entry"
+        footer={
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button onClick={() => { setShowEditModal(false); setEditForm(null); }} disabled={submitting} style={{ flex: 1, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 12, padding: 12, color: 'var(--text-secondary)', cursor: submitting ? 'not-allowed' : 'pointer', fontWeight: 600, opacity: submitting ? 0.7 : 1 }}>Cancel</button>
+            <button onClick={handleEditSave} disabled={submitting} style={{ flex: 2, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 12, padding: 12, fontWeight: 700, cursor: submitting ? 'not-allowed' : 'pointer', fontSize: 15, opacity: submitting ? 0.7 : 1 }}>{submitting ? 'Saving...' : 'Save Changes'}</button>
+          </div>
+        }
+      >
+        {editForm && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {([
+              { label: 'Date', key: 'date', type: 'date' },
+              { label: 'Driver', key: 'driver', type: 'text', placeholder: 'Driver name' },
+              { label: 'Liters', key: 'liters', type: 'number', placeholder: '0' },
+              { label: 'Cost (GHS)', key: 'cost', type: 'number', placeholder: '0' },
+              { label: 'Fuel Station', key: 'station', type: 'text', placeholder: 'Station name' },
+              { label: 'Odometer Reading (km)', key: 'odometer', type: 'number', placeholder: '0' },
+            ] as Array<{ label: string; key: keyof typeof form; type: string; placeholder?: string }>).map(field => (
+              <div key={field.key}>
+                <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>{field.label}</label>
+                <input type={field.type} value={editForm[field.key]} onChange={e => setEditForm(f => f ? ({ ...f, [field.key]: e.target.value }) : null)} placeholder={field.placeholder} style={inputStyle} />
               </div>
-            </div>
-            <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
-              <button onClick={() => { setShowEditModal(false); setEditForm(null); }} disabled={submitting} style={{ flex: 1, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 12, padding: 12, color: 'var(--text-secondary)', cursor: submitting ? 'not-allowed' : 'pointer', fontWeight: 600, opacity: submitting ? 0.7 : 1 }}>Cancel</button>
-              <button onClick={handleEditSave} disabled={submitting} style={{ flex: 2, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 12, padding: 12, fontWeight: 700, cursor: submitting ? 'not-allowed' : 'pointer', fontSize: 15, opacity: submitting ? 0.7 : 1 }}>{submitting ? 'Saving...' : 'Save Changes'}</button>
+            ))}
+            <div>
+              <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Vehicle ID</label>
+              <SearchableDropdown value={editForm.vehicleId} onChange={v => setEditForm(f => f ? ({ ...f, vehicleId: v }) : null)} options={VEHICLES.map(v => ({ value: v, label: v }))} />
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </SidePanel>
     </div>
   );
 }

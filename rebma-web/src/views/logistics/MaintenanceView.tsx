@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { Plus, X, AlertTriangle, CheckCircle, Edit, Trash2 } from 'lucide-react';
+import { Plus, AlertTriangle, CheckCircle, Edit, Trash2 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { supabase } from '../../lib/supabaseClient';
 import { usePaginatedQuery } from '../../hooks/usePaginatedQuery';
+import SidePanel from '../../components/ui/SidePanel';
+import SearchableDropdown from '../../components/ui/SearchableDropdown';
 
 interface MaintenanceRecord {
   id: string;
@@ -239,22 +241,34 @@ export default function MaintenanceView({ addNotification }: Props) {
       )}
 
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-        <select value={filterVehicle} onChange={e => setFilterVehicle(e.target.value)} style={{ background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 12, padding: '8px 14px', color: 'var(--text-primary)', fontSize: 14 }}>
-          <option value="All">All Vehicles</option>
-          {VEHICLES.map(v => <option key={v} value={v}>{v}</option>)}
-        </select>
-        <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} style={{ background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 12, padding: '8px 14px', color: 'var(--text-primary)', fontSize: 14 }}>
-          <option value="All">All Statuses</option>
-          <option value="Scheduled">Scheduled</option>
-          <option value="In Progress">In Progress</option>
-          <option value="Completed">Completed</option>
-        </select>
-        <select value={filterType} onChange={e => setFilterType(e.target.value)} style={{ background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 12, padding: '8px 14px', color: 'var(--text-primary)', fontSize: 14 }}>
-          <option value="All">All Types</option>
-          <option value="Service">Service</option>
-          <option value="Repair">Repair</option>
-          <option value="Inspection">Inspection</option>
-        </select>
+        <SearchableDropdown
+          value={filterVehicle}
+          onChange={setFilterVehicle}
+          className="min-w-[160px]"
+          options={[{ value: 'All', label: 'All Vehicles' }, ...VEHICLES.map(v => ({ value: v, label: v }))]}
+        />
+        <SearchableDropdown
+          value={filterStatus}
+          onChange={setFilterStatus}
+          className="min-w-[160px]"
+          options={[
+            { value: 'All', label: 'All Statuses' },
+            { value: 'Scheduled', label: 'Scheduled' },
+            { value: 'In Progress', label: 'In Progress' },
+            { value: 'Completed', label: 'Completed' },
+          ]}
+        />
+        <SearchableDropdown
+          value={filterType}
+          onChange={setFilterType}
+          className="min-w-[160px]"
+          options={[
+            { value: 'All', label: 'All Types' },
+            { value: 'Service', label: 'Service' },
+            { value: 'Repair', label: 'Repair' },
+            { value: 'Inspection', label: 'Inspection' },
+          ]}
+        />
       </div>
 
       <div style={{ background: 'var(--bg-card)', borderRadius: 20, padding: 24, border: '1px solid var(--border)', boxShadow: 'var(--box-shadow)' }}>
@@ -330,107 +344,113 @@ export default function MaintenanceView({ addNotification }: Props) {
         </ResponsiveContainer>
       </div>
 
-      {showModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}>
-          <div style={{ background: 'var(--bg-card)', borderRadius: 20, padding: 28, width: '100%', maxWidth: 520, border: '1px solid var(--border)', maxHeight: '90vh', overflowY: 'auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Add Maintenance</h2>
-              <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={20} /></button>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <div>
-                <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Vehicle</label>
-                <select value={form.vehicleId} onChange={e => setForm(f => ({ ...f, vehicleId: e.target.value }))} style={inputStyle}>
-                  {VEHICLES.map(v => <option key={v} value={v}>{v}</option>)}
-                </select>
-              </div>
-              <div>
-                <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Type</label>
-                <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value as MaintenanceRecord['type'] }))} style={inputStyle}>
-                  <option value="Service">Service</option>
-                  <option value="Repair">Repair</option>
-                  <option value="Inspection">Inspection</option>
-                </select>
-              </div>
-              <div>
-                <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Date</label>
-                <input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} style={inputStyle} />
-              </div>
-              <div>
-                <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Description</label>
-                <input value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Describe the maintenance work" style={inputStyle} />
-              </div>
-              <div>
-                <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Mechanic</label>
-                <input value={form.mechanic} onChange={e => setForm(f => ({ ...f, mechanic: e.target.value }))} placeholder="Mechanic or workshop name" style={inputStyle} />
-              </div>
-              <div>
-                <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Estimated Cost (GHS)</label>
-                <input type="number" value={form.cost} onChange={e => setForm(f => ({ ...f, cost: e.target.value }))} placeholder="0" style={inputStyle} />
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
-              <button onClick={() => setShowModal(false)} disabled={submitting} style={{ flex: 1, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 12, padding: 12, color: 'var(--text-secondary)', cursor: submitting ? 'not-allowed' : 'pointer', fontWeight: 600, opacity: submitting ? 0.7 : 1 }}>Cancel</button>
-              <button onClick={handleSubmit} disabled={submitting} style={{ flex: 2, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 12, padding: 12, fontWeight: 700, cursor: submitting ? 'not-allowed' : 'pointer', fontSize: 15, opacity: submitting ? 0.7 : 1 }}>{submitting ? 'Scheduling...' : 'Schedule'}</button>
-            </div>
+      <SidePanel
+        open={showModal}
+        onClose={() => setShowModal(false)}
+        title="Add Maintenance"
+        footer={
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button onClick={() => setShowModal(false)} disabled={submitting} style={{ flex: 1, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 12, padding: 12, color: 'var(--text-secondary)', cursor: submitting ? 'not-allowed' : 'pointer', fontWeight: 600, opacity: submitting ? 0.7 : 1 }}>Cancel</button>
+            <button onClick={handleSubmit} disabled={submitting} style={{ flex: 2, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 12, padding: 12, fontWeight: 700, cursor: submitting ? 'not-allowed' : 'pointer', fontSize: 15, opacity: submitting ? 0.7 : 1 }}>{submitting ? 'Scheduling...' : 'Schedule'}</button>
+          </div>
+        }
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div>
+            <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Vehicle</label>
+            <SearchableDropdown value={form.vehicleId} onChange={v => setForm(f => ({ ...f, vehicleId: v }))} options={VEHICLES.map(v => ({ value: v, label: v }))} />
+          </div>
+          <div>
+            <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Type</label>
+            <SearchableDropdown
+              value={form.type}
+              onChange={v => setForm(f => ({ ...f, type: v as MaintenanceRecord['type'] }))}
+              options={[
+                { value: 'Service', label: 'Service' },
+                { value: 'Repair', label: 'Repair' },
+                { value: 'Inspection', label: 'Inspection' },
+              ]}
+            />
+          </div>
+          <div>
+            <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Date</label>
+            <input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} style={inputStyle} />
+          </div>
+          <div>
+            <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Description</label>
+            <input value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Describe the maintenance work" style={inputStyle} />
+          </div>
+          <div>
+            <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Mechanic</label>
+            <input value={form.mechanic} onChange={e => setForm(f => ({ ...f, mechanic: e.target.value }))} placeholder="Mechanic or workshop name" style={inputStyle} />
+          </div>
+          <div>
+            <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Estimated Cost (GHS)</label>
+            <input type="number" value={form.cost} onChange={e => setForm(f => ({ ...f, cost: e.target.value }))} placeholder="0" style={inputStyle} />
           </div>
         </div>
-      )}
+      </SidePanel>
 
-      {showEditModal && editForm && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}>
-          <div style={{ background: 'var(--bg-card)', borderRadius: 20, padding: 28, width: '100%', maxWidth: 520, border: '1px solid var(--border)', maxHeight: '90vh', overflowY: 'auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Edit Maintenance</h2>
-              <button onClick={() => { setShowEditModal(false); setEditForm(null); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={20} /></button>
+      <SidePanel
+        open={showEditModal && !!editForm}
+        onClose={() => { setShowEditModal(false); setEditForm(null); }}
+        title="Edit Maintenance"
+        footer={
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button onClick={() => { setShowEditModal(false); setEditForm(null); }} disabled={submitting} style={{ flex: 1, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 12, padding: 12, color: 'var(--text-secondary)', cursor: submitting ? 'not-allowed' : 'pointer', fontWeight: 600, opacity: submitting ? 0.7 : 1 }}>Cancel</button>
+            <button onClick={handleEditSave} disabled={submitting} style={{ flex: 2, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 12, padding: 12, fontWeight: 700, cursor: submitting ? 'not-allowed' : 'pointer', fontSize: 15, opacity: submitting ? 0.7 : 1 }}>{submitting ? 'Saving...' : 'Save Changes'}</button>
+          </div>
+        }
+      >
+        {editForm && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div>
+              <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Vehicle</label>
+              <SearchableDropdown value={editForm.vehicleId} onChange={v => setEditForm(f => f ? ({ ...f, vehicleId: v }) : null)} options={VEHICLES.map(v => ({ value: v, label: v }))} />
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <div>
-                <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Vehicle</label>
-                <select value={editForm.vehicleId} onChange={e => setEditForm(f => f ? ({ ...f, vehicleId: e.target.value }) : null)} style={inputStyle}>
-                  {VEHICLES.map(v => <option key={v} value={v}>{v}</option>)}
-                </select>
-              </div>
-              <div>
-                <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Type</label>
-                <select value={editForm.type} onChange={e => setEditForm(f => f ? ({ ...f, type: e.target.value as MaintenanceRecord['type'] }) : null)} style={inputStyle}>
-                  <option value="Service">Service</option>
-                  <option value="Repair">Repair</option>
-                  <option value="Inspection">Inspection</option>
-                </select>
-              </div>
-              <div>
-                <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Date</label>
-                <input type="date" value={editForm.date} onChange={e => setEditForm(f => f ? ({ ...f, date: e.target.value }) : null)} style={inputStyle} />
-              </div>
-              <div>
-                <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Description</label>
-                <input value={editForm.description} onChange={e => setEditForm(f => f ? ({ ...f, description: e.target.value }) : null)} placeholder="Describe the maintenance work" style={inputStyle} />
-              </div>
-              <div>
-                <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Mechanic</label>
-                <input value={editForm.mechanic} onChange={e => setEditForm(f => f ? ({ ...f, mechanic: e.target.value }) : null)} placeholder="Mechanic or workshop name" style={inputStyle} />
-              </div>
-              <div>
-                <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Estimated Cost (GHS)</label>
-                <input type="number" value={editForm.cost} onChange={e => setEditForm(f => f ? ({ ...f, cost: Number(e.target.value) }) : null)} placeholder="0" style={inputStyle} />
-              </div>
-              <div>
-                <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Status</label>
-                <select value={editForm.status} onChange={e => setEditForm(f => f ? ({ ...f, status: e.target.value as MaintenanceRecord['status'] }) : null)} style={inputStyle}>
-                  <option value="Scheduled">Scheduled</option>
-                  <option value="In Progress">In Progress</option>
-                  <option value="Completed">Completed</option>
-                </select>
-              </div>
+            <div>
+              <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Type</label>
+              <SearchableDropdown
+                value={editForm.type}
+                onChange={v => setEditForm(f => f ? ({ ...f, type: v as MaintenanceRecord['type'] }) : null)}
+                options={[
+                  { value: 'Service', label: 'Service' },
+                  { value: 'Repair', label: 'Repair' },
+                  { value: 'Inspection', label: 'Inspection' },
+                ]}
+              />
             </div>
-            <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
-              <button onClick={() => { setShowEditModal(false); setEditForm(null); }} disabled={submitting} style={{ flex: 1, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 12, padding: 12, color: 'var(--text-secondary)', cursor: submitting ? 'not-allowed' : 'pointer', fontWeight: 600, opacity: submitting ? 0.7 : 1 }}>Cancel</button>
-              <button onClick={handleEditSave} disabled={submitting} style={{ flex: 2, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 12, padding: 12, fontWeight: 700, cursor: submitting ? 'not-allowed' : 'pointer', fontSize: 15, opacity: submitting ? 0.7 : 1 }}>{submitting ? 'Saving...' : 'Save Changes'}</button>
+            <div>
+              <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Date</label>
+              <input type="date" value={editForm.date} onChange={e => setEditForm(f => f ? ({ ...f, date: e.target.value }) : null)} style={inputStyle} />
+            </div>
+            <div>
+              <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Description</label>
+              <input value={editForm.description} onChange={e => setEditForm(f => f ? ({ ...f, description: e.target.value }) : null)} placeholder="Describe the maintenance work" style={inputStyle} />
+            </div>
+            <div>
+              <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Mechanic</label>
+              <input value={editForm.mechanic} onChange={e => setEditForm(f => f ? ({ ...f, mechanic: e.target.value }) : null)} placeholder="Mechanic or workshop name" style={inputStyle} />
+            </div>
+            <div>
+              <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Estimated Cost (GHS)</label>
+              <input type="number" value={editForm.cost} onChange={e => setEditForm(f => f ? ({ ...f, cost: Number(e.target.value) }) : null)} placeholder="0" style={inputStyle} />
+            </div>
+            <div>
+              <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Status</label>
+              <SearchableDropdown
+                value={editForm.status}
+                onChange={v => setEditForm(f => f ? ({ ...f, status: v as MaintenanceRecord['status'] }) : null)}
+                options={[
+                  { value: 'Scheduled', label: 'Scheduled' },
+                  { value: 'In Progress', label: 'In Progress' },
+                  { value: 'Completed', label: 'Completed' },
+                ]}
+              />
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </SidePanel>
     </div>
   );
 }
