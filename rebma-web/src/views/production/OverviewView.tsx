@@ -9,6 +9,7 @@ import {
 } from 'recharts';
 import { supabase } from '../../lib/supabaseClient';
 import { exportToCSV, exportToPDF } from '../../utils/export';
+import SearchableDropdown from '../../components/ui/SearchableDropdown';
 import CountUp from '../../components/CountUp';
 import { useCeoSettings } from '../../contexts/CeoSettingsContext';
 import type { ProductionRequest, CurrentUser } from '../../types/erp';
@@ -300,10 +301,12 @@ export default function ProductionOverviewView({ currentUser, productionRequests
               <p className="text-xs text-[var(--text-muted)]">Daily production volumes</p>
             </div>
             <div className="flex items-center gap-2">
-              <select value={outputPeriod} onChange={e => setOutputPeriod(e.target.value)}
-                className="bg-[var(--bg-input)] border border-[var(--border)] rounded-lg px-2 py-1 text-[10px] text-[var(--text-secondary)] outline-none cursor-pointer">
-                {['Today', 'Week', 'Month', 'Quarter'].map(p => <option key={p}>{p}</option>)}
-              </select>
+              <SearchableDropdown
+                value={outputPeriod}
+                onChange={setOutputPeriod}
+                className="min-w-[110px] text-[10px]"
+                options={['Today', 'Week', 'Month', 'Quarter'].map(p => ({ value: p, label: p }))}
+              />
               <div className="flex bg-[var(--bg-input)] rounded-lg border border-[var(--border)] p-0.5">
                 {(['boxes', 'sachets', 'both'] as const).map(tab => (
                   <button key={tab} onClick={() => setOutputTab(tab)}

@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Eye, Copy, X, ChevronRight, Package, Edit, Trash2, Boxes } from 'lucide-react';
+import { Plus, Search, Eye, Copy, ChevronRight, Package, Edit, Trash2, Boxes } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useRealtimeChannel } from '../../hooks/useRealtimeChannel';
 import { production } from '../../services/apiClient';
+import SidePanel from '../../components/ui/SidePanel';
+import SearchableDropdown from '../../components/ui/SearchableDropdown';
 
 const STATUS_COLORS: Record<string, string> = {
   PENDING_MANAGEMENT: 'amber',
@@ -437,14 +439,19 @@ export default function InternalOrdersView({ productionRequests, addNotification
           <Search size={16} color="var(--text-muted)" />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search orders or materials..." style={{ background: 'none', border: 'none', outline: 'none', color: 'var(--text-primary)', fontSize: 14, width: '100%' }} />
         </div>
-        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={{ background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 12, padding: '8px 14px', color: 'var(--text-primary)', fontSize: 14, cursor: 'pointer' }}>
-          <option value="All">All Statuses</option>
-          <option value="PENDING_MANAGEMENT">Pending</option>
-          <option value="APPROVED">Approved</option>
-          <option value="TICKETS_ISSUED">Tickets Issued</option>
-          <option value="COMPLETED">Completed</option>
-          <option value="REJECTED">Rejected</option>
-        </select>
+        <SearchableDropdown
+          value={statusFilter}
+          onChange={setStatusFilter}
+          className="min-w-[180px]"
+          options={[
+            { value: 'All', label: 'All Statuses' },
+            { value: 'PENDING_MANAGEMENT', label: 'Pending' },
+            { value: 'APPROVED', label: 'Approved' },
+            { value: 'TICKETS_ISSUED', label: 'Tickets Issued' },
+            { value: 'COMPLETED', label: 'Completed' },
+            { value: 'REJECTED', label: 'Rejected' },
+          ]}
+        />
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -506,13 +513,17 @@ export default function InternalOrdersView({ productionRequests, addNotification
         )}
       </div>
 
-      {selectedOrder && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}>
-          <div style={{ background: 'var(--bg-card)', borderRadius: 20, padding: 28, width: '100%', maxWidth: 580, maxHeight: '90vh', overflowY: 'auto', border: '1px solid var(--border)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Request Details</h2>
-              <button onClick={() => setSelectedOrder(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={20} /></button>
-            </div>
+      <SidePanel
+        open={!!selectedOrder}
+        onClose={() => setSelectedOrder(null)}
+        title="Request Details"
+        width="lg"
+        footer={
+          <button onClick={() => setSelectedOrder(null)} style={{ width: '100%', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 12, padding: '12px', fontWeight: 600, cursor: 'pointer', fontSize: 15 }}>Close</button>
+        }
+      >
+        {selectedOrder && (
+          <>
             <div style={{ display: 'flex', gap: 12, marginBottom: 16, alignItems: 'center', flexWrap: 'wrap' }}>
               <StatusBadge status={selectedOrderDisp ? selectedOrderDisp.statusVal : selectedOrder.status} />
               <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>Created: {selectedOrder.createdAt ? new Date(selectedOrder.createdAt).toLocaleString() : '—'}</span>
@@ -568,20 +579,23 @@ export default function InternalOrdersView({ productionRequests, addNotification
             <p style={{ background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 12, padding: '12px', color: 'var(--text-primary)', fontSize: 14, margin: 0, whiteSpace: 'pre-wrap' }}>
               {selectedOrder.notes || 'No notes added.'}
             </p>
+          </>
+        )}
+      </SidePanel>
 
-            <button onClick={() => setSelectedOrder(null)} style={{ marginTop: 20, width: '100%', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 12, padding: '12px', fontWeight: 600, cursor: 'pointer', fontSize: 15 }}>Close</button>
+      <SidePanel
+        open={showNewModal}
+        onClose={() => setShowNewModal(false)}
+        title="New Production Request"
+        footer={
+          <div style={{ display: 'flex', gap: 12 }}>
+            <button disabled={submitting} onClick={() => setShowNewModal(false)} style={{ flex: 1, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 12, padding: '12px', color: 'var(--text-secondary)', cursor: 'pointer', fontWeight: 600, opacity: submitting ? 0.5 : 1 }}>Cancel</button>
+            <button disabled={submitting} onClick={handleSubmitNew} style={{ flex: 2, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 12, padding: '12px', fontWeight: 600, cursor: 'pointer', fontSize: 15, opacity: submitting ? 0.5 : 1 }}>
+              {submitting ? 'Submitting...' : 'Submit Request'}
+            </button>
           </div>
-        </div>
-      )}
-
-      {showNewModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}>
-          <div style={{ background: 'var(--bg-card)', borderRadius: 20, padding: 28, width: '100%', maxWidth: 520, border: '1px solid var(--border)', maxHeight: '90vh', overflowY: 'auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>New Production Request</h2>
-              <button onClick={() => setShowNewModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={20} /></button>
-            </div>
-            
+        }
+      >
             <div style={{ display: 'grid', gap: '16px', marginBottom: '24px' }}>
               <div>
                 <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Product Name</label>
@@ -606,11 +620,15 @@ export default function InternalOrdersView({ productionRequests, addNotification
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Priority</label>
-                  <select value={newForm.priority} onChange={e => setNewForm(prev => ({ ...prev, priority: e.target.value }))} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'var(--text-primary)', fontSize: 14, cursor: 'pointer', boxSizing: 'border-box' }}>
-                    <option value="Low">Low</option>
-                    <option value="Medium">Medium</option>
-                    <option value="High">High</option>
-                  </select>
+                  <SearchableDropdown
+                    value={newForm.priority}
+                    onChange={v => setNewForm(prev => ({ ...prev, priority: v }))}
+                    options={[
+                      { value: 'Low', label: 'Low' },
+                      { value: 'Medium', label: 'Medium' },
+                      { value: 'High', label: 'High' },
+                    ]}
+                  />
                 </div>
               </div>
 
@@ -624,25 +642,22 @@ export default function InternalOrdersView({ productionRequests, addNotification
                 <textarea value={newForm.notes} onChange={e => setNewForm(prev => ({ ...prev, notes: e.target.value }))} placeholder="Additional requirements..." rows={3} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'var(--text-primary)', fontSize: 14, resize: 'vertical', boxSizing: 'border-box' }} />
               </div>
             </div>
+      </SidePanel>
 
-            <div style={{ display: 'flex', gap: 12 }}>
-              <button disabled={submitting} onClick={() => setShowNewModal(false)} style={{ flex: 1, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 12, padding: '12px', color: 'var(--text-secondary)', cursor: 'pointer', fontWeight: 600, opacity: submitting ? 0.5 : 1 }}>Cancel</button>
-              <button disabled={submitting} onClick={handleSubmitNew} style={{ flex: 2, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 12, padding: '12px', fontWeight: 600, cursor: 'pointer', fontSize: 15, opacity: submitting ? 0.5 : 1 }}>
-                {submitting ? 'Submitting...' : 'Submit Request'}
-              </button>
-            </div>
+      <SidePanel
+        open={showEditModal && !!editForm}
+        onClose={() => { setShowEditModal(false); setEditForm(null); }}
+        title="Edit Production Request"
+        footer={
+          <div style={{ display: 'flex', gap: 12 }}>
+             <button disabled={submitting} onClick={() => { setShowEditModal(false); setEditForm(null); }} style={{ flex: 1, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 12, padding: '12px', color: 'var(--text-secondary)', cursor: 'pointer', fontWeight: 600, opacity: submitting ? 0.5 : 1 }}>Cancel</button>
+             <button disabled={submitting} onClick={handleEditSave} style={{ flex: 2, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 12, padding: '12px', fontWeight: 600, cursor: 'pointer', fontSize: 15, opacity: submitting ? 0.5 : 1 }}>
+               {submitting ? 'Saving...' : 'Save Changes'}
+             </button>
           </div>
-        </div>
-      )}
-
-      {showEditModal && editForm && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}>
-          <div style={{ background: 'var(--bg-card)', borderRadius: 20, padding: 28, width: '100%', maxWidth: 520, border: '1px solid var(--border)', maxHeight: '90vh', overflowY: 'auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Edit Production Request</h2>
-              <button onClick={() => { setShowEditModal(false); setEditForm(null); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={20} /></button>
-            </div>
-            
+        }
+      >
+        {editForm && (
             <div style={{ display: 'grid', gap: '16px', marginBottom: '24px' }}>
               <div>
                 <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Product Name</label>
@@ -667,11 +682,15 @@ export default function InternalOrdersView({ productionRequests, addNotification
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Priority</label>
-                  <select value={editForm.priority} onChange={e => setEditForm({ ...editForm, priority: e.target.value })} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'var(--text-primary)', fontSize: 14, cursor: 'pointer', boxSizing: 'border-box' }}>
-                    <option value="Low">Low</option>
-                    <option value="Medium">Medium</option>
-                    <option value="High">High</option>
-                  </select>
+                  <SearchableDropdown
+                    value={editForm.priority}
+                    onChange={v => setEditForm({ ...editForm, priority: v })}
+                    options={[
+                      { value: 'Low', label: 'Low' },
+                      { value: 'Medium', label: 'Medium' },
+                      { value: 'High', label: 'High' },
+                    ]}
+                  />
                 </div>
               </div>
 
@@ -682,13 +701,17 @@ export default function InternalOrdersView({ productionRequests, addNotification
 
               <div>
                 <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Status</label>
-                <select value={editForm.status} onChange={e => setEditForm({ ...editForm, status: e.target.value })} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'var(--text-primary)', fontSize: 14, cursor: 'pointer', boxSizing: 'border-box' }}>
-                  <option value="PENDING_MANAGEMENT">Pending</option>
-                  <option value="APPROVED">Approved</option>
-                  <option value="TICKETS_ISSUED">Tickets Issued</option>
-                  <option value="COMPLETED">Completed</option>
-                  <option value="REJECTED">Rejected</option>
-                </select>
+                <SearchableDropdown
+                  value={editForm.status}
+                  onChange={v => setEditForm({ ...editForm, status: v })}
+                  options={[
+                    { value: 'PENDING_MANAGEMENT', label: 'Pending' },
+                    { value: 'APPROVED', label: 'Approved' },
+                    { value: 'TICKETS_ISSUED', label: 'Tickets Issued' },
+                    { value: 'COMPLETED', label: 'Completed' },
+                    { value: 'REJECTED', label: 'Rejected' },
+                  ]}
+                />
               </div>
 
               {editForm.status === 'REJECTED' && (
@@ -703,25 +726,23 @@ export default function InternalOrdersView({ productionRequests, addNotification
                 <textarea value={editForm.notes || ''} onChange={e => setEditForm({ ...editForm, notes: e.target.value })} rows={3} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'var(--text-primary)', fontSize: 14, resize: 'vertical', boxSizing: 'border-box' }} />
               </div>
             </div>
+        )}
+      </SidePanel>
 
-            <div style={{ display: 'flex', gap: 12 }}>
-               <button disabled={submitting} onClick={() => { setShowEditModal(false); setEditForm(null); }} style={{ flex: 1, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 12, padding: '12px', color: 'var(--text-secondary)', cursor: 'pointer', fontWeight: 600, opacity: submitting ? 0.5 : 1 }}>Cancel</button>
-               <button disabled={submitting} onClick={handleEditSave} style={{ flex: 2, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 12, padding: '12px', fontWeight: 600, cursor: 'pointer', fontSize: 15, opacity: submitting ? 0.5 : 1 }}>
-                 {submitting ? 'Saving...' : 'Save Changes'}
-               </button>
-            </div>
+      <SidePanel
+        open={showMaterialModal}
+        onClose={() => setShowMaterialModal(false)}
+        title="Request Raw Materials"
+        subtitle="This goes to Management for approval, then Finance records it, then Operations releases the materials to you."
+        footer={
+          <div style={{ display: 'flex', gap: 12 }}>
+            <button disabled={submittingMaterial} onClick={() => setShowMaterialModal(false)} style={{ flex: 1, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 12, padding: '12px', color: 'var(--text-secondary)', cursor: 'pointer', fontWeight: 600, opacity: submittingMaterial ? 0.5 : 1 }}>Cancel</button>
+            <button disabled={submittingMaterial} onClick={handleSubmitMaterialRequest} style={{ flex: 2, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 12, padding: '12px', fontWeight: 600, cursor: 'pointer', fontSize: 15, opacity: submittingMaterial ? 0.5 : 1 }}>
+              {submittingMaterial ? 'Submitting...' : 'Submit Request'}
+            </button>
           </div>
-        </div>
-      )}
-
-      {showMaterialModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}>
-          <div style={{ background: 'var(--bg-card)', borderRadius: 20, padding: 28, width: '100%', maxWidth: 480, border: '1px solid var(--border)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Request Raw Materials</h2>
-              <button onClick={() => setShowMaterialModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={20} /></button>
-            </div>
-            <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '0 0 16px' }}>This goes to Management for approval, then Finance records it, then Operations releases the materials to you.</p>
+        }
+      >
             <div style={{ display: 'grid', gap: 16, marginBottom: 24 }}>
               <div>
                 <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Raw Material</label>
@@ -742,15 +763,7 @@ export default function InternalOrdersView({ productionRequests, addNotification
                 <textarea value={materialForm.notes} onChange={e => setMaterialForm(prev => ({ ...prev, notes: e.target.value }))} rows={3} placeholder="What's this needed for..." style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'var(--text-primary)', fontSize: 14, resize: 'vertical', boxSizing: 'border-box' }} />
               </div>
             </div>
-            <div style={{ display: 'flex', gap: 12 }}>
-              <button disabled={submittingMaterial} onClick={() => setShowMaterialModal(false)} style={{ flex: 1, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 12, padding: '12px', color: 'var(--text-secondary)', cursor: 'pointer', fontWeight: 600, opacity: submittingMaterial ? 0.5 : 1 }}>Cancel</button>
-              <button disabled={submittingMaterial} onClick={handleSubmitMaterialRequest} style={{ flex: 2, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 12, padding: '12px', fontWeight: 600, cursor: 'pointer', fontSize: 15, opacity: submittingMaterial ? 0.5 : 1 }}>
-                {submittingMaterial ? 'Submitting...' : 'Submit Request'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      </SidePanel>
     </div>
   );
 }

@@ -1,8 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, MoreVertical, Layers, Download, Printer, X, Edit2, TrendingUp } from 'lucide-react';
+import { Plus, Search, MoreVertical, Layers, Download, Printer, Edit2, TrendingUp } from 'lucide-react';
 import { exportToCSV, exportToPDF } from '../../utils/export';
 import { wipApi } from '../../services/apiClient';
 import CountUp from '../../components/CountUp';
+import SidePanel from '../../components/ui/SidePanel';
+import SearchableDropdown from '../../components/ui/SearchableDropdown';
+
+const UNITS = ['kg', 'L', 'pcs', 'boxes', 'sachets', 'blocks', 'bags'];
 
 interface WipItem {
   id: string;
@@ -255,11 +259,12 @@ export default function WipStockView({ addNotification }: Props) {
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search product or batch ref..."
             className="bg-transparent border-none outline-none text-sm text-[var(--text-primary)] flex-1" />
         </div>
-        <select value={stageFilter} onChange={e => setStageFilter(e.target.value)}
-          className="bg-[var(--bg-card)] border border-[var(--border)] rounded-xl px-3 py-2 text-sm text-[var(--text-primary)] outline-none cursor-pointer">
-          <option value="All">All Stages</option>
-          {STAGES.map(s => <option key={s}>{s}</option>)}
-        </select>
+        <SearchableDropdown
+          value={stageFilter}
+          onChange={setStageFilter}
+          className="min-w-[180px]"
+          options={[{ value: 'All', label: 'All Stages' }, ...STAGES.map(s => ({ value: s, label: s }))]}
+        />
       </div>
 
       {/* Table */}
@@ -327,110 +332,111 @@ export default function WipStockView({ addNotification }: Props) {
       </div>
 
       {/* Update Stage Modal */}
-      {updateModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="text-lg font-bold text-[var(--text-primary)]">Edit WIP Item</h2>
-              <button onClick={() => setUpdateModal(null)} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer"><X className="w-5 h-5" /></button>
+      <SidePanel
+        open={!!updateModal}
+        onClose={() => setUpdateModal(null)}
+        title="Edit WIP Item"
+        footer={
+          <div className="flex gap-3">
+            <button onClick={() => setUpdateModal(null)} className="flex-1 py-2.5 text-sm font-semibold bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-secondary)] rounded-xl cursor-pointer">Cancel</button>
+            <button onClick={handleEditWipItem} disabled={submitting} className="flex-1 py-2.5 text-sm font-semibold bg-[var(--accent)] text-white rounded-xl cursor-pointer hover:opacity-90 disabled:opacity-50">{submitting ? 'Saving...' : 'Save Changes'}</button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-xs text-[var(--text-muted)] font-semibold mb-1.5">Product Name *</label>
+            <input value={newProductName} onChange={e => setNewProductName(e.target.value)} className={inputCls} placeholder="Product Name" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs text-[var(--text-muted)] font-semibold mb-1.5">Quantity *</label>
+              <input type="number" value={newQty} onChange={e => setNewQty(e.target.value)} className={inputCls} placeholder="0" />
             </div>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs text-[var(--text-muted)] font-semibold mb-1.5">Product Name *</label>
-                <input value={newProductName} onChange={e => setNewProductName(e.target.value)} className={inputCls} placeholder="Product Name" />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs text-[var(--text-muted)] font-semibold mb-1.5">Quantity *</label>
-                  <input type="number" value={newQty} onChange={e => setNewQty(e.target.value)} className={inputCls} placeholder="0" />
-                </div>
-                <div>
-                  <label className="block text-xs text-[var(--text-muted)] font-semibold mb-1.5">Unit</label>
-                  <select value={newUnit} onChange={e => setNewUnit(e.target.value)} className={inputCls}>
-                    {['kg', 'L', 'pcs', 'boxes', 'sachets', 'blocks', 'bags'].map(u => <option key={u}>{u}</option>)}
-                  </select>
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs text-[var(--text-muted)] font-semibold mb-1.5">Batch Reference</label>
-                <input value={newBatchRef} onChange={e => setNewBatchRef(e.target.value)} className={inputCls} placeholder="Batch Reference" />
-              </div>
-              <div>
-                <label className="block text-xs text-[var(--text-muted)] font-semibold mb-1.5">Stage</label>
-                <select value={newStage} onChange={e => setNewStage(e.target.value)} className={inputCls}>
-                  {STAGES.map(s => <option key={s}>{s}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs text-[var(--text-muted)] font-semibold mb-1.5">Notes (optional)</label>
-                <textarea value={newNotes} onChange={e => setNewNotes(e.target.value)} rows={2}
-                  className={inputCls} placeholder="Any notes..." />
-              </div>
-            </div>
-            <div className="flex gap-3 mt-5">
-              <button onClick={() => setUpdateModal(null)} className="flex-1 py-2.5 text-sm font-semibold bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-secondary)] rounded-xl cursor-pointer">Cancel</button>
-              <button onClick={handleEditWipItem} disabled={submitting} className="flex-1 py-2.5 text-sm font-semibold bg-[var(--accent)] text-white rounded-xl cursor-pointer hover:opacity-90 disabled:opacity-50">{submitting ? 'Saving...' : 'Save Changes'}</button>
+            <div>
+              <label className="block text-xs text-[var(--text-muted)] font-semibold mb-1.5">Unit</label>
+              <SearchableDropdown value={newUnit} onChange={setNewUnit} options={UNITS.map(u => ({ value: u, label: u }))} />
             </div>
           </div>
+          <div>
+            <label className="block text-xs text-[var(--text-muted)] font-semibold mb-1.5">Batch Reference</label>
+            <input value={newBatchRef} onChange={e => setNewBatchRef(e.target.value)} className={inputCls} placeholder="Batch Reference" />
+          </div>
+          <div>
+            <label className="block text-xs text-[var(--text-muted)] font-semibold mb-1.5">Stage</label>
+            <SearchableDropdown value={newStage} onChange={setNewStage} options={STAGES.map(s => ({ value: s, label: s }))} />
+          </div>
+          <div>
+            <label className="block text-xs text-[var(--text-muted)] font-semibold mb-1.5">Notes (optional)</label>
+            <textarea value={newNotes} onChange={e => setNewNotes(e.target.value)} rows={2}
+              className={inputCls} placeholder="Any notes..." />
+          </div>
         </div>
-      )}
+      </SidePanel>
 
       {/* Add Item Modal */}
-      {addModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="text-lg font-bold text-[var(--text-primary)]">Add WIP Item</h2>
-              <button onClick={() => setAddModal(false)} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer"><X className="w-5 h-5" /></button>
+      <SidePanel
+        open={addModal}
+        onClose={() => setAddModal(false)}
+        title="Add WIP Item"
+        footer={
+          <div className="flex gap-3">
+            <button onClick={() => setAddModal(false)} className="flex-1 py-2.5 text-sm font-semibold bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-secondary)] rounded-xl cursor-pointer">Cancel</button>
+            <button onClick={handleAddItem} disabled={submitting} className="flex-1 py-2.5 text-sm font-semibold bg-[var(--accent)] text-white rounded-xl cursor-pointer hover:opacity-90 disabled:opacity-50">{submitting ? 'Adding...' : 'Add Item'}</button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-xs text-[var(--text-muted)] font-semibold mb-1.5">Product Name *</label>
+            <input value={form.productName} onChange={e => setForm(f => ({ ...f, productName: e.target.value }))} className={inputCls} placeholder="e.g. Shea Butter Cream 200ml" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs text-[var(--text-muted)] font-semibold mb-1.5">Quantity *</label>
+              <input type="number" value={form.qty} onChange={e => setForm(f => ({ ...f, qty: e.target.value }))} className={inputCls} placeholder="0" />
             </div>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs text-[var(--text-muted)] font-semibold mb-1.5">Product Name *</label>
-                <input value={form.productName} onChange={e => setForm(f => ({ ...f, productName: e.target.value }))} className={inputCls} placeholder="e.g. Shea Butter Cream 200ml" />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs text-[var(--text-muted)] font-semibold mb-1.5">Quantity *</label>
-                  <input type="number" value={form.qty} onChange={e => setForm(f => ({ ...f, qty: e.target.value }))} className={inputCls} placeholder="0" />
-                </div>
-                <div>
-                  <label className="block text-xs text-[var(--text-muted)] font-semibold mb-1.5">Unit</label>
-                  <select value={form.unit} onChange={e => setForm(f => ({ ...f, unit: e.target.value }))} className={inputCls}>
-                    {['kg', 'L', 'pcs', 'boxes', 'sachets', 'blocks', 'bags'].map(u => <option key={u}>{u}</option>)}
-                  </select>
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs text-[var(--text-muted)] font-semibold mb-1.5">Batch Reference</label>
-                <input value={form.batchRef} onChange={e => setForm(f => ({ ...f, batchRef: e.target.value }))} className={inputCls} placeholder="e.g. B-2026-0507" />
-              </div>
-              <div>
-                <label className="block text-xs text-[var(--text-muted)] font-semibold mb-1.5">Stage</label>
-                <select value={form.stage} onChange={e => setForm(f => ({ ...f, stage: e.target.value }))} className={inputCls}>
-                  {STAGES.map(s => <option key={s}>{s}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs text-[var(--text-muted)] font-semibold mb-1.5">Notes</label>
-                <textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={2} className={inputCls} placeholder="Any relevant notes..." />
-              </div>
-            </div>
-            <div className="flex gap-3 mt-5">
-              <button onClick={() => setAddModal(false)} className="flex-1 py-2.5 text-sm font-semibold bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-secondary)] rounded-xl cursor-pointer">Cancel</button>
-              <button onClick={handleAddItem} disabled={submitting} className="flex-1 py-2.5 text-sm font-semibold bg-[var(--accent)] text-white rounded-xl cursor-pointer hover:opacity-90 disabled:opacity-50">{submitting ? 'Adding...' : 'Add Item'}</button>
+            <div>
+              <label className="block text-xs text-[var(--text-muted)] font-semibold mb-1.5">Unit</label>
+              <SearchableDropdown value={form.unit} onChange={v => setForm(f => ({ ...f, unit: v }))} options={UNITS.map(u => ({ value: u, label: u }))} />
             </div>
           </div>
+          <div>
+            <label className="block text-xs text-[var(--text-muted)] font-semibold mb-1.5">Batch Reference</label>
+            <input value={form.batchRef} onChange={e => setForm(f => ({ ...f, batchRef: e.target.value }))} className={inputCls} placeholder="e.g. B-2026-0507" />
+          </div>
+          <div>
+            <label className="block text-xs text-[var(--text-muted)] font-semibold mb-1.5">Stage</label>
+            <SearchableDropdown value={form.stage} onChange={v => setForm(f => ({ ...f, stage: v }))} options={STAGES.map(s => ({ value: s, label: s }))} />
+          </div>
+          <div>
+            <label className="block text-xs text-[var(--text-muted)] font-semibold mb-1.5">Notes</label>
+            <textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={2} className={inputCls} placeholder="Any relevant notes..." />
+          </div>
         </div>
-      )}
+      </SidePanel>
 
       {/* Detail Modal */}
-      {detailModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-6 w-full max-w-md">
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="text-lg font-bold text-[var(--text-primary)]">{detailModal.id}</h2>
-              <button onClick={() => setDetailModal(null)} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer"><X className="w-5 h-5" /></button>
+      <SidePanel
+        open={!!detailModal}
+        onClose={() => setDetailModal(null)}
+        title={detailModal?.id || ''}
+        footer={
+          detailModal && (
+            <div className="flex gap-2">
+              <button onClick={() => { printWipItem(detailModal); }} className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-secondary)] rounded-xl cursor-pointer">
+                <Printer className="w-3.5 h-3.5" /> Print
+              </button>
+              <button onClick={() => { setUpdateModal(detailModal); setNewProductName(detailModal.productName); setNewStage(detailModal.stage); setNewQty(String(detailModal.qty)); setNewUnit(detailModal.unit); setNewBatchRef(detailModal.batchRef || ''); setNewNotes(detailModal.notes || ''); setDetailModal(null); }}
+                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold bg-[var(--accent)] text-white rounded-xl cursor-pointer hover:opacity-90">
+                <Edit2 className="w-3.5 h-3.5" /> Edit WIP Item
+              </button>
             </div>
+          )
+        }
+      >
+        {detailModal && (
+          <>
             <h3 className="text-xl font-bold text-[var(--text-primary)] mb-1">{detailModal.productName}</h3>
             <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${stageBadgeStyle(detailModal.stage)}`}>{detailModal.stage}</span>
             <div className="mt-5 space-y-3">
@@ -463,18 +469,9 @@ export default function WipStockView({ addNotification }: Props) {
                 })}
               </div>
             </div>
-            <div className="flex gap-2 mt-5">
-              <button onClick={() => { printWipItem(detailModal); }} className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-secondary)] rounded-xl cursor-pointer">
-                <Printer className="w-3.5 h-3.5" /> Print
-              </button>
-              <button onClick={() => { setUpdateModal(detailModal); setNewProductName(detailModal.productName); setNewStage(detailModal.stage); setNewQty(String(detailModal.qty)); setNewUnit(detailModal.unit); setNewBatchRef(detailModal.batchRef || ''); setNewNotes(detailModal.notes || ''); setDetailModal(null); }}
-                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold bg-[var(--accent)] text-white rounded-xl cursor-pointer hover:opacity-90">
-                <Edit2 className="w-3.5 h-3.5" /> Edit WIP Item
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </SidePanel>
 
       {menuOpen && <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(null)} />}
     </div>

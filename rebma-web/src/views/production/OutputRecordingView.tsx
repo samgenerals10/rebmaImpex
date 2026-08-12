@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Download, Trash2, Package, Edit, X } from 'lucide-react';
+import { Download, Trash2, Package, Edit } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { exportToCSV } from '../../utils/export';
+import SidePanel from '../../components/ui/SidePanel';
+import SearchableDropdown from '../../components/ui/SearchableDropdown';
+
+const UNITS = ['kg', 'tons', 'liters', 'bags', 'units'];
 
 interface OutputRecord {
   id: string;
@@ -222,9 +226,7 @@ export default function OutputRecordingView({ addNotification }: Props) {
           </div>
           <div>
             <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Unit</label>
-            <select value={form.unit} onChange={e => setForm(f => ({ ...f, unit: e.target.value }))} style={inputStyle}>
-              {['kg', 'tons', 'liters', 'bags', 'units'].map(u => <option key={u} value={u}>{u}</option>)}
-            </select>
+            <SearchableDropdown value={form.unit} onChange={v => setForm(f => ({ ...f, unit: v }))} options={UNITS.map(u => ({ value: u, label: u }))} />
           </div>
           <div>
             <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Boxes Produced</label>
@@ -315,13 +317,18 @@ export default function OutputRecordingView({ addNotification }: Props) {
         ))}
       </div>
 
-      {showEdit && editForm && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
-          <div style={{ background: 'var(--bg-card)', borderRadius: 12, padding: '24px', width: '100%', maxWidth: 480, border: '1px solid var(--border)', boxShadow: 'var(--box-shadow)', margin: 'auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h3 style={{ margin: 0, color: 'var(--text-primary)', fontWeight: 700, fontSize: 16 }}>Edit Production Output</h3>
-              <button onClick={() => { setShowEdit(false); setEditForm(null); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={20} /></button>
-            </div>
+      <SidePanel
+        open={showEdit && !!editForm}
+        onClose={() => { setShowEdit(false); setEditForm(null); }}
+        title="Edit Production Output"
+        footer={
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+            <button onClick={() => { setShowEdit(false); setEditForm(null); }} style={{ padding: '10px 20px', borderRadius: 10, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 14 }}>Cancel</button>
+            <button onClick={handleEditSave} disabled={submitting} style={{ padding: '10px 24px', borderRadius: 10, border: 'none', background: 'var(--accent)', color: '#fff', cursor: submitting ? 'not-allowed' : 'pointer', fontWeight: 600, fontSize: 14, opacity: submitting ? 0.7 : 1 }}>{submitting ? 'Saving...' : 'Save Changes'}</button>
+          </div>
+        }
+      >
+        {editForm && (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
               <div style={{ gridColumn: 'span 2' }}>
                 <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Product</label>
@@ -337,9 +344,7 @@ export default function OutputRecordingView({ addNotification }: Props) {
               </div>
               <div>
                 <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Unit</label>
-                <select value={editForm.unit} onChange={e => setEditForm({ ...editForm, unit: e.target.value })} style={inputStyle}>
-                  {['kg', 'tons', 'liters', 'bags', 'units'].map(u => <option key={u} value={u}>{u}</option>)}
-                </select>
+                <SearchableDropdown value={editForm.unit} onChange={v => setEditForm({ ...editForm, unit: v })} options={UNITS.map(u => ({ value: u, label: u }))} />
               </div>
               <div>
                 <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Boxes Produced</label>
@@ -364,13 +369,8 @@ export default function OutputRecordingView({ addNotification }: Props) {
                 <textarea value={editForm.notes} onChange={e => setEditForm({ ...editForm, notes: e.target.value })} placeholder="Any observations..." rows={2} style={{ ...inputStyle, resize: 'vertical' }} />
               </div>
             </div>
-            <div style={{ display: 'flex', gap: '12px', marginTop: '20px', justifyContent: 'flex-end' }}>
-              <button onClick={() => { setShowEdit(false); setEditForm(null); }} style={{ padding: '10px 20px', borderRadius: 10, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 14 }}>Cancel</button>
-              <button onClick={handleEditSave} disabled={submitting} style={{ padding: '10px 24px', borderRadius: 10, border: 'none', background: 'var(--accent)', color: '#fff', cursor: submitting ? 'not-allowed' : 'pointer', fontWeight: 600, fontSize: 14, opacity: submitting ? 0.7 : 1 }}>{submitting ? 'Saving...' : 'Save Changes'}</button>
-            </div>
-          </div>
-        </div>
-      )}
+        )}
+      </SidePanel>
     </div>
   );
 }
