@@ -10,6 +10,7 @@ import {
 } from 'recharts';
 import { supabase } from '../../lib/supabaseClient';
 import { exportToCSV, exportToPDF } from '../../utils/export';
+import SearchableDropdown from '../../components/ui/SearchableDropdown';
 import CountUp from '../../components/CountUp';
 import { useCeoSettings } from '../../contexts/CeoSettingsContext';
 import type { Visitor, CurrentUser, Attendance } from '../../types/erp';
@@ -289,10 +290,7 @@ export default function ReceptionOverviewView({ visitorsList, onAddVisitor, onCh
             </div>
             <div>
               <label className="block text-[10px] text-[var(--text-muted)] font-semibold uppercase mb-1">Purpose</label>
-              <select name="purpose" value={quickForm.purpose} onChange={e => setQuickForm(p => ({ ...p, purpose: e.target.value }))}
-                className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-[var(--text-primary)] text-xs outline-none">
-                {['Business Meeting', 'Delivery', 'Personal', 'Interview', 'Other'].map(p => <option key={p}>{p}</option>)}
-              </select>
+              <SearchableDropdown value={quickForm.purpose} onChange={v => setQuickForm(p => ({ ...p, purpose: v }))} options={['Business Meeting', 'Delivery', 'Personal', 'Interview', 'Other'].map(p => ({ value: p, label: p }))} />
             </div>
             <button type="submit"
               className="w-full py-2.5 bg-[var(--accent)] text-white rounded-xl text-xs font-bold cursor-pointer hover:opacity-90 transition-opacity mt-1">

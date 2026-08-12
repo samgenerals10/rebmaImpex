@@ -2,12 +2,13 @@
 import { useState, useEffect } from 'react';
 import {
   FileText, Printer, Download, Calendar, Users, UserCheck, TrendingUp,
-  Mail, X, Send, Eye, ChevronRight, Edit, Trash2
+  Mail, Send, Eye, ChevronRight, Edit, Trash2
 } from 'lucide-react';
 import { exportToPDF } from '../../utils/export';
 import { supabase } from '../../lib/supabaseClient';
 import CountUp from '../../components/CountUp';
 import { useCeoSettings } from '../../contexts/CeoSettingsContext';
+import SidePanel from '../../components/ui/SidePanel';
 
 interface VisitorToday {
   id: string;
@@ -463,103 +464,99 @@ export default function DailyReportsView({ addNotification }: Props) {
         </div>
       </div>
 
-      {/* Email Modal */}
-      {emailModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5 w-full max-w-md">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-[var(--text-primary)] flex items-center gap-2">
-                <Mail className="w-4 h-4 text-[var(--accent)]" /> Email Report
-              </h3>
-              <button onClick={() => setEmailModal(false)} className="cursor-pointer"><X className="w-5 h-5 text-[var(--text-muted)]" /></button>
+      <SidePanel
+        open={emailModal}
+        onClose={() => setEmailModal(false)}
+        title="Email Report"
+        subtitle="Send this report to selected staff"
+        footer={
+          <div className="flex gap-2 justify-end">
+            <button onClick={() => setEmailModal(false)} className="px-4 py-2 border border-[var(--border)] rounded-xl text-xs text-[var(--text-secondary)] cursor-pointer">Cancel</button>
+            <button onClick={handleSendEmail} disabled={sending || !emailTo.length}
+              className="flex items-center gap-1.5 px-4 py-2 bg-[var(--accent)] text-white rounded-xl text-xs font-bold cursor-pointer hover:opacity-90 disabled:opacity-50">
+              <Send className="w-3.5 h-3.5" /> {sending ? 'Sending...' : 'Send Report'}
+            </button>
+          </div>
+        }
+      >
+        <div className="space-y-3">
+          <div>
+            <label className="block text-[10px] text-[var(--text-muted)] font-semibold uppercase mb-1">To (select recipients)</label>
+            <input value={emailSearch} onChange={e => setEmailSearch(e.target.value)} placeholder="Search email..."
+              className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs text-[var(--text-primary)] outline-none mb-1" />
+            <div className="space-y-1 max-h-32 overflow-y-auto border border-[var(--border)] rounded-xl p-2 bg-[var(--bg)]">
+              {filteredEmails.map(e => (
+                <label key={e} className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-[var(--accent-light)] cursor-pointer">
+                  <input type="checkbox" checked={emailTo.includes(e)} onChange={() => toggleEmailRecipient(e)} className="accent-[var(--accent)]" />
+                  <span className="text-xs text-[var(--text-secondary)]">{e}</span>
+                </label>
+              ))}
             </div>
-            <div className="space-y-3">
-              <div>
-                <label className="block text-[10px] text-[var(--text-muted)] font-semibold uppercase mb-1">To (select recipients)</label>
-                <input value={emailSearch} onChange={e => setEmailSearch(e.target.value)} placeholder="Search email…"
-                  className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs text-[var(--text-primary)] outline-none mb-1" />
-                <div className="space-y-1 max-h-32 overflow-y-auto border border-[var(--border)] rounded-xl p-2 bg-[var(--bg)]">
-                  {filteredEmails.map(e => (
-                    <label key={e} className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-[var(--accent-light)] cursor-pointer">
-                      <input type="checkbox" checked={emailTo.includes(e)} onChange={() => toggleEmailRecipient(e)} className="accent-[var(--accent)]" />
-                      <span className="text-xs text-[var(--text-secondary)]">{e}</span>
-                    </label>
-                  ))}
-                </div>
-                {emailTo.length > 0 && (
-                  <p className="text-[10px] text-[var(--accent)] mt-1">{emailTo.length} recipient{emailTo.length > 1 ? 's' : ''} selected</p>
-                )}
-              </div>
-              <div>
-                <label className="block text-[10px] text-[var(--text-muted)] font-semibold uppercase mb-1">Subject</label>
-                <input value={emailSubject} onChange={e => setEmailSubject(e.target.value)}
-                  className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs text-[var(--text-primary)] outline-none" />
-              </div>
-              <div>
-                <label className="block text-[10px] text-[var(--text-muted)] font-semibold uppercase mb-1">Message</label>
-                <textarea value={emailMessage} onChange={e => setEmailMessage(e.target.value)} rows={5}
-                  className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs text-[var(--text-primary)] outline-none resize-none" />
-              </div>
-            </div>
-            <div className="flex gap-2 mt-4 justify-end">
-              <button onClick={() => setEmailModal(false)} className="px-4 py-2 border border-[var(--border)] rounded-xl text-xs text-[var(--text-secondary)] cursor-pointer">Cancel</button>
-              <button onClick={handleSendEmail} disabled={sending || !emailTo.length}
-                className="flex items-center gap-1.5 px-4 py-2 bg-[var(--accent)] text-white rounded-xl text-xs font-bold cursor-pointer hover:opacity-90 disabled:opacity-50">
-                <Send className="w-3.5 h-3.5" /> {sending ? 'Sending…' : 'Send Report'}
-              </button>
-            </div>
+            {emailTo.length > 0 && (
+              <p className="text-[10px] text-[var(--accent)] mt-1">{emailTo.length} recipient{emailTo.length > 1 ? 's' : ''} selected</p>
+            )}
+          </div>
+          <div>
+            <label className="block text-[10px] text-[var(--text-muted)] font-semibold uppercase mb-1">Subject</label>
+            <input value={emailSubject} onChange={e => setEmailSubject(e.target.value)}
+              className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs text-[var(--text-primary)] outline-none" />
+          </div>
+          <div>
+            <label className="block text-[10px] text-[var(--text-muted)] font-semibold uppercase mb-1">Message</label>
+            <textarea value={emailMessage} onChange={e => setEmailMessage(e.target.value)} rows={5}
+              className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs text-[var(--text-primary)] outline-none resize-none" />
           </div>
         </div>
-      )}
+      </SidePanel>
 
-      {editingVisitor && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5 w-full max-w-md">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-[var(--text-primary)]">Edit Visitor Log</h3>
-              <button onClick={() => setEditingVisitor(null)} className="cursor-pointer"><X className="w-5 h-5 text-[var(--text-muted)]" /></button>
+      <SidePanel
+        open={!!editingVisitor}
+        onClose={() => setEditingVisitor(null)}
+        title="Edit Visitor Log"
+        footer={
+          <div className="flex gap-2 justify-end">
+            <button onClick={() => setEditingVisitor(null)} disabled={submitting} className="px-4 py-2 border border-[var(--border)] rounded-xl text-xs text-[var(--text-secondary)] cursor-pointer disabled:opacity-50">Cancel</button>
+            <button onClick={handleSaveVisitor} disabled={submitting} className="px-4 py-2 bg-[var(--accent)] text-white rounded-xl text-xs font-bold cursor-pointer hover:opacity-90 disabled:opacity-50">{submitting ? 'Saving...' : 'Save Changes'}</button>
+          </div>
+        }
+      >
+        {editingVisitor && (
+          <div className="space-y-3">
+            <div>
+              <label className="block text-[10px] text-[var(--text-muted)] font-semibold uppercase mb-1">Visitor Name</label>
+              <input value={editingVisitor.fullName} onChange={e => setEditingVisitor({ ...editingVisitor, fullName: e.target.value })}
+                className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs text-[var(--text-primary)] outline-none" />
             </div>
-            <div className="space-y-3">
-              <div>
-                <label className="block text-[10px] text-[var(--text-muted)] font-semibold uppercase mb-1">Visitor Name</label>
-                <input value={editingVisitor.fullName} onChange={e => setEditingVisitor({ ...editingVisitor, fullName: e.target.value })}
-                  className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs text-[var(--text-primary)] outline-none" />
-              </div>
-              <div>
-                <label className="block text-[10px] text-[var(--text-muted)] font-semibold uppercase mb-1">Company</label>
-                <input value={editingVisitor.company} onChange={e => setEditingVisitor({ ...editingVisitor, company: e.target.value })}
-                  className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs text-[var(--text-primary)] outline-none" />
-              </div>
-              <div>
-                <label className="block text-[10px] text-[var(--text-muted)] font-semibold uppercase mb-1">Purpose</label>
-                <input value={editingVisitor.purpose} onChange={e => setEditingVisitor({ ...editingVisitor, purpose: e.target.value })}
-                  className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs text-[var(--text-primary)] outline-none" />
-              </div>
-              <div>
-                <label className="block text-[10px] text-[var(--text-muted)] font-semibold uppercase mb-1">Host Name</label>
-                <input value={editingVisitor.hostName} onChange={e => setEditingVisitor({ ...editingVisitor, hostName: e.target.value })}
-                  className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs text-[var(--text-primary)] outline-none" />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[10px] text-[var(--text-muted)] font-semibold uppercase mb-1">Check In Time</label>
-                  <input type="datetime-local" value={editingVisitor.checkInTime} onChange={e => setEditingVisitor({ ...editingVisitor, checkInTime: e.target.value })}
-                    className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs text-[var(--text-primary)] outline-none" />
-                </div>
-                <div>
-                  <label className="block text-[10px] text-[var(--text-muted)] font-semibold uppercase mb-1">Check Out Time</label>
-                  <input type="datetime-local" value={editingVisitor.checkOutTime} onChange={e => setEditingVisitor({ ...editingVisitor, checkOutTime: e.target.value })}
-                    className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs text-[var(--text-primary)] outline-none" />
-                </div>
-              </div>
+            <div>
+              <label className="block text-[10px] text-[var(--text-muted)] font-semibold uppercase mb-1">Company</label>
+              <input value={editingVisitor.company} onChange={e => setEditingVisitor({ ...editingVisitor, company: e.target.value })}
+                className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs text-[var(--text-primary)] outline-none" />
             </div>
-            <div className="flex gap-2 mt-5 justify-end">
-              <button onClick={() => setEditingVisitor(null)} disabled={submitting} className="px-4 py-2 border border-[var(--border)] rounded-xl text-xs text-[var(--text-secondary)] cursor-pointer disabled:opacity-50">Cancel</button>
-              <button onClick={handleSaveVisitor} disabled={submitting} className="px-4 py-2 bg-[var(--accent)] text-white rounded-xl text-xs font-bold cursor-pointer hover:opacity-90 disabled:opacity-50">{submitting ? 'Saving...' : 'Save Changes'}</button>
+            <div>
+              <label className="block text-[10px] text-[var(--text-muted)] font-semibold uppercase mb-1">Purpose</label>
+              <input value={editingVisitor.purpose} onChange={e => setEditingVisitor({ ...editingVisitor, purpose: e.target.value })}
+                className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs text-[var(--text-primary)] outline-none" />
+            </div>
+            <div>
+              <label className="block text-[10px] text-[var(--text-muted)] font-semibold uppercase mb-1">Host Name</label>
+              <input value={editingVisitor.hostName} onChange={e => setEditingVisitor({ ...editingVisitor, hostName: e.target.value })}
+                className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs text-[var(--text-primary)] outline-none" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[10px] text-[var(--text-muted)] font-semibold uppercase mb-1">Check In Time</label>
+                <input type="datetime-local" value={editingVisitor.checkInTime} onChange={e => setEditingVisitor({ ...editingVisitor, checkInTime: e.target.value })}
+                  className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs text-[var(--text-primary)] outline-none" />
+              </div>
+              <div>
+                <label className="block text-[10px] text-[var(--text-muted)] font-semibold uppercase mb-1">Check Out Time</label>
+                <input type="datetime-local" value={editingVisitor.checkOutTime} onChange={e => setEditingVisitor({ ...editingVisitor, checkOutTime: e.target.value })}
+                  className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs text-[var(--text-primary)] outline-none" />
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </SidePanel>
     </div>
   );
 }

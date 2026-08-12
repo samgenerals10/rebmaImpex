@@ -1,12 +1,14 @@
 // src/views/reception/AttendanceView.tsx
 import { useState, useEffect } from 'react';
 import {
-  UserCheck, Clock, Plus, X, Check, Download, MapPin, Wifi,
+  UserCheck, Clock, Plus, Check, Download, MapPin, Wifi,
   MoreVertical, Eye, UserMinus, AlertTriangle, Navigation
 } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { exportToCSV, exportToPDF } from '../../utils/export';
 import type { Attendance } from '../../types/erp';
+import SidePanel from '../../components/ui/SidePanel';
+import SearchableDropdown from '../../components/ui/SearchableDropdown';
 
 const DEPTS = ['CEO','MANAGEMENT','HR','MARKETING','OPERATIONS','FINANCE','PRODUCTION','RECEPTION','DISPATCH','LOGISTICS'];
 
@@ -214,12 +216,16 @@ export default function AttendanceView({ addNotification }: Props) {
           className="px-3 py-1.5 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] outline-none" />
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name…"
           className="px-3 py-1.5 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] outline-none w-44 focus:ring-1 focus:ring-[var(--accent)]" />
-        <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
-          className="px-3 py-1.5 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] outline-none cursor-pointer">
-          <option value="ALL">All Status</option>
-          <option value="PRESENT">Present</option>
-          <option value="LATE">Late</option>
-        </select>
+        <SearchableDropdown
+          value={filterStatus}
+          onChange={setFilterStatus}
+          className="w-40"
+          options={[
+            { value: 'ALL', label: 'All Status' },
+            { value: 'PRESENT', label: 'Present' },
+            { value: 'LATE', label: 'Late' },
+          ]}
+        />
       </div>
 
       {/* Table */}
@@ -321,86 +327,91 @@ export default function AttendanceView({ addNotification }: Props) {
       )}
 
       {/* Check In Modal */}
-      {modal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-          <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-2xl w-full max-w-sm p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-sm text-[var(--text-primary)]">Staff Check-In</h3>
-              <button onClick={() => setModal(false)} className="p-1 rounded-lg hover:bg-[var(--bg-input)] cursor-pointer"><X className="w-4 h-4 text-[var(--text-muted)]" /></button>
-            </div>
-            <div className="space-y-3">
-              <div>
-                <label className="block text-[9px] font-semibold text-[var(--text-muted)] uppercase mb-1">Employee Name *</label>
-                <input value={form.fullName} onChange={e => setForm(f => ({ ...f, fullName: e.target.value }))} placeholder="Full name…"
-                  className="w-full px-3 py-2 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-[var(--accent)]" />
-              </div>
-              <div>
-                <label className="block text-[9px] font-semibold text-[var(--text-muted)] uppercase mb-1">Department</label>
-                <select value={form.department} onChange={e => setForm(f => ({ ...f, department: e.target.value }))}
-                  className="w-full px-3 py-2 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] outline-none cursor-pointer">
-                  {DEPTS.map(d => <option key={d} value={d}>{d}</option>)}
-                </select>
-              </div>
-
-              {/* Physical vs Virtual */}
-              <div className="flex gap-2">
-                <button type="button" onClick={() => { setForm(f => ({ ...f, virtual: false })); setGpsStatus('idle'); setGpsError(''); }}
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold border cursor-pointer transition-all ${!form.virtual ? 'bg-[var(--accent)] text-white border-[var(--accent)]' : 'bg-[var(--bg-input)] text-[var(--text-secondary)] border-[var(--border)]'}`}>
-                  <MapPin className="w-3.5 h-3.5" /> Physical
-                </button>
-                <button type="button" onClick={() => { setForm(f => ({ ...f, virtual: true })); setGpsStatus('virtual'); setGpsError(''); }}
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold border cursor-pointer transition-all ${form.virtual ? 'bg-blue-500 text-white border-blue-500' : 'bg-[var(--bg-input)] text-[var(--text-secondary)] border-[var(--border)]'}`}>
-                  <Wifi className="w-3.5 h-3.5" /> Virtual
-                </button>
-              </div>
-
-              {!form.virtual && (
-                <div className="bg-[var(--bg)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs text-[var(--text-secondary)] flex items-center gap-2">
-                  <Navigation className="w-3.5 h-3.5 text-[var(--accent)]" />
-                  GPS will verify your location against {WORKPLACE.name} ({WORKPLACE.radiusMeters}m radius)
-                </div>
-              )}
-              {form.virtual && (
-                <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl px-3 py-2 text-xs text-blue-600">
-                  Virtual check-in — no GPS verification required.
-                </div>
-              )}
-
-              {gpsStatus === 'locating' && (
-                <div className="flex items-center gap-2 text-xs text-[var(--accent)] bg-[var(--accent-light)] rounded-xl px-3 py-2">
-                  <Clock className="w-3.5 h-3.5 animate-spin" /> Acquiring GPS location…
-                </div>
-              )}
-              {gpsStatus === 'ok' && (
-                <div className="flex items-center gap-2 text-xs text-emerald-600 bg-emerald-500/10 rounded-xl px-3 py-2">
-                  <Check className="w-3.5 h-3.5" /> Location verified ({gpsDistance}m from office)
-                </div>
-              )}
-              {gpsStatus === 'fail' && (
-                <div className="flex items-start gap-2 text-xs text-rose-600 bg-rose-500/10 rounded-xl px-3 py-2">
-                  <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" /> {gpsError}
-                </div>
-              )}
-            </div>
-            <div className="flex justify-end gap-2 mt-4">
-              <button onClick={() => setModal(false)} disabled={submitting} className="px-4 py-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-input)] rounded-lg cursor-pointer disabled:opacity-50">Cancel</button>
-              <button onClick={handleCheckIn} disabled={!form.fullName.trim() || gpsStatus === 'locating' || submitting}
-                className="flex items-center gap-1.5 px-4 py-1.5 bg-[var(--accent)] text-white text-xs font-semibold rounded-lg hover:opacity-90 disabled:opacity-50 cursor-pointer">
-                <UserCheck className="w-3.5 h-3.5" /> {submitting ? 'Saving...' : gpsStatus === 'locating' ? 'Locating…' : 'Check In'}
-              </button>
-            </div>
+      <SidePanel
+        open={modal}
+        onClose={() => setModal(false)}
+        title="Staff Check-In"
+        footer={
+          <div className="flex justify-end gap-2">
+            <button onClick={() => setModal(false)} disabled={submitting} className="px-4 py-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-input)] rounded-lg cursor-pointer disabled:opacity-50">Cancel</button>
+            <button onClick={handleCheckIn} disabled={!form.fullName.trim() || gpsStatus === 'locating' || submitting}
+              className="flex items-center gap-1.5 px-4 py-1.5 bg-[var(--accent)] text-white text-xs font-semibold rounded-lg hover:opacity-90 disabled:opacity-50 cursor-pointer">
+              <UserCheck className="w-3.5 h-3.5" /> {submitting ? 'Saving...' : gpsStatus === 'locating' ? 'Locating...' : 'Check In'}
+            </button>
           </div>
+        }
+      >
+        <div className="space-y-3">
+          <div>
+            <label className="block text-[9px] font-semibold text-[var(--text-muted)] uppercase mb-1">Employee Name *</label>
+            <input value={form.fullName} onChange={e => setForm(f => ({ ...f, fullName: e.target.value }))} placeholder="Full name..."
+              className="w-full px-3 py-2 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-[var(--accent)]" />
+          </div>
+          <div>
+            <label className="block text-[9px] font-semibold text-[var(--text-muted)] uppercase mb-1">Department</label>
+            <SearchableDropdown
+              value={form.department}
+              onChange={v => setForm(f => ({ ...f, department: v }))}
+              options={DEPTS.map(d => ({ value: d, label: d }))}
+            />
+          </div>
+
+          {/* Physical vs Virtual */}
+          <div className="flex gap-2">
+            <button type="button" onClick={() => { setForm(f => ({ ...f, virtual: false })); setGpsStatus('idle'); setGpsError(''); }}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold border cursor-pointer transition-all ${!form.virtual ? 'bg-[var(--accent)] text-white border-[var(--accent)]' : 'bg-[var(--bg-input)] text-[var(--text-secondary)] border-[var(--border)]'}`}>
+              <MapPin className="w-3.5 h-3.5" /> Physical
+            </button>
+            <button type="button" onClick={() => { setForm(f => ({ ...f, virtual: true })); setGpsStatus('virtual'); setGpsError(''); }}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold border cursor-pointer transition-all ${form.virtual ? 'bg-blue-500 text-white border-blue-500' : 'bg-[var(--bg-input)] text-[var(--text-secondary)] border-[var(--border)]'}`}>
+              <Wifi className="w-3.5 h-3.5" /> Virtual
+            </button>
+          </div>
+
+          {!form.virtual && (
+            <div className="bg-[var(--bg)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs text-[var(--text-secondary)] flex items-center gap-2">
+              <Navigation className="w-3.5 h-3.5 text-[var(--accent)]" />
+              GPS will verify your location against {WORKPLACE.name} ({WORKPLACE.radiusMeters}m radius)
+            </div>
+          )}
+          {form.virtual && (
+            <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl px-3 py-2 text-xs text-blue-600">
+              Virtual check-in, no GPS verification required.
+            </div>
+          )}
+
+          {gpsStatus === 'locating' && (
+            <div className="flex items-center gap-2 text-xs text-[var(--accent)] bg-[var(--accent-light)] rounded-xl px-3 py-2">
+              <Clock className="w-3.5 h-3.5 animate-spin" /> Acquiring GPS location...
+            </div>
+          )}
+          {gpsStatus === 'ok' && (
+            <div className="flex items-center gap-2 text-xs text-emerald-600 bg-emerald-500/10 rounded-xl px-3 py-2">
+              <Check className="w-3.5 h-3.5" /> Location verified ({gpsDistance}m from office)
+            </div>
+          )}
+          {gpsStatus === 'fail' && (
+            <div className="flex items-start gap-2 text-xs text-rose-600 bg-rose-500/10 rounded-xl px-3 py-2">
+              <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" /> {gpsError}
+            </div>
+          )}
         </div>
-      )}
+      </SidePanel>
 
       {/* Detail Modal */}
-      {detailRow && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-          <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-2xl w-full max-w-sm p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-sm text-[var(--text-primary)]">Attendance Record</h3>
-              <button onClick={() => setDetailRow(null)} className="cursor-pointer"><X className="w-4 h-4 text-[var(--text-muted)]" /></button>
-            </div>
+      <SidePanel
+        open={!!detailRow}
+        onClose={() => setDetailRow(null)}
+        title="Attendance Record"
+        footer={
+          <button onClick={() => setDetailRow(null)}
+            className="w-full py-2 border border-[var(--border)] rounded-xl text-xs text-[var(--text-secondary)] cursor-pointer">
+            Close
+          </button>
+        }
+      >
+        {detailRow && (
+          <>
             <div className="flex items-center gap-3 mb-4 p-3 bg-[var(--bg)] rounded-xl border border-[var(--border)]">
               <div className="w-10 h-10 rounded-full bg-[var(--accent-light)] text-[var(--accent)] flex items-center justify-center font-bold">
                 {detailRow.fullName.split(' ').map(n => n[0]).join('').slice(0,2)}
@@ -410,7 +421,7 @@ export default function AttendanceView({ addNotification }: Props) {
                 <p className="text-[10px] text-[var(--text-muted)]">Record ID: {detailRow.id}</p>
               </div>
             </div>
-            <div className="space-y-2 text-xs mb-4">
+            <div className="space-y-2 text-xs">
               {[
                 { label: 'Check-In Time', value: detailRow.checkInTime },
                 { label: 'Date', value: detailRow.date || filterDate },
@@ -424,13 +435,9 @@ export default function AttendanceView({ addNotification }: Props) {
                 </div>
               ))}
             </div>
-            <button onClick={() => setDetailRow(null)}
-              className="w-full py-2 border border-[var(--border)] rounded-xl text-xs text-[var(--text-secondary)] cursor-pointer">
-              Close
-            </button>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </SidePanel>
 
       {menuOpen && <div className="fixed inset-0 z-20" onClick={() => setMenuOpen(null)} />}
     </div>

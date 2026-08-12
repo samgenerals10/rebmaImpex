@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import {
-  Plus, Search, X, LogOut, Eye, Users, UserCheck, UserMinus, Clock,
+  Plus, Search, LogOut, Eye, Users, UserCheck, UserMinus, Clock,
   MoreVertical, Printer, Download, CheckCircle, AlertCircle, FileText,
   Edit, Trash2
 } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { exportToPDF } from '../../utils/export';
 import CountUp from '../../components/CountUp';
+import SidePanel from '../../components/ui/SidePanel';
+import SearchableDropdown from '../../components/ui/SearchableDropdown';
 import type { Visitor } from '../../types/erp';
 import { usePaginatedQuery } from '../../hooks/usePaginatedQuery';
 
@@ -288,14 +290,8 @@ export default function VisitorsView({ addNotification }: Props) {
         </div>
         <input type="date" value={dateFilter} onChange={e => setDateFilter(e.target.value)}
           className="bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-[var(--text-primary)] text-xs outline-none" />
-        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
-          className="bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-[var(--text-primary)] text-xs outline-none cursor-pointer">
-          {['All', 'Checked In', 'Checked Out'].map(s => <option key={s}>{s}</option>)}
-        </select>
-        <select value={purposeFilter} onChange={e => setPurposeFilter(e.target.value)}
-          className="bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-[var(--text-primary)] text-xs outline-none cursor-pointer">
-          {['All', 'Business Meeting', 'Delivery', 'Personal', 'Interview', 'Other'].map(s => <option key={s}>{s}</option>)}
-        </select>
+        <SearchableDropdown value={statusFilter} onChange={setStatusFilter} options={['All', 'Checked In', 'Checked Out'].map(s => ({ value: s, label: s }))} className="w-40" />
+        <SearchableDropdown value={purposeFilter} onChange={setPurposeFilter} options={['All', 'Business Meeting', 'Delivery', 'Personal', 'Interview', 'Other'].map(s => ({ value: s, label: s }))} className="w-44" />
       </div>
 
       {/* Table */}
@@ -388,14 +384,21 @@ export default function VisitorsView({ addNotification }: Props) {
       </div>}
 
       {/* Add Visitor Modal */}
-      {showAdd && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5 w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-[var(--text-primary)]">Check In Visitor</h3>
-              <button onClick={() => setShowAdd(false)} className="text-[var(--text-muted)] cursor-pointer"><X className="w-5 h-5" /></button>
-            </div>
-            <div className="space-y-3">
+      <SidePanel
+        open={showAdd}
+        onClose={() => setShowAdd(false)}
+        title="Check In Visitor"
+        footer={
+          <>
+            <button disabled={submitting} onClick={() => setShowAdd(false)} className="erp-btn erp-btn-ghost disabled:opacity-50">Cancel</button>
+            <button onClick={handleAdd} disabled={!form.fullName.trim() || !form.hostName.trim() || submitting}
+              className="erp-btn erp-btn-primary disabled:opacity-50 disabled:cursor-not-allowed">
+              {submitting ? 'Checking in...' : 'Check In'}
+            </button>
+          </>
+        }
+      >
+        <div className="space-y-3">
               {[
                 { key: 'fullName', label: 'Full Name *', placeholder: 'Visitor full name' },
                 { key: 'company', label: 'Company / Organization', placeholder: 'Company name' },
@@ -409,18 +412,12 @@ export default function VisitorsView({ addNotification }: Props) {
               ))}
               <div>
                 <label className="block text-[10px] text-[var(--text-muted)] font-semibold uppercase mb-1">Purpose *</label>
-                <select value={form.purpose} onChange={e => setForm(p => ({ ...p, purpose: e.target.value }))}
-                  className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-[var(--text-primary)] text-xs outline-none">
-                  {['Business Meeting', 'Delivery', 'Personal', 'Interview', 'Other'].map(p => <option key={p}>{p}</option>)}
-                </select>
+                <SearchableDropdown value={form.purpose} onChange={v => setForm(p => ({ ...p, purpose: v }))} options={['Business Meeting', 'Delivery', 'Personal', 'Interview', 'Other'].map(p => ({ value: p, label: p }))} />
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="block text-[10px] text-[var(--text-muted)] font-semibold uppercase mb-1">ID Type</label>
-                  <select value={form.idType} onChange={e => setForm(p => ({ ...p, idType: e.target.value }))}
-                    className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-[var(--text-primary)] text-xs outline-none">
-                    {['Ghana Card', 'Passport', 'Driver License', 'Voter ID', 'Other'].map(t => <option key={t}>{t}</option>)}
-                  </select>
+                  <SearchableDropdown value={form.idType} onChange={v => setForm(p => ({ ...p, idType: v }))} options={['Ghana Card', 'Passport', 'Driver License', 'Voter ID', 'Other'].map(t => ({ value: t, label: t }))} />
                 </div>
                 <div>
                   <label className="block text-[10px] text-[var(--text-muted)] font-semibold uppercase mb-1">ID Number</label>
@@ -438,31 +435,35 @@ export default function VisitorsView({ addNotification }: Props) {
                 <textarea value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} rows={2}
                   className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-[var(--text-primary)] text-xs outline-none resize-none" />
               </div>
-            </div>
-            <div className="flex gap-2 mt-4 justify-end">
-              <button disabled={submitting} onClick={() => setShowAdd(false)} className="px-4 py-2 border border-[var(--border)] rounded-xl text-xs text-[var(--text-secondary)] cursor-pointer disabled:opacity-50">Cancel</button>
-              <button onClick={handleAdd} disabled={!form.fullName.trim() || !form.hostName.trim() || submitting}
-                className="px-4 py-2 bg-[var(--accent)] text-white rounded-xl text-xs font-bold cursor-pointer hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed">
-                {submitting ? 'Checking in...' : 'Check In'}
-              </button>
-            </div>
-          </div>
         </div>
-      )}
+      </SidePanel>
 
       {/* Detail Modal */}
-      {detailVisitor && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5 w-full max-w-sm">
-            <div className="flex items-start justify-between mb-4">
-              <div>
-                <p className="text-[10px] text-[var(--text-muted)] font-semibold uppercase">Visitor Details</p>
-                <h3 className="font-bold text-[var(--text-primary)] text-lg leading-tight">{detailVisitor.fullName}</h3>
-                <span className="text-xs font-bold text-[var(--accent)]">{detailVisitor.badgeNumber}</span>
-              </div>
-              <button onClick={() => setDetailVisitor(null)} className="text-[var(--text-muted)] cursor-pointer shrink-0"><X className="w-5 h-5" /></button>
-            </div>
-
+      <SidePanel
+        open={!!detailVisitor}
+        onClose={() => setDetailVisitor(null)}
+        title="Visitor Details"
+        subtitle={detailVisitor?.fullName}
+        badge={detailVisitor ? <span className="text-xs font-bold text-[var(--accent)]">{detailVisitor.badgeNumber}</span> : undefined}
+        footer={
+          detailVisitor ? (
+            <>
+              <button onClick={() => { printVisitorPass(detailVisitor); }}
+                className="erp-btn erp-btn-ghost flex-1">
+                <Printer className="w-3.5 h-3.5" /> Print Pass
+              </button>
+              {!detailVisitor.checkOutTime && (
+                <button onClick={() => { handleCheckOut(detailVisitor.id); setDetailVisitor(null); }}
+                  className="erp-btn flex-1 bg-amber-500 text-white hover:opacity-90">
+                  <LogOut className="w-3.5 h-3.5" /> Check Out
+                </button>
+              )}
+            </>
+          ) : undefined
+        }
+      >
+        {detailVisitor && (
+          <>
             {/* Timeline */}
             <div className="space-y-2 mb-4">
               <div className="flex items-center gap-3 text-xs">
@@ -498,34 +499,27 @@ export default function VisitorsView({ addNotification }: Props) {
                 </div>
               ))}
             </div>
-
-            <div className="flex gap-2">
-              <button onClick={() => { printVisitorPass(detailVisitor); }}
-                className="flex-1 flex items-center justify-center gap-1.5 py-2 border border-[var(--border)] text-[var(--text-secondary)] rounded-xl text-xs font-semibold cursor-pointer hover:bg-[var(--accent-light)]">
-                <Printer className="w-3.5 h-3.5" /> Print Pass
-              </button>
-              {!detailVisitor.checkOutTime && (
-                <button onClick={() => { handleCheckOut(detailVisitor.id); setDetailVisitor(null); }}
-                  className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-amber-500 text-white rounded-xl text-xs font-bold cursor-pointer hover:opacity-90">
-                  <LogOut className="w-3.5 h-3.5" /> Check Out
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </SidePanel>
 
       {menuOpen && <div className="fixed inset-0 z-20" onClick={() => setMenuOpen(null)} />}
 
-      {showEdit && editForm && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5 w-full max-w-md">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-[var(--text-primary)]">Edit Visitor Detail</h3>
-              <button onClick={() => { setShowEdit(false); setEditForm(null); }} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+      <SidePanel
+        open={showEdit && !!editForm}
+        onClose={() => { setShowEdit(false); setEditForm(null); }}
+        title="Edit Visitor Detail"
+        footer={
+          <>
+            <button onClick={() => { setShowEdit(false); setEditForm(null); }} disabled={submitting}
+              className="erp-btn erp-btn-ghost disabled:opacity-50">Cancel</button>
+            <button onClick={handleEditSave} disabled={submitting} className="erp-btn erp-btn-primary disabled:opacity-50">
+              {submitting ? 'Saving...' : 'Save Changes'}
+            </button>
+          </>
+        }
+      >
+        {editForm && (
             <div className="space-y-3">
               <div>
                 <label className="block text-xs text-[var(--text-secondary)] mb-1 font-semibold">Full Name</label>
@@ -539,10 +533,7 @@ export default function VisitorsView({ addNotification }: Props) {
               </div>
               <div>
                 <label className="block text-xs text-[var(--text-secondary)] mb-1 font-semibold">Purpose</label>
-                <select value={editForm.purpose} onChange={e => setEditForm({ ...editForm!, purpose: e.target.value })}
-                  className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-[var(--text-primary)] text-sm outline-none">
-                  {['Business Meeting', 'Delivery', 'Personal', 'Interview', 'Other'].map(p => <option key={p} value={p}>{p}</option>)}
-                </select>
+                <SearchableDropdown value={editForm.purpose} onChange={v => setEditForm({ ...editForm!, purpose: v })} options={['Business Meeting', 'Delivery', 'Personal', 'Interview', 'Other'].map(p => ({ value: p, label: p }))} />
               </div>
               <div>
                 <label className="block text-xs text-[var(--text-secondary)] mb-1 font-semibold">Host Name</label>
@@ -565,19 +556,8 @@ export default function VisitorsView({ addNotification }: Props) {
                   className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-[var(--text-primary)] text-sm outline-none resize-none" />
               </div>
             </div>
-            <div className="flex gap-2 mt-5 justify-end">
-              <button onClick={() => { setShowEdit(false); setEditForm(null); }} disabled={submitting}
-                className="px-4 py-2 text-xs border border-[var(--border)] rounded-xl text-[var(--text-secondary)] hover:bg-[var(--accent-light)] cursor-pointer disabled:opacity-50">
-                Cancel
-              </button>
-              <button onClick={handleEditSave} disabled={submitting}
-                className="px-4 py-2 text-xs bg-[var(--accent)] text-white rounded-xl font-semibold hover:opacity-90 cursor-pointer disabled:opacity-50">
-                {submitting ? 'Saving...' : 'Save Changes'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+        )}
+      </SidePanel>
     </div>
   );
 }
