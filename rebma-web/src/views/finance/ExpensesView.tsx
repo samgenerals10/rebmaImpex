@@ -5,6 +5,8 @@ import { exportToCSV } from '../../utils/export';
 import CountUp from '../../components/CountUp';
 import { useCeoSettings } from '../../contexts/CeoSettingsContext';
 import { usePaginatedQuery } from '../../hooks/usePaginatedQuery';
+import SidePanel from '../../components/ui/SidePanel';
+import SearchableDropdown from '../../components/ui/SearchableDropdown';
 
 interface Expense {
   id: string;
@@ -222,12 +224,8 @@ export default function FinanceExpensesView({ addNotification, currentUser }: Pr
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search expenses..." className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent)]" />
         </div>
-        <select value={catFilter} onChange={e => setCatFilter(e.target.value)} className="px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-secondary)] focus:outline-none">
-          {['All', ...CATEGORIES].map(c => <option key={c}>{c}</option>)}
-        </select>
-        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-secondary)] focus:outline-none">
-          {['All', 'Pending', 'Approved', 'Rejected'].map(s => <option key={s}>{s}</option>)}
-        </select>
+        <SearchableDropdown value={catFilter} onChange={setCatFilter} options={['All', ...CATEGORIES].map(c => ({ value: c, label: c }))} className="w-40" />
+        <SearchableDropdown value={statusFilter} onChange={setStatusFilter} options={['All', 'Pending', 'Approved', 'Rejected'].map(s => ({ value: s, label: s }))} className="w-40" />
       </div>
 
       <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl overflow-hidden">
@@ -293,60 +291,90 @@ export default function FinanceExpensesView({ addNotification, currentUser }: Pr
         )}
       </div>
 
-      {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setShowForm(false)}>
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div className="relative bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-6 w-full max-w-2xl shadow-2xl" onClick={e => e.stopPropagation()}>
-            <h3 className="text-base font-semibold text-[var(--text-primary)] mb-5">Log Expense</h3>
-            <div className="space-y-4">
-              <div><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Category</label><select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]">{CATEGORIES.map(c => <option key={c}>{c}</option>)}</select></div>
-              <div><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Description</label><input value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="What was this expense for?" className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" /></div>
-              <div className="grid grid-cols-2 gap-3">
-                <div><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Amount (GHS)</label><input type="number" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" /></div>
-                <div><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Date</label><input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" /></div>
-              </div>
-              <div>
-                <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Receipt Upload</label>
-                <div className="flex items-center gap-2">
-                  <label className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-secondary)] cursor-pointer hover:bg-[var(--border)]"><Upload size={14} /> Upload<input type="file" accept="image/*,.pdf" className="hidden" /></label>
-                  <label className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-secondary)] cursor-pointer hover:bg-[var(--border)]"><Camera size={14} /> Camera<input type="file" accept="image/*" capture="environment" className="hidden" /></label>
-                </div>
-              </div>
-              <div><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Notes</label><textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={2} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)] resize-none" /></div>
+      <SidePanel
+        open={showForm}
+        onClose={() => setShowForm(false)}
+        title="Log Expense"
+        footer={
+          <>
+            <button disabled={submitting} onClick={() => setShowForm(false)} className="erp-btn erp-btn-ghost disabled:opacity-50">Cancel</button>
+            <button disabled={submitting} onClick={logExpense} className="erp-btn erp-btn-primary disabled:opacity-50">
+              {submitting ? 'Submitting...' : 'Submit for Approval'}
+            </button>
+          </>
+        }
+      >
+        <div className="flex flex-col gap-4">
+          <div className="erp-form-group">
+            <label className="erp-label">Category</label>
+            <SearchableDropdown value={form.category} onChange={v => setForm(f => ({ ...f, category: v }))} options={CATEGORIES.map(c => ({ value: c, label: c }))} />
+          </div>
+          <div className="erp-form-group">
+            <label className="erp-label">Description</label>
+            <input value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="What was this expense for?" className="erp-input" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="erp-form-group">
+              <label className="erp-label">Amount (GHS)</label>
+              <input type="number" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} className="erp-input" />
             </div>
-            <div className="flex items-center gap-3 justify-end mt-5">
-              <button disabled={submitting} onClick={() => setShowForm(false)} className="px-4 py-2 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--text-secondary)] disabled:opacity-50">Cancel</button>
-              <button disabled={submitting} onClick={logExpense} className="px-4 py-2 rounded-xl text-white text-sm font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed" style={{ background: 'var(--accent)' }}>
-                {submitting ? 'Submitting...' : 'Submit for Approval'}
-              </button>
+            <div className="erp-form-group">
+              <label className="erp-label">Date</label>
+              <input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} className="erp-input" />
             </div>
           </div>
+          <div className="erp-form-group">
+            <label className="erp-label">Receipt Upload</label>
+            <div className="flex items-center gap-2">
+              <label className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-secondary)] cursor-pointer hover:bg-[var(--border)]"><Upload size={14} /> Upload<input type="file" accept="image/*,.pdf" className="hidden" /></label>
+              <label className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-secondary)] cursor-pointer hover:bg-[var(--border)]"><Camera size={14} /> Camera<input type="file" accept="image/*" capture="environment" className="hidden" /></label>
+            </div>
+          </div>
+          <div className="erp-form-group">
+            <label className="erp-label">Notes</label>
+            <textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={2} className="erp-input resize-none" />
+          </div>
         </div>
-      )}
+      </SidePanel>
 
-      {showEditForm && editExpense && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setShowEditForm(false)}>
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div className="relative bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-6 w-full max-w-2xl shadow-2xl" onClick={e => e.stopPropagation()}>
-            <h3 className="text-base font-semibold text-[var(--text-primary)] mb-5">Edit Expense</h3>
-            <div className="space-y-4">
-              <div><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Category</label><select value={editForm.category} onChange={e => setEditForm(f => ({ ...f, category: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]">{CATEGORIES.map(c => <option key={c}>{c}</option>)}</select></div>
-              <div><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Description</label><input value={editForm.description} onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" /></div>
-              <div className="grid grid-cols-2 gap-3">
-                <div><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Amount (GHS)</label><input type="number" value={editForm.amount} onChange={e => setEditForm(f => ({ ...f, amount: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" /></div>
-                <div><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Date</label><input type="date" value={editForm.date} onChange={e => setEditForm(f => ({ ...f, date: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" /></div>
-              </div>
-              <div><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Notes (optional)</label><textarea value={editForm.notes} onChange={e => setEditForm(f => ({ ...f, notes: e.target.value }))} rows={2} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)] resize-none" /></div>
+      <SidePanel
+        open={showEditForm && !!editExpense}
+        onClose={() => setShowEditForm(false)}
+        title="Edit Expense"
+        footer={
+          <>
+            <button disabled={submitting} onClick={() => setShowEditForm(false)} className="erp-btn erp-btn-ghost disabled:opacity-50">Cancel</button>
+            <button disabled={submitting} onClick={updateExpense} className="erp-btn erp-btn-primary disabled:opacity-50">
+              {submitting ? 'Saving...' : 'Save Changes'}
+            </button>
+          </>
+        }
+      >
+        <div className="flex flex-col gap-4">
+          <div className="erp-form-group">
+            <label className="erp-label">Category</label>
+            <SearchableDropdown value={editForm.category} onChange={v => setEditForm(f => ({ ...f, category: v }))} options={CATEGORIES.map(c => ({ value: c, label: c }))} />
+          </div>
+          <div className="erp-form-group">
+            <label className="erp-label">Description</label>
+            <input value={editForm.description} onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))} className="erp-input" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="erp-form-group">
+              <label className="erp-label">Amount (GHS)</label>
+              <input type="number" value={editForm.amount} onChange={e => setEditForm(f => ({ ...f, amount: e.target.value }))} className="erp-input" />
             </div>
-            <div className="flex items-center gap-3 justify-end mt-5">
-              <button disabled={submitting} onClick={() => setShowEditForm(false)} className="px-4 py-2 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--text-secondary)] disabled:opacity-50">Cancel</button>
-              <button disabled={submitting} onClick={updateExpense} className="px-4 py-2 rounded-xl text-white text-sm font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed" style={{ background: 'var(--accent)' }}>
-                {submitting ? 'Saving...' : 'Save Changes'}
-              </button>
+            <div className="erp-form-group">
+              <label className="erp-label">Date</label>
+              <input type="date" value={editForm.date} onChange={e => setEditForm(f => ({ ...f, date: e.target.value }))} className="erp-input" />
             </div>
           </div>
+          <div className="erp-form-group">
+            <label className="erp-label">Notes (optional)</label>
+            <textarea value={editForm.notes} onChange={e => setEditForm(f => ({ ...f, notes: e.target.value }))} rows={2} className="erp-input resize-none" />
+          </div>
         </div>
-      )}
+      </SidePanel>
     </div>
   );
 }

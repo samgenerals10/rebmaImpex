@@ -4,6 +4,7 @@ import { Download, Save, FileText, Calculator } from 'lucide-react';
 import { exportToCSV, exportToPDF } from '../../utils/export';
 import CountUp from '../../components/CountUp';
 import { useCeoSettings } from '../../contexts/CeoSettingsContext';
+import SearchableDropdown from '../../components/ui/SearchableDropdown';
 
 interface VATEntry {
   period: string;
@@ -169,9 +170,7 @@ export default function FinanceTaxVATView({ addNotification, currentUser }: Prop
       )}
 
       <div className="flex items-center gap-3">
-        <select value={selectedPeriod} onChange={e => setSelectedPeriod(e.target.value)} className="px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-secondary)] focus:outline-none">
-          {vatData.map(v => <option key={v.period}>{v.period}</option>)}
-        </select>
+        <SearchableDropdown value={selectedPeriod} onChange={setSelectedPeriod} options={vatData.map(v => ({ value: v.period, label: v.period }))} className="w-48" />
         <button onClick={() => exportToCSV(vatData.map(v => ({ Period: v.period, Invoices: v.invoiceCount, 'Gross Sales': v.grossSales, 'VAT Amount': v.vatAmount, 'Net Sales': v.netSales, Status: v.status })), ['Period', 'Invoices', 'Gross Sales', 'VAT Amount', 'Net Sales', 'Status'], 'vat_report')} className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[var(--border)] text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-card)]"><Download size={14} /> Export CSV</button>
       </div>
 

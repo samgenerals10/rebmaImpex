@@ -6,6 +6,8 @@ import { exportToCSV } from '../../utils/export';
 import { ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import CountUp from '../../components/CountUp';
 import { useCeoSettings } from '../../contexts/CeoSettingsContext';
+import SidePanel from '../../components/ui/SidePanel';
+import SearchableDropdown from '../../components/ui/SearchableDropdown';
 
 interface MomoTxn {
   id: string;
@@ -225,9 +227,7 @@ export default function FinanceMobileMoneyView({ addNotification, currentUser }:
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by transaction ID or customer..." className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent)]" />
           </div>
-          <select value={networkFilter} onChange={e => setNetworkFilter(e.target.value)} className="px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-secondary)] focus:outline-none">
-            {['All', 'MTN', 'Vodafone', 'AirtelTigo'].map(n => <option key={n}>{n}</option>)}
-          </select>
+          <SearchableDropdown value={networkFilter} onChange={setNetworkFilter} options={['All', 'MTN', 'Vodafone', 'AirtelTigo'].map(n => ({ value: n, label: n }))} className="w-40" />
         </div>
       </div>
 
@@ -270,59 +270,80 @@ export default function FinanceMobileMoneyView({ addNotification, currentUser }:
         </div>
       </div>
 
-      {viewing && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setViewing(null)}>
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div className="relative bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-6 w-full max-w-2xl shadow-2xl" onClick={e => e.stopPropagation()}>
-            <h3 className="text-base font-semibold text-[var(--text-primary)] mb-4">MoMo Transaction Details</h3>
-            <div className="space-y-3">
-              {[
-                { label: 'Transaction ID', value: viewing.transactionId },
-                { label: 'Network', value: viewing.network },
-                { label: 'Customer', value: viewing.customerName },
-                { label: 'MoMo Number', value: viewing.momoNumber },
-                { label: 'Amount', value: `GHS ${viewing.amount.toLocaleString()}` },
-                { label: 'Date', value: viewing.date },
-                { label: 'Order Reference', value: viewing.orderRef || '—' },
-                { label: 'Status', value: viewing.status },
-              ].map(({ label, value }) => (
-                <div key={label} className="flex justify-between py-2 border-b border-[var(--border)] last:border-0">
-                  <span className="text-xs text-[var(--text-muted)]">{label}</span>
-                  <span className="text-xs font-semibold text-[var(--text-primary)]">{value}</span>
-                </div>
-              ))}
+      <SidePanel
+        open={!!viewing}
+        onClose={() => setViewing(null)}
+        title="MoMo Transaction Details"
+        footer={
+          <>
+            {viewing?.status === 'Pending' && <button onClick={() => { verify(viewing.id); setViewing(null); }} className="erp-btn bg-green-500 text-white hover:opacity-90">Verify</button>}
+            <button onClick={() => setViewing(null)} className="erp-btn erp-btn-ghost">Close</button>
+          </>
+        }
+      >
+        {viewing && (
+          <div className="space-y-3">
+            {[
+              { label: 'Transaction ID', value: viewing.transactionId },
+              { label: 'Network', value: viewing.network },
+              { label: 'Customer', value: viewing.customerName },
+              { label: 'MoMo Number', value: viewing.momoNumber },
+              { label: 'Amount', value: `GHS ${viewing.amount.toLocaleString()}` },
+              { label: 'Date', value: viewing.date },
+              { label: 'Order Reference', value: viewing.orderRef || '—' },
+              { label: 'Status', value: viewing.status },
+            ].map(({ label, value }) => (
+              <div key={label} className="flex justify-between py-2 border-b border-[var(--border)] last:border-0">
+                <span className="text-xs text-[var(--text-muted)]">{label}</span>
+                <span className="text-xs font-semibold text-[var(--text-primary)]">{value}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </SidePanel>
+
+      <SidePanel
+        open={showEditForm && !!editTxn}
+        onClose={() => setShowEditForm(false)}
+        title="Edit MoMo Transaction"
+        footer={
+          <>
+            <button onClick={() => setShowEditForm(false)} disabled={submitting} className="erp-btn erp-btn-ghost disabled:opacity-50">Cancel</button>
+            <button onClick={updateTxn} disabled={submitting} className="erp-btn erp-btn-primary disabled:opacity-50">{submitting ? 'Saving...' : 'Save Changes'}</button>
+          </>
+        }
+      >
+        <div className="flex flex-col gap-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="erp-form-group">
+              <label className="erp-label">Transaction ID</label>
+              <input value={editForm.transactionId} onChange={e => setEditForm(f => ({ ...f, transactionId: e.target.value }))} className="erp-input" />
             </div>
-            <div className="flex items-center gap-3 justify-end mt-5">
-              {viewing.status === 'Pending' && <button onClick={() => { verify(viewing.id); setViewing(null); }} className="px-4 py-2 rounded-xl bg-green-500 text-white text-sm font-medium">Verify</button>}
-              <button onClick={() => setViewing(null)} className="px-4 py-2 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--text-secondary)]">Close</button>
+            <div className="erp-form-group">
+              <label className="erp-label">Network</label>
+              <SearchableDropdown value={editForm.network} onChange={v => setEditForm(f => ({ ...f, network: v as any }))} options={['MTN', 'Vodafone', 'AirtelTigo'].map(n => ({ value: n, label: n }))} />
             </div>
           </div>
-        </div>
-      )}
-      {showEditForm && editTxn && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setShowEditForm(false)}>
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div className="relative bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-6 w-full max-w-2xl shadow-2xl" onClick={e => e.stopPropagation()}>
-            <h3 className="text-base font-semibold text-[var(--text-primary)] mb-5">Edit MoMo Transaction</h3>
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Transaction ID</label><input value={editForm.transactionId} onChange={e => setEditForm(f => ({ ...f, transactionId: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm focus:outline-none focus:border-[var(--accent)]" /></div>
-                <div><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Network</label><select value={editForm.network} onChange={e => setEditForm(f => ({ ...f, network: e.target.value as any }))} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm focus:outline-none focus:border-[var(--accent)]">{['MTN', 'Vodafone', 'AirtelTigo'].map(n => <option key={n}>{n}</option>)}</select></div>
-              </div>
-              <div><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Customer Name</label><input value={editForm.customerName} onChange={e => setEditForm(f => ({ ...f, customerName: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm focus:outline-none focus:border-[var(--accent)]" /></div>
-              <div className="grid grid-cols-2 gap-3">
-                <div><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">MoMo Number</label><input value={editForm.momoNumber} onChange={e => setEditForm(f => ({ ...f, momoNumber: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm focus:outline-none focus:border-[var(--accent)]" /></div>
-                <div><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Amount (GHS)</label><input type="number" value={editForm.amount} onChange={e => setEditForm(f => ({ ...f, amount: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm focus:outline-none focus:border-[var(--accent)]" /></div>
-              </div>
-              <div><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Date</label><input type="date" value={editForm.date} onChange={e => setEditForm(f => ({ ...f, date: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm focus:outline-none focus:border-[var(--accent)]" /></div>
+          <div className="erp-form-group">
+            <label className="erp-label">Customer Name</label>
+            <input value={editForm.customerName} onChange={e => setEditForm(f => ({ ...f, customerName: e.target.value }))} className="erp-input" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="erp-form-group">
+              <label className="erp-label">MoMo Number</label>
+              <input value={editForm.momoNumber} onChange={e => setEditForm(f => ({ ...f, momoNumber: e.target.value }))} className="erp-input" />
             </div>
-            <div className="flex items-center gap-3 justify-end mt-5">
-              <button onClick={() => setShowEditForm(false)} disabled={submitting} className="px-4 py-2 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--text-secondary)] disabled:opacity-50">Cancel</button>
-              <button onClick={updateTxn} disabled={submitting} className="px-4 py-2 rounded-xl text-white text-sm font-medium hover:opacity-90 disabled:opacity-50" style={{ background: 'var(--accent)' }}>{submitting ? 'Saving...' : 'Save Changes'}</button>
+            <div className="erp-form-group">
+              <label className="erp-label">Amount (GHS)</label>
+              <input type="number" value={editForm.amount} onChange={e => setEditForm(f => ({ ...f, amount: e.target.value }))} className="erp-input" />
             </div>
           </div>
+          <div className="erp-form-group">
+            <label className="erp-label">Date</label>
+            <input type="date" value={editForm.date} onChange={e => setEditForm(f => ({ ...f, date: e.target.value }))} className="erp-input" />
+          </div>
         </div>
-      )}
+      </SidePanel>
     </div>
   );
 }

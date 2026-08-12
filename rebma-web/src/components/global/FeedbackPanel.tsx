@@ -1,8 +1,9 @@
 // src/components/global/FeedbackPanel.tsx
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, MessageSquare, ThumbsUp, ThumbsDown, Minus, X, Check, Star } from 'lucide-react';
+import { Plus, MessageSquare, ThumbsUp, ThumbsDown, Minus, Check, Star } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import type { CurrentUser } from '../../types/erp';
+import SidePanel from '../ui/SidePanel';
 
 interface FeedbackItem {
   id: string;
@@ -186,14 +187,19 @@ export default function FeedbackPanel({ currentUser, addNotification }: Feedback
       )}
 
       {/* Feedback Modal */}
-      {modal.open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-          <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-2xl w-full max-w-md p-5 overflow-y-auto" style={{ maxHeight: '90vh' }}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-sm text-[var(--text-primary)]">Submit Feedback</h3>
-              <button onClick={() => setModal({ open: false, ...blank })} className="p-1 rounded-lg hover:bg-[var(--bg-input)] cursor-pointer"><X className="w-4 h-4 text-[var(--text-muted)]" /></button>
-            </div>
-
+      <SidePanel
+        open={modal.open}
+        onClose={() => setModal({ open: false, ...blank })}
+        title="Submit Feedback"
+        footer={
+          <>
+            <button onClick={() => setModal({ open: false, ...blank })} className="erp-btn erp-btn-ghost">Cancel</button>
+            <button onClick={save} disabled={saving || !modal.subject.trim()} className="erp-btn erp-btn-primary disabled:opacity-50">
+              <Check className="w-3.5 h-3.5" /> {saving ? 'Submitting…' : 'Submit'}
+            </button>
+          </>
+        }
+      >
             {/* Type selector */}
             <div className="flex bg-[var(--bg-input)] border border-[var(--border)] rounded-lg overflow-hidden text-[10px] font-semibold mb-3">
               {([['internal','Internal'],['customer','Customer']] as const).map(([v,l]) => (
@@ -246,17 +252,7 @@ export default function FeedbackPanel({ currentUser, addNotification }: Feedback
               </div>
               <span className="text-xs text-[var(--text-secondary)]">Submit anonymously</span>
             </label>
-
-            <div className="flex justify-end gap-2">
-              <button onClick={() => setModal({ open: false, ...blank })} className="px-4 py-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-input)] rounded-lg cursor-pointer">Cancel</button>
-              <button onClick={save} disabled={saving || !modal.subject.trim()}
-                className="flex items-center gap-1.5 px-4 py-1.5 bg-[var(--accent)] text-white text-xs font-semibold rounded-lg hover:opacity-90 disabled:opacity-50 cursor-pointer">
-                <Check className="w-3.5 h-3.5" /> {saving ? 'Submitting…' : 'Submit'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      </SidePanel>
     </div>
   );
 }

@@ -3,6 +3,8 @@ import { supabase } from '../../lib/supabaseClient';
 import { FileText, Download, BarChart2, TrendingUp, Users, CreditCard, Receipt, DollarSign, Calendar, RefreshCw } from 'lucide-react';
 import { exportToCSV, exportToPDF } from '../../utils/export';
 import { useCeoSettings } from '../../contexts/CeoSettingsContext';
+import SidePanel from '../../components/ui/SidePanel';
+import SearchableDropdown from '../../components/ui/SearchableDropdown';
 
 interface ReportCard {
   id: string;
@@ -354,25 +356,27 @@ export default function FinanceReportsView({ addNotification, currentUser }: Pro
         )}
       </div>
 
-      {showPeriodModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setShowPeriodModal(null)}>
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div className="relative bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-6 w-full max-w-sm shadow-2xl" onClick={e => e.stopPropagation()}>
-            <h3 className="text-base font-semibold text-[var(--text-primary)] mb-1">{showPeriodModal.name}</h3>
-            <p className="text-xs text-[var(--text-muted)] mb-5">{showPeriodModal.description}</p>
-            <div>
-              <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Select Period</label>
-              <select value={selectedPeriod} onChange={e => setSelectedPeriod(e.target.value)} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm focus:outline-none focus:border-[var(--accent)]">
-                {['Today', 'This Week', 'This Month', 'Last Month', 'This Quarter', 'Last Quarter', 'This Year', 'Last Year'].map(p => <option key={p}>{p}</option>)}
-              </select>
-            </div>
-            <div className="flex items-center gap-3 justify-end mt-5">
-              <button onClick={() => setShowPeriodModal(null)} className="px-4 py-2 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--text-secondary)]">Cancel</button>
-              <button onClick={() => generateReport(showPeriodModal)} className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-white text-sm font-medium" style={{ background: showPeriodModal.color }}><Download size={14} /> Generate & Download</button>
-            </div>
-          </div>
+      <SidePanel
+        open={!!showPeriodModal}
+        onClose={() => setShowPeriodModal(null)}
+        title={showPeriodModal?.name || ''}
+        subtitle={showPeriodModal?.description}
+        footer={
+          <>
+            <button onClick={() => setShowPeriodModal(null)} className="erp-btn erp-btn-ghost">Cancel</button>
+            <button onClick={() => showPeriodModal && generateReport(showPeriodModal)} className="erp-btn text-white" style={{ background: showPeriodModal?.color }}><Download size={14} /> Generate &amp; Download</button>
+          </>
+        }
+      >
+        <div className="erp-form-group">
+          <label className="erp-label">Select Period</label>
+          <SearchableDropdown
+            value={selectedPeriod}
+            onChange={setSelectedPeriod}
+            options={['Today', 'This Week', 'This Month', 'Last Month', 'This Quarter', 'Last Quarter', 'This Year', 'Last Year'].map(p => ({ value: p, label: p }))}
+          />
         </div>
-      )}
+      </SidePanel>
     </div>
   );
 }

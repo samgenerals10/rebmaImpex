@@ -8,6 +8,8 @@ import {
 import { exportToCSV } from '../../utils/export';
 import CountUp from '../../components/CountUp';
 import { usePaginatedQuery } from '../../hooks/usePaginatedQuery';
+import SidePanel from '../../components/ui/SidePanel';
+import SearchableDropdown from '../../components/ui/SearchableDropdown';
 
 interface CreditEntry {
   id: string;
@@ -320,9 +322,12 @@ export default function FinanceCreditMgmtView({ addNotification, currentUser }: 
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search customer or order..." className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent)]" />
         </div>
-        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-secondary)] focus:outline-none">
-          {['All', 'Current', 'Due Soon', 'Overdue', 'Paid'].map(s => <option key={s}>{s}</option>)}
-        </select>
+        <SearchableDropdown
+          value={statusFilter}
+          onChange={setStatusFilter}
+          options={['All', 'Current', 'Due Soon', 'Overdue', 'Paid'].map(s => ({ value: s, label: s }))}
+          className="w-44"
+        />
       </div>
 
       <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl overflow-hidden">
@@ -392,65 +397,86 @@ export default function FinanceCreditMgmtView({ addNotification, currentUser }: 
         )}
       </div>
 
-      {reminderModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setReminderModal(null)}>
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div className="relative bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-6 w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
-            <h3 className="text-base font-semibold text-[var(--text-primary)] mb-4">Send Payment Reminder</h3>
-            <div className="flex items-center gap-2 mb-4">
-              {(['whatsapp', 'email'] as const).map(t => (
-                <button key={t} onClick={() => setReminderType(t)} className={`flex-1 py-2 rounded-xl text-sm font-medium capitalize ${reminderType === t ? 'text-white' : 'border border-[var(--border)] text-[var(--text-secondary)]'}`} style={reminderType === t ? { background: 'var(--accent)' } : {}}>{t === 'whatsapp' ? '📱 WhatsApp' : '📧 Email'}</button>
-              ))}
-            </div>
-            <textarea value={reminderMsg} onChange={e => setReminderMsg(e.target.value)} rows={6} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)] resize-none mb-4" />
-            <div className="flex items-center gap-3 justify-end">
-              <button onClick={() => setReminderModal(null)} disabled={submitting} className="px-4 py-2 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--text-secondary)] disabled:opacity-50">Cancel</button>
-              <button onClick={sendReminder} disabled={submitting} className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-white text-sm font-medium disabled:opacity-50 hover:opacity-90" style={{ background: 'var(--accent)' }}><Send size={14} /> {submitting ? 'Sending...' : 'Send'}</button>
-            </div>
-          </div>
+      <SidePanel
+        open={!!reminderModal}
+        onClose={() => setReminderModal(null)}
+        title="Send Payment Reminder"
+        subtitle={reminderModal ? reminderModal.customerName : undefined}
+        footer={
+          <>
+            <button onClick={() => setReminderModal(null)} disabled={submitting} className="erp-btn erp-btn-ghost disabled:opacity-50">Cancel</button>
+            <button onClick={sendReminder} disabled={submitting} className="erp-btn erp-btn-primary disabled:opacity-50"><Send size={14} /> {submitting ? 'Sending...' : 'Send'}</button>
+          </>
+        }
+      >
+        <div className="flex items-center gap-2 mb-4">
+          {(['whatsapp', 'email'] as const).map(t => (
+            <button key={t} onClick={() => setReminderType(t)} className={`flex-1 py-2 rounded-xl text-sm font-medium capitalize ${reminderType === t ? 'text-white' : 'border border-[var(--border)] text-[var(--text-secondary)]'}`} style={reminderType === t ? { background: 'var(--accent)' } : {}}>{t === 'whatsapp' ? '📱 WhatsApp' : '📧 Email'}</button>
+          ))}
         </div>
-      )}
+        <textarea value={reminderMsg} onChange={e => setReminderMsg(e.target.value)} rows={6} className="erp-input resize-none" />
+      </SidePanel>
 
-      {payModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setPayModal(null)}>
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div className="relative bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-6 w-full max-w-sm shadow-2xl" onClick={e => e.stopPropagation()}>
-            <h3 className="text-base font-semibold text-[var(--text-primary)] mb-1">Record Payment</h3>
-            <p className="text-sm text-[var(--text-secondary)] mb-4">{payModal.customerName} — Outstanding: GHS {payModal.outstanding.toLocaleString()}</p>
-            <div className="space-y-3">
-              <div><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Amount (GHS)</label><input type="number" value={payAmount} onChange={e => setPayAmount(e.target.value)} placeholder={String(payModal.outstanding)} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm focus:outline-none focus:border-[var(--accent)]" /></div>
-              <div><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Date</label><input type="date" value={payDate} onChange={e => setPayDate(e.target.value)} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm focus:outline-none focus:border-[var(--accent)]" /></div>
+      <SidePanel
+        open={!!payModal}
+        onClose={() => setPayModal(null)}
+        title="Record Payment"
+        subtitle={payModal ? `${payModal.customerName}. Outstanding: GHS ${payModal.outstanding.toLocaleString()}` : undefined}
+        footer={
+          <>
+            <button onClick={() => setPayModal(null)} disabled={submitting} className="erp-btn erp-btn-ghost disabled:opacity-50">Cancel</button>
+            <button onClick={recordPayment} disabled={submitting} className="erp-btn erp-btn-primary disabled:opacity-50">{submitting ? 'Saving...' : 'Save Payment'}</button>
+          </>
+        }
+      >
+        <div className="erp-form-group">
+          <label className="erp-label">Amount (GHS)</label>
+          <input type="number" value={payAmount} onChange={e => setPayAmount(e.target.value)} placeholder={payModal ? String(payModal.outstanding) : ''} className="erp-input" />
+        </div>
+        <div className="erp-form-group">
+          <label className="erp-label">Date</label>
+          <input type="date" value={payDate} onChange={e => setPayDate(e.target.value)} className="erp-input" />
+        </div>
+      </SidePanel>
+
+      <SidePanel
+        open={showEditForm && !!editItem}
+        onClose={() => setShowEditForm(false)}
+        title="Edit Credit Order"
+        footer={
+          <>
+            <button onClick={() => setShowEditForm(false)} disabled={submitting} className="erp-btn erp-btn-ghost disabled:opacity-50">Cancel</button>
+            <button onClick={updateCredit} disabled={submitting} className="erp-btn erp-btn-primary disabled:opacity-50">{submitting ? 'Saving...' : 'Save Changes'}</button>
+          </>
+        }
+      >
+        <div className="flex flex-col gap-4">
+          <div className="erp-form-group">
+            <label className="erp-label">Customer Name</label>
+            <input value={editForm.clientName} onChange={e => setEditForm(f => ({ ...f, clientName: e.target.value }))} className="erp-input" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="erp-form-group">
+              <label className="erp-label">Total Amount (GHS)</label>
+              <input type="number" value={editForm.totalAmount} onChange={e => setEditForm(f => ({ ...f, totalAmount: e.target.value }))} className="erp-input" />
             </div>
-            <div className="flex items-center gap-3 justify-end mt-4">
-              <button onClick={() => setPayModal(null)} disabled={submitting} className="px-4 py-2 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--text-secondary)] disabled:opacity-50">Cancel</button>
-              <button onClick={recordPayment} disabled={submitting} className="px-4 py-2 rounded-xl text-white text-sm font-medium hover:opacity-90 disabled:opacity-50" style={{ background: 'var(--accent)' }}>{submitting ? 'Saving...' : 'Save Payment'}</button>
+            <div className="erp-form-group">
+              <label className="erp-label">Amount Paid (GHS)</label>
+              <input type="number" value={editForm.amountPaid} onChange={e => setEditForm(f => ({ ...f, amountPaid: e.target.value }))} className="erp-input" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="erp-form-group">
+              <label className="erp-label">Due Date</label>
+              <input type="date" value={editForm.dueDate} onChange={e => setEditForm(f => ({ ...f, dueDate: e.target.value }))} className="erp-input" />
+            </div>
+            <div className="erp-form-group">
+              <label className="erp-label">Phone Number</label>
+              <input value={editForm.phone} onChange={e => setEditForm(f => ({ ...f, phone: e.target.value }))} className="erp-input" />
             </div>
           </div>
         </div>
-      )}
-      {showEditForm && editItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setShowEditForm(false)}>
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div className="relative bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-6 w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
-            <h3 className="text-base font-semibold text-[var(--text-primary)] mb-5">Edit Credit Order</h3>
-            <div className="space-y-4">
-              <div><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Customer Name</label><input value={editForm.clientName} onChange={e => setEditForm(f => ({ ...f, clientName: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm focus:outline-none focus:border-[var(--accent)]" /></div>
-              <div className="grid grid-cols-2 gap-3">
-                <div><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Total Amount (GHS)</label><input type="number" value={editForm.totalAmount} onChange={e => setEditForm(f => ({ ...f, totalAmount: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm focus:outline-none focus:border-[var(--accent)]" /></div>
-                <div><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Amount Paid (GHS)</label><input type="number" value={editForm.amountPaid} onChange={e => setEditForm(f => ({ ...f, amountPaid: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm focus:outline-none focus:border-[var(--accent)]" /></div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Due Date</label><input type="date" value={editForm.dueDate} onChange={e => setEditForm(f => ({ ...f, dueDate: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm focus:outline-none focus:border-[var(--accent)]" /></div>
-                <div><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Phone Number</label><input value={editForm.phone} onChange={e => setEditForm(f => ({ ...f, phone: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm focus:outline-none focus:border-[var(--accent)]" /></div>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 justify-end mt-5">
-              <button onClick={() => setShowEditForm(false)} disabled={submitting} className="px-4 py-2 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--text-secondary)] disabled:opacity-50">Cancel</button>
-              <button onClick={updateCredit} disabled={submitting} className="px-4 py-2 rounded-xl text-white text-sm font-medium hover:opacity-90 disabled:opacity-50" style={{ background: 'var(--accent)' }}>{submitting ? 'Saving...' : 'Save Changes'}</button>
-            </div>
-          </div>
-        </div>
-      )}
+      </SidePanel>
     </div>
   );
 }

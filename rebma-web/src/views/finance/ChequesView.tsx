@@ -6,6 +6,8 @@ import EntityDetailPanel from '../../components/global/EntityDetailPanel';
 import CountUp from '../../components/CountUp';
 import { useCeoSettings } from '../../contexts/CeoSettingsContext';
 import { usePaginatedQuery } from '../../hooks/usePaginatedQuery';
+import SidePanel from '../../components/ui/SidePanel';
+import SearchableDropdown from '../../components/ui/SearchableDropdown';
 
 interface Cheque {
   id: string;
@@ -236,9 +238,7 @@ export default function FinanceChequesView({ addNotification, currentUser }: Pro
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by cheque number or account..." className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent)]" />
         </div>
-        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-secondary)] focus:outline-none">
-          {['All', 'Received', 'Deposited', 'Cleared', 'Bounced'].map(s => <option key={s}>{s}</option>)}
-        </select>
+        <SearchableDropdown value={statusFilter} onChange={setStatusFilter} options={['All', 'Received', 'Deposited', 'Cleared', 'Bounced'].map(s => ({ value: s, label: s }))} className="w-40" />
       </div>
 
       <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl overflow-hidden">
@@ -294,28 +294,31 @@ export default function FinanceChequesView({ addNotification, currentUser }: Pro
         )}
       </div>
 
-      {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setShowForm(false)}>
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div className="relative bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-6 w-full max-w-2xl shadow-2xl" onClick={e => e.stopPropagation()}>
-            <h3 className="text-base font-semibold text-[var(--text-primary)] mb-5">Add New Cheque</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {[
-                { label: 'Cheque Number', key: 'chequeNumber' }, { label: 'Bank Name', key: 'bankName' },
-                { label: 'Account Name', key: 'accountName' }, { label: 'Account Number', key: 'accountNumber' },
-                { label: 'Amount (GHS)', key: 'amount', type: 'number' }, { label: 'Order Reference', key: 'orderRef' },
-                { label: 'Cheque Date', key: 'chequeDate', type: 'date' }, { label: 'Expected Clearing', key: 'expectedClearing', type: 'date' },
-              ].map(({ label, key, type }) => (
-                <div key={key}><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">{label}</label><input type={type || 'text'} value={(form as Record<string, string>)[key]} onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" /></div>
-              ))}
+      <SidePanel
+        open={showForm}
+        onClose={() => setShowForm(false)}
+        title="Add New Cheque"
+        footer={
+          <>
+            <button onClick={() => setShowForm(false)} disabled={submitting} className="erp-btn erp-btn-ghost disabled:opacity-50">Cancel</button>
+            <button onClick={addCheque} disabled={submitting} className="erp-btn erp-btn-primary disabled:opacity-50">{submitting ? 'Adding...' : 'Add to Register'}</button>
+          </>
+        }
+      >
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {[
+            { label: 'Cheque Number', key: 'chequeNumber' }, { label: 'Bank Name', key: 'bankName' },
+            { label: 'Account Name', key: 'accountName' }, { label: 'Account Number', key: 'accountNumber' },
+            { label: 'Amount (GHS)', key: 'amount', type: 'number' }, { label: 'Order Reference', key: 'orderRef' },
+            { label: 'Cheque Date', key: 'chequeDate', type: 'date' }, { label: 'Expected Clearing', key: 'expectedClearing', type: 'date' },
+          ].map(({ label, key, type }) => (
+            <div key={key} className="erp-form-group">
+              <label className="erp-label">{label}</label>
+              <input type={type || 'text'} value={(form as Record<string, string>)[key]} onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))} className="erp-input" />
             </div>
-            <div className="flex items-center gap-3 justify-end mt-5">
-              <button onClick={() => setShowForm(false)} disabled={submitting} className="px-4 py-2 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--text-secondary)] disabled:opacity-50">Cancel</button>
-              <button onClick={addCheque} disabled={submitting} className="px-4 py-2 rounded-xl text-white text-sm font-medium hover:opacity-90 disabled:opacity-50" style={{ background: 'var(--accent)' }}>{submitting ? 'Adding...' : 'Add to Register'}</button>
-            </div>
-          </div>
+          ))}
         </div>
-      )}
+      </SidePanel>
 
       {selectedCheque && (
         <EntityDetailPanel
@@ -348,28 +351,31 @@ export default function FinanceChequesView({ addNotification, currentUser }: Pro
         />
       )}
 
-      {showEditForm && editCheque && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setShowEditForm(false)}>
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div className="relative bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-6 w-full max-w-2xl shadow-2xl" onClick={e => e.stopPropagation()}>
-            <h3 className="text-base font-semibold text-[var(--text-primary)] mb-5">Edit Cheque</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {[
-                { label: 'Cheque Number', key: 'chequeNumber' }, { label: 'Bank Name', key: 'bankName' },
-                { label: 'Account Name', key: 'accountName' }, { label: 'Account Number', key: 'accountNumber' },
-                { label: 'Amount (GHS)', key: 'amount', type: 'number' }, { label: 'Order Reference', key: 'orderRef' },
-                { label: 'Cheque Date', key: 'chequeDate', type: 'date' }, { label: 'Expected Clearing', key: 'expectedClearing', type: 'date' },
-              ].map(({ label, key, type }) => (
-                <div key={key}><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">{label}</label><input type={type || 'text'} value={(editForm as Record<string, string>)[key]} onChange={e => setEditForm(f => ({ ...f, [key]: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" /></div>
-              ))}
+      <SidePanel
+        open={showEditForm && !!editCheque}
+        onClose={() => setShowEditForm(false)}
+        title="Edit Cheque"
+        footer={
+          <>
+            <button onClick={() => setShowEditForm(false)} disabled={submitting} className="erp-btn erp-btn-ghost disabled:opacity-50">Cancel</button>
+            <button onClick={updateCheque} disabled={submitting} className="erp-btn erp-btn-primary disabled:opacity-50">{submitting ? 'Saving...' : 'Save Changes'}</button>
+          </>
+        }
+      >
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {[
+            { label: 'Cheque Number', key: 'chequeNumber' }, { label: 'Bank Name', key: 'bankName' },
+            { label: 'Account Name', key: 'accountName' }, { label: 'Account Number', key: 'accountNumber' },
+            { label: 'Amount (GHS)', key: 'amount', type: 'number' }, { label: 'Order Reference', key: 'orderRef' },
+            { label: 'Cheque Date', key: 'chequeDate', type: 'date' }, { label: 'Expected Clearing', key: 'expectedClearing', type: 'date' },
+          ].map(({ label, key, type }) => (
+            <div key={key} className="erp-form-group">
+              <label className="erp-label">{label}</label>
+              <input type={type || 'text'} value={(editForm as Record<string, string>)[key]} onChange={e => setEditForm(f => ({ ...f, [key]: e.target.value }))} className="erp-input" />
             </div>
-            <div className="flex items-center gap-3 justify-end mt-5">
-              <button onClick={() => setShowEditForm(false)} disabled={submitting} className="px-4 py-2 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--text-secondary)] disabled:opacity-50">Cancel</button>
-              <button onClick={updateCheque} disabled={submitting} className="px-4 py-2 rounded-xl text-white text-sm font-medium hover:opacity-90 disabled:opacity-50" style={{ background: 'var(--accent)' }}>{submitting ? 'Saving...' : 'Save Changes'}</button>
-            </div>
-          </div>
+          ))}
         </div>
-      )}
+      </SidePanel>
     </div>
   );
 }

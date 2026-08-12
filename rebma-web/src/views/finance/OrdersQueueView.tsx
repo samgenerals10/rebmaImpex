@@ -12,6 +12,8 @@ import { useFullscreenToggle, FullscreenButton } from '../../components/global/F
 import CountUp from '../../components/CountUp';
 import { useCeoSettings } from '../../contexts/CeoSettingsContext';
 import { generateReceiptNumber, printReceipt } from './ReceiptsView';
+import SidePanel from '../../components/ui/SidePanel';
+import SearchableDropdown from '../../components/ui/SearchableDropdown';
 import { documentTemplates, checkStockAvailability, shortageMessage, deductStockForOrder } from '../../services/apiClient';
 
 interface Props {
@@ -492,7 +494,7 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
 
               {pMode === 'MOBILE_MONEY' && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Network</label><select value={payForm.network} onChange={e => setPayForm(f => ({ ...f, network: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"><option>MTN</option><option>Vodafone</option><option>AirtelTigo</option></select></div>
+                  <div><label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Network</label><SearchableDropdown value={payForm.network} onChange={v => setPayForm(f => ({ ...f, network: v }))} options={['MTN', 'Vodafone', 'AirtelTigo'].map(n => ({ value: n, label: n }))} /></div>
                   <div>
                     <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Amount Received (GHS)</label>
                     <input
@@ -637,12 +639,8 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by order ID or customer..." className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent)]" />
         </div>
-        <select value={modeFilter} onChange={e => setModeFilter(e.target.value)} className="px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-secondary)] focus:outline-none focus:border-[var(--accent)]">
-          {['All', 'CASH', 'CHEQUE', 'MOBILE_MONEY', 'CREDIT'].map(m => <option key={m}>{m}</option>)}
-        </select>
-        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="px-3 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-secondary)] focus:outline-none focus:border-[var(--accent)]">
-          {['All', 'PENDING_FINANCE', 'PENDING_MANAGEMENT', 'APPROVED', 'PROCESSING', 'OUT_FOR_DELIVERY', 'DELIVERED', 'REJECTED'].map(s => <option key={s}>{s}</option>)}
-        </select>
+        <SearchableDropdown value={modeFilter} onChange={setModeFilter} options={['All', 'CASH', 'CHEQUE', 'MOBILE_MONEY', 'CREDIT'].map(m => ({ value: m, label: m }))} className="w-44" />
+        <SearchableDropdown value={statusFilter} onChange={setStatusFilter} options={['All', 'PENDING_FINANCE', 'PENDING_MANAGEMENT', 'APPROVED', 'PROCESSING', 'OUT_FOR_DELIVERY', 'DELIVERED', 'REJECTED'].map(s => ({ value: s, label: s }))} className="w-52" />
       </div>
 
       <div className={`bg-[var(--bg-card)] border border-[var(--border)] overflow-hidden ${tableFullscreen.expanded ? `${tableFullscreen.fullscreenClass} p-4` : 'rounded-2xl'}`}>
@@ -711,20 +709,22 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
         )}
       </div>
 
-      {rejectModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setRejectModal(null)}>
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div className="relative bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-6 w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
-            <h3 className="text-base font-semibold text-[var(--text-primary)] mb-4">Reject Order {rejectModal}</h3>
-            <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Reason for rejection *</label>
-            <textarea value={rejectReason} onChange={e => setRejectReason(e.target.value)} rows={3} placeholder="Explain why this order is being rejected..." className="w-full px-3 py-2 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)] resize-none mb-4" />
-            <div className="flex items-center gap-3 justify-end">
-              <button onClick={() => setRejectModal(null)} className="px-4 py-2 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-input)]">Cancel</button>
-              <button onClick={() => rejectOrder(rejectModal!)} disabled={!rejectReason} className="px-4 py-2 rounded-xl bg-red-500 text-white text-sm font-medium hover:bg-red-600 disabled:opacity-50">Confirm Rejection</button>
-            </div>
-          </div>
+      <SidePanel
+        open={!!rejectModal}
+        onClose={() => setRejectModal(null)}
+        title={`Reject Order ${rejectModal || ''}`}
+        footer={
+          <>
+            <button onClick={() => setRejectModal(null)} className="erp-btn erp-btn-ghost">Cancel</button>
+            <button onClick={() => rejectOrder(rejectModal!)} disabled={!rejectReason} className="erp-btn erp-btn-danger disabled:opacity-50">Confirm Rejection</button>
+          </>
+        }
+      >
+        <div className="erp-form-group">
+          <label className="erp-label">Reason for rejection *</label>
+          <textarea value={rejectReason} onChange={e => setRejectReason(e.target.value)} rows={3} placeholder="Explain why this order is being rejected..." className="erp-input resize-none" />
         </div>
-      )}
+      </SidePanel>
     </div>
   );
 }

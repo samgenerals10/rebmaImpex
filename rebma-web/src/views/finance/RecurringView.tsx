@@ -1,8 +1,10 @@
 // src/views/finance/RecurringView.tsx
 import { useState, useEffect } from 'react';
-import { Plus, Pencil, Pause, Trash2, X, Check, RefreshCw } from 'lucide-react';
+import { Plus, Pencil, Pause, Trash2, Check, RefreshCw } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import type { CurrentUser } from '../../types/erp';
+import SidePanel from '../../components/ui/SidePanel';
+import SearchableDropdown from '../../components/ui/SearchableDropdown';
 
 interface RecurringPayment {
   id: string;
@@ -123,43 +125,44 @@ export default function RecurringView({ currentUser, addNotification }: Props) {
         </div>
       )}
 
-      {modal.open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-          <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-2xl w-full max-w-sm p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-sm text-[var(--text-primary)]">{modal.id ? 'Edit' : 'New'} Recurring Payment</h3>
-              <button onClick={() => setModal({ open: false, ...blank })} className="p-1 rounded-lg hover:bg-[var(--bg-input)] cursor-pointer"><X className="w-4 h-4 text-[var(--text-muted)]" /></button>
+      <SidePanel
+        open={modal.open}
+        onClose={() => setModal({ open: false, ...blank })}
+        title={`${modal.id ? 'Edit' : 'New'} Recurring Payment`}
+        footer={
+          <>
+            <button onClick={() => setModal({ open: false, ...blank })} className="erp-btn erp-btn-ghost">Cancel</button>
+            <button onClick={save} disabled={saving || !modal.name.trim()} className="erp-btn erp-btn-primary disabled:opacity-50">
+              <Check className="w-3.5 h-3.5" /> {saving ? 'Saving…' : 'Save'}
+            </button>
+          </>
+        }
+      >
+        <div className="flex flex-col gap-4">
+          <div className="erp-form-group">
+            <label className="erp-label">Payment Name</label>
+            <input value={modal.name} onChange={e => setModal(m => ({ ...m, name: e.target.value }))} placeholder="Payment name…" className="erp-input" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="erp-form-group">
+              <label className="erp-label">Amount (GHS)</label>
+              <input type="number" value={modal.amount} onChange={e => setModal(m => ({ ...m, amount: e.target.value }))} className="erp-input" />
             </div>
-            <input value={modal.name} onChange={e => setModal(m => ({ ...m, name: e.target.value }))} placeholder="Payment name…"
-              className="w-full px-3 py-2 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-[var(--accent)] mb-3" />
-            <div className="grid grid-cols-2 gap-3 mb-3">
-              <div>
-                <label className="block text-[9px] font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-1">Amount (GHS)</label>
-                <input type="number" value={modal.amount} onChange={e => setModal(m => ({ ...m, amount: e.target.value }))}
-                  className="w-full px-3 py-2 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-[var(--accent)]" />
-              </div>
-              <div>
-                <label className="block text-[9px] font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-1">Frequency</label>
-                <select value={modal.frequency} onChange={e => setModal(m => ({ ...m, frequency: e.target.value as any }))}
-                  className="w-full px-3 py-2 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] outline-none cursor-pointer">
-                  {Object.entries(FREQ_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                </select>
-              </div>
-            </div>
-            <input type="date" value={modal.next_date} onChange={e => setModal(m => ({ ...m, next_date: e.target.value }))} placeholder="Next payment date"
-              className="w-full px-3 py-2 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-[var(--accent)] mb-3" />
-            <input value={modal.category} onChange={e => setModal(m => ({ ...m, category: e.target.value }))} placeholder="Category…"
-              className="w-full px-3 py-2 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-[var(--accent)] mb-4" />
-            <div className="flex justify-end gap-2">
-              <button onClick={() => setModal({ open: false, ...blank })} className="px-4 py-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-input)] rounded-lg cursor-pointer">Cancel</button>
-              <button onClick={save} disabled={saving || !modal.name.trim()}
-                className="flex items-center gap-1.5 px-4 py-1.5 bg-[var(--accent)] text-white text-xs font-semibold rounded-lg hover:opacity-90 disabled:opacity-50 cursor-pointer">
-                <Check className="w-3.5 h-3.5" /> {saving ? 'Saving…' : 'Save'}
-              </button>
+            <div className="erp-form-group">
+              <label className="erp-label">Frequency</label>
+              <SearchableDropdown value={modal.frequency} onChange={v => setModal(m => ({ ...m, frequency: v as any }))} options={Object.entries(FREQ_LABELS).map(([v, l]) => ({ value: v, label: l }))} />
             </div>
           </div>
+          <div className="erp-form-group">
+            <label className="erp-label">Next Payment Date</label>
+            <input type="date" value={modal.next_date} onChange={e => setModal(m => ({ ...m, next_date: e.target.value }))} className="erp-input" />
+          </div>
+          <div className="erp-form-group">
+            <label className="erp-label">Category</label>
+            <input value={modal.category} onChange={e => setModal(m => ({ ...m, category: e.target.value }))} placeholder="Category…" className="erp-input" />
+          </div>
         </div>
-      )}
+      </SidePanel>
     </div>
   );
 }

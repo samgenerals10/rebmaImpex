@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Plus, Calendar, ChevronRight, MoreVertical, X, Check, ArrowUpCircle, AlertCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import type { CurrentUser } from '../../types/erp';
+import SearchableDropdown from '../ui/SearchableDropdown';
 
 interface Task {
   id: string;
@@ -267,10 +268,11 @@ export default function TasksPanel({ currentUser, addNotification }: TasksPanelP
             <div className="grid grid-cols-2 gap-3 mb-3">
               <div>
                 <label className="block text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-1">Priority</label>
-                <select value={taskModal.priority} onChange={e => setTaskModal(m => ({ ...m, priority: e.target.value as any }))}
-                  className="w-full px-3 py-2 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] outline-none cursor-pointer">
-                  <option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option>
-                </select>
+                <SearchableDropdown
+                  value={taskModal.priority}
+                  onChange={v => setTaskModal(m => ({ ...m, priority: v as any }))}
+                  options={[{ value: 'low', label: 'Low' }, { value: 'medium', label: 'Medium' }, { value: 'high', label: 'High' }]}
+                />
               </div>
               <div>
                 <label className="block text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-1">Due Date</label>
@@ -283,7 +285,7 @@ export default function TasksPanel({ currentUser, addNotification }: TasksPanelP
                 <label className="block text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-1">Assign to (optional)</label>
                 <select value={taskModal.assigned_to} onChange={e => setTaskModal(m => ({ ...m, assigned_to: e.target.value }))}
                   className="w-full px-3 py-2 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] outline-none cursor-pointer">
-                  <option value="">— nobody —</option>
+                  <option value="">Nobody</option>
                   {colleagues.map(c => <option key={c.id} value={c.id}>{c.full_name}</option>)}
                 </select>
               </div>
