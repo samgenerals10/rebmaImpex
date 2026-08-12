@@ -26,15 +26,21 @@ function CameraCapture({ onCapture }: { onCapture: (base64: string | null) => vo
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
       streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.play();
-      }
       setStreaming(true);
     } catch {
       setStreaming(false);
     }
   }, []);
+
+  // The <video> element only mounts once `streaming` is true, so the stream
+  // has to be attached here (after that render commits) rather than inline
+  // in startCamera, where videoRef.current would still be null.
+  useEffect(() => {
+    if (streaming && videoRef.current && streamRef.current) {
+      videoRef.current.srcObject = streamRef.current;
+      videoRef.current.play().catch(() => {});
+    }
+  }, [streaming]);
 
   const stopCamera = useCallback(() => {
     streamRef.current?.getTracks().forEach(t => t.stop());
