@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { useRealtimeChannel } from '../../hooks/useRealtimeChannel';
+import SearchableDropdown from '../../components/ui/SearchableDropdown';
 import {
   ShoppingCart, UserPlus, ClipboardList, CreditCard, FileText, BarChart2,
   TrendingUp, TrendingDown, ArrowRight, RefreshCw, MoreVertical,
@@ -464,9 +465,7 @@ export default function MarketingOverviewView({ addNotification, setActiveSubTab
               <h3 className="font-semibold text-[var(--text-primary)]">Sales Overview</h3>
               <p className="text-2xl font-bold text-[var(--text-primary)] mt-1">GHS <CountUp value={revenue} /> <span className="text-sm font-normal text-green-500">+14.2%</span></p>
             </div>
-            <select value={salesPeriod} onChange={e => setSalesPeriod(e.target.value)} className="text-xs px-2 py-1.5 rounded-lg bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-secondary)] focus:outline-none">
-              {['This Week', 'This Month', '6 Months', 'Year'].map(p => <option key={p}>{p}</option>)}
-            </select>
+            <SearchableDropdown value={salesPeriod} onChange={setSalesPeriod} options={['This Week', 'This Month', '6 Months', 'Year'].map(p => ({ value: p, label: p }))} className="w-32" />
           </div>
           <div className="h-44">
             {salesData.length === 0 || salesData.every(s => s.value === 0) ? (
@@ -604,9 +603,7 @@ export default function MarketingOverviewView({ addNotification, setActiveSubTab
             <h3 className="font-semibold text-[var(--text-primary)]">Revenue Overview</h3>
             <p className="text-2xl font-bold text-[var(--text-primary)] mt-1">GHS <CountUp value={revenue} /> <span className="text-sm font-normal text-green-500">+8.2%</span></p>
           </div>
-          <select value={revPeriod} onChange={e => setRevPeriod(e.target.value)} className="text-xs px-2 py-1.5 rounded-lg bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-secondary)] focus:outline-none">
-            {['This Month', 'This Quarter', 'This Year'].map(p => <option key={p}>{p}</option>)}
-          </select>
+          <SearchableDropdown value={revPeriod} onChange={setRevPeriod} options={['This Month', 'This Quarter', 'This Year'].map(p => ({ value: p, label: p }))} className="w-32" />
         </div>
         <div className="h-44">
           {revenueData.every(w => w.revenue === 0) ? (

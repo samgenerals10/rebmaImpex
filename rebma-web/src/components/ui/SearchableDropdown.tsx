@@ -128,7 +128,7 @@ export default function SearchableDropdown({
                   onMouseEnter={() => setHighlighted(i)}
                   onClick={() => commit(opt)}
                   className={`w-full flex items-center gap-2 px-3 py-2 text-sm text-left transition-colors ${
-                    i === highlighted ? 'bg-[var(--accent-soft)]' : ''
+                    isSelected ? 'bg-[var(--accent-soft)]' : i === highlighted ? 'bg-[var(--bg-input)]' : ''
                   }`}
                 >
                   {opt.icon}

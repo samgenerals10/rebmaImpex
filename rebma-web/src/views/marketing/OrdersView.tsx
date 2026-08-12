@@ -8,6 +8,8 @@ import CountUp from '../../components/CountUp';
 import { useCeoSettings } from '../../contexts/CeoSettingsContext';
 import DestinationLocator, { type Coords } from '../../components/dispatch/DestinationLocator';
 import type { Order, OrderLineItem } from '../../types/erp';
+import SidePanel, { SidePanelSection } from '../../components/ui/SidePanel';
+import SearchableDropdown from '../../components/ui/SearchableDropdown';
 
 
 const STATUS_STYLES: Record<Order['status'], string> = {
@@ -320,17 +322,21 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
             <input value={search} onChange={e => { setSearch(e.target.value); setPage(0); }} placeholder="Search by client or order ID…"
               className="w-full pl-9 pr-3 py-2 text-sm rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent)]" />
           </div>
-          <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(0); }}
-            className="px-3 py-2 text-sm rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]">
-            <option value="ALL">All Statuses</option>
-            <option value="PENDING_FINANCE">Pending Finance</option>
-            <option value="PENDING_MANAGEMENT">Pending Mgmt</option>
-            <option value="APPROVED">Approved</option>
-            <option value="PROCESSING">Processing</option>
-            <option value="OUT_FOR_DELIVERY">Out for Delivery</option>
-            <option value="DELIVERED">Delivered</option>
-            <option value="REJECTED">Rejected</option>
-          </select>
+          <SearchableDropdown
+            value={statusFilter}
+            onChange={v => { setStatusFilter(v); setPage(0); }}
+            options={[
+              { value: 'ALL', label: 'All Statuses' },
+              { value: 'PENDING_FINANCE', label: 'Pending Finance' },
+              { value: 'PENDING_MANAGEMENT', label: 'Pending Mgmt' },
+              { value: 'APPROVED', label: 'Approved' },
+              { value: 'PROCESSING', label: 'Processing' },
+              { value: 'OUT_FOR_DELIVERY', label: 'Out for Delivery' },
+              { value: 'DELIVERED', label: 'Delivered' },
+              { value: 'REJECTED', label: 'Rejected' },
+            ]}
+            className="w-48"
+          />
           <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
             className="px-3 py-2 text-sm rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />
           <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
@@ -421,179 +427,166 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
         </div>
       </div>
 
-      {showNewModal && (() => {
+      {(() => {
         const discountPct = customers.find(c => c.id === form.customerId)?.discountPercent || 0;
         const orderTotal = lineItems.reduce((s, item) => {
           const price = (productPrices[item.productName] ?? 0) * (1 - discountPct / 100);
           return s + price * Math.max(1, item.quantity);
         }, 0);
         return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-            <div className="w-full max-w-2xl rounded-2xl bg-[var(--bg-card)] border border-[var(--border)] shadow-xl flex flex-col max-h-[90vh]">
-              {/* Header */}
-              <div className="flex items-center justify-between px-6 pt-5 pb-4 shrink-0">
-                <h3 className="font-bold text-[var(--text-primary)]">New Sales Order</h3>
-                <button onClick={() => setShowNewModal(false)} className="p-1 rounded-lg hover:bg-[var(--bg-input)]"><X className="w-4 h-4 text-[var(--text-muted)]" /></button>
-              </div>
-
-              {/* Scrollable body */}
-              <div className="overflow-y-auto flex-1 px-6 space-y-4 pb-2">
-                <datalist id="customer-names-list">
-                  {customers.map(c => <option key={c.id} value={c.name} />)}
-                </datalist>
-
-                {/* Customer + Destination */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="col-span-2">
-                    <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Customer Name *</label>
-                    <input type="text" list="customer-names-list" value={form.clientName}
-                      onChange={e => {
-                        const name = e.target.value;
-                        const match = resolveCustomer(name);
-                        // Auto-fill phone from a matched customer, but don't clobber
-                        // a phone the user already typed manually for a new customer.
-                        setForm(prev => ({ ...prev, clientName: name, customerId: match?.id || '', phone: match?.phone || prev.phone }));
-                      }}
-                      placeholder="Type or select customer name..."
-                      className="w-full px-3 py-2 text-sm rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />
-                    {form.customerId && !!customers.find(c => c.id === form.customerId)?.discountPercent && (
-                      <p className="text-[10px] font-semibold text-emerald-600 mt-1">
-                        {customers.find(c => c.id === form.customerId)?.discountPercent}% customer discount will be applied
-                      </p>
-                    )}
-                  </div>
-                  <div className="col-span-2">
-                    <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Customer Phone</label>
-                    <input type="tel" value={form.phone}
-                      onChange={e => setForm(prev => ({ ...prev, phone: e.target.value }))}
-                      placeholder="e.g. 024 123 4567 — sent to the driver so they can reach the customer"
-                      className="w-full px-3 py-2 text-sm rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />
-                  </div>
-                  <div className="col-span-2">
-                    <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Destination</label>
-                    <DestinationLocator
-                      value={form.destination}
-                      onChange={text => setForm(prev => ({ ...prev, destination: text }))}
-                      onResolve={setDestinationCoords}
-                      placeholder="Enter the destination name, or its coordinates…"
-                    />
-                  </div>
-                </div>
-
-                {/* Line Items */}
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="text-xs font-medium text-[var(--text-secondary)]">Products *</label>
-                    <span className="text-[10px] text-[var(--text-muted)]">{lineItems.length} item{lineItems.length !== 1 ? 's' : ''}</span>
-                  </div>
-                  <div className="space-y-2">
-                    {lineItems.map((item, index) => {
-                      const basePrice = productPrices[item.productName] ?? null;
-                      const unitPrice = basePrice != null ? basePrice * (1 - discountPct / 100) : null;
-                      const lineTotal = unitPrice != null ? unitPrice * Math.max(1, item.quantity) : null;
-                      const stockAvailable = item.productName ? getStock(item.productName) : null;
-                      const exceedsStock = stockAvailable != null && item.quantity > stockAvailable;
-                      return (
-                        <div key={index} className={`rounded-xl border p-3 space-y-2 ${exceedsStock ? 'border-rose-400 bg-rose-50 dark:bg-rose-950/20' : 'border-[var(--border)] bg-[var(--bg)]'}`}>
-                          <div className="flex items-center gap-2">
-                            <div className="flex-1">
-                              {availableProducts.length > 0 ? (
-                                <select value={item.productName} onChange={e => updateLineItem(index, 'productName', e.target.value)}
-                                  className="w-full px-3 py-2 text-sm rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]">
-                                  <option value="">— Select product —</option>
-                                  {availableProducts.map(p => <option key={p} value={p}>{p} (in stock: {getStock(p).toLocaleString()})</option>)}
-                                </select>
-                              ) : (
-                                <input type="text" value={item.productName} onChange={e => updateLineItem(index, 'productName', e.target.value)}
-                                  placeholder="Product name…"
-                                  className="w-full px-3 py-2 text-sm rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />
-                              )}
-                            </div>
-                            <div className="w-24 shrink-0">
-                              <input type="number" min="1" value={item.quantity} onChange={e => updateLineItem(index, 'quantity', Math.max(1, parseInt(e.target.value) || 1))}
-                                className={`w-full px-3 py-2 text-sm rounded-xl bg-[var(--bg-input)] border text-[var(--text-primary)] focus:outline-none text-center ${exceedsStock ? 'border-rose-400 focus:border-rose-500' : 'border-[var(--border)] focus:border-[var(--accent)]'}`} />
-                            </div>
-                            {lineItems.length > 1 && (
-                              <button onClick={() => removeLineItem(index)} className="p-1.5 rounded-lg hover:bg-rose-50 text-[var(--text-muted)] hover:text-rose-500 shrink-0">
-                                <X className="w-3.5 h-3.5" />
-                              </button>
-                            )}
-                          </div>
-                          {exceedsStock && (
-                            <p className="px-1 text-xs font-semibold text-rose-600">
-                              Only {stockAvailable!.toLocaleString()} in stock — cannot order {item.quantity}.
-                            </p>
-                          )}
-                          {unitPrice != null ? (
-                            <div className="flex items-center justify-between px-1 text-xs text-[var(--text-muted)]">
-                              <span>GHS {unitPrice.toLocaleString()} per unit{discountPct > 0 ? ` (${discountPct}% off)` : ''}</span>
-                              <span className="font-semibold text-[var(--accent)]">= GHS {lineTotal!.toLocaleString()}</span>
-                            </div>
-                          ) : item.productName ? (
-                            <p className="text-[10px] text-amber-600 px-1">No price set — Management must price this product</p>
-                          ) : null}
-                        </div>
-                      );
-                    })}
-                  </div>
-                  <button onClick={addLineItem}
-                    className="mt-2 w-full py-2 rounded-xl border border-dashed border-[var(--border)] text-xs text-[var(--accent)] hover:bg-[var(--accent-light)] flex items-center justify-center gap-1.5 transition-colors">
-                    <Plus className="w-3.5 h-3.5" /> Add another product
-                  </button>
-                </div>
-
-                {/* Order summary */}
-                {orderTotal > 0 && (
-                  <div className="rounded-xl bg-[var(--accent-light)] border border-[var(--border)] px-4 py-3 flex items-center justify-between">
-                    <span className="text-xs text-[var(--text-secondary)]">Order Total ({lineItems.filter(i => i.productName).length} item{lineItems.filter(i => i.productName).length !== 1 ? 's' : ''})</span>
-                    <span className="text-base font-bold text-[var(--accent)]">GHS {orderTotal.toLocaleString()}</span>
-                  </div>
-                )}
-
-                {/* Payment Mode */}
-                <div>
-                  <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Payment Mode</label>
-                  <select value={form.paymentMode} onChange={e => setForm(prev => ({ ...prev, paymentMode: e.target.value as Order['paymentMode'] }))}
-                    className="w-full px-3 py-2 text-sm rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]">
-                    <option value="CASH">Cash</option>
-                    <option value="MOBILE_MONEY">Mobile Money</option>
-                    <option value="CHEQUE">Cheque</option>
-                    <option value="CREDIT">Credit</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Footer */}
-              <div className="flex gap-3 px-6 py-4 shrink-0 border-t border-[var(--border)]">
-                <button disabled={submitting} onClick={() => setShowNewModal(false)} className="flex-1 py-2 rounded-xl border border-[var(--border)] text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-input)] disabled:opacity-50">Cancel</button>
-                <button
-                  disabled={submitting}
-                  onClick={handleSave}
-                  className="flex-1 py-2 rounded-xl bg-[var(--accent)] text-white text-sm font-semibold hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
+          <SidePanel
+            open={showNewModal}
+            onClose={() => setShowNewModal(false)}
+            title="New Sales Order"
+            width="lg"
+            footer={
+              <>
+                <button disabled={submitting} onClick={() => setShowNewModal(false)} className="erp-btn erp-btn-ghost disabled:opacity-50">Cancel</button>
+                <button disabled={submitting} onClick={handleSave} className="erp-btn erp-btn-primary disabled:opacity-50">
                   {submitting ? 'Saving...' : `Save Order${lineItems.filter(i => i.productName).length > 1 ? `s (${lineItems.filter(i => i.productName).length})` : ''}`}
                 </button>
+              </>
+            }
+          >
+            <datalist id="customer-names-list">
+              {customers.map(c => <option key={c.id} value={c.name} />)}
+            </datalist>
+
+            <SidePanelSection label="Customer & Destination">
+              <div className="erp-form-group">
+                <label className="erp-label">Customer Name *</label>
+                <input type="text" list="customer-names-list" value={form.clientName}
+                  onChange={e => {
+                    const name = e.target.value;
+                    const match = resolveCustomer(name);
+                    // Auto-fill phone from a matched customer, but don't clobber
+                    // a phone the user already typed manually for a new customer.
+                    setForm(prev => ({ ...prev, clientName: name, customerId: match?.id || '', phone: match?.phone || prev.phone }));
+                  }}
+                  placeholder="Type or select customer name..."
+                  className="erp-input" />
+                {form.customerId && !!customers.find(c => c.id === form.customerId)?.discountPercent && (
+                  <p className="text-[10px] font-semibold text-emerald-600 mt-1">
+                    {customers.find(c => c.id === form.customerId)?.discountPercent}% customer discount will be applied
+                  </p>
+                )}
               </div>
-            </div>
-          </div>
+              <div className="erp-form-group">
+                <label className="erp-label">Customer Phone</label>
+                <input type="tel" value={form.phone}
+                  onChange={e => setForm(prev => ({ ...prev, phone: e.target.value }))}
+                  placeholder="e.g. 024 123 4567. Sent to the driver so they can reach the customer"
+                  className="erp-input" />
+              </div>
+              <div className="erp-form-group">
+                <label className="erp-label">Destination</label>
+                <DestinationLocator
+                  value={form.destination}
+                  onChange={text => setForm(prev => ({ ...prev, destination: text }))}
+                  onResolve={setDestinationCoords}
+                  placeholder="Enter the destination name, or its coordinates…"
+                />
+              </div>
+            </SidePanelSection>
+
+            <SidePanelSection label="Products">
+              <div className="flex items-center justify-between -mt-2 mb-1">
+                <span className="text-[10px] text-[var(--text-muted)]">{lineItems.length} item{lineItems.length !== 1 ? 's' : ''}</span>
+              </div>
+              <div className="space-y-2">
+                {lineItems.map((item, index) => {
+                  const basePrice = productPrices[item.productName] ?? null;
+                  const unitPrice = basePrice != null ? basePrice * (1 - discountPct / 100) : null;
+                  const lineTotal = unitPrice != null ? unitPrice * Math.max(1, item.quantity) : null;
+                  const stockAvailable = item.productName ? getStock(item.productName) : null;
+                  const exceedsStock = stockAvailable != null && item.quantity > stockAvailable;
+                  return (
+                    <div key={index} className={`rounded-xl border p-3 space-y-2 ${exceedsStock ? 'border-rose-400 bg-rose-50 dark:bg-rose-950/20' : 'border-[var(--border)] bg-[var(--bg)]'}`}>
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1">
+                          {availableProducts.length > 0 ? (
+                            <SearchableDropdown
+                              value={item.productName}
+                              onChange={v => updateLineItem(index, 'productName', v)}
+                              placeholder="Select product"
+                              options={availableProducts.map(p => ({ value: p, label: p, sublabel: `in stock: ${getStock(p).toLocaleString()}` }))}
+                            />
+                          ) : (
+                            <input type="text" value={item.productName} onChange={e => updateLineItem(index, 'productName', e.target.value)}
+                              placeholder="Product name…"
+                              className="erp-input" />
+                          )}
+                        </div>
+                        <div className="w-24 shrink-0">
+                          <input type="number" min="1" value={item.quantity} onChange={e => updateLineItem(index, 'quantity', Math.max(1, parseInt(e.target.value) || 1))}
+                            className={`w-full px-3 py-2 text-sm rounded-xl bg-[var(--bg-input)] border text-[var(--text-primary)] focus:outline-none text-center ${exceedsStock ? 'border-rose-400 focus:border-rose-500' : 'border-[var(--border)] focus:border-[var(--accent)]'}`} />
+                        </div>
+                        {lineItems.length > 1 && (
+                          <button onClick={() => removeLineItem(index)} className="p-1.5 rounded-lg hover:bg-rose-50 text-[var(--text-muted)] hover:text-rose-500 shrink-0">
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                      {exceedsStock && (
+                        <p className="px-1 text-xs font-semibold text-rose-600">
+                          Only {stockAvailable!.toLocaleString()} in stock. Cannot order {item.quantity}.
+                        </p>
+                      )}
+                      {unitPrice != null ? (
+                        <div className="flex items-center justify-between px-1 text-xs text-[var(--text-muted)]">
+                          <span>GHS {unitPrice.toLocaleString()} per unit{discountPct > 0 ? ` (${discountPct}% off)` : ''}</span>
+                          <span className="font-semibold text-[var(--accent)]">= GHS {lineTotal!.toLocaleString()}</span>
+                        </div>
+                      ) : item.productName ? (
+                        <p className="text-[10px] text-amber-600 px-1">No price set. Management must price this product</p>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
+              <button onClick={addLineItem}
+                className="mt-2 w-full py-2 rounded-xl border border-dashed border-[var(--border)] text-xs text-[var(--accent)] hover:bg-[var(--accent-light)] flex items-center justify-center gap-1.5 transition-colors">
+                <Plus className="w-3.5 h-3.5" /> Add another product
+              </button>
+
+              {orderTotal > 0 && (
+                <div className="rounded-xl bg-[var(--accent-light)] border border-[var(--border)] px-4 py-3 flex items-center justify-between mt-3">
+                  <span className="text-xs text-[var(--text-secondary)]">Order Total ({lineItems.filter(i => i.productName).length} item{lineItems.filter(i => i.productName).length !== 1 ? 's' : ''})</span>
+                  <span className="text-base font-bold text-[var(--accent)]">GHS {orderTotal.toLocaleString()}</span>
+                </div>
+              )}
+            </SidePanelSection>
+
+            <SidePanelSection label="Payment">
+              <div className="erp-form-group">
+                <label className="erp-label">Payment Mode</label>
+                <SearchableDropdown
+                  value={form.paymentMode}
+                  onChange={v => setForm(prev => ({ ...prev, paymentMode: v as Order['paymentMode'] }))}
+                  options={[
+                    { value: 'CASH', label: 'Cash' },
+                    { value: 'MOBILE_MONEY', label: 'Mobile Money' },
+                    { value: 'CHEQUE', label: 'Cheque' },
+                    { value: 'CREDIT', label: 'Credit' },
+                  ]}
+                />
+              </div>
+            </SidePanelSection>
+          </SidePanel>
         );
       })()}
 
       {selectedOrder && (() => {
         const lineItems: OrderLineItem[] | undefined = selectedOrder.metadata?.items;
         return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-            <div className="w-full max-w-xl rounded-2xl bg-[var(--bg-card)] border border-[var(--border)] shadow-xl flex flex-col max-h-[90vh]">
-              {/* Header */}
-              <div className="flex items-center justify-between px-6 pt-5 pb-4 shrink-0 border-b border-[var(--border)]">
-                <div>
-                  <h3 className="font-bold text-[var(--text-primary)]">Order Details</h3>
-                  <p className="text-xs text-[var(--text-muted)] mt-0.5 font-mono">{selectedOrder.ticketNumber || selectedOrder.id}</p>
-                </div>
-                <button onClick={() => setSelectedOrder(null)} className="p-1 rounded-lg hover:bg-[var(--bg-input)]"><X className="w-4 h-4 text-[var(--text-muted)]" /></button>
-              </div>
-
-              <div className="overflow-y-auto flex-1 px-6 py-4 space-y-4">
+          <SidePanel
+            open
+            onClose={() => setSelectedOrder(null)}
+            title="Order Details"
+            subtitle={selectedOrder.ticketNumber || selectedOrder.id}
+            footer={<button onClick={() => setSelectedOrder(null)} className="erp-btn erp-btn-primary w-full">Close</button>}
+          >
+            <div className="space-y-4">
                 {/* Order meta grid */}
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   {[
@@ -686,14 +679,8 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
                 {selectedOrder.status === 'REJECTED' && (
                   <div className="rounded-xl bg-rose-50 border border-rose-200 px-4 py-3 text-sm text-rose-700 font-medium">Order Rejected</div>
                 )}
-              </div>
-
-              {/* Footer */}
-              <div className="px-6 py-4 shrink-0 border-t border-[var(--border)]">
-                <button onClick={() => setSelectedOrder(null)} className="w-full py-2 rounded-xl bg-[var(--accent)] text-white text-sm font-semibold hover:opacity-90">Close</button>
-              </div>
             </div>
-          </div>
+          </SidePanel>
         );
       })()}
     </div>

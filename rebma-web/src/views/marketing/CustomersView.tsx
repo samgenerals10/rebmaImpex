@@ -7,6 +7,8 @@ import RatingBadge from '../../components/RatingBadge';
 import { computeCustomerRating, ordersForCustomer } from '../../utils/customerRating';
 import CountUp from '../../components/CountUp';
 import { uploadFile } from '../../utils/uploadFile';
+import SidePanel from '../../components/ui/SidePanel';
+import SearchableDropdown from '../../components/ui/SearchableDropdown';
 
 interface Props {
   customersList: Customer[];
@@ -384,11 +386,12 @@ export default function CustomersView({ customersList, onRegisterCustomer, addNo
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by name, company, phone…"
             className="w-full pl-9 pr-3 py-2 text-sm rounded-xl bg-[var(--bg-card)] border border-[var(--border)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent)]" />
         </div>
-        <select value={locationFilter} onChange={e => setLocationFilter(e.target.value)}
-          className="px-3 py-2 text-sm rounded-xl bg-[var(--bg-card)] border border-[var(--border)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]">
-          <option value="ALL">All Locations</option>
-          {locations.map(l => <option key={l} value={l}>{l}</option>)}
-        </select>
+        <SearchableDropdown
+          value={locationFilter}
+          onChange={setLocationFilter}
+          options={[{ value: 'ALL', label: 'All Locations' }, ...locations.map(l => ({ value: l, label: l }))]}
+          className="sm:w-48"
+        />
       </div>
 
       {loading ? (
@@ -431,63 +434,64 @@ export default function CustomersView({ customersList, onRegisterCustomer, addNo
         </div>
       )}
 
-      {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-2xl rounded-2xl bg-[var(--bg-card)] border border-[var(--border)] shadow-xl p-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="font-bold text-[var(--text-primary)]">{editTarget ? 'Edit Customer' : 'Register New Customer'}</h3>
-              <button onClick={() => { setShowModal(false); setEditTarget(null); }} className="p-1 rounded-lg hover:bg-[var(--bg-input)]"><X className="w-4 h-4 text-[var(--text-muted)]" /></button>
+      <SidePanel
+        open={showModal}
+        onClose={() => { setShowModal(false); setEditTarget(null); }}
+        title={editTarget ? 'Edit Customer' : 'Register New Customer'}
+        footer={
+          <>
+            <button onClick={() => { setShowModal(false); setEditTarget(null); }} className="erp-btn erp-btn-ghost">Cancel</button>
+            <button onClick={editTarget ? handleEditSave : handleSave} className="erp-btn erp-btn-primary">
+              {editTarget ? 'Save Changes' : 'Register'}
+            </button>
+          </>
+        }
+      >
+        <div className="flex flex-col gap-4">
+          {[
+            { label: 'Full Name *', key: 'name', placeholder: 'E.g., Kofi Owusu' },
+            { label: 'Company Name', key: 'companyName', placeholder: 'E.g., Owusu Retail Hub' },
+            { label: 'Phone *', key: 'phone', placeholder: 'E.g., +233 24 123 4567' },
+            { label: 'Location', key: 'location', placeholder: 'E.g., Kumasi' },
+            { label: 'Email', key: 'email', placeholder: 'client@company.com' },
+            { label: 'Ghana Card', key: 'ghanaCard', placeholder: 'E.g., GHA-721839210-9' },
+          ].map(f => (
+            <div key={f.key} className="erp-form-group">
+              <label className="erp-label">{f.label}</label>
+              <input value={(form as any)[f.key]} onChange={e => setForm(prev => ({ ...prev, [f.key]: e.target.value }))}
+                placeholder={f.placeholder}
+                className="erp-input" />
             </div>
-            {[
-              { label: 'Full Name *', key: 'name', placeholder: 'E.g., Kofi Owusu' },
-              { label: 'Company Name', key: 'companyName', placeholder: 'E.g., Owusu Retail Hub' },
-              { label: 'Phone *', key: 'phone', placeholder: 'E.g., +233 24 123 4567' },
-              { label: 'Location', key: 'location', placeholder: 'E.g., Kumasi' },
-              { label: 'Email', key: 'email', placeholder: 'client@company.com' },
-              { label: 'Ghana Card', key: 'ghanaCard', placeholder: 'E.g., GHA-721839210-9' },
-            ].map(f => (
-              <div key={f.key}>
-                <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">{f.label}</label>
-                <input value={(form as any)[f.key]} onChange={e => setForm(prev => ({ ...prev, [f.key]: e.target.value }))}
-                  placeholder={f.placeholder}
-                  className="w-full px-3 py-2 text-sm rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />
-              </div>
-            ))}
-            <label className="flex items-center gap-2 text-sm text-[var(--text-secondary)] cursor-pointer">
-              <input type="checkbox" checked={form.isSpecialCustomer} onChange={e => setForm(prev => ({ ...prev, isSpecialCustomer: e.target.checked }))}
-                className="w-4 h-4 rounded accent-[var(--accent)] cursor-pointer" />
-              Special customer <span className="text-xs text-[var(--text-muted)]">(flag for Management's attention — Management sets any discount separately)</span>
-            </label>
-            <div className="flex gap-3 pt-2">
-              <button onClick={() => { setShowModal(false); setEditTarget(null); }} className="flex-1 py-2 rounded-xl border border-[var(--border)] text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-input)] cursor-pointer">Cancel</button>
-              <button onClick={editTarget ? handleEditSave : handleSave} className="flex-1 py-2 rounded-xl bg-[var(--accent)] text-white text-sm font-semibold hover:opacity-90 cursor-pointer">
-                {editTarget ? 'Save Changes' : 'Register'}
-              </button>
-            </div>
-          </div>
+          ))}
+          <label className="flex items-center gap-2 text-sm text-[var(--text-secondary)] cursor-pointer">
+            <input type="checkbox" checked={form.isSpecialCustomer} onChange={e => setForm(prev => ({ ...prev, isSpecialCustomer: e.target.checked }))}
+              className="w-4 h-4 rounded accent-[var(--accent)] cursor-pointer" />
+            Special customer <span className="text-xs text-[var(--text-muted)]">(flag for Management's attention. Management sets any discount separately)</span>
+          </label>
         </div>
-      )}
+      </SidePanel>
 
-      {deleteTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-sm rounded-2xl bg-[var(--bg-card)] border border-rose-300 shadow-xl p-6 space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-rose-100 flex items-center justify-center"><Trash2 className="w-5 h-5 text-rose-500" /></div>
-              <div>
-                <h3 className="font-bold text-[var(--text-primary)]">Delete Customer</h3>
-                <p className="text-xs text-[var(--text-muted)]">This cannot be undone.</p>
-              </div>
-            </div>
-            <p className="text-sm text-[var(--text-secondary)]">Delete <strong>{deleteTarget.name}</strong> and all their records from the directory?</p>
-            <div className="flex gap-3">
-              <button onClick={() => setDeleteTarget(null)} disabled={deleting} className="flex-1 py-2 rounded-xl border border-[var(--border)] text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-input)] cursor-pointer">Cancel</button>
-              <button onClick={handleDelete} disabled={deleting} className="flex-1 py-2 rounded-xl bg-rose-500 text-white text-sm font-semibold hover:bg-rose-600 cursor-pointer disabled:opacity-50">
-                {deleting ? 'Deleting…' : 'Delete'}
-              </button>
-            </div>
+      <SidePanel
+        open={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        title="Delete Customer"
+        subtitle="This cannot be undone."
+        footer={
+          <>
+            <button onClick={() => setDeleteTarget(null)} disabled={deleting} className="erp-btn erp-btn-ghost disabled:opacity-50">Cancel</button>
+            <button onClick={handleDelete} disabled={deleting} className="erp-btn erp-btn-danger disabled:opacity-50">
+              {deleting ? 'Deleting…' : 'Delete'}
+            </button>
+          </>
+        }
+      >
+        {deleteTarget && (
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-xl bg-rose-100 flex items-center justify-center shrink-0"><Trash2 className="w-5 h-5 text-rose-500" /></div>
+            <p className="text-sm text-[var(--text-secondary)] pt-2">Delete <strong>{deleteTarget.name}</strong> and all their records from the directory?</p>
           </div>
-        </div>
-      )}
+        )}
+      </SidePanel>
     </div>
   );
 }
