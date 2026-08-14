@@ -52,7 +52,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
   return (
     <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs shadow-lg">
-      <p className="text-[var(--text-muted)] mb-1 font-semibold">{label}</p>
+      <p className="text-[var(--text-secondary)] mb-1 font-semibold">{label}</p>
       {payload.map((p: any, i: number) => (
         <p key={i} style={{ color: p.color }} className="font-semibold">
           {p.name}: GHS {Number(p.value || 0).toLocaleString()}

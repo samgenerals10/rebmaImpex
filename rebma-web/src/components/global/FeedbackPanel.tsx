@@ -219,7 +219,7 @@ export default function FeedbackPanel({ currentUser, addNotification }: Feedback
 
             {/* Sentiment */}
             <div className="mb-3">
-              <label className="block text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-1.5">Sentiment</label>
+              <label className="block text-[10px] font-semibold text-[var(--text-secondary)] uppercase tracking-wide mb-1.5">Sentiment</label>
               <div className="flex gap-2">
                 {(['positive','neutral','negative'] as const).map(s => {
                   const { Icon, color, bg } = SENTIMENT_STYLES[s];
@@ -235,7 +235,7 @@ export default function FeedbackPanel({ currentUser, addNotification }: Feedback
 
             {/* Rating */}
             <div className="mb-3">
-              <label className="block text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-1.5">Rating (optional)</label>
+              <label className="block text-[10px] font-semibold text-[var(--text-secondary)] uppercase tracking-wide mb-1.5">Rating (optional)</label>
               <div className="flex items-center gap-1">
                 {[1,2,3,4,5].map(n => (
                   <button key={n} onClick={() => setModal(m => ({ ...m, rating: m.rating === n ? null : n }))} className="cursor-pointer">

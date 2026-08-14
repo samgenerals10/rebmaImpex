@@ -458,7 +458,7 @@ export default function ApprovedGoodsView({ addNotification, setActiveSubTab: _s
         ].map(c => (
           <div key={c.label} className={`bg-[var(--bg-card)] border rounded-2xl p-4 shadow-[var(--box-shadow)] ${(c as any).alert ? 'border-amber-400' : 'border-[var(--border)]'}`}>
             <div className="flex items-center justify-between mb-2">
-              <p className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wide leading-tight">{c.label}</p>
+              <p className="text-[10px] font-semibold text-[var(--text-secondary)] uppercase tracking-wide leading-tight">{c.label}</p>
               <span style={{ color: c.color }}>{c.icon}</span>
             </div>
             <p className="text-xl font-bold" style={{ color: c.color }}><CountUp value={c.value} /></p>

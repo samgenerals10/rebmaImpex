@@ -389,7 +389,7 @@ export default function DeptActivityView({ addNotification, currentUser }: Props
               { label: 'Reference ID', value: detailItem.refId || '—' },
             ].map(row => (
               <div key={row.label} className="flex flex-col gap-0.5 p-3 bg-[var(--bg)] rounded-xl border border-[var(--border)]">
-                <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wide">{row.label}</span>
+                <span className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wide">{row.label}</span>
                 <span className="text-xs text-[var(--text-primary)] font-medium leading-relaxed">{row.value}</span>
               </div>
             ))}

@@ -112,7 +112,7 @@ export default function GoodsPriceCatalogView({ addNotification, currentUser }: 
           { label: 'High Margin (≥50%)', value: pricedProducts.filter(p => p.margin >= 50).length, decimals: 0, suffix: '', color: '#6366f1' },
         ].map(({ label, value, decimals, suffix, color }) => (
           <div key={label} className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4 shadow-[var(--box-shadow)]">
-            <p className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-1">{label}</p>
+            <p className="text-[10px] font-semibold text-[var(--text-secondary)] uppercase tracking-wide mb-1">{label}</p>
             <p className="text-xl font-bold" style={{ color }}><CountUp value={value} decimals={decimals} suffix={suffix} /></p>
           </div>
         ))}

@@ -125,7 +125,7 @@ export default function DeptManagerView({ staffList, addNotification }: Props) {
         ].map(card => (
           <div key={card.label} className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-3.5">
             <div className="flex items-center justify-between mb-1">
-              <p className="text-[10px] text-[var(--text-muted)] font-semibold uppercase">{card.label}</p>
+              <p className="text-[10px] text-[var(--text-secondary)] font-semibold uppercase">{card.label}</p>
               <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: `${card.color}20`, color: card.color }}>
                 <card.icon className="w-3.5 h-3.5" />
               </div>

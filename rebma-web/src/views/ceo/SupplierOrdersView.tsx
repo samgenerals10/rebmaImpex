@@ -609,7 +609,7 @@ function NewOrderForm({ orders, currentUser, addNotification, onClose, onSave }:
           <SidePanelSection label="Supplier Details">
             <div className="space-y-3">
               <div className="relative">
-                <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Supplier Name *</label>
+                <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Supplier Name *</label>
                 <input value={supplierName} onChange={e => setSupplierName(e.target.value)}
                   placeholder="Start typing supplier name..." className={inputCls} />
                 {showSuggestions && (
@@ -632,16 +632,16 @@ function NewOrderForm({ orders, currentUser, addNotification, onClose, onSave }:
                   <p className="text-xs text-blue-700 dark:text-blue-400 font-semibold">New supplier — enter details</p>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1">Country *</label>
+                      <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">Country *</label>
                       <CountrySelect value={supplierCountry} onChange={setSupplierCountry} className={inputCls} required />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1">Contact Name</label>
+                      <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">Contact Name</label>
                       <input value={supplierContact} onChange={e => setSupplierContact(e.target.value)} placeholder="Full name" className={inputCls} />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1">Contact Email</label>
+                    <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">Contact Email</label>
                     <input value={supplierEmail} onChange={e => setSupplierEmail(e.target.value)} placeholder="supplier@example.com" type="email" className={inputCls} />
                   </div>
                 </div>
@@ -652,24 +652,24 @@ function NewOrderForm({ orders, currentUser, addNotification, onClose, onSave }:
           <SidePanelSection label="Order Details">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Port of Entry</label>
+                <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Port of Entry</label>
                 <SearchableDropdown value={portOfEntry} onChange={setPortOfEntry} options={[{ value: 'Tema Port', label: 'Tema Port' }, { value: 'Takoradi Port', label: 'Takoradi Port' }]} />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Expected Delivery</label>
+                <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Expected Delivery</label>
                 <input type="date" value={expectedDate} onChange={e => setExpectedDate(e.target.value)} className={inputCls} />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Shipping Method</label>
+                <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Shipping Method</label>
                 <SearchableDropdown value={shippingMethod} onChange={setShippingMethod} options={['Sea Freight', 'Air Freight', 'Road Freight'].map(m => ({ value: m, label: m }))} />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Currency</label>
+                <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Currency</label>
                 <SearchableDropdown value={currency} onChange={setCurrency} options={['USD', 'EUR', 'GBP'].map(c => ({ value: c, label: c }))} />
               </div>
             </div>
             <div className="mt-3">
-              <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Shipping Details</label>
+              <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Shipping Details</label>
               <input value={shippingDetails} onChange={e => setShippingDetails(e.target.value)} placeholder="Vessel name, tracking # ..." className={inputCls} />
             </div>
           </SidePanelSection>
@@ -679,7 +679,7 @@ function NewOrderForm({ orders, currentUser, addNotification, onClose, onSave }:
               {products.map((p, i) => (
                 <div key={i} className="bg-[var(--bg-input)] rounded-xl p-3 space-y-2 border border-[var(--border)]">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-[var(--text-muted)]">Product {i + 1}</span>
+                    <span className="text-xs font-semibold text-[var(--text-secondary)]">Product {i + 1}</span>
                     {products.length > 1 && (
                       <button onClick={() => setProducts(prev => prev.filter((_, j) => j !== i))}
                         className="p-1 text-rose-500 hover:bg-rose-50 rounded-lg"><Trash2 className="w-3.5 h-3.5" /></button>
@@ -737,7 +737,7 @@ function NewOrderForm({ orders, currentUser, addNotification, onClose, onSave }:
 
         {/* ── Send Channel Selection ── */}
         <div className="pt-2 space-y-4">
-          <h4 className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">Send Order Via</h4>
+          <h4 className="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider">Send Order Via</h4>
 
           <div className="grid grid-cols-2 gap-3">
             {/* Email button */}
@@ -777,7 +777,7 @@ function NewOrderForm({ orders, currentUser, addNotification, onClose, onSave }:
           {sendChannel === 'email' && (
             <div className="space-y-3 animate-in fade-in duration-150">
               <div>
-                <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Supplier Email Address</label>
+                <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Supplier Email Address</label>
                 <input
                   type="email"
                   value={sendEmail}
@@ -803,7 +803,7 @@ function NewOrderForm({ orders, currentUser, addNotification, onClose, onSave }:
           {sendChannel === 'whatsapp' && (
             <div className="space-y-3 animate-in fade-in duration-150">
               <div>
-                <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">WhatsApp Number (with country code)</label>
+                <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">WhatsApp Number (with country code)</label>
                 <input
                   type="tel"
                   value={sendWhatsapp}
@@ -991,21 +991,21 @@ function PaymentAuthModal({ order, currentUser, onClose, onAuthorise }: {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Payment Reference *</label>
+            <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Payment Reference *</label>
             <input value={ref} onChange={e => setRef(e.target.value)} placeholder="e.g. REF-GHC-2026-001" className={inputCls} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Bank / Institution</label>
+              <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Bank / Institution</label>
               <input value={bank} onChange={e => setBank(e.target.value)} placeholder="GCB Bank..." className={inputCls} />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Payment Date</label>
+              <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Payment Date</label>
               <input type="date" value={payDate} onChange={e => setPayDate(e.target.value)} className={inputCls} />
             </div>
           </div>
           <div>
-            <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Notes</label>
+            <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Notes</label>
             <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} className={`${inputCls} resize-none`} />
           </div>
 
@@ -1064,13 +1064,13 @@ function NotifyOperationsModal({ order, onClose, currentUser, onSend }: {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Department <span className="text-rose-500">*</span></label>
+            <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Department <span className="text-rose-500">*</span></label>
             <SearchableDropdown value={dept} onChange={setDept} options={NOTIFY_DEPTS.map(d => ({ value: d, label: d.charAt(0) + d.slice(1).toLowerCase() }))} />
           </div>
 
           {staffList.length > 0 && (
             <div>
-              <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Also notify specific person (optional)</label>
+              <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Also notify specific person (optional)</label>
               <SearchableDropdown
                 value={specificUserId}
                 onChange={setSpecificUserId}
@@ -1080,7 +1080,7 @@ function NotifyOperationsModal({ order, onClose, currentUser, onSend }: {
           )}
 
           <div>
-            <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Message</label>
+            <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Message</label>
             <textarea value={msg} onChange={e => setMsg(e.target.value)} rows={5} className={`${inputCls} resize-none`} />
           </div>
         </div>

@@ -259,7 +259,7 @@ export default function MgmtAnalyticsView({ addNotification }: Props) {
           return (
             <div key={card.label} className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5 shadow-[var(--box-shadow)]">
               <div className="flex items-center justify-between mb-3">
-                <p className="text-[10px] text-[var(--text-muted)] font-semibold uppercase tracking-wide">{card.label}</p>
+                <p className="text-[10px] text-[var(--text-secondary)] font-semibold uppercase tracking-wide">{card.label}</p>
                 <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${card.color}18` }}>
                   <Icon className="w-4 h-4" style={{ color: card.color }} />
                 </div>

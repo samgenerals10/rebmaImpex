@@ -375,7 +375,7 @@ export default function RegistrationsView({ pendingRegistrations, addNotificatio
             </p>
             <div className="bg-[var(--bg)] rounded-xl p-3 border border-[var(--border)] space-y-3">
               <div>
-                <p className="text-[10px] uppercase tracking-wider text-[var(--text-muted)] font-bold mb-1">Temporary Password</p>
+                <p className="text-[10px] uppercase tracking-wider text-[var(--text-secondary)] font-bold mb-1">Temporary Password</p>
                 <div className="flex items-center gap-2">
                   <p className="text-sm font-bold text-emerald-500 font-mono flex-1 break-all select-all">
                     {showPw ? credPopup.password : '••••••••••'}
@@ -386,7 +386,7 @@ export default function RegistrationsView({ pendingRegistrations, addNotificatio
                 </div>
               </div>
               <div className="border-t border-[var(--border)] pt-2">
-                <p className="text-[10px] uppercase tracking-wider text-[var(--text-muted)] font-bold mb-1">Magic Link</p>
+                <p className="text-[10px] uppercase tracking-wider text-[var(--text-secondary)] font-bold mb-1">Magic Link</p>
                 <p className="text-[11px] text-blue-500 break-all select-all">{credPopup.magicLink}</p>
               </div>
             </div>

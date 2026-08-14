@@ -774,7 +774,7 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
               <span className="text-sm sm:text-base lg:text-lg xl:text-xl font-extrabold text-[var(--text-primary)] leading-tight truncate w-full block mb-1" title={title}>
                 <CountUp value={value} prefix={prefix} suffix={suffix} />
               </span>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-0.5">{label}</p>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-secondary)] mb-0.5">{label}</p>
               <p className="text-xs text-[var(--text-muted)] truncate">{sub}</p>
             </div>
           );
@@ -1123,7 +1123,7 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
                 { label: 'Gross Margin', value: totalCost > 0 ? ((totalSell - totalCost) / totalCost) * 100 : null, prefix: '', suffix: '%', decimals: 1, color: 'text-violet-600', bg: 'bg-violet-500/10' },
               ].map(({ label, value, prefix, suffix, decimals, color, bg }) => (
                 <div key={label} className={`rounded-xl p-3 ${bg}`}>
-                  <p className="text-[9px] text-[var(--text-muted)] uppercase font-bold tracking-wide mb-1">{label}</p>
+                  <p className="text-[9px] text-[var(--text-secondary)] uppercase font-bold tracking-wide mb-1">{label}</p>
                   <p className={`text-lg font-extrabold ${color}`}><CountUp value={value} prefix={prefix} suffix={suffix} decimals={decimals} /></p>
                 </div>
               ))}

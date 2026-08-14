@@ -275,7 +275,7 @@ export default function TasksPanel({ currentUser, addNotification }: TasksPanelP
           className="w-full px-3 py-2 text-sm bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none focus:ring-1 focus:ring-[var(--accent)] resize-none mb-3" />
         <div className="grid grid-cols-2 gap-3 mb-3">
           <div>
-            <label className="block text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-1">Priority</label>
+            <label className="block text-[10px] font-semibold text-[var(--text-secondary)] uppercase tracking-wide mb-1">Priority</label>
             <SearchableDropdown
               value={taskModal.priority}
               onChange={v => setTaskModal(m => ({ ...m, priority: v as any }))}
@@ -283,14 +283,14 @@ export default function TasksPanel({ currentUser, addNotification }: TasksPanelP
             />
           </div>
           <div>
-            <label className="block text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-1">Due Date</label>
+            <label className="block text-[10px] font-semibold text-[var(--text-secondary)] uppercase tracking-wide mb-1">Due Date</label>
             <input type="date" value={taskModal.due_date} onChange={e => setTaskModal(m => ({ ...m, due_date: e.target.value }))}
               className="w-full px-3 py-2 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] outline-none cursor-pointer" />
           </div>
         </div>
         {colleagues.length > 0 && (
           <div className="mb-3">
-            <label className="block text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-1">Assign to (optional)</label>
+            <label className="block text-[10px] font-semibold text-[var(--text-secondary)] uppercase tracking-wide mb-1">Assign to (optional)</label>
             <SearchableDropdown
               value={taskModal.assigned_to}
               onChange={v => setTaskModal(m => ({ ...m, assigned_to: v }))}
@@ -324,7 +324,7 @@ export default function TasksPanel({ currentUser, addNotification }: TasksPanelP
         }
       >
         <div className="mb-3">
-          <label className="block text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-1">Escalate to</label>
+          <label className="block text-[10px] font-semibold text-[var(--text-secondary)] uppercase tracking-wide mb-1">Escalate to</label>
           <SearchableDropdown
             value={escModal.escalate_to}
             onChange={v => setEscModal(m => ({ ...m, escalate_to: v }))}

@@ -218,26 +218,26 @@ export default function DepartmentManager({ currentUser, addNotification }: Depa
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-1">Department Name *</label>
+                  <label className="block text-[10px] font-semibold text-[var(--text-secondary)] uppercase tracking-wide mb-1">Department Name *</label>
                   <input value={modal.name} onChange={e => setModal(m => ({ ...m, name: e.target.value }))} placeholder="e.g. Finance"
                     className="w-full px-3 py-2 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-[var(--accent)]" />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-1">Code *</label>
+                  <label className="block text-[10px] font-semibold text-[var(--text-secondary)] uppercase tracking-wide mb-1">Code *</label>
                   <input value={modal.code} onChange={e => setModal(m => ({ ...m, code: e.target.value.toUpperCase() }))} placeholder="e.g. FIN" maxLength={10}
                     className="w-full px-3 py-2 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-[var(--accent)] font-mono" />
                 </div>
               </div>
 
               <div>
-                <label className="block text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-1">Description</label>
+                <label className="block text-[10px] font-semibold text-[var(--text-secondary)] uppercase tracking-wide mb-1">Description</label>
                 <textarea value={modal.description} onChange={e => setModal(m => ({ ...m, description: e.target.value }))} placeholder="Brief description of this department…" rows={2}
                   className="w-full px-3 py-2 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-[var(--accent)] resize-none" />
               </div>
 
               {/* Nav Items Builder */}
               <div>
-                <label className="block text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-2">Navigation Items</label>
+                <label className="block text-[10px] font-semibold text-[var(--text-secondary)] uppercase tracking-wide mb-2">Navigation Items</label>
                 <div className="flex gap-2 mb-2">
                   <input value={newNav} onChange={e => setNewNav(e.target.value)} onKeyDown={e => e.key === 'Enter' && addNavItem()} placeholder="Add nav item (e.g. Dashboard)…"
                     className="flex-1 px-3 py-1.5 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-[var(--accent)]" />
@@ -255,7 +255,7 @@ export default function DepartmentManager({ currentUser, addNotification }: Depa
 
               {/* Workflow Builder */}
               <div>
-                <label className="block text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-2">Workflows</label>
+                <label className="block text-[10px] font-semibold text-[var(--text-secondary)] uppercase tracking-wide mb-2">Workflows</label>
                 <div className="flex gap-2 mb-2">
                   <input value={newWorkflow} onChange={e => setNewWorkflow(e.target.value)} onKeyDown={e => e.key === 'Enter' && addWorkflow()} placeholder="Add workflow (e.g. Manager Approval)…"
                     className="flex-1 px-3 py-1.5 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-[var(--accent)]" />

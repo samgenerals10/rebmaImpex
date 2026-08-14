@@ -402,33 +402,33 @@ export default function VisitorsView({ addNotification }: Props) {
                 { key: 'hostName', label: 'Host (Staff Name) *', placeholder: 'Staff to visit' },
               ].map(f => (
                 <div key={f.key}>
-                  <label className="block text-[10px] text-[var(--text-muted)] font-semibold uppercase mb-1">{f.label}</label>
+                  <label className="block text-[10px] text-[var(--text-secondary)] font-semibold uppercase mb-1">{f.label}</label>
                   <input value={(form as any)[f.key]} onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))} placeholder={f.placeholder}
                     className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-[var(--text-primary)] text-xs outline-none focus:border-[var(--accent)]" />
                 </div>
               ))}
               <div>
-                <label className="block text-[10px] text-[var(--text-muted)] font-semibold uppercase mb-1">Purpose *</label>
+                <label className="block text-[10px] text-[var(--text-secondary)] font-semibold uppercase mb-1">Purpose *</label>
                 <SearchableDropdown value={form.purpose} onChange={v => setForm(p => ({ ...p, purpose: v }))} options={['Business Meeting', 'Delivery', 'Personal', 'Interview', 'Other'].map(p => ({ value: p, label: p }))} />
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-[10px] text-[var(--text-muted)] font-semibold uppercase mb-1">ID Type</label>
+                  <label className="block text-[10px] text-[var(--text-secondary)] font-semibold uppercase mb-1">ID Type</label>
                   <SearchableDropdown value={form.idType} onChange={v => setForm(p => ({ ...p, idType: v }))} options={['Ghana Card', 'Passport', 'Driver License', 'Voter ID', 'Other'].map(t => ({ value: t, label: t }))} />
                 </div>
                 <div>
-                  <label className="block text-[10px] text-[var(--text-muted)] font-semibold uppercase mb-1">ID Number</label>
+                  <label className="block text-[10px] text-[var(--text-secondary)] font-semibold uppercase mb-1">ID Number</label>
                   <input value={form.idNumber} onChange={e => setForm(p => ({ ...p, idNumber: e.target.value }))} placeholder="GHA-123..."
                     className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-[var(--text-primary)] text-xs outline-none" />
                 </div>
               </div>
               <div>
-                <label className="block text-[10px] text-[var(--text-muted)] font-semibold uppercase mb-1">Expected Duration</label>
+                <label className="block text-[10px] text-[var(--text-secondary)] font-semibold uppercase mb-1">Expected Duration</label>
                 <input type="datetime-local" value={form.expectedTime} onChange={e => setForm(p => ({ ...p, expectedTime: e.target.value }))}
                   className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-[var(--text-primary)] text-xs outline-none" />
               </div>
               <div>
-                <label className="block text-[10px] text-[var(--text-muted)] font-semibold uppercase mb-1">Notes</label>
+                <label className="block text-[10px] text-[var(--text-secondary)] font-semibold uppercase mb-1">Notes</label>
                 <textarea value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} rows={2}
                   className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-[var(--text-primary)] text-xs outline-none resize-none" />
               </div>

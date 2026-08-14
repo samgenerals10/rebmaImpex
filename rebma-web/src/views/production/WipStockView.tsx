@@ -227,7 +227,7 @@ export default function WipStockView({ addNotification }: Props) {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {summary.map(c => (
           <div key={c.label} className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4">
-            <p className="text-[10px] text-[var(--text-muted)] uppercase font-semibold tracking-wide">{c.label}</p>
+            <p className="text-[10px] text-[var(--text-secondary)] uppercase font-semibold tracking-wide">{c.label}</p>
             <p className="text-3xl font-bold mt-1" style={{ color: c.color }}><CountUp value={c.value} /></p>
           </div>
         ))}
@@ -322,29 +322,29 @@ export default function WipStockView({ addNotification }: Props) {
       >
         <div className="space-y-4">
           <div>
-            <label className="block text-xs text-[var(--text-muted)] font-semibold mb-1.5">Product Name *</label>
+            <label className="block text-xs text-[var(--text-secondary)] font-semibold mb-1.5">Product Name *</label>
             <input value={newProductName} onChange={e => setNewProductName(e.target.value)} className={inputCls} placeholder="Product Name" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs text-[var(--text-muted)] font-semibold mb-1.5">Quantity *</label>
+              <label className="block text-xs text-[var(--text-secondary)] font-semibold mb-1.5">Quantity *</label>
               <input type="number" value={newQty} onChange={e => setNewQty(e.target.value)} className={inputCls} placeholder="0" />
             </div>
             <div>
-              <label className="block text-xs text-[var(--text-muted)] font-semibold mb-1.5">Unit</label>
+              <label className="block text-xs text-[var(--text-secondary)] font-semibold mb-1.5">Unit</label>
               <SearchableDropdown value={newUnit} onChange={setNewUnit} options={UNITS.map(u => ({ value: u, label: u }))} />
             </div>
           </div>
           <div>
-            <label className="block text-xs text-[var(--text-muted)] font-semibold mb-1.5">Batch Reference</label>
+            <label className="block text-xs text-[var(--text-secondary)] font-semibold mb-1.5">Batch Reference</label>
             <input value={newBatchRef} onChange={e => setNewBatchRef(e.target.value)} className={inputCls} placeholder="Batch Reference" />
           </div>
           <div>
-            <label className="block text-xs text-[var(--text-muted)] font-semibold mb-1.5">Stage</label>
+            <label className="block text-xs text-[var(--text-secondary)] font-semibold mb-1.5">Stage</label>
             <SearchableDropdown value={newStage} onChange={setNewStage} options={STAGES.map(s => ({ value: s, label: s }))} />
           </div>
           <div>
-            <label className="block text-xs text-[var(--text-muted)] font-semibold mb-1.5">Notes (optional)</label>
+            <label className="block text-xs text-[var(--text-secondary)] font-semibold mb-1.5">Notes (optional)</label>
             <textarea value={newNotes} onChange={e => setNewNotes(e.target.value)} rows={2}
               className={inputCls} placeholder="Any notes..." />
           </div>
@@ -365,29 +365,29 @@ export default function WipStockView({ addNotification }: Props) {
       >
         <div className="space-y-4">
           <div>
-            <label className="block text-xs text-[var(--text-muted)] font-semibold mb-1.5">Product Name *</label>
+            <label className="block text-xs text-[var(--text-secondary)] font-semibold mb-1.5">Product Name *</label>
             <input value={form.productName} onChange={e => setForm(f => ({ ...f, productName: e.target.value }))} className={inputCls} placeholder="e.g. Shea Butter Cream 200ml" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs text-[var(--text-muted)] font-semibold mb-1.5">Quantity *</label>
+              <label className="block text-xs text-[var(--text-secondary)] font-semibold mb-1.5">Quantity *</label>
               <input type="number" value={form.qty} onChange={e => setForm(f => ({ ...f, qty: e.target.value }))} className={inputCls} placeholder="0" />
             </div>
             <div>
-              <label className="block text-xs text-[var(--text-muted)] font-semibold mb-1.5">Unit</label>
+              <label className="block text-xs text-[var(--text-secondary)] font-semibold mb-1.5">Unit</label>
               <SearchableDropdown value={form.unit} onChange={v => setForm(f => ({ ...f, unit: v }))} options={UNITS.map(u => ({ value: u, label: u }))} />
             </div>
           </div>
           <div>
-            <label className="block text-xs text-[var(--text-muted)] font-semibold mb-1.5">Batch Reference</label>
+            <label className="block text-xs text-[var(--text-secondary)] font-semibold mb-1.5">Batch Reference</label>
             <input value={form.batchRef} onChange={e => setForm(f => ({ ...f, batchRef: e.target.value }))} className={inputCls} placeholder="e.g. B-2026-0507" />
           </div>
           <div>
-            <label className="block text-xs text-[var(--text-muted)] font-semibold mb-1.5">Stage</label>
+            <label className="block text-xs text-[var(--text-secondary)] font-semibold mb-1.5">Stage</label>
             <SearchableDropdown value={form.stage} onChange={v => setForm(f => ({ ...f, stage: v }))} options={STAGES.map(s => ({ value: s, label: s }))} />
           </div>
           <div>
-            <label className="block text-xs text-[var(--text-muted)] font-semibold mb-1.5">Notes</label>
+            <label className="block text-xs text-[var(--text-secondary)] font-semibold mb-1.5">Notes</label>
             <textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={2} className={inputCls} placeholder="Any relevant notes..." />
           </div>
         </div>

@@ -217,7 +217,7 @@ export default function PayrollPanel({ currentUser, addNotification }: PayrollPa
             const total = batches.filter(b => b.status === s).reduce((sum, b) => sum + b.total_amount, 0);
             return (
               <div key={s} className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4 shadow-[var(--box-shadow)]">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--text-muted)] mb-1 capitalize">{s}</p>
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--text-secondary)] mb-1 capitalize">{s}</p>
                 <p className="text-xl font-bold text-[var(--text-primary)]">GHS <CountUp value={total} /></p>
                 <p className="text-xs text-[var(--text-secondary)]">{batches.filter(b => b.status === s).length} batch{batches.filter(b => b.status === s).length !== 1 ? 'es' : ''}</p>
               </div>
@@ -334,12 +334,12 @@ export default function PayrollPanel({ currentUser, addNotification }: PayrollPa
           className="w-full px-3 py-2 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-[var(--accent)] mb-3" />
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-[9px] font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-1">Period Start</label>
+            <label className="block text-[9px] font-semibold text-[var(--text-secondary)] uppercase tracking-wide mb-1">Period Start</label>
             <input type="date" value={batchModal.period_start} onChange={e => setBatchModal(m => ({ ...m, period_start: e.target.value }))}
               className="w-full px-3 py-2 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-[var(--accent)]" />
           </div>
           <div>
-            <label className="block text-[9px] font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-1">Period End</label>
+            <label className="block text-[9px] font-semibold text-[var(--text-secondary)] uppercase tracking-wide mb-1">Period End</label>
             <input type="date" value={batchModal.period_end} onChange={e => setBatchModal(m => ({ ...m, period_end: e.target.value }))}
               className="w-full px-3 py-2 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-[var(--accent)]" />
           </div>
@@ -367,12 +367,12 @@ export default function PayrollPanel({ currentUser, addNotification }: PayrollPa
           className="w-full px-3 py-2 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-[var(--accent)] mb-3" />
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-[9px] font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-1">Gross (GHS)</label>
+            <label className="block text-[9px] font-semibold text-[var(--text-secondary)] uppercase tracking-wide mb-1">Gross (GHS)</label>
             <input type="number" value={itemModal.gross_amount} onChange={e => setItemModal(m => ({ ...m, gross_amount: e.target.value }))}
               className="w-full px-3 py-2 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-[var(--accent)]" />
           </div>
           <div>
-            <label className="block text-[9px] font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-1">Deductions (GHS)</label>
+            <label className="block text-[9px] font-semibold text-[var(--text-secondary)] uppercase tracking-wide mb-1">Deductions (GHS)</label>
             <input type="number" value={itemModal.deductions} onChange={e => setItemModal(m => ({ ...m, deductions: e.target.value }))}
               className="w-full px-3 py-2 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-[var(--accent)]" />
           </div>

@@ -747,22 +747,22 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
           </div>
           <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-4">
             <div className="rounded-xl p-4 bg-amber-500/10">
-              <p className="text-[10px] text-[var(--text-muted)] uppercase font-semibold tracking-wide mb-1">Stock Cost Value</p>
+              <p className="text-[10px] text-[var(--text-secondary)] uppercase font-semibold tracking-wide mb-1">Stock Cost Value</p>
               <p className="text-xl font-bold text-amber-600">{inventoryItems[0]?.currency || 'GHS'} <CountUp value={totalCostValue} /></p>
               <p className="text-xs text-[var(--text-muted)] mt-0.5">What goods cost us</p>
             </div>
             <div className="rounded-xl p-4 bg-sky-500/10">
-              <p className="text-[10px] text-[var(--text-muted)] uppercase font-semibold tracking-wide mb-1">Stock Selling Value</p>
+              <p className="text-[10px] text-[var(--text-secondary)] uppercase font-semibold tracking-wide mb-1">Stock Selling Value</p>
               <p className="text-xl font-bold text-sky-600">{inventoryItems[0]?.currency || 'GHS'} <CountUp value={totalSellingValue} /></p>
               <p className="text-xs text-[var(--text-muted)] mt-0.5">At set prices</p>
             </div>
             <div className="rounded-xl p-4 bg-emerald-500/10">
-              <p className="text-[10px] text-[var(--text-muted)] uppercase font-semibold tracking-wide mb-1">Revenue Earned</p>
+              <p className="text-[10px] text-[var(--text-secondary)] uppercase font-semibold tracking-wide mb-1">Revenue Earned</p>
               <p className="text-xl font-bold text-emerald-600">{inventoryItems[0]?.currency || 'GHS'} <CountUp value={totalRevenueEarned} /></p>
               <p className="text-xs text-[var(--text-muted)] mt-0.5">From approved orders</p>
             </div>
             <div className="rounded-xl p-4 bg-violet-500/10">
-              <p className="text-[10px] text-[var(--text-muted)] uppercase font-semibold tracking-wide mb-1">Stock Margin</p>
+              <p className="text-[10px] text-[var(--text-secondary)] uppercase font-semibold tracking-wide mb-1">Stock Margin</p>
               <p className={`text-xl font-bold ${potentialProfit >= 0 ? 'text-violet-600' : 'text-rose-600'}`}><CountUp value={stockMarginPct} decimals={1} suffix="%" /></p>
               <p className="text-xs text-[var(--text-muted)] mt-0.5">Selling − Cost</p>
             </div>

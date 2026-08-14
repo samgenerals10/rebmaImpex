@@ -276,22 +276,22 @@ export default function ReceptionOverviewView({ visitorsList, onAddVisitor, onCh
           <h3 className="font-bold text-[var(--text-primary)] text-sm mb-3">Quick Check In</h3>
           <form onSubmit={handleQuickCheckIn} className="space-y-2.5">
             <div>
-              <label className="block text-[10px] text-[var(--text-muted)] font-semibold uppercase mb-1">Visitor Name *</label>
+              <label className="block text-[10px] text-[var(--text-secondary)] font-semibold uppercase mb-1">Visitor Name *</label>
               <input name="visitor" value={quickForm.fullName} onChange={e => setQuickForm(p => ({ ...p, fullName: e.target.value }))} required placeholder="Full name"
                 className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-[var(--text-primary)] text-xs outline-none focus:border-[var(--accent)]" />
             </div>
             <div>
-              <label className="block text-[10px] text-[var(--text-muted)] font-semibold uppercase mb-1">Phone</label>
+              <label className="block text-[10px] text-[var(--text-secondary)] font-semibold uppercase mb-1">Phone</label>
               <input value={quickForm.phone} onChange={e => setQuickForm(p => ({ ...p, phone: e.target.value }))} placeholder="+233..."
                 className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-[var(--text-primary)] text-xs outline-none focus:border-[var(--accent)]" />
             </div>
             <div>
-              <label className="block text-[10px] text-[var(--text-muted)] font-semibold uppercase mb-1">Host *</label>
+              <label className="block text-[10px] text-[var(--text-secondary)] font-semibold uppercase mb-1">Host *</label>
               <input name="host" value={quickForm.host} onChange={e => setQuickForm(p => ({ ...p, host: e.target.value }))} required placeholder="Staff name"
                 className="w-full bg-[var(--bg-input)] border border-[var(--border)] rounded-xl px-3 py-2 text-[var(--text-primary)] text-xs outline-none focus:border-[var(--accent)]" />
             </div>
             <div>
-              <label className="block text-[10px] text-[var(--text-muted)] font-semibold uppercase mb-1">Purpose</label>
+              <label className="block text-[10px] text-[var(--text-secondary)] font-semibold uppercase mb-1">Purpose</label>
               <SearchableDropdown value={quickForm.purpose} onChange={v => setQuickForm(p => ({ ...p, purpose: v }))} options={['Business Meeting', 'Delivery', 'Personal', 'Interview', 'Other'].map(p => ({ value: p, label: p }))} />
             </div>
             <button type="submit"
@@ -302,7 +302,7 @@ export default function ReceptionOverviewView({ visitorsList, onAddVisitor, onCh
           {/* Recent check-ins */}
           {currentlyIn.length > 0 && (
             <div className="mt-3 pt-3 border-t border-[var(--border)]">
-              <p className="text-[10px] text-[var(--text-muted)] font-semibold uppercase mb-2">Recent Check-ins</p>
+              <p className="text-[10px] text-[var(--text-secondary)] font-semibold uppercase mb-2">Recent Check-ins</p>
               <div className="space-y-1.5">
                 {currentlyIn.slice(0, 3).map(v => (
                   <div key={v.id} className="flex items-center gap-2 text-xs">

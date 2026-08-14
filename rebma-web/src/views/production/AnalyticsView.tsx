@@ -266,7 +266,7 @@ export default function ProductionAnalyticsView({ addNotification }: Props) {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {kpis.map(k => (
               <div key={k.label} className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4">
-                <p className="text-[10px] text-[var(--text-muted)] uppercase font-semibold tracking-wide">{k.label}</p>
+                <p className="text-[10px] text-[var(--text-secondary)] uppercase font-semibold tracking-wide">{k.label}</p>
                 <p className="text-3xl font-bold text-[var(--text-primary)] mt-1"><CountUp value={k.value} suffix={k.suffix} decimals={k.decimals} /></p>
                 <div className="flex items-center gap-1 mt-1.5">
                   {k.trend === 'up' ? <TrendingUp className="w-3 h-3 text-emerald-500" /> : k.trend === 'down' ? <TrendingDown className="w-3 h-3 text-rose-500" /> : null}

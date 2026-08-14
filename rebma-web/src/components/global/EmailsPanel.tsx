@@ -268,7 +268,7 @@ export default function EmailsPanel({ currentUser, addNotification, onUnreadCoun
       >
         {/* To field */}
         <div className="mb-3 relative">
-          <label className="block text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-1">To</label>
+          <label className="block text-[10px] font-semibold text-[var(--text-secondary)] uppercase tracking-wide mb-1">To</label>
           {selectedTo ? (
             <div className="flex items-center gap-2 px-3 py-2 bg-[var(--bg-input)] border border-[var(--border)] rounded-lg">
               <span className="text-xs text-[var(--text-primary)] flex-1">{selectedTo.full_name} <span className="text-[var(--text-muted)]">({selectedTo.department})</span></span>

@@ -205,7 +205,7 @@ export default function AttendanceView({ addNotification }: Props) {
           { label: 'Absent / Not In', val: absent, cls: 'text-rose-600' },
         ].map((s, i) => (
           <div key={i} className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4">
-            <p className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wide">{s.label}</p>
+            <p className="text-[10px] font-semibold text-[var(--text-secondary)] uppercase tracking-wide">{s.label}</p>
             <p className={`text-3xl font-extrabold mt-1 ${s.cls}`}>{s.val}</p>
           </div>
         ))}
@@ -340,12 +340,12 @@ export default function AttendanceView({ addNotification }: Props) {
       >
         <div className="space-y-3">
           <div>
-            <label className="block text-[9px] font-semibold text-[var(--text-muted)] uppercase mb-1">Employee Name *</label>
+            <label className="block text-[9px] font-semibold text-[var(--text-secondary)] uppercase mb-1">Employee Name *</label>
             <input value={form.fullName} onChange={e => setForm(f => ({ ...f, fullName: e.target.value }))} placeholder="Full name..."
               className="w-full px-3 py-2 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-[var(--accent)]" />
           </div>
           <div>
-            <label className="block text-[9px] font-semibold text-[var(--text-muted)] uppercase mb-1">Department</label>
+            <label className="block text-[9px] font-semibold text-[var(--text-secondary)] uppercase mb-1">Department</label>
             <SearchableDropdown
               value={form.department}
               onChange={v => setForm(f => ({ ...f, department: v }))}

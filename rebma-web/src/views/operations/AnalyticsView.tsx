@@ -251,7 +251,7 @@ export default function AnalyticsView({ addNotification }: AddNotificationProps)
               onClick={() => clickable && setActiveKpi(card.kpiKey)}
               className={`bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5 shadow-[var(--box-shadow)] text-left w-full transition-colors ${clickable ? 'hover:border-[var(--accent)] cursor-pointer' : 'cursor-default'}`}>
               <div className="flex items-center justify-between mb-3">
-                <p className="text-xs text-[var(--text-muted)] font-semibold uppercase tracking-wide">{card.label}</p>
+                <p className="text-xs text-[var(--text-secondary)] font-semibold uppercase tracking-wide">{card.label}</p>
                 <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${card.color}18` }}>
                   <Icon className="w-4 h-4" style={{ color: card.color }} />
                 </div>

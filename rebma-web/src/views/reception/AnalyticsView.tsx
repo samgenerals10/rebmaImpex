@@ -208,7 +208,7 @@ export default function AnalyticsView({ addNotification }: Props) {
         ].map(card => (
           <div key={card.label} className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-[10px] text-[var(--text-muted)] font-semibold uppercase">{card.label}</p>
+              <p className="text-[10px] text-[var(--text-secondary)] font-semibold uppercase">{card.label}</p>
               <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: `${card.color}20`, color: card.color }}>
                 <card.icon className="w-4 h-4" />
               </div>

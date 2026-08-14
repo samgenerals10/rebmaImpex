@@ -343,12 +343,12 @@ export default function ProductionOverviewView({ currentUser, productionRequests
           </div>
           <div className="grid grid-cols-2 gap-3 mb-3">
             <div className="bg-[var(--bg)] rounded-xl p-3 border border-[var(--border)]">
-              <p className="text-[10px] text-[var(--text-muted)] uppercase font-semibold">Goods Received</p>
+              <p className="text-[10px] text-[var(--text-secondary)] uppercase font-semibold">Goods Received</p>
               <p className="text-2xl font-bold text-emerald-600 mt-1"><CountUp value={goodsReceived} /></p>
               <p className="text-[10px] text-[var(--text-muted)]">units from stock ledger</p>
             </div>
             <div className="bg-[var(--bg)] rounded-xl p-3 border border-[var(--border)]">
-              <p className="text-[10px] text-[var(--text-muted)] uppercase font-semibold">Goods Produced</p>
+              <p className="text-[10px] text-[var(--text-secondary)] uppercase font-semibold">Goods Produced</p>
               <p className="text-2xl font-bold text-[var(--accent)] mt-1"><CountUp value={weekBoxes} /></p>
               <p className="text-[10px] text-[var(--text-muted)]">boxes recorded</p>
             </div>

@@ -207,7 +207,7 @@ export default function TransactionsView({ addNotification }: Props) {
           return (
             <div key={i} className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4 shadow-[var(--box-shadow)]">
               <div className="flex items-center justify-between mb-2">
-                <p className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wide">{s.label}</p>
+                <p className="text-[10px] font-semibold text-[var(--text-secondary)] uppercase tracking-wide">{s.label}</p>
                 <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${s.bg}`}>
                   <Icon className={`w-4 h-4 ${s.cls}`} />
                 </div>

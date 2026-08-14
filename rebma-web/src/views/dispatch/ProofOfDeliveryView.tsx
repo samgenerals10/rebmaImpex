@@ -231,7 +231,7 @@ export default function ProofOfDeliveryView({ addNotification }: Props) {
           { label: 'Disputed',      count: disputed.length,  cls: 'text-rose-600',    bg: 'bg-rose-50' },
         ].map((s, i) => (
           <div key={i} className={`${s.bg} border border-[var(--border)] rounded-2xl p-4`}>
-            <p className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wide">{s.label}</p>
+            <p className="text-[10px] font-semibold text-[var(--text-secondary)] uppercase tracking-wide">{s.label}</p>
             <p className={`text-3xl font-extrabold ${s.cls} mt-1`}>{s.count}</p>
           </div>
         ))}

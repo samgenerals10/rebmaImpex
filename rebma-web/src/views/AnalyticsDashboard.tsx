@@ -29,7 +29,7 @@ function StatCard({ label, value, prefix, sub, trend, icon: Icon }: { label: str
     <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4 shadow-[var(--box-shadow)]">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-1">{label}</p>
+          <p className="text-[10px] font-semibold text-[var(--text-secondary)] uppercase tracking-wide mb-1">{label}</p>
           <p className="text-2xl font-bold text-[var(--text-primary)] leading-none"><CountUp value={value} prefix={prefix} /></p>
           {sub && <p className="text-xs text-[var(--text-secondary)] mt-1">{sub}</p>}
         </div>
