@@ -626,6 +626,10 @@ body.theme-foodie .sidebar-shell {
   from { opacity: 0; transform: translateY(-4px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+@keyframes bottomsheet-slide-in {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
 
 /* Badges */
 .erp-badge {

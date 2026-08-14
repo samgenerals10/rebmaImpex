@@ -1,7 +1,7 @@
 // rebma-web/src/views/CeoDashboard.tsx
 
 import { useState, useEffect, useRef } from 'react';
-import { Layers, DollarSign, Truck, Users, FileSpreadsheet, FileText, MoreVertical, TrendingUp, TrendingDown, ShoppingBag, Clock, ChevronRight, CheckCircle, AlertCircle } from 'lucide-react';
+import { Layers, DollarSign, Truck, Users, FileSpreadsheet, FileText, MoreVertical, TrendingUp, TrendingDown, ShoppingBag, Clock, ChevronRight, CheckCircle, AlertCircle, Package, Boxes } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { useRealtimeChannel } from '../hooks/useRealtimeChannel';
 import MiniSparkline from '../components/MiniSparkline';
@@ -10,6 +10,9 @@ import PendingApprovalsAlert from '../components/global/PendingApprovalsAlert';
 import ActivityFeed from '../components/global/ActivityFeed';
 import DispatchMap from '../components/dispatch/DispatchMap';
 import ProductCatalogCard from '../components/ProductCatalogCard';
+import MobileMetricCard from '../components/mobile/MobileMetricCard';
+import MobileSectionHeader from '../components/mobile/MobileSectionHeader';
+import MobileEmptyState from '../components/mobile/MobileEmptyState';
 import { 
   ResponsiveContainer, 
   LineChart, 
@@ -428,17 +431,49 @@ export default function CeoDashboard({
         {/* Pending approvals alert */}
         <PendingApprovalsAlert department="CEO" onNavigate={setActiveSubTab} addNotification={addNotification} />
 
+        {/* Primary operational metrics */}
+        <MobileMetricCard
+          emphasis="primary"
+          tone="accent"
+          label="Global Ingestion Flow"
+          value={kpiIngestion !== null ? `${kpiIngestion.toLocaleString()} Tons` : '—'}
+          sublabel="Total cargo intake · Accra Port Operations"
+          icon={<Layers className="w-5 h-5" />}
+        />
+        <MobileMetricCard
+          emphasis="primary"
+          tone={kpiInvoices ? 'warning' : 'neutral'}
+          label="Processing Invoices"
+          value={kpiInvoices !== null ? `${kpiInvoices} Invoice${kpiInvoices !== 1 ? 's' : ''}` : '—'}
+          sublabel="Awaiting finance clearance"
+          icon={<FileText className="w-5 h-5" />}
+          onClick={() => setActiveSubTab?.('Invoices')}
+        />
+
+        {/* Secondary metrics */}
+        <div className="grid grid-cols-2 gap-3">
+          {smallStats.map((s, i) => (
+            <MobileMetricCard
+              key={i}
+              emphasis="secondary"
+              label={s.title}
+              value={s.value}
+              sublabel={s.sub}
+              icon={<s.icon className="w-4 h-4" />}
+              tone={s.title === 'Staff Force' ? 'warning' : 'accent'}
+              onClick={() => setActiveSubTab?.(s.tab)}
+            />
+          ))}
+        </div>
+
         {/* Available Products — priced by Management, ready to sell */}
         {inventoryItems.length > 0 && (
             <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4 shadow-card space-y-3">
-              <div className="flex items-center justify-between pb-1 border-b border-[var(--border)]">
-                <h3 className="text-xs font-bold text-text-primary flex items-center gap-1.5">
-                  <CheckCircle size={14} className="text-emerald-500" /> Products Available to Sell
-                </h3>
-                <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 text-[9px] font-bold">
-                  {inventoryItems.length} priced
-                </span>
-              </div>
+              <MobileSectionHeader
+                title="Products Available to Sell"
+                icon={<CheckCircle size={14} className="text-emerald-500" />}
+                badge={<span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 text-[9px] font-bold">{inventoryItems.length} priced</span>}
+              />
               <div className="space-y-2">
                 {inventoryItems.map((item: any) => (
                   <div key={item.name} className="p-3 bg-bg-page border border-[var(--border)] rounded-xl flex items-center justify-between">
@@ -458,84 +493,20 @@ export default function CeoDashboard({
             </div>
         )}
 
-        {/* Physical card — Global Ingestion Flow */}
-        <div className="mobile-physical-card">
-          <div className="flex justify-between items-start relative z-10">
-            <div>
-              <p className="text-[10px] uppercase tracking-widest text-white/60 font-bold">Global Ingestion Flow</p>
-              <h2 className="text-3xl font-extrabold text-white mt-1 tracking-tight">{kpiIngestion !== null ? `${kpiIngestion.toLocaleString()} Tons` : '—'}</h2>
-              <p className="text-[10px] text-white/70 mt-1">Total cargo intake</p>
-            </div>
-            <div className="mobile-card-chip mt-1" />
-          </div>
-          <div className="flex justify-between items-end mt-8 relative z-10">
-            <div>
-              <p className="text-[10px] font-mono tracking-widest text-white/60">•••• •••• •••• 4890</p>
-              <p className="text-[10px] font-bold text-white/80 mt-1 uppercase tracking-wider">Accra Port Operations</p>
-            </div>
-            <div className="mobile-card-circles">
-              <div className="mobile-card-circle-1" />
-              <div className="mobile-card-circle-2" />
-            </div>
-          </div>
-        </div>
-
-        {/* Physical card 2 — Invoices */}
-        <div className="mobile-physical-card" style={{ background: 'linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%)' }}>
-          <div className="flex justify-between items-start relative z-10">
-            <div>
-              <p className="text-[10px] uppercase tracking-widest text-white/60 font-bold">Processing Invoices</p>
-              <h2 className="text-3xl font-extrabold text-white mt-1 tracking-tight">{kpiInvoices !== null ? `${kpiInvoices} Invoice${kpiInvoices !== 1 ? 's' : ''}` : '—'}</h2>
-              <p className="text-[10px] text-white/70 mt-1">Awaiting finance clearance</p>
-            </div>
-            <div className="mobile-card-chip mt-1" />
-          </div>
-          <div className="flex justify-between items-end mt-8 relative z-10">
-            <div>
-              <p className="text-[10px] font-mono tracking-widest text-white/60">•••• •••• •••• 1024</p>
-              <p className="text-[10px] font-bold text-white/80 mt-1 uppercase tracking-wider">Finance Clearance Queue</p>
-            </div>
-            <div className="mobile-card-circles">
-              <div className="mobile-card-circle-1" />
-              <div className="mobile-card-circle-2" />
-            </div>
-          </div>
-        </div>
-
-        {/* Small stat cards row */}
-        <div className="grid grid-cols-2 gap-3">
-          {smallStats.map((s, i) => {
-            const Icon = s.icon;
-            return (
-              <button key={i} className="mobile-stat-card text-left cursor-pointer" onClick={() => setActiveSubTab?.(s.tab)}>
-                <div className="mobile-stat-icon" style={{ background: s.bg }}>
-                  <Icon className="w-5 h-5" style={{ color: s.color }} />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-[9px] text-text-muted uppercase font-bold tracking-wider truncate">{s.title}</p>
-                  <p className="text-sm font-bold text-text-primary mt-0.5">{s.value}</p>
-                  <p className="text-[9px] text-text-muted truncate">{s.sub}</p>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-
         {/* Mobile Inventory & Asset Oversight Panel */}
         <div className="bg-bg-card rounded-2xl border border-[var(--border)] shadow-card p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xs font-bold text-text-primary">Inventory & Assets Oversight</h3>
-            <span className="text-[9px] text-text-muted font-mono">Live</span>
-          </div>
+          <MobileSectionHeader title="Inventory & Assets Oversight" badge={<span className="text-[9px] text-text-muted font-mono">Live</span>} />
           <div className="space-y-2">
             {[
-              { label: 'Finished Goods', value: `${totalFinishedGoods.toLocaleString()} Units`, sub: `Valued GHS ${finishedGoodsVal.toLocaleString(undefined, { maximumFractionDigits: 0 })}`, icon: '📦' },
-              { label: 'Raw Materials (WIP)', value: `${totalRawMaterials.toLocaleString()} Units`, sub: 'In production stage', icon: '🧱' },
-              { label: 'General Purchases', value: `${totalGeneralPurchases.toLocaleString()} Items`, sub: `Spent GHS ${generalPurchasesVal.toLocaleString(undefined, { maximumFractionDigits: 0 })}`, icon: '💰' }
+              { label: 'Finished Goods', value: `${totalFinishedGoods.toLocaleString()} Units`, sub: `Valued GHS ${finishedGoodsVal.toLocaleString(undefined, { maximumFractionDigits: 0 })}`, icon: Package },
+              { label: 'Raw Materials (WIP)', value: `${totalRawMaterials.toLocaleString()} Units`, sub: 'In production stage', icon: Boxes },
+              { label: 'General Purchases', value: `${totalGeneralPurchases.toLocaleString()} Items`, sub: `Spent GHS ${generalPurchasesVal.toLocaleString(undefined, { maximumFractionDigits: 0 })}`, icon: DollarSign }
             ].map((item, idx) => (
               <div key={idx} className="flex items-center justify-between p-2.5 bg-bg-page rounded-xl border border-[var(--border)]">
-                <div className="flex items-center gap-2">
-                  <span className="text-lg">{item.icon}</span>
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-[var(--accent-light)] flex items-center justify-center shrink-0 text-[var(--accent)]">
+                    <item.icon className="w-4 h-4" />
+                  </div>
                   <div>
                     <p className="text-[10px] font-bold text-text-primary">{item.label}</p>
                     <p className="text-[9px] text-text-muted">{item.sub}</p>
@@ -549,16 +520,16 @@ export default function CeoDashboard({
 
         {/* Mini Chart card */}
         <div className="bg-bg-card rounded-2xl border border-[var(--border)] shadow-card p-4">
-          <div className="flex items-center justify-between mb-3">
-            <div>
-              <h3 className="text-xs font-bold text-text-primary">Inflow vs Orders</h3>
-              <p className="text-[10px] text-text-muted">Weekly transactional volumes</p>
-            </div>
-            <svg width="60" height="26" viewBox="0 0 60 26" fill="none" className="opacity-60">
-              <path d="M2 22 Q15 8 30 14 Q45 20 58 4" stroke="#068d5c" strokeWidth="2.5" strokeLinecap="round" fill="none" className="mobile-wave-path" />
-            </svg>
-          </div>
-          <div className="h-36">
+          <MobileSectionHeader
+            title="Inflow vs Orders"
+            subtitle="Weekly transactional volumes"
+            badge={
+              <svg width="60" height="26" viewBox="0 0 60 26" fill="none" className="opacity-60">
+                <path d="M2 22 Q15 8 30 14 Q45 20 58 4" stroke="#068d5c" strokeWidth="2.5" strokeLinecap="round" fill="none" className="mobile-wave-path" />
+              </svg>
+            }
+          />
+          <div className="h-36 mt-3">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={lineChartData}>
                 <CartesianGrid strokeDasharray="3 3" opacity={0.08} />
@@ -573,45 +544,42 @@ export default function CeoDashboard({
         </div>
 
         {/* Fleet GPS mini card */}
-        <div className="bg-bg-card rounded-2xl border border-[var(--border)] shadow-card p-4">
-          <h3 className="text-xs font-bold text-text-primary mb-2">Live Fleet Tracking</h3>
+        <div className="bg-bg-card rounded-2xl border border-[var(--border)] shadow-card p-4 space-y-3">
+          <MobileSectionHeader title="Live Fleet Tracking" badge={<span className="text-[9px] text-text-muted font-mono">Refresh: {gpsInterval}s</span>} />
           <DispatchMap
             deliveries={transitVehicles.map(v => ({ id: v.id, driverId: v.driver_id, driverName: v.driver_name, vehicleId: v.vehicle_id, status: v.status, active_coordinates: v.active_coordinates }))}
             height={128}
             compact
             pollIntervalSeconds={gpsInterval}
           />
-          <p className="text-[9px] text-text-muted mt-2 text-right">Refresh: {gpsInterval}s</p>
         </div>
 
         {/* Cargo Discrepancy Statement Mobile */}
         <div className="bg-bg-card rounded-2xl border border-[var(--border)] shadow-card p-4 space-y-3">
-          <div className="flex items-center justify-between pb-2 border-b border-[var(--border)]">
-            <h3 className="text-xs font-bold text-text-primary flex items-center gap-1.5">
-              <AlertCircle size={14} className="text-red-500 animate-pulse" /> Discrepancies
-            </h3>
-            <span className="px-1.5 py-0.5 rounded bg-red-500/10 text-red-500 text-[9px] font-bold">
-              Loss: GHS {cargoDiscrepancies.reduce((s, d) => s + d.costLoss, 0).toLocaleString()}
-            </span>
-          </div>
-          <div className="space-y-2 max-h-60 overflow-y-auto">
-            {cargoDiscrepancies.map(d => (
-              <div key={d.id} className="p-2 bg-bg-page rounded-xl border border-[var(--border)] text-[11px] space-y-1">
-                <div className="flex justify-between font-bold text-text-primary">
-                  <span>{d.productName}</span>
-                  <span className="text-red-500">{d.damagedCount} damaged</span>
+          <MobileSectionHeader
+            title="Discrepancies"
+            icon={<AlertCircle size={14} className="text-red-500" />}
+            badge={<span className="px-1.5 py-0.5 rounded bg-red-500/10 text-red-500 text-[9px] font-bold">Loss: GHS {cargoDiscrepancies.reduce((s, d) => s + d.costLoss, 0).toLocaleString()}</span>}
+          />
+          {cargoDiscrepancies.length === 0 ? (
+            <MobileEmptyState icon={<CheckCircle className="w-5 h-5" />} title="No discrepancies" description="Approved cargo discrepancies will appear here." />
+          ) : (
+            <div className="space-y-2 max-h-60 overflow-y-auto">
+              {cargoDiscrepancies.map(d => (
+                <div key={d.id} className="p-2 bg-bg-page rounded-xl border border-[var(--border)] text-[11px] space-y-1">
+                  <div className="flex justify-between font-bold text-text-primary">
+                    <span>{d.productName}</span>
+                    <span className="text-red-500">{d.damagedCount} damaged</span>
+                  </div>
+                  <div className="flex justify-between text-text-secondary text-[10px]">
+                    <span>Supplier: {d.company}</span>
+                    <span className="font-semibold">Loss: GHS {d.costLoss.toLocaleString()}</span>
+                  </div>
+                  {d.notes && <p className="text-text-muted text-[10px] italic">Notes: {d.notes}</p>}
                 </div>
-                <div className="flex justify-between text-text-secondary text-[10px]">
-                  <span>Supplier: {d.company}</span>
-                  <span className="font-semibold">Loss: GHS {d.costLoss.toLocaleString()}</span>
-                </div>
-                {d.notes && <p className="text-text-muted text-[10px] italic">Notes: {d.notes}</p>}
-              </div>
-            ))}
-            {cargoDiscrepancies.length === 0 && (
-              <p className="text-center text-text-muted text-[10px] py-4">No approved cargo discrepancies.</p>
-            )}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
