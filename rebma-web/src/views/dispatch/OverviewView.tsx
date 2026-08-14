@@ -357,12 +357,12 @@ export default function DispatchOverviewView({ addNotification, setActiveSubTab,
         ].map(({ label, value, change, up, sub, color, tab }, i) => (
           <div key={i} onClick={() => setActiveSubTab?.(tab)}
             className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4 cursor-pointer hover:border-[var(--accent)] transition-colors">
-            <p className="text-xs text-[var(--text-muted)] mb-1 uppercase tracking-wide font-semibold">{label}</p>
+            <p className="text-xs text-[var(--text-secondary)] mb-1 uppercase tracking-wide font-bold">{label}</p>
             <p className="text-3xl font-bold" style={{ color }}><CountUp value={value} /></p>
             <div className="flex items-center gap-1 mt-1">
               {up ? <TrendingUp size={11} className="text-green-500" /> : <TrendingDown size={11} className="text-red-400" />}
               <span className={`text-xs font-medium ${up ? 'text-green-500' : 'text-red-400'}`}>{change}</span>
-              <span className="text-xs text-[var(--text-muted)]">{sub}</span>
+              <span className="text-xs text-[var(--text-secondary)]">{sub}</span>
             </div>
           </div>
         ))}

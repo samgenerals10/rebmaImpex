@@ -204,7 +204,7 @@ export default function ReceptionOverviewView({ visitorsList, onAddVisitor, onCh
             onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveSubTab(card.tab); } }}
             className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4 text-left hover:shadow-md transition-shadow cursor-pointer w-full relative group">
             <div className="flex items-start justify-between gap-2 mb-2">
-              <p className="text-[10px] text-[var(--text-muted)] uppercase font-semibold tracking-wide leading-tight">{card.label}</p>
+              <p className="text-[10px] text-[var(--text-secondary)] uppercase font-bold tracking-wide leading-tight">{card.label}</p>
               <div className="relative" onClick={e => { e.stopPropagation(); setKpiMenuOpen(kpiMenuOpen === idx ? null : idx); }}>
                 <button className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded hover:bg-[var(--accent-light)] cursor-pointer">
                   <MoreVertical className="w-3.5 h-3.5 text-[var(--text-muted)]" />
@@ -223,7 +223,7 @@ export default function ReceptionOverviewView({ visitorsList, onAddVisitor, onCh
                 <p className="text-3xl font-bold text-[var(--text-primary)] leading-none"><CountUp value={card.value} /></p>
                 <div className="flex items-center gap-1 mt-1.5">
                   {card.trend === 'up' ? <TrendingUp className="w-3 h-3 text-emerald-500" /> : card.trend === 'down' ? <TrendingDown className="w-3 h-3 text-rose-500" /> : null}
-                  <p className="text-[10px] text-[var(--text-muted)]">{card.sub}</p>
+                  <p className="text-[10px] text-[var(--text-secondary)]">{card.sub}</p>
                 </div>
               </div>
               <div className="w-16 shrink-0">

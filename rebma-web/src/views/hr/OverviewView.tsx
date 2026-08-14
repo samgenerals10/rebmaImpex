@@ -277,11 +277,11 @@ export default function HrOverviewView({ currentUser, addNotification, setActive
             className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4 text-left hover:shadow-md transition-shadow cursor-pointer w-full">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-xs text-[var(--text-muted)] font-semibold mb-1">{card.label}</p>
+                <p className="text-xs text-[var(--text-secondary)] font-semibold mb-1">{card.label}</p>
                 <p className="text-2xl font-bold text-[var(--text-primary)]"><CountUp value={card.value} suffix={card.suffix} /></p>
-                <p className="text-xs text-[var(--text-muted)] mt-0.5">{card.sub}</p>
+                <p className="text-xs text-[var(--text-secondary)] mt-0.5">{card.sub}</p>
               </div>
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: `${card.color}20`, color: card.color }}>
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: `${card.color}20`, color: card.color, boxShadow: `inset 0 0 0 1px ${card.color}30` }}>
                 <card.icon className="w-5 h-5" />
               </div>
             </div>

@@ -677,7 +677,7 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
             onClick={() => { if (isClickable) setShowRevenueModal(true); else if (linkTab) setActiveSubTab?.(linkTab); }}
             className={`bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4 transition-all ${isClickable || linkTab ? 'cursor-pointer hover:border-[var(--accent)] hover:shadow-md' : ''}`}
           >
-            <p className="text-xs text-[var(--text-muted)] mb-1 flex items-center justify-between">
+            <p className="text-xs text-[var(--text-secondary)] font-semibold mb-1 flex items-center justify-between">
               <span>{label}</span>
               {(isClickable || linkTab) && <span className="text-[9px] text-[var(--accent)] font-semibold font-mono bg-[var(--accent-light)] px-1 py-0.5 rounded">{isClickable ? 'Drill down →' : 'View →'}</span>}
             </p>
@@ -686,7 +686,7 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
               {up ? <TrendingUp size={11} className="text-green-500" /> : <TrendingDown size={11} className="text-red-400" />}
               <span className={`text-xs font-medium ${up ? 'text-green-500' : 'text-red-400'}`}>{change}</span>
             </div>
-            {sub && <p className="text-xs text-[var(--text-muted)] mt-0.5">{sub}</p>}
+            {sub && <p className="text-xs text-[var(--text-secondary)] mt-0.5">{sub}</p>}
           </div>
         ))}
       </div>
@@ -700,9 +700,9 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
         ].map(item => (
           <div key={item.label} className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4 flex items-center justify-between shadow-[var(--box-shadow)]">
             <div>
-              <p className="text-xs text-[var(--text-muted)] mb-1 font-semibold">{item.label}</p>
+              <p className="text-xs text-[var(--text-secondary)] mb-1 font-semibold">{item.label}</p>
               <p className="text-xl font-bold text-[var(--text-primary)]"><CountUp value={item.value} /></p>
-              <p className="text-[10px] text-[var(--text-muted)] mt-1">{item.sub}</p>
+              <p className="text-[10px] text-[var(--text-secondary)] mt-1">{item.sub}</p>
             </div>
             <div className="w-10 h-10 rounded-full bg-[var(--accent-light)] flex items-center justify-center text-[var(--accent)]">
               <CheckCircle size={18} />
