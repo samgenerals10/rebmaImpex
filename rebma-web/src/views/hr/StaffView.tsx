@@ -8,6 +8,7 @@ import type { StaffMember } from '../../types/erp';
 import { usePaginatedQuery } from '../../hooks/usePaginatedQuery';
 import SidePanel from '../../components/ui/SidePanel';
 import SearchableDropdown from '../../components/ui/SearchableDropdown';
+import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
 
 
 const DEPARTMENTS = ['All', 'Operations', 'Finance', 'Logistics', 'HR', 'Marketing', 'Reception', 'Production', 'Management'];
@@ -338,78 +339,50 @@ export default function StaffView({ staffList: propStaff, addNotification }: Pro
         </div>
         <div style={{ background: 'var(--bg-card)', borderRadius: 12, border: '1px solid var(--border)', overflow: 'hidden' }}>
           {profileTab === 'attendance' && (
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ background: 'var(--bg)' }}>
-                  {['Date', 'Check-In', 'Status'].map(h => <th key={h} style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, borderBottom: '1px solid var(--border)' }}>{h}</th>)}
-                </tr>
-              </thead>
-              <tbody>
-                {loadingDetails ? (
-                  <tr>
-                    <td colSpan={3} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }} className="animate-pulse">
-                      Loading attendance records...
-                    </td>
-                  </tr>
-                ) : attendance.length === 0 ? (
-                  <tr>
-                    <td colSpan={3} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-                      No attendance records found for this staff member
-                    </td>
-                  </tr>
-                ) : (
-                  attendance.map((a, i) => {
-                    const isPresent = a.status === 'PRESENT' || a.status === 'present' || a.status === 'LATE' || a.status === 'late';
-                    const ac = isPresent ? { bg: 'rgba(16,185,129,0.12)', color: '#10b981' } : { bg: 'rgba(245,158,11,0.12)', color: '#f59e0b' };
-                    return (
-                      <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
-                        <td style={{ padding: '0.75rem 1rem', color: 'var(--text-primary)', fontSize: 13 }}>{a.date}</td>
-                        <td style={{ padding: '0.75rem 1rem', color: 'var(--text-secondary)', fontSize: 13 }}>{a.check_in_time || '--'}</td>
-                        <td style={{ padding: '0.75rem 1rem' }}><span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 600, background: ac.bg, color: ac.color }}>{a.status}</span></td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
+            <div style={{ padding: '0.75rem' }}>
+              <ResponsiveDataView<any>
+                columns={[
+                  { key: 'date', label: 'Date', primary: true },
+                  { key: 'check_in_time', label: 'Check-In', render: a => a.check_in_time || '--' },
+                  {
+                    key: 'status', label: 'Status', status: true, render: a => {
+                      const isPresent = a.status === 'PRESENT' || a.status === 'present' || a.status === 'LATE' || a.status === 'late';
+                      const ac = isPresent ? { bg: 'rgba(16,185,129,0.12)', color: '#10b981' } : { bg: 'rgba(245,158,11,0.12)', color: '#f59e0b' };
+                      return <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 600, background: ac.bg, color: ac.color }}>{a.status}</span>;
+                    }
+                  },
+                ]}
+                data={attendance}
+                rowKey={a => String(a.id ?? a.date)}
+                loading={loadingDetails}
+                emptyTitle="No attendance records"
+                emptyDescription="No attendance records found for this staff member"
+              />
+            </div>
           )}
           {profileTab === 'leave' && (
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ background: 'var(--bg)' }}>
-                  {['Type', 'Start', 'End', 'Days', 'Status'].map(h => <th key={h} style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, borderBottom: '1px solid var(--border)' }}>{h}</th>)}
-                </tr>
-              </thead>
-              <tbody>
-                {loadingDetails ? (
-                  <tr>
-                    <td colSpan={5} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }} className="animate-pulse">
-                      Loading leave requests...
-                    </td>
-                  </tr>
-                ) : leaves.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-                      No leave requests found for this staff member
-                    </td>
-                  </tr>
-                ) : (
-                  leaves.map((l, i) => {
-                    const isApproved = l.status === 'Approved' || l.status === 'APPROVED' || l.status === 'approved';
-                    const lc = isApproved ? { bg: 'rgba(16,185,129,0.12)', color: '#10b981' } : { bg: 'rgba(239,68,68,0.12)', color: '#ef4444' };
-                    return (
-                      <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
-                        <td style={{ padding: '0.75rem 1rem', color: 'var(--text-primary)', fontSize: 13 }}>{l.leave_type}</td>
-                        <td style={{ padding: '0.75rem 1rem', color: 'var(--text-secondary)', fontSize: 13 }}>{l.start_date}</td>
-                        <td style={{ padding: '0.75rem 1rem', color: 'var(--text-secondary)', fontSize: 13 }}>{l.end_date}</td>
-                        <td style={{ padding: '0.75rem 1rem', color: 'var(--text-secondary)', fontSize: 13 }}>{l.days_count}</td>
-                        <td style={{ padding: '0.75rem 1rem' }}><span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 600, background: lc.bg, color: lc.color }}>{l.status}</span></td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
+            <div style={{ padding: '0.75rem' }}>
+              <ResponsiveDataView<any>
+                columns={[
+                  { key: 'leave_type', label: 'Type', primary: true },
+                  { key: 'start_date', label: 'Start' },
+                  { key: 'end_date', label: 'End' },
+                  { key: 'days_count', label: 'Days' },
+                  {
+                    key: 'status', label: 'Status', status: true, render: l => {
+                      const isApproved = l.status === 'Approved' || l.status === 'APPROVED' || l.status === 'approved';
+                      const lc = isApproved ? { bg: 'rgba(16,185,129,0.12)', color: '#10b981' } : { bg: 'rgba(239,68,68,0.12)', color: '#ef4444' };
+                      return <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 600, background: lc.bg, color: lc.color }}>{l.status}</span>;
+                    }
+                  },
+                ]}
+                data={leaves}
+                rowKey={l => String(l.id ?? l.start_date)}
+                loading={loadingDetails}
+                emptyTitle="No leave requests"
+                emptyDescription="No leave requests found for this staff member"
+              />
+            </div>
           )}
           {profileTab === 'performance' && (
             <div style={{ padding: '1.5rem' }}>
@@ -497,77 +470,62 @@ export default function StaffView({ staffList: propStaff, addNotification }: Pro
           </div>
         ) : (
         <>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 700 }}>
-            <thead>
-              <tr style={{ background: 'var(--bg)' }}>
-                {['', 'Name', 'Email', 'Department', 'Role', 'Phone', 'Status', 'Joined', ''].map((h, i) => (
-                  <th key={i} style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map(s => {
-                const sc = statusColor(s.status);
-                return (
-                  <tr key={s.id} style={{ borderBottom: '1px solid var(--border)', cursor: 'pointer' }}
-                    onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg)')}
-                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                    onClick={() => setSelected(s)}>
-                    <td style={{ padding: '0.75rem 1rem' }} onClick={e => e.stopPropagation()}>
-                      <input type="checkbox" style={{ accentColor: 'var(--accent)' }} />
-                    </td>
-                    <td style={{ padding: '0.75rem 1rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <div style={{ width: 34, height: 34, borderRadius: '50%', background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 12, fontWeight: 700, flexShrink: 0 }}>
-                          {initials(s.fullName)}
-                        </div>
-                        <span style={{ color: 'var(--text-primary)', fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap' }}>{s.fullName}</span>
-                      </div>
-                    </td>
-                    <td style={{ padding: '0.75rem 1rem', color: 'var(--text-secondary)', fontSize: 13 }}>{s.email}</td>
-                    <td style={{ padding: '0.75rem 1rem', color: 'var(--text-secondary)', fontSize: 13 }}>{s.department}</td>
-                    <td style={{ padding: '0.75rem 1rem', color: 'var(--text-secondary)', fontSize: 13 }}>{s.role}</td>
-                    <td style={{ padding: '0.75rem 1rem', color: 'var(--text-secondary)', fontSize: 13, whiteSpace: 'nowrap' }}>{s.phone}</td>
-                    <td style={{ padding: '0.75rem 1rem' }}>
-                      <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600, background: sc.bg, color: sc.color }}>{s.status}</span>
-                    </td>
-                    <td style={{ padding: '0.75rem 1rem', color: 'var(--text-muted)', fontSize: 13 }}>{s.joinedAt}</td>
-                    <td style={{ padding: '0.75rem 1rem' }} onClick={e => e.stopPropagation()}>
-                      <div style={{ position: 'relative' }}>
-                        <button onClick={() => setMenuOpen(menuOpen === s.id ? null : s.id)}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4, borderRadius: 6 }}>
-                          <MoreVertical size={16} />
-                        </button>
-                        {menuOpen === s.id && (
-                          <div style={{ position: 'absolute', right: 0, top: '100%', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 8, boxShadow: 'var(--box-shadow)', zIndex: 50, minWidth: 150 }}>
-                            <button onClick={() => { setSelected(s); setMenuOpen(null); }}
-                              style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '0.6rem 1rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-primary)', fontSize: 13 }}>
-                              <Eye size={14} /> View Profile
-                            </button>
-                            <button onClick={() => openEdit(s)}
-                              style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '0.6rem 1rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-primary)', fontSize: 13 }}>
-                              <Edit2 size={14} /> Edit
-                            </button>
-                            <button onClick={() => handleSuspend(s)}
-                              style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '0.6rem 1rem', background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', fontSize: 13 }}>
-                              <UserX size={14} /> {s.status === 'SUSPENDED' ? 'Reactivate' : 'Suspend'}
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        <div style={{ padding: '0.75rem' }}>
+          <ResponsiveDataView<StaffMember>
+            columns={[
+              {
+                key: 'fullName', label: 'Name', primary: true, render: s => (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ width: 34, height: 34, borderRadius: '50%', background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 12, fontWeight: 700, flexShrink: 0 }}>
+                      {initials(s.fullName)}
+                    </div>
+                    <span style={{ whiteSpace: 'nowrap' }}>{s.fullName}</span>
+                  </div>
+                )
+              },
+              { key: 'email', label: 'Email' },
+              { key: 'department', label: 'Department' },
+              { key: 'role', label: 'Role' },
+              { key: 'phone', label: 'Phone' },
+              {
+                key: 'status', label: 'Status', status: true, render: s => {
+                  const sc = statusColor(s.status);
+                  return <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600, background: sc.bg, color: sc.color }}>{s.status}</span>;
+                }
+              },
+              { key: 'joinedAt', label: 'Joined' },
+            ]}
+            data={filtered}
+            rowKey={s => s.id}
+            onRowClick={s => setSelected(s)}
+            emptyTitle={staff.length === 0 ? 'No staff members yet' : 'No staff members found'}
+            emptyDescription={staff.length === 0 ? 'They will appear here once added' : undefined}
+            renderActions={s => (
+              <div style={{ position: 'relative' }}>
+                <button onClick={() => setMenuOpen(menuOpen === s.id ? null : s.id)}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4, borderRadius: 6 }}>
+                  <MoreVertical size={16} />
+                </button>
+                {menuOpen === s.id && (
+                  <div style={{ position: 'absolute', right: 0, top: '100%', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 8, boxShadow: 'var(--box-shadow)', zIndex: 50, minWidth: 150 }}>
+                    <button onClick={() => { setSelected(s); setMenuOpen(null); }}
+                      style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '0.6rem 1rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-primary)', fontSize: 13 }}>
+                      <Eye size={14} /> View Profile
+                    </button>
+                    <button onClick={() => openEdit(s)}
+                      style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '0.6rem 1rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-primary)', fontSize: 13 }}>
+                      <Edit2 size={14} /> Edit
+                    </button>
+                    <button onClick={() => handleSuspend(s)}
+                      style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '0.6rem 1rem', background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', fontSize: 13 }}>
+                      <UserX size={14} /> {s.status === 'SUSPENDED' ? 'Reactivate' : 'Suspend'}
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          />
         </div>
-        {filtered.length === 0 && !loadingStaff && (
-          <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-            {staff.length === 0 ? 'No staff members yet — they will appear here once added' : 'No staff members found'}
-          </div>
-        )}
         {!loadingStaff && staff.length > 0 && (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem 1rem', borderTop: '1px solid var(--border)', fontSize: 12, color: 'var(--text-muted)' }}>
             <span>Showing {staff.length}{typeof total === 'number' ? ` of ${total.toLocaleString()}` : ''}</span>

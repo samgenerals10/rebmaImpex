@@ -8,6 +8,7 @@ import { supabase } from '../../lib/supabaseClient';
 import CountUp from '../../components/CountUp';
 import SidePanel from '../../components/ui/SidePanel';
 import SearchableDropdown from '../../components/ui/SearchableDropdown';
+import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
 import { useCeoSettings } from '../../contexts/CeoSettingsContext';
 import type { StaffMember, CurrentUser } from '../../types/erp';
 
@@ -277,74 +278,58 @@ export default function PayrollView({ currentUser, staffList, addNotification }:
           <div className="px-4 py-3 border-b border-[var(--border)] flex items-center justify-between">
             <h3 className="font-bold text-[var(--text-primary)] text-sm">Payroll Batches</h3>
           </div>
-          {loading ? (
-            <div className="p-4 space-y-2">
-              {Array.from({ length: 5 }).map((_, i) => <div key={i} className="animate-pulse h-10 bg-slate-200 dark:bg-slate-700 rounded mb-2" />)}
-            </div>
-          ) : batches.length === 0 ? (
-            <div className="text-center py-12 text-slate-400">
-              <FileText className="w-10 h-10 mx-auto mb-3 opacity-40" />
-              <p className="font-medium">No payroll batches yet</p>
-              <p className="text-sm mt-1">They will appear here once added</p>
-            </div>
-          ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="bg-[var(--bg)] border-b border-[var(--border)] text-[var(--text-muted)] uppercase text-[10px] font-semibold">
-                  <th className="py-3 px-4 text-left">Period</th>
-                  <th className="py-3 px-4 text-left">Status</th>
-                  <th className="py-3 px-4 text-right">Staff</th>
-                  <th className="py-3 px-4 text-right">Total Amount</th>
-                  <th className="py-3 px-4 text-left hidden sm:table-cell">Processed</th>
-                  <th className="py-3 px-4 text-center">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[var(--border)]">
-                {batches.map(batch => {
-                  const sb = statusBadge(batch.status);
-                  return (
-                    <tr key={batch.id} className="hover:bg-[var(--accent-light)] transition-colors cursor-pointer" onClick={() => setActiveBatch(batch)}>
-                      <td className="py-3 px-4 font-semibold text-[var(--text-primary)]">{batch.period}</td>
-                      <td className="py-3 px-4">
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold" style={{ background: sb.bg, color: sb.color }}>{sb.label}</span>
-                      </td>
-                      <td className="py-3 px-4 text-right text-[var(--text-secondary)]">{batch.staffCount}</td>
-                      <td className="py-3 px-4 text-right font-bold font-mono text-[var(--text-primary)]">
-                        {(showAmounts || canSeeFullAmounts) ? `GHS ${(Number(batch.totalAmount ?? 0)).toLocaleString()}` : '•••••'}
-                      </td>
-                      <td className="py-3 px-4 text-[var(--text-muted)] hidden sm:table-cell">{batch.processedAt || '—'}</td>
-                      <td className="py-3 px-4 text-center" onClick={e => e.stopPropagation()}>
-                        {batch.status === 'DRAFT' && (
-                          <button onClick={() => handleProcessBatch(batch)} disabled={submitting}
-                            className="text-xs px-3 py-1.5 bg-[var(--accent)] text-white rounded-lg font-semibold hover:opacity-90 cursor-pointer disabled:opacity-50">
-                            {submitting ? 'Processing...' : 'Process'}
-                          </button>
-                        )}
-                        {batch.status === 'PENDING_CEO_APPROVAL' && (
-                          currentUser?.isAdmin ? (
-                            <button onClick={() => handleCeoApproveBatch(batch)} disabled={submitting}
-                              className="text-xs px-3 py-1.5 bg-emerald-600 text-white rounded-lg font-semibold hover:opacity-90 cursor-pointer disabled:opacity-50">
-                              {submitting ? 'Approving...' : 'Approve & Pay'}
-                            </button>
-                          ) : (
-                            <span className="text-[10px] font-bold uppercase tracking-wide text-amber-600">Awaiting CEO</span>
-                          )
-                        )}
-                        {batch.status === 'PAID' && (
-                          <button onClick={() => exportToCSV(entries, ['staffName', 'department', 'role', 'baseSalary', 'allowances', 'deductions', 'netPay'], `payroll_${batch.id}`)}
-                            className="text-xs px-3 py-1.5 bg-[var(--accent-light)] text-[var(--accent)] rounded-lg font-semibold hover:opacity-80 cursor-pointer">
-                            Export
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+          <div className="p-3">
+            <ResponsiveDataView<PayrollBatch>
+              columns={[
+                { key: 'period', label: 'Period', primary: true },
+                {
+                  key: 'status', label: 'Status', status: true, render: batch => {
+                    const sb = statusBadge(batch.status);
+                    return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold" style={{ background: sb.bg, color: sb.color }}>{sb.label}</span>;
+                  }
+                },
+                { key: 'staffCount', label: 'Staff', align: 'right' },
+                {
+                  key: 'totalAmount', label: 'Total Amount', align: 'right', render: batch =>
+                    (showAmounts || canSeeFullAmounts) ? `GHS ${(Number(batch.totalAmount ?? 0)).toLocaleString()}` : '•••••'
+                },
+                { key: 'processedAt', label: 'Processed', render: batch => batch.processedAt || '—' },
+              ]}
+              data={batches}
+              rowKey={batch => batch.id}
+              onRowClick={batch => setActiveBatch(batch)}
+              loading={loading}
+              emptyTitle="No payroll batches yet"
+              emptyDescription="They will appear here once added"
+              emptyIcon={<FileText className="w-10 h-10" />}
+              renderActions={batch => (
+                <>
+                  {batch.status === 'DRAFT' && (
+                    <button onClick={() => handleProcessBatch(batch)} disabled={submitting}
+                      className="text-xs px-3 py-1.5 bg-[var(--accent)] text-white rounded-lg font-semibold hover:opacity-90 cursor-pointer disabled:opacity-50">
+                      {submitting ? 'Processing...' : 'Process'}
+                    </button>
+                  )}
+                  {batch.status === 'PENDING_CEO_APPROVAL' && (
+                    currentUser?.isAdmin ? (
+                      <button onClick={() => handleCeoApproveBatch(batch)} disabled={submitting}
+                        className="text-xs px-3 py-1.5 bg-emerald-600 text-white rounded-lg font-semibold hover:opacity-90 cursor-pointer disabled:opacity-50">
+                        {submitting ? 'Approving...' : 'Approve & Pay'}
+                      </button>
+                    ) : (
+                      <span className="text-[10px] font-bold uppercase tracking-wide text-amber-600">Awaiting CEO</span>
+                    )
+                  )}
+                  {batch.status === 'PAID' && (
+                    <button onClick={() => exportToCSV(entries, ['staffName', 'department', 'role', 'baseSalary', 'allowances', 'deductions', 'netPay'], `payroll_${batch.id}`)}
+                      className="text-xs px-3 py-1.5 bg-[var(--accent-light)] text-[var(--accent)] rounded-lg font-semibold hover:opacity-80 cursor-pointer">
+                      Export
+                    </button>
+                  )}
+                </>
+              )}
+            />
           </div>
-          )}
         </div>
       )}
 
@@ -381,45 +366,33 @@ export default function PayrollView({ currentUser, staffList, addNotification }:
           </div>
 
           <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="bg-[var(--bg)] border-b border-[var(--border)] text-[var(--text-muted)] uppercase text-[10px] font-semibold">
-                    <th className="py-3 px-4 text-left">Staff</th>
-                    <th className="py-3 px-4 text-left hidden sm:table-cell">Department</th>
-                    <th className="py-3 px-4 text-right">Base Salary</th>
-                    <th className="py-3 px-4 text-right hidden md:table-cell">Allowances</th>
-                    <th className="py-3 px-4 text-right hidden md:table-cell">Deductions</th>
-                    <th className="py-3 px-4 text-right">Net Pay</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[var(--border)]">
-                  {filteredEntries.map(entry => (
-                    <tr key={entry.staffId} className="hover:bg-[var(--accent-light)] transition-colors">
-                      <td className="py-3 px-4">
+            <div className="p-3">
+              <ResponsiveDataView<PayrollEntry>
+                columns={[
+                  {
+                    key: 'staffName', label: 'Staff', primary: true, render: entry => (
+                      <>
                         <p className="font-semibold text-[var(--text-primary)]">{entry.staffName}</p>
                         <p className="text-[10px] text-[var(--text-muted)]">{entry.role}</p>
-                      </td>
-                      <td className="py-3 px-4 text-[var(--text-secondary)] hidden sm:table-cell">{entry.department}</td>
-                      <td className="py-3 px-4 text-right font-mono text-[var(--text-secondary)]">{formatAmount(entry.baseSalary)}</td>
-                      <td className="py-3 px-4 text-right font-mono text-emerald-500 hidden md:table-cell">+{formatAmount(entry.allowances)}</td>
-                      <td className="py-3 px-4 text-right font-mono text-rose-500 hidden md:table-cell">-{formatAmount(entry.deductions)}</td>
-                      <td className="py-3 px-4 text-right font-bold font-mono text-[var(--text-primary)]">{formatAmount(entry.netPay)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr className="border-t-2 border-[var(--border)] bg-[var(--bg)]">
-                    <td colSpan={2} className="py-3 px-4 font-bold text-[var(--text-primary)]">Total</td>
-                    <td className="py-3 px-4" />
-                    <td className="py-3 px-4" />
-                    <td className="py-3 px-4" />
-                    <td className="py-3 px-4 text-right font-bold font-mono text-[var(--accent)]">
-                      {formatAmount(filteredEntries.reduce((s, e) => s + e.netPay, 0))}
-                    </td>
-                  </tr>
-                </tfoot>
-              </table>
+                      </>
+                    )
+                  },
+                  { key: 'department', label: 'Department' },
+                  { key: 'baseSalary', label: 'Base Salary', align: 'right', render: entry => formatAmount(entry.baseSalary) },
+                  { key: 'allowances', label: 'Allowances', align: 'right', render: entry => <span className="text-emerald-500">+{formatAmount(entry.allowances)}</span> },
+                  { key: 'deductions', label: 'Deductions', align: 'right', render: entry => <span className="text-rose-500">-{formatAmount(entry.deductions)}</span> },
+                  { key: 'netPay', label: 'Net Pay', align: 'right', render: entry => <span className="font-bold">{formatAmount(entry.netPay)}</span> },
+                ]}
+                data={filteredEntries}
+                rowKey={entry => entry.staffId}
+                emptyTitle="No payroll entries"
+              />
+            </div>
+            <div className="flex items-center justify-between px-4 py-3 border-t-2 border-[var(--border)] bg-[var(--bg)]">
+              <span className="font-bold text-[var(--text-primary)] text-xs">Total</span>
+              <span className="text-right font-bold font-mono text-[var(--accent)] text-xs">
+                {formatAmount(filteredEntries.reduce((s, e) => s + e.netPay, 0))}
+              </span>
             </div>
           </div>
         </div>

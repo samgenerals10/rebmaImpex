@@ -5,6 +5,7 @@ import type { CurrentUser } from '../../types/erp';
 import EntityDetailPanel from '../../components/global/EntityDetailPanel';
 import SidePanel from '../../components/ui/SidePanel';
 import SearchableDropdown from '../../components/ui/SearchableDropdown';
+import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
 
 interface LeaveRequest {
   id: string;
@@ -449,30 +450,21 @@ export default function LeaveManagementView({ currentUser, addNotification }: Pr
           <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--border)' }}>
             <h3 style={{ margin: 0, color: 'var(--text-primary)', fontWeight: 700, fontSize: 15 }}>Leave Balances — {new Date().getFullYear()}</h3>
           </div>
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ background: 'var(--bg)', borderBottom: '1px solid var(--border)' }}>
-                  {['Employee', 'Department', 'Annual (Total)', 'Annual (Used)', 'Annual (Remaining)', 'Sick (Total)', 'Sick (Used)', 'Sick (Remaining)'].map(h => (
-                    <th key={h} style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, whiteSpace: 'nowrap' }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {LEAVE_BALANCES.map((row, i) => (
-                  <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
-                    <td style={{ padding: '0.75rem 1rem', fontWeight: 600, color: 'var(--text-primary)', fontSize: 13 }}>{row.name}</td>
-                    <td style={{ padding: '0.75rem 1rem', color: 'var(--text-secondary)', fontSize: 13 }}>{row.dept}</td>
-                    <td style={{ padding: '0.75rem 1rem', color: 'var(--text-secondary)', fontSize: 13 }}>{row.annual}</td>
-                    <td style={{ padding: '0.75rem 1rem', color: '#f59e0b', fontSize: 13, fontWeight: 600 }}>{row.used}</td>
-                    <td style={{ padding: '0.75rem 1rem', color: '#10b981', fontSize: 13, fontWeight: 700 }}>{row.annual - row.used}</td>
-                    <td style={{ padding: '0.75rem 1rem', color: 'var(--text-secondary)', fontSize: 13 }}>{row.sick}</td>
-                    <td style={{ padding: '0.75rem 1rem', color: '#ef4444', fontSize: 13, fontWeight: 600 }}>{row.usedSick}</td>
-                    <td style={{ padding: '0.75rem 1rem', color: '#10b981', fontSize: 13, fontWeight: 700 }}>{row.sick - row.usedSick}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div style={{ padding: '0.75rem' }}>
+            <ResponsiveDataView<typeof LEAVE_BALANCES[number]>
+              columns={[
+                { key: 'name', label: 'Employee', primary: true },
+                { key: 'dept', label: 'Department' },
+                { key: 'annual', label: 'Annual (Total)' },
+                { key: 'used', label: 'Annual (Used)', render: row => <span style={{ color: '#f59e0b', fontWeight: 600 }}>{row.used}</span> },
+                { key: 'annualRemaining', label: 'Annual (Remaining)', render: row => <span style={{ color: '#10b981', fontWeight: 700 }}>{row.annual - row.used}</span> },
+                { key: 'sick', label: 'Sick (Total)' },
+                { key: 'usedSick', label: 'Sick (Used)', render: row => <span style={{ color: '#ef4444', fontWeight: 600 }}>{row.usedSick}</span> },
+                { key: 'sickRemaining', label: 'Sick (Remaining)', render: row => <span style={{ color: '#10b981', fontWeight: 700 }}>{row.sick - row.usedSick}</span> },
+              ]}
+              data={LEAVE_BALANCES}
+              rowKey={row => row.name}
+            />
           </div>
         </div>
       )}

@@ -10,6 +10,7 @@ import CountUp from '../../components/CountUp';
 import { useFullscreenToggle, FullscreenButton } from '../../components/global/FullscreenToggle';
 import SidePanel from '../../components/ui/SidePanel';
 import SearchableDropdown from '../../components/ui/SearchableDropdown';
+import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
 
 const DEPARTMENTS = ['All', 'Operations', 'Finance', 'Logistics', 'HR', 'Marketing', 'Reception', 'Production', 'Management', 'Dispatch'];
 const STATUSES = ['All', 'PENDING', 'APPROVED', 'REJECTED'];
@@ -233,77 +234,62 @@ export default function RegistrationsView({ pendingRegistrations, addNotificatio
         {tableFullscreen.expanded && (
           <div className="flex justify-end mb-3"><FullscreenButton expanded onClick={tableFullscreen.toggle} /></div>
         )}
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="bg-[var(--bg)] border-b border-[var(--border)] text-[var(--text-muted)] uppercase text-[10px] font-semibold">
-                <th className="py-3 px-4 text-left">Name</th>
-                <th className="py-3 px-4 text-left">Email</th>
-                <th className="py-3 px-4 text-left hidden sm:table-cell">Department</th>
-                <th className="py-3 px-4 text-left hidden md:table-cell">Ghana Card</th>
-                <th className="py-3 px-4 text-left hidden lg:table-cell">Submitted</th>
-                <th className="py-3 px-4 text-center">Status</th>
-                <th className="py-3 px-4 text-center">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[var(--border)]">
-              {filtered.map(reg => {
-                const sb = statusBadge(reg.status);
-                return (
-                  <tr key={reg.id} className="hover:bg-[var(--accent-light)] transition-colors">
-                    <td className="py-3 px-4">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-[var(--accent)] text-white flex items-center justify-center font-bold text-xs shrink-0">
-                          {reg.fullName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
-                        </div>
-                        <span className="font-semibold text-[var(--text-primary)]">{reg.fullName}</span>
-                      </div>
-                    </td>
-                    <td className="py-3 px-4 text-[var(--text-secondary)]">{reg.email}</td>
-                    <td className="py-3 px-4 text-[var(--text-secondary)] hidden sm:table-cell">{reg.department}</td>
-                    <td className="py-3 px-4 font-mono text-[var(--text-muted)] hidden md:table-cell">{reg.ghanaCard}</td>
-                    <td className="py-3 px-4 text-[var(--text-muted)] hidden lg:table-cell">{reg.submittedAt?.slice(0, 10) || '—'}</td>
-                    <td className="py-3 px-4 text-center">
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold" style={{ background: sb.bg, color: sb.color }}>
-                        {sb.label}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4" onClick={e => e.stopPropagation()}>
-                      <div className="flex items-center justify-center gap-1.5">
-                        <button onClick={() => setDetailReg(reg)}
-                          className="w-7 h-7 rounded-lg bg-[var(--bg)] border border-[var(--border)] flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--accent-light)] cursor-pointer transition-colors" title="View Details">
-                          <Eye className="w-3.5 h-3.5" />
-                        </button>
-                        {reg.status === 'PENDING' && (
-                          <>
-                            <button onClick={() => handleApprove(reg)}
-                              className="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center hover:bg-emerald-500/20 cursor-pointer transition-colors" title="Approve">
-                              <CheckCircle className="w-3.5 h-3.5" />
-                            </button>
-                            <button onClick={() => { setDenyId(reg.id); setDenyReason(''); }}
-                              className="w-7 h-7 rounded-lg bg-rose-500/10 text-rose-500 flex items-center justify-center hover:bg-rose-500/20 cursor-pointer transition-colors" title="Deny">
-                              <XCircle className="w-3.5 h-3.5" />
-                            </button>
-                          </>
-                        )}
-                        <button onClick={() => handleEditClick(reg)}
-                          className="w-7 h-7 rounded-lg bg-indigo-500/10 text-indigo-500 flex items-center justify-center hover:bg-indigo-500/20 cursor-pointer transition-colors" title="Edit">
-                          <Edit className="w-3.5 h-3.5" />
-                        </button>
-                        <button onClick={() => handleDelete(reg.id)}
-                          className="w-7 h-7 rounded-lg bg-rose-500/10 text-rose-500 flex items-center justify-center hover:bg-rose-500/20 cursor-pointer transition-colors" title="Delete">
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          {filtered.length === 0 && (
-            <div className="py-12 text-center text-[var(--text-muted)] text-sm">No registrations found</div>
-          )}
+        <div className="p-3">
+          <ResponsiveDataView<PendingRegistration>
+            columns={[
+              {
+                key: 'fullName', label: 'Name', primary: true, render: reg => (
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-full bg-[var(--accent)] text-white flex items-center justify-center font-bold text-xs shrink-0">
+                      {reg.fullName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                    </div>
+                    <span>{reg.fullName}</span>
+                  </div>
+                )
+              },
+              { key: 'email', label: 'Email' },
+              { key: 'department', label: 'Department' },
+              { key: 'ghanaCard', label: 'Ghana Card', render: reg => <span className="font-mono">{reg.ghanaCard}</span> },
+              { key: 'submittedAt', label: 'Submitted', render: reg => reg.submittedAt?.slice(0, 10) || '—' },
+              {
+                key: 'status', label: 'Status', status: true, render: reg => {
+                  const sb = statusBadge(reg.status);
+                  return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold" style={{ background: sb.bg, color: sb.color }}>{sb.label}</span>;
+                }
+              },
+            ]}
+            data={filtered}
+            rowKey={reg => reg.id}
+            emptyTitle="No registrations found"
+            renderActions={reg => (
+              <>
+                <button onClick={() => setDetailReg(reg)}
+                  className="w-7 h-7 rounded-lg bg-[var(--bg)] border border-[var(--border)] flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--accent-light)] cursor-pointer transition-colors" title="View Details">
+                  <Eye className="w-3.5 h-3.5" />
+                </button>
+                {reg.status === 'PENDING' && (
+                  <>
+                    <button onClick={() => handleApprove(reg)}
+                      className="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center hover:bg-emerald-500/20 cursor-pointer transition-colors" title="Approve">
+                      <CheckCircle className="w-3.5 h-3.5" />
+                    </button>
+                    <button onClick={() => { setDenyId(reg.id); setDenyReason(''); }}
+                      className="w-7 h-7 rounded-lg bg-rose-500/10 text-rose-500 flex items-center justify-center hover:bg-rose-500/20 cursor-pointer transition-colors" title="Deny">
+                      <XCircle className="w-3.5 h-3.5" />
+                    </button>
+                  </>
+                )}
+                <button onClick={() => handleEditClick(reg)}
+                  className="w-7 h-7 rounded-lg bg-indigo-500/10 text-indigo-500 flex items-center justify-center hover:bg-indigo-500/20 cursor-pointer transition-colors" title="Edit">
+                  <Edit className="w-3.5 h-3.5" />
+                </button>
+                <button onClick={() => handleDelete(reg.id)}
+                  className="w-7 h-7 rounded-lg bg-rose-500/10 text-rose-500 flex items-center justify-center hover:bg-rose-500/20 cursor-pointer transition-colors" title="Delete">
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </>
+            )}
+          />
         </div>
         <div className="px-4 py-3 border-t border-[var(--border)]">
           <p className="text-xs text-[var(--text-muted)]">Showing {filtered.length} of {pendingRegistrations.length} records</p>
