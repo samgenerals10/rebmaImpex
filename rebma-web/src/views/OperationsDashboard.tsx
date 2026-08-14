@@ -1211,8 +1211,10 @@ export default function OperationsDashboard({
               <>
                 {/* Choice buttons */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <button
+                  <div
+                    role="button" tabIndex={0}
                     onClick={() => setShowPortModal(true)}
+                    onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setShowPortModal(true); } }}
                     className="flex flex-col items-center gap-3 p-8 bg-[var(--bg-card)] border-2 border-[var(--border)] hover:border-[var(--accent)] hover:shadow-lg rounded-2xl cursor-pointer transition-all group"
                   >
                     <div className="w-14 h-14 rounded-2xl bg-[var(--accent-light)] flex items-center justify-center group-hover:bg-[var(--accent)] transition-colors">
@@ -1222,9 +1224,11 @@ export default function OperationsDashboard({
                       <p className="font-bold text-[var(--text-primary)] text-sm">Log Port Cargo</p>
                       <p className="text-xs text-[var(--text-muted)] mt-1">Record incoming goods arriving from the port or external suppliers</p>
                     </div>
-                  </button>
-                  <button
+                  </div>
+                  <div
+                    role="button" tabIndex={0}
                     onClick={() => setShowInHouseModal(true)}
+                    onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setShowInHouseModal(true); } }}
                     className="flex flex-col items-center gap-3 p-8 bg-[var(--bg-card)] border-2 border-[var(--border)] hover:border-[var(--accent)] hover:shadow-lg rounded-2xl cursor-pointer transition-all group"
                   >
                     <div className="w-14 h-14 rounded-2xl bg-[var(--accent-light)] flex items-center justify-center group-hover:bg-[var(--accent)] transition-colors">
@@ -1234,7 +1238,7 @@ export default function OperationsDashboard({
                       <p className="font-bold text-[var(--text-primary)] text-sm">Log Stock Intake</p>
                       <p className="text-xs text-[var(--text-muted)] mt-1">Log internal production outputs or general purchased items into the warehouse</p>
                     </div>
-                  </button>
+                  </div>
                 </div>
 
                 {/* PORT CARGO MODAL */}
