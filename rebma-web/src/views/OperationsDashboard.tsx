@@ -5,7 +5,7 @@ import {
   FileSpreadsheet, FileText, Layers, Truck, AlertTriangle, CheckCircle,
   Image as ImageIcon, History, PackageCheck, TicketCheck, ChevronRight,
   MoreVertical, TrendingUp, TrendingDown, Camera, RefreshCw,
-  Ship, Factory, Calendar, Package
+  Ship, Factory, Calendar, Package, ChevronUp, ChevronDown
 } from 'lucide-react';
 import MiniSparkline from '../components/MiniSparkline';
 import KpiDetailView from '../components/KpiDetailView';
@@ -21,6 +21,8 @@ import CountrySelect from '../components/CountrySelect';
 import CountUp from '../components/CountUp';
 import { useCeoSettings } from '../contexts/CeoSettingsContext';
 import SidePanel from '../components/ui/SidePanel';
+import SearchableDropdown from '../components/ui/SearchableDropdown';
+import ResponsiveDataView, { type DataColumn } from '../components/mobile/ResponsiveDataView';
 
 interface OperationsDashboardProps {
   ordersList: Order[];
@@ -235,7 +237,6 @@ export default function OperationsDashboard({
   const [historySearch, setHistorySearch] = useState('');
   const [historyStatusFilter, setHistoryStatusFilter] = useState('ALL');
   const [isHistoryFilterOpen, setIsHistoryFilterOpen] = useState(false);
-  const [selectedHistoryRows, setSelectedHistoryRows] = useState<Set<string>>(new Set());
   const [activeHistoryMenu, setActiveHistoryMenu] = useState<string | null>(null);
 
   // Sorting states for Orders
@@ -763,24 +764,6 @@ export default function OperationsDashboard({
       updated.add(id);
     }
     setSelectedCargoRows(updated);
-  };
-
-  const handleSelectAllHistory = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.checked) {
-      setSelectedHistoryRows(new Set(filteredHistory.map(h => h.id)));
-    } else {
-      setSelectedHistoryRows(new Set());
-    }
-  };
-
-  const handleSelectHistoryRow = (id: string) => {
-    const updated = new Set(selectedHistoryRows);
-    if (updated.has(id)) {
-      updated.delete(id);
-    } else {
-      updated.add(id);
-    }
-    setSelectedHistoryRows(updated);
   };
 
   // Filters
@@ -1797,107 +1780,64 @@ export default function OperationsDashboard({
                         className="pl-8 pr-3 py-1.5 text-xs rounded-lg outline-none border border-[var(--border)] transition w-full sm:w-40 bg-[var(--bg-card)] text-[var(--text-primary)] focus:border-[var(--accent)]"
                       />
                     </div>
+                    <div className="flex items-center gap-2">
+                      <SearchableDropdown
+                        value={historySortField}
+                        onChange={setHistorySortField}
+                        options={[
+                          { value: 'goodsCode', label: 'Sort: Goods Code' },
+                          { value: 'productName', label: 'Sort: Product' },
+                          { value: 'country', label: 'Sort: Origin' },
+                          { value: 'destination', label: 'Sort: Destination' },
+                          { value: 'createdAt', label: 'Sort: Logged At' },
+                          { value: 'status', label: 'Sort: Status' },
+                          { value: 'unitPrice', label: 'Sort: Unit Price' },
+                        ]}
+                        className="w-40"
+                      />
+                      <button onClick={() => setHistorySortDir(d => d === 'asc' ? 'desc' : 'asc')}
+                        title="Toggle sort direction"
+                        className="p-1.5 rounded-lg border border-[var(--border)] text-[var(--text-secondary)] hover:bg-[var(--accent-light)] cursor-pointer">
+                        {historySortDir === 'asc' ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
                   </div>
                 </div>
 
                 {/* Scrollable table */}
-                <div className="overflow-x-auto w-full">
-                  <table className="w-full text-xs text-left">
-                    <thead>
-                      <tr className="theme-table-header-row text-[var(--text-muted)] uppercase font-semibold text-[10px] border-b border-[var(--border)]">
-                        <th className="py-3 px-5 whitespace-nowrap text-[var(--text-primary)]">
-                          <input
-                            type="checkbox"
-                            checked={filteredHistory.length > 0 && selectedHistoryRows.size === filteredHistory.length}
-                            onChange={handleSelectAllHistory}
-                            className="accent-[var(--accent)] w-3.5 h-3.5"
-                          />
-                        </th>
-                        <th onClick={() => handleSort('goodsCode', historySortField, setHistorySortField, historySortDir, setHistorySortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none text-[var(--text-primary)]">
-                          <div className="flex items-center gap-1">
-                            <span>Goods Code</span>
-                            <span className="text-[9px] opacity-70">{historySortField === 'goodsCode' ? (historySortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                <div className="w-full p-3">
+                  <ResponsiveDataView<IncomingGoods>
+                    columns={[
+                      { key: 'productName', label: 'Product', primary: true, render: item => item.productName || '—' },
+                      { key: 'goodsCode', label: 'Goods Code', render: item => <span className="font-mono font-bold">{item.goodsCode || `CARGO-${item.id}`}</span> },
+                      { key: 'country', label: 'Origin', render: item => `${item.country} / ${item.company}` },
+                      { key: 'destination', label: 'Destination', render: item => item.destination || '—' },
+                      { key: 'createdAt', label: 'Logged At', render: item => <span className="font-mono text-[10px]">{item.createdAt || 'N/A'}</span> },
+                      { key: 'status', label: 'Status', status: true, render: item => <span className={`px-2 py-0.5 rounded font-bold text-[9px] ${statusBadge(item.status)}`}>{item.status.replace(/_/g, ' ')}</span> },
+                      { key: 'unitPrice', label: 'Unit Price', align: 'right', render: item => <span className="font-mono font-bold">{item.unitPrice ? `GHS ${item.unitPrice}` : '—'}</span> },
+                    ]}
+                    data={sortedHistory}
+                    rowKey={item => item.id}
+                    onRowClick={item => setActiveMobileDetail({ type: 'cargo', data: item })}
+                    renderActions={item => (
+                      <div className="relative">
+                        <button
+                          onClick={() => setActiveHistoryMenu(activeHistoryMenu === item.id ? null : item.id)}
+                          className="w-8 h-8 inline-flex items-center justify-center bg-[var(--bg)] hover:bg-[var(--accent-light)] rounded-lg text-[var(--text-secondary)] transition-colors select-none border border-[var(--border)]"
+                        >
+                          ···
+                        </button>
+                        {activeHistoryMenu === item.id && (
+                          <div className="absolute right-0 mt-1 w-44 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl z-30 p-1 flex flex-col text-left">
+                            <button onClick={() => handleDuplicateCargo(item)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left">📋 Duplicate Log</button>
+                            <button onClick={() => handleShareCargo(item)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left">🔗 Share Link</button>
+                            <div className="h-px bg-[var(--border)] my-1"></div>
+                            <button onClick={() => handleDeleteCargo(item.id)} className="flex items-center gap-2 px-3 py-2 text-xs text-rose-500 hover:bg-rose-50 rounded-lg transition-colors text-left">🗑 Delete</button>
                           </div>
-                        </th>
-                        <th onClick={() => handleSort('productName', historySortField, setHistorySortField, historySortDir, setHistorySortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none text-[var(--text-primary)]">
-                          <div className="flex items-center gap-1">
-                            <span>Product</span>
-                            <span className="text-[9px] opacity-70">{historySortField === 'productName' ? (historySortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
-                          </div>
-                        </th>
-                        <th onClick={() => handleSort('country', historySortField, setHistorySortField, historySortDir, setHistorySortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none hidden md:table-cell text-[var(--text-primary)]">
-                          <div className="flex items-center gap-1">
-                            <span>Origin</span>
-                            <span className="text-[9px] opacity-70">{historySortField === 'country' ? (historySortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
-                          </div>
-                        </th>
-                        <th onClick={() => handleSort('destination', historySortField, setHistorySortField, historySortDir, setHistorySortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none hidden lg:table-cell text-[var(--text-primary)]">
-                          <div className="flex items-center gap-1">
-                            <span>Destination</span>
-                            <span className="text-[9px] opacity-70">{historySortField === 'destination' ? (historySortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
-                          </div>
-                        </th>
-                        <th onClick={() => handleSort('createdAt', historySortField, setHistorySortField, historySortDir, setHistorySortDir)} className="py-3 px-3 whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none hidden sm:table-cell text-[var(--text-primary)]">
-                          <div className="flex items-center gap-1">
-                            <span>Logged At</span>
-                            <span className="text-[9px] opacity-70">{historySortField === 'createdAt' ? (historySortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
-                          </div>
-                        </th>
-                        <th onClick={() => handleSort('status', historySortField, setHistorySortField, historySortDir, setHistorySortDir)} className="py-3 px-3 text-center whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none text-[var(--text-primary)]">
-                          <div className="flex items-center justify-center gap-1">
-                            <span>Status</span>
-                            <span className="text-[9px] opacity-70">{historySortField === 'status' ? (historySortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
-                          </div>
-                        </th>
-                        <th onClick={() => handleSort('unitPrice', historySortField, setHistorySortField, historySortDir, setHistorySortDir)} className="py-3 px-3 text-right whitespace-nowrap cursor-pointer hover:bg-[var(--accent-light)] transition-colors select-none text-[var(--text-primary)]">
-                          <div className="flex items-center justify-end gap-1">
-                            <span>Unit Price</span>
-                            <span className="text-[9px] opacity-70">{historySortField === 'unitPrice' ? (historySortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
-                          </div>
-                        </th>
-                        <th className="py-3 px-5 text-center whitespace-nowrap text-[var(--text-primary)]">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[var(--border)]">
-                      {sortedHistory.map(item => (
-                        <tr key={item.id} className="theme-table-row hover:bg-[var(--accent-light)] transition-colors group cursor-pointer text-[var(--text-primary)]" onClick={() => setActiveMobileDetail({ type: 'cargo', data: item })}>
-                          <td className="py-3.5 px-5" onClick={e => e.stopPropagation()}>
-                            <input
-                              type="checkbox"
-                              checked={selectedHistoryRows.has(item.id)}
-                              onChange={() => handleSelectHistoryRow(item.id)}
-                              className="accent-[var(--accent)] w-3.5 h-3.5"
-                            />
-                          </td>
-                          <td className="py-3.5 px-3 font-mono font-bold text-[var(--text-primary)]">{item.goodsCode || `CARGO-${item.id}`}</td>
-                          <td className="py-3.5 px-3 font-medium text-[13px]">{item.productName || '—'}</td>
-                          <td className="py-3.5 px-3 text-[var(--text-muted)] hidden md:table-cell">{item.country} / {item.company}</td>
-                          <td className="py-3.5 px-3 text-[var(--text-muted)] hidden lg:table-cell">{item.destination || '—'}</td>
-                          <td className="py-3.5 px-3 text-[var(--text-muted)] font-mono text-[10px] hidden sm:table-cell">{item.createdAt || 'N/A'}</td>
-                          <td className="py-3.5 px-3 text-center">
-                            <span className={`px-2 py-0.5 rounded font-bold text-[9px] ${statusBadge(item.status)}`}>{item.status.replace(/_/g, ' ')}</span>
-                          </td>
-                          <td className="py-3.5 px-3 text-right font-mono font-bold text-[13px] text-[var(--text-primary)]">{item.unitPrice ? `GHS ${item.unitPrice}` : '—'}</td>
-                          <td className="py-3.5 px-5 text-center relative" onClick={(e) => e.stopPropagation()}>
-                            <button
-                              onClick={() => setActiveHistoryMenu(activeHistoryMenu === item.id ? null : item.id)}
-                              className="w-8 h-8 inline-flex items-center justify-center bg-[var(--bg)] hover:bg-[var(--accent-light)] rounded-lg text-[var(--text-secondary)] transition-colors select-none border border-[var(--border)]"
-                            >
-                              ···
-                            </button>
-                            {activeHistoryMenu === item.id && (
-                              <div className="absolute right-5 mt-1 w-44 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl z-30 p-1 flex flex-col text-left">
-                                <button onClick={() => handleDuplicateCargo(item)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left">📋 Duplicate Log</button>
-                                <button onClick={() => handleShareCargo(item)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left">🔗 Share Link</button>
-                                <div className="h-px bg-[var(--border)] my-1"></div>
-                                <button onClick={() => handleDeleteCargo(item.id)} className="flex items-center gap-2 px-3 py-2 text-xs text-rose-500 hover:bg-rose-50 rounded-lg transition-colors text-left">🗑 Delete</button>
-                              </div>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                        )}
+                      </div>
+                    )}
+                  />
                 </div>
 
                 {/* Footer */}
@@ -1924,53 +1864,28 @@ export default function OperationsDashboard({
                     </span>
                   </div>
 
-                  <div className="overflow-x-auto w-full">
-                    <table className="w-full text-xs text-left">
-                      <thead>
-                        <tr className="border-b border-[var(--border)] bg-[var(--bg-input)]">
-                          <th className="py-2.5 px-3 text-[var(--text-muted)] font-semibold">Cargo ID</th>
-                          <th className="py-2.5 px-3 text-[var(--text-muted)] font-semibold">Product Name</th>
-                          <th className="py-2.5 px-3 text-[var(--text-muted)] font-semibold">Supplier</th>
-                          <th className="py-2.5 px-3 text-[var(--text-muted)] font-semibold text-center">Original Qty</th>
-                          <th className="py-2.5 px-3 text-[var(--text-muted)] font-semibold text-center">Damaged Qty</th>
-                          <th className="py-2.5 px-3 text-[var(--text-muted)] font-semibold text-right">Unit Cost (GHS)</th>
-                          <th className="py-2.5 px-3 text-[var(--text-muted)] font-semibold text-right">Financial Loss (GHS)</th>
-                          <th className="py-2.5 px-3 text-[var(--text-muted)] font-semibold">Description / Notes</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-[var(--border)]">
-                        {cargoDiscrepancies.map(d => (
-                          <tr key={d.id} className="hover:bg-red-500/5">
-                            <td className="py-2.5 px-3 font-mono text-[10px] text-[var(--text-secondary)]">{d.id.slice(0, 8).toUpperCase()}</td>
-                            <td className="py-2.5 px-3 font-semibold text-[var(--text-primary)]">{d.productName}</td>
-                            <td className="py-2.5 px-3 text-[var(--text-secondary)]">{d.company}</td>
-                            <td className="py-2.5 px-3 text-center text-[var(--text-secondary)]">{d.originalQty}</td>
-                            <td className="py-2.5 px-3 text-center text-red-500 font-bold">{d.damagedCount}</td>
-                            <td className="py-2.5 px-3 text-right text-[var(--text-secondary)]">{d.unitCost.toLocaleString()}</td>
-                            <td className="py-2.5 px-3 text-right text-red-650 font-extrabold">GHS {d.costLoss.toLocaleString()}</td>
-                            <td className="py-2.5 px-3 text-[var(--text-muted)] max-w-xs truncate" title={d.notes}>{d.notes}</td>
-                          </tr>
-                        ))}
-                        {cargoDiscrepancies.length === 0 && (
-                          <tr>
-                            <td colSpan={8} className="py-8 text-center text-[var(--text-muted)]">
-                              No approved cargo discrepancies or damages logged.
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                      {cargoDiscrepancies.length > 0 && (
-                        <tfoot>
-                          <tr className="bg-red-500/10 border-t border-[var(--border)] font-bold">
-                            <td colSpan={6} className="py-2.5 px-3 text-[var(--text-primary)]">Total Loss (At Cost)</td>
-                            <td className="py-2.5 px-3 text-right text-red-600">
-                              GHS {cargoDiscrepancies.reduce((s, d) => s + d.costLoss, 0).toLocaleString()}
-                            </td>
-                            <td className="py-2.5 px-3"></td>
-                          </tr>
-                        </tfoot>
-                      )}
-                    </table>
+                  <div>
+                    <ResponsiveDataView<typeof cargoDiscrepancies[number]>
+                      columns={[
+                        { key: 'productName', label: 'Product Name', primary: true },
+                        { key: 'id', label: 'Cargo ID', render: d => <span className="font-mono text-[10px]">{d.id.slice(0, 8).toUpperCase()}</span> },
+                        { key: 'company', label: 'Supplier' },
+                        { key: 'originalQty', label: 'Original Qty', align: 'center' },
+                        { key: 'damagedCount', label: 'Damaged Qty', align: 'center', render: d => <span className="text-red-500 font-bold">{d.damagedCount}</span> },
+                        { key: 'unitCost', label: 'Unit Cost (GHS)', align: 'right', render: d => d.unitCost.toLocaleString() },
+                        { key: 'costLoss', label: 'Financial Loss (GHS)', align: 'right', render: d => <span className="text-red-600 font-extrabold">GHS {d.costLoss.toLocaleString()}</span> },
+                        { key: 'notes', label: 'Description / Notes', render: d => <span className="truncate" title={d.notes}>{d.notes}</span> },
+                      ]}
+                      data={cargoDiscrepancies}
+                      rowKey={d => d.id}
+                      emptyTitle="No approved cargo discrepancies or damages logged"
+                    />
+                    {cargoDiscrepancies.length > 0 && (
+                      <div className="flex items-center justify-between px-3 py-2.5 bg-red-500/10 border-t border-[var(--border)] font-bold">
+                        <span className="text-[var(--text-primary)] text-xs">Total Loss (At Cost)</span>
+                        <span className="text-red-600 text-xs">GHS {cargoDiscrepancies.reduce((s, d) => s + d.costLoss, 0).toLocaleString()}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { Search, Download, Tag, TrendingUp, TrendingDown } from 'lucide-react';
 import { exportToCSV } from '../../utils/export';
 import CountUp from '../../components/CountUp';
+import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
 
 interface PriceRow {
   id: string;
@@ -130,56 +131,38 @@ export default function GoodsPriceCatalogView({ addNotification, currentUser }: 
 
       {/* Table */}
       <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl overflow-hidden shadow-[var(--box-shadow)]">
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="bg-[var(--bg-input)] border-b border-[var(--border)]">
-                {['Product', 'Category', 'Selling Price', 'Cost Price', 'Margin', 'Currency', 'Last Updated', 'Set By'].map(h => (
-                  <th key={h} className="px-4 py-2.5 text-left font-semibold text-[var(--text-muted)] whitespace-nowrap">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                Array.from({ length: 5 }).map((_, i) => (
-                  <tr key={i}><td colSpan={8} className="px-4 py-4"><div className="h-4 bg-[var(--bg-input)] rounded animate-pulse" /></td></tr>
-                ))
-              ) : filtered.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="px-4 py-10 text-center text-[var(--text-muted)]">
-                    No prices set yet. Management will set prices for approved goods.
-                  </td>
-                </tr>
-              ) : filtered.map(item => (
-                <tr key={item.id} className="border-b border-[var(--border)] hover:bg-[var(--accent-light)] transition-colors">
-                  <td className="px-4 py-2.5 font-semibold text-[var(--text-primary)] whitespace-nowrap">
-                    <div className="flex items-center gap-2">
-                      <Tag size={11} className="text-[var(--accent)] flex-shrink-0" />
-                      {item.productName}
-                    </div>
-                  </td>
-                  <td className="px-4 py-2.5">
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--accent-light)] text-[var(--accent)] font-semibold">{item.category}</span>
-                  </td>
-                  <td className="px-4 py-2.5 font-bold text-[var(--text-primary)] whitespace-nowrap">{item.currency} {item.unitPrice.toFixed(2)}</td>
-                  <td className="px-4 py-2.5 text-[var(--text-secondary)] whitespace-nowrap">{item.costPrice !== null ? `${item.currency} ${item.costPrice.toFixed(2)}` : <span className="text-[var(--text-muted)]">Not entered</span>}</td>
-                  <td className="px-4 py-2.5 whitespace-nowrap">
-                    {item.margin !== null ? (
-                      <div className="flex items-center gap-1">
-                        {item.margin >= 50 ? <TrendingUp size={11} className="text-green-500" /> : <TrendingDown size={11} className="text-red-500" />}
-                        <span className={`font-semibold ${item.margin >= 50 ? 'text-green-500' : item.margin >= 40 ? 'text-yellow-500' : 'text-red-500'}`}>{item.margin.toFixed(1)}%</span>
-                      </div>
-                    ) : (
-                      <span className="text-[var(--text-muted)]">—</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-2.5 text-[var(--text-muted)]">{item.currency}</td>
-                  <td className="px-4 py-2.5 text-[var(--text-muted)] whitespace-nowrap">{item.lastUpdated}</td>
-                  <td className="px-4 py-2.5 text-[var(--text-muted)] whitespace-nowrap">{item.updatedBy}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="p-3">
+          <ResponsiveDataView<typeof filtered[number]>
+            columns={[
+              {
+                key: 'productName', label: 'Product', primary: true, render: item => (
+                  <div className="flex items-center gap-2">
+                    <Tag size={11} className="text-[var(--accent)] flex-shrink-0" />
+                    {item.productName}
+                  </div>
+                )
+              },
+              { key: 'category', label: 'Category', render: item => <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--accent-light)] text-[var(--accent)] font-semibold">{item.category}</span> },
+              { key: 'unitPrice', label: 'Selling Price', render: item => <span className="font-bold">{item.currency} {item.unitPrice.toFixed(2)}</span> },
+              { key: 'costPrice', label: 'Cost Price', render: item => item.costPrice !== null ? `${item.currency} ${item.costPrice.toFixed(2)}` : <span className="text-[var(--text-muted)]">Not entered</span> },
+              {
+                key: 'margin', label: 'Margin', status: true, render: item => item.margin !== null ? (
+                  <div className="flex items-center gap-1">
+                    {item.margin >= 50 ? <TrendingUp size={11} className="text-green-500" /> : <TrendingDown size={11} className="text-red-500" />}
+                    <span className={`font-semibold ${item.margin >= 50 ? 'text-green-500' : item.margin >= 40 ? 'text-yellow-500' : 'text-red-500'}`}>{item.margin.toFixed(1)}%</span>
+                  </div>
+                ) : <span className="text-[var(--text-muted)]">—</span>
+              },
+              { key: 'currency', label: 'Currency' },
+              { key: 'lastUpdated', label: 'Last Updated' },
+              { key: 'updatedBy', label: 'Set By' },
+            ]}
+            data={filtered}
+            rowKey={item => item.id}
+            loading={loading}
+            emptyTitle="No prices set yet"
+            emptyDescription="Management will set prices for approved goods."
+          />
         </div>
       </div>
     </div>

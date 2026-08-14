@@ -7,6 +7,7 @@ import type { CurrentUser } from '../types/erp';
 import { exportToCSV } from '../utils/export';
 import CountUp from '../components/CountUp';
 import SidePanel from '../components/ui/SidePanel';
+import ResponsiveDataView, { type DataColumn } from '../components/mobile/ResponsiveDataView';
 
 interface PayrollBatch {
   id: string;
@@ -292,27 +293,18 @@ export default function PayrollPanel({ currentUser, addNotification }: PayrollPa
                     {batchItems.length === 0 ? (
                       <p className="text-xs text-[var(--text-muted)] px-4 pb-3">No staff added yet.</p>
                     ) : (
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-xs">
-                          <thead><tr className="border-t border-[var(--border)] bg-[var(--bg-input)]">
-                            <th className="px-4 py-2 text-left font-semibold text-[var(--text-muted)]">Name</th>
-                            <th className="px-4 py-2 text-left font-semibold text-[var(--text-muted)]">Dept</th>
-                            <th className="px-4 py-2 text-right font-semibold text-[var(--text-muted)]">Gross</th>
-                            <th className="px-4 py-2 text-right font-semibold text-[var(--text-muted)]">Deductions</th>
-                            <th className="px-4 py-2 text-right font-semibold text-[var(--text-muted)]">Net Pay</th>
-                          </tr></thead>
-                          <tbody>
-                            {batchItems.map(item => (
-                              <tr key={item.id} className="border-t border-[var(--border)] hover:bg-[var(--accent-light)] transition-colors">
-                                <td className="px-4 py-2 font-medium text-[var(--text-primary)]">{item.employee_name}</td>
-                                <td className="px-4 py-2 text-[var(--text-secondary)]">{item.department}</td>
-                                <td className="px-4 py-2 text-right text-[var(--text-secondary)]">GHS {(Number(item.gross_amount ?? 0)).toLocaleString()}</td>
-                                <td className="px-4 py-2 text-right text-rose-500">GHS {(Number(item.deductions ?? 0)).toLocaleString()}</td>
-                                <td className="px-4 py-2 text-right font-bold text-[var(--accent)]">GHS {(Number(item.net_amount ?? 0)).toLocaleString()}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                      <div className="px-4 pb-3">
+                        <ResponsiveDataView<PayrollItem>
+                          columns={[
+                            { key: 'employee_name', label: 'Name', primary: true },
+                            { key: 'department', label: 'Dept' },
+                            { key: 'gross_amount', label: 'Gross', align: 'right', render: item => `GHS ${(Number(item.gross_amount ?? 0)).toLocaleString()}` },
+                            { key: 'deductions', label: 'Deductions', align: 'right', render: item => <span className="text-rose-500">GHS {(Number(item.deductions ?? 0)).toLocaleString()}</span> },
+                            { key: 'net_amount', label: 'Net Pay', align: 'right', render: item => <span className="font-bold text-[var(--accent)]">GHS {(Number(item.net_amount ?? 0)).toLocaleString()}</span> },
+                          ]}
+                          data={batchItems}
+                          rowKey={item => item.id}
+                        />
                       </div>
                     )}
                   </div>

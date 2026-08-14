@@ -13,6 +13,7 @@ import ProductCatalogCard from '../components/ProductCatalogCard';
 import MobileMetricCard from '../components/mobile/MobileMetricCard';
 import MobileSectionHeader from '../components/mobile/MobileSectionHeader';
 import MobileEmptyState from '../components/mobile/MobileEmptyState';
+import ResponsiveDataView, { type DataColumn } from '../components/mobile/ResponsiveDataView';
 import { 
   ResponsiveContainer, 
   LineChart, 
@@ -848,54 +849,29 @@ export default function CeoDashboard({
             </span>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs text-left">
-              <thead>
-                <tr className="border-b border-[var(--border)] bg-[var(--bg-input)]">
-                  <th className="py-2 px-3 text-[var(--text-muted)] font-semibold">Cargo ID</th>
-                  <th className="py-2 px-3 text-[var(--text-muted)] font-semibold">Product Name</th>
-                  <th className="py-2 px-3 text-[var(--text-muted)] font-semibold">Supplier</th>
-                  <th className="py-2 px-3 text-[var(--text-muted)] font-semibold text-center">Original Qty</th>
-                  <th className="py-2 px-3 text-[var(--text-muted)] font-semibold text-center">Damaged Qty</th>
-                  <th className="py-2 px-3 text-[var(--text-muted)] font-semibold text-right">Unit Cost (GHS)</th>
-                  <th className="py-2 px-3 text-[var(--text-muted)] font-semibold text-right">Financial Loss (GHS)</th>
-                  <th className="py-2 px-3 text-[var(--text-muted)] font-semibold">Description / Notes</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[var(--border)]">
-                {cargoDiscrepancies.map(d => (
-                  <tr key={d.id} className="hover:bg-red-500/5">
-                    <td className="py-3 px-3 font-mono text-[10px] text-[var(--text-secondary)]">{d.id.slice(0, 8).toUpperCase()}</td>
-                    <td className="py-3 px-3 font-semibold text-[var(--text-primary)]">{d.productName}</td>
-                    <td className="py-3 px-3 text-[var(--text-secondary)]">{d.company}</td>
-                    <td className="py-3 px-3 text-center text-[var(--text-secondary)]">{d.originalQty}</td>
-                    <td className="py-3 px-3 text-center text-red-500 font-bold">{d.damagedCount}</td>
-                    <td className="py-3 px-3 text-right text-[var(--text-secondary)]">{d.unitCost.toLocaleString()}</td>
-                    <td className="py-3 px-3 text-right text-red-650 font-extrabold">GHS {d.costLoss.toLocaleString()}</td>
-                    <td className="py-3 px-3 text-[var(--text-muted)] max-w-xs truncate" title={d.notes}>{d.notes}</td>
-                  </tr>
-                ))}
-                {cargoDiscrepancies.length === 0 && (
-                  <tr>
-                    <td colSpan={8} className="py-8 text-center text-[var(--text-muted)]">
-                      No approved cargo discrepancies or damages logged.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-              {cargoDiscrepancies.length > 0 && (
-                <tfoot>
-                  <tr className="bg-red-500/10 border-t border-[var(--border)] font-bold">
-                    <td colSpan={6} className="py-2.5 px-3 text-[var(--text-primary)]">Total Loss (At Cost)</td>
-                    <td className="py-2.5 px-3 text-right text-red-600">
-                      GHS {cargoDiscrepancies.reduce((s, d) => s + d.costLoss, 0).toLocaleString()}
-                    </td>
-                    <td className="py-2.5 px-3"></td>
-                  </tr>
-                </tfoot>
-              )}
-            </table>
+          <div className="p-3">
+            <ResponsiveDataView<typeof cargoDiscrepancies[number]>
+              columns={[
+                { key: 'productName', label: 'Product Name', primary: true },
+                { key: 'id', label: 'Cargo ID', render: d => <span className="font-mono text-[10px]">{d.id.slice(0, 8).toUpperCase()}</span> },
+                { key: 'company', label: 'Supplier' },
+                { key: 'originalQty', label: 'Original Qty', align: 'center' },
+                { key: 'damagedCount', label: 'Damaged Qty', align: 'center', render: d => <span className="text-red-500 font-bold">{d.damagedCount}</span> },
+                { key: 'unitCost', label: 'Unit Cost (GHS)', align: 'right', render: d => d.unitCost.toLocaleString() },
+                { key: 'costLoss', label: 'Financial Loss (GHS)', align: 'right', render: d => <span className="text-red-600 font-extrabold">GHS {d.costLoss.toLocaleString()}</span> },
+                { key: 'notes', label: 'Description / Notes', render: d => <span className="truncate" title={d.notes}>{d.notes}</span> },
+              ]}
+              data={cargoDiscrepancies}
+              rowKey={d => d.id}
+              emptyTitle="No approved cargo discrepancies or damages logged"
+            />
           </div>
+          {cargoDiscrepancies.length > 0 && (
+            <div className="flex items-center justify-between px-3 py-2.5 bg-red-500/10 border-t border-[var(--border)] font-bold">
+              <span className="text-[var(--text-primary)] text-xs">Total Loss (At Cost)</span>
+              <span className="text-red-600 text-xs">GHS {cargoDiscrepancies.reduce((s, d) => s + d.costLoss, 0).toLocaleString()}</span>
+            </div>
+          )}
         </div>
 
         {/* Full organisation activity — CEO sees everything */}
