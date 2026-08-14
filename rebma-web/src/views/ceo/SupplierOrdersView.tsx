@@ -15,6 +15,7 @@ import { useCeoSettings } from '../../contexts/CeoSettingsContext';
 import { usePaginatedQuery } from '../../hooks/usePaginatedQuery';
 import SidePanel, { SidePanelSection } from '../../components/ui/SidePanel';
 import SearchableDropdown from '../../components/ui/SearchableDropdown';
+import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
 
 function InlineBreadcrumb({ crumbs, onBack }: { crumbs: string[]; onBack?: () => void }) {
   return (
@@ -246,63 +247,54 @@ export default function SupplierOrdersView({ currentUser, addNotification }: Pro
         {loading ? (
           <div className="text-center py-16 text-[var(--text-muted)] text-sm">Loading orders…</div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-[var(--border)] bg-[var(--bg-input)]">
-                  {['Order #', 'Supplier', 'Products', 'Amount', 'GHS Equiv.', 'Exp. Delivery', 'Status', ''].map(h => (
-                    <th key={h} className="text-left py-3 px-4 text-xs font-semibold text-[var(--text-muted)] whitespace-nowrap">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.length === 0 ? (
-                  <tr><td colSpan={8} className="text-center py-12 text-[var(--text-muted)] text-sm">No orders found.</td></tr>
-                ) : filtered.map(order => (
-                  <tr key={order.id}
-                    onClick={() => { setSelectedOrder(order); setShowDetail(true); }}
-                    className="border-b border-[var(--border)] hover:bg-[var(--bg-input)] transition-colors cursor-pointer">
-                    <td className="py-3 px-4 font-mono text-xs font-semibold text-[var(--accent)]">{order.order_number}</td>
-                    <td className="py-3 px-4 whitespace-nowrap">
+          <div className="p-3">
+            <ResponsiveDataView<SupplierOrder>
+              columns={[
+                {
+                  key: 'supplier_name', label: 'Supplier', primary: true, render: order => (
+                    <>
                       <p className="font-semibold text-[var(--text-primary)] text-sm">{order.supplier_name}</p>
                       <p className="text-xs text-[var(--text-muted)]">{COUNTRY_FLAGS[order.supplier_country] || '🌍'} {order.supplier_country}</p>
-                    </td>
-                    <td className="py-3 px-4 max-w-[180px]">
-                      <p className="text-xs text-[var(--text-secondary)] truncate">
-                        {order.products.map(p => p.product_name).join(', ')}
-                      </p>
+                    </>
+                  )
+                },
+                { key: 'order_number', label: 'Order #', render: order => <span className="font-mono text-xs font-semibold text-[var(--accent)]">{order.order_number}</span> },
+                {
+                  key: 'products', label: 'Products', render: order => (
+                    <>
+                      <p className="text-xs text-[var(--text-secondary)] truncate">{order.products.map(p => p.product_name).join(', ')}</p>
                       <p className="text-[10px] text-[var(--text-muted)]">{order.products.length} item{order.products.length !== 1 ? 's' : ''}</p>
-                    </td>
-                    <td className="py-3 px-4 whitespace-nowrap font-semibold text-[var(--text-primary)]">
-                      {order.currency} {order.total_amount.toLocaleString()}
-                    </td>
-                    <td className="py-3 px-4 whitespace-nowrap text-emerald-600 font-semibold">
-                      GHS {(order.total_amount_ghs || 0).toLocaleString()}
-                    </td>
-                    <td className="py-3 px-4 whitespace-nowrap text-[var(--text-muted)] text-xs">{order.expected_delivery_date}</td>
-                    <td className="py-3 px-4"><StatusBadge status={order.status} /></td>
-                    <td className="py-3 px-4" onClick={e => e.stopPropagation()}>
-                      <div className="relative" ref={activeMenu === order.id ? menuRef : null}>
-                        <button onClick={() => setActiveMenu(activeMenu === order.id ? null : order.id)}
-                          className="p-1.5 rounded-lg hover:bg-[var(--accent-light)] transition-colors">
-                          <MoreVertical className="w-4 h-4 text-[var(--text-muted)]" />
-                        </button>
-                        {activeMenu === order.id && (
-                          <div className="absolute right-0 top-full mt-1 w-44 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl z-30 p-1 flex flex-col">
-                            <button onClick={() => handleMenuAction('view', order)} className="px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg text-left">View Details</button>
-                            {order.status === 'pending' && <button onClick={() => handleMenuAction('authorise', order)} className="px-3 py-2 text-xs text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30 rounded-lg text-left font-semibold">Authorise Payment</button>}
-                            {order.status === 'payment_authorised' && <button onClick={() => handleMenuAction('shipped', order)} className="px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg text-left">Mark as Shipped</button>}
-                            {order.status === 'shipped' && <button onClick={() => handleMenuAction('arrived', order)} className="px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg text-left">Mark as Arrived</button>}
-                            <button onClick={() => handleMenuAction('notify', order)} className="px-3 py-2 text-xs text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 rounded-lg text-left">Notify Management</button>
-                            <button onClick={() => handleMenuAction('pdf', order)} className="px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg text-left">Export PDF</button>
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    </>
+                  )
+                },
+                { key: 'total_amount', label: 'Amount', render: order => <span className="font-semibold whitespace-nowrap">{order.currency} {order.total_amount.toLocaleString()}</span> },
+                { key: 'total_amount_ghs', label: 'GHS Equiv.', render: order => <span className="text-emerald-600 font-semibold whitespace-nowrap">GHS {(order.total_amount_ghs || 0).toLocaleString()}</span> },
+                { key: 'expected_delivery_date', label: 'Exp. Delivery' },
+                { key: 'status', label: 'Status', status: true, render: order => <StatusBadge status={order.status} /> },
+              ]}
+              data={filtered}
+              rowKey={order => order.id}
+              onRowClick={order => { setSelectedOrder(order); setShowDetail(true); }}
+              emptyTitle="No orders found"
+              renderActions={order => (
+                <div className="relative" ref={activeMenu === order.id ? menuRef : null}>
+                  <button onClick={() => setActiveMenu(activeMenu === order.id ? null : order.id)}
+                    className="p-1.5 rounded-lg hover:bg-[var(--accent-light)] transition-colors">
+                    <MoreVertical className="w-4 h-4 text-[var(--text-muted)]" />
+                  </button>
+                  {activeMenu === order.id && (
+                    <div className="absolute right-0 top-full mt-1 w-44 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl z-30 p-1 flex flex-col">
+                      <button onClick={() => handleMenuAction('view', order)} className="px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg text-left">View Details</button>
+                      {order.status === 'pending' && <button onClick={() => handleMenuAction('authorise', order)} className="px-3 py-2 text-xs text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30 rounded-lg text-left font-semibold">Authorise Payment</button>}
+                      {order.status === 'payment_authorised' && <button onClick={() => handleMenuAction('shipped', order)} className="px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg text-left">Mark as Shipped</button>}
+                      {order.status === 'shipped' && <button onClick={() => handleMenuAction('arrived', order)} className="px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg text-left">Mark as Arrived</button>}
+                      <button onClick={() => handleMenuAction('notify', order)} className="px-3 py-2 text-xs text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 rounded-lg text-left">Notify Management</button>
+                      <button onClick={() => handleMenuAction('pdf', order)} className="px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg text-left">Export PDF</button>
+                    </div>
+                  )}
+                </div>
+              )}
+            />
           </div>
         )}
         {!loading && orders.length > 0 && (
@@ -907,28 +899,17 @@ function OrderDetailView({ order, onBack, onAuthorise, onNotify, onStatusUpdate,
         {/* Products table */}
         <div className="bg-[var(--bg-card)] rounded-2xl border border-[var(--border)] p-5 shadow-[var(--box-shadow)]">
           <h3 className="text-sm font-bold text-[var(--text-primary)] mb-4">Products Ordered</h3>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-[var(--border)]">
-                  {['Product', 'Qty', 'Unit', 'Unit Price', 'Total'].map(h => (
-                    <th key={h} className="text-left py-2 px-3 text-xs font-semibold text-[var(--text-muted)]">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {order.products.map((p, i) => (
-                  <tr key={i} className="border-b border-[var(--border)]">
-                    <td className="py-3 px-3 font-semibold text-[var(--text-primary)]">{p.product_name}</td>
-                    <td className="py-3 px-3 text-[var(--text-secondary)]">{p.quantity}</td>
-                    <td className="py-3 px-3 text-[var(--text-secondary)]">{p.unit}</td>
-                    <td className="py-3 px-3 text-[var(--text-secondary)]">{p.currency} {p.unit_price.toLocaleString()}</td>
-                    <td className="py-3 px-3 font-semibold text-emerald-600">{p.currency} {p.total_price.toLocaleString()}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <ResponsiveDataView<typeof order.products[number]>
+            columns={[
+              { key: 'product_name', label: 'Product', primary: true },
+              { key: 'quantity', label: 'Qty' },
+              { key: 'unit', label: 'Unit' },
+              { key: 'unit_price', label: 'Unit Price', render: p => `${p.currency} ${p.unit_price.toLocaleString()}` },
+              { key: 'total_price', label: 'Total', render: p => <span className="font-semibold text-emerald-600">{p.currency} {p.total_price.toLocaleString()}</span> },
+            ]}
+            data={order.products}
+            rowKey={p => `${p.product_name}-${p.quantity}-${p.unit_price}`}
+          />
           <div className="mt-4 pt-3 border-t border-[var(--border)] flex flex-col items-end gap-1 text-sm">
             <div className="flex gap-6"><span className="text-[var(--text-muted)]">Subtotal</span><span className="font-semibold">{order.currency} {order.total_amount.toLocaleString()}</span></div>
             <div className="flex gap-6"><span className="text-[var(--text-muted)]">Exchange Rate</span><span>{order.exchange_rate} GHS</span></div>

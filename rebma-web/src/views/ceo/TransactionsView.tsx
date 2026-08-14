@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { Download, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownLeft, RefreshCw } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import SearchableDropdown from '../../components/ui/SearchableDropdown';
+import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
 import { exportToCSV, exportToPDF } from '../../utils/export';
 
 interface Transaction {
@@ -250,57 +251,42 @@ export default function TransactionsView({ addNotification }: Props) {
 
       {/* Table */}
       <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl overflow-hidden shadow-[var(--box-shadow)]">
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="bg-[var(--bg-input)] border-b border-[var(--border)]">
-                {['Date', 'Description', 'Department', 'Source', 'Amount', 'Type', 'Account', 'Status'].map(h => (
-                  <th key={h} className="px-4 py-2.5 text-left font-semibold text-[var(--text-muted)] whitespace-nowrap">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                Array.from({ length: 6 }).map((_, i) => (
-                  <tr key={i}>
-                    <td colSpan={8} className="px-4 py-3">
-                      <div className="h-4 bg-[var(--bg-input)] rounded animate-pulse" />
-                    </td>
-                  </tr>
-                ))
-              ) : paginated.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="px-4 py-12 text-center text-[var(--text-muted)]">
-                    No transactions found for the selected filters.
-                  </td>
-                </tr>
-              ) : paginated.map(row => (
-                <tr key={row.id} className="border-b border-[var(--border)] hover:bg-[var(--accent-light)] transition-colors">
-                  <td className="px-4 py-2.5 text-[var(--text-secondary)] whitespace-nowrap font-mono">{row.date}</td>
-                  <td className="px-4 py-2.5 text-[var(--text-primary)] font-medium max-w-[200px] truncate">{row.description}</td>
-                  <td className="px-4 py-2.5 text-[var(--text-secondary)]">
-                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[var(--accent-light)] text-[var(--accent)]">{row.department}</span>
-                  </td>
-                  <td className="px-4 py-2.5 text-[var(--text-muted)] text-[10px]">{row.source}</td>
-                  <td className="px-4 py-2.5 font-bold whitespace-nowrap" style={{ color: row.type === 'in' ? '#059669' : '#ef4444' }}>
+        <div className="p-3">
+          <ResponsiveDataView<Transaction>
+            columns={[
+              { key: 'description', label: 'Description', primary: true },
+              { key: 'date', label: 'Date', render: row => <span className="font-mono">{row.date}</span> },
+              { key: 'department', label: 'Department', render: row => <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[var(--accent-light)] text-[var(--accent)]">{row.department}</span> },
+              { key: 'source', label: 'Source', render: row => <span className="text-[10px]">{row.source}</span> },
+              {
+                key: 'amount', label: 'Amount', render: row => (
+                  <span className="font-bold whitespace-nowrap" style={{ color: row.type === 'in' ? '#059669' : '#ef4444' }}>
                     {row.type === 'in' ? '+' : '-'} GHS {(Number(row.amount ?? 0)).toLocaleString()}
-                  </td>
-                  <td className="px-4 py-2.5">
-                    <span className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[9px] font-bold ${row.type === 'in' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-600'}`}>
-                      {row.type === 'in' ? <ArrowDownLeft className="w-2.5 h-2.5" /> : <ArrowUpRight className="w-2.5 h-2.5" />}
-                      {row.type === 'in' ? 'In' : 'Out'}
-                    </span>
-                  </td>
-                  <td className="px-4 py-2.5 text-[var(--text-secondary)] whitespace-nowrap">{row.account}</td>
-                  <td className="px-4 py-2.5">
-                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold capitalize ${STATUS_STYLES[row.status] || 'bg-slate-100 text-slate-500'}`}>
-                      {row.status}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  </span>
+                )
+              },
+              {
+                key: 'type', label: 'Type', render: row => (
+                  <span className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[9px] font-bold ${row.type === 'in' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-600'}`}>
+                    {row.type === 'in' ? <ArrowDownLeft className="w-2.5 h-2.5" /> : <ArrowUpRight className="w-2.5 h-2.5" />}
+                    {row.type === 'in' ? 'In' : 'Out'}
+                  </span>
+                )
+              },
+              { key: 'account', label: 'Account' },
+              {
+                key: 'status', label: 'Status', status: true, render: row => (
+                  <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold capitalize ${STATUS_STYLES[row.status] || 'bg-slate-100 text-slate-500'}`}>
+                    {row.status}
+                  </span>
+                )
+              },
+            ]}
+            data={paginated}
+            rowKey={row => row.id}
+            loading={loading}
+            emptyTitle="No transactions found for the selected filters"
+          />
         </div>
 
         {totalPages > 1 && (

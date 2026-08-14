@@ -9,6 +9,7 @@ import { useCeoSettings } from '../../contexts/CeoSettingsContext';
 import type { CurrentUser } from '../../types/erp';
 import SidePanel from '../../components/ui/SidePanel';
 import SearchableDropdown from '../../components/ui/SearchableDropdown';
+import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
 
 interface LineItem {
   productName: string;
@@ -289,35 +290,24 @@ export default function InvoicesView({ addNotification, currentUser }: Props) {
 
       {/* Table */}
       <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl overflow-hidden shadow-card">
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs">
-            <thead><tr className="bg-[var(--bg-input)] border-b border-[var(--border)]">
-              {['Proforma#', 'Customer', 'Grand Total', 'Date', 'Status', ''].map(h => (
-                <th key={h} className="px-4 py-2.5 text-left font-semibold text-[var(--text-muted)] whitespace-nowrap">{h}</th>
-              ))}
-            </tr></thead>
-            <tbody>
-              {loading
-                ? Array.from({ length: 4 }).map((_, i) => (
-                    <tr key={i}><td colSpan={6} className="px-4 py-4"><div className="h-4 bg-[var(--bg-input)] rounded animate-pulse" /></td></tr>
-                  ))
-                : filtered.length === 0 ? (
-                    <tr><td colSpan={6} className="px-4 py-10 text-center text-[var(--text-muted)]">No proforma invoices generated yet.</td></tr>
-                  ) : filtered.map(row => (
-                    <tr key={row.id} className="border-b border-[var(--border)] hover:bg-[var(--accent-light)] transition-colors cursor-pointer" onClick={() => setSelected(row)}>
-                      <td className="px-4 py-2.5 font-mono font-semibold text-[var(--accent)]">{row.proforma_no}</td>
-                      <td className="px-4 py-2.5 text-[var(--text-primary)] font-medium whitespace-nowrap">{row.client_name}</td>
-                      <td className="px-4 py-2.5 font-bold text-[var(--text-primary)] whitespace-nowrap">{row.currency} {Number(row.grand_total).toLocaleString()}</td>
-                      <td className="px-4 py-2.5 text-[var(--text-secondary)] whitespace-nowrap">{new Date(row.created_at).toISOString().split('T')[0]}</td>
-                      <td className="px-4 py-2.5"><span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${STATUS_STYLES[row.status]}`}>{row.status}</span></td>
-                      <td className="px-4 py-2.5" onClick={e => e.stopPropagation()}>
-                        <button onClick={() => setSelected(row)} className="p-1 hover:bg-[var(--accent-light)] rounded-lg cursor-pointer text-[var(--accent)]" title="View"><Eye className="w-3.5 h-3.5" /></button>
-                      </td>
-                    </tr>
-                  ))
-              }
-            </tbody>
-          </table>
+        <div className="p-3">
+          <ResponsiveDataView<ProformaRow>
+            columns={[
+              { key: 'client_name', label: 'Customer', primary: true },
+              { key: 'proforma_no', label: 'Proforma#', render: row => <span className="font-mono font-semibold text-[var(--accent)]">{row.proforma_no}</span> },
+              { key: 'grand_total', label: 'Grand Total', render: row => <span className="font-bold">{row.currency} {Number(row.grand_total).toLocaleString()}</span> },
+              { key: 'created_at', label: 'Date', render: row => new Date(row.created_at).toISOString().split('T')[0] },
+              { key: 'status', label: 'Status', status: true, render: row => <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${STATUS_STYLES[row.status]}`}>{row.status}</span> },
+            ]}
+            data={filtered}
+            rowKey={row => row.id}
+            onRowClick={row => setSelected(row)}
+            loading={loading}
+            emptyTitle="No proforma invoices generated yet"
+            renderActions={row => (
+              <button onClick={() => setSelected(row)} className="p-1 hover:bg-[var(--accent-light)] rounded-lg cursor-pointer text-[var(--accent)]" title="View"><Eye className="w-3.5 h-3.5" /></button>
+            )}
+          />
         </div>
       </div>
     </div>
@@ -345,26 +335,16 @@ export default function InvoicesView({ addNotification, currentUser }: Props) {
         <div style={{ marginBottom: '1rem' }}>
           <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Line Items</p>
           <div style={{ border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-              <thead>
-                <tr style={{ background: 'var(--bg-input)' }}>
-                  <th style={{ textAlign: 'left', padding: '7px 12px', fontSize: 10, color: 'var(--text-muted)' }}>Product</th>
-                  <th style={{ textAlign: 'center', padding: '7px 8px', fontSize: 10, color: 'var(--text-muted)' }}>Qty</th>
-                  <th style={{ textAlign: 'right', padding: '7px 12px', fontSize: 10, color: 'var(--text-muted)' }}>Unit Price</th>
-                  <th style={{ textAlign: 'right', padding: '7px 12px', fontSize: 10, color: 'var(--text-muted)' }}>Amount</th>
-                </tr>
-              </thead>
-              <tbody>
-                {selected.line_items.map((item, idx) => (
-                  <tr key={idx}>
-                    <td style={{ padding: '9px 12px', fontWeight: 600 }}>{item.productName}</td>
-                    <td style={{ padding: '9px 8px', textAlign: 'center', fontWeight: 700, color: 'var(--accent)' }}>×{item.quantity}</td>
-                    <td style={{ padding: '9px 12px', textAlign: 'right' }}>{selected.currency} {Number(item.unitPrice).toLocaleString()}</td>
-                    <td style={{ padding: '9px 12px', textAlign: 'right', fontWeight: 700 }}>{selected.currency} {(item.quantity * item.unitPrice).toLocaleString()}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <ResponsiveDataView<typeof selected.line_items[number]>
+              columns={[
+                { key: 'productName', label: 'Product', primary: true },
+                { key: 'quantity', label: 'Qty', align: 'center', render: item => <span style={{ fontWeight: 700, color: 'var(--accent)' }}>×{item.quantity}</span> },
+                { key: 'unitPrice', label: 'Unit Price', align: 'right', render: item => `${selected.currency} ${Number(item.unitPrice).toLocaleString()}` },
+                { key: 'amount', label: 'Amount', align: 'right', render: item => <span style={{ fontWeight: 700 }}>{selected.currency} {(item.quantity * item.unitPrice).toLocaleString()}</span> },
+              ]}
+              data={selected.line_items}
+              rowKey={item => `${item.productName}-${item.quantity}-${item.unitPrice}`}
+            />
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, paddingTop: 12, borderTop: '1px solid var(--border)' }}>

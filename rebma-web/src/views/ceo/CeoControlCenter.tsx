@@ -12,6 +12,7 @@ import { useCeoSettings } from '../../contexts/CeoSettingsContext';
 import DocumentTemplatesView from '../management/DocumentTemplatesView';
 import SidePanel from '../../components/ui/SidePanel';
 import SearchableDropdown from '../../components/ui/SearchableDropdown';
+import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
 
 interface Props {
   currentUser: { id?: string; fullName: string; department: string; isAdmin?: boolean } | null;
@@ -1058,40 +1059,28 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
 
             {/* Pending Invites Table */}
             {invites.length > 0 && (
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr className="border-b border-[var(--border)] text-[var(--text-muted)]">
-                      <th className="py-2 px-2 text-left font-semibold">Name</th>
-                      <th className="py-2 px-2 text-left font-semibold">Email</th>
-                      <th className="py-2 px-2 text-left font-semibold">Dept</th>
-                      <th className="py-2 px-2 text-left font-semibold">Expiry</th>
-                      <th className="py-2 px-2 text-left font-semibold">Status</th>
-                      <th className="py-2 px-2 text-center font-semibold">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {invites.map(inv => (
-                      <tr key={inv.id} className="border-b border-[var(--border)] hover:bg-[var(--accent-light)] transition-colors">
-                        <td className="py-2 px-2 text-[var(--text-primary)] font-semibold">{inv.full_name || '—'}</td>
-                        <td className="py-2 px-2 text-[var(--text-muted)]">{inv.email || '—'}</td>
-                        <td className="py-2 px-2 text-[var(--text-muted)]">{inv.department}</td>
-                        <td className="py-2 px-2 text-[var(--text-muted)] font-mono">{new Date(inv.expires_at).toLocaleDateString()}</td>
-                        <td className="py-2 px-2">
-                          <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${inv.status === 'pending' ? 'bg-amber-500/10 text-amber-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
-                            {inv.status.toUpperCase()}
-                          </span>
-                        </td>
-                        <td className="py-2 px-2 text-center">
-                          <button onClick={() => revokeInvite(inv.id)} className="p-1 hover:bg-rose-500/10 rounded text-rose-500 cursor-pointer">
-                            <X className="w-3.5 h-3.5" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <ResponsiveDataView<typeof invites[number]>
+                columns={[
+                  { key: 'full_name', label: 'Name', primary: true, render: inv => inv.full_name || '—' },
+                  { key: 'email', label: 'Email', render: inv => inv.email || '—' },
+                  { key: 'department', label: 'Dept' },
+                  { key: 'expires_at', label: 'Expiry', render: inv => <span className="font-mono">{new Date(inv.expires_at).toLocaleDateString()}</span> },
+                  {
+                    key: 'status', label: 'Status', status: true, render: inv => (
+                      <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${inv.status === 'pending' ? 'bg-amber-500/10 text-amber-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
+                        {inv.status.toUpperCase()}
+                      </span>
+                    )
+                  },
+                ]}
+                data={invites}
+                rowKey={inv => inv.id}
+                renderActions={inv => (
+                  <button onClick={() => revokeInvite(inv.id)} className="p-1 hover:bg-rose-500/10 rounded text-rose-500 cursor-pointer">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              />
             )}
           </div>
         )}
@@ -1169,34 +1158,21 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
           )}
 
           {delegates.length > 0 && (
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="border-b border-[var(--border)] text-[var(--text-muted)]">
-                    <th className="py-2 px-2 text-left font-semibold">Name</th>
-                    <th className="py-2 px-2 text-left font-semibold">Email</th>
-                    <th className="py-2 px-2 text-left font-semibold">Permissions</th>
-                    <th className="py-2 px-2 text-left font-semibold">Expires</th>
-                    <th className="py-2 px-2 text-center font-semibold">Revoke</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {delegates.map(d => (
-                    <tr key={d.id} className="border-b border-[var(--border)] hover:bg-[var(--accent-light)] transition-colors">
-                      <td className="py-2 px-2 font-semibold text-[var(--text-primary)]">{d.delegated_to_name}</td>
-                      <td className="py-2 px-2 text-[var(--text-muted)]">{d.delegated_to_email}</td>
-                      <td className="py-2 px-2 text-[var(--text-muted)]">{(d.permissions || []).slice(0, 2).map(permissionLabel).join(', ')}{d.permissions?.length > 2 ? '…' : ''}</td>
-                      <td className="py-2 px-2 text-[var(--text-muted)] font-mono">{d.expires_at ? new Date(d.expires_at).toLocaleDateString() : 'No expiry'}</td>
-                      <td className="py-2 px-2 text-center">
-                        <button onClick={() => revokeDelegate(d.id)} className="p-1 hover:bg-rose-500/10 rounded text-rose-500 cursor-pointer">
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <ResponsiveDataView<typeof delegates[number]>
+              columns={[
+                { key: 'delegated_to_name', label: 'Name', primary: true },
+                { key: 'delegated_to_email', label: 'Email' },
+                { key: 'permissions', label: 'Permissions', render: d => `${(d.permissions || []).slice(0, 2).map(permissionLabel).join(', ')}${d.permissions?.length > 2 ? '…' : ''}` },
+                { key: 'expires_at', label: 'Expires', render: d => <span className="font-mono">{d.expires_at ? new Date(d.expires_at).toLocaleDateString() : 'No expiry'}</span> },
+              ]}
+              data={delegates}
+              rowKey={d => d.id}
+              renderActions={d => (
+                <button onClick={() => revokeDelegate(d.id)} className="p-1 hover:bg-rose-500/10 rounded text-rose-500 cursor-pointer">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            />
           )}
         </div>
       </Section>
@@ -1440,57 +1416,45 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
               </div>
             </div>
             <div className="overflow-auto flex-1 p-4">
-              <table className="w-full text-xs">
-                <thead className="sticky top-0 bg-[var(--bg-card)] z-10">
-                  <tr className="border-b border-[var(--border)] text-[var(--text-muted)]">
-                    <th className="py-3 px-4 text-left font-semibold">Name</th>
-                    <th className="py-3 px-4 text-left font-semibold">Email</th>
-                    <th className="py-3 px-4 text-left font-semibold">Department</th>
-                    <th className="py-3 px-4 text-left font-semibold">Role</th>
-                    <th className="py-3 px-4 text-center font-semibold">Status</th>
-                    <th className="py-3 px-4 text-center font-semibold">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[var(--border)]">
-                  {filteredStaff.map(s => (
-                    <tr key={s.id} className="hover:bg-[var(--accent-light)] transition-colors">
-                      <td className="py-3 px-4 font-semibold text-[var(--text-primary)]">{s.full_name || '—'}</td>
-                      <td className="py-3 px-4 text-[var(--text-muted)]">{s.email || '—'}</td>
-                      <td className="py-3 px-4 text-[var(--text-muted)]">{s.department || s.role || '—'}</td>
-                      <td className="py-3 px-4 text-[var(--text-muted)]">{s.role || '—'}</td>
-                      <td className="py-3 px-4 text-center">
-                        <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
-                          s.status === 'ACTIVE' ? 'bg-emerald-500/10 text-emerald-500' :
-                          s.status === 'SUSPENDED' ? 'bg-amber-500/10 text-amber-500' :
-                          'bg-rose-500/10 text-rose-500'
-                        }`}>{s.status || 'ACTIVE'}</span>
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="flex items-center justify-center gap-1">
-                          {s.status === 'SUSPENDED' ? (
-                            <button onClick={() => reactivateUser(s.id, s.full_name)} title="Reactivate" className="p-1.5 hover:bg-emerald-500/10 rounded-lg text-emerald-500 cursor-pointer">
-                              <RefreshCw className="w-3.5 h-3.5" />
-                            </button>
-                          ) : (
-                            <button onClick={() => suspendUser(s.id, s.full_name)} title="Suspend" className="p-1.5 hover:bg-amber-500/10 rounded-lg text-amber-500 cursor-pointer">
-                              <Ban className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                          <button onClick={() => resetUserPassword(s.id, s.full_name)} title="Reset Password" className="p-1.5 hover:bg-[var(--accent-light)] rounded-lg text-[var(--accent)] cursor-pointer">
-                            <Key className="w-3.5 h-3.5" />
-                          </button>
-                          <button onClick={() => terminateUser(s.id, s.full_name)} title="Terminate" className="p-1.5 hover:bg-rose-500/10 rounded-lg text-rose-500 cursor-pointer">
-                            <UserX className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                  {filteredStaff.length === 0 && (
-                    <tr><td colSpan={6} className="py-12 text-center text-[var(--text-muted)] text-xs">No staff found.</td></tr>
-                  )}
-                </tbody>
-              </table>
+              <ResponsiveDataView<typeof filteredStaff[number]>
+                columns={[
+                  { key: 'full_name', label: 'Name', primary: true, render: s => s.full_name || '—' },
+                  { key: 'email', label: 'Email', render: s => s.email || '—' },
+                  { key: 'department', label: 'Department', render: s => s.department || s.role || '—' },
+                  { key: 'role', label: 'Role', render: s => s.role || '—' },
+                  {
+                    key: 'status', label: 'Status', status: true, render: s => (
+                      <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
+                        s.status === 'ACTIVE' ? 'bg-emerald-500/10 text-emerald-500' :
+                        s.status === 'SUSPENDED' ? 'bg-amber-500/10 text-amber-500' :
+                        'bg-rose-500/10 text-rose-500'
+                      }`}>{s.status || 'ACTIVE'}</span>
+                    )
+                  },
+                ]}
+                data={filteredStaff}
+                rowKey={s => s.id}
+                emptyTitle="No staff found"
+                renderActions={s => (
+                  <>
+                    {s.status === 'SUSPENDED' ? (
+                      <button onClick={() => reactivateUser(s.id, s.full_name)} title="Reactivate" className="p-1.5 hover:bg-emerald-500/10 rounded-lg text-emerald-500 cursor-pointer">
+                        <RefreshCw className="w-3.5 h-3.5" />
+                      </button>
+                    ) : (
+                      <button onClick={() => suspendUser(s.id, s.full_name)} title="Suspend" className="p-1.5 hover:bg-amber-500/10 rounded-lg text-amber-500 cursor-pointer">
+                        <Ban className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                    <button onClick={() => resetUserPassword(s.id, s.full_name)} title="Reset Password" className="p-1.5 hover:bg-[var(--accent-light)] rounded-lg text-[var(--accent)] cursor-pointer">
+                      <Key className="w-3.5 h-3.5" />
+                    </button>
+                    <button onClick={() => terminateUser(s.id, s.full_name)} title="Terminate" className="p-1.5 hover:bg-rose-500/10 rounded-lg text-rose-500 cursor-pointer">
+                      <UserX className="w-3.5 h-3.5" />
+                    </button>
+                  </>
+                )}
+              />
             </div>
         </div>
       </SidePanel>
