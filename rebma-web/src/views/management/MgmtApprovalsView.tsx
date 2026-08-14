@@ -9,6 +9,7 @@ import { exportToCSV } from '../../utils/export';
 import InvoiceLineItems from '../../components/InvoiceLineItems';
 import SidePanel from '../../components/ui/SidePanel';
 import SearchableDropdown from '../../components/ui/SearchableDropdown';
+import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
 import MaterialRequisitionsPanel from './MaterialRequisitionsPanel';
 import DriverAssignmentApprovalsPanel from './DriverAssignmentApprovalsPanel';
 import ApprovalHistoryPanel from '../../components/global/ApprovalHistoryPanel';
@@ -645,58 +646,65 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
                 }, 0);
                 return (
                   <div className="rounded-xl border border-[var(--border)] overflow-hidden">
-                    <table className="w-full text-xs">
-                      <thead>
-                        <tr className="bg-[var(--bg-input)] border-b border-[var(--border)]">
-                          <th className="text-left py-2 px-3 font-semibold text-[var(--text-muted)]">Product</th>
-                          <th className="text-center py-2 px-3 font-semibold text-[var(--text-muted)]">Qty</th>
-                          <th className="text-right py-2 px-3 font-semibold text-[var(--text-muted)]">Unit Price</th>
-                          <th className="text-right py-2 px-3 font-semibold text-[var(--text-muted)]">Subtotal</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {originalItems.map((it: any, idx: number) => {
-                          const draft = orderEdits[idx] || { quantity: String(it.quantity ?? ''), unitPrice: String(it.unitPrice ?? '') };
-                          const qty = draft.quantity !== '' ? Math.max(0, Number(draft.quantity) || 0) : 0;
-                          const unitPrice = draft.unitPrice !== '' ? Math.max(0, Number(draft.unitPrice) || 0) : 0;
-                          const subtotal = qty * unitPrice;
-                          const qtyChanged = draft.quantity !== '' && Number(draft.quantity) !== Number(it.quantity);
-                          const priceChanged = draft.unitPrice !== '' && Number(draft.unitPrice) !== Number(it.unitPrice);
-                          return (
-                            <tr key={idx} className="border-b border-[var(--border)] last:border-0">
-                              <td className="py-2 px-3 font-medium text-[var(--text-primary)]">{it.productName}</td>
-                              <td className="py-2 px-3 text-center">
-                                <input
-                                  type="number" min={0}
-                                  value={draft.quantity}
-                                  onChange={e => setOrderEdits(prev => { const next = [...prev]; next[idx] = { ...(next[idx] || draft), quantity: e.target.value }; return next; })}
-                                  className="w-16 px-2 py-1 rounded-lg bg-[var(--bg-input)] border border-[var(--border)] text-xs font-mono text-center text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
-                                />
-                                {qtyChanged && <span className="block text-[9px] text-amber-600 mt-0.5">was {it.quantity}</span>}
-                              </td>
-                              <td className="py-2 px-3 text-right">
-                                <input
-                                  type="number" min={0}
-                                  value={draft.unitPrice}
-                                  onChange={e => setOrderEdits(prev => { const next = [...prev]; next[idx] = { ...(next[idx] || draft), unitPrice: e.target.value }; return next; })}
-                                  className="w-24 px-2 py-1 rounded-lg bg-[var(--bg-input)] border border-[var(--border)] text-xs font-mono text-right text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
-                                />
-                                {priceChanged && <span className="block text-[9px] text-amber-600 mt-0.5">was GHS {Number(it.unitPrice).toLocaleString()}</span>}
-                              </td>
-                              <td className="py-2 px-3 text-right font-semibold text-emerald-600">
-                                {subtotal > 0 ? `GHS ${subtotal.toLocaleString()}` : '—'}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                      <tfoot>
-                        <tr className="bg-[var(--accent-light)] border-t border-[var(--border)]">
-                          <td colSpan={3} className="py-2.5 px-3 font-bold text-[var(--text-primary)]">Order Total</td>
-                          <td className="py-2.5 px-3 text-right font-bold text-[var(--accent)]">GHS {orderTotal.toLocaleString()}</td>
-                        </tr>
-                      </tfoot>
-                    </table>
+                    <div className="p-3">
+                      <ResponsiveDataView<any>
+                        columns={[
+                          { key: 'productName', label: 'Product', primary: true },
+                          {
+                            key: 'quantity', label: 'Qty', align: 'center', render: (it) => {
+                              const idx = originalItems.indexOf(it);
+                              const draft = orderEdits[idx] || { quantity: String(it.quantity ?? ''), unitPrice: String(it.unitPrice ?? '') };
+                              const qtyChanged = draft.quantity !== '' && Number(draft.quantity) !== Number(it.quantity);
+                              return (
+                                <>
+                                  <input
+                                    type="number" min={0}
+                                    value={draft.quantity}
+                                    onChange={e => setOrderEdits(prev => { const next = [...prev]; next[idx] = { ...(next[idx] || draft), quantity: e.target.value }; return next; })}
+                                    className="w-16 px-2 py-1 rounded-lg bg-[var(--bg-input)] border border-[var(--border)] text-xs font-mono text-center text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
+                                  />
+                                  {qtyChanged && <span className="block text-[9px] text-amber-600 mt-0.5">was {it.quantity}</span>}
+                                </>
+                              );
+                            }
+                          },
+                          {
+                            key: 'unitPrice', label: 'Unit Price', align: 'right', render: (it) => {
+                              const idx = originalItems.indexOf(it);
+                              const draft = orderEdits[idx] || { quantity: String(it.quantity ?? ''), unitPrice: String(it.unitPrice ?? '') };
+                              const priceChanged = draft.unitPrice !== '' && Number(draft.unitPrice) !== Number(it.unitPrice);
+                              return (
+                                <>
+                                  <input
+                                    type="number" min={0}
+                                    value={draft.unitPrice}
+                                    onChange={e => setOrderEdits(prev => { const next = [...prev]; next[idx] = { ...(next[idx] || draft), unitPrice: e.target.value }; return next; })}
+                                    className="w-24 px-2 py-1 rounded-lg bg-[var(--bg-input)] border border-[var(--border)] text-xs font-mono text-right text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
+                                  />
+                                  {priceChanged && <span className="block text-[9px] text-amber-600 mt-0.5">was GHS {Number(it.unitPrice).toLocaleString()}</span>}
+                                </>
+                              );
+                            }
+                          },
+                          {
+                            key: 'subtotal', label: 'Subtotal', align: 'right', render: (it) => {
+                              const idx = originalItems.indexOf(it);
+                              const draft = orderEdits[idx] || { quantity: String(it.quantity ?? ''), unitPrice: String(it.unitPrice ?? '') };
+                              const qty = draft.quantity !== '' ? Math.max(0, Number(draft.quantity) || 0) : 0;
+                              const unitPrice = draft.unitPrice !== '' ? Math.max(0, Number(draft.unitPrice) || 0) : 0;
+                              const subtotal = qty * unitPrice;
+                              return <span className="font-semibold text-emerald-600">{subtotal > 0 ? `GHS ${subtotal.toLocaleString()}` : '—'}</span>;
+                            }
+                          },
+                        ]}
+                        data={originalItems}
+                        rowKey={(it) => String(originalItems.indexOf(it))}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between px-3 py-2.5 bg-[var(--accent-light)] border-t border-[var(--border)]">
+                      <span className="font-bold text-[var(--text-primary)] text-xs">Order Total</span>
+                      <span className="font-bold text-[var(--accent)] text-xs">GHS {orderTotal.toLocaleString()}</span>
+                    </div>
                   </div>
                 );
               })() : (
@@ -818,70 +826,56 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
             <p className="text-sm">No pending approvals — you're all caught up.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-[var(--border)] text-[var(--text-muted)] bg-[var(--bg-input)]">
-                  {['Request ID', 'Type', 'Description', 'Department', 'Amount', 'Date', 'Priority', 'Status', ''].map(h => (
-                    <th key={h} className="px-4 py-3 text-left font-medium text-xs uppercase tracking-wide whitespace-nowrap">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[var(--border)]">
-                {filtered.map(item => {
-                  const Icon = TYPE_ICONS[item.type] || FileText;
-                  return (
-                    <tr
-                      key={item.id}
-                      className="hover:bg-[var(--accent-light)] transition-colors cursor-pointer group"
-                      onClick={() => setSelected(item.id)}
-                    >
-                      <td className="px-4 py-3 font-mono text-xs text-[var(--text-secondary)] whitespace-nowrap">{item.requestId}</td>
-                      <td className="px-4 py-3">
-                        <span className={`flex items-center gap-1.5 text-xs px-2 py-1 rounded-full font-medium whitespace-nowrap w-fit ${TYPE_COLORS[item.type]}`}>
-                          <Icon size={11} />{item.type}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-[var(--text-primary)] max-w-[200px]">
-                        <p className="truncate font-medium">{item.description}</p>
-                      </td>
-                      <td className="px-4 py-3 text-[var(--text-secondary)] whitespace-nowrap">{item.department}</td>
-                      <td className="px-4 py-3 font-bold text-[var(--text-primary)] whitespace-nowrap">
-                        {item.amount !== null ? `GHS ${(Number(item.amount ?? 0)).toLocaleString()}` : '—'}
-                      </td>
-                      <td className="px-4 py-3 text-[var(--text-muted)] whitespace-nowrap">{item.date}</td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <span className={`font-semibold text-xs ${PRIORITY_COLORS[item.priority]}`}>● {item.priority}</span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={`text-xs px-2 py-1 rounded-full font-medium whitespace-nowrap ${STATUS_COLORS[item.status]}`}>{item.status}</span>
-                      </td>
-                      <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button onClick={() => setSelected(item.id)} className="p-1.5 rounded-lg hover:bg-[var(--accent-light)]" title="View"><Eye size={14} style={{ color: 'var(--accent)' }} /></button>
-                          {item.status === 'Pending' && <>
-                            <button onClick={() => handleAction(item.id, 'approve')} className="p-1.5 rounded-lg hover:bg-green-100" title="Approve"><CheckCircle size={14} className="text-green-500" /></button>
-                            <button onClick={() => handleAction(item.id, 'reject')} className="p-1.5 rounded-lg hover:bg-red-100" title="Reject"><XCircle size={14} className="text-red-500" /></button>
-                          </>}
-                          <div className="relative">
-                            <button onClick={() => setMenuOpen(menuOpen === item.id ? null : item.id)} className="p-1.5 rounded-lg hover:bg-[var(--bg-input)]"><MoreVertical size={14} className="text-[var(--text-muted)]" /></button>
-                            {menuOpen === item.id && (
-                              <div className="absolute right-0 top-8 z-20 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-lg py-1 min-w-[140px]" onClick={() => setMenuOpen(null)}>
-                                <button onClick={() => setSelected(item.id)} className="w-full text-left px-3 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-input)]">View Details</button>
-                                {item.status === 'Pending' && <>
-                                  <button onClick={() => handleAction(item.id, 'approve')} className="w-full text-left px-3 py-2 text-sm text-green-600 hover:bg-[var(--bg-input)]">Approve</button>
-                                  <button onClick={() => handleAction(item.id, 'reject')} className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-[var(--bg-input)]">Reject</button>
-                                </>}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+          <div className="p-3">
+            <ResponsiveDataView<typeof filtered[number]>
+              columns={[
+                {
+                  key: 'description', label: 'Description', primary: true, render: item => (
+                    <p className="truncate font-medium">{item.description}</p>
+                  )
+                },
+                { key: 'requestId', label: 'Request ID', render: item => <span className="font-mono text-xs">{item.requestId}</span> },
+                {
+                  key: 'type', label: 'Type', render: item => {
+                    const Icon = TYPE_ICONS[item.type] || FileText;
+                    return (
+                      <span className={`flex items-center gap-1.5 text-xs px-2 py-1 rounded-full font-medium whitespace-nowrap w-fit ${TYPE_COLORS[item.type]}`}>
+                        <Icon size={11} />{item.type}
+                      </span>
+                    );
+                  }
+                },
+                { key: 'department', label: 'Department' },
+                { key: 'amount', label: 'Amount', render: item => item.amount !== null ? `GHS ${(Number(item.amount ?? 0)).toLocaleString()}` : '—' },
+                { key: 'date', label: 'Date' },
+                { key: 'priority', label: 'Priority', render: item => <span className={`font-semibold text-xs ${PRIORITY_COLORS[item.priority]}`}>● {item.priority}</span> },
+                { key: 'status', label: 'Status', status: true, render: item => <span className={`text-xs px-2 py-1 rounded-full font-medium whitespace-nowrap ${STATUS_COLORS[item.status]}`}>{item.status}</span> },
+              ]}
+              data={filtered}
+              rowKey={item => item.id}
+              onRowClick={item => setSelected(item.id)}
+              renderActions={item => (
+                <>
+                  <button onClick={() => setSelected(item.id)} className="p-1.5 rounded-lg hover:bg-[var(--accent-light)]" title="View"><Eye size={14} style={{ color: 'var(--accent)' }} /></button>
+                  {item.status === 'Pending' && <>
+                    <button onClick={() => handleAction(item.id, 'approve')} className="p-1.5 rounded-lg hover:bg-green-100" title="Approve"><CheckCircle size={14} className="text-green-500" /></button>
+                    <button onClick={() => handleAction(item.id, 'reject')} className="p-1.5 rounded-lg hover:bg-red-100" title="Reject"><XCircle size={14} className="text-red-500" /></button>
+                  </>}
+                  <div className="relative">
+                    <button onClick={() => setMenuOpen(menuOpen === item.id ? null : item.id)} className="p-1.5 rounded-lg hover:bg-[var(--bg-input)]"><MoreVertical size={14} className="text-[var(--text-muted)]" /></button>
+                    {menuOpen === item.id && (
+                      <div className="absolute right-0 top-8 z-20 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-lg py-1 min-w-[140px]" onClick={() => setMenuOpen(null)}>
+                        <button onClick={() => setSelected(item.id)} className="w-full text-left px-3 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-input)]">View Details</button>
+                        {item.status === 'Pending' && <>
+                          <button onClick={() => handleAction(item.id, 'approve')} className="w-full text-left px-3 py-2 text-sm text-green-600 hover:bg-[var(--bg-input)]">Approve</button>
+                          <button onClick={() => handleAction(item.id, 'reject')} className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-[var(--bg-input)]">Reject</button>
+                        </>}
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+            />
           </div>
         )}
       </div>

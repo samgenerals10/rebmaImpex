@@ -7,6 +7,7 @@ import { TrendingUp, TrendingDown, ClipboardCheck, ShieldCheck, Users, DollarSig
 import { supabase } from '../../lib/supabaseClient';
 import { exportToCSV } from '../../utils/export';
 import CountUp from '../../components/CountUp';
+import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
 
 interface Props { addNotification: (msg: string) => void }
 
@@ -385,37 +386,24 @@ export default function MgmtAnalyticsView({ addNotification }: Props) {
         {performanceHeatmap.length === 0 ? (
           <div className="py-12 text-center text-[var(--text-muted)] text-sm">No activity data recorded yet</div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b border-[var(--border)] text-[var(--text-muted)] uppercase font-semibold text-[10px]">
-                  <th className="py-3 px-5 text-left">Department</th>
-                  <th className="py-3 px-4 text-center">Week 1 (28d ago)</th>
-                  <th className="py-3 px-4 text-center">Week 2 (21d ago)</th>
-                  <th className="py-3 px-4 text-center">Week 3 (14d ago)</th>
-                  <th className="py-3 px-4 text-center">Week 4 (7d ago)</th>
-                  <th className="py-3 px-4 text-center">Avg</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[var(--border)]">
-                {performanceHeatmap.map(row => {
-                  const avg = Math.round((row.w1 + row.w2 + row.w3 + row.w4) / 4);
-                  return (
-                    <tr key={row.dept} className="hover:bg-[var(--accent-light)] transition-colors">
-                      <td className="py-3 px-5 font-semibold text-[var(--text-primary)]">{row.dept}</td>
-                      {[row.w1, row.w2, row.w3, row.w4].map((v, i) => (
-                        <td key={i} className="py-3 px-4 text-center">
-                          <span className={`inline-block w-12 py-1 rounded-lg text-[10px] font-bold ${heatColor(v)}`}>{v}</span>
-                        </td>
-                      ))}
-                      <td className="py-3 px-4 text-center">
-                        <span className={`inline-block w-12 py-1 rounded-lg text-[10px] font-bold ${heatColor(avg)}`}>{avg}</span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+          <div className="p-3">
+            <ResponsiveDataView<typeof performanceHeatmap[number]>
+              columns={[
+                { key: 'dept', label: 'Department', primary: true },
+                { key: 'w1', label: 'Week 1 (28d ago)', align: 'center', render: row => <span className={`inline-block w-12 py-1 rounded-lg text-[10px] font-bold ${heatColor(row.w1)}`}>{row.w1}</span> },
+                { key: 'w2', label: 'Week 2 (21d ago)', align: 'center', render: row => <span className={`inline-block w-12 py-1 rounded-lg text-[10px] font-bold ${heatColor(row.w2)}`}>{row.w2}</span> },
+                { key: 'w3', label: 'Week 3 (14d ago)', align: 'center', render: row => <span className={`inline-block w-12 py-1 rounded-lg text-[10px] font-bold ${heatColor(row.w3)}`}>{row.w3}</span> },
+                { key: 'w4', label: 'Week 4 (7d ago)', align: 'center', render: row => <span className={`inline-block w-12 py-1 rounded-lg text-[10px] font-bold ${heatColor(row.w4)}`}>{row.w4}</span> },
+                {
+                  key: 'avg', label: 'Avg', align: 'center', render: row => {
+                    const avg = Math.round((row.w1 + row.w2 + row.w3 + row.w4) / 4);
+                    return <span className={`inline-block w-12 py-1 rounded-lg text-[10px] font-bold ${heatColor(avg)}`}>{avg}</span>;
+                  }
+                },
+              ]}
+              data={performanceHeatmap}
+              rowKey={row => row.dept}
+            />
           </div>
         )}
       </div>
@@ -426,36 +414,25 @@ export default function MgmtAnalyticsView({ addNotification }: Props) {
           <h2 className="text-sm font-bold text-[var(--text-primary)]">Recent Management Decisions</h2>
           <button onClick={handleExport} className="text-xs text-[var(--accent)] hover:underline font-semibold cursor-pointer">Export CSV</button>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="border-b border-[var(--border)] text-[var(--text-muted)] uppercase font-semibold text-[10px]">
-                {['Date','Type','Description','Decision','Outcome','Reference'].map(h => (
-                  <th key={h} className="py-3 px-5 text-left whitespace-nowrap">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[var(--border)]">
-              {loadingDecisions ? (
-                <tr><td colSpan={6} className="py-6 px-5">{[0,1,2,3,4].map(i => <div key={i} className="animate-pulse h-7 bg-slate-200 dark:bg-slate-700 rounded mb-2" />)}</td></tr>
-              ) : recentDecisions.length === 0 ? (
-                <tr><td colSpan={6} className="py-12 text-center text-[var(--text-muted)] text-xs">No management decisions recorded yet</td></tr>
-              ) : recentDecisions.map((row, i) => (
-                <tr key={i} className="hover:bg-[var(--accent-light)] transition-colors">
-                  <td className="py-3 px-5 text-[var(--text-muted)] whitespace-nowrap">{row.date}</td>
-                  <td className="py-3 px-5">
-                    <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-blue-500/10 text-blue-600">{row.type}</span>
-                  </td>
-                  <td className="py-3 px-5 text-[var(--text-primary)] max-w-[200px] truncate">{row.description}</td>
-                  <td className="py-3 px-5">
-                    <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${row.decision === 'Approved' || row.decision === 'Actioned' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-rose-500/10 text-rose-600'}`}>{row.decision}</span>
-                  </td>
-                  <td className="py-3 px-5 text-[var(--text-muted)]">{row.outcome}</td>
-                  <td className="py-3 px-5 font-mono text-[var(--accent)]">{row.ref}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="p-3">
+          <ResponsiveDataView<typeof recentDecisions[number]>
+            columns={[
+              { key: 'description', label: 'Description', primary: true },
+              { key: 'date', label: 'Date' },
+              { key: 'type', label: 'Type', render: row => <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-blue-500/10 text-blue-600">{row.type}</span> },
+              {
+                key: 'decision', label: 'Decision', status: true, render: row => (
+                  <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${row.decision === 'Approved' || row.decision === 'Actioned' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-rose-500/10 text-rose-600'}`}>{row.decision}</span>
+                )
+              },
+              { key: 'outcome', label: 'Outcome' },
+              { key: 'ref', label: 'Reference', render: row => <span className="font-mono text-[var(--accent)]">{row.ref}</span> },
+            ]}
+            data={recentDecisions}
+            rowKey={row => String(recentDecisions.indexOf(row))}
+            loading={loadingDecisions}
+            emptyTitle="No management decisions recorded yet"
+          />
         </div>
       </div>
     </div>

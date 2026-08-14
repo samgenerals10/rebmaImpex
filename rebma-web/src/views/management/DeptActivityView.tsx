@@ -207,7 +207,7 @@ export default function DeptActivityView({ addNotification, currentUser }: Props
       </div>
 
       {/* Department Summary Cards — counts from real data */}
-      <div className={`grid gap-3 ${showCeoEntries ? 'grid-cols-3 sm:grid-cols-5 xl:grid-cols-9' : 'grid-cols-2 sm:grid-cols-4 xl:grid-cols-8'}`}>
+      <div className={`grid gap-3 ${showCeoEntries ? 'grid-cols-2 sm:grid-cols-5 xl:grid-cols-9' : 'grid-cols-2 sm:grid-cols-4 xl:grid-cols-8'}`}>
         {deptStats.map(ds => {
           const Icon = DEPT_ICONS[ds.dept] || Building2;
           const color = DEPT_COLORS[ds.dept] || 'bg-slate-500/10 text-slate-600';

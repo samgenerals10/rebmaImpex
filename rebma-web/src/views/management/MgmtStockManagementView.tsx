@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { useCeoSettings } from '../../contexts/CeoSettingsContext';
 import { useRealtimeChannel } from '../../hooks/useRealtimeChannel';
 import SidePanel from '../../components/ui/SidePanel';
+import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
 
 interface Props {
   addNotification?: (msg: string) => void;
@@ -305,34 +306,24 @@ export default function MgmtStockManagementView({ addNotification, currentUser }
             />
           </div>
         </div>
-        <div className="overflow-x-auto max-h-80 overflow-y-auto">
-          <table className="w-full text-xs text-left">
-            <thead className="sticky top-0 bg-[var(--bg-input)]">
-              <tr className="border-b border-[var(--border)]">
-                {['Goods Code', 'Product', 'Supplier', 'Qty', 'Weight (t)', ''].map(h => (
-                  <th key={h} className="py-2 px-3 text-[var(--text-muted)] font-semibold">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[var(--border)]">
-              {approvedCargo.length === 0 ? (
-                <tr><td colSpan={6} className="py-8 text-center text-[var(--text-muted)]">No approved cargo entries found.</td></tr>
-              ) : approvedCargo.map(c => (
-                <tr key={c.id} className="hover:bg-[var(--accent-light)]">
-                  <td className="py-2.5 px-3 font-mono text-[10px] text-[var(--text-secondary)]">{c.goods_code || c.id.slice(0, 8)}</td>
-                  <td className="py-2.5 px-3 font-semibold text-[var(--text-primary)]">{c.product_name}</td>
-                  <td className="py-2.5 px-3 text-[var(--text-secondary)]">{c.company || '—'}</td>
-                  <td className="py-2.5 px-3 text-[var(--text-secondary)]">{c.quantity}</td>
-                  <td className="py-2.5 px-3 text-[var(--text-secondary)]">{c.weight}</td>
-                  <td className="py-2.5 px-3">
-                    <button onClick={() => openCorrection(c)} className="px-2.5 py-1 rounded-lg text-[10px] font-semibold border border-[var(--border)] text-[var(--accent)] hover:bg-[var(--accent-light)] cursor-pointer">
-                      Correct
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="max-h-80 overflow-y-auto">
+          <ResponsiveDataView<any>
+            columns={[
+              { key: 'product_name', label: 'Product', primary: true },
+              { key: 'goods_code', label: 'Goods Code', render: c => <span className="font-mono text-[10px]">{c.goods_code || c.id.slice(0, 8)}</span> },
+              { key: 'company', label: 'Supplier', render: c => c.company || '—' },
+              { key: 'quantity', label: 'Qty' },
+              { key: 'weight', label: 'Weight (t)' },
+            ]}
+            data={approvedCargo}
+            rowKey={c => c.id}
+            emptyTitle="No approved cargo entries found"
+            renderActions={c => (
+              <button onClick={() => openCorrection(c)} className="px-2.5 py-1 rounded-lg text-[10px] font-semibold border border-[var(--border)] text-[var(--accent)] hover:bg-[var(--accent-light)] cursor-pointer">
+                Correct
+              </button>
+            )}
+          />
         </div>
       </div>
 
@@ -350,6 +341,22 @@ export default function MgmtStockManagementView({ addNotification, currentUser }
             </p>
           </div>
           <div className="flex items-center gap-2 w-full sm:w-auto">
+            {getSetting('management_can_delete_stock', true) && filteredStock.length > 0 && (
+              <label className="hidden sm:flex items-center gap-1.5 text-[11px] text-[var(--text-secondary)] whitespace-nowrap cursor-pointer">
+                <input type="checkbox"
+                  checked={filteredStock.every(s => selectedStockIds.has(s.id))}
+                  onChange={e => {
+                    setSelectedStockIds(prev => {
+                      const next = new Set(prev);
+                      if (e.target.checked) filteredStock.forEach(s => next.add(s.id));
+                      else filteredStock.forEach(s => next.delete(s.id));
+                      return next;
+                    });
+                  }}
+                  className="cursor-pointer" />
+                Select All
+              </label>
+            )}
             {getSetting('management_can_delete_stock', true) && selectedStockIds.size > 0 && (
               <button onClick={() => openDeleteStock(filteredStock.filter(s => selectedStockIds.has(s.id)))}
                 className="flex items-center gap-1 px-3 py-2 rounded-xl bg-rose-500 text-white text-xs font-semibold hover:bg-rose-600 cursor-pointer whitespace-nowrap">
@@ -367,54 +374,32 @@ export default function MgmtStockManagementView({ addNotification, currentUser }
             </div>
           </div>
         </div>
-        <div className="overflow-x-auto max-h-80 overflow-y-auto">
-          <table className="w-full text-xs text-left">
-            <thead className="sticky top-0 bg-[var(--bg-input)]">
-              <tr className="border-b border-[var(--border)]">
-                <th className="py-2 px-3 w-8">
-                  <input type="checkbox"
-                    disabled={!getSetting('management_can_delete_stock', true)}
-                    checked={filteredStock.length > 0 && filteredStock.every(s => selectedStockIds.has(s.id))}
-                    onChange={e => {
-                      setSelectedStockIds(prev => {
-                        const next = new Set(prev);
-                        if (e.target.checked) filteredStock.forEach(s => next.add(s.id));
-                        else filteredStock.forEach(s => next.delete(s.id));
-                        return next;
-                      });
-                    }}
+        <div className="max-h-80 overflow-y-auto">
+          <ResponsiveDataView<any>
+            columns={[
+              {
+                key: 'select', label: '', mobileHidden: true, render: s => (
+                  <input type="checkbox" disabled={!getSetting('management_can_delete_stock', true)}
+                    checked={selectedStockIds.has(s.id)} onChange={() => toggleStockSelect(s.id)}
                     className="cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed" />
-                </th>
-                {['Product', 'Category', 'Qty', 'Unit', ''].map(h => (
-                  <th key={h} className="py-2 px-3 text-[var(--text-muted)] font-semibold">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[var(--border)]">
-              {filteredStock.length === 0 ? (
-                <tr><td colSpan={6} className="py-8 text-center text-[var(--text-muted)]">No stock items found.</td></tr>
-              ) : filteredStock.map(s => (
-                <tr key={s.id} className="hover:bg-[var(--accent-light)]">
-                  <td className="py-2.5 px-3">
-                    <input type="checkbox" disabled={!getSetting('management_can_delete_stock', true)}
-                      checked={selectedStockIds.has(s.id)} onChange={() => toggleStockSelect(s.id)}
-                      className="cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed" />
-                  </td>
-                  <td className="py-2.5 px-3 font-semibold text-[var(--text-primary)]">{s.product_name}</td>
-                  <td className="py-2.5 px-3 text-[var(--text-secondary)]">{s.category || '—'}</td>
-                  <td className="py-2.5 px-3 text-[var(--text-secondary)]">{s.quantity}</td>
-                  <td className="py-2.5 px-3 text-[var(--text-secondary)]">{s.unit || 'units'}</td>
-                  <td className="py-2.5 px-3">
-                    <button onClick={() => openDeleteStock([s])} disabled={!getSetting('management_can_delete_stock', true)}
-                      title={!getSetting('management_can_delete_stock', true) ? 'Stock deletion is currently disabled by the CEO' : undefined}
-                      className="px-2.5 py-1 rounded-lg text-[10px] font-semibold border border-rose-300 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent">
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                )
+              },
+              { key: 'product_name', label: 'Product', primary: true },
+              { key: 'category', label: 'Category', render: s => s.category || '—' },
+              { key: 'quantity', label: 'Qty' },
+              { key: 'unit', label: 'Unit', render: s => s.unit || 'units' },
+            ]}
+            data={filteredStock}
+            rowKey={s => s.id}
+            emptyTitle="No stock items found"
+            renderActions={s => (
+              <button onClick={() => openDeleteStock([s])} disabled={!getSetting('management_can_delete_stock', true)}
+                title={!getSetting('management_can_delete_stock', true) ? 'Stock deletion is currently disabled by the CEO' : undefined}
+                className="px-2.5 py-1 rounded-lg text-[10px] font-semibold border border-rose-300 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent">
+                Delete
+              </button>
+            )}
+          />
         </div>
       </div>
 

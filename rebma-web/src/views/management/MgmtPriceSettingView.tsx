@@ -4,6 +4,7 @@ import { management } from '../../services/apiClient';
 import { useCeoSettings } from '../../contexts/CeoSettingsContext';
 import SidePanel, { SidePanelSection } from '../../components/ui/SidePanel';
 import SearchableDropdown from '../../components/ui/SearchableDropdown';
+import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
 import {
   Tag, TrendingUp, TrendingDown, Search, Plus, MoreVertical,
   Download, RefreshCw, CheckCircle, History, Save,
@@ -541,72 +542,52 @@ export default function MgmtPriceSettingView({ addNotification, currentUser }: P
 
       {/* Price Table */}
       <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl overflow-hidden shadow-[var(--box-shadow)]">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-[var(--border)] bg-[var(--bg-input)]">
-                {['Product', 'Category', 'Cost Price', 'Selling Price', 'Margin', 'Currency', 'Last Updated', 'By', ''].map(h => (
-                  <th key={h} className="px-4 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wide whitespace-nowrap">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[var(--border)]">
-              {loading ? (
-                Array.from({ length: 5 }).map((_, i) => (
-                  <tr key={i}>
-                    <td colSpan={9} className="px-4 py-4"><div className="h-4 bg-[var(--bg-input)] rounded animate-pulse" /></td>
-                  </tr>
-                ))
-              ) : filtered.length === 0 ? (
-                <tr>
-                  <td colSpan={9} className="px-4 py-10 text-center text-[var(--text-muted)]">
-                    No price settings found in catalog. Use "Set Price" to add one.
-                  </td>
-                </tr>
-              ) : filtered.map(item => (
-                <tr key={item.id} className="hover:bg-[var(--accent-light)] transition-colors group">
-                  <td className="px-4 py-3 font-semibold text-[var(--text-primary)] whitespace-nowrap">
-                    <div className="flex items-center gap-2">
-                      {item.changeDir === 'up' && <TrendingUp size={12} className="text-green-500 flex-shrink-0" />}
-                      {item.changeDir === 'down' && <TrendingDown size={12} className="text-red-500 flex-shrink-0" />}
-                      {item.productName}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--accent-light)] text-[var(--accent)] font-semibold">{item.category}</span>
-                  </td>
-                  <td className="px-4 py-3 text-[var(--text-secondary)] whitespace-nowrap">{item.costPrice !== null ? `${item.currency} ${item.costPrice.toFixed(2)}` : <span className="text-[var(--text-muted)]">Not entered</span>}</td>
-                  <td className="px-4 py-3 font-bold text-[var(--text-primary)] whitespace-nowrap">{item.currency} {item.unitPrice.toFixed(2)}</td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    {item.margin !== null ? (
-                      <span className={`font-semibold text-sm ${item.margin >= 50 ? 'text-green-500' : item.margin >= 40 ? 'text-yellow-500' : 'text-red-500'}`}>
-                        {item.margin.toFixed(1)}%
-                      </span>
-                    ) : (
-                      <span className="text-[var(--text-muted)]">—</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-[var(--text-muted)]">{item.currency}</td>
-                  <td className="px-4 py-3 text-[var(--text-muted)] whitespace-nowrap">{item.lastUpdated}</td>
-                  <td className="px-4 py-3 text-[var(--text-muted)] whitespace-nowrap">{item.updatedBy}</td>
-                  <td className="px-4 py-3">
-                    <div className="relative">
-                      <button onClick={() => setMenuOpen(menuOpen === item.id ? null : item.id)} className="p-1.5 rounded-lg hover:bg-[var(--bg-input)] opacity-0 group-hover:opacity-100 transition-opacity">
-                        <MoreVertical size={14} className="text-[var(--text-muted)]" />
-                      </button>
-                      {menuOpen === item.id && (
-                        <div className="absolute right-0 top-8 z-20 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-lg py-1 min-w-[150px]">
-                          <button onClick={() => openEdit(item)} className="w-full text-left px-3 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-input)] flex items-center gap-2"><Edit2 size={13} /> Edit Price</button>
-                          <button onClick={() => { setShowHistory(item); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-input)] flex items-center gap-2"><History size={13} /> Price History</button>
-                          <button onClick={() => handleDelete(item.id)} className="w-full text-left px-3 py-2 text-sm text-red-500 hover:bg-[var(--bg-input)] flex items-center gap-2"><Trash2 size={13} /> Remove</button>
-                        </div>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="p-3">
+          <ResponsiveDataView<typeof filtered[number]>
+            columns={[
+              {
+                key: 'productName', label: 'Product', primary: true, render: item => (
+                  <div className="flex items-center gap-2">
+                    {item.changeDir === 'up' && <TrendingUp size={12} className="text-green-500 flex-shrink-0" />}
+                    {item.changeDir === 'down' && <TrendingDown size={12} className="text-red-500 flex-shrink-0" />}
+                    {item.productName}
+                  </div>
+                )
+              },
+              { key: 'category', label: 'Category', render: item => <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--accent-light)] text-[var(--accent)] font-semibold">{item.category}</span> },
+              { key: 'costPrice', label: 'Cost Price', render: item => item.costPrice !== null ? `${item.currency} ${item.costPrice.toFixed(2)}` : <span className="text-[var(--text-muted)]">Not entered</span> },
+              { key: 'unitPrice', label: 'Selling Price', render: item => <span className="font-bold text-[var(--text-primary)]">{item.currency} {item.unitPrice.toFixed(2)}</span> },
+              {
+                key: 'margin', label: 'Margin', status: true, render: item => item.margin !== null ? (
+                  <span className={`font-semibold text-sm ${item.margin >= 50 ? 'text-green-500' : item.margin >= 40 ? 'text-yellow-500' : 'text-red-500'}`}>
+                    {item.margin.toFixed(1)}%
+                  </span>
+                ) : <span className="text-[var(--text-muted)]">—</span>
+              },
+              { key: 'currency', label: 'Currency' },
+              { key: 'lastUpdated', label: 'Last Updated' },
+              { key: 'updatedBy', label: 'By' },
+            ]}
+            data={filtered}
+            rowKey={item => item.id}
+            loading={loading}
+            emptyTitle="No price settings found in catalog"
+            emptyDescription='Use "Set Price" to add one.'
+            renderActions={item => (
+              <div className="relative">
+                <button onClick={() => setMenuOpen(menuOpen === item.id ? null : item.id)} className="p-1.5 rounded-lg hover:bg-[var(--bg-input)]">
+                  <MoreVertical size={14} className="text-[var(--text-muted)]" />
+                </button>
+                {menuOpen === item.id && (
+                  <div className="absolute right-0 top-8 z-20 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-lg py-1 min-w-[150px]">
+                    <button onClick={() => openEdit(item)} className="w-full text-left px-3 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-input)] flex items-center gap-2"><Edit2 size={13} /> Edit Price</button>
+                    <button onClick={() => { setShowHistory(item); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-input)] flex items-center gap-2"><History size={13} /> Price History</button>
+                    <button onClick={() => handleDelete(item.id)} className="w-full text-left px-3 py-2 text-sm text-red-500 hover:bg-[var(--bg-input)] flex items-center gap-2"><Trash2 size={13} /> Remove</button>
+                  </div>
+                )}
+              </div>
+            )}
+          />
         </div>
       </div>
 
@@ -627,87 +608,85 @@ export default function MgmtPriceSettingView({ addNotification, currentUser }: P
             />
           </div>
         </div>
-        <div className="overflow-x-auto max-h-96 overflow-y-auto">
-          <table className="w-full text-sm">
-            <thead className="sticky top-0 bg-[var(--bg-input)]">
-              <tr className="border-b border-[var(--border)]">
-                {['Customer', 'Company', 'Flag', 'Rating', 'Discount %', ''].map(h => (
-                  <th key={h} className="px-4 py-2.5 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wide whitespace-nowrap">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[var(--border)]">
-              {loadingCustomers ? (
-                <tr><td colSpan={6} className="px-4 py-4"><div className="h-4 bg-[var(--bg-input)] rounded animate-pulse" /></td></tr>
-              ) : filteredCustomers.length === 0 ? (
-                <tr><td colSpan={6} className="px-4 py-8 text-center text-[var(--text-muted)]">No customers found.</td></tr>
-              ) : filteredCustomers.map(c => {
-                const draft = discountDraft[c.id];
-                const dirty = draft !== undefined && Number(draft) !== c.discountPercent;
-                const rating = computeCustomerRating(ordersForCustomer(orders, c.name));
-                const suggested = SUGGESTED_DISCOUNT[rating.grade];
-                const currentValue = draft !== undefined ? Number(draft) : c.discountPercent;
-                return (
-                  <tr key={c.id} className="hover:bg-[var(--accent-light)] transition-colors">
-                    <td className="px-4 py-2.5 font-semibold text-[var(--text-primary)] whitespace-nowrap">{c.name}</td>
-                    <td className="px-4 py-2.5 text-[var(--text-secondary)] whitespace-nowrap">{c.companyName || '—'}</td>
-                    <td className="px-4 py-2.5">
-                      <button
-                        onClick={() => toggleCustomerSpecial(c.id, !c.isSpecialCustomer)}
-                        disabled={togglingSpecialId === c.id}
-                        title={c.isSpecialCustomer ? 'Click to remove special flag' : 'Click to flag as special'}
-                        className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full cursor-pointer transition-colors disabled:opacity-50 ${
-                          c.isSpecialCustomer
-                            ? 'bg-amber-100 text-amber-700 hover:bg-amber-200'
-                            : 'bg-[var(--bg-input)] text-[var(--text-muted)] hover:bg-amber-50 hover:text-amber-600'
-                        }`}
-                      >
-                        <Star size={9} className={c.isSpecialCustomer ? 'fill-amber-500' : ''} />
-                        {togglingSpecialId === c.id ? '…' : c.isSpecialCustomer ? 'Special' : 'Flag special'}
-                      </button>
-                    </td>
-                    <td className="px-4 py-2.5">
-                      <RatingBadge rating={rating} size="xs" />
-                    </td>
-                    <td className="px-4 py-2.5">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <div className="flex items-center gap-1">
-                          <input
-                            type="number" min={0} max={100} step={1}
-                            value={draft !== undefined ? draft : String(c.discountPercent)}
-                            onChange={e => setDiscountDraft(prev => ({ ...prev, [c.id]: e.target.value }))}
-                            className="w-16 px-2 py-1 rounded-lg bg-[var(--bg-input)] border border-[var(--border)] text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
-                          />
-                          <span className="text-xs text-[var(--text-muted)]">%</span>
-                        </div>
-                        {currentValue !== suggested && (
-                          <button
-                            onClick={() => setDiscountDraft(prev => ({ ...prev, [c.id]: String(suggested) }))}
-                            title={`Based on their ${rating.grade} rating (${rating.score}/100)`}
-                            className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-[var(--bg-input)] text-[var(--text-muted)] hover:bg-[var(--accent-light)] hover:text-[var(--accent)] cursor-pointer whitespace-nowrap"
-                          >
-                            Suggest {suggested}%
-                          </button>
-                        )}
+        <div className="p-3 max-h-96 overflow-y-auto">
+          <ResponsiveDataView<typeof filteredCustomers[number]>
+            columns={[
+              { key: 'name', label: 'Customer', primary: true },
+              { key: 'companyName', label: 'Company', render: c => c.companyName || '—' },
+              {
+                key: 'flag', label: 'Flag', render: c => (
+                  <button
+                    onClick={() => toggleCustomerSpecial(c.id, !c.isSpecialCustomer)}
+                    disabled={togglingSpecialId === c.id}
+                    title={c.isSpecialCustomer ? 'Click to remove special flag' : 'Click to flag as special'}
+                    className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full cursor-pointer transition-colors disabled:opacity-50 ${
+                      c.isSpecialCustomer
+                        ? 'bg-amber-100 text-amber-700 hover:bg-amber-200'
+                        : 'bg-[var(--bg-input)] text-[var(--text-muted)] hover:bg-amber-50 hover:text-amber-600'
+                    }`}
+                  >
+                    <Star size={9} className={c.isSpecialCustomer ? 'fill-amber-500' : ''} />
+                    {togglingSpecialId === c.id ? '…' : c.isSpecialCustomer ? 'Special' : 'Flag special'}
+                  </button>
+                )
+              },
+              {
+                key: 'rating', label: 'Rating', status: true, render: c => {
+                  const rating = computeCustomerRating(ordersForCustomer(orders, c.name));
+                  return <RatingBadge rating={rating} size="xs" />;
+                }
+              },
+              {
+                key: 'discount', label: 'Discount %', render: c => {
+                  const draft = discountDraft[c.id];
+                  const rating = computeCustomerRating(ordersForCustomer(orders, c.name));
+                  const suggested = SUGGESTED_DISCOUNT[rating.grade];
+                  const currentValue = draft !== undefined ? Number(draft) : c.discountPercent;
+                  return (
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="number" min={0} max={100} step={1}
+                          value={draft !== undefined ? draft : String(c.discountPercent)}
+                          onChange={e => setDiscountDraft(prev => ({ ...prev, [c.id]: e.target.value }))}
+                          className="w-16 px-2 py-1 rounded-lg bg-[var(--bg-input)] border border-[var(--border)] text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
+                        />
+                        <span className="text-xs text-[var(--text-muted)]">%</span>
                       </div>
-                    </td>
-                    <td className="px-4 py-2.5">
-                      {dirty && (
+                      {currentValue !== suggested && (
                         <button
-                          onClick={() => saveCustomerDiscount(c.id)}
-                          disabled={savingCustomerId === c.id}
-                          className="px-2.5 py-1 rounded-lg text-[10px] font-semibold text-white cursor-pointer disabled:opacity-50"
-                          style={{ background: 'var(--accent)' }}
+                          onClick={() => setDiscountDraft(prev => ({ ...prev, [c.id]: String(suggested) }))}
+                          title={`Based on their ${rating.grade} rating (${rating.score}/100)`}
+                          className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-[var(--bg-input)] text-[var(--text-muted)] hover:bg-[var(--accent-light)] hover:text-[var(--accent)] cursor-pointer whitespace-nowrap"
                         >
-                          {savingCustomerId === c.id ? 'Saving…' : 'Save'}
+                          Suggest {suggested}%
                         </button>
                       )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                    </div>
+                  );
+                }
+              },
+            ]}
+            data={filteredCustomers}
+            rowKey={c => c.id}
+            loading={loadingCustomers}
+            emptyTitle="No customers found"
+            renderActions={c => {
+              const draft = discountDraft[c.id];
+              const dirty = draft !== undefined && Number(draft) !== c.discountPercent;
+              if (!dirty) return null;
+              return (
+                <button
+                  onClick={() => saveCustomerDiscount(c.id)}
+                  disabled={savingCustomerId === c.id}
+                  className="px-2.5 py-1 rounded-lg text-[10px] font-semibold text-white cursor-pointer disabled:opacity-50"
+                  style={{ background: 'var(--accent)' }}
+                >
+                  {savingCustomerId === c.id ? 'Saving…' : 'Save'}
+                </button>
+              );
+            }}
+          />
         </div>
       </div>
 

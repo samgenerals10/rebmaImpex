@@ -9,6 +9,7 @@ import {
 import PendingApprovalsAlert from '../../components/global/PendingApprovalsAlert';
 import SidePanel from '../../components/ui/SidePanel';
 import SearchableDropdown from '../../components/ui/SearchableDropdown';
+import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
 import ProductCatalogCard from '../../components/ProductCatalogCard';
 import CountUp from '../../components/CountUp';
 import {
@@ -766,26 +767,21 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
               <p className="text-xs text-[var(--text-muted)] mt-0.5">Selling − Cost</p>
             </div>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead><tr className="border-b border-[var(--border)]">{['Product','Stock Qty','Cost Price','Selling Price','Stock Cost','Stock Value','Revenue Earned'].map(h => <th key={h} className="px-3 py-2 text-left text-[10px] text-[var(--text-muted)] uppercase font-semibold whitespace-nowrap">{h}</th>)}</tr></thead>
-              <tbody className="divide-y divide-[var(--border)]">
-                {inventoryItems.map(item => (
-                  <tr key={item.name} className="hover:bg-[var(--accent-light)]">
-                    <td className="px-3 py-2 font-semibold text-[var(--text-primary)]">{item.name}</td>
-                    <td className="px-3 py-2 text-[var(--text-secondary)]">{item.qty.toLocaleString()}</td>
-                    <td className="px-3 py-2 text-[var(--text-secondary)]">{item.currency} {item.costPrice.toLocaleString()}</td>
-                    <td className="px-3 py-2 text-sky-600 font-semibold">{item.currency} {item.unitPrice.toLocaleString()}</td>
-                    <td className="px-3 py-2 text-amber-600">{item.currency} {item.costValue.toLocaleString()}</td>
-                    <td className="px-3 py-2 text-sky-600">{item.currency} {item.sellingValue.toLocaleString()}</td>
-                    <td className="px-3 py-2 text-emerald-600 font-semibold">{item.currency} {item.soldRevenue.toLocaleString()}</td>
-                  </tr>
-                ))}
-                {inventoryItems.length === 0 && (
-                  <tr><td colSpan={7} className="px-3 py-4 text-center text-[var(--text-muted)]">No matching approved cargo for priced products yet</td></tr>
-                )}
-              </tbody>
-            </table>
+          <div className="p-3">
+            <ResponsiveDataView<typeof inventoryItems[number]>
+              columns={[
+                { key: 'name', label: 'Product', primary: true },
+                { key: 'qty', label: 'Stock Qty', render: item => item.qty.toLocaleString() },
+                { key: 'costPrice', label: 'Cost Price', render: item => `${item.currency} ${item.costPrice.toLocaleString()}` },
+                { key: 'unitPrice', label: 'Selling Price', render: item => <span className="text-sky-600 font-semibold">{item.currency} {item.unitPrice.toLocaleString()}</span> },
+                { key: 'costValue', label: 'Stock Cost', render: item => <span className="text-amber-600">{item.currency} {item.costValue.toLocaleString()}</span> },
+                { key: 'sellingValue', label: 'Stock Value', render: item => <span className="text-sky-600">{item.currency} {item.sellingValue.toLocaleString()}</span> },
+                { key: 'soldRevenue', label: 'Revenue Earned', render: item => <span className="text-emerald-600 font-semibold">{item.currency} {item.soldRevenue.toLocaleString()}</span> },
+              ]}
+              data={inventoryItems}
+              rowKey={item => item.name}
+              emptyTitle="No matching approved cargo for priced products yet"
+            />
           </div>
         </div>
       )}
@@ -1165,54 +1161,29 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
           </span>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs text-left">
-            <thead>
-              <tr className="border-b border-[var(--border)] bg-[var(--bg-input)]">
-                <th className="py-2 px-3 text-[var(--text-muted)] font-semibold">Cargo ID</th>
-                <th className="py-2 px-3 text-[var(--text-muted)] font-semibold">Product Name</th>
-                <th className="py-2 px-3 text-[var(--text-muted)] font-semibold">Supplier</th>
-                <th className="py-2 px-3 text-[var(--text-muted)] font-semibold text-center">Original Qty</th>
-                <th className="py-2 px-3 text-[var(--text-muted)] font-semibold text-center">Damaged Qty</th>
-                <th className="py-2 px-3 text-[var(--text-muted)] font-semibold text-right">Unit Cost (GHS)</th>
-                <th className="py-2 px-3 text-[var(--text-muted)] font-semibold text-right">Financial Loss (GHS)</th>
-                <th className="py-2 px-3 text-[var(--text-muted)] font-semibold">Description / Notes</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[var(--border)]">
-              {cargoDiscrepancies.map(d => (
-                <tr key={d.id} className="hover:bg-red-500/5">
-                  <td className="py-3 px-3 font-mono text-[10px] text-[var(--text-secondary)]">{d.id.slice(0, 8).toUpperCase()}</td>
-                  <td className="py-3 px-3 font-semibold text-[var(--text-primary)]">{d.productName}</td>
-                  <td className="py-3 px-3 text-[var(--text-secondary)]">{d.company}</td>
-                  <td className="py-3 px-3 text-center text-[var(--text-secondary)]">{d.originalQty}</td>
-                  <td className="py-3 px-3 text-center text-red-500 font-bold">{d.damagedCount}</td>
-                  <td className="py-3 px-3 text-right text-[var(--text-secondary)]">{d.unitCost.toLocaleString()}</td>
-                  <td className="py-3 px-3 text-right text-red-650 font-extrabold">GHS {d.costLoss.toLocaleString()}</td>
-                  <td className="py-3 px-3 text-[var(--text-muted)] max-w-xs truncate" title={d.notes}>{d.notes}</td>
-                </tr>
-              ))}
-              {cargoDiscrepancies.length === 0 && (
-                <tr>
-                  <td colSpan={8} className="py-8 text-center text-[var(--text-muted)]">
-                    No approved cargo discrepancies or damages logged.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-            {cargoDiscrepancies.length > 0 && (
-              <tfoot>
-                <tr className="bg-red-500/10 border-t border-[var(--border)] font-bold">
-                  <td colSpan={6} className="py-2.5 px-3 text-[var(--text-primary)]">Total Loss (At Cost)</td>
-                  <td className="py-2.5 px-3 text-right text-red-600">
-                    GHS {cargoDiscrepancies.reduce((s, d) => s + d.costLoss, 0).toLocaleString()}
-                  </td>
-                  <td className="py-2.5 px-3"></td>
-                </tr>
-              </tfoot>
-            )}
-          </table>
+        <div className="p-3">
+          <ResponsiveDataView<typeof cargoDiscrepancies[number]>
+            columns={[
+              { key: 'productName', label: 'Product Name', primary: true },
+              { key: 'id', label: 'Cargo ID', render: d => <span className="font-mono text-[10px]">{d.id.slice(0, 8).toUpperCase()}</span> },
+              { key: 'company', label: 'Supplier' },
+              { key: 'originalQty', label: 'Original Qty', align: 'center' },
+              { key: 'damagedCount', label: 'Damaged Qty', align: 'center', render: d => <span className="text-red-500 font-bold">{d.damagedCount}</span> },
+              { key: 'unitCost', label: 'Unit Cost (GHS)', align: 'right', render: d => d.unitCost.toLocaleString() },
+              { key: 'costLoss', label: 'Financial Loss (GHS)', align: 'right', render: d => <span className="text-red-600 font-extrabold">GHS {d.costLoss.toLocaleString()}</span> },
+              { key: 'notes', label: 'Description / Notes', render: d => <span className="truncate" title={d.notes}>{d.notes}</span> },
+            ]}
+            data={cargoDiscrepancies}
+            rowKey={d => d.id}
+            emptyTitle="No approved cargo discrepancies or damages logged"
+          />
         </div>
+        {cargoDiscrepancies.length > 0 && (
+          <div className="flex items-center justify-between px-3 py-2.5 bg-red-500/10 border-t border-[var(--border)] font-bold">
+            <span className="text-[var(--text-primary)] text-xs">Total Loss (At Cost)</span>
+            <span className="text-red-600 text-xs">GHS {cargoDiscrepancies.reduce((s, d) => s + d.costLoss, 0).toLocaleString()}</span>
+          </div>
+        )}
       </div>
 
       {/* Revenue drill-down modal */}
@@ -1247,37 +1218,18 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
 
             {/* Modal Body */}
             <div className="overflow-y-auto p-5 flex-1">
-              <table className="w-full text-xs text-left">
-                <thead>
-                  <tr className="border-b border-[var(--border)] bg-[var(--bg-input)]">
-                    <th className="py-2 px-3 text-[var(--text-muted)] uppercase tracking-wider font-semibold">Product Name</th>
-                    <th className="py-2 px-3 text-[var(--text-muted)] uppercase tracking-wider font-semibold text-right">Unit Cost (GHS)</th>
-                    <th className="py-2 px-3 text-[var(--text-muted)] uppercase tracking-wider font-semibold text-right">Selling Price (GHS)</th>
-                    <th className="py-2 px-3 text-[var(--text-muted)] uppercase tracking-wider font-semibold text-center">Qty Sold</th>
-                    <th className="py-2 px-3 text-[var(--text-muted)] uppercase tracking-wider font-semibold text-right">Total Revenue (GHS)</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[var(--border)]">
-                  {inventoryItems
-                    .filter(item => revenueModalTab === 'raw' ? item.category === 'INCOMING_GOODS' : item.category === 'FINISHED_GOODS')
-                    .map(item => (
-                      <tr key={item.name} className="hover:bg-[var(--accent-light)]">
-                        <td className="py-3 px-3 font-semibold text-[var(--text-primary)]">{item.name}</td>
-                        <td className="py-3 px-3 text-right text-[var(--text-secondary)]">{item.costPrice.toLocaleString()}</td>
-                        <td className="py-3 px-3 text-right text-sky-600 font-semibold">{item.unitPrice.toLocaleString()}</td>
-                        <td className="py-3 px-3 text-center text-[var(--text-secondary)] font-medium">{item.soldQty.toLocaleString()}</td>
-                        <td className="py-3 px-3 text-right text-emerald-600 font-bold">{(item.soldQty * item.unitPrice).toLocaleString()}</td>
-                      </tr>
-                    ))}
-                  {inventoryItems.filter(item => revenueModalTab === 'raw' ? item.category === 'INCOMING_GOODS' : item.category === 'FINISHED_GOODS').length === 0 && (
-                    <tr>
-                      <td colSpan={5} className="py-10 text-center text-[var(--text-muted)]">
-                        No product items matched this category.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+              <ResponsiveDataView<typeof inventoryItems[number]>
+                columns={[
+                  { key: 'name', label: 'Product Name', primary: true },
+                  { key: 'costPrice', label: 'Unit Cost (GHS)', align: 'right', render: item => item.costPrice.toLocaleString() },
+                  { key: 'unitPrice', label: 'Selling Price (GHS)', align: 'right', render: item => <span className="text-sky-600 font-semibold">{item.unitPrice.toLocaleString()}</span> },
+                  { key: 'soldQty', label: 'Qty Sold', align: 'center', render: item => item.soldQty.toLocaleString() },
+                  { key: 'revenue', label: 'Total Revenue (GHS)', align: 'right', render: item => <span className="text-emerald-600 font-bold">{(item.soldQty * item.unitPrice).toLocaleString()}</span> },
+                ]}
+                data={inventoryItems.filter(item => revenueModalTab === 'raw' ? item.category === 'INCOMING_GOODS' : item.category === 'FINISHED_GOODS')}
+                rowKey={item => item.name}
+                emptyTitle="No product items matched this category"
+              />
             </div>
         </div>
       </SidePanel>
