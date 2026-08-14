@@ -10,6 +10,7 @@ import DestinationLocator, { type Coords } from '../../components/dispatch/Desti
 import type { Order, OrderLineItem } from '../../types/erp';
 import SidePanel, { SidePanelSection } from '../../components/ui/SidePanel';
 import SearchableDropdown from '../../components/ui/SearchableDropdown';
+import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
 
 
 const STATUS_STYLES: Record<Order['status'], string> = {
@@ -343,72 +344,62 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
             className="px-3 py-2 text-sm rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]" />
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-[var(--border)]">
-                {['Order #', 'Customer', 'Product', 'Amount', 'Payment', 'Status', 'Date', ''].map(h => (
-                  <th key={h} className="text-left py-2 px-3 text-xs font-semibold text-[var(--text-muted)] whitespace-nowrap">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr><td colSpan={8} className="text-center py-10 text-[var(--text-muted)] text-sm">Loading…</td></tr>
-              ) : paginated.length === 0 ? (
-                <tr><td colSpan={8} className="text-center py-10 text-[var(--text-muted)] text-sm">No orders found.</td></tr>
-              ) : paginated.map(o => (
-                <tr key={o.id} onClick={() => setSelectedOrder(o)} className="border-b border-[var(--border)] hover:bg-[var(--bg-input)] cursor-pointer transition-colors">
-                  <td className="py-3 px-3 font-mono text-xs text-[var(--text-secondary)]">{o.ticketNumber || o.id}</td>
-                  <td className="py-3 px-3 font-medium text-[var(--text-primary)] whitespace-nowrap">
-                    <div className="flex items-center gap-1.5">
-                      <span>{o.clientName}</span>
-                      <RatingBadge rating={computeCustomerRating(ordersForCustomer(orders, o.clientName))} size="xs" />
-                    </div>
-                  </td>
-                  <td className="py-3 px-3 text-[var(--text-secondary)]">
-                    {(() => {
-                      const items: OrderLineItem[] | undefined = o.metadata?.items;
-                      if (items && items.length > 0) {
-                        return (
-                          <span className="inline-flex items-center gap-1.5 flex-wrap">
-                            {items.map((item, idx) => (
-                              <span key={idx} className="px-1.5 py-0.5 rounded bg-[var(--accent-light)] text-[var(--accent)] text-[10px] font-medium truncate max-w-[100px]" title={item.productName}>
-                                {item.productName}
-                              </span>
-                            ))}
+        <div className="p-3">
+          <ResponsiveDataView<Order>
+            columns={[
+              {
+                key: 'clientName', label: 'Customer', primary: true, render: o => (
+                  <div className="flex items-center gap-1.5">
+                    <span>{o.clientName}</span>
+                    <RatingBadge rating={computeCustomerRating(ordersForCustomer(orders, o.clientName))} size="xs" />
+                  </div>
+                )
+              },
+              { key: 'ticketNumber', label: 'Order #', render: o => <span className="font-mono text-xs">{o.ticketNumber || o.id}</span> },
+              {
+                key: 'product', label: 'Product', render: o => {
+                  const items: OrderLineItem[] | undefined = o.metadata?.items;
+                  if (items && items.length > 0) {
+                    return (
+                      <span className="inline-flex items-center gap-1.5 flex-wrap">
+                        {items.map((item, idx) => (
+                          <span key={idx} className="px-1.5 py-0.5 rounded bg-[var(--accent-light)] text-[var(--accent)] text-[10px] font-medium truncate max-w-[100px]" title={item.productName}>
+                            {item.productName}
                           </span>
-                        );
-                      }
-                      return <span>{o.productName || '—'}</span>;
-                    })()}
-                  </td>
-                  <td className="py-3 px-3 font-semibold text-emerald-600 whitespace-nowrap">GHS {(o.totalAmount ?? 0).toLocaleString()}</td>
-                  <td className="py-3 px-3 text-[var(--text-secondary)]">{o.paymentMode}</td>
-                  <td className="py-3 px-3">
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_STYLES[o.status]}`}>{STATUS_LABEL[o.status]}</span>
-                  </td>
-                  <td className="py-3 px-3 text-[var(--text-muted)] whitespace-nowrap">{o.createdAt.split('T')[0]}</td>
-                  <td className="py-3 px-3" onClick={e => e.stopPropagation()}>
-                    <div className="relative" ref={activeMenu === o.id ? menuRef : undefined}>
-                      <button onClick={() => setActiveMenu(activeMenu === o.id ? null : o.id)}
-                        className="p-1 rounded-lg hover:bg-[var(--bg)] text-[var(--text-muted)]">
-                        <MoreVertical className="w-4 h-4" />
-                      </button>
-                      {activeMenu === o.id && (
-                        <div className="absolute right-0 top-7 z-50 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-lg w-32 py-1">
-                          {['View', 'Edit', 'Cancel'].map(a => (
-                            <button key={a} onClick={() => { setActiveMenu(null); if (a === 'View') setSelectedOrder(o); else addNotification(`${a} order ${o.ticketNumber || o.id}.`); }}
-                              className="w-full text-left px-3 py-1.5 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-input)]">{a}</button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                        ))}
+                      </span>
+                    );
+                  }
+                  return <span>{o.productName || '—'}</span>;
+                }
+              },
+              { key: 'totalAmount', label: 'Amount', render: o => <span className="font-semibold text-emerald-600">GHS {(o.totalAmount ?? 0).toLocaleString()}</span> },
+              { key: 'paymentMode', label: 'Payment' },
+              { key: 'status', label: 'Status', status: true, render: o => <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_STYLES[o.status]}`}>{STATUS_LABEL[o.status]}</span> },
+              { key: 'createdAt', label: 'Date', render: o => o.createdAt.split('T')[0] },
+            ]}
+            data={paginated}
+            rowKey={o => o.id}
+            onRowClick={o => setSelectedOrder(o)}
+            loading={loading}
+            emptyTitle="No orders found"
+            renderActions={o => (
+              <div className="relative" ref={activeMenu === o.id ? menuRef : undefined}>
+                <button onClick={() => setActiveMenu(activeMenu === o.id ? null : o.id)}
+                  className="p-1 rounded-lg hover:bg-[var(--bg)] text-[var(--text-muted)]">
+                  <MoreVertical className="w-4 h-4" />
+                </button>
+                {activeMenu === o.id && (
+                  <div className="absolute right-0 top-7 z-50 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-lg w-32 py-1">
+                    {['View', 'Edit', 'Cancel'].map(a => (
+                      <button key={a} onClick={() => { setActiveMenu(null); if (a === 'View') setSelectedOrder(o); else addNotification(`${a} order ${o.ticketNumber || o.id}.`); }}
+                        className="w-full text-left px-3 py-1.5 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-input)]">{a}</button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          />
         </div>
 
         <div className="flex items-center justify-between mt-4">
@@ -614,38 +605,28 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
                   </p>
                   {lineItems && lineItems.length > 0 ? (
                     <div className="rounded-xl border border-[var(--border)] overflow-hidden">
-                      <table className="w-full text-xs">
-                        <thead>
-                          <tr className="bg-[var(--bg-input)] border-b border-[var(--border)]">
-                            <th className="text-left py-2 px-3 font-semibold text-[var(--text-muted)]">Product</th>
-                            <th className="text-center py-2 px-3 font-semibold text-[var(--text-muted)]">Qty</th>
-                            <th className="text-right py-2 px-3 font-semibold text-[var(--text-muted)]">Unit Price</th>
-                            <th className="text-right py-2 px-3 font-semibold text-[var(--text-muted)]">Subtotal</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {lineItems.map((item, idx) => (
-                            <tr key={idx} className="border-b border-[var(--border)] last:border-0">
-                              <td className="py-2.5 px-3 font-medium text-[var(--text-primary)]">{item.productName}</td>
-                              <td className="py-2.5 px-3 text-center text-[var(--text-secondary)]">{item.quantity}</td>
-                              <td className="py-2.5 px-3 text-right text-[var(--text-secondary)]">
-                                {item.unitPrice > 0 ? `GHS ${item.unitPrice.toLocaleString()}` : <span className="text-amber-500 text-[10px]">No price set</span>}
-                              </td>
-                              <td className="py-2.5 px-3 text-right font-semibold text-emerald-600">
-                                {item.lineTotal > 0 ? `GHS ${item.lineTotal.toLocaleString()}` : '—'}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                        <tfoot>
-                          <tr className="bg-[var(--accent-light)] border-t border-[var(--border)]">
-                            <td colSpan={3} className="py-2.5 px-3 font-bold text-[var(--text-primary)]">Order Total</td>
-                            <td className="py-2.5 px-3 text-right font-bold text-[var(--accent)]">
-                              GHS {(Number(selectedOrder.totalAmount ?? 0)).toLocaleString()}
-                            </td>
-                          </tr>
-                        </tfoot>
-                      </table>
+                      <div className="p-3">
+                        <ResponsiveDataView<typeof lineItems[number]>
+                          columns={[
+                            { key: 'productName', label: 'Product', primary: true },
+                            { key: 'quantity', label: 'Qty', align: 'center' },
+                            {
+                              key: 'unitPrice', label: 'Unit Price', align: 'right', render: item =>
+                                item.unitPrice > 0 ? `GHS ${item.unitPrice.toLocaleString()}` : <span className="text-amber-500 text-[10px]">No price set</span>
+                            },
+                            {
+                              key: 'lineTotal', label: 'Subtotal', align: 'right', render: item =>
+                                <span className="font-semibold text-emerald-600">{item.lineTotal > 0 ? `GHS ${item.lineTotal.toLocaleString()}` : '—'}</span>
+                            },
+                          ]}
+                          data={lineItems}
+                          rowKey={item => String(lineItems.indexOf(item))}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between px-3 py-2.5 bg-[var(--accent-light)] border-t border-[var(--border)]">
+                        <span className="font-bold text-[var(--text-primary)] text-xs">Order Total</span>
+                        <span className="font-bold text-[var(--accent)] text-xs">GHS {(Number(selectedOrder.totalAmount ?? 0)).toLocaleString()}</span>
+                      </div>
                     </div>
                   ) : (
                     <div className="rounded-xl border border-[var(--border)] px-4 py-3 flex items-center justify-between">

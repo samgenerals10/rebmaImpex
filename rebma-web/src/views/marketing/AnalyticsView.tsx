@@ -7,6 +7,7 @@ import {
 import { exportToCSV } from '../../utils/export';
 import { supabase } from '../../lib/supabaseClient';
 import CountUp from '../../components/CountUp';
+import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
 
 const COLORS = ['#10b981','#6366f1','#f59e0b','#3b82f6','#8b5cf6','#ec4899'];
 
@@ -369,42 +370,23 @@ export default function MarketingAnalyticsView({ addNotification, currentUser }:
             </button>
           )}
         </div>
-        <div className="overflow-x-auto">
-          {loading ? (
-            <div className="p-4 space-y-2">
-              {Array.from({ length: 5 }).map((_, i) => <div key={i} className="animate-pulse h-10 bg-slate-100 dark:bg-slate-800 rounded" />)}
-            </div>
-          ) : topCustomers.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <Users className="w-10 h-10 text-gray-300 mb-3" />
-              <p className="text-sm font-semibold text-gray-500">No customer data yet</p>
-              <p className="text-xs text-gray-400 mt-1">Customers will appear here as orders are placed</p>
-            </div>
-          ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-[var(--border)]">
-                  {['#', 'Customer', 'Total Orders', 'Revenue', 'Last Order', 'Status'].map(h => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wide whitespace-nowrap">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[var(--border)]">
-                {topCustomers.map((c, i) => (
-                  <tr key={c.name} className="hover:bg-[var(--bg-input)]">
-                    <td className="px-4 py-3 text-[var(--text-muted)]">{i + 1}</td>
-                    <td className="px-4 py-3 font-medium text-[var(--text-primary)] whitespace-nowrap">{c.name}</td>
-                    <td className="px-4 py-3 text-[var(--text-secondary)]">{c.orders}</td>
-                    <td className="px-4 py-3 font-semibold text-[var(--text-primary)]">GHS {c.revenue.toLocaleString()}</td>
-                    <td className="px-4 py-3 text-[var(--text-secondary)] whitespace-nowrap">{c.lastOrder}</td>
-                    <td className="px-4 py-3">
-                      <span className="text-xs px-2 py-1 rounded-full font-medium bg-green-100 text-green-700">{c.status}</span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+        <div className="p-3">
+          <ResponsiveDataView<typeof topCustomers[number]>
+            columns={[
+              { key: 'name', label: 'Customer', primary: true },
+              { key: 'rank', label: '#', render: c => String(topCustomers.indexOf(c) + 1) },
+              { key: 'orders', label: 'Total Orders' },
+              { key: 'revenue', label: 'Revenue', render: c => <span className="font-semibold">GHS {c.revenue.toLocaleString()}</span> },
+              { key: 'lastOrder', label: 'Last Order' },
+              { key: 'status', label: 'Status', status: true, render: c => <span className="text-xs px-2 py-1 rounded-full font-medium bg-green-100 text-green-700">{c.status}</span> },
+            ]}
+            data={topCustomers}
+            rowKey={c => c.name}
+            loading={loading}
+            emptyIcon={<Users className="w-10 h-10" />}
+            emptyTitle="No customer data yet"
+            emptyDescription="Customers will appear here as orders are placed"
+          />
         </div>
       </div>
     </div>

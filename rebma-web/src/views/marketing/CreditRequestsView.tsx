@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { exportToCSV } from '../../utils/export';
 import CountUp from '../../components/CountUp';
+import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
 
 interface CreditRequest {
   id: string;
@@ -305,69 +306,51 @@ export default function MarketingCreditRequestsView({ addNotification, currentUs
 
       {/* Table */}
       <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-[var(--border)]">
-                {['Request ID', 'Customer', 'Order Ref', 'Amount', 'Date', 'Due Date', 'Ghana Card', 'Status', 'Actions'].map(h => (
-                  <th key={h} className="px-4 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wide whitespace-nowrap">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[var(--border)]">
-              {loading ? (
-                [1, 2, 3, 4].map(i => (
-                  <tr key={i} className="animate-pulse">
-                    <td className="px-4 py-3"><div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-16" /></td>
-                    <td className="px-4 py-3">
-                      <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-28 mb-1" />
-                      <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-16" />
-                    </td>
-                    <td className="px-4 py-3"><div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-20" /></td>
-                    <td className="px-4 py-3"><div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-16" /></td>
-                    <td className="px-4 py-3"><div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-20" /></td>
-                    <td className="px-4 py-3"><div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-20" /></td>
-                    <td className="px-4 py-3"><div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-16" /></td>
-                    <td className="px-4 py-3"><div className="h-5 bg-slate-200 dark:bg-slate-700 rounded w-24" /></td>
-                    <td className="px-4 py-3"><div className="h-8 bg-slate-200 dark:bg-slate-700 rounded w-16" /></td>
-                  </tr>
-                ))
-              ) : filtered.length === 0 ? (
-                <tr><td colSpan={9} className="text-center py-12 text-[var(--text-muted)]">No credit requests found</td></tr>
-              ) : (
-                filtered.map(r => {
+        <div className="p-3">
+          <ResponsiveDataView<CreditRequest>
+            columns={[
+              {
+                key: 'customerName', label: 'Customer', primary: true, render: r => (
+                  <>
+                    <p className="font-medium text-[var(--text-primary)] whitespace-nowrap">{r.customerName}</p>
+                    <p className="text-xs text-[var(--text-muted)]">{r.phone}</p>
+                  </>
+                )
+              },
+              { key: 'id', label: 'Request ID', render: r => <span className="font-mono text-xs font-medium text-[var(--accent)]">{r.id}</span> },
+              { key: 'orderId', label: 'Order Ref', render: r => <span className="font-mono text-xs">{r.orderId}</span> },
+              { key: 'amount', label: 'Amount', render: r => <span className="font-semibold">GHS {r.amount.toLocaleString()}</span> },
+              { key: 'date', label: 'Date' },
+              { key: 'dueDate', label: 'Due Date' },
+              {
+                key: 'ghanaCardNumber', label: 'Ghana Card', render: r => (
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${r.ghanaCardNumber ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                    {r.ghanaCardNumber ? 'Captured' : 'Missing'}
+                  </span>
+                )
+              },
+              {
+                key: 'status', label: 'Status', status: true, render: r => {
                   const Icon = STATUS_ICONS[r.status] || Clock;
                   return (
-                    <tr key={r.id} className="hover:bg-[var(--bg-input)] cursor-pointer" onClick={() => setDetail(r)}>
-                      <td className="px-4 py-3 font-mono text-xs font-medium text-[var(--accent)]">{r.id}</td>
-                      <td className="px-4 py-3">
-                        <p className="font-medium text-[var(--text-primary)] whitespace-nowrap">{r.customerName}</p>
-                        <p className="text-xs text-[var(--text-muted)]">{r.phone}</p>
-                      </td>
-                    <td className="px-4 py-3 text-[var(--text-secondary)] font-mono text-xs whitespace-nowrap">{r.orderId}</td>
-                    <td className="px-4 py-3 font-semibold text-[var(--text-primary)] whitespace-nowrap">GHS {r.amount.toLocaleString()}</td>
-                    <td className="px-4 py-3 text-[var(--text-secondary)] whitespace-nowrap">{r.date}</td>
-                    <td className="px-4 py-3 text-[var(--text-secondary)] whitespace-nowrap">{r.dueDate}</td>
-                    <td className="px-4 py-3">
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${r.ghanaCardNumber ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                        {r.ghanaCardNumber ? 'Captured' : 'Missing'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full font-medium w-fit whitespace-nowrap ${STATUS_STYLES[r.status]}`}>
-                        <Icon size={11} />{r.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <button onClick={e => { e.stopPropagation(); setDetail(r); }} className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-[var(--border)] text-xs text-[var(--text-secondary)] hover:bg-[var(--bg-input)] whitespace-nowrap">
-                        <Eye size={11} /> View
-                      </button>
-                    </td>
-                  </tr>
-                );
-              }))}
-            </tbody>
-          </table>
+                    <span className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full font-medium w-fit whitespace-nowrap ${STATUS_STYLES[r.status]}`}>
+                      <Icon size={11} />{r.status}
+                    </span>
+                  );
+                }
+              },
+            ]}
+            data={filtered}
+            rowKey={r => r.id}
+            onRowClick={r => setDetail(r)}
+            loading={loading}
+            emptyTitle="No credit requests found"
+            renderActions={r => (
+              <button onClick={() => setDetail(r)} className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-[var(--border)] text-xs text-[var(--text-secondary)] hover:bg-[var(--bg-input)] whitespace-nowrap">
+                <Eye size={11} /> View
+              </button>
+            )}
+          />
         </div>
       </div>
     </div>

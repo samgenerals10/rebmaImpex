@@ -9,6 +9,7 @@ import CountUp from '../../components/CountUp';
 import { uploadFile } from '../../utils/uploadFile';
 import SidePanel from '../../components/ui/SidePanel';
 import SearchableDropdown from '../../components/ui/SearchableDropdown';
+import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
 
 interface Props {
   customersList: Customer[];
@@ -288,61 +289,43 @@ export default function CustomersView({ customersList, onRegisterCustomer, addNo
           {custOrders.length === 0 ? (
             <p className="text-sm text-[var(--text-muted)]">No orders found.</p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead><tr className="border-b border-[var(--border)]">
-                  {['Order #', 'Product', 'Amount', 'Payment', 'Status', 'Date'].map(h => (
-                    <th key={h} className="text-left py-2 px-2 text-xs font-semibold text-[var(--text-muted)]">{h}</th>
-                  ))}
-                </tr></thead>
-                <tbody>
-                  {custOrders.map(o => (
-                    <tr key={o.id} className="border-b border-[var(--border)]">
-                      <td className="py-2 px-2 font-mono text-xs text-[var(--text-secondary)]">{o.ticketNumber || o.id}</td>
-                      <td className="py-2 px-2 text-[var(--text-secondary)]">{o.productName || '—'}</td>
-                      <td className="py-2 px-2 text-emerald-600 font-semibold">GHS {o.totalAmount.toLocaleString()}</td>
-                      <td className="py-2 px-2 text-[var(--text-secondary)]">{o.paymentMode}</td>
-                      <td className="py-2 px-2">
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
-                          o.status === 'DELIVERED' ? 'bg-emerald-100 text-emerald-700' :
-                          o.status === 'REJECTED' ? 'bg-rose-100 text-rose-700' :
-                          o.status === 'PROCESSING' ? 'bg-indigo-100 text-indigo-700' :
-                          'bg-amber-100 text-amber-700'
-                        }`}>{o.status}</span>
-                      </td>
-                      <td className="py-2 px-2 text-[var(--text-muted)]">{o.createdAt.split('T')[0]}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <ResponsiveDataView<typeof custOrders[number]>
+              columns={[
+                { key: 'productName', label: 'Product', primary: true, render: o => o.productName || '—' },
+                { key: 'ticketNumber', label: 'Order #', render: o => <span className="font-mono text-xs">{o.ticketNumber || o.id}</span> },
+                { key: 'totalAmount', label: 'Amount', render: o => <span className="text-emerald-600 font-semibold">GHS {o.totalAmount.toLocaleString()}</span> },
+                { key: 'paymentMode', label: 'Payment' },
+                {
+                  key: 'status', label: 'Status', status: true, render: o => (
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                      o.status === 'DELIVERED' ? 'bg-emerald-100 text-emerald-700' :
+                      o.status === 'REJECTED' ? 'bg-rose-100 text-rose-700' :
+                      o.status === 'PROCESSING' ? 'bg-indigo-100 text-indigo-700' :
+                      'bg-amber-100 text-amber-700'
+                    }`}>{o.status}</span>
+                  )
+                },
+                { key: 'createdAt', label: 'Date', render: o => o.createdAt.split('T')[0] },
+              ]}
+              data={custOrders}
+              rowKey={o => o.id}
+            />
           )}
         </div>
 
         {(selectedCustomer.creditHistory || []).length > 0 && (
           <div className="rounded-2xl bg-[var(--bg-card)] border border-[var(--border)] p-5 shadow-[var(--box-shadow)]">
             <h4 className="font-semibold text-sm text-[var(--text-primary)] mb-3">Credit / Payment History</h4>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead><tr className="border-b border-[var(--border)]">
-                  {['Order ID', 'Amount (GHS)', 'Date', 'Status'].map(h => (
-                    <th key={h} className="text-left py-2 px-2 text-xs font-semibold text-[var(--text-muted)]">{h}</th>
-                  ))}
-                </tr></thead>
-                <tbody>
-                  {(selectedCustomer.creditHistory || []).map((h, idx) => (
-                    <tr key={idx} className="border-b border-[var(--border)]">
-                      <td className="py-2 px-2 font-mono text-xs text-[var(--text-secondary)]">{h.orderId}</td>
-                      <td className="py-2 px-2 text-emerald-600 font-semibold">GHS {h.amount.toLocaleString()}</td>
-                      <td className="py-2 px-2 text-[var(--text-muted)]">{h.date}</td>
-                      <td className="py-2 px-2">
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${h.status === 'PAID' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>{h.status}</span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <ResponsiveDataView<NonNullable<typeof selectedCustomer.creditHistory>[number]>
+              columns={[
+                { key: 'orderId', label: 'Order ID', primary: true, render: h => <span className="font-mono text-xs">{h.orderId}</span> },
+                { key: 'amount', label: 'Amount (GHS)', render: h => <span className="text-emerald-600 font-semibold">GHS {h.amount.toLocaleString()}</span> },
+                { key: 'date', label: 'Date' },
+                { key: 'status', label: 'Status', status: true, render: h => <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${h.status === 'PAID' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>{h.status}</span> },
+              ]}
+              data={selectedCustomer.creditHistory || []}
+              rowKey={h => `${h.orderId}-${h.date}`}
+            />
           </div>
         )}
       </div>

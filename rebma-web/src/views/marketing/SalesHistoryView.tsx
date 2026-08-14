@@ -11,6 +11,7 @@ import CountUp from '../../components/CountUp';
 import { usePaginatedQuery } from '../../hooks/usePaginatedQuery';
 import SidePanel from '../../components/ui/SidePanel';
 import SearchableDropdown from '../../components/ui/SearchableDropdown';
+import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
 
 const STATUS_STYLES: Record<string, string> = {
   PENDING_FINANCE:     'bg-amber-100 text-amber-700',
@@ -367,38 +368,28 @@ export default function SalesHistoryView({ ordersList, addNotification }: Props)
                 </button>
               </div>
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-[var(--border)]">
-                    {['Invoice #','Customer','Product','Amount (GHS)','Payment','Status','Date'].map(h => (
-                      <th key={h} className="text-left py-2 px-3 text-[10px] font-semibold text-[var(--text-muted)] whitespace-nowrap uppercase tracking-wide">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {tableRows.length === 0 ? (
-                    <tr><td colSpan={7} className="text-center py-10 text-[var(--text-muted)] text-sm">No records match your filters.</td></tr>
-                  ) : tableRows.map(o => (
-                    <tr key={o.id}
-                      className="border-b border-[var(--border)] hover:bg-[var(--bg-input)] transition-colors cursor-pointer"
-                      onClick={() => setSelectedOrder(o)}
-                    >
-                      <td className="py-3 px-3 font-mono text-[10px] text-[var(--text-secondary)]">{o.ticketNumber || o.id}</td>
-                      <td className="py-3 px-3 font-semibold text-[var(--text-primary)] whitespace-nowrap">{o.clientName || '—'}</td>
-                      <td className="py-3 px-3 max-w-[180px]"><InvoiceLineItems order={o} compact /></td>
-                      <td className="py-3 px-3 font-bold text-emerald-600 whitespace-nowrap">{Number(o.totalAmount ?? 0).toLocaleString()}</td>
-                      <td className="py-3 px-3 text-[var(--text-secondary)] whitespace-nowrap text-xs">{(o.paymentMode || '').replace(/_/g,' ')}</td>
-                      <td className="py-3 px-3 whitespace-nowrap">
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${STATUS_STYLES[o.status] || 'bg-gray-100 text-gray-600'}`}>
-                          {STATUS_LABEL[o.status] || o.status}
-                        </span>
-                      </td>
-                      <td className="py-3 px-3 text-[var(--text-muted)] whitespace-nowrap text-[11px]">{(o.createdAt || '').split('T')[0]}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="p-3">
+              <ResponsiveDataView<Order>
+                columns={[
+                  { key: 'clientName', label: 'Customer', primary: true, render: o => o.clientName || '—' },
+                  { key: 'ticketNumber', label: 'Invoice #', render: o => <span className="font-mono text-[10px]">{o.ticketNumber || o.id}</span> },
+                  { key: 'product', label: 'Product', render: o => <InvoiceLineItems order={o} compact /> },
+                  { key: 'totalAmount', label: 'Amount (GHS)', render: o => <span className="font-bold text-emerald-600">{Number(o.totalAmount ?? 0).toLocaleString()}</span> },
+                  { key: 'paymentMode', label: 'Payment', render: o => (o.paymentMode || '').replace(/_/g, ' ') },
+                  {
+                    key: 'status', label: 'Status', status: true, render: o => (
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${STATUS_STYLES[o.status] || 'bg-gray-100 text-gray-600'}`}>
+                        {STATUS_LABEL[o.status] || o.status}
+                      </span>
+                    )
+                  },
+                  { key: 'createdAt', label: 'Date', render: o => (o.createdAt || '').split('T')[0] },
+                ]}
+                data={tableRows}
+                rowKey={o => o.id}
+                onRowClick={o => setSelectedOrder(o)}
+                emptyTitle="No records match your filters"
+              />
             </div>
             {!loading && orders.length > 0 && (
               <div className="flex items-center justify-between px-4 py-3 border-t border-[var(--border)] text-xs text-[var(--text-muted)]">
