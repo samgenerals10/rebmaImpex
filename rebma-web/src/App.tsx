@@ -4120,20 +4120,23 @@ function AppInner({
             />
           </div>
 
-          {/* BREADCRUMB */}
-          <BreadcrumbBar
-            activeDepartment={currentUser?.requiresPasswordReset ? 'SETTINGS' : activeDepartment}
-            activeSubTab={currentUser?.requiresPasswordReset ? 'ChangePassword' : activeSubTab}
-            onDeptClick={() => {
-              const defaultMap: Record<string, string> = {
-                CEO: 'Overview', MANAGEMENT: 'CargoApproval', HR: 'Employees',
-                MARKETING: 'Overview', OPERATIONS: 'Overview', FINANCE: 'Evaluation',
-                PRODUCTION: 'Requisition', RECEPTION: 'VisitorLog', DISPATCH: 'Deliveries',
-                LOGISTICS: 'Overview', BOARDROOM: 'VideoConf', SETTINGS: 'Appearance',
-              };
-              setActiveSubTab(defaultMap[activeDepartment] || 'Overview');
-            }}
-          />
+          {/* BREADCRUMB — desktop only; every mobile view already renders its own
+              page title/greeting directly below, so this was pure duplicate text */}
+          <div className="hidden lg:block">
+            <BreadcrumbBar
+              activeDepartment={currentUser?.requiresPasswordReset ? 'SETTINGS' : activeDepartment}
+              activeSubTab={currentUser?.requiresPasswordReset ? 'ChangePassword' : activeSubTab}
+              onDeptClick={() => {
+                const defaultMap: Record<string, string> = {
+                  CEO: 'Overview', MANAGEMENT: 'CargoApproval', HR: 'Employees',
+                  MARKETING: 'Overview', OPERATIONS: 'Overview', FINANCE: 'Evaluation',
+                  PRODUCTION: 'Requisition', RECEPTION: 'VisitorLog', DISPATCH: 'Deliveries',
+                  LOGISTICS: 'Overview', BOARDROOM: 'VideoConf', SETTINGS: 'Appearance',
+                };
+                setActiveSubTab(defaultMap[activeDepartment] || 'Overview');
+              }}
+            />
+          </div>
 
           {/* 3. DYNAMIC PAGES VIEW SELECTOR CONTAINER — fills remaining height, scrollable */}
           <div className="flex-1 overflow-y-auto px-4 lg:px-6 pb-32 lg:pb-6 pt-2">
