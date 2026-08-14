@@ -8,6 +8,7 @@ import QRCode from 'qrcode';
 import { exportToCSV, safeDisplayName } from '../../utils/export';
 import SidePanel from '../../components/ui/SidePanel';
 import SearchableDropdown from '../../components/ui/SearchableDropdown';
+import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
 import CountUp from '../../components/CountUp';
 import { documentTemplates, type DocumentTemplate } from '../../services/apiClient';
 import { useCeoSettings } from '../../contexts/CeoSettingsContext';
@@ -263,11 +264,6 @@ const statusBadge = (status: string) => {
   return map[status] || 'bg-slate-100 text-slate-600';
 };
 
-const SortIco = ({ field, sort }: { field: string; sort: { field: string; dir: string } }) =>
-  sort.field === field
-    ? (sort.dir === 'asc' ? <ChevronUp size={10} className="text-[var(--accent)]" /> : <ChevronDown size={10} className="text-[var(--accent)]" />)
-    : <span className="text-[var(--text-muted)] opacity-40 text-[9px]">↕</span>;
-
 // ── component ──────────────────────────────────────────────────────────────
 export default function ApprovedGoodsView({ addNotification, setActiveSubTab: _sat }: Props) {
   const { getSetting } = useCeoSettings();
@@ -416,11 +412,6 @@ export default function ApprovedGoodsView({ addNotification, setActiveSubTab: _s
   };
 
   // ── sort / filter ──────────────────────────────────────────────────────
-  const toggleGoodsSort = (field: keyof ApprovedGood) =>
-    setGoodsSort(s => s.field === field ? { field, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { field, dir: 'asc' });
-  const toggleOrderSort = (field: keyof ApprovedOrder) =>
-    setOrderSort(s => s.field === field ? { field, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { field, dir: 'asc' });
-
   const filteredGoods = [...goods]
     .filter(g => {
       const q = goodsSearch.toLowerCase();
@@ -448,13 +439,6 @@ export default function ApprovedGoodsView({ addNotification, setActiveSubTab: _s
   const totalGoodsQty = goods.reduce((s, g) => s + g.quantity, 0);
   const pendingDispatch = orders.filter(o => (o.status === 'APPROVED' || o.status === 'PROCESSING') && !dispatchedOrderIds.has(o.id)).length;
   const inTransit = orders.filter(o => o.status === 'OUT_FOR_DELIVERY').length;
-
-  const th = (label: string, field: string, sort: any, toggle: (f: any) => void) => (
-    <th key={label} onClick={() => toggle(field)}
-      className="px-4 py-3 text-left text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wide whitespace-nowrap cursor-pointer select-none hover:bg-[var(--accent-light)] transition-colors">
-      <span className="inline-flex items-center gap-1">{label} <SortIco field={field} sort={sort} /></span>
-    </th>
-  );
 
   return (
     <div className="space-y-5">
@@ -535,6 +519,26 @@ export default function ApprovedGoodsView({ addNotification, setActiveSubTab: _s
                 ]}
                 className="w-56"
               />
+              <SearchableDropdown
+                value={orderSort.field}
+                onChange={v => setOrderSort(s => ({ ...s, field: v as OrderSort['field'] }))}
+                options={[
+                  { value: 'ticketNumber', label: 'Sort: Ticket #' },
+                  { value: 'clientName', label: 'Sort: Client' },
+                  { value: 'productName', label: 'Sort: Product' },
+                  { value: 'destination', label: 'Sort: Destination' },
+                  { value: 'paymentMode', label: 'Sort: Payment' },
+                  { value: 'issuedBy', label: 'Sort: Issued By' },
+                  { value: 'status', label: 'Sort: Status' },
+                  { value: 'createdAt', label: 'Sort: Date' },
+                ]}
+                className="w-40"
+              />
+              <button onClick={() => setOrderSort(s => ({ ...s, dir: s.dir === 'asc' ? 'desc' : 'asc' }))}
+                title="Toggle sort direction"
+                className="p-2 rounded-lg border border-[var(--border)] text-[var(--text-secondary)] hover:bg-[var(--bg-input)] cursor-pointer">
+                {orderSort.dir === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+              </button>
             </div>
             <button onClick={() => exportToCSV(filteredOrders.map(o => ({ Ticket: o.ticketNumber, Client: o.clientName, Product: o.productName, Status: o.status, 'Issued By': o.issuedBy, Date: o.createdAt })), ['Ticket','Client','Product','Status','Issued By','Date'], 'approved_orders')}
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[var(--border)] text-xs text-[var(--text-secondary)] hover:bg-[var(--bg-card)] cursor-pointer whitespace-nowrap">
@@ -542,76 +546,55 @@ export default function ApprovedGoodsView({ addNotification, setActiveSubTab: _s
             </button>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead className="border-b border-[var(--border)] bg-[var(--bg)]">
-                <tr>
-                  {th('Ticket #', 'ticketNumber', orderSort, toggleOrderSort)}
-                  {th('Client', 'clientName', orderSort, toggleOrderSort)}
-                  {th('Product', 'productName', orderSort, toggleOrderSort)}
-                  {th('Destination', 'destination', orderSort, toggleOrderSort)}
-                  {th('Payment', 'paymentMode', orderSort, toggleOrderSort)}
-                  {th('Issued By', 'issuedBy', orderSort, toggleOrderSort)}
-                  {th('Status', 'status', orderSort, toggleOrderSort)}
-                  {th('Date', 'createdAt', orderSort, toggleOrderSort)}
-                  <th className="px-4 py-3 text-left text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wide whitespace-nowrap">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[var(--border)]">
-                {loading
-                  ? Array.from({ length: 4 }).map((_, i) => (
-                      <tr key={i}><td colSpan={9} className="px-4 py-3"><div className="h-4 bg-[var(--bg-input)] rounded animate-pulse" /></td></tr>
-                    ))
-                  : filteredOrders.length === 0
-                    ? <tr><td colSpan={9} className="px-4 py-10 text-center text-[var(--text-muted)]">No approved orders found.</td></tr>
-                    : filteredOrders.map(o => (
-                        <tr key={o.id} className="hover:bg-[var(--accent-light)] transition-colors">
-                          <td className="px-4 py-3 font-mono font-bold" style={{ color: BRAND.green }}>{o.ticketNumber || '—'}</td>
-                          <td className="px-4 py-3 font-semibold text-[var(--text-primary)]">{o.clientName}</td>
-                          <td className="px-4 py-3 text-[var(--text-secondary)]">{o.productName || '—'}</td>
-                          <td className="px-4 py-3 text-[var(--text-muted)]">{o.destination || '—'}</td>
-                          <td className="px-4 py-3 text-[var(--text-muted)]">{o.paymentMode}</td>
-                          <td className="px-4 py-3 text-[var(--text-muted)] text-[10px]">{o.issuedBy}</td>
-                          <td className="px-4 py-3">
-                            <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold ${statusBadge(o.status)}`}>{o.status.replace(/_/g, ' ')}</span>
-                          </td>
-                          <td className="px-4 py-3 text-[var(--text-muted)] whitespace-nowrap">{o.createdAt}</td>
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-2">
-                              <button onClick={async () => {
-                                  const totalQty = o.metadata?.items && o.metadata.items.length > 0
-                                    ? o.metadata.items.reduce((sum: number, it: any) => sum + (Number(it.quantity) || 0), 0)
-                                    : Number(o.metadata?.quantity || (o as any).quantity || 1);
-                                  const template = await documentTemplates.get('TICKET');
-                                  printOperationsTicket(o, template, totalQty, currentUserEmail, getSetting('print_enabled', true));
-                                }}
-                                title="Print Operations Ticket"
-                                className="flex items-center gap-1 px-2.5 py-1.5 bg-[var(--bg)] border border-[var(--border)] rounded-lg text-[10px] font-semibold text-[var(--text-secondary)] hover:bg-[var(--accent-light)] cursor-pointer whitespace-nowrap transition-colors">
-                                <Printer size={11} /> Ticket
-                              </button>
-                              {(o.status === 'APPROVED' || o.status === 'PROCESSING') && !dispatchedOrderIds.has(o.id) && (
-                                <button onClick={() => { setDispatchTarget(o); setDispatchForm({ vehicleId: '', driverName: '' }); }}
-                                  title="Assign a vehicle and driver, then release this order to Dispatch"
-                                  className="flex items-center gap-1 px-2.5 py-1.5 text-white rounded-lg text-[10px] font-bold hover:opacity-90 cursor-pointer whitespace-nowrap transition-opacity"
-                                  style={{ background: 'var(--accent)' }}>
-                                  <Truck size={11} /> Dispatch
-                                </button>
-                              )}
-                              {(o.status === 'APPROVED' || o.status === 'PROCESSING') && dispatchedOrderIds.has(o.id) && (
-                                <span className="text-[9px] font-bold text-blue-600 flex items-center gap-1"><Truck size={9} /> Assigned — awaiting pickup</span>
-                              )}
-                              {o.status === 'OUT_FOR_DELIVERY' && (
-                                <span className="text-[9px] font-bold text-amber-600 flex items-center gap-1"><Truck size={9} /> In Transit</span>
-                              )}
-                              {o.status === 'DELIVERED' && (
-                                <span className="text-[9px] font-bold" style={{ color: BRAND.green }}>✓ Delivered</span>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-              </tbody>
-            </table>
+          <div className="p-3">
+            <ResponsiveDataView<ApprovedOrder>
+              columns={[
+                { key: 'clientName', label: 'Client', primary: true },
+                { key: 'ticketNumber', label: 'Ticket #', render: o => <span className="font-mono font-bold" style={{ color: BRAND.green }}>{o.ticketNumber || '—'}</span> },
+                { key: 'productName', label: 'Product', render: o => o.productName || '—' },
+                { key: 'destination', label: 'Destination', render: o => o.destination || '—' },
+                { key: 'paymentMode', label: 'Payment' },
+                { key: 'issuedBy', label: 'Issued By' },
+                { key: 'status', label: 'Status', status: true, render: o => <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold ${statusBadge(o.status)}`}>{o.status.replace(/_/g, ' ')}</span> },
+                { key: 'createdAt', label: 'Date' },
+              ]}
+              data={filteredOrders}
+              rowKey={o => o.id}
+              loading={loading}
+              emptyTitle="No approved orders found"
+              renderActions={o => (
+                <div className="flex items-center gap-2">
+                  <button onClick={async () => {
+                      const totalQty = o.metadata?.items && o.metadata.items.length > 0
+                        ? o.metadata.items.reduce((sum: number, it: any) => sum + (Number(it.quantity) || 0), 0)
+                        : Number(o.metadata?.quantity || (o as any).quantity || 1);
+                      const template = await documentTemplates.get('TICKET');
+                      printOperationsTicket(o, template, totalQty, currentUserEmail, getSetting('print_enabled', true));
+                    }}
+                    title="Print Operations Ticket"
+                    className="flex items-center gap-1 px-2.5 py-1.5 bg-[var(--bg)] border border-[var(--border)] rounded-lg text-[10px] font-semibold text-[var(--text-secondary)] hover:bg-[var(--accent-light)] cursor-pointer whitespace-nowrap transition-colors">
+                    <Printer size={11} /> Ticket
+                  </button>
+                  {(o.status === 'APPROVED' || o.status === 'PROCESSING') && !dispatchedOrderIds.has(o.id) && (
+                    <button onClick={() => { setDispatchTarget(o); setDispatchForm({ vehicleId: '', driverName: '' }); }}
+                      title="Assign a vehicle and driver, then release this order to Dispatch"
+                      className="flex items-center gap-1 px-2.5 py-1.5 text-white rounded-lg text-[10px] font-bold hover:opacity-90 cursor-pointer whitespace-nowrap transition-opacity"
+                      style={{ background: 'var(--accent)' }}>
+                      <Truck size={11} /> Dispatch
+                    </button>
+                  )}
+                  {(o.status === 'APPROVED' || o.status === 'PROCESSING') && dispatchedOrderIds.has(o.id) && (
+                    <span className="text-[9px] font-bold text-blue-600 flex items-center gap-1"><Truck size={9} /> Assigned — awaiting pickup</span>
+                  )}
+                  {o.status === 'OUT_FOR_DELIVERY' && (
+                    <span className="text-[9px] font-bold text-amber-600 flex items-center gap-1"><Truck size={9} /> In Transit</span>
+                  )}
+                  {o.status === 'DELIVERED' && (
+                    <span className="text-[9px] font-bold" style={{ color: BRAND.green }}>✓ Delivered</span>
+                  )}
+                </div>
+              )}
+            />
           </div>
 
           {filteredOrders.length > 0 && (
@@ -632,44 +615,48 @@ export default function ApprovedGoodsView({ addNotification, setActiveSubTab: _s
               <input value={goodsSearch} onChange={e => setGoodsSearch(e.target.value)} placeholder="Search product, code, supplier…"
                 className="w-full pl-8 pr-3 py-2 rounded-lg bg-[var(--bg)] border border-[var(--border)] text-xs text-[var(--text-primary)] focus:outline-none" />
             </div>
-            <button onClick={() => exportToCSV(filteredGoods.map(g => ({ 'Goods Code': g.goodsCode, Product: g.productName, Qty: g.quantity, Unit: g.unit, Supplier: g.supplier, 'Approved On': g.approvedAt })), ['Goods Code','Product','Qty','Unit','Supplier','Approved On'], 'approved_cargo')}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[var(--border)] text-xs text-[var(--text-secondary)] cursor-pointer whitespace-nowrap">
-              <Download size={13} /> Export CSV
-            </button>
+            <div className="flex items-center gap-2 flex-wrap">
+              <SearchableDropdown
+                value={goodsSort.field}
+                onChange={v => setGoodsSort(s => ({ ...s, field: v as GoodsSort['field'] }))}
+                options={[
+                  { value: 'goodsCode', label: 'Sort: Goods Code' },
+                  { value: 'productName', label: 'Sort: Product' },
+                  { value: 'quantity', label: 'Sort: Quantity' },
+                  { value: 'supplier', label: 'Sort: Supplier' },
+                  { value: 'portOfOrigin', label: 'Sort: Port of Origin' },
+                  { value: 'destination', label: 'Sort: Destination' },
+                  { value: 'approvedAt', label: 'Sort: Approved On' },
+                ]}
+                className="w-44"
+              />
+              <button onClick={() => setGoodsSort(s => ({ ...s, dir: s.dir === 'asc' ? 'desc' : 'asc' }))}
+                title="Toggle sort direction"
+                className="p-2 rounded-lg border border-[var(--border)] text-[var(--text-secondary)] hover:bg-[var(--bg-input)] cursor-pointer">
+                {goodsSort.dir === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+              </button>
+              <button onClick={() => exportToCSV(filteredGoods.map(g => ({ 'Goods Code': g.goodsCode, Product: g.productName, Qty: g.quantity, Unit: g.unit, Supplier: g.supplier, 'Approved On': g.approvedAt })), ['Goods Code','Product','Qty','Unit','Supplier','Approved On'], 'approved_cargo')}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[var(--border)] text-xs text-[var(--text-secondary)] cursor-pointer whitespace-nowrap">
+                <Download size={13} /> Export CSV
+              </button>
+            </div>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead className="border-b border-[var(--border)] bg-[var(--bg)]">
-                <tr>
-                  {th('Goods Code', 'goodsCode', goodsSort, toggleGoodsSort)}
-                  {th('Product', 'productName', goodsSort, toggleGoodsSort)}
-                  {th('Quantity', 'quantity', goodsSort, toggleGoodsSort)}
-                  {th('Supplier', 'supplier', goodsSort, toggleGoodsSort)}
-                  {th('Port of Origin', 'portOfOrigin', goodsSort, toggleGoodsSort)}
-                  {th('Destination', 'destination', goodsSort, toggleGoodsSort)}
-                  {th('Approved On', 'approvedAt', goodsSort, toggleGoodsSort)}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[var(--border)]">
-                {loading
-                  ? Array.from({ length: 4 }).map((_, i) => (
-                      <tr key={i}><td colSpan={7} className="px-4 py-3"><div className="h-4 bg-[var(--bg-input)] rounded animate-pulse" /></td></tr>
-                    ))
-                  : filteredGoods.length === 0
-                    ? <tr><td colSpan={7} className="px-4 py-10 text-center text-[var(--text-muted)]">No approved cargo yet.</td></tr>
-                    : filteredGoods.map(g => (
-                        <tr key={g.id} className="hover:bg-[var(--accent-light)] transition-colors">
-                          <td className="px-4 py-3 font-mono font-semibold" style={{ color: BRAND.green }}>{g.goodsCode}</td>
-                          <td className="px-4 py-3 font-semibold text-[var(--text-primary)]"><div className="flex items-center gap-2"><Package size={11} className="text-[var(--text-muted)]" />{g.productName}</div></td>
-                          <td className="px-4 py-3 font-bold" style={{ color: BRAND.blue }}>{g.quantity.toLocaleString()} <span className="font-normal text-[var(--text-muted)]">{g.unit}</span></td>
-                          <td className="px-4 py-3 text-[var(--text-secondary)]">{g.supplier}</td>
-                          <td className="px-4 py-3 text-[var(--text-secondary)]">{g.portOfOrigin}</td>
-                          <td className="px-4 py-3 text-[var(--text-muted)]">{g.destination}</td>
-                          <td className="px-4 py-3 text-[var(--text-muted)]">{g.approvedAt}</td>
-                        </tr>
-                      ))}
-              </tbody>
-            </table>
+          <div className="p-3">
+            <ResponsiveDataView<ApprovedGood>
+              columns={[
+                { key: 'productName', label: 'Product', primary: true, render: g => <div className="flex items-center gap-2"><Package size={11} className="text-[var(--text-muted)]" />{g.productName}</div> },
+                { key: 'goodsCode', label: 'Goods Code', render: g => <span className="font-mono font-semibold" style={{ color: BRAND.green }}>{g.goodsCode}</span> },
+                { key: 'quantity', label: 'Quantity', render: g => <span className="font-bold" style={{ color: BRAND.blue }}>{g.quantity.toLocaleString()} <span className="font-normal text-[var(--text-muted)]">{g.unit}</span></span> },
+                { key: 'supplier', label: 'Supplier' },
+                { key: 'portOfOrigin', label: 'Port of Origin' },
+                { key: 'destination', label: 'Destination' },
+                { key: 'approvedAt', label: 'Approved On' },
+              ]}
+              data={filteredGoods}
+              rowKey={g => g.id}
+              loading={loading}
+              emptyTitle="No approved cargo yet"
+            />
           </div>
           {filteredGoods.length > 0 && (
             <div className="px-5 py-3 border-t border-[var(--border)] text-xs text-[var(--text-muted)]">

@@ -10,6 +10,7 @@ import { exportToCSV } from '../../utils/export';
 import { supabase } from '../../lib/supabaseClient';
 import SidePanel from '../../components/ui/SidePanel';
 import SearchableDropdown from '../../components/ui/SearchableDropdown';
+import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
 import { useRealtimeChannel } from '../../hooks/useRealtimeChannel';
 import { useCeoSettings } from '../../contexts/CeoSettingsContext';
 import type { IncomingGoods, GeneralPurchase } from '../../types/erp';
@@ -351,14 +352,6 @@ export default function StockView({ incomingGoodsList: _ig, addNotification }: P
   const gpTotalOut = generalPurchases.reduce((s, gp) => s + (getLedger(gp.itemName).totalOut), 0);
 
   // ── filter / sort ────────────────────────────────────────────────────────
-  const toggleCargoSort = (field: keyof ApprovedCargo) =>
-    setCargoSort(s => s.field === field ? { field, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { field, dir: 'asc' });
-
-  const SortIcon = ({ field }: { field: keyof ApprovedCargo }) => {
-    if (cargoSort.field !== field) return <span style={{ color: 'var(--text-muted)', opacity: 0.4, fontSize: 10 }}>↕</span>;
-    return cargoSort.dir === 'asc' ? <ChevronUp size={11} style={{ color: 'var(--accent)' }} /> : <ChevronDown size={11} style={{ color: 'var(--accent)' }} />;
-  };
-
   const filteredCargo = [...approvedCargo]
     .filter(c => {
       const q = search.toLowerCase();
@@ -429,14 +422,6 @@ export default function StockView({ incomingGoodsList: _ig, addNotification }: P
     padding: '10px 18px', fontSize: 13, fontWeight: 700,
     cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap' as const,
   });
-
-  const th = (label: string, field?: keyof ApprovedCargo) => (
-    <th key={label}
-      onClick={field ? () => toggleCargoSort(field) : undefined}
-      style={{ textAlign: 'left', padding: '10px 12px', fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: '.04em', whiteSpace: 'nowrap' as const, cursor: field ? 'pointer' : 'default', userSelect: 'none' as const }}>
-      {field ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>{label} <SortIcon field={field} /></span> : label}
-    </th>
-  );
 
   // ── render ───────────────────────────────────────────────────────────────
   return (
@@ -563,6 +548,29 @@ export default function StockView({ incomingGoodsList: _ig, addNotification }: P
             className="shrink-0 w-40"
           />
         )}
+        {activeTab === 'APPROVED_CARGO' && (
+          <>
+            <SearchableDropdown
+              value={cargoSort.field}
+              onChange={v => setCargoSort(s => ({ ...s, field: v as keyof ApprovedCargo }))}
+              options={[
+                { value: 'productName', label: 'Sort: Product' },
+                { value: 'goodsCode', label: 'Sort: Code' },
+                { value: 'quantity', label: 'Sort: IN Qty' },
+                { value: 'supplier', label: 'Sort: Supplier' },
+                { value: 'portOfOrigin', label: 'Sort: Origin' },
+                { value: 'destination', label: 'Sort: Destination' },
+                { value: 'approvedAt', label: 'Sort: Approved On' },
+              ]}
+              className="shrink-0 w-40"
+            />
+            <button onClick={() => setCargoSort(s => ({ ...s, dir: s.dir === 'asc' ? 'desc' : 'asc' }))}
+              title="Toggle sort direction"
+              style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '8px 12px', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+              {cargoSort.dir === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            </button>
+          </>
+        )}
         <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
           style={{ flex: '0 0 140px', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '8px 12px', color: 'var(--text-primary)', fontSize: 14 }} />
         <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)}
@@ -587,51 +595,35 @@ export default function StockView({ incomingGoodsList: _ig, addNotification }: P
           <>
             <h2 style={{ margin: '0 0 4px', fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>Port-Approved Goods</h2>
             <p style={{ margin: '0 0 16px', fontSize: 12, color: 'var(--text-muted)' }}>Goods received from port and approved by Management. Click any row for history.</p>
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                <thead>
-                  <tr style={{ borderBottom: '2px solid var(--border)' }}>
-                    {th('Product', 'productName')}
-                    {th('Code', 'goodsCode')}
-                    {th('IN (Approved Qty)', 'quantity')}
-                    <th style={{ textAlign: 'left', padding: '10px 12px', fontSize: 11, color: '#ef4444', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em', whiteSpace: 'nowrap' }}>OUT (Dispatched)</th>
-                    <th style={{ textAlign: 'left', padding: '10px 12px', fontSize: 11, color: '#10b981', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em', whiteSpace: 'nowrap' }}>REMAINING</th>
-                    {th('Supplier', 'supplier')}
-                    {th('Origin', 'portOfOrigin')}
-                    {th('Destination', 'destination')}
-                    {th('Approved On', 'approvedAt')}
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredCargo.map(c => {
+            <ResponsiveDataView<ApprovedCargo>
+              columns={[
+                { key: 'productName', label: 'Product', primary: true },
+                { key: 'goodsCode', label: 'Code', render: c => <span style={{ fontFamily: 'monospace', fontSize: 11 }}>{c.goodsCode}</span> },
+                { key: 'quantity', label: 'IN (Approved Qty)', render: c => <span style={{ fontWeight: 700, color: '#3b82f6' }}>{c.quantity.toLocaleString()} <span style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 400 }}>{c.unit}</span></span> },
+                {
+                  key: 'out', label: 'OUT (Dispatched)', render: c => {
+                    const out = getLedgerSince(c.productName, c.approvedAt).totalOut;
+                    return <span style={{ fontWeight: 700, color: '#ef4444' }}>{out > 0 ? out.toLocaleString() : <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>—</span>}</span>;
+                  }
+                },
+                {
+                  key: 'remaining', label: 'Remaining', status: true, render: c => {
                     const out = getLedgerSince(c.productName, c.approvedAt).totalOut;
                     const remaining = Math.max(0, c.quantity - out);
-                    return (
-                      <tr key={c.id} onClick={() => setSelectedCargo(c)}
-                        style={{ borderBottom: '1px solid var(--border)', cursor: 'pointer', transition: 'background 0.15s' }}
-                        onMouseEnter={e => (e.currentTarget as HTMLTableRowElement).style.background = 'var(--accent-light)'}
-                        onMouseLeave={e => (e.currentTarget as HTMLTableRowElement).style.background = 'transparent'}>
-                        <td style={{ padding: '10px 12px', fontWeight: 600, color: 'var(--text-primary)' }}>{c.productName}</td>
-                        <td style={{ padding: '10px 12px', color: 'var(--text-muted)', fontFamily: 'monospace', fontSize: 11 }}>{c.goodsCode}</td>
-                        <td style={{ padding: '10px 12px', fontWeight: 700, color: '#3b82f6' }}>{c.quantity.toLocaleString()} <span style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 400 }}>{c.unit}</span></td>
-                        <td style={{ padding: '10px 12px', fontWeight: 700, color: '#ef4444' }}>{out > 0 ? out.toLocaleString() : <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>—</span>}</td>
-                        <td style={{ padding: '10px 12px', fontWeight: 700, color: remaining === 0 ? '#ef4444' : '#10b981' }}>{remaining.toLocaleString()}</td>
-                        <td style={{ padding: '10px 12px', color: 'var(--text-secondary)' }}>{c.supplier}</td>
-                        <td style={{ padding: '10px 12px', color: 'var(--text-secondary)' }}>{c.portOfOrigin}</td>
-                        <td style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>{c.destination}</td>
-                        <td style={{ padding: '10px 12px', color: 'var(--text-muted)', fontSize: 11, whiteSpace: 'nowrap' }}>{fmtDate(c.approvedAt)}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-              {filteredCargo.length === 0 && (
-                <div style={{ textAlign: 'center', padding: 32, color: 'var(--text-muted)' }}>
-                  <Package size={32} style={{ margin: '0 auto 8px', opacity: 0.3, display: 'block' }} />
-                  <p style={{ fontSize: 14, fontWeight: 600 }}>No approved port goods</p>
-                </div>
-              )}
-            </div>
+                    return <span style={{ fontWeight: 700, color: remaining === 0 ? '#ef4444' : '#10b981' }}>{remaining.toLocaleString()}</span>;
+                  }
+                },
+                { key: 'supplier', label: 'Supplier' },
+                { key: 'portOfOrigin', label: 'Origin' },
+                { key: 'destination', label: 'Destination' },
+                { key: 'approvedAt', label: 'Approved On', render: c => fmtDate(c.approvedAt) },
+              ]}
+              data={filteredCargo}
+              rowKey={c => c.id}
+              onRowClick={c => setSelectedCargo(c)}
+              emptyIcon={<Package size={32} />}
+              emptyTitle="No approved port goods"
+            />
           </>
         ) : activeTab === 'PRODUCTS' ? (
           <>
@@ -662,107 +654,67 @@ export default function StockView({ incomingGoodsList: _ig, addNotification }: P
                 })}
               </div>
             )}
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                <thead>
-                  <tr style={{ borderBottom: '2px solid var(--border)' }}>
-                    {['Product', 'SKU', 'Category'].map(h => (
-                      <th key={h} style={{ textAlign: 'left', padding: '10px 12px', fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.04em', whiteSpace: 'nowrap' }}>{h}</th>
-                    ))}
-                    <th style={{ textAlign: 'left', padding: '10px 12px', fontSize: 11, color: '#3b82f6', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em', whiteSpace: 'nowrap' }}>IN (Produced)</th>
-                    <th style={{ textAlign: 'left', padding: '10px 12px', fontSize: 11, color: '#ef4444', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em', whiteSpace: 'nowrap' }}>OUT (Sold)</th>
-                    <th style={{ textAlign: 'left', padding: '10px 12px', fontSize: 11, color: '#10b981', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em', whiteSpace: 'nowrap' }}>REMAINING</th>
-                    <th style={{ textAlign: 'left', padding: '10px 12px', fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.04em', whiteSpace: 'nowrap' }}>Capacity</th>
-                    <th style={{ textAlign: 'left', padding: '10px 12px', fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.04em', whiteSpace: 'nowrap' }}>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredStock.map(s => {
+            <ResponsiveDataView<typeof filteredStock[number]>
+              columns={[
+                { key: 'name', label: 'Product', primary: true },
+                { key: 'sku', label: 'SKU', render: s => <span style={{ fontFamily: 'monospace', fontSize: 11 }}>{s.sku}</span> },
+                { key: 'category', label: 'Category' },
+                { key: 'in', label: 'IN (Produced)', render: s => { const totalIn = getLedger(s.name).totalIn; return <span style={{ fontWeight: 700, color: '#3b82f6' }}>{totalIn > 0 ? totalIn.toLocaleString() : <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>—</span>}</span>; } },
+                { key: 'out', label: 'OUT (Sold)', render: s => { const totalOut = getLedger(s.name).totalOut; return <span style={{ fontWeight: 700, color: '#ef4444' }}>{totalOut > 0 ? totalOut.toLocaleString() : <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>—</span>}</span>; } },
+                { key: 'current', label: 'Remaining', render: s => <span style={{ fontWeight: 700, color: s.current === 0 ? '#ef4444' : '#10b981' }}>{s.current.toLocaleString()}</span> },
+                { key: 'capacity', label: 'Capacity', render: s => s.capacity.toLocaleString() },
+                {
+                  key: 'status', label: 'Status', status: true, render: s => {
                     const st = stockStatus(s.current, s.capacity);
-                    const totalIn = getLedger(s.name).totalIn;
-                    const totalOut = getLedger(s.name).totalOut;
-                    return (
-                      <tr key={s.id} onClick={() => setSelectedStock(s)}
-                        style={{ borderBottom: '1px solid var(--border)', cursor: 'pointer', transition: 'background 0.15s' }}
-                        onMouseEnter={e => (e.currentTarget as HTMLTableRowElement).style.background = 'var(--accent-light)'}
-                        onMouseLeave={e => (e.currentTarget as HTMLTableRowElement).style.background = 'transparent'}>
-                        <td style={{ padding: '10px 12px', fontWeight: 600, color: 'var(--text-primary)' }}>{s.name}</td>
-                        <td style={{ padding: '10px 12px', color: 'var(--text-secondary)', fontFamily: 'monospace', fontSize: 11 }}>{s.sku}</td>
-                        <td style={{ padding: '10px 12px', color: 'var(--text-secondary)' }}>{s.category}</td>
-                        <td style={{ padding: '10px 12px', fontWeight: 700, color: '#3b82f6' }}>{totalIn > 0 ? totalIn.toLocaleString() : <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>—</span>}</td>
-                        <td style={{ padding: '10px 12px', fontWeight: 700, color: '#ef4444' }}>{totalOut > 0 ? totalOut.toLocaleString() : <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>—</span>}</td>
-                        <td style={{ padding: '10px 12px', fontWeight: 700, color: s.current === 0 ? '#ef4444' : '#10b981' }}>{s.current.toLocaleString()}</td>
-                        <td style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>{s.capacity.toLocaleString()}</td>
-                        <td style={{ padding: '10px 12px' }}>
-                          <span style={{ background: st.bg, color: st.color, borderRadius: 99, padding: '2px 9px', fontSize: 11, fontWeight: 600 }}>{st.label}</span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-              {filteredStock.length === 0 && (
-                <div style={{ textAlign: 'center', padding: 32, color: 'var(--text-muted)' }}>
-                  <Package size={32} style={{ margin: '0 auto 8px', opacity: 0.3, display: 'block' }} />
-                  <p style={{ fontSize: 14, fontWeight: 600 }}>No company products in stock</p>
-                </div>
-              )}
-            </div>
+                    return <span style={{ background: st.bg, color: st.color, borderRadius: 99, padding: '2px 9px', fontSize: 11, fontWeight: 600 }}>{st.label}</span>;
+                  }
+                },
+              ]}
+              data={filteredStock}
+              rowKey={s => s.id}
+              onRowClick={s => setSelectedStock(s)}
+              emptyIcon={<Package size={32} />}
+              emptyTitle="No company products in stock"
+            />
           </>
         ) : (
           <>
             <h2 style={{ margin: '0 0 4px', fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>General Purchased Items</h2>
             <p style={{ margin: '0 0 16px', fontSize: 12, color: 'var(--text-muted)' }}>Raw materials, consumables and misc. purchases. Click a row to trace usage history.</p>
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                <thead>
-                  <tr style={{ borderBottom: '2px solid var(--border)' }}>
-                    {['Item Name', 'Code', 'Category'].map(h => (
-                      <th key={h} style={{ textAlign: 'left', padding: '10px 12px', fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.04em', whiteSpace: 'nowrap' }}>{h}</th>
-                    ))}
-                    <th style={{ textAlign: 'left', padding: '10px 12px', fontSize: 11, color: '#3b82f6', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em', whiteSpace: 'nowrap' }}>IN (Received)</th>
-                    <th style={{ textAlign: 'left', padding: '10px 12px', fontSize: 11, color: '#ef4444', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em', whiteSpace: 'nowrap' }}>OUT (Used)</th>
-                    <th style={{ textAlign: 'left', padding: '10px 12px', fontSize: 11, color: '#10b981', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em', whiteSpace: 'nowrap' }}>REMAINING</th>
-                    {['Date Received', ''].map(h => (
-                      <th key={h} style={{ textAlign: 'left', padding: '10px 12px', fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.04em', whiteSpace: 'nowrap' }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredGP.map(gp => {
+            <ResponsiveDataView<GeneralPurchase>
+              columns={[
+                { key: 'itemName', label: 'Item Name', primary: true },
+                { key: 'itemCode', label: 'Code', render: gp => <span style={{ fontFamily: 'monospace', fontSize: 11 }}>{gp.itemCode}</span> },
+                { key: 'category', label: 'Category' },
+                { key: 'in', label: 'IN (Received)', render: gp => <span style={{ fontWeight: 700, color: '#3b82f6' }}>{Number(gp.quantity ?? 0).toLocaleString()}</span> },
+                {
+                  key: 'out', label: 'OUT (Used)', render: gp => {
+                    const gpOut = getLedger(gp.itemName).totalOut;
+                    return <span style={{ fontWeight: 700, color: '#ef4444' }}>{gpOut > 0 ? gpOut.toLocaleString() : <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>—</span>}</span>;
+                  }
+                },
+                {
+                  key: 'remaining', label: 'Remaining', status: true, render: gp => {
                     const gpIn = Number(gp.quantity ?? 0);
                     const gpOut = getLedger(gp.itemName).totalOut;
                     const gpRemaining = Math.max(0, gpIn - gpOut);
-                    return (
-                      <tr key={gp.id} onClick={() => setSelectedGP(gp)}
-                        style={{ borderBottom: '1px solid var(--border)', cursor: 'pointer', transition: 'background 0.15s' }}
-                        onMouseEnter={e => (e.currentTarget as HTMLTableRowElement).style.background = 'var(--accent-light)'}
-                        onMouseLeave={e => (e.currentTarget as HTMLTableRowElement).style.background = 'transparent'}>
-                        <td style={{ padding: '10px 12px', fontWeight: 600, color: 'var(--text-primary)' }}>{gp.itemName}</td>
-                        <td style={{ padding: '10px 12px', color: 'var(--text-muted)', fontFamily: 'monospace', fontSize: 11 }}>{gp.itemCode}</td>
-                        <td style={{ padding: '10px 12px', color: 'var(--text-secondary)' }}>{gp.category}</td>
-                        <td style={{ padding: '10px 12px', fontWeight: 700, color: '#3b82f6' }}>{gpIn.toLocaleString()}</td>
-                        <td style={{ padding: '10px 12px', fontWeight: 700, color: '#ef4444' }}>{gpOut > 0 ? gpOut.toLocaleString() : <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>—</span>}</td>
-                        <td style={{ padding: '10px 12px', fontWeight: 700, color: gpRemaining === 0 ? '#ef4444' : '#10b981' }}>{gpRemaining.toLocaleString()}</td>
-                        <td style={{ padding: '10px 12px', color: 'var(--text-muted)', fontSize: 11, whiteSpace: 'nowrap' }}>{gp.dateReceived}</td>
-                        <td style={{ padding: '10px 12px' }} onClick={e => e.stopPropagation()}>
-                          <button onClick={e => { e.stopPropagation(); setAdjustTarget(gp); setShowAdjust(true); }}
-                            style={{ background: 'var(--accent-light)', border: '1px solid var(--accent)', color: 'var(--accent)', borderRadius: 8, padding: '4px 10px', fontSize: 11, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                            Adjust
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-              {filteredGP.length === 0 && (
-                <div style={{ textAlign: 'center', padding: 32, color: 'var(--text-muted)' }}>
-                  <Package size={32} style={{ margin: '0 auto 8px', opacity: 0.3, display: 'block' }} />
-                  <p style={{ fontSize: 14, fontWeight: 600 }}>No general purchases yet</p>
-                </div>
+                    return <span style={{ fontWeight: 700, color: gpRemaining === 0 ? '#ef4444' : '#10b981' }}>{gpRemaining.toLocaleString()}</span>;
+                  }
+                },
+                { key: 'dateReceived', label: 'Date Received' },
+              ]}
+              data={filteredGP}
+              rowKey={gp => gp.id}
+              onRowClick={gp => setSelectedGP(gp)}
+              emptyIcon={<Package size={32} />}
+              emptyTitle="No general purchases yet"
+              renderActions={gp => (
+                <button onClick={() => { setAdjustTarget(gp); setShowAdjust(true); }}
+                  style={{ background: 'var(--accent-light)', border: '1px solid var(--accent)', color: 'var(--accent)', borderRadius: 8, padding: '4px 10px', fontSize: 11, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                  Adjust
+                </button>
               )}
-            </div>
+            />
           </>
         )}
       </div>

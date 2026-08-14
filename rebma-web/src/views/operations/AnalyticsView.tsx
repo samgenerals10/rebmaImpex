@@ -8,6 +8,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { exportToCSV } from '../../utils/export';
 import CountUp from '../../components/CountUp';
 import SidePanel from '../../components/ui/SidePanel';
+import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
 
 interface AddNotificationProps { addNotification: (msg: string) => void; }
 
@@ -27,30 +28,19 @@ function KpiDetailModal({ title, rows, onClose }: { title: string; rows: CargoRo
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Filter records…"
               className="w-full px-3 py-2 rounded-xl bg-[var(--bg)] border border-[var(--border)] text-xs text-[var(--text-primary)] focus:outline-none" />
           </div>
-          <div className="overflow-auto flex-1">
-            <table className="w-full text-xs">
-              <thead className="sticky top-0 bg-[var(--bg)] border-b border-[var(--border)]">
-                <tr>{['Date','Product','Quantity','Supplier','Status'].map(h => (
-                  <th key={h} className="px-4 py-2.5 text-left text-[10px] font-semibold text-[var(--text-muted)] uppercase whitespace-nowrap">{h}</th>
-                ))}</tr>
-              </thead>
-              <tbody className="divide-y divide-[var(--border)]">
-                {filtered.length === 0
-                  ? <tr><td colSpan={5} className="px-4 py-8 text-center text-[var(--text-muted)]">No records found.</td></tr>
-                  : filtered.map((r, i) => (
-                    <tr key={i} className="hover:bg-[var(--accent-light)] transition-colors">
-                      <td className="px-4 py-2.5 text-[var(--text-muted)]">{r.date}</td>
-                      <td className="px-4 py-2.5 font-semibold text-[var(--text-primary)]">{r.product}</td>
-                      <td className="px-4 py-2.5 font-mono text-[var(--accent)]">{r.quantity.toLocaleString()}</td>
-                      <td className="px-4 py-2.5 text-[var(--text-secondary)]">{r.supplier}</td>
-                      <td className="px-4 py-2.5">
-                        <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${r.status === 'APPROVED' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>{r.status}</span>
-                      </td>
-                    </tr>
-                  ))
-                }
-              </tbody>
-            </table>
+          <div className="overflow-auto flex-1 p-3">
+            <ResponsiveDataView<CargoRow>
+              columns={[
+                { key: 'product', label: 'Product', primary: true },
+                { key: 'date', label: 'Date' },
+                { key: 'quantity', label: 'Quantity', render: r => <span className="font-mono text-[var(--accent)]">{r.quantity.toLocaleString()}</span> },
+                { key: 'supplier', label: 'Supplier' },
+                { key: 'status', label: 'Status', status: true, render: r => <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${r.status === 'APPROVED' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>{r.status}</span> },
+              ]}
+              data={filtered}
+              rowKey={(r) => String(filtered.indexOf(r))}
+              emptyTitle="No records found"
+            />
           </div>
           <div className="px-5 py-3 border-t border-[var(--border)] text-xs text-[var(--text-muted)]">{filtered.length} records</div>
         </div>
@@ -398,45 +388,30 @@ export default function AnalyticsView({ addNotification }: AddNotificationProps)
             </button>
           )}
         </div>
-        <div className="overflow-x-auto">
-          {loading ? (
-            <div className="p-4 space-y-2">
-              {Array.from({ length: 5 }).map((_, i) => <div key={i} className="animate-pulse h-10 bg-slate-100 dark:bg-slate-800 rounded-xl" />)}
-            </div>
-          ) : topProducts.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <Package className="w-10 h-10 text-gray-300 mb-3" />
-              <p className="text-sm font-semibold text-gray-500">No products yet</p>
-              <p className="text-xs text-gray-400 mt-1">Products will appear here as cargo is logged</p>
-            </div>
-          ) : (
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b border-[var(--border)] text-[var(--text-muted)] uppercase font-semibold text-[10px]">
-                  {['Rank', 'Product', 'Total Received', 'Total Released', 'Status'].map(h => (
-                    <th key={h} className="py-3 px-5 text-left whitespace-nowrap">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[var(--border)]">
-                {topProducts.map(row => (
-                  <tr key={row.rank} className="hover:bg-[var(--accent-light)] transition-colors">
-                    <td className="py-3.5 px-5 font-mono font-bold text-[var(--text-muted)]">#{row.rank}</td>
-                    <td className="py-3.5 px-5 font-semibold text-[var(--text-primary)]">{row.name}</td>
-                    <td className="py-3.5 px-5 font-mono font-bold text-[var(--accent)]">{row.received.toLocaleString()} <span className="font-normal text-[var(--text-muted)] text-[10px]">(x{row.receivedCount})</span></td>
-                    <td className="py-3.5 px-5 font-mono font-bold text-emerald-500">{row.releasedQty.toLocaleString()} <span className="font-normal text-[var(--text-muted)] text-[10px]">(x{row.releasedCount})</span></td>
-                    <td className="py-3.5 px-5">
-                      <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
-                        row.status === 'Healthy' ? 'bg-emerald-500/10 text-emerald-600' :
-                        row.status === 'Low Stock' ? 'bg-amber-500/10 text-amber-600' :
-                        'bg-rose-500/10 text-rose-600'
-                      }`}>{row.status}</span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+        <div className="p-3">
+          <ResponsiveDataView<typeof topProducts[number]>
+            columns={[
+              { key: 'name', label: 'Product', primary: true },
+              { key: 'rank', label: 'Rank', render: row => <span className="font-mono font-bold text-[var(--text-muted)]">#{row.rank}</span> },
+              { key: 'received', label: 'Total Received', render: row => <span className="font-mono font-bold text-[var(--accent)]">{row.received.toLocaleString()} <span className="font-normal text-[var(--text-muted)] text-[10px]">(x{row.receivedCount})</span></span> },
+              { key: 'releasedQty', label: 'Total Released', render: row => <span className="font-mono font-bold text-emerald-500">{row.releasedQty.toLocaleString()} <span className="font-normal text-[var(--text-muted)] text-[10px]">(x{row.releasedCount})</span></span> },
+              {
+                key: 'status', label: 'Status', status: true, render: row => (
+                  <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
+                    row.status === 'Healthy' ? 'bg-emerald-500/10 text-emerald-600' :
+                    row.status === 'Low Stock' ? 'bg-amber-500/10 text-amber-600' :
+                    'bg-rose-500/10 text-rose-600'
+                  }`}>{row.status}</span>
+                )
+              },
+            ]}
+            data={topProducts}
+            rowKey={row => String(row.rank)}
+            loading={loading}
+            emptyIcon={<Package className="w-10 h-10" />}
+            emptyTitle="No products yet"
+            emptyDescription="Products will appear here as cargo is logged"
+          />
         </div>
       </div>
 
