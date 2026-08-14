@@ -9,6 +9,7 @@ import { supabase } from '../../lib/supabaseClient';
 import CountUp from '../../components/CountUp';
 import { useCeoSettings } from '../../contexts/CeoSettingsContext';
 import SidePanel from '../../components/ui/SidePanel';
+import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
 
 interface VisitorToday {
   id: string;
@@ -305,49 +306,30 @@ export default function DailyReportsView({ addNotification }: Props) {
           <div className="px-4 py-3 border-b border-[var(--border)]">
             <h3 className="text-sm font-bold text-[var(--text-primary)]">Visitor Summary</h3>
           </div>
-          <div className="overflow-x-auto">
-            {loading ? (
-              <div className="p-4 space-y-2">
-                {Array.from({ length: 3 }).map((_, i) => (
-                  <div key={i} className="animate-pulse h-8 bg-[var(--bg-input)] rounded-lg" />
-                ))}
-              </div>
-            ) : visitorsToday.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-10 text-[var(--text-muted)]">
-                <Users className="w-8 h-8 opacity-30 mb-2" />
-                <p className="text-xs">No visitor check-ins today.</p>
-              </div>
-            ) : (
-              <table className="w-full text-xs">
-                <thead><tr className="bg-[var(--bg-input)] border-b border-[var(--border)]">
-                  <th className="px-3 py-2 text-left text-[var(--text-muted)] font-semibold">Name</th>
-                  <th className="px-3 py-2 text-left text-[var(--text-muted)] font-semibold">Purpose</th>
-                  <th className="px-3 py-2 text-left text-[var(--text-muted)] font-semibold">In</th>
-                  <th className="px-3 py-2 text-left text-[var(--text-muted)] font-semibold">Out</th>
-                  <th className="px-3 py-2 text-right text-[var(--text-muted)] font-semibold">Actions</th>
-                </tr></thead>
-                <tbody>
-                  {visitorsToday.map(v => (
-                    <tr key={v.id} className="border-b border-[var(--border)] hover:bg-[var(--accent-light)] transition-colors">
-                      <td className="px-3 py-2 font-semibold text-[var(--text-primary)]">{v.name}</td>
-                      <td className="px-3 py-2 text-[var(--text-secondary)]">{v.purpose}</td>
-                      <td className="px-3 py-2 text-[var(--text-muted)] font-mono">{v.in}</td>
-                      <td className="px-3 py-2 font-mono">{v.out ? <span className="text-[var(--text-muted)]">{v.out}</span> : <span className="text-emerald-600 font-semibold">On Site</span>}</td>
-                      <td className="px-3 py-2 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <button onClick={() => handleEditVisitor(v)} className="p-1 text-[var(--text-secondary)] hover:text-[var(--accent)] hover:bg-[var(--bg)] rounded-lg transition-colors cursor-pointer" title="Edit">
-                            <Edit className="w-3.5 h-3.5" />
-                          </button>
-                          <button onClick={() => handleDeleteVisitor(v.id)} className="p-1 text-rose-500 hover:text-rose-700 hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer" title="Delete">
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
+          <div className="p-3">
+            <ResponsiveDataView<typeof visitorsToday[number]>
+              columns={[
+                { key: 'name', label: 'Name', primary: true },
+                { key: 'purpose', label: 'Purpose' },
+                { key: 'in', label: 'In', render: v => <span className="font-mono">{v.in}</span> },
+                { key: 'out', label: 'Out', status: true, render: v => <span className="font-mono">{v.out ? <span className="text-[var(--text-muted)]">{v.out}</span> : <span className="text-emerald-600 font-semibold">On Site</span>}</span> },
+              ]}
+              data={visitorsToday}
+              rowKey={v => v.id}
+              loading={loading}
+              emptyIcon={<Users className="w-8 h-8" />}
+              emptyTitle="No visitor check-ins today"
+              renderActions={v => (
+                <>
+                  <button onClick={() => handleEditVisitor(v)} className="p-1 text-[var(--text-secondary)] hover:text-[var(--accent)] hover:bg-[var(--bg)] rounded-lg transition-colors cursor-pointer" title="Edit">
+                    <Edit className="w-3.5 h-3.5" />
+                  </button>
+                  <button onClick={() => handleDeleteVisitor(v.id)} className="p-1 text-rose-500 hover:text-rose-700 hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer" title="Delete">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </>
+              )}
+            />
           </div>
         </div>
 
@@ -409,58 +391,41 @@ export default function DailyReportsView({ addNotification }: Props) {
         <div className="px-4 py-3 border-b border-[var(--border)] flex items-center justify-between">
           <h3 className="text-sm font-bold text-[var(--text-primary)]">Past Reports — Last 7 Days</h3>
         </div>
-        <div className="overflow-x-auto">
-          {loading ? (
-            <div className="p-4 space-y-2">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="animate-pulse h-8 bg-[var(--bg-input)] rounded-lg" />
-              ))}
-            </div>
-          ) : pastReports.length === 0 ? (
-            <p className="text-xs text-[var(--text-muted)] text-center py-6">No historical data available.</p>
-          ) : (
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="bg-[var(--bg-input)] border-b border-[var(--border)]">
-                  {['Date', 'Visitors', 'Attendance Rate', 'Check-ins', 'Actions'].map(h => (
-                    <th key={h} className="px-4 py-3 text-left text-[var(--text-muted)] font-semibold uppercase text-[10px]">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {pastReports.map((r, i) => (
-                  <tr key={i} className="border-b border-[var(--border)] hover:bg-[var(--accent-light)] transition-colors">
-                    <td className="px-4 py-3 font-semibold text-[var(--text-primary)]">
-                      {new Date(r.date).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
-                    </td>
-                    <td className="px-4 py-3 text-[var(--text-secondary)]">{r.visitors}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 h-1.5 bg-[var(--bg-input)] rounded-full overflow-hidden max-w-20">
-                          <div className={`h-1.5 rounded-full ${r.attendanceRate >= 95 ? 'bg-emerald-500' : r.attendanceRate >= 80 ? 'bg-amber-500' : 'bg-rose-500'}`}
-                            style={{ width: `${r.attendanceRate}%` }} />
-                        </div>
-                        <span className="text-[var(--text-muted)]">{r.attendanceRate}%</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-[var(--text-secondary)]">{r.checkins}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <button onClick={() => { setSelectedDate(r.date); setViewingPast(r); }}
-                          className="flex items-center gap-1 px-2 py-1 bg-[var(--accent-light)] text-[var(--accent)] text-[10px] font-semibold rounded-lg cursor-pointer hover:opacity-90">
-                          <Eye className="w-3 h-3" /> View
-                        </button>
-                        <button onClick={() => exportToPDF(`Daily Report ${r.date}`, visitorsToday, ['id','name','company','purpose','host','in','out'])}
-                          className="flex items-center gap-1 px-2 py-1 bg-[var(--bg-input)] text-[var(--text-secondary)] text-[10px] font-semibold rounded-lg cursor-pointer hover:bg-[var(--accent-light)] border border-[var(--border)]">
-                          <Download className="w-3 h-3" /> PDF
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+        <div className="p-3">
+          <ResponsiveDataView<typeof pastReports[number]>
+            columns={[
+              { key: 'date', label: 'Date', primary: true, render: r => new Date(r.date).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) },
+              { key: 'visitors', label: 'Visitors' },
+              {
+                key: 'attendanceRate', label: 'Attendance Rate', status: true, render: r => (
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 h-1.5 bg-[var(--bg-input)] rounded-full overflow-hidden max-w-20">
+                      <div className={`h-1.5 rounded-full ${r.attendanceRate >= 95 ? 'bg-emerald-500' : r.attendanceRate >= 80 ? 'bg-amber-500' : 'bg-rose-500'}`}
+                        style={{ width: `${r.attendanceRate}%` }} />
+                    </div>
+                    <span className="text-[var(--text-muted)]">{r.attendanceRate}%</span>
+                  </div>
+                )
+              },
+              { key: 'checkins', label: 'Check-ins' },
+            ]}
+            data={pastReports}
+            rowKey={r => r.date}
+            loading={loading}
+            emptyTitle="No historical data available"
+            renderActions={r => (
+              <div className="flex items-center gap-2">
+                <button onClick={() => { setSelectedDate(r.date); setViewingPast(r); }}
+                  className="flex items-center gap-1 px-2 py-1 bg-[var(--accent-light)] text-[var(--accent)] text-[10px] font-semibold rounded-lg cursor-pointer hover:opacity-90">
+                  <Eye className="w-3 h-3" /> View
+                </button>
+                <button onClick={() => exportToPDF(`Daily Report ${r.date}`, visitorsToday, ['id','name','company','purpose','host','in','out'])}
+                  className="flex items-center gap-1 px-2 py-1 bg-[var(--bg-input)] text-[var(--text-secondary)] text-[10px] font-semibold rounded-lg cursor-pointer hover:bg-[var(--accent-light)] border border-[var(--border)]">
+                  <Download className="w-3 h-3" /> PDF
+                </button>
+              </div>
+            )}
+          />
         </div>
       </div>
 

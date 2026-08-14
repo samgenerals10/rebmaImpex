@@ -9,6 +9,7 @@ import { exportToPDF } from '../../utils/export';
 import CountUp from '../../components/CountUp';
 import SidePanel from '../../components/ui/SidePanel';
 import SearchableDropdown from '../../components/ui/SearchableDropdown';
+import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
 import type { Visitor } from '../../types/erp';
 import { usePaginatedQuery } from '../../hooks/usePaginatedQuery';
 
@@ -297,84 +298,80 @@ export default function VisitorsView({ addNotification }: Props) {
       {/* Table */}
       {loading && <div className="space-y-2">{Array.from({ length: 5 }).map((_, i) => <div key={i} className="animate-pulse h-10 bg-slate-200 dark:bg-slate-700 rounded mb-2" />)}</div>}
       {!loading && <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs" style={{ minWidth: 750 }}>
-            <thead>
-              <tr className="bg-[var(--bg)] border-b border-[var(--border)]">
-                {['Badge', 'Name', 'Company', 'Purpose', 'Host', 'Check-In', 'Check-Out', 'Status', ''].map(h => (
-                  <th key={h} className="px-4 py-3 text-left text-[var(--text-muted)] font-semibold uppercase text-[10px] whitespace-nowrap">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map(v => {
-                const onSite = !v.checkOutTime;
-                const ps = purposeStyle(v.purpose);
-                return (
-                  <tr key={v.id} className="border-b border-[var(--border)] hover:bg-[var(--bg)] transition-colors cursor-pointer"
-                    onClick={() => setDetailVisitor(v)}>
-                    <td className="px-4 py-3 text-[var(--accent)] font-bold whitespace-nowrap">{v.badgeNumber}</td>
-                    <td className="px-4 py-3 text-[var(--text-primary)] font-semibold whitespace-nowrap">{v.fullName}</td>
-                    <td className="px-4 py-3 text-[var(--text-secondary)]">{v.company || '—'}</td>
-                    <td className="px-4 py-3">
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap" style={{ background: ps.bg, color: ps.color }}>{v.purpose}</span>
-                    </td>
-                    <td className="px-4 py-3 text-[var(--text-secondary)] whitespace-nowrap">{v.hostName}</td>
-                    <td className="px-4 py-3 text-[var(--text-secondary)] font-mono whitespace-nowrap">{fmt(v.checkInTime)}</td>
-                    <td className="px-4 py-3 text-[var(--text-muted)] font-mono whitespace-nowrap">{v.checkOutTime ? fmt(v.checkOutTime) : '—'}</td>
-                    <td className="px-4 py-3">
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${onSite ? 'bg-emerald-500/10 text-emerald-600' : 'bg-slate-500/10 text-slate-500'}`}>
-                        {onSite ? 'On Site' : 'Left'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-                      <div className="relative">
-                        <button onClick={() => setMenuOpen(menuOpen === v.id ? null : v.id)}
-                          className="w-7 h-7 flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--accent-light)] rounded-lg cursor-pointer">
-                          <MoreVertical className="w-4 h-4" />
+        <div className="p-3">
+          <ResponsiveDataView<VisitorRecord>
+            columns={[
+              { key: 'fullName', label: 'Name', primary: true },
+              { key: 'badgeNumber', label: 'Badge', render: v => <span className="text-[var(--accent)] font-bold">{v.badgeNumber}</span> },
+              { key: 'company', label: 'Company', render: v => v.company || '—' },
+              {
+                key: 'purpose', label: 'Purpose', render: v => {
+                  const ps = purposeStyle(v.purpose);
+                  return <span className="text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap" style={{ background: ps.bg, color: ps.color }}>{v.purpose}</span>;
+                }
+              },
+              { key: 'hostName', label: 'Host' },
+              { key: 'checkInTime', label: 'Check-In', render: v => <span className="font-mono">{fmt(v.checkInTime)}</span> },
+              { key: 'checkOutTime', label: 'Check-Out', render: v => <span className="font-mono">{v.checkOutTime ? fmt(v.checkOutTime) : '—'}</span> },
+              {
+                key: 'status', label: 'Status', status: true, render: v => {
+                  const onSite = !v.checkOutTime;
+                  return (
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${onSite ? 'bg-emerald-500/10 text-emerald-600' : 'bg-slate-500/10 text-slate-500'}`}>
+                      {onSite ? 'On Site' : 'Left'}
+                    </span>
+                  );
+                }
+              },
+            ]}
+            data={filtered}
+            rowKey={v => v.id}
+            onRowClick={v => setDetailVisitor(v)}
+            emptyTitle="No visitors found"
+            renderActions={v => {
+              const onSite = !v.checkOutTime;
+              return (
+                <div className="relative">
+                  <button onClick={() => setMenuOpen(menuOpen === v.id ? null : v.id)}
+                    className="w-7 h-7 flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--accent-light)] rounded-lg cursor-pointer">
+                    <MoreVertical className="w-4 h-4" />
+                  </button>
+                  {menuOpen === v.id && (
+                    <div className="absolute right-0 top-full mt-1 w-48 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl z-30 p-1">
+                      <button onClick={() => { setDetailVisitor(v); setMenuOpen(null); }}
+                        className="flex items-center gap-2 w-full px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg cursor-pointer">
+                        <Eye className="w-3.5 h-3.5" /> View Details
+                      </button>
+                      {onSite && (
+                        <button onClick={() => { handleCheckOut(v.id); setMenuOpen(null); }}
+                          className="flex items-center gap-2 w-full px-3 py-2 text-xs text-amber-600 hover:bg-amber-500/10 rounded-lg cursor-pointer">
+                          <LogOut className="w-3.5 h-3.5" /> Check Out
                         </button>
-                        {menuOpen === v.id && (
-                          <div className="absolute right-0 top-full mt-1 w-48 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl z-30 p-1">
-                            <button onClick={() => { setDetailVisitor(v); setMenuOpen(null); }}
-                              className="flex items-center gap-2 w-full px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg cursor-pointer">
-                              <Eye className="w-3.5 h-3.5" /> View Details
-                            </button>
-                            {onSite && (
-                              <button onClick={() => { handleCheckOut(v.id); setMenuOpen(null); }}
-                                className="flex items-center gap-2 w-full px-3 py-2 text-xs text-amber-600 hover:bg-amber-500/10 rounded-lg cursor-pointer">
-                                <LogOut className="w-3.5 h-3.5" /> Check Out
-                              </button>
-                            )}
-                            <button onClick={() => { printVisitorPass(v); setMenuOpen(null); }}
-                              className="flex items-center gap-2 w-full px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg cursor-pointer">
-                              <Printer className="w-3.5 h-3.5" /> Print Visitor Pass
-                            </button>
-                            <button onClick={() => { handleEditClick(v); setMenuOpen(null); }}
-                              className="flex items-center gap-2 w-full px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg cursor-pointer">
-                              <Edit className="w-3.5 h-3.5" /> Edit Details
-                            </button>
-                            <div className="h-px bg-[var(--border)] my-1" />
-                            <button onClick={() => { handleDelete(v.id); setMenuOpen(null); }}
-                              className="flex items-center gap-2 w-full px-3 py-2 text-xs text-rose-500 hover:bg-rose-50 rounded-lg cursor-pointer">
-                              <Trash2 className="w-3.5 h-3.5" /> Delete Visitor
-                            </button>
-                            <button onClick={() => { exportToPDF('Visitor Record', [v], ['badgeNumber','fullName','company','purpose','hostName','checkInTime','checkOutTime']); setMenuOpen(null); }}
-                              className="flex items-center gap-2 w-full px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg cursor-pointer">
-                              <Download className="w-3.5 h-3.5" /> Export PDF
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                      )}
+                      <button onClick={() => { printVisitorPass(v); setMenuOpen(null); }}
+                        className="flex items-center gap-2 w-full px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg cursor-pointer">
+                        <Printer className="w-3.5 h-3.5" /> Print Visitor Pass
+                      </button>
+                      <button onClick={() => { handleEditClick(v); setMenuOpen(null); }}
+                        className="flex items-center gap-2 w-full px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg cursor-pointer">
+                        <Edit className="w-3.5 h-3.5" /> Edit Details
+                      </button>
+                      <div className="h-px bg-[var(--border)] my-1" />
+                      <button onClick={() => { handleDelete(v.id); setMenuOpen(null); }}
+                        className="flex items-center gap-2 w-full px-3 py-2 text-xs text-rose-500 hover:bg-rose-50 rounded-lg cursor-pointer">
+                        <Trash2 className="w-3.5 h-3.5" /> Delete Visitor
+                      </button>
+                      <button onClick={() => { exportToPDF('Visitor Record', [v], ['badgeNumber','fullName','company','purpose','hostName','checkInTime','checkOutTime']); setMenuOpen(null); }}
+                        className="flex items-center gap-2 w-full px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg cursor-pointer">
+                        <Download className="w-3.5 h-3.5" /> Export PDF
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            }}
+          />
         </div>
-        {filtered.length === 0 && (
-          <div className="py-12 text-center text-[var(--text-muted)] text-sm">No visitors found</div>
-        )}
         <div className="px-4 py-3 border-t border-[var(--border)] bg-[var(--bg)] flex items-center justify-between">
           <p className="text-[10px] text-[var(--text-muted)]">Showing {filtered.length} of {todayVisitors.length} visitors ({visitors.length} loaded{typeof total === 'number' ? ` of ${total.toLocaleString()} all-time` : ''})</p>
           {hasMore && (

@@ -9,6 +9,7 @@ import {
 import { supabase } from '../../lib/supabaseClient';
 import { exportToCSV } from '../../utils/export';
 import CountUp from '../../components/CountUp';
+import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
 
 type Period = '7D' | '30D' | '90D' | '12M';
 const PERIOD_DAYS: Record<Period, number> = { '7D': 7, '30D': 30, '90D': 90, '12M': 365 };
@@ -306,35 +307,28 @@ export default function AnalyticsView({ addNotification }: Props) {
       {/* Row 4: Peak Hours Heatmap */}
       <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4">
         <h3 className="font-bold text-[var(--text-primary)] text-sm mb-4">Peak Hours Heatmap — Visitors per Hour per Day (last 4 weeks)</h3>
-        <div className="overflow-x-auto">
-          <table className="text-[10px] w-full" style={{ minWidth: 500 }}>
-            <thead>
-              <tr>
-                <th className="px-2 py-1 text-[var(--text-muted)] text-left font-semibold">Hour</th>
-                {DAYS.map(d => (
-                  <th key={d} className="px-2 py-1 text-[var(--text-muted)] font-semibold text-center">{d}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {PEAK_HOURS.map(h => (
-                <tr key={h}>
-                  <td className="px-2 py-1 font-semibold text-[var(--text-secondary)] whitespace-nowrap">{h}</td>
-                  {DAYS.map(d => {
-                    const v = heatmapData[h]?.[d] || 0;
-                    return (
-                      <td key={d} className="px-1 py-1">
-                        <div className="h-7 w-full rounded-lg flex items-center justify-center font-bold text-[10px]"
-                          style={{ background: heatColor(v), color: v >= 6 ? 'white' : 'var(--text-muted)' }}>
-                          {v || '—'}
-                        </div>
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div>
+          <ResponsiveDataView<string>
+            columns={[
+              { key: 'hour', label: 'Hour', primary: true, render: h => h },
+              ...DAYS.map(d => ({
+                key: d,
+                label: d,
+                align: 'center' as const,
+                render: (h: string) => {
+                  const v = heatmapData[h]?.[d] || 0;
+                  return (
+                    <div className="h-7 w-full rounded-lg flex items-center justify-center font-bold text-[10px]"
+                      style={{ background: heatColor(v), color: v >= 6 ? 'white' : 'var(--text-muted)' }}>
+                      {v || '—'}
+                    </div>
+                  );
+                }
+              })),
+            ]}
+            data={PEAK_HOURS}
+            rowKey={h => h}
+          />
           <div className="flex items-center gap-2 mt-2">
             <span className="text-[10px] text-[var(--text-muted)]">Low</span>
             {[0.05,0.15,0.35,0.6,0.9].map((o, i) => (

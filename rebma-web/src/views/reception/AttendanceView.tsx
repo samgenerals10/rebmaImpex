@@ -9,6 +9,7 @@ import { exportToCSV, exportToPDF } from '../../utils/export';
 import type { Attendance } from '../../types/erp';
 import SidePanel from '../../components/ui/SidePanel';
 import SearchableDropdown from '../../components/ui/SearchableDropdown';
+import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
 
 const DEPTS = ['CEO','MANAGEMENT','HR','MARKETING','OPERATIONS','FINANCE','PRODUCTION','RECEPTION','DISPATCH','LOGISTICS'];
 
@@ -233,92 +234,88 @@ export default function AttendanceView({ addNotification }: Props) {
         <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="h-12 rounded-2xl bg-[var(--bg-input)] animate-pulse" />)}</div>
       ) : (
         <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="bg-[var(--bg-input)] border-b border-[var(--border)]">
-                  {['Name','Check-In Time','Date','Type','GPS','Status',''].map(h => (
-                    <th key={h} className="px-4 py-3 text-left font-semibold text-[var(--text-muted)] uppercase">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.length === 0 ? (
-                  <tr><td colSpan={7} className="text-center py-8 text-[var(--text-muted)]">No attendance records found.</td></tr>
-                ) : filtered.map(r => (
-                  <tr key={r.id} className="border-b border-[var(--border)] hover:bg-[var(--accent-light)] transition-colors cursor-pointer"
-                    onClick={() => setDetailRow(r)}>
-                    <td className="px-4 py-3 font-semibold text-[var(--text-primary)]">
-                      <div className="flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-full bg-[var(--accent-light)] text-[var(--accent)] flex items-center justify-center text-[9px] font-bold shrink-0">
-                          {r.fullName.split(' ').map(n => n[0]).join('').slice(0,2)}
-                        </div>
-                        {r.fullName}
+          <div className="p-3">
+            <ResponsiveDataView<AttendanceRow>
+              columns={[
+                {
+                  key: 'fullName', label: 'Name', primary: true, render: r => (
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-full bg-[var(--accent-light)] text-[var(--accent)] flex items-center justify-center text-[9px] font-bold shrink-0">
+                        {r.fullName.split(' ').map(n => n[0]).join('').slice(0, 2)}
                       </div>
-                    </td>
-                    <td className="px-4 py-3 text-[var(--text-secondary)] font-mono">{r.checkInTime}</td>
-                    <td className="px-4 py-3 text-[var(--text-muted)]">{r.date || filterDate}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-1">
-                        {r.type === 'Virtual' ? <Wifi className="w-3 h-3 text-blue-500" /> : <MapPin className="w-3 h-3 text-emerald-500" />}
-                        <span className={`text-[10px] font-semibold ${r.type === 'Virtual' ? 'text-blue-500' : 'text-emerald-600'}`}>{r.type || 'Physical'}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      {r.gpsVerified
-                        ? <span className="text-emerald-600 text-[10px] font-bold flex items-center gap-0.5"><Navigation className="w-3 h-3" /> Verified</span>
-                        : <span className="text-slate-400 text-[10px]">—</span>}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${r.status === 'PRESENT' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
-                        {r.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-                      <div className="relative">
-                        <button onClick={() => setMenuOpen(menuOpen === r.id ? null : r.id)}
-                          className="w-7 h-7 flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--accent-light)] rounded-lg cursor-pointer">
-                          <MoreVertical className="w-4 h-4" />
-                        </button>
-                        {menuOpen === r.id && (
-                          <div className="absolute right-0 top-full mt-1 w-44 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl z-30 p-1">
-                            <button onClick={() => { setDetailRow(r); setMenuOpen(null); }}
-                              className="flex items-center gap-2 w-full px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg cursor-pointer">
-                              <Eye className="w-3.5 h-3.5" /> View Details
-                            </button>
-                            <button onClick={() => { handleMarkAbsent(r.id, r.fullName); setMenuOpen(null); }}
-                              className="flex items-center gap-2 w-full px-3 py-2 text-xs text-amber-600 hover:bg-amber-500/10 rounded-lg cursor-pointer">
-                              <AlertTriangle className="w-3.5 h-3.5" /> Mark Absent
-                            </button>
-                            <button onClick={() => { exportToPDF('Attendance Record', [r], ['id','fullName','checkInTime','status','date','type']); setMenuOpen(null); }}
-                              className="flex items-center gap-2 w-full px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg cursor-pointer">
-                              <Download className="w-3.5 h-3.5" /> Export PDF
-                            </button>
-                            <button onClick={async () => {
-                                if (submitting) return;
-                                setSubmitting(true);
-                                try {
-                                  await supabase.from('attendance').delete().eq('id', r.id);
-                                  setRows(prev => prev.filter(x => x.id !== r.id));
-                                  addNotification(`${r.fullName} record removed`);
-                                } catch {
-                                  addNotification('Failed to delete record.');
-                                } finally {
-                                  setSubmitting(false);
-                                  setMenuOpen(null);
-                                }
-                              }}
-                              className="flex items-center gap-2 w-full px-3 py-2 text-xs text-rose-500 hover:bg-rose-500/10 rounded-lg cursor-pointer disabled:opacity-50">
-                              <UserMinus className="w-3.5 h-3.5" /> Delete Log
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                      {r.fullName}
+                    </div>
+                  )
+                },
+                { key: 'checkInTime', label: 'Check-In Time', render: r => <span className="font-mono">{r.checkInTime}</span> },
+                { key: 'date', label: 'Date', render: r => r.date || filterDate },
+                {
+                  key: 'type', label: 'Type', render: r => (
+                    <div className="flex items-center gap-1">
+                      {r.type === 'Virtual' ? <Wifi className="w-3 h-3 text-blue-500" /> : <MapPin className="w-3 h-3 text-emerald-500" />}
+                      <span className={`text-[10px] font-semibold ${r.type === 'Virtual' ? 'text-blue-500' : 'text-emerald-600'}`}>{r.type || 'Physical'}</span>
+                    </div>
+                  )
+                },
+                {
+                  key: 'gpsVerified', label: 'GPS', render: r => r.gpsVerified
+                    ? <span className="text-emerald-600 text-[10px] font-bold flex items-center gap-0.5"><Navigation className="w-3 h-3" /> Verified</span>
+                    : <span className="text-slate-400 text-[10px]">—</span>
+                },
+                {
+                  key: 'status', label: 'Status', status: true, render: r => (
+                    <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${r.status === 'PRESENT' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                      {r.status}
+                    </span>
+                  )
+                },
+              ]}
+              data={filtered}
+              rowKey={r => r.id}
+              onRowClick={r => setDetailRow(r)}
+              emptyTitle="No attendance records found"
+              renderActions={r => (
+                <div className="relative">
+                  <button onClick={() => setMenuOpen(menuOpen === r.id ? null : r.id)}
+                    className="w-7 h-7 flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--accent-light)] rounded-lg cursor-pointer">
+                    <MoreVertical className="w-4 h-4" />
+                  </button>
+                  {menuOpen === r.id && (
+                    <div className="absolute right-0 top-full mt-1 w-44 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl z-30 p-1">
+                      <button onClick={() => { setDetailRow(r); setMenuOpen(null); }}
+                        className="flex items-center gap-2 w-full px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg cursor-pointer">
+                        <Eye className="w-3.5 h-3.5" /> View Details
+                      </button>
+                      <button onClick={() => { handleMarkAbsent(r.id, r.fullName); setMenuOpen(null); }}
+                        className="flex items-center gap-2 w-full px-3 py-2 text-xs text-amber-600 hover:bg-amber-500/10 rounded-lg cursor-pointer">
+                        <AlertTriangle className="w-3.5 h-3.5" /> Mark Absent
+                      </button>
+                      <button onClick={() => { exportToPDF('Attendance Record', [r], ['id','fullName','checkInTime','status','date','type']); setMenuOpen(null); }}
+                        className="flex items-center gap-2 w-full px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg cursor-pointer">
+                        <Download className="w-3.5 h-3.5" /> Export PDF
+                      </button>
+                      <button onClick={async () => {
+                          if (submitting) return;
+                          setSubmitting(true);
+                          try {
+                            await supabase.from('attendance').delete().eq('id', r.id);
+                            setRows(prev => prev.filter(x => x.id !== r.id));
+                            addNotification(`${r.fullName} record removed`);
+                          } catch {
+                            addNotification('Failed to delete record.');
+                          } finally {
+                            setSubmitting(false);
+                            setMenuOpen(null);
+                          }
+                        }}
+                        className="flex items-center gap-2 w-full px-3 py-2 text-xs text-rose-500 hover:bg-rose-500/10 rounded-lg cursor-pointer disabled:opacity-50">
+                        <UserMinus className="w-3.5 h-3.5" /> Delete Log
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            />
           </div>
           <div className="px-4 py-3 border-t border-[var(--border)] bg-[var(--bg-input)]">
             <p className="text-[10px] text-[var(--text-muted)]">Showing {filtered.length} of {rows.length} records</p>
