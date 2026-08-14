@@ -58,12 +58,12 @@ export default function MobileMetricCard({
       >
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">{label}</p>
+            <p className="text-[11px] font-bold uppercase tracking-wide text-[var(--text-secondary)]">{label}</p>
             <p className="text-[28px] leading-tight font-extrabold mt-1 tracking-tight" style={{ color }}>{value}</p>
-            {sublabel && <p className="text-xs text-[var(--text-muted)] mt-1">{sublabel}</p>}
+            {sublabel && <p className="text-xs text-[var(--text-secondary)] mt-1">{sublabel}</p>}
           </div>
           {icon && (
-            <div className="shrink-0 w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${color}1a`, color }}>
+            <div className="shrink-0 w-11 h-11 rounded-xl flex items-center justify-center" style={{ background: `${color}20`, color, boxShadow: `inset 0 0 0 1px ${color}30` }}>
               {icon}
             </div>
           )}
@@ -83,14 +83,14 @@ export default function MobileMetricCard({
       className={`w-full text-left bg-[var(--bg-card)] border border-[var(--border)] rounded-xl p-3 flex items-center gap-2.5 ${onClick ? 'cursor-pointer active:scale-[0.98] transition-transform' : ''}`}
     >
       {icon && (
-        <div className="shrink-0 w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: `${color}1a`, color }}>
+        <div className="shrink-0 w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: `${color}20`, color, boxShadow: `inset 0 0 0 1px ${color}30` }}>
           {icon}
         </div>
       )}
       <div className="min-w-0">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--text-muted)] truncate">{label}</p>
+        <p className="text-[10px] font-bold uppercase tracking-wide text-[var(--text-secondary)] truncate">{label}</p>
         <p className="text-sm font-bold text-[var(--text-primary)] mt-0.5 truncate">{value}</p>
-        {sublabel && <p className="text-[10px] text-[var(--text-muted)] truncate">{sublabel}</p>}
+        {sublabel && <p className="text-[10px] text-[var(--text-secondary)] truncate">{sublabel}</p>}
       </div>
     </div>
   );
