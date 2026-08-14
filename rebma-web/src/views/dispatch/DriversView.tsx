@@ -5,6 +5,7 @@ import { dispatch as dispatchApi } from '../../services/apiClient';
 import type { Driver, DeliveryRecord } from '../../types/erp';
 import SidePanel from '../../components/ui/SidePanel';
 import SearchableDropdown from '../../components/ui/SearchableDropdown';
+import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
 
 const statusColors: Record<Driver['status'], { bg: string; color: string; label: string }> = {
   ACTIVE:      { bg: '#d1fae5', color: '#065f46', label: 'Active' },
@@ -525,30 +526,21 @@ export default function DriversView({ addNotification }: Props) {
           ) : history.length === 0 ? (
             <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '24px 0' }}>No delivery history available.</p>
           ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
-                <thead>
-                  <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                    {['Order ID', 'Client', 'Destination', 'Dispatched', 'Status'].map(h => (
-                      <th key={h} style={{ textAlign: 'left', padding: '10px 12px', fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {history.map(r => (
-                    <tr key={r.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                      <td style={{ padding: '10px 12px', color: 'var(--text-primary)', fontWeight: 600 }}>{r.orderId}</td>
-                      <td style={{ padding: '10px 12px', color: 'var(--text-secondary)' }}>{r.clientName}</td>
-                      <td style={{ padding: '10px 12px', color: 'var(--text-secondary)' }}>{r.destination}</td>
-                      <td style={{ padding: '10px 12px', color: 'var(--text-muted)', fontSize: 13 }}>{fmt(r.dispatchedAt)}</td>
-                      <td style={{ padding: '10px 12px' }}>
-                        <span style={{ background: r.status === 'DELIVERED' ? '#d1fae5' : r.status === 'IN_TRANSIT' ? '#dbeafe' : '#ffe4e6', color: r.status === 'DELIVERED' ? '#065f46' : r.status === 'IN_TRANSIT' ? '#1d4ed8' : '#9f1239', borderRadius: 99, padding: '2px 10px', fontSize: 12, fontWeight: 600 }}>{r.status.replace('_', ' ')}</span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <ResponsiveDataView<DeliveryRecord>
+              columns={[
+                { key: 'orderId', label: 'Order ID', primary: true },
+                { key: 'clientName', label: 'Client' },
+                { key: 'destination', label: 'Destination' },
+                { key: 'dispatchedAt', label: 'Dispatched', render: r => fmt(r.dispatchedAt) },
+                {
+                  key: 'status', label: 'Status', status: true, render: r => (
+                    <span style={{ background: r.status === 'DELIVERED' ? '#d1fae5' : r.status === 'IN_TRANSIT' ? '#dbeafe' : '#ffe4e6', color: r.status === 'DELIVERED' ? '#065f46' : r.status === 'IN_TRANSIT' ? '#1d4ed8' : '#9f1239', borderRadius: 99, padding: '2px 10px', fontSize: 12, fontWeight: 600 }}>{r.status.replace('_', ' ')}</span>
+                  )
+                },
+              ]}
+              data={history}
+              rowKey={r => r.id}
+            />
           )}
         </div>
         {inviteTarget && (

@@ -16,6 +16,7 @@ import CountUp from '../../components/CountUp';
 import { useCeoSettings } from '../../contexts/CeoSettingsContext';
 import SidePanel from '../../components/ui/SidePanel';
 import SearchableDropdown from '../../components/ui/SearchableDropdown';
+import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
 
 
 // ── types ─────────────────────────────────────────────────────────────────────
@@ -678,94 +679,87 @@ export default function DeliveriesView({ addNotification, currentUser, setActive
         {loading ? (
           <div className="text-center py-16 text-[var(--text-muted)]">Loading deliveries...</div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-[var(--border)]">
-                  {['Delivery ID', 'Order ID', 'Customer', 'Destination', 'Driver / Vehicle', 'Dispatched', 'Status', 'Actions'].map(h => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wide whitespace-nowrap">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[var(--border)]">
-                {filtered.length === 0 && (
-                  <tr><td colSpan={8} className="text-center py-16 text-[var(--text-muted)]">No deliveries found</td></tr>
-                )}
-                {filtered.map(d => {
-                  const badge = STATUS_META[d.status];
-                  return (
-                    <tr key={d.id} className="hover:bg-[var(--bg-input)] cursor-pointer" onClick={() => setDetailRecord(d)}>
-                      <td className="px-4 py-3 font-mono text-xs font-bold" style={{ color: 'var(--accent)' }}>{d.id}</td>
-                      <td className="px-4 py-3 font-mono text-xs text-[var(--text-secondary)]">{d.orderId}</td>
-                      <td className="px-4 py-3 font-semibold text-[var(--text-primary)] whitespace-nowrap">{d.clientName}</td>
-                      <td className="px-4 py-3 text-[var(--text-secondary)] max-w-[180px] truncate">{d.destination}</td>
-                      <td className="px-4 py-3">
-                        {d.driverName ? (
-                          <div>
-                            <p className="text-xs font-medium text-[var(--text-primary)] whitespace-nowrap">{d.driverName}</p>
-                            {d.vehicleId && <p className="text-xs text-[var(--text-muted)] font-mono">{d.vehicleId}</p>}
-                          </div>
-                        ) : (
-                          <span className="text-xs text-red-500 font-medium flex items-center gap-1"><AlertCircle size={11} /> Unassigned</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-xs text-[var(--text-muted)] whitespace-nowrap">{fmt(d.dispatchedAt)}</td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-medium whitespace-nowrap ${badge.bg} ${badge.color}`}>
-                          {d.status === 'IN_TRANSIT' && <Truck size={10} />}
-                          {d.status === 'DELIVERED' && <CheckCircle size={10} />}
-                          {d.status === 'FAILED' && <XCircle size={10} />}
-                          {d.status === 'PENDING_ASSIGNMENT' && <Clock size={10} />}
-                          {badge.label}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 relative" onClick={e => e.stopPropagation()}>
-                        <button onClick={e => openMenu(d.id, e.currentTarget)}
-                          className="p-1.5 rounded-lg hover:bg-[var(--bg-input)] border border-transparent hover:border-[var(--border)]">
-                          <MoreVertical size={14} className="text-[var(--text-muted)]" />
+          <div className="p-3">
+            <ResponsiveDataView<DeliveryRecord>
+              columns={[
+                { key: 'clientName', label: 'Customer', primary: true },
+                { key: 'id', label: 'Delivery ID', render: d => <span className="font-mono text-xs font-bold" style={{ color: 'var(--accent)' }}>{d.id}</span> },
+                { key: 'orderId', label: 'Order ID', render: d => <span className="font-mono text-xs">{d.orderId}</span> },
+                { key: 'destination', label: 'Destination' },
+                {
+                  key: 'driver', label: 'Driver / Vehicle', render: d => d.driverName ? (
+                    <div>
+                      <p className="text-xs font-medium text-[var(--text-primary)] whitespace-nowrap">{d.driverName}</p>
+                      {d.vehicleId && <p className="text-xs text-[var(--text-muted)] font-mono">{d.vehicleId}</p>}
+                    </div>
+                  ) : (
+                    <span className="text-xs text-red-500 font-medium flex items-center gap-1"><AlertCircle size={11} /> Unassigned</span>
+                  )
+                },
+                { key: 'dispatchedAt', label: 'Dispatched', render: d => fmt(d.dispatchedAt) },
+                {
+                  key: 'status', label: 'Status', status: true, render: d => {
+                    const badge = STATUS_META[d.status];
+                    return (
+                      <span className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-medium whitespace-nowrap ${badge.bg} ${badge.color}`}>
+                        {d.status === 'IN_TRANSIT' && <Truck size={10} />}
+                        {d.status === 'DELIVERED' && <CheckCircle size={10} />}
+                        {d.status === 'FAILED' && <XCircle size={10} />}
+                        {d.status === 'PENDING_ASSIGNMENT' && <Clock size={10} />}
+                        {badge.label}
+                      </span>
+                    );
+                  }
+                },
+              ]}
+              data={filtered}
+              rowKey={d => d.id}
+              onRowClick={d => setDetailRecord(d)}
+              emptyTitle="No deliveries found"
+              renderActions={d => (
+                <div className="relative">
+                  <button onClick={e => openMenu(d.id, e.currentTarget)}
+                    className="p-1.5 rounded-lg hover:bg-[var(--bg-input)] border border-transparent hover:border-[var(--border)]">
+                    <MoreVertical size={14} className="text-[var(--text-muted)]" />
+                  </button>
+                  {menuOpen === d.id && (
+                    <div ref={menuRef} className={`absolute right-0 z-20 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl py-1 min-w-[180px] max-h-[70vh] overflow-y-auto ${menuOpenUp ? 'bottom-10' : 'top-10'}`}>
+                      <button onClick={() => { setDetailRecord(d); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--bg-input)] flex items-center gap-2"><Eye size={11} /> View Details</button>
+                      <button onClick={() => { setMenuOpen(null); setActiveSubTab?.('Tracking'); }} className="w-full text-left px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--bg-input)] flex items-center gap-2"><MapPin size={11} /> Track on GPS Map</button>
+                      <button onClick={() => { setAssignTarget(d); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--bg-input)] flex items-center gap-2"><UserCheck size={11} /> {d.driverId ? 'Reassign Driver' : 'Assign Driver'}</button>
+                      {d.driverId && (d.status === 'ASSIGNED' || d.status === 'IN_TRANSIT') && (
+                        <button
+                          onClick={async () => {
+                            setMenuOpen(null);
+                            try {
+                              await dispatchApi.sendWhatsAppDirections(d.driverId!);
+                              addNotification(`WhatsApp opened with directions for ${d.driverName || 'driver'} — tap Send to deliver them.`);
+                            } catch (e: any) {
+                              addNotification(`Failed to send WhatsApp directions: ${e.message}`);
+                            }
+                          }}
+                          className="w-full text-left px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--bg-input)] flex items-center gap-2"
+                        >
+                          <MessageCircle size={11} /> Send WhatsApp Directions
                         </button>
-                        {menuOpen === d.id && (
-                          <div ref={menuRef} className={`absolute right-4 z-20 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl py-1 min-w-[180px] max-h-[70vh] overflow-y-auto ${menuOpenUp ? 'bottom-10' : 'top-10'}`}
-                            onClick={e => e.stopPropagation()}>
-                            <button onClick={() => { setDetailRecord(d); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--bg-input)] flex items-center gap-2"><Eye size={11} /> View Details</button>
-                            <button onClick={() => { setMenuOpen(null); setActiveSubTab?.('Tracking'); }} className="w-full text-left px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--bg-input)] flex items-center gap-2"><MapPin size={11} /> Track on GPS Map</button>
-                            <button onClick={() => { setAssignTarget(d); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--bg-input)] flex items-center gap-2"><UserCheck size={11} /> {d.driverId ? 'Reassign Driver' : 'Assign Driver'}</button>
-                            {d.driverId && (d.status === 'ASSIGNED' || d.status === 'IN_TRANSIT') && (
-                              <button
-                                onClick={async () => {
-                                  setMenuOpen(null);
-                                  try {
-                                    await dispatchApi.sendWhatsAppDirections(d.driverId!);
-                                    addNotification(`WhatsApp opened with directions for ${d.driverName || 'driver'} — tap Send to deliver them.`);
-                                  } catch (e: any) {
-                                    addNotification(`Failed to send WhatsApp directions: ${e.message}`);
-                                  }
-                                }}
-                                className="w-full text-left px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--bg-input)] flex items-center gap-2"
-                              >
-                                <MessageCircle size={11} /> Send WhatsApp Directions
-                              </button>
-                            )}
-                            {d.status === 'IN_TRANSIT' && (
-                              <button onClick={() => markDelivered(d.id)} className="w-full text-left px-3 py-2 text-xs text-green-600 hover:bg-[var(--bg-input)] flex items-center gap-2"><CheckCircle size={11} /> Mark as Delivered</button>
-                            )}
-                            <button onClick={() => { setMenuOpen(null); addNotification(`Proof of delivery camera opened for ${d.id}`); }} className="w-full text-left px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--bg-input)] flex items-center gap-2"><Camera size={11} /> Proof of Delivery</button>
-                            {d.status !== 'DELIVERED' && d.status !== 'FAILED' && (
-                              <button onClick={() => markFailed(d.id)} className="w-full text-left px-3 py-2 text-xs text-red-500 hover:bg-[var(--bg-input)] flex items-center gap-2"><XCircle size={11} /> Mark as Failed</button>
-                            )}
-                            <div className="h-px bg-[var(--border)] mx-2 my-1" />
-                            <button onClick={() => { setEditingDelivery({ ...d }); setShowEdit(true); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--bg-input)] flex items-center gap-2"><Edit size={11} /> Edit Delivery Log</button>
-                            <button onClick={() => { handleDeleteDelivery(d.id); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-xs text-rose-500 hover:bg-[var(--bg-input)] flex items-center gap-2"><Trash2 size={11} /> Delete Delivery Log</button>
-                            <div className="h-px bg-[var(--border)] mx-2 my-1" />
-                            <button onClick={() => { exportToPDF(`Delivery Note — ${d.id}`, [d], ['id', 'orderId', 'clientName', 'destination', 'driverName', 'status']); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--bg-input)] flex items-center gap-2"><Download size={11} /> Export Delivery Note PDF</button>
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                      )}
+                      {d.status === 'IN_TRANSIT' && (
+                        <button onClick={() => markDelivered(d.id)} className="w-full text-left px-3 py-2 text-xs text-green-600 hover:bg-[var(--bg-input)] flex items-center gap-2"><CheckCircle size={11} /> Mark as Delivered</button>
+                      )}
+                      <button onClick={() => { setMenuOpen(null); addNotification(`Proof of delivery camera opened for ${d.id}`); }} className="w-full text-left px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--bg-input)] flex items-center gap-2"><Camera size={11} /> Proof of Delivery</button>
+                      {d.status !== 'DELIVERED' && d.status !== 'FAILED' && (
+                        <button onClick={() => markFailed(d.id)} className="w-full text-left px-3 py-2 text-xs text-red-500 hover:bg-[var(--bg-input)] flex items-center gap-2"><XCircle size={11} /> Mark as Failed</button>
+                      )}
+                      <div className="h-px bg-[var(--border)] mx-2 my-1" />
+                      <button onClick={() => { setEditingDelivery({ ...d }); setShowEdit(true); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--bg-input)] flex items-center gap-2"><Edit size={11} /> Edit Delivery Log</button>
+                      <button onClick={() => { handleDeleteDelivery(d.id); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-xs text-rose-500 hover:bg-[var(--bg-input)] flex items-center gap-2"><Trash2 size={11} /> Delete Delivery Log</button>
+                      <div className="h-px bg-[var(--border)] mx-2 my-1" />
+                      <button onClick={() => { exportToPDF(`Delivery Note — ${d.id}`, [d], ['id', 'orderId', 'clientName', 'destination', 'driverName', 'status']); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--bg-input)] flex items-center gap-2"><Download size={11} /> Export Delivery Note PDF</button>
+                    </div>
+                  )}
+                </div>
+              )}
+            />
           </div>
         )}
 
