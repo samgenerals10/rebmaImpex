@@ -3,6 +3,7 @@ import { Truck, Wrench, Settings, Package, Plus, Edit, ChevronLeft } from 'lucid
 import { supabase } from '../../lib/supabaseClient';
 import SidePanel from '../../components/ui/SidePanel';
 import SearchableDropdown from '../../components/ui/SearchableDropdown';
+import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
 
 interface Vehicle {
   id: string;
@@ -184,27 +185,16 @@ export default function FleetOverviewView({ addNotification }: Props) {
         </div>
         <div style={{ background: 'var(--bg-card)', borderRadius: 20, padding: 24, border: '1px solid var(--border)', boxShadow: 'var(--box-shadow)' }}>
           <h3 style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: 15, marginBottom: 16 }}>Recent Delivery History</h3>
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                  {['Date', 'Destination', 'Status', 'Amount'].map(h => (
-                    <th key={h} style={{ textAlign: 'left', padding: '10px 12px', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600 }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {[].map((d: { date: string; destination: string; status: string; amount: string }, i) => (
-                  <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
-                    <td style={{ padding: '12px', color: 'var(--text-primary)', fontSize: 13 }}>{d.date}</td>
-                    <td style={{ padding: '12px', color: 'var(--text-secondary)', fontSize: 13 }}>{d.destination}</td>
-                    <td style={{ padding: '12px' }}><span style={{ padding: '3px 10px', borderRadius: 9999, fontSize: 12, fontWeight: 600, background: 'rgba(16,185,129,0.15)', color: '#059669' }}>{d.status}</span></td>
-                    <td style={{ padding: '12px', color: 'var(--text-primary)', fontSize: 13, fontWeight: 600 }}>{d.amount}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <ResponsiveDataView<{ date: string; destination: string; status: string; amount: string }>
+            columns={[
+              { key: 'destination', label: 'Destination', primary: true },
+              { key: 'date', label: 'Date' },
+              { key: 'status', label: 'Status', status: true, render: d => <span style={{ padding: '3px 10px', borderRadius: 9999, fontSize: 12, fontWeight: 600, background: 'rgba(16,185,129,0.15)', color: '#059669' }}>{d.status}</span> },
+              { key: 'amount', label: 'Amount', render: d => <span style={{ fontWeight: 600 }}>{d.amount}</span> },
+            ]}
+            data={[]}
+            rowKey={d => d.date}
+          />
         </div>
       </div>
     );

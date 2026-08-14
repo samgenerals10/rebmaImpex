@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { usePaginatedQuery } from '../../hooks/usePaginatedQuery';
 import SidePanel from '../../components/ui/SidePanel';
 import SearchableDropdown from '../../components/ui/SearchableDropdown';
+import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
 
 interface MaintenanceRecord {
   id: string;
@@ -273,53 +274,38 @@ export default function MaintenanceView({ addNotification }: Props) {
 
       <div style={{ background: 'var(--bg-card)', borderRadius: 20, padding: 24, border: '1px solid var(--border)', boxShadow: 'var(--box-shadow)' }}>
         {loading && Array.from({ length: 5 }).map((_, i) => <div key={i} className="animate-pulse h-10 bg-slate-200 dark:bg-slate-700 rounded mb-2" />)}
-        {!loading && <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                {['Date', 'Vehicle', 'Type', 'Description', 'Cost (GHS)', 'Status', 'Mechanic', 'Actions'].map(h => (
-                  <th key={h} style={{ textAlign: 'left', padding: '10px 12px', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map(r => (
-                <tr key={r.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                  <td style={{ padding: '12px', color: 'var(--text-primary)', fontSize: 13, whiteSpace: 'nowrap' }}>{r.date}</td>
-                  <td style={{ padding: '12px', color: 'var(--text-primary)', fontSize: 13, fontWeight: 600 }}>{r.vehicleId}</td>
-                  <td style={{ padding: '12px', color: 'var(--text-secondary)', fontSize: 13 }}>{r.type}</td>
-                  <td style={{ padding: '12px', color: 'var(--text-secondary)', fontSize: 13, maxWidth: 200 }}>{r.description}</td>
-                  <td style={{ padding: '12px', color: 'var(--text-primary)', fontSize: 13, fontWeight: 600 }}>GHS {r.cost.toLocaleString()}</td>
-                  <td style={{ padding: '12px' }}>
-                    <span style={{ padding: '3px 10px', borderRadius: 9999, fontSize: 12, fontWeight: 600, background: `${STATUS_COLORS[r.status]}22`, color: STATUS_COLORS[r.status] }}>{r.status}</span>
-                  </td>
-                  <td style={{ padding: '12px', color: 'var(--text-muted)', fontSize: 12 }}>{r.mechanic}</td>
-                  <td style={{ padding: '12px' }}>
-                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                      {r.status !== 'Completed' && (
-                        <button onClick={() => handleMarkComplete(r.id)} style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: 8, padding: '4px 10px', color: '#059669', cursor: 'pointer', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' }}>
-                          <CheckCircle size={12} /> Complete
-                        </button>
-                      )}
-                      <button onClick={() => { setEditForm({ ...r }); setShowEditModal(true); }} style={{ background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 8, padding: '4px 8px', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 12 }} title="Edit">
-                        <Edit size={12} />
-                      </button>
-                      <button onClick={() => handleDelete(r)} style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 8, padding: '4px 8px', color: '#dc2626', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 12 }} title="Delete">
-                        <Trash2 size={12} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {filtered.length === 0 && (
-            <div className="text-center py-12 text-[var(--text-muted)]">
-              <AlertTriangle className="w-10 h-10 mx-auto mb-3 opacity-40" />
-              <p className="font-semibold text-sm">No maintenance records yet</p>
-              <p className="text-xs mt-1">They will appear here once added</p>
-            </div>
-          )}
+        {!loading && <div>
+          <ResponsiveDataView<MaintenanceRecord>
+            columns={[
+              { key: 'vehicleId', label: 'Vehicle', primary: true },
+              { key: 'date', label: 'Date' },
+              { key: 'type', label: 'Type' },
+              { key: 'description', label: 'Description' },
+              { key: 'cost', label: 'Cost (GHS)', render: r => <span style={{ fontWeight: 600 }}>GHS {r.cost.toLocaleString()}</span> },
+              { key: 'status', label: 'Status', status: true, render: r => <span style={{ padding: '3px 10px', borderRadius: 9999, fontSize: 12, fontWeight: 600, background: `${STATUS_COLORS[r.status]}22`, color: STATUS_COLORS[r.status] }}>{r.status}</span> },
+              { key: 'mechanic', label: 'Mechanic' },
+            ]}
+            data={filtered}
+            rowKey={r => r.id}
+            emptyIcon={<AlertTriangle className="w-10 h-10" />}
+            emptyTitle="No maintenance records yet"
+            emptyDescription="They will appear here once added"
+            renderActions={r => (
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                {r.status !== 'Completed' && (
+                  <button onClick={() => handleMarkComplete(r.id)} style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: 8, padding: '4px 10px', color: '#059669', cursor: 'pointer', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' }}>
+                    <CheckCircle size={12} /> Complete
+                  </button>
+                )}
+                <button onClick={() => { setEditForm({ ...r }); setShowEditModal(true); }} style={{ background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 8, padding: '4px 8px', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 12 }} title="Edit">
+                  <Edit size={12} />
+                </button>
+                <button onClick={() => handleDelete(r)} style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 8, padding: '4px 8px', color: '#dc2626', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 12 }} title="Delete">
+                  <Trash2 size={12} />
+                </button>
+              </div>
+            )}
+          />
           {!loading && records.length > 0 && (
             <div className="flex items-center justify-between px-4 py-3 border-t border-[var(--border)] text-xs text-[var(--text-muted)]">
               <span>Showing {records.length}{typeof total === 'number' ? ` of ${total.toLocaleString()}` : ''}</span>

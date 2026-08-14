@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { supabase } from '../../lib/supabaseClient';
+import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
 
 type Period = 'week' | 'month' | 'quarter' | 'year';
 
@@ -246,31 +247,22 @@ export default function FleetAnalyticsView({ addNotification: _addNotification }
         {efficiencyTable.length === 0 ? (
           <p style={{ color: 'var(--text-muted)', fontSize: 13, textAlign: 'center', padding: '20px 0' }}>Not enough fuel log data yet.</p>
         ) : (
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                {['Vehicle ID', 'Total Distance (km)', 'Total Fuel Used (L)', 'Efficiency (km/L)'].map(h => (
-                  <th key={h} style={{ textAlign: 'left', padding: '10px 14px', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600 }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {efficiencyTable.map(row => (
-                <tr key={row.vehicleId} style={{ borderBottom: '1px solid var(--border)' }}>
-                  <td style={{ padding: '12px 14px', color: 'var(--text-primary)', fontSize: 14, fontWeight: 600 }}>{row.vehicleId}</td>
-                  <td style={{ padding: '12px 14px', color: 'var(--text-secondary)', fontSize: 13 }}>{row.distance.toLocaleString()}</td>
-                  <td style={{ padding: '12px 14px', color: 'var(--text-secondary)', fontSize: 13 }}>{row.fuelUsed.toLocaleString()}</td>
-                  <td style={{ padding: '12px 14px' }}>
-                    <span style={{ padding: '3px 10px', borderRadius: 9999, fontSize: 13, fontWeight: 700, background: row.efficiency >= 10 ? 'rgba(16,185,129,0.15)' : row.efficiency >= 8 ? 'rgba(251,191,36,0.15)' : 'rgba(239,68,68,0.15)', color: row.efficiency >= 10 ? '#059669' : row.efficiency >= 8 ? '#d97706' : '#dc2626' }}>
-                      {row.efficiency}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <ResponsiveDataView<typeof efficiencyTable[number]>
+          columns={[
+            { key: 'vehicleId', label: 'Vehicle ID', primary: true },
+            { key: 'distance', label: 'Total Distance (km)', render: row => row.distance.toLocaleString() },
+            { key: 'fuelUsed', label: 'Total Fuel Used (L)', render: row => row.fuelUsed.toLocaleString() },
+            {
+              key: 'efficiency', label: 'Efficiency (km/L)', status: true, render: row => (
+                <span style={{ padding: '3px 10px', borderRadius: 9999, fontSize: 13, fontWeight: 700, background: row.efficiency >= 10 ? 'rgba(16,185,129,0.15)' : row.efficiency >= 8 ? 'rgba(251,191,36,0.15)' : 'rgba(239,68,68,0.15)', color: row.efficiency >= 10 ? '#059669' : row.efficiency >= 8 ? '#d97706' : '#dc2626' }}>
+                  {row.efficiency}
+                </span>
+              )
+            },
+          ]}
+          data={efficiencyTable}
+          rowKey={row => row.vehicleId}
+        />
         )}
       </div>
       </>

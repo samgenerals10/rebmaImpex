@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { usePaginatedQuery } from '../../hooks/usePaginatedQuery';
 import SidePanel from '../../components/ui/SidePanel';
 import SearchableDropdown from '../../components/ui/SearchableDropdown';
+import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
 
 interface FuelLog {
   id: string;
@@ -230,46 +231,33 @@ export default function FuelManagementView({ addNotification }: Props) {
       <div style={{ background: 'var(--bg-card)', borderRadius: 20, padding: 24, border: '1px solid var(--border)', boxShadow: 'var(--box-shadow)' }}>
         <h2 style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: 16, marginBottom: 16 }}>Fuel Logs</h2>
         {loading && Array.from({ length: 5 }).map((_, i) => <div key={i} className="animate-pulse h-10 bg-slate-200 dark:bg-slate-700 rounded mb-2" />)}
-        {!loading && <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                {['Date', 'Vehicle ID', 'Driver', 'Liters', 'Cost (GHS)', 'Fuel Station', 'Odometer (km)', 'Actions'].map(h => (
-                  <th key={h} style={{ textAlign: 'left', padding: '10px 12px', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map(l => (
-                <tr key={l.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                  <td style={{ padding: '12px', color: 'var(--text-primary)', fontSize: 13 }}>{l.date}</td>
-                  <td style={{ padding: '12px', color: 'var(--text-primary)', fontSize: 13, fontWeight: 600 }}>{l.vehicleId}</td>
-                  <td style={{ padding: '12px', color: 'var(--text-secondary)', fontSize: 13 }}>{l.driver || '—'}</td>
-                  <td style={{ padding: '12px', color: 'var(--text-secondary)', fontSize: 13 }}>{l.liters} L</td>
-                  <td style={{ padding: '12px', color: 'var(--accent)', fontSize: 13, fontWeight: 600 }}>GHS {l.cost.toLocaleString()}</td>
-                  <td style={{ padding: '12px', color: 'var(--text-secondary)', fontSize: 13 }}>{l.station}</td>
-                  <td style={{ padding: '12px', color: 'var(--text-muted)', fontSize: 13 }}>{l.odometer.toLocaleString()}</td>
-                  <td style={{ padding: '12px' }}>
-                    <div style={{ display: 'flex', gap: 6 }}>
-                      <button onClick={() => { setEditForm({ ...l }); setShowEditModal(true); }} style={{ background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 8, padding: '4px 8px', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 12 }} title="Edit">
-                        <Edit size={12} />
-                      </button>
-                      <button onClick={() => handleDelete(l)} style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 8, padding: '4px 8px', color: '#dc2626', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 12 }} title="Delete">
-                        <Trash2 size={12} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {filtered.length === 0 && (
-            <div className="text-center py-12 text-[var(--text-muted)]">
-              <Fuel className="w-10 h-10 mx-auto mb-3 opacity-40" />
-              <p className="font-semibold text-sm">No fuel logs yet</p>
-              <p className="text-xs mt-1">They will appear here once added</p>
-            </div>
-          )}
+        {!loading && <div>
+          <ResponsiveDataView<FuelLog>
+            columns={[
+              { key: 'vehicleId', label: 'Vehicle ID', primary: true },
+              { key: 'date', label: 'Date' },
+              { key: 'driver', label: 'Driver', render: l => l.driver || '—' },
+              { key: 'liters', label: 'Liters', render: l => `${l.liters} L` },
+              { key: 'cost', label: 'Cost (GHS)', status: true, render: l => <span style={{ color: 'var(--accent)', fontWeight: 600 }}>GHS {l.cost.toLocaleString()}</span> },
+              { key: 'station', label: 'Fuel Station' },
+              { key: 'odometer', label: 'Odometer (km)', render: l => l.odometer.toLocaleString() },
+            ]}
+            data={filtered}
+            rowKey={l => l.id}
+            emptyIcon={<Fuel className="w-10 h-10" />}
+            emptyTitle="No fuel logs yet"
+            emptyDescription="They will appear here once added"
+            renderActions={l => (
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button onClick={() => { setEditForm({ ...l }); setShowEditModal(true); }} style={{ background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 8, padding: '4px 8px', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 12 }} title="Edit">
+                  <Edit size={12} />
+                </button>
+                <button onClick={() => handleDelete(l)} style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 8, padding: '4px 8px', color: '#dc2626', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 12 }} title="Delete">
+                  <Trash2 size={12} />
+                </button>
+              </div>
+            )}
+          />
           {!loading && logs.length > 0 && (
             <div className="flex items-center justify-between px-4 py-3 border-t border-[var(--border)] text-xs text-[var(--text-muted)]">
               <span>Showing {logs.length}{typeof total === 'number' ? ` of ${total.toLocaleString()}` : ''}</span>
