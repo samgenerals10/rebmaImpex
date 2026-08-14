@@ -14,6 +14,7 @@ import { useCeoSettings } from '../../contexts/CeoSettingsContext';
 import { generateReceiptNumber, printReceipt } from './ReceiptsView';
 import SidePanel from '../../components/ui/SidePanel';
 import SearchableDropdown from '../../components/ui/SearchableDropdown';
+import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
 import { documentTemplates, checkStockAvailability, shortageMessage, deductStockForOrder } from '../../services/apiClient';
 
 interface Props {
@@ -647,66 +648,47 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
         {tableFullscreen.expanded && (
           <div className="flex justify-end mb-3"><FullscreenButton expanded onClick={tableFullscreen.toggle} /></div>
         )}
-        {loadingOrders ? (
-          <div className="p-6">{[0,1,2,3,4].map(i => <div key={i} className="animate-pulse h-10 bg-slate-200 dark:bg-slate-700 rounded mb-2" />)}</div>
-        ) : (
-        <>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-[var(--border)]">
-                {['Order ID', 'Customer', 'Products', 'Amount', 'Payment Mode', 'Date', 'Status', ''].map(h => (
-                  <th key={h} className="px-4 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wide whitespace-nowrap">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[var(--border)]">
-              {filtered.map(order => (
-                <tr key={order.id} className="hover:bg-[var(--bg-input)] cursor-pointer group" onClick={() => setSelected(order)}>
-                  <td className="px-4 py-3 font-mono text-xs text-[var(--text-secondary)]">{order.id}</td>
-                  <td className="px-4 py-3 font-medium text-[var(--text-primary)] whitespace-nowrap">{order.clientName}</td>
-                  <td className="px-4 py-3 max-w-[180px]"><InvoiceLineItems order={order} compact /></td>
-                  <td className="px-4 py-3 font-semibold text-[var(--text-primary)] whitespace-nowrap">GHS {(Number(order.totalAmount ?? 0)).toLocaleString()}</td>
-                  <td className="px-4 py-3"><span className={`text-xs px-2 py-1 rounded-full font-medium ${MODE_COLORS[order.paymentMode] || ''}`}>{order.paymentMode}</span></td>
-                  <td className="px-4 py-3 text-[var(--text-muted)] whitespace-nowrap text-xs">{order.createdAt}</td>
-                  <td className="px-4 py-3"><span className={`text-xs px-2 py-1 rounded-full font-medium ${STATUS_COLORS[order.status] || ''}`}>{order.status}</span></td>
-                  <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => setSelected(order)} className="p-1.5 rounded-lg hover:bg-[var(--accent-light)]" title="View"><Eye size={14} style={{ color: 'var(--accent)' }} /></button>
-                      {order.status === 'PENDING_FINANCE' && (
-                        <>
-                          <button onClick={() => { setSelected(order); }} className="p-1.5 rounded-lg hover:bg-green-100" title="Approve"><CheckCircle size={14} className="text-green-500" /></button>
-                          <button onClick={() => { setRejectModal(order.id); }} className="p-1.5 rounded-lg hover:bg-red-100" title="Reject"><XCircle size={14} className="text-red-500" /></button>
-                        </>
-                      )}
-                      <div className="relative">
-                        <button onClick={() => setMenuOpen(menuOpen === order.id ? null : order.id)} className="p-1.5 rounded-lg hover:bg-[var(--bg-input)]"><MoreVertical size={14} className="text-[var(--text-muted)]" /></button>
-                        {menuOpen === order.id && (
-                          <div className="absolute right-0 top-8 z-20 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-lg py-1 min-w-[160px]" onClick={e => e.stopPropagation()}>
-                            <button onClick={() => { setSelected(order); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-input)]">View Full Details</button>
-                            {order.status === 'PENDING_FINANCE' && <>
-                              <button onClick={() => { setSelected(order); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-sm text-green-600 hover:bg-[var(--bg-input)]">Approve Order</button>
-                              <button onClick={() => { setRejectModal(order.id); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-[var(--bg-input)]">Reject Order</button>
-                            </>}
-                            <button onClick={() => { handlePrint(); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-input)]">Export PDF</button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        {filtered.length === 0 && (
-          <div className="flex flex-col items-center py-10 text-[var(--text-muted)]">
-            <Package size={32} className="opacity-30 mb-2" />
-            <p className="text-sm">No orders found</p>
-          </div>
-        )}
-        </>
-        )}
+        <ResponsiveDataView
+          columns={[
+            { key: 'clientName', label: 'Customer', primary: true },
+            { key: 'status', label: 'Status', status: true, render: order => <span className={`text-xs px-2 py-1 rounded-full font-medium ${STATUS_COLORS[order.status] || ''}`}>{order.status}</span> },
+            { key: 'id', label: 'Order ID', render: order => <span className="font-mono">{order.id}</span> },
+            { key: 'products', label: 'Products', render: order => <InvoiceLineItems order={order} compact /> },
+            { key: 'totalAmount', label: 'Amount', render: order => <span className="font-semibold">GHS {(Number(order.totalAmount ?? 0)).toLocaleString()}</span> },
+            { key: 'paymentMode', label: 'Payment Mode', render: order => <span className={`text-xs px-2 py-1 rounded-full font-medium ${MODE_COLORS[order.paymentMode] || ''}`}>{order.paymentMode}</span> },
+            { key: 'createdAt', label: 'Date' },
+          ] as DataColumn<Order>[]}
+          data={filtered}
+          rowKey={order => order.id}
+          onRowClick={order => setSelected(order)}
+          loading={loadingOrders}
+          emptyIcon={<Package size={20} className="opacity-60" />}
+          emptyTitle="No orders found"
+          renderActions={order => (
+            <div className="flex items-center gap-1">
+              <button onClick={() => setSelected(order)} className="p-1.5 rounded-lg hover:bg-[var(--accent-light)]" title="View"><Eye size={14} style={{ color: 'var(--accent)' }} /></button>
+              {order.status === 'PENDING_FINANCE' && (
+                <>
+                  <button onClick={() => { setSelected(order); }} className="p-1.5 rounded-lg hover:bg-green-100" title="Approve"><CheckCircle size={14} className="text-green-500" /></button>
+                  <button onClick={() => { setRejectModal(order.id); }} className="p-1.5 rounded-lg hover:bg-red-100" title="Reject"><XCircle size={14} className="text-red-500" /></button>
+                </>
+              )}
+              <div className="relative">
+                <button onClick={() => setMenuOpen(menuOpen === order.id ? null : order.id)} className="p-1.5 rounded-lg hover:bg-[var(--bg-input)]"><MoreVertical size={14} className="text-[var(--text-muted)]" /></button>
+                {menuOpen === order.id && (
+                  <div className="absolute right-0 top-8 z-20 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-lg py-1 min-w-[160px]" onClick={e => e.stopPropagation()}>
+                    <button onClick={() => { setSelected(order); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-input)]">View Full Details</button>
+                    {order.status === 'PENDING_FINANCE' && <>
+                      <button onClick={() => { setSelected(order); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-sm text-green-600 hover:bg-[var(--bg-input)]">Approve Order</button>
+                      <button onClick={() => { setRejectModal(order.id); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-[var(--bg-input)]">Reject Order</button>
+                    </>}
+                    <button onClick={() => { handlePrint(); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-input)]">Export PDF</button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        />
       </div>
 
       <SidePanel
