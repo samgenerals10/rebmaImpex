@@ -10,6 +10,7 @@ import CountUp from '../../components/CountUp';
 import { usePaginatedQuery } from '../../hooks/usePaginatedQuery';
 import SidePanel from '../../components/ui/SidePanel';
 import SearchableDropdown from '../../components/ui/SearchableDropdown';
+import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
 
 interface CreditEntry {
   id: string;
@@ -331,62 +332,44 @@ export default function FinanceCreditMgmtView({ addNotification, currentUser }: 
       </div>
 
       <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl overflow-hidden">
-        {loading ? (
-          <div className="p-4 space-y-2">
-            {Array.from({ length: 5 }).map((_, i) => <div key={i} className="animate-pulse h-10 bg-slate-200 dark:bg-slate-700 rounded mb-2" />)}
-          </div>
-        ) : items.length === 0 ? (
-          <div className="text-center py-12 text-slate-400">
-            <CreditCard className="w-10 h-10 mx-auto mb-3 opacity-40" />
-            <p className="font-medium">No credit records yet</p>
-            <p className="text-sm mt-1">They will appear here once added</p>
-          </div>
-        ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-[var(--border)]">
-                {['Customer', 'Order Ref', 'Credit Amount', 'Paid', 'Outstanding', 'Due Date', 'Overdue', 'Status', ''].map(h => (
-                  <th key={h} className="px-4 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wide whitespace-nowrap">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[var(--border)]">
-              {filtered.map(item => (
-                <tr key={item.id} className="hover:bg-[var(--bg-input)] cursor-pointer group" onClick={() => setSelected(item)}>
-                  <td className="px-4 py-3 font-medium text-[var(--text-primary)] whitespace-nowrap">{item.customerName}</td>
-                  <td className="px-4 py-3 font-mono text-xs text-[var(--text-secondary)]">{item.orderRef}</td>
-                  <td className="px-4 py-3 text-[var(--text-primary)]">GHS {item.creditAmount.toLocaleString()}</td>
-                  <td className="px-4 py-3 text-green-500 font-medium">GHS {item.amountPaid.toLocaleString()}</td>
-                  <td className="px-4 py-3 font-semibold" style={{ color: item.outstanding > 0 ? '#ef4444' : 'var(--text-primary)' }}>GHS {item.outstanding.toLocaleString()}</td>
-                  <td className="px-4 py-3 text-[var(--text-muted)] whitespace-nowrap">{item.dueDate}</td>
-                  <td className="px-4 py-3">{item.daysOverdue > 0 ? <span className="text-red-500 font-semibold text-xs">{item.daysOverdue}d</span> : <span className="text-[var(--text-muted)] text-xs">—</span>}</td>
-                  <td className="px-4 py-3"><span className={`text-xs px-2 py-1 rounded-full font-medium ${STATUS_COLORS[item.status]}`}>{item.status}</span></td>
-                  <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => setSelected(item)} title="View"><Eye size={14} style={{ color: 'var(--accent)' }} /></button>
-                      <button onClick={() => openReminder(item)} title="Remind"><Send size={14} className="text-blue-500" /></button>
-                      <div className="relative">
-                        <button onClick={() => setMenuOpen(menuOpen === item.id ? null : item.id)} className="p-1.5 rounded-lg hover:bg-[var(--bg-input)]"><MoreVertical size={14} className="text-[var(--text-muted)]" /></button>
-                        {menuOpen === item.id && (
-                          <div className="absolute right-0 top-8 z-20 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-lg py-1 min-w-[160px]">
-                            <button onClick={(e) => { e.stopPropagation(); setSelected(item); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-input)] font-medium">View Details</button>
-                            {item.outstanding > 0 && <button onClick={(e) => { e.stopPropagation(); setPayModal(item); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-input)]">Record Payment</button>}
-                            <button onClick={(e) => { e.stopPropagation(); openReminder(item); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-input)]">Send Reminder</button>
-                            <button onClick={(e) => { e.stopPropagation(); openEditForm(item); }} className="w-full text-left px-3 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-input)]">Edit Credit Order</button>
-                            <button onClick={(e) => { e.stopPropagation(); deleteCredit(item.id); }} className="w-full text-left px-3 py-2 text-sm text-rose-600 hover:bg-[var(--bg-input)]">Delete Credit</button>
-                            <button onClick={(e) => { e.stopPropagation(); handlePrint(); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-input)]">Export PDF</button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        )}
+        <ResponsiveDataView
+          columns={[
+            { key: 'customerName', label: 'Customer', primary: true },
+            { key: 'orderRef', label: 'Order Ref', render: item => <span className="font-mono">{item.orderRef}</span> },
+            { key: 'creditAmount', label: 'Credit Amount', render: item => `GHS ${item.creditAmount.toLocaleString()}` },
+            { key: 'amountPaid', label: 'Paid', render: item => <span className="text-green-500 font-medium">GHS {item.amountPaid.toLocaleString()}</span> },
+            { key: 'outstanding', label: 'Outstanding', render: item => <span className="font-semibold" style={{ color: item.outstanding > 0 ? '#ef4444' : 'var(--text-primary)' }}>GHS {item.outstanding.toLocaleString()}</span> },
+            { key: 'dueDate', label: 'Due Date' },
+            { key: 'daysOverdue', label: 'Overdue', render: item => item.daysOverdue > 0 ? <span className="text-red-500 font-semibold text-xs">{item.daysOverdue}d</span> : <span className="text-[var(--text-muted)] text-xs">—</span> },
+            { key: 'status', label: 'Status', status: true, render: item => <span className={`text-xs px-2 py-1 rounded-full font-medium ${STATUS_COLORS[item.status]}`}>{item.status}</span> },
+          ] as DataColumn<CreditEntry>[]}
+          data={filtered}
+          rowKey={item => item.id}
+          onRowClick={item => setSelected(item)}
+          loading={loading}
+          emptyIcon={<CreditCard size={20} className="opacity-60" />}
+          emptyTitle="No credit records yet"
+          emptyDescription="They will appear here once added"
+          renderActions={item => (
+            <div className="flex items-center gap-1">
+              <button onClick={() => setSelected(item)} title="View"><Eye size={14} style={{ color: 'var(--accent)' }} /></button>
+              <button onClick={() => openReminder(item)} title="Remind"><Send size={14} className="text-blue-500" /></button>
+              <div className="relative">
+                <button onClick={() => setMenuOpen(menuOpen === item.id ? null : item.id)} className="p-1.5 rounded-lg hover:bg-[var(--bg-input)]"><MoreVertical size={14} className="text-[var(--text-muted)]" /></button>
+                {menuOpen === item.id && (
+                  <div className="absolute right-0 top-8 z-20 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-lg py-1 min-w-[160px]">
+                    <button onClick={(e) => { e.stopPropagation(); setSelected(item); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-input)] font-medium">View Details</button>
+                    {item.outstanding > 0 && <button onClick={(e) => { e.stopPropagation(); setPayModal(item); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-input)]">Record Payment</button>}
+                    <button onClick={(e) => { e.stopPropagation(); openReminder(item); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-input)]">Send Reminder</button>
+                    <button onClick={(e) => { e.stopPropagation(); openEditForm(item); }} className="w-full text-left px-3 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-input)]">Edit Credit Order</button>
+                    <button onClick={(e) => { e.stopPropagation(); deleteCredit(item.id); }} className="w-full text-left px-3 py-2 text-sm text-rose-600 hover:bg-[var(--bg-input)]">Delete Credit</button>
+                    <button onClick={(e) => { e.stopPropagation(); handlePrint(); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-input)]">Export PDF</button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        />
         {!loading && items.length > 0 && (
           <div className="flex items-center justify-between px-4 py-3 border-t border-[var(--border)] text-xs text-[var(--text-muted)]">
             <span>Showing {items.length}{typeof total === 'number' ? ` of ${total.toLocaleString()}` : ''}</span>

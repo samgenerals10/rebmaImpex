@@ -8,6 +8,7 @@ import { useCeoSettings } from '../../contexts/CeoSettingsContext';
 import { usePaginatedQuery } from '../../hooks/usePaginatedQuery';
 import SidePanel from '../../components/ui/SidePanel';
 import SearchableDropdown from '../../components/ui/SearchableDropdown';
+import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
 
 interface Cheque {
   id: string;
@@ -206,6 +207,32 @@ export default function FinanceChequesView({ addNotification, currentUser }: Pro
 
   const totals = { total: cheques.length, cleared: cheques.filter(c => c.status === 'Cleared').length, pending: cheques.filter(c => ['Received', 'Deposited'].includes(c.status)).length, bounced: cheques.filter(c => c.status === 'Bounced').length };
 
+  const columns: DataColumn<Cheque>[] = [
+    { key: 'chequeNumber', label: 'Cheque #', primary: true, render: c => <span className="font-mono">{c.chequeNumber}</span> },
+    { key: 'bankName', label: 'Bank' },
+    { key: 'accountName', label: 'Account Name' },
+    { key: 'amount', label: 'Amount', render: c => <span className="font-semibold">GHS {c.amount.toLocaleString()}</span> },
+    { key: 'chequeDate', label: 'Date' },
+    { key: 'expectedClearing', label: 'Expected Clearing' },
+    { key: 'status', label: 'Status', status: true, render: c => <span className={`text-xs px-2 py-1 rounded-full font-medium ${STATUS_COLORS[c.status]}`}>{c.status}</span> },
+  ];
+
+  const renderChequeActions = (c: Cheque) => (
+    <div className="relative">
+      <button onClick={() => setMenuOpen(menuOpen === c.id ? null : c.id)} className="p-1.5 rounded-lg hover:bg-[var(--bg-input)]"><MoreVertical size={14} className="text-[var(--text-muted)]" /></button>
+      {menuOpen === c.id && (
+        <div className="absolute right-0 top-8 z-20 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-lg py-1 min-w-[160px]">
+          {c.status !== 'Cleared' && <button onClick={() => updateStatus(c.id, 'Cleared')} className="w-full text-left px-3 py-2 text-sm text-green-600 hover:bg-[var(--bg-input)]">Mark Cleared</button>}
+          {c.status !== 'Bounced' && <button onClick={() => updateStatus(c.id, 'Bounced')} className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-[var(--bg-input)]">Mark Bounced</button>}
+          {c.status === 'Received' && <button onClick={() => updateStatus(c.id, 'Deposited')} className="w-full text-left px-3 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-input)]">Mark Deposited</button>}
+          <button onClick={() => openEditForm(c)} className="w-full text-left px-3 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-input)]">Edit Cheque</button>
+          <button onClick={() => deleteCheque(c.id)} className="w-full text-left px-3 py-2 text-sm text-rose-600 hover:bg-[var(--bg-input)]">Delete Cheque</button>
+          <button onClick={() => { handlePrint(); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-input)]">Export PDF</button>
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className="p-4 md:p-6 space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
@@ -242,48 +269,16 @@ export default function FinanceChequesView({ addNotification, currentUser }: Pro
       </div>
 
       <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl overflow-hidden">
-        {loading ? (
-          <div className="p-6">{[0,1,2,3,4].map(i => <div key={i} className="animate-pulse h-10 bg-slate-200 dark:bg-slate-700 rounded mb-2" />)}</div>
-        ) : filtered.length === 0 ? (
-          <div className="flex flex-col items-center py-10 text-[var(--text-muted)]">
-            <CheckCircle size={32} className="opacity-30 mb-2" />
-            <p className="text-sm">No cheques found</p>
-          </div>
-        ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead><tr className="border-b border-[var(--border)]">{['Cheque #', 'Bank', 'Account Name', 'Amount', 'Date', 'Expected Clearing', 'Status', ''].map(h => <th key={h} className="px-4 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wide whitespace-nowrap">{h}</th>)}</tr></thead>
-            <tbody className="divide-y divide-[var(--border)]">
-              {filtered.map(c => (
-                <tr key={c.id} className="hover:bg-[var(--bg-input)] group cursor-pointer" onClick={() => setSelectedCheque(c)}>
-                  <td className="px-4 py-3 font-mono text-xs text-[var(--text-secondary)]">{c.chequeNumber}</td>
-                  <td className="px-4 py-3 text-[var(--text-primary)]">{c.bankName}</td>
-                  <td className="px-4 py-3 font-medium text-[var(--text-primary)] whitespace-nowrap">{c.accountName}</td>
-                  <td className="px-4 py-3 font-semibold text-[var(--text-primary)]">GHS {c.amount.toLocaleString()}</td>
-                  <td className="px-4 py-3 text-[var(--text-muted)] whitespace-nowrap">{c.chequeDate}</td>
-                  <td className="px-4 py-3 text-[var(--text-muted)] whitespace-nowrap">{c.expectedClearing}</td>
-                  <td className="px-4 py-3"><span className={`text-xs px-2 py-1 rounded-full font-medium ${STATUS_COLORS[c.status]}`}>{c.status}</span></td>
-                  <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-                    <div className="relative opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => setMenuOpen(menuOpen === c.id ? null : c.id)} className="p-1.5 rounded-lg hover:bg-[var(--bg-input)]"><MoreVertical size={14} className="text-[var(--text-muted)]" /></button>
-                      {menuOpen === c.id && (
-                        <div className="absolute right-0 top-8 z-20 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-lg py-1 min-w-[160px]">
-                          {c.status !== 'Cleared' && <button onClick={() => updateStatus(c.id, 'Cleared')} className="w-full text-left px-3 py-2 text-sm text-green-600 hover:bg-[var(--bg-input)]">Mark Cleared</button>}
-                          {c.status !== 'Bounced' && <button onClick={() => updateStatus(c.id, 'Bounced')} className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-[var(--bg-input)]">Mark Bounced</button>}
-                          {c.status === 'Received' && <button onClick={() => updateStatus(c.id, 'Deposited')} className="w-full text-left px-3 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-input)]">Mark Deposited</button>}
-                          <button onClick={() => openEditForm(c)} className="w-full text-left px-3 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-input)]">Edit Cheque</button>
-                          <button onClick={() => deleteCheque(c.id)} className="w-full text-left px-3 py-2 text-sm text-rose-600 hover:bg-[var(--bg-input)]">Delete Cheque</button>
-                          <button onClick={() => { handlePrint(); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-input)]">Export PDF</button>
-                        </div>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        )}
+        <ResponsiveDataView
+          columns={columns}
+          data={filtered}
+          rowKey={c => c.id}
+          onRowClick={c => setSelectedCheque(c)}
+          renderActions={renderChequeActions}
+          loading={loading}
+          emptyIcon={<CheckCircle size={20} className="opacity-60" />}
+          emptyTitle="No cheques found"
+        />
         {!loading && cheques.length > 0 && (
           <div className="flex items-center justify-between px-4 py-3 border-t border-[var(--border)] text-xs text-[var(--text-muted)]">
             <span>Showing {cheques.length}{typeof total === 'number' ? ` of ${total.toLocaleString()}` : ''}</span>

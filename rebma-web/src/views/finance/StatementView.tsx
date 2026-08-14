@@ -7,6 +7,7 @@ import { Search, Eye, Download } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { exportToCSV, downloadRowPDF } from '../../utils/export';
 import EntityDetailPanel from '../../components/global/EntityDetailPanel';
+import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
 
 interface StatementRow {
   key: string;
@@ -144,67 +145,52 @@ export default function StatementView({ addNotification }: Props) {
       </div>
 
       <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl overflow-hidden shadow-card">
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs">
-            <thead><tr className="bg-[var(--bg-input)] border-b border-[var(--border)]">
-              {['Date/Time', 'Product', 'Qty', 'Purchased By', 'Sent To', 'Payment', 'Status', 'Stock Left', ''].map(h => (
-                <th key={h} className="px-3 py-2.5 text-left font-semibold text-[var(--text-muted)] whitespace-nowrap">{h}</th>
-              ))}
-            </tr></thead>
-            <tbody>
-              {loading
-                ? Array.from({ length: 5 }).map((_, i) => (
-                    <tr key={i}><td colSpan={9} className="px-3 py-4"><div className="h-4 bg-[var(--bg-input)] rounded animate-pulse" /></td></tr>
-                  ))
-                : filtered.length === 0 ? (
-                    <tr><td colSpan={9} className="px-3 py-10 text-center text-[var(--text-muted)]">No purchases found.</td></tr>
-                  ) : filtered.map(row => (
-                    <tr
-                      key={row.key}
-                      onClick={() => { setSelected(row); setDetailTab('order'); }}
-                      className="border-b border-[var(--border)] hover:bg-[var(--accent-light)] transition-colors cursor-pointer"
-                    >
-                      <td className="px-3 py-2 text-[var(--text-secondary)] whitespace-nowrap">{new Date(row.date).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</td>
-                      <td className="px-3 py-2 font-semibold text-[var(--text-primary)] whitespace-nowrap">{row.productName}</td>
-                      <td className="px-3 py-2 text-[var(--text-secondary)]">×{row.quantity}</td>
-                      <td className="px-3 py-2 text-[var(--text-primary)] whitespace-nowrap">{row.clientName}</td>
-                      <td className="px-3 py-2 text-[var(--text-secondary)] whitespace-nowrap">{row.destination || '—'}</td>
-                      <td className="px-3 py-2 text-[var(--text-secondary)]">{row.paymentMode}</td>
-                      <td className="px-3 py-2"><span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${STATUS_STYLES[row.status] || 'bg-gray-100 text-gray-600'}`}>{row.status.replace(/_/g, ' ')}</span></td>
-                      <td className="px-3 py-2 font-semibold">
-                        {row.stockRemaining !== null ? (
-                          row.stockRemaining < 0 ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-rose-100 text-rose-700" title="Stock went negative — more was sold/released than was ever recorded as in stock. Investigate this product's ledger.">
-                              OVERSOLD ({row.stockRemaining.toLocaleString()})
-                            </span>
-                          ) : (
-                            <span className="text-[var(--text-primary)]">{row.stockRemaining.toLocaleString()}</span>
-                          )
-                        ) : '—'}
-                      </td>
-                      <td className="px-3 py-2 flex items-center gap-1" onClick={e => e.stopPropagation()}>
-                        <button onClick={() => { setSelected(row); setDetailTab('order'); }} className="p-1 hover:bg-[var(--accent-light)] rounded-lg cursor-pointer text-[var(--accent)]">
-                          <Eye className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => downloadRowPDF(`Statement - ${row.ticketNumber || row.orderId}`, {
-                            Ticket: row.ticketNumber || '—', OrderId: row.orderId, Date: new Date(row.date).toLocaleString(),
-                            Product: row.productName, Quantity: row.quantity, PurchasedBy: row.clientName,
-                            SentTo: row.destination || '—', PaymentMode: row.paymentMode,
-                            Status: row.status.replace(/_/g, ' '), StockRemaining: row.stockRemaining ?? '—',
-                          })}
-                          className="p-1 hover:bg-[var(--accent-light)] rounded-lg cursor-pointer text-[var(--accent)]"
-                          title="Download PDF"
-                        >
-                          <Download className="w-3.5 h-3.5" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-              }
-            </tbody>
-          </table>
-        </div>
+        <ResponsiveDataView
+          columns={[
+            { key: 'productName', label: 'Product', primary: true },
+            { key: 'status', label: 'Status', status: true, render: row => <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${STATUS_STYLES[row.status] || 'bg-gray-100 text-gray-600'}`}>{row.status.replace(/_/g, ' ')}</span> },
+            { key: 'date', label: 'Date/Time', render: row => new Date(row.date).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) },
+            { key: 'quantity', label: 'Qty', render: row => `×${row.quantity}` },
+            { key: 'clientName', label: 'Purchased By' },
+            { key: 'destination', label: 'Sent To', render: row => row.destination || '—' },
+            { key: 'paymentMode', label: 'Payment' },
+            {
+              key: 'stockRemaining', label: 'Stock Left', render: row => row.stockRemaining !== null ? (
+                row.stockRemaining < 0 ? (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-rose-100 text-rose-700" title="Stock went negative — more was sold/released than was ever recorded as in stock. Investigate this product's ledger.">
+                    OVERSOLD ({row.stockRemaining.toLocaleString()})
+                  </span>
+                ) : (
+                  <span className="text-[var(--text-primary)]">{row.stockRemaining.toLocaleString()}</span>
+                )
+              ) : '—'
+            },
+          ] as DataColumn<StatementRow>[]}
+          data={filtered}
+          rowKey={row => row.key}
+          onRowClick={row => { setSelected(row); setDetailTab('order'); }}
+          loading={loading}
+          emptyTitle="No purchases found."
+          renderActions={row => (
+            <div className="flex items-center gap-1">
+              <button onClick={() => { setSelected(row); setDetailTab('order'); }} className="p-1 hover:bg-[var(--accent-light)] rounded-lg cursor-pointer text-[var(--accent)]">
+                <Eye className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => downloadRowPDF(`Statement - ${row.ticketNumber || row.orderId}`, {
+                  Ticket: row.ticketNumber || '—', OrderId: row.orderId, Date: new Date(row.date).toLocaleString(),
+                  Product: row.productName, Quantity: row.quantity, PurchasedBy: row.clientName,
+                  SentTo: row.destination || '—', PaymentMode: row.paymentMode,
+                  Status: row.status.replace(/_/g, ' '), StockRemaining: row.stockRemaining ?? '—',
+                })}
+                className="p-1 hover:bg-[var(--accent-light)] rounded-lg cursor-pointer text-[var(--accent)]"
+                title="Download PDF"
+              >
+                <Download className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+        />
       </div>
     </div>
 

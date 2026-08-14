@@ -7,6 +7,7 @@ import { useCeoSettings } from '../../contexts/CeoSettingsContext';
 import { usePaginatedQuery } from '../../hooks/usePaginatedQuery';
 import SidePanel from '../../components/ui/SidePanel';
 import SearchableDropdown from '../../components/ui/SearchableDropdown';
+import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
 
 interface Expense {
   id: string;
@@ -229,58 +230,45 @@ export default function FinanceExpensesView({ addNotification, currentUser }: Pr
       </div>
 
       <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl overflow-hidden">
-        {loadingExpenses ? (
-          <div className="p-4 space-y-2">
-            {Array.from({ length: 5 }).map((_, i) => <div key={i} className="animate-pulse h-10 bg-slate-200 dark:bg-slate-700 rounded mb-2" />)}
-          </div>
-        ) : expenses.length === 0 ? (
-          <div className="text-center py-12 text-slate-400">
-            <CheckCircle className="w-10 h-10 mx-auto mb-3 opacity-40" />
-            <p className="font-medium">No expenses yet</p>
-            <p className="text-sm mt-1">They will appear here once added</p>
-          </div>
-        ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead><tr className="border-b border-[var(--border)]">{['Category', 'Description', 'Amount', 'Date', 'Receipt', 'By', 'Status', ''].map(h => <th key={h} className="px-4 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wide whitespace-nowrap">{h}</th>)}</tr></thead>
-            <tbody className="divide-y divide-[var(--border)]">
-              {filtered.map(e => (
-                <tr key={e.id} className="hover:bg-[var(--bg-input)] group">
-                  <td className="px-4 py-3"><span className={`text-xs px-2 py-1 rounded-full font-medium ${CATEGORY_COLORS[e.category] || ''}`}>{e.category}</span></td>
-                  <td className="px-4 py-3 text-[var(--text-primary)] max-w-[200px]"><p className="truncate">{e.description}</p></td>
-                  <td className="px-4 py-3 font-semibold text-[var(--text-primary)]">GHS {e.amount.toLocaleString()}</td>
-                  <td className="px-4 py-3 text-[var(--text-muted)] whitespace-nowrap">{e.date}</td>
-                  <td className="px-4 py-3 text-center">{e.receipt ? <CheckCircle size={14} className="text-green-500 mx-auto" /> : <span className="text-[var(--text-muted)] text-xs">—</span>}</td>
-                  <td className="px-4 py-3 text-[var(--text-muted)] whitespace-nowrap text-xs">{e.submittedBy}</td>
-                  <td className="px-4 py-3"><span className={`text-xs px-2 py-1 rounded-full font-medium ${STATUS_COLORS[e.status]}`}>{e.status}</span></td>
-                  <td className="px-4 py-3" onClick={ep => ep.stopPropagation()}>
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      {e.status === 'Pending' && <>
-                        <button onClick={() => updateStatus(e.id, 'Approved')} title="Approve"><CheckCircle size={14} className="text-green-500" /></button>
-                        <button onClick={() => updateStatus(e.id, 'Rejected')} title="Reject"><XCircle size={14} className="text-red-500" /></button>
-                      </>}
-                      <div className="relative">
-                        <button onClick={() => setMenuOpen(menuOpen === e.id ? null : e.id)} className="p-1.5 rounded-lg hover:bg-[var(--bg-input)]"><MoreVertical size={14} className="text-[var(--text-muted)]" /></button>
-                        {menuOpen === e.id && (
-                          <div className="absolute right-0 top-8 z-20 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-lg py-1 min-w-[140px]">
-                            {e.status === 'Pending' && <>
-                              <button onClick={() => updateStatus(e.id, 'Approved')} className="w-full text-left px-3 py-2 text-sm text-green-600 hover:bg-[var(--bg-input)]">Approve</button>
-                              <button onClick={() => updateStatus(e.id, 'Rejected')} className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-[var(--bg-input)]">Reject</button>
-                            </>}
-                            <button onClick={() => openEditForm(e)} className="w-full text-left px-3 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-input)]">Edit Expense</button>
-                            <button onClick={() => deleteExpense(e.id)} className="w-full text-left px-3 py-2 text-sm text-rose-600 hover:bg-[var(--bg-input)]">Delete Expense</button>
-                            <button onClick={() => { handlePrint(); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-input)]">Export PDF</button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        )}
+        <ResponsiveDataView
+          columns={[
+            { key: 'description', label: 'Description', primary: true },
+            { key: 'category', label: 'Category', status: true, render: e => <span className={`text-xs px-2 py-1 rounded-full font-medium ${CATEGORY_COLORS[e.category] || ''}`}>{e.category}</span> },
+            { key: 'amount', label: 'Amount', render: e => <span className="font-semibold">GHS {e.amount.toLocaleString()}</span> },
+            { key: 'date', label: 'Date' },
+            { key: 'receipt', label: 'Receipt', render: e => e.receipt ? <CheckCircle size={14} className="text-green-500" /> : <span className="text-[var(--text-muted)] text-xs">—</span> },
+            { key: 'submittedBy', label: 'By' },
+            { key: 'status', label: 'Status', render: e => <span className={`text-xs px-2 py-1 rounded-full font-medium ${STATUS_COLORS[e.status]}`}>{e.status}</span> },
+          ] as DataColumn<Expense>[]}
+          data={filtered}
+          rowKey={e => e.id}
+          loading={loadingExpenses}
+          emptyIcon={<CheckCircle size={20} className="opacity-60" />}
+          emptyTitle="No expenses yet"
+          emptyDescription="They will appear here once added"
+          renderActions={e => (
+            <div className="flex items-center gap-1">
+              {e.status === 'Pending' && <>
+                <button onClick={() => updateStatus(e.id, 'Approved')} title="Approve"><CheckCircle size={14} className="text-green-500" /></button>
+                <button onClick={() => updateStatus(e.id, 'Rejected')} title="Reject"><XCircle size={14} className="text-red-500" /></button>
+              </>}
+              <div className="relative">
+                <button onClick={() => setMenuOpen(menuOpen === e.id ? null : e.id)} className="p-1.5 rounded-lg hover:bg-[var(--bg-input)]"><MoreVertical size={14} className="text-[var(--text-muted)]" /></button>
+                {menuOpen === e.id && (
+                  <div className="absolute right-0 top-8 z-20 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-lg py-1 min-w-[140px]">
+                    {e.status === 'Pending' && <>
+                      <button onClick={() => updateStatus(e.id, 'Approved')} className="w-full text-left px-3 py-2 text-sm text-green-600 hover:bg-[var(--bg-input)]">Approve</button>
+                      <button onClick={() => updateStatus(e.id, 'Rejected')} className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-[var(--bg-input)]">Reject</button>
+                    </>}
+                    <button onClick={() => openEditForm(e)} className="w-full text-left px-3 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-input)]">Edit Expense</button>
+                    <button onClick={() => deleteExpense(e.id)} className="w-full text-left px-3 py-2 text-sm text-rose-600 hover:bg-[var(--bg-input)]">Delete Expense</button>
+                    <button onClick={() => { handlePrint(); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-input)]">Export PDF</button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        />
         {!loadingExpenses && expenses.length > 0 && (
           <div className="flex items-center justify-between px-4 py-3 border-t border-[var(--border)] text-xs text-[var(--text-muted)]">
             <span>Showing {expenses.length}{typeof total === 'number' ? ` of ${total.toLocaleString()}` : ''}</span>

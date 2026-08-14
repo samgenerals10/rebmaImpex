@@ -5,6 +5,7 @@ import { exportToCSV, exportToPDF } from '../../utils/export';
 import CountUp from '../../components/CountUp';
 import { useCeoSettings } from '../../contexts/CeoSettingsContext';
 import SearchableDropdown from '../../components/ui/SearchableDropdown';
+import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
 
 interface VATEntry {
   period: string;
@@ -175,32 +176,21 @@ export default function FinanceTaxVATView({ addNotification, currentUser }: Prop
       </div>
 
       <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl overflow-hidden">
-        {loading ? (
-          <div className="p-6">{[0,1,2,3,4].map(i => <div key={i} className="animate-pulse h-10 bg-slate-200 dark:bg-slate-700 rounded mb-2" />)}</div>
-        ) : vatData.length === 0 ? (
-          <div className="flex flex-col items-center py-10 text-[var(--text-muted)]">
-            <Calculator size={32} className="opacity-30 mb-2" />
-            <p className="text-sm">No VAT records found</p>
-          </div>
-        ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead><tr className="border-b border-[var(--border)]">{['Period', 'Invoice Count', 'Gross Sales', 'VAT Amount', 'Net Sales', 'Status'].map(h => <th key={h} className="px-4 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wide whitespace-nowrap">{h}</th>)}</tr></thead>
-            <tbody className="divide-y divide-[var(--border)]">
-              {vatData.map(v => (
-                <tr key={v.period} className="hover:bg-[var(--bg-input)]">
-                  <td className="px-4 py-3 font-medium text-[var(--text-primary)]">{v.period}</td>
-                  <td className="px-4 py-3 text-[var(--text-secondary)]">{v.invoiceCount}</td>
-                  <td className="px-4 py-3 text-[var(--text-primary)]">GHS {v.grossSales.toLocaleString()}</td>
-                  <td className="px-4 py-3 font-semibold" style={{ color: 'var(--accent)' }}>GHS {v.vatAmount.toLocaleString()}</td>
-                  <td className="px-4 py-3 text-[var(--text-primary)]">GHS {v.netSales.toLocaleString()}</td>
-                  <td className="px-4 py-3"><span className={`text-xs px-2 py-1 rounded-full font-medium ${v.status === 'Filed' ? 'bg-green-100 text-green-700' : v.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-600'}`}>{v.status}</span></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        )}
+        <ResponsiveDataView
+          columns={[
+            { key: 'period', label: 'Period', primary: true },
+            { key: 'status', label: 'Status', status: true, render: v => <span className={`text-xs px-2 py-1 rounded-full font-medium ${v.status === 'Filed' ? 'bg-green-100 text-green-700' : v.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-600'}`}>{v.status}</span> },
+            { key: 'invoiceCount', label: 'Invoice Count' },
+            { key: 'grossSales', label: 'Gross Sales', render: v => `GHS ${v.grossSales.toLocaleString()}` },
+            { key: 'vatAmount', label: 'VAT Amount', render: v => <span className="font-semibold" style={{ color: 'var(--accent)' }}>GHS {v.vatAmount.toLocaleString()}</span> },
+            { key: 'netSales', label: 'Net Sales', render: v => `GHS ${v.netSales.toLocaleString()}` },
+          ] as DataColumn<VATEntry>[]}
+          data={vatData}
+          rowKey={v => v.period}
+          loading={loading}
+          emptyIcon={<Calculator size={20} className="opacity-60" />}
+          emptyTitle="No VAT records found"
+        />
       </div>
 
       <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">

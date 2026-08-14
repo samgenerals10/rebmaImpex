@@ -6,6 +6,7 @@ import CountUp from '../../components/CountUp';
 import { usePaginatedQuery } from '../../hooks/usePaginatedQuery';
 import SidePanel from '../../components/ui/SidePanel';
 import SearchableDropdown from '../../components/ui/SearchableDropdown';
+import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
 
 interface PettyCashEntry {
   id: string;
@@ -225,45 +226,34 @@ export default function FinancePettyCashView({ addNotification, currentUser }: P
       </div>
 
       <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl overflow-hidden">
-        {loading ? (
-          <div className="p-6">{[0,1,2,3,4].map(i => <div key={i} className="animate-pulse h-10 bg-slate-200 dark:bg-slate-700 rounded mb-2" />)}</div>
-        ) : filtered.length === 0 ? (
-          <div className="flex flex-col items-center py-10 text-[var(--text-muted)]">
-            <AlertTriangle size={32} className="opacity-30 mb-2" />
-            <p className="text-sm">No petty cash entries found</p>
-          </div>
-        ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead><tr className="border-b border-[var(--border)]">{['Date', 'Description', 'Amount', 'Disbursed To', 'Category', 'Receipt', 'Balance After', 'Type', ''].map(h => <th key={h} className="px-4 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wide whitespace-nowrap">{h}</th>)}</tr></thead>
-            <tbody className="divide-y divide-[var(--border)]">
-              {filtered.map(e => (
-                <tr key={e.id} className={`hover:bg-[var(--bg-input)] ${e.type === 'replenishment' ? 'bg-green-50/30' : ''} group`}>
-                  <td className="px-4 py-3 text-[var(--text-muted)] whitespace-nowrap">{e.date}</td>
-                  <td className="px-4 py-3 text-[var(--text-primary)]">{e.description}</td>
-                  <td className={`px-4 py-3 font-semibold ${e.type === 'replenishment' ? 'text-green-500' : 'text-red-500'}`}>{e.type === 'replenishment' ? '+' : '-'}GHS {e.amount.toLocaleString()}</td>
-                  <td className="px-4 py-3 text-[var(--text-secondary)] whitespace-nowrap">{e.disbursedTo}</td>
-                  <td className="px-4 py-3"><span className="text-xs px-2 py-0.5 rounded-full bg-[var(--accent-light)] text-[var(--accent)]">{e.category}</span></td>
-                  <td className="px-4 py-3 text-center">{e.receipt ? '✅' : '—'}</td>
-                  <td className="px-4 py-3 font-medium text-[var(--text-primary)]">GHS {e.balanceAfter.toLocaleString()}</td>
-                  <td className="px-4 py-3"><span className={`text-xs px-2 py-0.5 rounded-full font-medium ${e.type === 'replenishment' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{e.type}</span></td>
-                  <td className="px-4 py-3" onClick={ev => ev.stopPropagation()}>
-                    <div className="relative opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => setMenuOpen(menuOpen === e.id ? null : e.id)} className="p-1.5 rounded-lg hover:bg-[var(--bg-input)]"><MoreVertical size={14} className="text-[var(--text-muted)]" /></button>
-                      {menuOpen === e.id && (
-                        <div className="absolute right-0 top-8 z-20 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-lg py-1 min-w-[140px]">
-                          <button onClick={() => openEditForm(e)} className="w-full text-left px-3 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-input)]">Edit Entry</button>
-                          <button onClick={() => deleteEntry(e.id)} className="w-full text-left px-3 py-2 text-sm text-rose-600 hover:bg-[var(--bg-input)]">Delete Entry</button>
-                        </div>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        )}
+        <ResponsiveDataView
+          columns={[
+            { key: 'description', label: 'Description', primary: true },
+            { key: 'type', label: 'Type', status: true, render: e => <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${e.type === 'replenishment' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{e.type}</span> },
+            { key: 'amount', label: 'Amount', render: e => <span className={`font-semibold ${e.type === 'replenishment' ? 'text-green-500' : 'text-red-500'}`}>{e.type === 'replenishment' ? '+' : '-'}GHS {e.amount.toLocaleString()}</span> },
+            { key: 'date', label: 'Date' },
+            { key: 'disbursedTo', label: 'Disbursed To' },
+            { key: 'category', label: 'Category', render: e => <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--accent-light)] text-[var(--accent)]">{e.category}</span> },
+            { key: 'receipt', label: 'Receipt', render: e => e.receipt ? '✅' : '—' },
+            { key: 'balanceAfter', label: 'Balance After', render: e => `GHS ${e.balanceAfter.toLocaleString()}` },
+          ] as DataColumn<typeof entries[number]>[]}
+          data={filtered}
+          rowKey={e => e.id}
+          loading={loading}
+          emptyIcon={<AlertTriangle size={20} className="opacity-60" />}
+          emptyTitle="No petty cash entries found"
+          renderActions={e => (
+            <div className="relative">
+              <button onClick={() => setMenuOpen(menuOpen === e.id ? null : e.id)} className="p-1.5 rounded-lg hover:bg-[var(--bg-input)]"><MoreVertical size={14} className="text-[var(--text-muted)]" /></button>
+              {menuOpen === e.id && (
+                <div className="absolute right-0 top-8 z-20 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-lg py-1 min-w-[140px]">
+                  <button onClick={() => openEditForm(e)} className="w-full text-left px-3 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-input)]">Edit Entry</button>
+                  <button onClick={() => deleteEntry(e.id)} className="w-full text-left px-3 py-2 text-sm text-rose-600 hover:bg-[var(--bg-input)]">Delete Entry</button>
+                </div>
+              )}
+            </div>
+          )}
+        />
         {!loading && entries.length > 0 && (
           <div className="flex items-center justify-between px-4 py-3 border-t border-[var(--border)] text-xs text-[var(--text-muted)]">
             <span>Showing {entries.length}{typeof total === 'number' ? ` of ${total.toLocaleString()}` : ''}</span>

@@ -8,6 +8,7 @@ import CountUp from '../../components/CountUp';
 import { useCeoSettings } from '../../contexts/CeoSettingsContext';
 import SidePanel from '../../components/ui/SidePanel';
 import SearchableDropdown from '../../components/ui/SearchableDropdown';
+import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
 
 interface MomoTxn {
   id: string;
@@ -232,42 +233,39 @@ export default function FinanceMobileMoneyView({ addNotification, currentUser }:
       </div>
 
       <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead><tr className="border-b border-[var(--border)]">{['Transaction ID', 'Network', 'Customer', 'MoMo Number', 'Amount', 'Date', 'Status', ''].map(h => <th key={h} className="px-4 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wide whitespace-nowrap">{h}</th>)}</tr></thead>
-            <tbody className="divide-y divide-[var(--border)]">
-              {filtered.map(t => (
-                <tr key={t.id} className="hover:bg-[var(--bg-input)] group">
-                  <td className="px-4 py-3 font-mono text-xs text-[var(--text-secondary)]">{t.transactionId}</td>
-                  <td className="px-4 py-3"><span className="text-xs px-2 py-1 rounded-full font-medium text-white" style={{ background: NETWORK_COLORS[t.network] }}>{t.network}</span></td>
-                  <td className="px-4 py-3 font-medium text-[var(--text-primary)] whitespace-nowrap">{t.customerName}</td>
-                  <td className="px-4 py-3 text-[var(--text-muted)] font-mono text-xs">{t.momoNumber}</td>
-                  <td className="px-4 py-3 font-semibold text-[var(--text-primary)]">GHS {t.amount.toLocaleString()}</td>
-                  <td className="px-4 py-3 text-[var(--text-muted)] whitespace-nowrap">{t.date}</td>
-                  <td className="px-4 py-3"><span className={`text-xs px-2 py-1 rounded-full font-medium ${STATUS_COLORS[t.status]}`}>{t.status}</span></td>
-                  <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => setViewing(t)} title="View"><Eye size={14} style={{ color: 'var(--accent)' }} /></button>
-                      {t.status === 'Pending' && <button onClick={() => verify(t.id)} title="Verify"><CheckCircle size={14} className="text-green-500" /></button>}
-                      <div className="relative">
-                        <button onClick={() => setMenuOpen(menuOpen === t.id ? null : t.id)} className="p-1.5 rounded-lg hover:bg-[var(--bg-input)]"><MoreVertical size={14} className="text-[var(--text-muted)]" /></button>
-                        {menuOpen === t.id && (
-                          <div className="absolute right-0 top-8 z-20 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-lg py-1 min-w-[150px]">
-                            <button onClick={() => { setViewing(t); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-input)]">View Details</button>
-                            {t.status === 'Pending' && <button onClick={() => verify(t.id)} className="w-full text-left px-3 py-2 text-sm text-green-600 hover:bg-[var(--bg-input)]">Verify</button>}
-                            <button onClick={() => openEditForm(t)} className="w-full text-left px-3 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-input)]">Edit Txn</button>
-                            <button onClick={() => deleteTxn(t.id)} className="w-full text-left px-3 py-2 text-sm text-rose-600 hover:bg-[var(--bg-input)]">Delete Txn</button>
-                            <button onClick={() => { handlePrint(); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-input)]">Export Receipt</button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <ResponsiveDataView
+          columns={[
+            { key: 'customerName', label: 'Customer', primary: true },
+            { key: 'network', label: 'Network', status: true, render: t => <span className="text-xs px-2 py-1 rounded-full font-medium text-white" style={{ background: NETWORK_COLORS[t.network] }}>{t.network}</span> },
+            { key: 'transactionId', label: 'Transaction ID', render: t => <span className="font-mono">{t.transactionId}</span> },
+            { key: 'momoNumber', label: 'MoMo Number', render: t => <span className="font-mono">{t.momoNumber}</span> },
+            { key: 'amount', label: 'Amount', render: t => <span className="font-semibold">GHS {t.amount.toLocaleString()}</span> },
+            { key: 'date', label: 'Date' },
+            { key: 'status', label: 'Status', render: t => <span className={`text-xs px-2 py-1 rounded-full font-medium ${STATUS_COLORS[t.status]}`}>{t.status}</span> },
+          ] as DataColumn<MomoTxn>[]}
+          data={filtered}
+          rowKey={t => t.id}
+          loading={loading}
+          emptyTitle="No mobile money transactions yet"
+          renderActions={t => (
+            <div className="flex items-center gap-1">
+              <button onClick={() => setViewing(t)} title="View"><Eye size={14} style={{ color: 'var(--accent)' }} /></button>
+              {t.status === 'Pending' && <button onClick={() => verify(t.id)} title="Verify"><CheckCircle size={14} className="text-green-500" /></button>}
+              <div className="relative">
+                <button onClick={() => setMenuOpen(menuOpen === t.id ? null : t.id)} className="p-1.5 rounded-lg hover:bg-[var(--bg-input)]"><MoreVertical size={14} className="text-[var(--text-muted)]" /></button>
+                {menuOpen === t.id && (
+                  <div className="absolute right-0 top-8 z-20 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-lg py-1 min-w-[150px]">
+                    <button onClick={() => { setViewing(t); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-input)]">View Details</button>
+                    {t.status === 'Pending' && <button onClick={() => verify(t.id)} className="w-full text-left px-3 py-2 text-sm text-green-600 hover:bg-[var(--bg-input)]">Verify</button>}
+                    <button onClick={() => openEditForm(t)} className="w-full text-left px-3 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-input)]">Edit Txn</button>
+                    <button onClick={() => deleteTxn(t.id)} className="w-full text-left px-3 py-2 text-sm text-rose-600 hover:bg-[var(--bg-input)]">Delete Txn</button>
+                    <button onClick={() => { handlePrint(); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-input)]">Export Receipt</button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        />
       </div>
 
       <SidePanel
