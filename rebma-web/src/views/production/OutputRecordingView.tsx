@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { exportToCSV } from '../../utils/export';
 import SidePanel from '../../components/ui/SidePanel';
 import SearchableDropdown from '../../components/ui/SearchableDropdown';
+import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
 
 const UNITS = ['kg', 'tons', 'liters', 'bags', 'units'];
 
@@ -262,45 +263,34 @@ export default function OutputRecordingView({ addNotification }: Props) {
           </button>
         </div>
         {loading && Array.from({ length: 5 }).map((_, i) => <div key={i} className="animate-pulse h-10 bg-slate-200 dark:bg-slate-700 rounded mb-2" />)}
-        {!loading && <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                {['Date', 'Product', 'Received', 'Boxes', 'Sachets', 'Quality', 'Notes', ''].map(h => (
-                  <th key={h} style={{ textAlign: 'left', padding: '10px 12px', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {records.map(r => (
-                <tr key={r.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                  <td style={{ padding: '12px', color: 'var(--text-primary)', fontSize: 13, whiteSpace: 'nowrap' }}>{r.date}</td>
-                  <td style={{ padding: '12px', color: 'var(--text-primary)', fontSize: 13 }}>{r.product}</td>
-                  <td style={{ padding: '12px', color: 'var(--text-secondary)', fontSize: 13, textAlign: 'center' }}>{r.received} {r.unit}</td>
-                  <td style={{ padding: '12px', color: 'var(--text-secondary)', fontSize: 13, textAlign: 'center' }}>{r.boxes}</td>
-                  <td style={{ padding: '12px', color: 'var(--text-secondary)', fontSize: 13, textAlign: 'center' }}>{r.sachets.toLocaleString()}</td>
-                  <td style={{ padding: '12px' }}>
-                    <span style={{ padding: '3px 10px', borderRadius: 9999, fontSize: 12, fontWeight: 600, background: r.quality === 'Pass' ? 'rgba(16,185,129,0.15)' : 'rgba(220,38,38,0.15)', color: r.quality === 'Pass' ? '#059669' : '#dc2626' }}>{r.quality}</span>
-                  </td>
-                  <td style={{ padding: '12px', color: 'var(--text-muted)', fontSize: 12, maxWidth: 160 }}>{r.notes || '—'}</td>
-                  <td style={{ padding: '12px' }}>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <button onClick={() => handleEditClick(r)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent)', padding: 4 }} title="Edit"><Edit size={14} /></button>
-                      <button onClick={() => handleDelete(r.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', padding: 4 }} title="Delete"><Trash2 size={14} /></button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {records.length === 0 && (
-            <div className="text-center py-12 text-[var(--text-muted)]">
-              <Package className="w-10 h-10 mx-auto mb-3 opacity-40" />
-              <p className="font-semibold text-sm">No output records yet</p>
-              <p className="text-xs mt-1">They will appear here once added</p>
-            </div>
-          )}
-        </div>}
+        {!loading && (
+          <ResponsiveDataView<OutputRecord>
+            columns={[
+              { key: 'product', label: 'Product', primary: true },
+              { key: 'date', label: 'Date' },
+              { key: 'received', label: 'Received', render: r => `${r.received} ${r.unit}` },
+              { key: 'boxes', label: 'Boxes' },
+              { key: 'sachets', label: 'Sachets', render: r => r.sachets.toLocaleString() },
+              {
+                key: 'quality', label: 'Quality', status: true, render: r => (
+                  <span style={{ padding: '3px 10px', borderRadius: 9999, fontSize: 12, fontWeight: 600, background: r.quality === 'Pass' ? 'rgba(16,185,129,0.15)' : 'rgba(220,38,38,0.15)', color: r.quality === 'Pass' ? '#059669' : '#dc2626' }}>{r.quality}</span>
+                )
+              },
+              { key: 'notes', label: 'Notes', render: r => r.notes || '—' },
+            ]}
+            data={records}
+            rowKey={r => r.id}
+            emptyIcon={<Package className="w-10 h-10" />}
+            emptyTitle="No output records yet"
+            emptyDescription="They will appear here once added"
+            renderActions={r => (
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button onClick={() => handleEditClick(r)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent)', padding: 4 }} title="Edit"><Edit size={14} /></button>
+                <button onClick={() => handleDelete(r.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', padding: 4 }} title="Delete"><Trash2 size={14} /></button>
+              </div>
+            )}
+          />
+        )}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16 }}>

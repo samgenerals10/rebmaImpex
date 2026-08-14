@@ -5,6 +5,7 @@ import { wipApi } from '../../services/apiClient';
 import CountUp from '../../components/CountUp';
 import SidePanel from '../../components/ui/SidePanel';
 import SearchableDropdown from '../../components/ui/SearchableDropdown';
+import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
 
 const UNITS = ['kg', 'L', 'pcs', 'boxes', 'sachets', 'blocks', 'bags'];
 
@@ -269,65 +270,41 @@ export default function WipStockView({ addNotification }: Props) {
 
       {/* Table */}
       <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-[var(--border)]">
-                {['ID', 'Product', 'Batch Ref', 'Stage', 'Quantity', 'Last Updated', 'Notes', ''].map(h => (
-                  <th key={h} className="text-left px-4 py-3 text-[10px] text-[var(--text-muted)] uppercase font-semibold tracking-wide whitespace-nowrap">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr>
-                  <td colSpan={8} className="px-4 py-12 text-center text-[var(--text-muted)] text-sm">
-                    <div className="flex flex-col items-center gap-2">
-                      <div className="w-6 h-6 border-2 border-t-transparent border-[var(--accent)] rounded-full animate-spin" />
-                      Loading WIP Stock...
-                    </div>
-                  </td>
-                </tr>
-              ) : filtered.map(item => (
-                <tr key={item.id} className="border-b border-[var(--border)] hover:bg-[var(--accent-light)] transition-colors cursor-pointer" onClick={() => setDetailModal(item)}>
-                  <td className="px-4 py-3 font-mono text-xs text-[var(--text-muted)]">{item.id}</td>
-                  <td className="px-4 py-3 font-semibold text-[var(--text-primary)]">{item.productName}</td>
-                  <td className="px-4 py-3 text-[var(--text-muted)] text-xs font-mono">{item.batchRef || '—'}</td>
-                  <td className="px-4 py-3">
-                    <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${stageBadgeStyle(item.stage)}`}>{item.stage}</span>
-                  </td>
-                  <td className="px-4 py-3 font-semibold text-[var(--text-primary)]">{item.qty.toLocaleString()} <span className="text-[var(--text-muted)] text-xs font-normal">{item.unit}</span></td>
-                  <td className="px-4 py-3 text-xs text-[var(--text-muted)] whitespace-nowrap">{item.updatedAt}</td>
-                  <td className="px-4 py-3 text-xs text-[var(--text-muted)] max-w-[140px] truncate">{item.notes || '—'}</td>
-                  <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-                    <div className="relative">
-                      <button onClick={() => setMenuOpen(menuOpen === item.id ? null : item.id)}
-                        className="w-7 h-7 flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--bg)] rounded-lg cursor-pointer">
-                        <MoreVertical className="w-4 h-4" />
-                      </button>
-                      {menuOpen === item.id && (
-                        <div className="absolute right-0 top-full mt-1 w-44 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl z-20 p-1">
-                          <button onClick={() => { setDetailModal(item); setMenuOpen(null); }} className="flex w-full px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg cursor-pointer">View Details</button>
-                          <button onClick={() => { setUpdateModal(item); setNewProductName(item.productName); setNewStage(item.stage); setNewQty(String(item.qty)); setNewUnit(item.unit); setNewBatchRef(item.batchRef || ''); setNewNotes(item.notes || ''); setMenuOpen(null); }} className="flex w-full px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg cursor-pointer gap-2 items-center"><Edit2 className="w-3 h-3" /> Edit WIP Item</button>
-                          <button onClick={() => { printWipItem(item); setMenuOpen(null); }} className="flex w-full px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg cursor-pointer gap-2 items-center"><Printer className="w-3 h-3" /> Print Record</button>
-                          <button onClick={() => handleDuplicate(item)} disabled={submitting} className="flex w-full px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg cursor-pointer disabled:opacity-50">Duplicate</button>
-                          <button onClick={() => handleDelete(item.id)} disabled={submitting} className="flex w-full px-3 py-2 text-xs text-rose-500 hover:bg-rose-500/10 rounded-lg cursor-pointer disabled:opacity-50">Delete</button>
-                        </div>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {filtered.length === 0 && (
-                <tr>
-                  <td colSpan={8} className="px-4 py-12 text-center text-[var(--text-muted)] text-sm">
-                    <Layers className="w-10 h-10 mx-auto mb-3 opacity-30" />
-                    No WIP items found
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+        <div className="p-3">
+          <ResponsiveDataView<WipItem>
+            columns={[
+              { key: 'productName', label: 'Product', primary: true },
+              { key: 'id', label: 'ID', render: item => <span className="font-mono text-xs text-[var(--text-muted)]">{item.id}</span> },
+              { key: 'batchRef', label: 'Batch Ref', render: item => <span className="text-xs font-mono">{item.batchRef || '—'}</span> },
+              { key: 'stage', label: 'Stage', status: true, render: item => <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${stageBadgeStyle(item.stage)}`}>{item.stage}</span> },
+              { key: 'qty', label: 'Quantity', render: item => <span className="font-semibold">{item.qty.toLocaleString()} <span className="text-[var(--text-muted)] text-xs font-normal">{item.unit}</span></span> },
+              { key: 'updatedAt', label: 'Last Updated' },
+              { key: 'notes', label: 'Notes', render: item => item.notes || '—' },
+            ]}
+            data={filtered}
+            rowKey={item => item.id}
+            onRowClick={item => setDetailModal(item)}
+            loading={loading}
+            emptyIcon={<Layers className="w-10 h-10" />}
+            emptyTitle="No WIP items found"
+            renderActions={item => (
+              <div className="relative">
+                <button onClick={() => setMenuOpen(menuOpen === item.id ? null : item.id)}
+                  className="w-7 h-7 flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--bg)] rounded-lg cursor-pointer">
+                  <MoreVertical className="w-4 h-4" />
+                </button>
+                {menuOpen === item.id && (
+                  <div className="absolute right-0 top-full mt-1 w-44 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl z-20 p-1">
+                    <button onClick={() => { setDetailModal(item); setMenuOpen(null); }} className="flex w-full px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg cursor-pointer">View Details</button>
+                    <button onClick={() => { setUpdateModal(item); setNewProductName(item.productName); setNewStage(item.stage); setNewQty(String(item.qty)); setNewUnit(item.unit); setNewBatchRef(item.batchRef || ''); setNewNotes(item.notes || ''); setMenuOpen(null); }} className="flex w-full px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg cursor-pointer gap-2 items-center"><Edit2 className="w-3 h-3" /> Edit WIP Item</button>
+                    <button onClick={() => { printWipItem(item); setMenuOpen(null); }} className="flex w-full px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg cursor-pointer gap-2 items-center"><Printer className="w-3 h-3" /> Print Record</button>
+                    <button onClick={() => handleDuplicate(item)} disabled={submitting} className="flex w-full px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg cursor-pointer disabled:opacity-50">Duplicate</button>
+                    <button onClick={() => handleDelete(item.id)} disabled={submitting} className="flex w-full px-3 py-2 text-xs text-rose-500 hover:bg-rose-500/10 rounded-lg cursor-pointer disabled:opacity-50">Delete</button>
+                  </div>
+                )}
+              </div>
+            )}
+          />
         </div>
       </div>
 

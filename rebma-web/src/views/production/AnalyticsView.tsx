@@ -7,6 +7,7 @@ import {
 import { supabase } from '../../lib/supabaseClient';
 import { exportToCSV } from '../../utils/export';
 import CountUp from '../../components/CountUp';
+import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
 
 type Period = '7D' | '30D' | '90D' | '12M';
 
@@ -399,35 +400,25 @@ export default function ProductionAnalyticsView({ addNotification }: Props) {
                 <Download className="w-3.5 h-3.5" /> CSV
               </button>
             </div>
-            {summaryTable.length === 0 ? (
-              <div className="text-center py-12 text-[var(--text-muted)] text-sm">No production records yet</div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-[var(--border)]">
-                      {['Product', 'Batches', 'Total Boxes', 'Total Sachets', 'Pass Rate', 'Avg/Batch'].map(h => (
-                        <th key={h} className="text-left px-4 py-3 text-[10px] text-[var(--text-muted)] uppercase font-semibold tracking-wide whitespace-nowrap">{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {summaryTable.map(row => (
-                      <tr key={row.product} className="border-b border-[var(--border)] hover:bg-[var(--accent-light)] transition-colors">
-                        <td className="px-4 py-3 font-semibold text-[var(--text-primary)]">{row.product}</td>
-                        <td className="px-4 py-3 text-[var(--text-secondary)]">{row.batches}</td>
-                        <td className="px-4 py-3 font-semibold text-[var(--accent)]">{row.totalBoxes.toLocaleString()}</td>
-                        <td className="px-4 py-3 text-[var(--text-secondary)]">{row.totalSachets.toLocaleString()}</td>
-                        <td className="px-4 py-3">
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${row.passRateNum >= 90 ? 'bg-emerald-500/10 text-emerald-600' : row.passRateNum >= 80 ? 'bg-amber-500/10 text-amber-600' : 'bg-rose-500/10 text-rose-600'}`}>{row.passRate}</span>
-                        </td>
-                        <td className="px-4 py-3 text-[var(--text-secondary)]">{row.avgPerBatch} boxes</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+            <div className="p-3">
+              <ResponsiveDataView<typeof summaryTable[number]>
+                columns={[
+                  { key: 'product', label: 'Product', primary: true },
+                  { key: 'batches', label: 'Batches' },
+                  { key: 'totalBoxes', label: 'Total Boxes', render: row => <span className="font-semibold text-[var(--accent)]">{row.totalBoxes.toLocaleString()}</span> },
+                  { key: 'totalSachets', label: 'Total Sachets', render: row => row.totalSachets.toLocaleString() },
+                  {
+                    key: 'passRate', label: 'Pass Rate', status: true, render: row => (
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${row.passRateNum >= 90 ? 'bg-emerald-500/10 text-emerald-600' : row.passRateNum >= 80 ? 'bg-amber-500/10 text-amber-600' : 'bg-rose-500/10 text-rose-600'}`}>{row.passRate}</span>
+                    )
+                  },
+                  { key: 'avgPerBatch', label: 'Avg/Batch', render: row => `${row.avgPerBatch} boxes` },
+                ]}
+                data={summaryTable}
+                rowKey={row => row.product}
+                emptyTitle="No production records yet"
+              />
+            </div>
           </div>
         </>
       )}
