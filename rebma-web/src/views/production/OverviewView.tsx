@@ -260,7 +260,9 @@ export default function ProductionOverviewView({ currentUser, productionRequests
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {kpiCards.map((card, idx) => (
-          <button key={card.label} onClick={() => setActiveSubTab(card.tab)}
+          <div key={card.label} role="button" tabIndex={0}
+            onClick={() => setActiveSubTab(card.tab)}
+            onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveSubTab(card.tab); } }}
             className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4 text-left hover:shadow-md transition-shadow cursor-pointer w-full relative group">
             <div className="flex items-start justify-between gap-2 mb-2">
               <p className="text-[10px] text-[var(--text-muted)] uppercase font-semibold tracking-wide leading-tight">{card.label}</p>
@@ -287,7 +289,7 @@ export default function ProductionOverviewView({ currentUser, productionRequests
               </div>
               <MiniLine data={card.spark.map(Number)} />
             </div>
-          </button>
+          </div>
         ))}
       </div>
 

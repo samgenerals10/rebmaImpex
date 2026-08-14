@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { ReactNode, KeyboardEvent } from 'react';
 
 interface MobileMetricCardProps {
   label: string;
@@ -34,13 +34,26 @@ export default function MobileMetricCard({
   onClick,
 }: MobileMetricCardProps) {
   const color = TONE_COLOR[tone];
-  const Wrapper = onClick ? 'button' : 'div';
+  // Deliberately a <div>, never a <button> — a global mobile stylesheet rule
+  // forces every <button> to the user's chosen button-radius (often a full
+  // pill), which fought this card's own rounded-2xl and made primary/
+  // secondary metrics render with mismatched corners depending on whether
+  // they happened to be clickable. role="button" keeps it accessible.
+  const interactiveProps = onClick
+    ? {
+        role: 'button' as const,
+        tabIndex: 0,
+        onClick,
+        onKeyDown: (e: KeyboardEvent) => {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); }
+        },
+      }
+    : {};
 
   if (emphasis === 'primary') {
     return (
-      <Wrapper
-        type={onClick ? 'button' : undefined}
-        onClick={onClick}
+      <div
+        {...interactiveProps}
         className={`w-full text-left bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4 shadow-[var(--shadow-card)] ${onClick ? 'cursor-pointer active:scale-[0.99] transition-transform' : ''}`}
       >
         <div className="flex items-start justify-between gap-3">
@@ -60,14 +73,13 @@ export default function MobileMetricCard({
             {trend.direction === 'up' ? '↑' : '↓'} {trend.value}
           </div>
         )}
-      </Wrapper>
+      </div>
     );
   }
 
   return (
-    <Wrapper
-      type={onClick ? 'button' : undefined}
-      onClick={onClick}
+    <div
+      {...interactiveProps}
       className={`w-full text-left bg-[var(--bg-card)] border border-[var(--border)] rounded-xl p-3 flex items-center gap-2.5 ${onClick ? 'cursor-pointer active:scale-[0.98] transition-transform' : ''}`}
     >
       {icon && (
@@ -80,6 +92,6 @@ export default function MobileMetricCard({
         <p className="text-sm font-bold text-[var(--text-primary)] mt-0.5 truncate">{value}</p>
         {sublabel && <p className="text-[10px] text-[var(--text-muted)] truncate">{sublabel}</p>}
       </div>
-    </Wrapper>
+    </div>
   );
 }

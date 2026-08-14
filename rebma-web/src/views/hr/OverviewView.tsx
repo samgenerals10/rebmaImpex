@@ -271,7 +271,9 @@ export default function HrOverviewView({ currentUser, addNotification, setActive
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {kpiCards.map(card => (
-          <button key={card.label} onClick={() => setActiveSubTab(card.tab)}
+          <div key={card.label} role="button" tabIndex={0}
+            onClick={() => setActiveSubTab(card.tab)}
+            onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveSubTab(card.tab); } }}
             className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4 text-left hover:shadow-md transition-shadow cursor-pointer w-full">
             <div className="flex items-start justify-between">
               <div>
@@ -283,7 +285,7 @@ export default function HrOverviewView({ currentUser, addNotification, setActive
                 <card.icon className="w-5 h-5" />
               </div>
             </div>
-          </button>
+          </div>
         ))}
       </div>
 
