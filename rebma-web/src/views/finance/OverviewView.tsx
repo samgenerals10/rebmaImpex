@@ -13,6 +13,7 @@ import {
   ShoppingCart, Wallet, Zap, Star, Activity, FileSpreadsheet, Share2, Printer, Search, ArrowUpRight, ArrowDownLeft, Eye, Trash2, Layers, X, History, ArrowLeft
 } from 'lucide-react';
 import { exportToCSV, exportToPDF } from '../../utils/export';
+import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
 import {
   ResponsiveContainer, AreaChart, Area, BarChart, Bar, LineChart, Line,
   XAxis, YAxis, Tooltip, PieChart, Pie, Cell
@@ -639,55 +640,44 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
     if (data.length === 0) {
       return <div className="p-8 text-center text-xs text-[var(--text-muted)]">No items found matching the filter criteria.</div>;
     }
-    
+
+    const columns: DataColumn<any>[] = headers.map((col, i) => ({
+      key: col,
+      label: col.replace(/([A-Z])/g, ' $1').trim(),
+      primary: i === 0,
+      render: (item: any) => {
+        const val = item[col];
+        if (col === 'status' && typeof val === 'object') {
+          return <span className="px-2 py-0.5 rounded-full font-bold text-[9px]" style={{ background: val.bg, color: val.color }}>{val.label}</span>;
+        }
+        let displayed = String(val ?? '—');
+        if (['unitPrice', 'totalRevenue', 'sellingVal', 'costVal', 'costPrice'].includes(col)) {
+          displayed = `GHS ${Number(val || 0).toLocaleString()}`;
+        } else if (['qty', 'qtyReceived', 'totalQty', 'remainingQty'].includes(col)) {
+          displayed = Number(val || 0).toLocaleString();
+        } else if (col === 'approvedAt' || col === 'date') {
+          displayed = val ? new Date(val).toLocaleDateString('en-GB') : '—';
+        }
+        return displayed;
+      },
+    }));
+
     return (
-      <table className="w-full text-xs text-left">
-        <thead className="bg-[var(--bg-input)] border-b border-[var(--border)] text-[var(--text-muted)] uppercase font-semibold text-[10px]">
-          <tr>
-            {headers.map(h => (
-              <th key={h} className="px-4 py-3">{h.replace(/([A-Z])/g, ' $1').trim()}</th>
-            ))}
-            <th className="px-4 py-3 text-right">Statement & History</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-[var(--border)] text-[var(--text-primary)]">
-          {data.map((item, idx) => (
-            <tr key={idx} className="hover:bg-[var(--accent-light)] transition-all">
-              {headers.map(col => {
-                const val = item[col];
-                let displayed = String(val ?? '—');
-                if (['unitPrice', 'totalRevenue', 'sellingVal', 'costVal', 'costPrice'].includes(col)) {
-                  displayed = `GHS ${Number(val || 0).toLocaleString()}`;
-                } else if (['qty', 'qtyReceived', 'totalQty', 'remainingQty'].includes(col)) {
-                  displayed = Number(val || 0).toLocaleString();
-                } else if (col === 'approvedAt' || col === 'date') {
-                  displayed = val ? new Date(val).toLocaleDateString('en-GB') : '—';
-                }
-                
-                return (
-                  <td key={col} className={`px-4 py-3 font-medium ${col === 'name' || col === 'id' || col === 'code' ? 'font-semibold' : ''}`}>
-                    {col === 'status' && typeof val === 'object' ? (
-                      <span className="px-2 py-0.5 rounded-full font-bold text-[9px]" style={{ background: val.bg, color: val.color }}>
-                        {val.label}
-                      </span>
-                    ) : displayed}
-                  </td>
-                );
-              })}
-              <td className="px-4 py-3 text-right">
-                <button
-                  onClick={() => setSelectedLedgerProduct(item)}
-                  className="p-1 rounded-lg hover:bg-[var(--accent-light)] hover:text-[var(--accent)] text-[var(--text-secondary)] transition-all inline-flex items-center gap-1 cursor-pointer border border-[var(--border)]"
-                  title="View statement and complete transaction history"
-                >
-                  <History size={13} className="shrink-0 text-[var(--accent)]" />
-                  <span className="text-[10px] font-semibold">Statement</span>
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <ResponsiveDataView
+        columns={columns}
+        data={data}
+        rowKey={(item: any) => String(item.id ?? item.name ?? item.code ?? JSON.stringify(item))}
+        renderActions={(item: any) => (
+          <button
+            onClick={() => setSelectedLedgerProduct(item)}
+            className="p-1 rounded-lg hover:bg-[var(--accent-light)] hover:text-[var(--accent)] text-[var(--text-secondary)] transition-all inline-flex items-center gap-1 cursor-pointer border border-[var(--border)]"
+            title="View statement and complete transaction history"
+          >
+            <History size={13} className="shrink-0 text-[var(--accent)]" />
+            <span className="text-[10px] font-semibold">Statement</span>
+          </button>
+        )}
+      />
     );
   };
 
@@ -1073,42 +1063,19 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
 
               {/* Table Logs */}
               <div className="p-6 min-h-[250px]">
-                {entries.length === 0 ? (
-                  <div className="text-center text-xs text-[var(--text-muted)] py-12">No movement logs found for this product.</div>
-                ) : (
-                  <table className="w-full text-xs text-left">
-                    <thead className="bg-[var(--bg-input)] text-[var(--text-muted)] uppercase font-semibold text-[9px] border-b border-[var(--border)]">
-                      <tr>
-                        <th className="px-3 py-2.5">Date</th>
-                        <th className="px-3 py-2.5">Movement</th>
-                        <th className="px-3 py-2.5 text-right">Quantity</th>
-                        <th className="px-3 py-2.5">Reference</th>
-                        <th className="px-3 py-2.5">Notes</th>
-                        <th className="px-3 py-2.5">Performed By</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[var(--border)] text-[var(--text-secondary)]">
-                      {entries.map(e => (
-                        <tr key={e.id} className="hover:bg-[var(--accent-light)]">
-                          <td className="px-3 py-2 whitespace-nowrap font-mono">{new Date(e.created_at).toLocaleDateString('en-GB')} {new Date(e.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</td>
-                          <td className="px-3 py-2 font-bold">
-                            <span className={`px-2 py-0.5 rounded text-[8px] uppercase tracking-wide ${
-                              e.movement_type === 'ADD' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-red-500/10 text-red-500'
-                            }`}>
-                              {e.movement_type}
-                            </span>
-                          </td>
-                          <td className={`px-3 py-2 text-right font-bold font-mono ${e.movement_type === 'ADD' ? 'text-blue-500' : 'text-red-500'}`}>
-                            {e.movement_type === 'ADD' ? '+' : '-'}{Number(e.quantity).toLocaleString()}
-                          </td>
-                          <td className="px-3 py-2 font-medium truncate max-w-[120px]" title={e.reference}>{e.reference || '—'}</td>
-                          <td className="px-3 py-2 truncate max-w-[180px]" title={e.notes}>{e.notes || '—'}</td>
-                          <td className="px-3 py-2 font-semibold">{e.performed_by || 'System'}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
+                <ResponsiveDataView
+                  columns={[
+                    { key: 'movement_type', label: 'Movement', primary: true, render: e => <span className={`px-2 py-0.5 rounded text-[8px] uppercase tracking-wide font-bold ${e.movement_type === 'ADD' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-red-500/10 text-red-500'}`}>{e.movement_type}</span> },
+                    { key: 'created_at', label: 'Date', render: e => <span className="font-mono">{new Date(e.created_at).toLocaleDateString('en-GB')} {new Date(e.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</span> },
+                    { key: 'quantity', label: 'Quantity', align: 'right', render: e => <span className={`font-bold font-mono ${e.movement_type === 'ADD' ? 'text-blue-500' : 'text-red-500'}`}>{e.movement_type === 'ADD' ? '+' : '-'}{Number(e.quantity).toLocaleString()}</span> },
+                    { key: 'reference', label: 'Reference', render: e => e.reference || '—' },
+                    { key: 'notes', label: 'Notes', render: e => e.notes || '—' },
+                    { key: 'performed_by', label: 'Performed By', render: e => e.performed_by || 'System' },
+                  ] as DataColumn<typeof entries[number]>[]}
+                  data={entries}
+                  rowKey={e => e.id}
+                  emptyTitle="No movement logs found for this product."
+                />
               </div>
         </div>
         );
@@ -1161,35 +1128,22 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
                 </div>
               ))}
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="border-b border-[var(--border)]">
-                    {['Product', 'Qty', 'Cost', 'Selling', 'Margin'].map(h => (
-                      <th key={h} className="px-2 py-2 text-left text-[9px] text-[var(--text-muted)] uppercase font-bold whitespace-nowrap">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[var(--border)]">
-                  {inventoryItems.map((item: any) => {
+            <ResponsiveDataView
+              columns={[
+                { key: 'name', label: 'Product', primary: true },
+                {
+                  key: 'margin', label: 'Margin', status: true, render: (item: any) => {
                     const margin = item.costPrice > 0 ? (((item.unitPrice - item.costPrice) / item.costPrice) * 100).toFixed(0) : '—';
-                    return (
-                      <tr key={item.name} className="hover:bg-[var(--accent-light)]">
-                        <td className="px-2 py-2 font-semibold text-[var(--text-primary)] truncate max-w-[100px]">{item.name}</td>
-                        <td className="px-2 py-2 text-[var(--text-secondary)]">{item.qty.toLocaleString()}</td>
-                        <td className="px-2 py-2 text-amber-600">{item.currency} {item.costPrice.toLocaleString()}</td>
-                        <td className="px-2 py-2 text-sky-600 font-semibold">{item.currency} {item.unitPrice.toLocaleString()}</td>
-                        <td className="px-2 py-2">
-                          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${Number(margin) > 0 ? 'bg-emerald-500/10 text-emerald-600' : 'bg-[var(--bg-input)] text-[var(--text-muted)]'}`}>
-                            {margin !== '—' ? `${margin}%` : '—'}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                    return <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${Number(margin) > 0 ? 'bg-emerald-500/10 text-emerald-600' : 'bg-[var(--bg-input)] text-[var(--text-muted)]'}`}>{margin !== '—' ? `${margin}%` : '—'}</span>;
+                  }
+                },
+                { key: 'qty', label: 'Qty', render: (item: any) => item.qty.toLocaleString() },
+                { key: 'costPrice', label: 'Cost', render: (item: any) => <span className="text-amber-600">{item.currency} {item.costPrice.toLocaleString()}</span> },
+                { key: 'unitPrice', label: 'Selling', render: (item: any) => <span className="text-sky-600 font-semibold">{item.currency} {item.unitPrice.toLocaleString()}</span> },
+              ] as DataColumn<any>[]}
+              data={inventoryItems}
+              rowKey={(item: any) => item.name}
+            />
           </div>
 
           {/* Newly Priced Catalog Items */}
@@ -1566,54 +1520,27 @@ export default function FinanceOverviewView({ addNotification, setActiveSubTab, 
           </span>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs text-left">
-            <thead>
-              <tr className="border-b border-[var(--border)] bg-[var(--bg-input)]">
-                <th className="py-2 px-3 text-[var(--text-muted)] font-semibold">Cargo ID</th>
-                <th className="py-2 px-3 text-[var(--text-muted)] font-semibold">Product Name</th>
-                <th className="py-2 px-3 text-[var(--text-muted)] font-semibold">Supplier</th>
-                <th className="py-2 px-3 text-[var(--text-muted)] font-semibold text-center">Original Qty</th>
-                <th className="py-2 px-3 text-[var(--text-muted)] font-semibold text-center">Damaged Qty</th>
-                <th className="py-2 px-3 text-[var(--text-muted)] font-semibold text-right">Unit Cost (GHS)</th>
-                <th className="py-2 px-3 text-[var(--text-muted)] font-semibold text-right">Financial Loss (GHS)</th>
-                <th className="py-2 px-3 text-[var(--text-muted)] font-semibold">Description / Notes</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[var(--border)]">
-              {cargoDiscrepancies.map(d => (
-                <tr key={d.id} className="hover:bg-red-500/5">
-                  <td className="py-3 px-3 font-mono text-[10px] text-[var(--text-secondary)]">{d.id.slice(0, 8).toUpperCase()}</td>
-                  <td className="py-3 px-3 font-semibold text-[var(--text-primary)]">{d.productName}</td>
-                  <td className="py-3 px-3 text-[var(--text-secondary)]">{d.company}</td>
-                  <td className="py-3 px-3 text-center text-[var(--text-secondary)]">{d.originalQty}</td>
-                  <td className="py-3 px-3 text-center text-red-500 font-bold">{d.damagedCount}</td>
-                  <td className="py-3 px-3 text-right text-[var(--text-secondary)]">{d.unitCost.toLocaleString()}</td>
-                  <td className="py-3 px-3 text-right text-red-650 font-extrabold">GHS {d.costLoss.toLocaleString()}</td>
-                  <td className="py-3 px-3 text-[var(--text-muted)] max-w-xs truncate" title={d.notes}>{d.notes}</td>
-                </tr>
-              ))}
-              {cargoDiscrepancies.length === 0 && (
-                <tr>
-                  <td colSpan={8} className="py-8 text-center text-[var(--text-muted)]">
-                    No approved cargo discrepancies or damages logged.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-            {cargoDiscrepancies.length > 0 && (
-              <tfoot>
-                <tr className="bg-red-500/10 border-t border-[var(--border)] font-bold">
-                  <td colSpan={6} className="py-2.5 px-3 text-[var(--text-primary)]">Total Loss (At Cost)</td>
-                  <td className="py-2.5 px-3 text-right text-red-600">
-                    GHS <CountUp value={cargoDiscrepancies.reduce((s, d) => s + d.costLoss, 0)} />
-                  </td>
-                  <td className="py-2.5 px-3"></td>
-                </tr>
-              </tfoot>
-            )}
-          </table>
-        </div>
+        <ResponsiveDataView
+          columns={[
+            { key: 'productName', label: 'Product Name', primary: true },
+            { key: 'id', label: 'Cargo ID', render: d => <span className="font-mono text-[10px]">{d.id.slice(0, 8).toUpperCase()}</span> },
+            { key: 'company', label: 'Supplier' },
+            { key: 'originalQty', label: 'Original Qty', align: 'center' },
+            { key: 'damagedCount', label: 'Damaged Qty', align: 'center', render: d => <span className="text-red-500 font-bold">{d.damagedCount}</span> },
+            { key: 'unitCost', label: 'Unit Cost (GHS)', align: 'right', render: d => d.unitCost.toLocaleString() },
+            { key: 'costLoss', label: 'Financial Loss (GHS)', align: 'right', render: d => <span className="text-red-650 font-extrabold">GHS {d.costLoss.toLocaleString()}</span> },
+            { key: 'notes', label: 'Description / Notes' },
+          ] as DataColumn<typeof cargoDiscrepancies[number]>[]}
+          data={cargoDiscrepancies}
+          rowKey={d => d.id}
+          emptyTitle="No approved cargo discrepancies or damages logged."
+        />
+        {cargoDiscrepancies.length > 0 && (
+          <div className="mt-3 flex items-center justify-between px-3 py-2.5 rounded-xl bg-red-500/10 font-bold">
+            <span className="text-[var(--text-primary)] text-xs">Total Loss (At Cost)</span>
+            <span className="text-red-600 text-xs">GHS <CountUp value={cargoDiscrepancies.reduce((s, d) => s + d.costLoss, 0)} /></span>
+          </div>
+        )}
       </div>
     </div>
   );
