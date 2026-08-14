@@ -374,7 +374,7 @@ export default function DispatchOverviewView({ addNotification, setActiveSubTab,
         {/* Active Deliveries Job Board */}
         <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-[var(--text-primary)]">Active Deliveries</h3>
+            <h3 className="font-bold text-sm text-[var(--text-primary)]">Active Deliveries</h3>
             <button onClick={() => setActiveSubTab?.('ActiveDeliveries')}
               className="flex items-center gap-1 text-xs font-medium hover:underline" style={{ color: 'var(--accent)' }}>
               View All <ChevronRight size={12} />
@@ -438,7 +438,7 @@ export default function DispatchOverviewView({ addNotification, setActiveSubTab,
         {/* Quick Driver Assignment */}
         <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-[var(--text-primary)]">Assign Driver</h3>
+            <h3 className="font-bold text-sm text-[var(--text-primary)]">Assign Driver</h3>
             <button onClick={() => setActiveSubTab?.('Drivers')} className="flex items-center gap-1 text-xs font-medium hover:underline" style={{ color: 'var(--accent)' }}>
               See All Drivers <ChevronRight size={12} />
             </button>
@@ -519,7 +519,7 @@ export default function DispatchOverviewView({ addNotification, setActiveSubTab,
         {/* GPS Fleet Map */}
         <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-[var(--text-primary)]">Live Fleet Tracking</h3>
+            <h3 className="font-bold text-sm text-[var(--text-primary)]">Live Fleet Tracking</h3>
             <button onClick={() => setActiveSubTab?.('Tracking')}
               className="text-xs font-medium hover:underline px-3 py-1.5 rounded-xl border border-[var(--border)] hover:bg-[var(--bg-input)] text-[var(--text-secondary)]">
               Full Screen
@@ -543,7 +543,7 @@ export default function DispatchOverviewView({ addNotification, setActiveSubTab,
         {/* Delivery Performance */}
         <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-[var(--text-primary)]">Delivery Performance</h3>
+            <h3 className="font-bold text-sm text-[var(--text-primary)]">Delivery Performance</h3>
             <SearchableDropdown value={perfPeriod} onChange={setPerfPeriod} options={['Today', 'This Week', 'This Month'].map(p => ({ value: p, label: p }))} className="w-32" />
           </div>
           {/* Success Rate */}
@@ -612,7 +612,7 @@ export default function DispatchOverviewView({ addNotification, setActiveSubTab,
         {/* Deliveries Movement */}
         <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-[var(--text-primary)]">Deliveries Movement</h3>
+            <h3 className="font-bold text-sm text-[var(--text-primary)]">Deliveries Movement</h3>
             <SearchableDropdown value={volPeriod} onChange={setVolPeriod} options={['This Week', 'This Month', 'This Quarter'].map(p => ({ value: p, label: p }))} className="w-36" />
           </div>
           <div className="grid grid-cols-2 gap-4 mb-4">
@@ -649,7 +649,7 @@ export default function DispatchOverviewView({ addNotification, setActiveSubTab,
         {/* Upcoming Deliveries */}
         <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-[var(--text-primary)]">Scheduled Deliveries</h3>
+            <h3 className="font-bold text-sm text-[var(--text-primary)]">Scheduled Deliveries</h3>
             <button onClick={() => setActiveSubTab?.('ActiveDeliveries')} className="flex items-center gap-1 text-xs font-medium hover:underline" style={{ color: 'var(--accent)' }}>
               View All <ChevronRight size={12} />
             </button>
@@ -694,7 +694,7 @@ export default function DispatchOverviewView({ addNotification, setActiveSubTab,
       <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
         <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
           <div>
-            <h3 className="font-semibold text-[var(--text-primary)]">Delivery Volume</h3>
+            <h3 className="font-bold text-sm text-[var(--text-primary)]">Delivery Volume</h3>
             <p className="text-sm text-[var(--text-secondary)] mt-0.5">Assigned vs completed deliveries — {volPeriod.toLowerCase()}</p>
           </div>
           <div className="flex items-center gap-2">

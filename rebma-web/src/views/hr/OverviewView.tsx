@@ -278,7 +278,7 @@ export default function HrOverviewView({ currentUser, addNotification, setActive
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xs text-[var(--text-secondary)] font-semibold mb-1">{card.label}</p>
-                <p className="text-2xl font-bold text-[var(--text-primary)]"><CountUp value={card.value} suffix={card.suffix} /></p>
+                <p className="text-3xl font-bold text-[var(--text-primary)]"><CountUp value={card.value} suffix={card.suffix} /></p>
                 <p className="text-xs text-[var(--text-secondary)] mt-0.5">{card.sub}</p>
               </div>
               <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: `${card.color}20`, color: card.color, boxShadow: `inset 0 0 0 1px ${card.color}30` }}>

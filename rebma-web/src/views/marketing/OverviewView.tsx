@@ -416,7 +416,7 @@ export default function MarketingOverviewView({ addNotification, setActiveSubTab
         ].map(({ label, value, prefix, change, up, sub, tab }) => (
           <div key={label} className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4 cursor-pointer hover:border-[var(--accent)] transition-colors" onClick={() => setActiveSubTab?.(tab)}>
             <p className="text-xs text-[var(--text-secondary)] font-semibold mb-1">{label}</p>
-            <p className="text-2xl font-bold text-[var(--text-primary)]"><CountUp value={value} prefix={prefix} /></p>
+            <p className="text-3xl font-bold text-[var(--text-primary)]"><CountUp value={value} prefix={prefix} /></p>
             <div className="flex items-center gap-1 mt-1">
               {up ? <TrendingUp size={11} className="text-green-500" /> : <TrendingDown size={11} className="text-red-400" />}
               <span className={`text-xs font-medium ${up ? 'text-green-500' : 'text-red-400'}`}>{change}</span>
@@ -439,7 +439,7 @@ export default function MarketingOverviewView({ addNotification, setActiveSubTab
           <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h3 className="font-semibold text-[var(--text-primary)] flex items-center gap-2">
+                <h3 className="font-bold text-sm text-[var(--text-primary)] flex items-center gap-2">
                   <CheckCircle size={15} className="text-emerald-500" /> Products Available to Sell
                 </h3>
                 <p className="text-xs text-[var(--text-muted)] mt-0.5">
@@ -462,7 +462,7 @@ export default function MarketingOverviewView({ addNotification, setActiveSubTab
         <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="font-semibold text-[var(--text-primary)]">Sales Overview</h3>
+              <h3 className="font-bold text-sm text-[var(--text-primary)]">Sales Overview</h3>
               <p className="text-2xl font-bold text-[var(--text-primary)] mt-1">GHS <CountUp value={revenue} /> <span className="text-sm font-normal text-green-500">+14.2%</span></p>
             </div>
             <SearchableDropdown value={salesPeriod} onChange={setSalesPeriod} options={['This Week', 'This Month', '6 Months', 'Year'].map(p => ({ value: p, label: p }))} className="w-32" />
@@ -491,7 +491,7 @@ export default function MarketingOverviewView({ addNotification, setActiveSubTab
 
         <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-[var(--text-primary)]">Orders by Product</h3>
+            <h3 className="font-bold text-sm text-[var(--text-primary)]">Orders by Product</h3>
             <button onClick={() => setActiveSubTab?.('MktAnalytics')} className="text-xs font-medium hover:underline" style={{ color: 'var(--accent)' }}>View All</button>
           </div>
           {productPie.length === 0 ? (
@@ -531,7 +531,7 @@ export default function MarketingOverviewView({ addNotification, setActiveSubTab
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
         <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-[var(--text-primary)]">Recent Orders</h3>
+            <h3 className="font-bold text-sm text-[var(--text-primary)]">Recent Orders</h3>
             <button onClick={() => setActiveSubTab?.('CreateOrder')} className="flex items-center gap-1 text-xs font-medium hover:underline" style={{ color: 'var(--accent)' }}>View All <ArrowRight size={12} /></button>
           </div>
           {recentOrders.length === 0 ? (
@@ -568,7 +568,7 @@ export default function MarketingOverviewView({ addNotification, setActiveSubTab
 
         <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-[var(--text-primary)]">Top Products</h3>
+            <h3 className="font-bold text-sm text-[var(--text-primary)]">Top Products</h3>
             <button onClick={() => setActiveSubTab?.('MktAnalytics')} className="flex items-center gap-1 text-xs font-medium hover:underline" style={{ color: 'var(--accent)' }}>View All <ArrowRight size={12} /></button>
           </div>
           {topProducts.length === 0 ? (
@@ -600,7 +600,7 @@ export default function MarketingOverviewView({ addNotification, setActiveSubTab
       <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h3 className="font-semibold text-[var(--text-primary)]">Revenue Overview</h3>
+            <h3 className="font-bold text-sm text-[var(--text-primary)]">Revenue Overview</h3>
             <p className="text-2xl font-bold text-[var(--text-primary)] mt-1">GHS <CountUp value={revenue} /> <span className="text-sm font-normal text-green-500">+8.2%</span></p>
           </div>
           <SearchableDropdown value={revPeriod} onChange={setRevPeriod} options={['This Month', 'This Quarter', 'This Year'].map(p => ({ value: p, label: p }))} className="w-32" />
@@ -624,7 +624,7 @@ export default function MarketingOverviewView({ addNotification, setActiveSubTab
       {/* ROW 5 - Order Pipeline + Credit Requests */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
         <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
-          <h3 className="font-semibold text-[var(--text-primary)] mb-4">Order Pipeline</h3>
+          <h3 className="font-bold text-sm text-[var(--text-primary)] mb-4">Order Pipeline</h3>
           {statusPie.length === 0 ? (
             <div className="h-32 flex items-center justify-center text-[var(--text-muted)] text-xs">No orders in pipeline</div>
           ) : (
@@ -659,7 +659,7 @@ export default function MarketingOverviewView({ addNotification, setActiveSubTab
 
         <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-[var(--text-primary)]">Credit Requests</h3>
+            <h3 className="font-bold text-sm text-[var(--text-primary)]">Credit Requests</h3>
             <button onClick={() => setActiveSubTab?.('CreditRequests')} className="flex items-center gap-1 text-xs font-medium hover:underline" style={{ color: 'var(--accent)' }}>View All <ArrowRight size={12} /></button>
           </div>
           {creditRequests.length === 0 ? (
@@ -690,7 +690,7 @@ export default function MarketingOverviewView({ addNotification, setActiveSubTab
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
         <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
           <div className="flex items-center justify-between mb-2">
-            <h3 className="font-semibold text-[var(--text-primary)]">Customer Growth</h3>
+            <h3 className="font-bold text-sm text-[var(--text-primary)]">Customer Growth</h3>
           </div>
           <p className="text-2xl font-bold text-[var(--text-primary)] mb-1"><CountUp value={totalCustomers} /> <span className="text-sm font-normal text-green-500">+3 this month</span></p>
           <div className="h-40">
@@ -710,7 +710,7 @@ export default function MarketingOverviewView({ addNotification, setActiveSubTab
         </div>
 
         <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
-          <h3 className="font-semibold text-[var(--text-primary)] mb-4">Payment Methods</h3>
+          <h3 className="font-bold text-sm text-[var(--text-primary)] mb-4">Payment Methods</h3>
           {paymentPie.length === 0 ? (
             <div className="h-32 flex items-center justify-center text-[var(--text-muted)] text-xs">No payment methods logged</div>
           ) : (

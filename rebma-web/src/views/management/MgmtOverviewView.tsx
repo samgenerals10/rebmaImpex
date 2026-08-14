@@ -681,7 +681,7 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
               <span>{label}</span>
               {(isClickable || linkTab) && <span className="text-[9px] text-[var(--accent)] font-semibold font-mono bg-[var(--accent-light)] px-1 py-0.5 rounded">{isClickable ? 'Drill down →' : 'View →'}</span>}
             </p>
-            <p className="text-2xl font-bold text-[var(--text-primary)]"><CountUp value={value} prefix={prefix} suffix={suffix} /></p>
+            <p className="text-3xl font-bold text-[var(--text-primary)]"><CountUp value={value} prefix={prefix} suffix={suffix} /></p>
             <div className="flex items-center gap-1 mt-1">
               {up ? <TrendingUp size={11} className="text-green-500" /> : <TrendingDown size={11} className="text-red-400" />}
               <span className={`text-xs font-medium ${up ? 'text-green-500' : 'text-red-400'}`}>{change}</span>
@@ -716,7 +716,7 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
         <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5 shadow-[var(--box-shadow)] mb-5">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="font-semibold text-[var(--text-primary)] flex items-center gap-2">
+              <h3 className="font-bold text-sm text-[var(--text-primary)] flex items-center gap-2">
                 <CheckCircle size={15} className="text-emerald-500" /> Products Available to Sell
               </h3>
               <p className="text-xs text-[var(--text-muted)] mt-0.5">
@@ -738,7 +738,7 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
         <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="font-semibold text-[var(--text-primary)] flex items-center gap-2">
+              <h3 className="font-bold text-sm text-[var(--text-primary)] flex items-center gap-2">
                 <Package size={16} className="text-[var(--accent)]" /> Goods Inventory &amp; Sales Value
               </h3>
               <p className="text-xs text-[var(--text-muted)] mt-0.5">Approved cargo only · {goodsPrices.length} priced product{goodsPrices.length !== 1 ? 's' : ''} · updates as sales are made</p>
@@ -792,7 +792,7 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
         <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="font-semibold text-[var(--text-primary)]">Earning Overview</h3>
+              <h3 className="font-bold text-sm text-[var(--text-primary)]">Earning Overview</h3>
               <p className="text-xs text-[var(--text-muted)]">Total revenue trend</p>
             </div>
             <SearchableDropdown
@@ -828,7 +828,7 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
         <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="font-semibold text-[var(--text-primary)]">Spending Breakdown</h3>
+              <h3 className="font-bold text-sm text-[var(--text-primary)]">Spending Breakdown</h3>
               <p className="text-xs text-[var(--text-muted)]">By category</p>
             </div>
             <div className="flex items-center gap-3 text-xs text-[var(--text-muted)]">
@@ -860,7 +860,7 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
         {/* Cash Flow */}
         <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
-          <h3 className="font-semibold text-[var(--text-primary)] mb-3">Cash Flow</h3>
+          <h3 className="font-bold text-sm text-[var(--text-primary)] mb-3">Cash Flow</h3>
           <div className="flex items-center gap-2 mb-4">
             {(['income', 'expense', 'savings'] as const).map(t => (
               <button key={t} onClick={() => setCashflowTab(t)} className={`px-3 py-1.5 rounded-full text-xs font-medium capitalize transition-colors ${cashflowTab === t ? 'text-white' : 'text-[var(--text-secondary)] bg-[var(--bg-input)]'}`} style={cashflowTab === t ? { background: 'var(--accent)' } : {}}>{t}</button>
@@ -886,7 +886,7 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
         <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="font-semibold text-[var(--text-primary)]">Pending Approvals</h3>
+              <h3 className="font-bold text-sm text-[var(--text-primary)]">Pending Approvals</h3>
               <p className="text-xs text-[var(--text-muted)]">{pendingCount} requests awaiting action</p>
             </div>
             <button onClick={() => setActiveSubTab?.('CreditApproval')} className="flex items-center gap-1 text-xs font-medium hover:underline" style={{ color: 'var(--accent)' }}>
@@ -923,7 +923,7 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
         <div className="xl:col-span-2 bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="font-semibold text-[var(--text-primary)]">Department Performance</h3>
+              <h3 className="font-bold text-sm text-[var(--text-primary)]">Department Performance</h3>
               <p className="text-xs text-[var(--text-muted)]">Score out of 100</p>
             </div>
           </div>
@@ -945,7 +945,7 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
 
         {/* Approval Status Donut */}
         <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5 flex flex-col">
-          <h3 className="font-semibold text-[var(--text-primary)] mb-2">Approval Status</h3>
+          <h3 className="font-bold text-sm text-[var(--text-primary)] mb-2">Approval Status</h3>
           <p className="text-xs text-[var(--text-muted)] mb-4">Summary statistics</p>
           <div className="relative flex-1 flex items-center justify-center">
             <div style={{ width: 140, height: 140 }}>
@@ -980,7 +980,7 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
       <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h3 className="font-semibold text-[var(--text-primary)]">Department Activity Feed</h3>
+            <h3 className="font-bold text-sm text-[var(--text-primary)]">Department Activity Feed</h3>
             <p className="text-xs text-[var(--text-muted)]">Auto-refreshes every 30 seconds</p>
           </div>
           <button onClick={() => setActiveSubTab?.('DeptActivity')} className="flex items-center gap-1 text-xs font-medium hover:underline" style={{ color: 'var(--accent)' }}>
@@ -1015,7 +1015,7 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
         <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="font-semibold text-[var(--text-primary)]">Year-on-Year Revenue</h3>
+              <h3 className="font-bold text-sm text-[var(--text-primary)]">Year-on-Year Revenue</h3>
               <p className="text-xs text-[var(--text-muted)]">This Year vs Last Year</p>
             </div>
             <div className="flex items-center gap-3 text-xs text-[var(--text-muted)]">
@@ -1044,7 +1044,7 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
         <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="font-semibold text-[var(--text-primary)]">Low Stock Alerts</h3>
+              <h3 className="font-bold text-sm text-[var(--text-primary)]">Low Stock Alerts</h3>
               <p className="text-xs text-[var(--text-muted)]">{lowStock.length} items below threshold</p>
             </div>
             <AlertTriangle size={16} className="text-yellow-500" />
@@ -1084,7 +1084,7 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
         {/* Recent Transactions */}
         <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-[var(--text-primary)]">Recent Transactions</h3>
+            <h3 className="font-bold text-sm text-[var(--text-primary)]">Recent Transactions</h3>
             <button onClick={() => setActiveSubTab?.('Transactions')} className="flex items-center gap-1 text-xs font-medium hover:underline" style={{ color: 'var(--accent)' }}>
               View All <ArrowRight size={12} />
             </button>
@@ -1121,7 +1121,7 @@ export default function MgmtOverviewView({ addNotification, setActiveSubTab, cur
         <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="font-semibold text-[var(--text-primary)]">Stock Movement</h3>
+              <h3 className="font-bold text-sm text-[var(--text-primary)]">Stock Movement</h3>
               <p className="text-xs text-[var(--text-muted)]">Stock In vs Stock Out</p>
             </div>
             <div className="flex items-center gap-3 text-xs text-[var(--text-muted)]">
