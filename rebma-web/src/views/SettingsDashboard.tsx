@@ -250,9 +250,12 @@ export default function SettingsDashboard({
   const [draftDensity,    setDraftDensity]    = useState(() => _loadDraft().density     || density);
   const [draftAccentType, setDraftAccentType] = useState<'solid'|'gradient'>(() => _loadDraft().accentType || 'solid');
   const [draftAccentSolid,setDraftAccentSolid]= useState(() => _loadDraft().accentSolid || accentColor || '#22c55e');
+  const [draftGradStops, setDraftGradStops] = useState<number>(() => _loadDraft().gradientStops || 2);
   const [draftGradC1, setDraftGradC1] = useState(() => _loadDraft().gradientColor1 || '#22c55e');
   const [draftGradC2, setDraftGradC2] = useState(() => _loadDraft().gradientColor2 || '#16a34a');
+  const [draftGradC3, setDraftGradC3] = useState(() => _loadDraft().gradientColor3 || '#ec4899');
   const [draftGradDir,setDraftGradDir]= useState(() => _loadDraft().gradientDirection || '135deg');
+  const [draftBgColor, setDraftBgColor] = useState(() => _loadDraft().bgColor || '');
   const [isSavingApp, setIsSavingApp] = useState(false);
   const [savedApp, setSavedApp] = useState(false);
   // suppress unused variable warning for _d
@@ -265,7 +268,9 @@ export default function SettingsDashboard({
 
   // previewGradient = full gradient string (used for buttons, KPI icons, active nav)
   const previewGradient = draftAccentType === 'gradient'
-    ? `linear-gradient(${draftGradDir || '135deg'}, ${draftGradC1 || '#22c55e'}, ${draftGradC2 || '#16a34a'})`
+    ? (draftGradStops === 3
+        ? `linear-gradient(${draftGradDir || '135deg'}, ${draftGradC1 || '#22c55e'}, ${draftGradC2 || '#16a34a'}, ${draftGradC3 || '#ec4899'})`
+        : `linear-gradient(${draftGradDir || '135deg'}, ${draftGradC1 || '#22c55e'}, ${draftGradC2 || '#16a34a'})`)
     : previewAccent;
 
   const activeTpl = APPEARANCE_TEMPLATES.find(t => t.id === draftTemplate) || APPEARANCE_TEMPLATES[0];
@@ -296,7 +301,9 @@ export default function SettingsDashboard({
       template: draftTemplate, fontFamily: draftFontFamily, fontSize: draftFontSize,
       buttonStyle: draftButtonStyle, cardStyle: draftCardStyle, density: draftDensity,
       accentType: draftAccentType, accentSolid: draftAccentSolid,
-      gradientColor1: draftGradC1, gradientColor2: draftGradC2, gradientDirection: draftGradDir,
+      gradientStops: draftGradStops,
+      gradientColor1: draftGradC1, gradientColor2: draftGradC2, gradientColor3: draftGradC3, gradientDirection: draftGradDir,
+      bgColor: draftBgColor,
     };
 
     // STEP 1–7: Apply directly to DOM immediately (no waiting for React re-render)
@@ -330,7 +337,7 @@ export default function SettingsDashboard({
     body.className = body.className.split(' ').filter(c => !/^font-size-/.test(c)).join(' ');
     body.classList.add(`font-size-${draftFontSize.toLowerCase()}`);
 
-    // Accent color
+    // Accent color & Gradient
     if (draftAccentType === 'solid') {
       root.style.setProperty('--accent', draftAccentSolid);
       root.style.setProperty('--accent-color', draftAccentSolid);
@@ -338,12 +345,21 @@ export default function SettingsDashboard({
       root.style.setProperty('--accent-light', _hexToRgba(draftAccentSolid, 0.15));
       root.style.setProperty('--accent-2',     _darken(draftAccentSolid, 30));
     } else {
-      const grad = `linear-gradient(${draftGradDir},${draftGradC1},${draftGradC2})`;
+      const grad = draftGradStops === 3
+        ? `linear-gradient(${draftGradDir},${draftGradC1},${draftGradC2},${draftGradC3})`
+        : `linear-gradient(${draftGradDir},${draftGradC1},${draftGradC2})`;
       root.style.setProperty('--accent-gradient', grad);
       root.style.setProperty('--accent', draftGradC1);
       root.style.setProperty('--accent-color', draftGradC1);
       root.style.setProperty('--accent-soft', _hexToRgba(draftGradC1, 0.10));
       root.style.setProperty('--accent-light', _hexToRgba(draftGradC1, 0.15));
+    }
+
+    // Background color override
+    if (draftBgColor) {
+      root.style.setProperty('--bg-page', draftBgColor);
+      root.style.setProperty('--bg', draftBgColor);
+      body.style.backgroundColor = draftBgColor;
     }
 
     // STEP 8: Save to localStorage
@@ -386,9 +402,12 @@ export default function SettingsDashboard({
     setDraftDensity(s.density || density);
     setDraftAccentType(s.accentType || 'solid');
     setDraftAccentSolid(s.accentSolid || accentColor || '#22c55e');
+    setDraftGradStops(s.gradientStops || 2);
     setDraftGradC1(s.gradientColor1 || '#22c55e');
     setDraftGradC2(s.gradientColor2 || '#16a34a');
+    setDraftGradC3(s.gradientColor3 || '#ec4899');
     setDraftGradDir(s.gradientDirection || '135deg');
+    setDraftBgColor(s.bgColor || '');
     // Clear accent override so template default accent is restored
     clearAccentOverride();
   };
@@ -834,27 +853,46 @@ export default function SettingsDashboard({
               </div>
             </div>
 
-            {/* ── LAYER 3: Accent Color ── */}
+            {/* ── LAYER 3: Accent Color & Gradient ── */}
             <div className="p-5 bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-card space-y-4">
               <div>
-                <h3 className="text-sm font-bold text-[var(--text-primary)]">Accent Color</h3>
-                <p className="text-xs text-[var(--text-muted)] mt-0.5">Overrides the template accent color</p>
+                <h3 className="text-sm font-bold text-[var(--text-primary)]">Accent & Gradient Colors</h3>
+                <p className="text-xs text-[var(--text-muted)] mt-0.5">Customize accent colors with solid shades, 2-color gradients, or 3-color gradients</p>
               </div>
 
               {/* Solid / Gradient toggle */}
-              <div className="flex gap-1 p-1 bg-[var(--bg)] rounded-xl border border-[var(--border)] w-fit">
-                {(['solid', 'gradient'] as const).map(t => (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => setDraftAccentType(t)}
-                    className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer capitalize ${
-                      draftAccentType === t
-                        ? 'bg-[var(--accent)] text-white shadow'
-                        : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-                    }`}
-                  >{t === 'solid' ? 'Solid Color' : 'Gradient'}</button>
-                ))}
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex gap-1 p-1 bg-[var(--bg)] rounded-xl border border-[var(--border)] w-fit">
+                  {(['solid', 'gradient'] as const).map(t => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => setDraftAccentType(t)}
+                      className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer capitalize ${
+                        draftAccentType === t
+                          ? 'bg-[var(--accent)] text-white shadow'
+                          : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                      }`}
+                    >{t === 'solid' ? 'Solid Color' : 'Gradient'}</button>
+                  ))}
+                </div>
+
+                {draftAccentType === 'gradient' && (
+                  <div className="flex gap-1 p-1 bg-[var(--bg)] rounded-xl border border-[var(--border)]">
+                    {[2, 3].map(stops => (
+                      <button
+                        key={stops}
+                        type="button"
+                        onClick={() => setDraftGradStops(stops)}
+                        className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                          draftGradStops === stops
+                            ? 'bg-[var(--accent)] text-white shadow'
+                            : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                        }`}
+                      >{stops} Colors</button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {draftAccentType === 'solid' ? (
@@ -883,40 +921,147 @@ export default function SettingsDashboard({
                   </div>
                 </div>
               ) : (
-                <div className="space-y-3">
-                  <div className="flex items-end gap-4">
-                    <div className="flex flex-col items-center gap-1.5">
-                      <span className="text-[10px] text-[var(--text-muted)] font-semibold">Color 1</span>
-                      <label className="relative cursor-pointer">
-                        <input type="color" value={draftGradC1} onChange={e => setDraftGradC1(e.target.value)} className="sr-only" />
-                        <div className="w-10 h-10 rounded-full border-2 border-[var(--border)] shadow hover:scale-105 transition-transform cursor-pointer" style={{ backgroundColor: draftGradC1 }} />
-                      </label>
-                    </div>
-                    <div className="flex-1 space-y-1.5">
-                      <span className="text-[10px] text-[var(--text-muted)] font-semibold">Direction</span>
-                      <div className="flex gap-1">
-                        {[{ v: '45deg', icon: '↗' }, { v: '90deg', icon: '→' }, { v: '135deg', icon: '↘' }, { v: '180deg', icon: '↓' }].map(d => (
-                          <button key={d.v} type="button" onClick={() => setDraftGradDir(d.v)}
-                            className={`flex-1 py-1.5 border rounded-lg text-xs font-bold cursor-pointer transition-all ${
-                              draftGradDir === d.v
-                                ? 'bg-[var(--accent)] text-white border-[var(--accent)]'
-                                : 'border-[var(--border)] text-[var(--text-secondary)]'
-                            }`}>{d.icon}</button>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="flex flex-col items-center gap-1.5">
-                      <span className="text-[10px] text-[var(--text-muted)] font-semibold">Color 2</span>
-                      <label className="relative cursor-pointer">
-                        <input type="color" value={draftGradC2} onChange={e => setDraftGradC2(e.target.value)} className="sr-only" />
-                        <div className="w-10 h-10 rounded-full border-2 border-[var(--border)] shadow hover:scale-105 transition-transform cursor-pointer" style={{ backgroundColor: draftGradC2 }} />
-                      </label>
+                <div className="space-y-4">
+                  {/* Direction Selector */}
+                  <div className="space-y-1.5">
+                    <span className="text-[10px] text-[var(--text-muted)] font-semibold uppercase tracking-wider">Gradient Flow Angle</span>
+                    <div className="flex gap-1.5">
+                      {[{ v: '45deg', icon: '↗ 45°' }, { v: '90deg', icon: '→ 90°' }, { v: '135deg', icon: '↘ 135°' }, { v: '180deg', icon: '↓ 180°' }].map(d => (
+                        <button key={d.v} type="button" onClick={() => setDraftGradDir(d.v)}
+                          className={`flex-1 py-1.5 border rounded-lg text-xs font-bold cursor-pointer transition-all ${
+                            draftGradDir === d.v
+                              ? 'bg-[var(--accent)] text-white border-[var(--accent)]'
+                              : 'border-[var(--border)] text-[var(--text-secondary)] hover:border-[var(--accent)]'
+                          }`}>{d.icon}</button>
+                      ))}
                     </div>
                   </div>
-                  <div className="h-10 rounded-xl"
-                    style={{ background: `linear-gradient(${draftGradDir}, ${draftGradC1}, ${draftGradC2})` }} />
+
+                  {/* Color Pickers Grid (2 or 3 colors) */}
+                  <div className={`grid ${draftGradStops === 3 ? 'grid-cols-3' : 'grid-cols-2'} gap-3`}>
+                    <div className="flex flex-col items-center p-3 bg-[var(--bg)] border border-[var(--border)] rounded-xl gap-2">
+                      <span className="text-[10px] text-[var(--text-muted)] font-bold uppercase tracking-wider">Color 1 (Start)</span>
+                      <label className="relative cursor-pointer">
+                        <input type="color" value={draftGradC1} onChange={e => setDraftGradC1(e.target.value)} className="sr-only" />
+                        <div className="w-12 h-12 rounded-full border-2 border-[var(--border)] shadow hover:scale-105 transition-transform cursor-pointer" style={{ backgroundColor: draftGradC1 }} />
+                      </label>
+                      <input
+                        type="text"
+                        value={draftGradC1}
+                        onChange={e => { if (/^#[0-9a-fA-F]{0,6}$/.test(e.target.value)) setDraftGradC1(e.target.value); }}
+                        className="w-full text-center text-[10px] font-mono py-1 bg-[var(--bg-card)] border border-[var(--border)] rounded-lg text-[var(--text-primary)]"
+                      />
+                    </div>
+
+                    <div className="flex flex-col items-center p-3 bg-[var(--bg)] border border-[var(--border)] rounded-xl gap-2">
+                      <span className="text-[10px] text-[var(--text-muted)] font-bold uppercase tracking-wider">Color 2 ({draftGradStops === 3 ? 'Middle' : 'End'})</span>
+                      <label className="relative cursor-pointer">
+                        <input type="color" value={draftGradC2} onChange={e => setDraftGradC2(e.target.value)} className="sr-only" />
+                        <div className="w-12 h-12 rounded-full border-2 border-[var(--border)] shadow hover:scale-105 transition-transform cursor-pointer" style={{ backgroundColor: draftGradC2 }} />
+                      </label>
+                      <input
+                        type="text"
+                        value={draftGradC2}
+                        onChange={e => { if (/^#[0-9a-fA-F]{0,6}$/.test(e.target.value)) setDraftGradC2(e.target.value); }}
+                        className="w-full text-center text-[10px] font-mono py-1 bg-[var(--bg-card)] border border-[var(--border)] rounded-lg text-[var(--text-primary)]"
+                      />
+                    </div>
+
+                    {draftGradStops === 3 && (
+                      <div className="flex flex-col items-center p-3 bg-[var(--bg)] border border-[var(--border)] rounded-xl gap-2">
+                        <span className="text-[10px] text-[var(--text-muted)] font-bold uppercase tracking-wider">Color 3 (End)</span>
+                        <label className="relative cursor-pointer">
+                          <input type="color" value={draftGradC3} onChange={e => setDraftGradC3(e.target.value)} className="sr-only" />
+                          <div className="w-12 h-12 rounded-full border-2 border-[var(--border)] shadow hover:scale-105 transition-transform cursor-pointer" style={{ backgroundColor: draftGradC3 }} />
+                        </label>
+                        <input
+                          type="text"
+                          value={draftGradC3}
+                          onChange={e => { if (/^#[0-9a-fA-F]{0,6}$/.test(e.target.value)) setDraftGradC3(e.target.value); }}
+                          className="w-full text-center text-[10px] font-mono py-1 bg-[var(--bg-card)] border border-[var(--border)] rounded-lg text-[var(--text-primary)]"
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Gradient Live Preview */}
+                  <div className="space-y-1">
+                    <span className="text-[10px] text-[var(--text-muted)] font-semibold">Live Gradient Banner Preview</span>
+                    <div className="h-12 rounded-xl border border-[var(--border)] shadow-sm flex items-center justify-center font-bold text-white text-xs text-shadow"
+                      style={{ background: draftGradStops === 3 ? `linear-gradient(${draftGradDir}, ${draftGradC1}, ${draftGradC2}, ${draftGradC3})` : `linear-gradient(${draftGradDir}, ${draftGradC1}, ${draftGradC2})` }}>
+                      {draftGradStops === 3 ? '3-Color Gradient Active' : '2-Color Gradient Active'}
+                    </div>
+                  </div>
                 </div>
               )}
+            </div>
+
+            {/* ── LAYER 4: App Background Color Selector ── */}
+            <div className="p-5 bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-card space-y-4">
+              <div>
+                <h3 className="text-sm font-bold text-[var(--text-primary)]">App Background Color</h3>
+                <p className="text-xs text-[var(--text-muted)] mt-0.5">Customize the page background color or select from curated presets</p>
+              </div>
+
+              <div className="flex items-center gap-4">
+                <label className="relative cursor-pointer group">
+                  <input type="color" value={draftBgColor || '#f8fafc'} onChange={e => setDraftBgColor(e.target.value)} className="sr-only" />
+                  <div className="w-14 h-14 rounded-full border-4 border-[var(--border)] shadow-card cursor-pointer hover:scale-105 transition-transform"
+                    style={{ backgroundColor: draftBgColor || '#f8fafc' }} />
+                </label>
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      placeholder="#f8fafc"
+                      value={draftBgColor}
+                      onChange={e => { if (/^#[0-9a-fA-F]{0,6}$/.test(e.target.value) || e.target.value === '') setDraftBgColor(e.target.value); }}
+                      className="w-28 px-3 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-lg text-xs text-[var(--text-primary)] font-mono focus:outline-none focus:border-[var(--accent)]"
+                    />
+                    {draftBgColor && (
+                      <button
+                        type="button"
+                        onClick={() => setDraftBgColor('')}
+                        className="px-3 py-2 text-xs font-semibold text-rose-500 hover:text-rose-600 bg-rose-50 rounded-lg border border-rose-200 cursor-pointer"
+                      >
+                        Reset to Default
+                      </button>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-[var(--text-muted)]">Leave blank to use the template default background.</p>
+                </div>
+              </div>
+
+              {/* Background Color Presets */}
+              <div className="space-y-1.5">
+                <span className="text-[10px] text-[var(--text-muted)] font-semibold uppercase tracking-wider">Curated Presets</span>
+                <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
+                  {[
+                    { label: 'Default', hex: '#f8fafc' },
+                    { label: 'White', hex: '#ffffff' },
+                    { label: 'Emerald', hex: '#f0fdf4' },
+                    { label: 'Sky', hex: '#f0f9ff' },
+                    { label: 'Lavender', hex: '#faf5ff' },
+                    { label: 'Warm Slate', hex: '#f3f4f6' },
+                    { label: 'Dark Slate', hex: '#0f172a' },
+                    { label: 'Midnight', hex: '#1e293b' },
+                  ].map(p => (
+                    <button
+                      key={p.hex}
+                      type="button"
+                      onClick={() => setDraftBgColor(p.hex)}
+                      className={`flex flex-col items-center gap-1 p-2 rounded-xl border transition-all cursor-pointer ${
+                        draftBgColor.toLowerCase() === p.hex.toLowerCase()
+                          ? 'border-[var(--accent)] ring-2 ring-[var(--accent-soft)] bg-[var(--bg)]'
+                          : 'border-[var(--border)] hover:border-[var(--accent)]/50'
+                      }`}
+                    >
+                      <div className="w-6 h-6 rounded-full border border-slate-300 shadow-sm" style={{ backgroundColor: p.hex }} />
+                      <span className="text-[9px] font-semibold text-[var(--text-secondary)] truncate w-full text-center">{p.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
 
             {/* ── Notification Sound ── */}

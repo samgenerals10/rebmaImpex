@@ -21,9 +21,12 @@ interface AppearanceData {
   template?: string;
   accentType?: string;
   accentSolid?: string;
+  gradientStops?: number;
   gradientColor1?: string;
   gradientColor2?: string;
+  gradientColor3?: string;
   gradientDirection?: string;
+  bgColor?: string;
 }
 
 export function applyAccentOverride(data: AppearanceData): void {
@@ -31,12 +34,10 @@ export function applyAccentOverride(data: AppearanceData): void {
   const existing = document.getElementById('erp-accent-override');
   if (existing) existing.remove();
 
-  const { accentType, accentSolid, gradientColor1, gradientColor2, gradientDirection, template } = data;
+  const { accentType, accentSolid, gradientStops, gradientColor1, gradientColor2, gradientColor3, gradientDirection, bgColor, template } = data;
 
-  // Nothing to override — use the template's default accent
-  if (!accentType || accentType === 'none') return;
-  if (accentType === 'solid' && !accentSolid) return;
-  if (accentType === 'gradient' && (!gradientColor1 || !gradientColor2)) return;
+  // Check if anything is overridden
+  if ((!accentType || accentType === 'none') && !bgColor) return;
 
   let accentVal = '';
   let accent2Val = '';
@@ -55,59 +56,81 @@ export function applyAccentOverride(data: AppearanceData): void {
     accentVal     = gradientColor1;
     accent2Val    = gradientColor2;
     accentSoftVal = hexToRgba(gradientColor1, 0.10);
-    gradientVal   = `linear-gradient(${dir},${gradientColor1},${gradientColor2})`;
+    if (gradientStops === 3 && gradientColor3) {
+      gradientVal = `linear-gradient(${dir},${gradientColor1},${gradientColor2},${gradientColor3})`;
+    } else {
+      gradientVal = `linear-gradient(${dir},${gradientColor1},${gradientColor2})`;
+    }
   }
 
   const bgVal = accentType === 'gradient' ? gradientVal : accentVal;
   const themeClass = `theme-${template || 'salespulse'}`;
 
-  const css = `
-    body.${themeClass} {
-      --accent: ${accentVal} !important;
-      --accent-2: ${accent2Val} !important;
-      --accent-soft: ${accentSoftVal} !important;
-      --accent-gradient: ${gradientVal} !important;
-      --accent-color: ${accentVal} !important;
-      --accent-hover: ${accent2Val} !important;
-      --accent-light: ${hexToRgba(accentVal, 0.15)} !important;
-    }
-    body.${themeClass} .bg-accent,
-    body.${themeClass} .nav-item--active,
-    body.${themeClass} .lf-nav-item span[style*="var(--accent)"],
-    body.${themeClass} .lf-nav-icon[style*="var(--accent)"],
-    body.${themeClass} .erp-btn-primary,
-    body.${themeClass} [class*="bg-accent"]:not([class*="bg-accent-soft"]):not([class*="bg-accent-light"]),
-    body.${themeClass} [class*="bg-[var(--accent)]"],
-    body.${themeClass} [class*="bg-[var(--accent-hover)]"],
-    body.${themeClass} [class*="bg-[var(--accent-2)]"],
-    body.${themeClass} [style*="background: var(--accent)"],
-    body.${themeClass} [style*="background-color: var(--accent)"],
-    body.${themeClass} [style*="background:var(--accent)"],
-    body.${themeClass} [style*="background-color:var(--accent)"] {
-      background: ${bgVal} !important;
-      background-image: ${bgVal} !important;
-    }
-    body.${themeClass} .text-accent,
-    body.${themeClass} [class*="text-accent"] {
-      color: ${accentVal} !important;
-    }
-    body.${themeClass} .border-accent {
-      border-color: ${accentVal} !important;
-    }
-    body.${themeClass} .bg-accent-soft {
-      background-color: ${accentSoftVal} !important;
-    }
-    body.${themeClass} .kpi-icon {
-      background: ${gradientVal} !important;
-      background-image: ${gradientVal} !important;
-    }
-    body.${themeClass} .nav-item[data-active="true"],
-    body.${themeClass} .nav-item.active {
-      background: ${bgVal} !important;
-      background-image: ${bgVal} !important;
-      color: #ffffff !important;
-    }
-  `;
+  let bgOverrideCss = '';
+  if (bgColor) {
+    bgOverrideCss = `
+      body.${themeClass},
+      body {
+        --bg-page: ${bgColor} !important;
+        --bg: ${bgColor} !important;
+        --bg-app-gradient: ${bgColor} !important;
+        background-color: ${bgColor} !important;
+      }
+    `;
+  }
+
+  let accentCss = '';
+  if (accentVal) {
+    accentCss = `
+      body.${themeClass} {
+        --accent: ${accentVal} !important;
+        --accent-2: ${accent2Val} !important;
+        --accent-soft: ${accentSoftVal} !important;
+        --accent-gradient: ${gradientVal} !important;
+        --accent-color: ${accentVal} !important;
+        --accent-hover: ${accent2Val} !important;
+        --accent-light: ${hexToRgba(accentVal, 0.15)} !important;
+      }
+      body.${themeClass} .bg-accent,
+      body.${themeClass} .nav-item--active,
+      body.${themeClass} .lf-nav-item span[style*="var(--accent)"],
+      body.${themeClass} .lf-nav-icon[style*="var(--accent)"],
+      body.${themeClass} .erp-btn-primary,
+      body.${themeClass} [class*="bg-accent"]:not([class*="bg-accent-soft"]):not([class*="bg-accent-light"]),
+      body.${themeClass} [class*="bg-[var(--accent)]"],
+      body.${themeClass} [class*="bg-[var(--accent-hover)]"],
+      body.${themeClass} [class*="bg-[var(--accent-2)]"],
+      body.${themeClass} [style*="background: var(--accent)"],
+      body.${themeClass} [style*="background-color: var(--accent)"],
+      body.${themeClass} [style*="background:var(--accent)"],
+      body.${themeClass} [style*="background-color:var(--accent)"] {
+        background: ${bgVal} !important;
+        background-image: ${bgVal} !important;
+      }
+      body.${themeClass} .text-accent,
+      body.${themeClass} [class*="text-accent"] {
+        color: ${accentVal} !important;
+      }
+      body.${themeClass} .border-accent {
+        border-color: ${accentVal} !important;
+      }
+      body.${themeClass} .bg-accent-soft {
+        background-color: ${accentSoftVal} !important;
+      }
+      body.${themeClass} .kpi-icon {
+        background: ${gradientVal} !important;
+        background-image: ${gradientVal} !important;
+      }
+      body.${themeClass} .nav-item[data-active="true"],
+      body.${themeClass} .nav-item.active {
+        background: ${bgVal} !important;
+        background-image: ${bgVal} !important;
+        color: #ffffff !important;
+      }
+    `;
+  }
+
+  const css = `${bgOverrideCss}\n${accentCss}`;
 
   const style = document.createElement('style');
   style.id = 'erp-accent-override';
