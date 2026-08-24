@@ -2172,61 +2172,68 @@ export default function App() {
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: 10 }}
           onSubmit={handleLogin} 
-          className="space-y-4 text-text-primary"
+          className="space-y-4 text-slate-800"
         >
-          <div className="text-center">
-            <h3 className="text-xl font-bold text-[var(--accent)]">Sign In</h3>
-            <p className="text-[10px] text-text-muted mt-0.5 font-medium">REMBA IMPEX ERP GATEWAY</p>
+          <div className="text-center pb-1">
+            <h3 className="text-2xl font-black text-slate-900 tracking-tight">Sign in</h3>
+            <div className="w-8 h-1 bg-emerald-500 mx-auto rounded-full mt-1.5" />
+            <p className="text-[11px] text-slate-500 mt-1 font-medium tracking-wider">REMBA IMPEX ERP GATEWAY</p>
           </div>
 
           {loginError && (
-            <div className="p-2.5 bg-rose-50 border border-rose-100 rounded-xl text-center text-xs text-rose-800 font-semibold leading-normal whitespace-pre-wrap">
+            <div className="p-3 bg-rose-50 border border-rose-200/80 rounded-2xl text-center text-xs text-rose-700 font-semibold leading-normal whitespace-pre-wrap">
               {loginError}
             </div>
           )}
 
           {/* Email Input */}
-          <div className="flex items-center gap-2 border-b border-[var(--border)] lg:border-[var(--border)] focus-within:border-[var(--accent)] focus-within:border-b-2 pb-1.5 transition-all bg-transparent">
-            <Mail className="w-4 h-4 text-text-muted" />
-            <input 
-              type="email" 
-              required 
-              placeholder="name@rembaimpex.com"
-              value={loginEmail}
-              onChange={(e) => setLoginEmail(e.target.value)}
-              className="w-full bg-transparent border-0 p-0 text-sm text-text-primary placeholder-slate-400 focus:ring-0 focus:outline-none"
-            />
+          <div className="space-y-1">
+            <label className="block text-xs font-semibold text-slate-600 ml-1">Email Address</label>
+            <div className="flex items-center gap-3 px-4 py-3 bg-slate-100/80 focus-within:bg-white border border-slate-200 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 rounded-2xl transition-all">
+              <Mail className="w-4 h-4 text-slate-400 shrink-0" />
+              <input 
+                type="email" 
+                required 
+                placeholder="name@rembaimpex.com"
+                value={loginEmail}
+                onChange={(e) => setLoginEmail(e.target.value)}
+                className="w-full bg-transparent border-0 p-0 text-sm text-slate-900 placeholder-slate-400 focus:ring-0 focus:outline-none"
+              />
+            </div>
           </div>
 
           {/* Password Input */}
-          <div className="flex items-center gap-2 border-b border-[var(--border)] lg:border-[var(--border)] focus-within:border-[var(--accent)] focus-within:border-b-2 pb-1.5 transition-all bg-transparent">
-            <Lock className="w-4 h-4 text-text-muted" />
-            <input 
-              type={showPassword ? "text" : "password"} 
-              required
-              placeholder="Password"
-              value={loginPassword}
-              onChange={(e) => setLoginPassword(e.target.value)}
-              className="w-full bg-transparent border-0 p-0 text-sm text-text-primary placeholder-slate-400 focus:ring-0 focus:outline-none"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="text-text-muted hover:text-text-secondary cursor-pointer"
-            >
-              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-            </button>
+          <div className="space-y-1">
+            <label className="block text-xs font-semibold text-slate-600 ml-1">Password</label>
+            <div className="flex items-center gap-3 px-4 py-3 bg-slate-100/80 focus-within:bg-white border border-slate-200 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 rounded-2xl transition-all">
+              <Lock className="w-4 h-4 text-slate-400 shrink-0" />
+              <input 
+                type={showPassword ? "text" : "password"} 
+                required
+                placeholder="Password"
+                value={loginPassword}
+                onChange={(e) => setLoginPassword(e.target.value)}
+                className="w-full bg-transparent border-0 p-0 text-sm text-slate-900 placeholder-slate-400 focus:ring-0 focus:outline-none"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="text-slate-400 hover:text-slate-600 cursor-pointer transition-colors"
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
           </div>
 
-          <div className="flex items-center justify-between text-[11px] text-text-muted select-none pt-1">
-            <label className="flex items-center gap-1.5 cursor-pointer">
+          <div className="flex items-center justify-between text-xs text-slate-600 select-none pt-0.5">
+            <label className="flex items-center gap-2 cursor-pointer">
               <input 
                 type="checkbox" 
                 checked={staySignedIn} 
                 onChange={(e) => setStaySignedIn(e.target.checked)}
-                className="w-3.5 h-3.5 rounded border-[var(--border)] text-[var(--accent)] focus:ring-[var(--accent)] cursor-pointer" 
+                className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer" 
               />
-              <span className="text-text-secondary font-medium">Keep me logged in</span>
+              <span className="text-slate-600 font-medium">Keep me logged in</span>
             </label>
             <button 
               type="button" 
@@ -2234,7 +2241,7 @@ export default function App() {
                 e.preventDefault();
                 setAuthScreen('forgot');
               }} 
-              className="text-[var(--accent)] hover:underline font-bold cursor-pointer"
+              className="text-amber-600 hover:text-amber-700 hover:underline font-bold cursor-pointer transition-colors"
             >
               Forgot Password?
             </button>
@@ -2243,7 +2250,7 @@ export default function App() {
           <button 
             type="submit" 
             disabled={isLoggingIn}
-            className="w-full py-3 bg-gradient-to-r from-[var(--accent)] to-[var(--accent-hover)] disabled:from-emerald-300 disabled:to-emerald-400 disabled:cursor-not-allowed rounded-full text-sm font-bold text-white shadow-card hover:shadow-lg transition-all cursor-pointer text-center flex items-center justify-center gap-2"
+            className="w-full py-3.5 bg-gradient-to-r from-amber-500 via-rose-500 to-amber-600 hover:from-amber-600 hover:to-rose-600 disabled:from-slate-300 disabled:to-slate-400 disabled:cursor-not-allowed rounded-full text-sm font-bold text-white shadow-lg shadow-rose-500/20 hover:shadow-xl transition-all cursor-pointer text-center flex items-center justify-center gap-2 mt-2"
           >
             {isLoggingIn ? (
               <>
@@ -2254,7 +2261,7 @@ export default function App() {
                 <span>Signing In...</span>
               </>
             ) : (
-              <span>Sign In</span>
+              <span>Submit</span>
             )}
           </button>
         </motion.form>
@@ -2345,10 +2352,11 @@ export default function App() {
         animate={{ opacity: 1, x: 0 }}
         exit={{ opacity: 0, x: 10 }}
         onSubmit={handleRegister} 
-        className="space-y-3.5 text-text-primary"
+        className="space-y-3.5 text-slate-800"
       >
-        <div className="text-center">
-          <h3 className="text-xl font-bold text-emerald-800">Create Account</h3>
+        <div className="text-center pb-0.5">
+          <h3 className="text-2xl font-black text-slate-900 tracking-tight">Create Account</h3>
+          <div className="w-8 h-1 bg-emerald-500 mx-auto rounded-full mt-1.5" />
         </div>
 
         {/* Side-by-side SSO Buttons */}
@@ -2361,7 +2369,7 @@ export default function App() {
               setRegisterDept('Human Resources');
               addNotification('Staging: Gmail SSO pre-filled HR registration details.');
             }}
-            className="flex items-center justify-center gap-1.5 py-2 px-3 bg-bg-card hover:bg-bg-page rounded-xl text-xs font-semibold text-text-primary transition-all cursor-pointer shadow-card hover:shadow hover:scale-102 border border-[var(--border)]"
+            className="flex items-center justify-center gap-2 py-2.5 px-3 bg-slate-100/80 hover:bg-slate-200/80 rounded-xl text-xs font-semibold text-slate-700 transition-all cursor-pointer border border-slate-200"
           >
             <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="currentColor">
               <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
@@ -2379,7 +2387,7 @@ export default function App() {
               setRegisterDept('Production Line');
               addNotification('Staging: Outlook SSO pre-filled Production registration details.');
             }}
-            className="flex items-center justify-center gap-1.5 py-2 px-3 bg-bg-card hover:bg-bg-page rounded-xl text-xs font-semibold text-text-primary transition-all cursor-pointer shadow-card hover:shadow hover:scale-102 border border-[var(--border)]"
+            className="flex items-center justify-center gap-2 py-2.5 px-3 bg-slate-100/80 hover:bg-slate-200/80 rounded-xl text-xs font-semibold text-slate-700 transition-all cursor-pointer border border-slate-200"
           >
             <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 23 23" fill="currentColor">
               <path d="M0 0h11v11H0z" fill="#F25022"/>
@@ -2391,59 +2399,57 @@ export default function App() {
           </button>
         </div>
 
-        <div className="relative my-2.5 flex items-center justify-center">
-          <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-[var(--border)]"></div></div>
-          <span className="relative bg-bg-card px-2 text-[9px] font-bold text-text-muted uppercase tracking-widest">OR REGISTER WITH DETAILS</span>
+        <div className="relative my-2 flex items-center justify-center">
+          <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-200"></div></div>
+          <span className="relative bg-white px-2 text-[9px] font-bold text-slate-400 uppercase tracking-widest">OR REGISTER WITH DETAILS</span>
         </div>
 
         {/* Name Input */}
-        <div className="flex items-center gap-2 border-b border-[var(--border)] focus-within:border-emerald-600 pb-1.5 transition-colors">
-          <User className="w-4 h-4 text-text-muted" />
+        <div className="flex items-center gap-3 px-3.5 py-2.5 bg-slate-100/80 focus-within:bg-white border border-slate-200 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 rounded-2xl transition-all">
+          <User className="w-4 h-4 text-slate-400 shrink-0" />
           <input 
             type="text" 
             required 
             placeholder="Ama Boateng"
             value={registerName}
             onChange={(e) => setRegisterName(e.target.value)}
-            className="w-full bg-transparent border-0 p-0 text-sm text-text-primary placeholder-slate-400 focus:ring-0 focus:outline-none"
+            className="w-full bg-transparent border-0 p-0 text-sm text-slate-900 placeholder-slate-400 focus:ring-0 focus:outline-none"
           />
         </div>
 
         {/* Email Input */}
-        <div className="flex items-center gap-2 border-b border-[var(--border)] focus-within:border-emerald-600 pb-1.5 transition-colors">
-          <Mail className="w-4 h-4 text-text-muted" />
+        <div className="flex items-center gap-3 px-3.5 py-2.5 bg-slate-100/80 focus-within:bg-white border border-slate-200 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 rounded-2xl transition-all">
+          <Mail className="w-4 h-4 text-slate-400 shrink-0" />
           <input 
             type="email" 
             required 
             placeholder="name@rembaimpex.com"
             value={registerEmail}
             onChange={(e) => setRegisterEmail(e.target.value)}
-            className="w-full bg-transparent border-0 p-0 text-sm text-text-primary placeholder-slate-400 focus:ring-0 focus:outline-none"
+            className="w-full bg-transparent border-0 p-0 text-sm text-slate-900 placeholder-slate-400 focus:ring-0 focus:outline-none"
           />
         </div>
 
         {/* Phone Input */}
-        <div className="flex items-center gap-2 border-b border-[var(--border)] focus-within:border-emerald-600 pb-1.5 transition-colors">
-          <Phone className="w-4 h-4 text-text-muted" />
+        <div className="flex items-center gap-3 px-3.5 py-2.5 bg-slate-100/80 focus-within:bg-white border border-slate-200 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 rounded-2xl transition-all">
+          <Phone className="w-4 h-4 text-slate-400 shrink-0" />
           <input 
             type="tel" 
             required 
-            placeholder="Phone number (e.g. +233555123456)"
+            placeholder="Phone number (+233...)"
             value={registerPhone}
             onChange={(e) => setRegisterPhone(e.target.value)}
-            className="w-full bg-transparent border-0 p-0 text-sm text-text-primary placeholder-slate-400 focus:ring-0 focus:outline-none"
+            className="w-full bg-transparent border-0 p-0 text-sm text-slate-900 placeholder-slate-400 focus:ring-0 focus:outline-none"
           />
         </div>
 
-        {/* Registration is passwordless. Temporary password will be generated upon HR approval. */}
-
         {/* Department Dropdown */}
         <div className="space-y-1">
-          <label className="block text-[9px] font-bold text-text-muted uppercase tracking-wider">Target Department</label>
+          <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider ml-1">Target Department</label>
           <select 
             value={registerDept}
             onChange={(e) => setRegisterDept(e.target.value)}
-            className="w-full bg-transparent border-b border-[var(--border)] pb-1.5 text-sm text-text-primary focus:outline-none focus:border-emerald-600 cursor-pointer"
+            className="w-full px-3.5 py-2 bg-slate-100/80 border border-slate-200 rounded-2xl text-sm text-slate-900 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 cursor-pointer"
           >
             <option value="Management Office">Management Office</option>
             <option value="Marketing Department">Marketing Department</option>
@@ -2458,28 +2464,28 @@ export default function App() {
 
         {/* Ghana Card ID Input */}
         {getNormalizedRole(registerDept) !== 'CEO' && (
-          <div className="flex items-center gap-2 border-b border-[var(--border)] focus-within:border-emerald-600 pb-1.5 transition-colors">
-            <CreditCard className="w-4 h-4 text-text-muted" />
+          <div className="flex items-center gap-3 px-3.5 py-2.5 bg-slate-100/80 focus-within:bg-white border border-slate-200 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 rounded-2xl transition-all">
+            <CreditCard className="w-4 h-4 text-slate-400 shrink-0" />
             <input 
               type="text" 
               required={ghanaCardValidation}
               placeholder="Ghana Card (GHA-123456789-0)"
               value={registerCard}
               onChange={(e) => setRegisterCard(e.target.value)}
-              className="w-full bg-transparent border-0 p-0 text-sm text-text-primary placeholder-slate-400 focus:ring-0 focus:outline-none"
+              className="w-full bg-transparent border-0 p-0 text-sm text-slate-900 placeholder-slate-400 focus:ring-0 focus:outline-none"
             />
           </div>
         )}
 
         {(getNormalizedRole(registerDept) === 'CEO' || getNormalizedRole(registerDept) === 'HR') && (
-          <div className="p-2.5 bg-amber-50 rounded-xl border border-amber-100 text-[9px] text-amber-600 leading-normal font-medium">
-            <strong>Privileged Role Verification Active:</strong> Phone verification required. Ensure your phone number matches the whitelisted configuration.
+          <div className="p-2.5 bg-amber-50 rounded-xl border border-amber-200/80 text-[10px] text-amber-800 leading-normal font-medium">
+            <strong>Privileged Role Verification Active:</strong> Phone verification required. Ensure your phone number matches white-list.
           </div>
         )}
 
         <button 
           type="submit" 
-          className="w-full py-2.5 bg-gradient-to-r from-[#5ce1ab] to-[#34d399] hover:from-[#4fd69e] hover:to-[#059669] rounded-full text-xs font-bold text-text-primary shadow-card hover:shadow-lg transition-all cursor-pointer text-center"
+          className="w-full py-3 bg-gradient-to-r from-amber-500 via-rose-500 to-amber-600 hover:from-amber-600 hover:to-rose-600 rounded-full text-xs font-bold text-white shadow-lg shadow-rose-500/20 hover:shadow-xl transition-all cursor-pointer text-center"
         >
           Register Team
         </button>
@@ -2848,79 +2854,133 @@ export default function App() {
       </motion.div>
     );
 
-    return (
-      <div className="min-h-screen w-full flex lg:grid lg:grid-cols-2 items-center justify-center lg:items-stretch bg-accent lg:bg-bg-card p-3 md:p-8 lg:p-0 relative select-none font-sans">
+    // Helper component for REBMA motion effect light fade in and out lines
+    const RebmaLightLines = () => (
+      <div className="absolute inset-0 overflow-hidden pointer-events-none select-none z-0">
+        {/* Ambient Glow Orbs in REBMA brand colors */}
+        <div className="absolute top-1/4 -left-12 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl animate-rebma-glow" />
+        <div className="absolute bottom-1/3 left-1/3 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl animate-rebma-glow" style={{ animationDelay: '2s' }} />
+        <div className="absolute top-1/2 right-1/4 w-80 h-80 bg-amber-500/10 rounded-full blur-3xl animate-rebma-glow" style={{ animationDelay: '4s' }} />
 
-        {/* Symmetrical Split Card on Mobile/Tablet, direct grid layout on Desktop */}
-        <div className="w-full max-w-5xl lg:max-w-none lg:w-full bg-bg-card lg:bg-transparent rounded-[32px] lg:rounded-none shadow-[0_25px_60px_-15px_rgba(0,0,0,0.25)] lg:shadow-none flex flex-col md:flex-row lg:contents overflow-hidden min-h-[580px] lg:min-h-0 relative">
+        {/* SVG Glowing Lines & Light Curves inspired by Image 2 */}
+        <svg className="absolute inset-0 w-full h-full" viewBox="0 0 1200 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="rebmaGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#059669" stopOpacity="0.85" />
+              <stop offset="50%" stopColor="#06b6d4" stopOpacity="0.9" />
+              <stop offset="100%" stopColor="#10b981" stopOpacity="0.3" />
+            </linearGradient>
+            <linearGradient id="rebmaGrad2" x1="100%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="#f97316" stopOpacity="0.85" />
+              <stop offset="50%" stopColor="#059669" stopOpacity="0.75" />
+              <stop offset="100%" stopColor="#0284c7" stopOpacity="0.35" />
+            </linearGradient>
+            <linearGradient id="rebmaGrad3" x1="0%" y1="100%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#06b6d4" stopOpacity="0.7" />
+              <stop offset="100%" stopColor="#059669" stopOpacity="0.15" />
+            </linearGradient>
+          </defs>
+
+          {/* Floating glowing light lines & curved S-loops */}
+          <path
+            d="M -100 250 C 200 80, 450 500, 750 300 C 950 160, 1150 400, 1300 220"
+            stroke="url(#rebmaGrad1)"
+            strokeWidth="5"
+            strokeLinecap="round"
+            className="animate-rebma-line"
+          />
+          <path
+            d="M -50 480 C 280 250, 400 680, 800 450 C 1000 320, 1100 600, 1250 500"
+            stroke="url(#rebmaGrad2)"
+            strokeWidth="4"
+            strokeLinecap="round"
+            className="animate-rebma-line-orange"
+          />
+          <path
+            d="M 100 800 C 380 580, 550 850, 900 620"
+            stroke="url(#rebmaGrad3)"
+            strokeWidth="7"
+            strokeLinecap="round"
+            className="animate-rebma-line"
+            style={{ animationDelay: '3s' }}
+          />
+        </svg>
+
+        {/* Floating Animated Geometric Capsules (Image 2 style) */}
+        <div className="absolute top-[18%] left-[8%] w-56 sm:w-72 h-14 sm:h-18 rounded-full bg-gradient-to-r from-emerald-500/10 via-cyan-500/15 to-transparent backdrop-blur-sm border border-emerald-500/20 transform -rotate-45 animate-rebma-float" />
+        <div className="absolute bottom-[20%] left-[28%] w-64 sm:w-80 h-16 sm:h-20 rounded-full bg-gradient-to-r from-cyan-500/10 via-teal-500/15 to-amber-500/10 backdrop-blur-sm border border-cyan-500/20 transform -rotate-12 animate-rebma-float" style={{ animationDelay: '2.5s' }} />
+        <div className="absolute top-[48%] left-[4%] w-40 sm:w-52 h-10 sm:h-14 rounded-full bg-gradient-to-r from-amber-500/10 to-emerald-500/10 backdrop-blur-sm border border-amber-500/20 transform rotate-30 animate-rebma-float" style={{ animationDelay: '4s' }} />
+      </div>
+    );
+
+    return (
+      <div className="min-h-screen w-full bg-slate-50 flex items-center justify-center p-3 sm:p-6 md:p-10 lg:p-12 relative overflow-hidden select-none font-sans">
+        
+        {/* REBMA Light Motion Effect Canvas Background */}
+        <RebmaLightLines />
+
+        {/* Main Hero & Auth Card Grid Container */}
+        <div className="w-full max-w-6xl bg-white/80 backdrop-blur-2xl border border-slate-200/80 rounded-[28px] sm:rounded-[36px] shadow-[0_25px_70px_-15px_rgba(0,0,0,0.07),0_0_30px_rgba(5,150,105,0.06)] overflow-hidden relative z-10 grid grid-cols-1 lg:grid-cols-12 min-h-[580px] sm:min-h-[640px] transition-all">
           
-          {/* Left half: Brand, logo, floating coworker illustration */}
-          <div className="hidden md:flex w-full md:w-1/2 lg:w-full bg-bg-card p-8 md:p-12 lg:p-16 flex-col justify-between items-start">
-            {/* Sourced from /logo.png with proper Open Sans typography */}
-            <div className="flex items-center gap-2 select-none ml-2 mt-2 shrink-0">
+          {/* Left Hero Column: Brand, Welcome Header, Tagline, Action Badge */}
+          <div className="lg:col-span-7 p-6 sm:p-10 md:p-12 lg:p-16 flex flex-col justify-between items-start relative z-10 border-b lg:border-b-0 lg:border-r border-slate-100/90 bg-white/40 backdrop-blur-sm">
+            
+            {/* Top Brand Logo Header */}
+            <div className="flex items-center gap-3 select-none shrink-0">
               <img 
                 src="/logo.png" 
                 alt="REBMA Logo" 
-                className="h-10 w-auto object-contain select-none pointer-events-none"
+                className="h-9 sm:h-11 w-auto object-contain select-none pointer-events-none drop-shadow-sm"
               />
-              <div className="flex flex-col select-none text-text-primary">
-                <span className="font-extrabold text-xl tracking-wider leading-none">REBMA</span>
-                <span className="font-bold text-[9px] uppercase tracking-widest mt-0.5 text-text-secondary">IMPEX GHANA</span>
+              <div className="flex flex-col select-none">
+                <span className="font-extrabold text-xl sm:text-2xl tracking-wider leading-none text-slate-900">REBMA</span>
+                <span className="font-bold text-[9px] sm:text-[10px] uppercase tracking-widest mt-0.5 text-emerald-600">IMPEX GHANA</span>
               </div>
             </div>
 
-            {/* Illustration with float animation */}
-            <motion.div 
-              animate={{ 
-                y: [0, -8, 0]
-              }}
-              transition={{ 
-                duration: 5, 
-                repeat: Infinity, 
-                ease: "easeInOut" 
-              }}
-              className="my-auto flex flex-col items-center justify-center w-full py-6 lg:scale-110"
-            >
-              <div className="relative overflow-hidden w-[279px] h-[252px] select-none pointer-events-none rounded-2xl shadow-card">
-                <img 
-                  src="/login_full.png" 
-                  alt="Coworkers collaborating at desk" 
-                  className="absolute max-w-none"
-                  style={{
-                    left: '-182px',
-                    top: '-168px',
-                    width: '1024px',
-                    height: '547px'
-                  }}
-                />
+            {/* Welcome Title & Hero Details (Image 2 style) */}
+            <div className="my-8 sm:my-12 lg:my-auto max-w-xl text-left">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200/80 text-emerald-800 text-[11px] sm:text-xs font-semibold mb-4">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                Next-Gen Enterprise Logistics Gateway
               </div>
-            </motion.div>
-
-            {/* Desktop tagline */}
-            <div className="hidden lg:block mt-2 max-w-md text-left">
-              <h1 className="text-3xl font-extrabold tracking-tight text-text-primary leading-tight">
-                Empowering global logistics & trade management
+              
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight text-slate-900 leading-[1.1]">
+                Welcome!
               </h1>
-              <p className="text-sm text-text-secondary mt-2">
-                Streamlining Tema port operations, fleet dispatches, marketing pipelines, and financial ledgers in real-time.
+              
+              <div className="w-16 h-1.5 bg-gradient-to-r from-emerald-500 via-cyan-500 to-amber-500 rounded-full my-4" />
+
+              <p className="text-sm sm:text-base lg:text-lg text-slate-600 font-medium leading-relaxed max-w-lg">
+                Empowering global logistics & trade management with real-time port operations, fleet dispatches, marketing pipelines, and financial ledgers.
               </p>
+
+              <div className="mt-6 flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setAuthScreen(authScreen === 'welcome' ? 'login' : 'welcome')}
+                  className="py-3 px-6 bg-slate-900 hover:bg-slate-800 text-white rounded-full text-xs font-bold shadow-md hover:shadow-lg transition-all cursor-pointer flex items-center gap-2"
+                >
+                  <span>{authScreen === 'welcome' ? 'Go to Sign In' : 'Live Trade Pipeline'}</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
-            {/* Footer copyrights */}
-            <div className="text-[10px] text-text-muted font-medium">
-              © {new Date().getFullYear()} REMBA IMPEX GHANA LIMITED.
+            {/* Footer Copyright */}
+            <div className="text-xs text-slate-400 font-medium pt-4 border-t border-slate-100/90 w-full flex items-center justify-between">
+              <span>© {new Date().getFullYear()} REMBA IMPEX GHANA LIMITED.</span>
+              <span className="hidden sm:inline text-emerald-600 font-semibold">ISO 9001 Certified</span>
             </div>
           </div>
 
-          {/* Right half: solid green bg with white container card */}
-          <div className="w-full md:w-1/2 lg:w-full bg-accent lg:bg-[var(--accent)] p-4 md:p-12 lg:p-16 flex flex-col justify-center items-center relative transition-colors duration-300">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-600 rounded-full filter blur-3xl opacity-20 -mr-8 -mt-8"></div>
+          {/* Right Column: Floating Glassmorphic Sign In Card */}
+          <div className="lg:col-span-5 bg-gradient-to-br from-slate-50/90 via-white/95 to-emerald-50/40 p-4 sm:p-8 md:p-10 lg:p-12 flex flex-col justify-center items-center relative z-10 min-h-[460px]">
             
-            {/* White card container for form */}
-            <div className="w-full max-w-[380px] lg:max-w-md bg-bg-card rounded-3xl p-5 md:p-8 lg:p-10 shadow-[0_15px_30px_rgba(0,0,0,0.08)] lg:shadow-2xl relative z-10 flex flex-col justify-center min-h-[420px] lg:min-h-[485px]">
+            <div className="w-full max-w-md bg-white/95 backdrop-blur-xl rounded-3xl p-5 sm:p-8 shadow-[0_15px_35px_-5px_rgba(0,0,0,0.06),0_0_15px_rgba(5,150,105,0.05)] border border-slate-200/90 relative z-10 flex flex-col justify-center min-h-[390px] sm:min-h-[450px]">
               
               {registrationMessage && (
-                <div className="mb-4 p-2.5 bg-emerald-50 border border-emerald-100 rounded-xl text-[10px] text-emerald-800 text-center font-medium">
+                <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200/80 rounded-2xl text-xs text-emerald-800 text-center font-medium">
                   {registrationMessage}
                 </div>
               )}
@@ -2939,11 +2999,11 @@ export default function App() {
             </div>
 
             {/* Bottom links */}
-            <div className="mt-6 text-center text-xs text-white/95 z-10 space-y-1.5">
+            <div className="mt-6 text-center text-xs text-slate-600 z-10 space-y-2">
               <div>
-                <a href="#help" className="hover:underline font-bold text-white tracking-wide">Need Help?</a>
+                <a href="#help" className="hover:text-emerald-600 hover:underline font-bold text-slate-700 tracking-wide transition-colors">Need Help?</a>
               </div>
-              <div className="text-white/85 text-[11px]">
+              <div className="text-slate-500 text-xs">
                 {authScreen === 'login' ? (
                   <span>
                     You are not a member?{' '}
@@ -2952,7 +3012,7 @@ export default function App() {
                         setPassword('');
                         setAuthScreen('register');
                       }} 
-                      className="text-white hover:underline font-bold"
+                      className="text-emerald-600 hover:text-emerald-700 hover:underline font-bold transition-colors cursor-pointer"
                     >
                       Register
                     </button>
@@ -2965,7 +3025,7 @@ export default function App() {
                         setPassword('');
                         setAuthScreen('login');
                       }} 
-                      className="text-white hover:underline font-bold"
+                      className="text-emerald-600 hover:text-emerald-700 hover:underline font-bold transition-colors cursor-pointer"
                     >
                       Login
                     </button>
@@ -2973,7 +3033,7 @@ export default function App() {
                 ) : (
                   <button 
                     onClick={() => setAuthScreen('login')} 
-                    className="text-white hover:underline font-bold"
+                    className="text-emerald-600 hover:text-emerald-700 hover:underline font-bold transition-colors cursor-pointer"
                   >
                     Back to Login
                   </button>
