@@ -70,9 +70,9 @@ export function applyAccentOverride(data: AppearanceData): void {
   if (bgColor) {
     bgOverrideCss = `
       body.${themeClass},
-      body {
+      body,
+      .app-sheet {
         --bg-page: ${bgColor} !important;
-        --bg: ${bgColor} !important;
         --bg-app-gradient: ${bgColor} !important;
         background-color: ${bgColor} !important;
       }

@@ -358,7 +358,6 @@ export default function SettingsDashboard({
     // Background color override
     if (draftBgColor) {
       root.style.setProperty('--bg-page', draftBgColor);
-      root.style.setProperty('--bg', draftBgColor);
       body.style.backgroundColor = draftBgColor;
     }
 

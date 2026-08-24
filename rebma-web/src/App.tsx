@@ -4123,7 +4123,7 @@ function AppInner({
 
         {/* 2. MAIN SHEET WRAPPER */}
         <main
-          className={`ml-0 bg-[var(--bg-card)] rounded-none shadow-none flex flex-col border-none app-sheet overflow-hidden h-screen transition-all duration-300 ${sidebarCollapsed ? 'lg:ml-[var(--sidebar-collapsed-width,68px)]' : 'lg:ml-[var(--sidebar-width,260px)]'}`}
+          className={`ml-0 bg-[var(--bg-page)] rounded-none shadow-none flex flex-col border-none app-sheet overflow-hidden h-screen transition-all duration-300 ${sidebarCollapsed ? 'lg:ml-[var(--sidebar-collapsed-width,68px)]' : 'lg:ml-[var(--sidebar-width,260px)]'}`}
         >
           
           {/* TOP STATUS BAR & HERO HEADER */}
