@@ -2914,133 +2914,117 @@ export default function App() {
     );
 
     return (
-      <div className="min-h-screen w-full bg-slate-50 flex items-center justify-center p-3 sm:p-6 md:p-10 lg:p-12 relative overflow-hidden select-none font-sans">
+      <div className="min-h-screen w-full bg-white flex flex-col lg:grid lg:grid-cols-12 relative overflow-hidden select-none font-sans">
         
         {/* REBMA Light Motion Effect Canvas Background */}
         <RebmaLightLines />
 
-        {/* Main Hero & Auth Card Grid Container */}
-        <div className="w-full max-w-6xl bg-white/80 backdrop-blur-2xl border border-slate-200/80 rounded-[28px] sm:rounded-[36px] shadow-[0_25px_70px_-15px_rgba(0,0,0,0.07),0_0_30px_rgba(5,150,105,0.06)] overflow-hidden relative z-10 grid grid-cols-1 lg:grid-cols-12 min-h-[580px] sm:min-h-[640px] transition-all">
+        {/* Left Hero Column: Brand, Welcome Header, Tagline */}
+        <div className="lg:col-span-7 p-6 sm:p-10 md:p-12 lg:p-16 flex flex-col justify-between items-start relative z-10 border-b lg:border-b-0 lg:border-r border-slate-100/90 bg-white/40 backdrop-blur-sm min-h-[220px] lg:min-h-screen">
           
-          {/* Left Hero Column: Brand, Welcome Header, Tagline, Action Badge */}
-          <div className="lg:col-span-7 p-6 sm:p-10 md:p-12 lg:p-16 flex flex-col justify-between items-start relative z-10 border-b lg:border-b-0 lg:border-r border-slate-100/90 bg-white/40 backdrop-blur-sm">
-            
-            {/* Top Brand Logo Header */}
-            <div className="flex items-center gap-3 select-none shrink-0">
-              <img 
-                src="/logo.png" 
-                alt="REBMA Logo" 
-                className="h-9 sm:h-11 w-auto object-contain select-none pointer-events-none drop-shadow-sm"
-              />
-              <div className="flex flex-col select-none">
-                <span className="font-extrabold text-xl sm:text-2xl tracking-wider leading-none text-slate-900">REBMA</span>
-                <span className="font-bold text-[9px] sm:text-[10px] uppercase tracking-widest mt-0.5 text-emerald-600">IMPEX GHANA</span>
-              </div>
-            </div>
-
-            {/* Welcome Title & Hero Details (Image 2 style) */}
-            <div className="my-8 sm:my-12 lg:my-auto max-w-xl text-left">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200/80 text-emerald-800 text-[11px] sm:text-xs font-semibold mb-4">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                Next-Gen Enterprise Logistics Gateway
-              </div>
-              
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight text-slate-900 leading-[1.1]">
-                Welcome!
-              </h1>
-              
-              <div className="w-16 h-1.5 bg-gradient-to-r from-emerald-500 via-cyan-500 to-amber-500 rounded-full my-4" />
-
-              <p className="text-sm sm:text-base lg:text-lg text-slate-600 font-medium leading-relaxed max-w-lg">
-                Empowering global logistics & trade management with real-time port operations, fleet dispatches, marketing pipelines, and financial ledgers.
-              </p>
-
-              <div className="mt-6 flex flex-wrap items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => setAuthScreen(authScreen === 'welcome' ? 'login' : 'welcome')}
-                  className="py-3 px-6 bg-slate-900 hover:bg-slate-800 text-white rounded-full text-xs font-bold shadow-md hover:shadow-lg transition-all cursor-pointer flex items-center gap-2"
-                >
-                  <span>{authScreen === 'welcome' ? 'Go to Sign In' : 'Live Trade Pipeline'}</span>
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-
-            {/* Footer Copyright */}
-            <div className="text-xs text-slate-400 font-medium pt-4 border-t border-slate-100/90 w-full flex items-center justify-between">
-              <span>© {new Date().getFullYear()} REMBA IMPEX GHANA LIMITED.</span>
-              <span className="hidden sm:inline text-emerald-600 font-semibold">ISO 9001 Certified</span>
+          {/* Top Brand Logo Header */}
+          <div className="flex items-center gap-3 select-none shrink-0">
+            <img 
+              src="/logo.png" 
+              alt="REBMA Logo" 
+              className="h-9 sm:h-11 w-auto object-contain select-none pointer-events-none drop-shadow-sm"
+            />
+            <div className="flex flex-col select-none">
+              <span className="font-extrabold text-xl sm:text-2xl tracking-wider leading-none text-slate-900">REBMA</span>
+              <span className="font-bold text-[9px] sm:text-[10px] uppercase tracking-widest mt-0.5 text-emerald-600">IMPEX GHANA</span>
             </div>
           </div>
 
-          {/* Right Column: Floating Glassmorphic Sign In Card */}
-          <div className="lg:col-span-5 bg-gradient-to-br from-slate-50/90 via-white/95 to-emerald-50/40 p-4 sm:p-8 md:p-10 lg:p-12 flex flex-col justify-center items-center relative z-10 min-h-[460px]">
-            
-            <div className="w-full max-w-md bg-white/95 backdrop-blur-xl rounded-3xl p-5 sm:p-8 shadow-[0_15px_35px_-5px_rgba(0,0,0,0.06),0_0_15px_rgba(5,150,105,0.05)] border border-slate-200/90 relative z-10 flex flex-col justify-center min-h-[390px] sm:min-h-[450px]">
-              
-              {registrationMessage && (
-                <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200/80 rounded-2xl text-xs text-emerald-800 text-center font-medium">
-                  {registrationMessage}
-                </div>
-              )}
-
-              <AnimatePresence mode="wait">
-                {pendingMfa ? renderMfaVerifyForm() : null}
-                {!pendingMfa && authScreen === 'welcome' && renderWelcomeCard()}
-                {!pendingMfa && authScreen === 'login' && renderLoginForm()}
-                {authScreen === 'register' && renderRegisterForm()}
-                {authScreen === 'forgot' && renderForgotForm()}
-                {authScreen === 'forgot_reset' && renderPasswordResetForm()}
-                {authScreen === 'email_verification_sent' && renderEmailVerificationSentCard()}
-                {authScreen === 'activation_expired' && renderActivationExpiredCard()}
-              </AnimatePresence>
-
+          {/* Welcome Title & Hero Details (Image 2 style) */}
+          <div className="my-4 sm:my-8 lg:my-auto max-w-xl text-left">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200/80 text-emerald-800 text-[11px] sm:text-xs font-semibold mb-3 sm:mb-4">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              Next-Gen Enterprise Logistics Gateway
             </div>
+            
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight text-slate-900 leading-[1.1]">
+              Welcome!
+            </h1>
+            
+            <div className="w-16 h-1.5 bg-gradient-to-r from-emerald-500 via-cyan-500 to-amber-500 rounded-full my-3 sm:my-4" />
 
-            {/* Bottom links */}
-            <div className="mt-6 text-center text-xs text-slate-600 z-10 space-y-2">
-              <div>
-                <a href="#help" className="hover:text-emerald-600 hover:underline font-bold text-slate-700 tracking-wide transition-colors">Need Help?</a>
+            <p className="hidden md:block text-sm sm:text-base lg:text-lg text-slate-600 font-medium leading-relaxed max-w-lg">
+              Empowering global logistics & trade management with real-time port operations, fleet dispatches, marketing pipelines, and financial ledgers.
+            </p>
+          </div>
+
+          {/* Footer Copyright */}
+          <div className="hidden sm:flex text-xs text-slate-400 font-medium pt-4 border-t border-slate-100/90 w-full items-center justify-between">
+            <span>© {new Date().getFullYear()} REMBA IMPEX GHANA LIMITED.</span>
+            <span className="hidden sm:inline text-emerald-600 font-semibold">ISO 9001 Certified</span>
+          </div>
+        </div>
+
+        {/* Right Column: Floating Glassmorphic Sign In Card */}
+        <div className="lg:col-span-5 bg-gradient-to-br from-slate-50/90 via-white/95 to-emerald-50/40 p-4 sm:p-8 md:p-10 lg:p-12 flex flex-col justify-center items-center relative z-10 min-h-[460px] lg:min-h-screen">
+          
+          <div className="w-full max-w-md bg-white/95 backdrop-blur-xl rounded-3xl p-5 sm:p-8 shadow-[0_15px_35px_-5px_rgba(0,0,0,0.06),0_0_15px_rgba(5,150,105,0.05)] border border-slate-200/90 relative z-10 flex flex-col justify-center min-h-[390px] sm:min-h-[450px]">
+            
+            {registrationMessage && (
+              <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200/80 rounded-2xl text-xs text-emerald-800 text-center font-medium">
+                {registrationMessage}
               </div>
-              <div className="text-slate-500 text-xs">
-                {authScreen === 'login' ? (
-                  <span>
-                    You are not a member?{' '}
-                    <button 
-                      onClick={() => {
-                        setPassword('');
-                        setAuthScreen('register');
-                      }} 
-                      className="text-emerald-600 hover:text-emerald-700 hover:underline font-bold transition-colors cursor-pointer"
-                    >
-                      Register
-                    </button>
-                  </span>
-                ) : authScreen === 'register' ? (
-                  <span>
-                    Already a member?{' '}
-                    <button 
-                      onClick={() => {
-                        setPassword('');
-                        setAuthScreen('login');
-                      }} 
-                      className="text-emerald-600 hover:text-emerald-700 hover:underline font-bold transition-colors cursor-pointer"
-                    >
-                      Login
-                    </button>
-                  </span>
-                ) : (
+            )}
+
+            <AnimatePresence mode="wait">
+              {pendingMfa ? renderMfaVerifyForm() : null}
+              {!pendingMfa && authScreen === 'welcome' && renderWelcomeCard()}
+              {!pendingMfa && authScreen === 'login' && renderLoginForm()}
+              {authScreen === 'register' && renderRegisterForm()}
+              {authScreen === 'forgot' && renderForgotForm()}
+              {authScreen === 'forgot_reset' && renderPasswordResetForm()}
+              {authScreen === 'email_verification_sent' && renderEmailVerificationSentCard()}
+              {authScreen === 'activation_expired' && renderActivationExpiredCard()}
+            </AnimatePresence>
+
+          </div>
+
+          {/* Bottom links */}
+          <div className="mt-6 text-center text-xs text-slate-600 z-10 space-y-2">
+            <div>
+              <a href="#help" className="hover:text-emerald-600 hover:underline font-bold text-slate-700 tracking-wide transition-colors">Need Help?</a>
+            </div>
+            <div className="text-slate-500 text-xs">
+              {authScreen === 'login' ? (
+                <span>
+                  You are not a member?{' '}
                   <button 
-                    onClick={() => setAuthScreen('login')} 
+                    onClick={() => {
+                      setPassword('');
+                      setAuthScreen('register');
+                    }} 
                     className="text-emerald-600 hover:text-emerald-700 hover:underline font-bold transition-colors cursor-pointer"
                   >
-                    Back to Login
+                    Register
                   </button>
-                )}
-              </div>
+                </span>
+              ) : authScreen === 'register' ? (
+                <span>
+                  Already a member?{' '}
+                  <button 
+                    onClick={() => {
+                      setPassword('');
+                      setAuthScreen('login');
+                    }} 
+                    className="text-emerald-600 hover:text-emerald-700 hover:underline font-bold transition-colors cursor-pointer"
+                  >
+                    Login
+                  </button>
+                </span>
+              ) : (
+                <button 
+                  onClick={() => setAuthScreen('login')} 
+                  className="text-emerald-600 hover:text-emerald-700 hover:underline font-bold transition-colors cursor-pointer"
+                >
+                  Back to Login
+                </button>
+              )}
             </div>
-
           </div>
 
         </div>
