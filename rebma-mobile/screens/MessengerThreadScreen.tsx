@@ -5,15 +5,17 @@
 // indicator, realtime, edit/delete/pin/forward/star/copy/search-within-
 // conversation) for the channel the caller navigated in with.
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, TextInput, Pressable, ScrollView, Alert, Image } from 'react-native';
+import { View, Text, TextInput, Pressable, ScrollView, Alert, Image, Linking, Modal, Dimensions } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
+import { useAudioRecorder, useAudioRecorderState, useAudioPlayer, useAudioPlayerStatus, AudioModule, RecordingPresets, setAudioModeAsync } from 'expo-audio';
 import {
   Send, Paperclip, Smile, Reply, X, Check, CheckCheck, FileText,
   Pin, Star, Pencil, Trash2, Forward, Copy, MoreVertical, Search, Users, Bell, BellOff,
+  Images, Mic, Square, Play, Pause, Download,
 } from 'lucide-react-native';
 import { supabase } from '../lib/supabaseClient';
 import { messenger, type ChatMessage, type Channel } from '../lib/messenger';
-import { pickOrCaptureImageAsset, pickDocument } from '../lib/media';
+import { pickOrCaptureImageAsset, pickDocument, pickMultipleImageAssets, validateAttachment } from '../lib/media';
 import { subscribeToLiveUsers, type PresencePayload } from '../lib/presence';
 import { useAuthStore } from '../store/authStore';
 import { useTheme } from '../theme/ThemeProvider';
@@ -63,6 +65,12 @@ export default function MessengerThreadScreen({ route }: any) {
   const [muted, setMuted] = useState(false);
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [readListFor, setReadListFor] = useState<string | null>(null);
+  // Phase 11.3 — attachments & media.
+  const [pdfPreviewFor, setPdfPreviewFor] = useState<string | null>(null);
+  const [lightbox, setLightbox] = useState<{ urls: string[]; index: number } | null>(null);
+  const [showGallery, setShowGallery] = useState(false);
+  const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  const recorderState = useAudioRecorderState(audioRecorder);
   const scrollRef = useRef<ScrollView>(null);
   const memberIds = useRef<string[]>([]);
   const presenceRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
@@ -170,9 +178,13 @@ export default function MessengerThreadScreen({ route }: any) {
 
   useEffect(() => { scrollRef.current?.scrollToEnd({ animated: true }); }, [messages.length]);
 
-  // Resolve signed URLs for attachments lazily, same as web.
+  // Resolve signed URLs for attachments lazily, same as web — includes
+  // both the single-attachment column and every path inside a
+  // multi-image message.
   useEffect(() => {
-    const paths = messages.filter((m) => m.attachment_url && m.attachment_type !== 'call' && !attachmentUrls[m.attachment_url!]).map((m) => m.attachment_url!);
+    const single = messages.filter((m) => m.attachment_url && m.attachment_type !== 'call' && !attachmentUrls[m.attachment_url!]).map((m) => m.attachment_url!);
+    const multi = messages.flatMap((m) => (m.attachment_urls || []).filter((p) => !attachmentUrls[p]));
+    const paths = Array.from(new Set([...single, ...multi]));
     if (paths.length === 0) return;
     (async () => {
       const entries: Record<string, string> = {};
@@ -243,6 +255,7 @@ export default function MessengerThreadScreen({ route }: any) {
   const handleAttach = () => {
     Alert.alert('Attach', undefined, [
       { text: 'Photo', onPress: attachPhoto },
+      { text: 'Multiple Photos', onPress: attachMultiplePhotos },
       { text: 'Document', onPress: attachDocument },
       { text: 'Cancel', style: 'cancel' },
     ]);
@@ -251,6 +264,8 @@ export default function MessengerThreadScreen({ route }: any) {
   const attachPhoto = async () => {
     const asset = await pickOrCaptureImageAsset();
     if (!asset) return;
+    const err = validateAttachment(asset.mimeType, asset.size);
+    if (err) { Alert.alert('Can\'t attach that', err); return; }
     try {
       const path = await messenger.uploadChatAttachment(asset.uri, asset.mimeType, channelId);
       await messenger.sendMessage(channelId, myId, myName, '📷 Photo', { attachmentUrl: path, attachmentType: 'image', attachmentName: 'photo' });
@@ -260,9 +275,39 @@ export default function MessengerThreadScreen({ route }: any) {
     }
   };
 
+  // Phase 11.3 — several photos sent together as one bubble.
+  const attachMultiplePhotos = async () => {
+    const assets = await pickMultipleImageAssets();
+    if (!assets || assets.length === 0) return;
+    if (assets.length === 1) {
+      const err = validateAttachment(assets[0].mimeType, assets[0].size);
+      if (err) { Alert.alert("Can't attach that", err); return; }
+      try {
+        const path = await messenger.uploadChatAttachment(assets[0].uri, assets[0].mimeType, channelId);
+        await messenger.sendMessage(channelId, myId, myName, '📷 Photo', { attachmentUrl: path, attachmentType: 'image', attachmentName: 'photo' });
+        notifyOthersOfMessage('📷 Photo');
+      } catch (e: any) { Alert.alert('Upload failed', e.message); }
+      return;
+    }
+    for (const a of assets) {
+      const err = validateAttachment(a.mimeType, a.size);
+      if (err) { Alert.alert("Can't attach that", err); return; }
+    }
+    try {
+      const paths = await Promise.all(assets.map((a) => messenger.uploadChatAttachment(a.uri, a.mimeType, channelId)));
+      const preview = `📷 ${assets.length} Photos`;
+      await messenger.sendMessage(channelId, myId, myName, preview, { attachmentUrls: paths, attachmentType: 'image' });
+      notifyOthersOfMessage(preview);
+    } catch (e: any) {
+      Alert.alert('Upload failed', e.message);
+    }
+  };
+
   const attachDocument = async () => {
     const asset = await pickDocument();
     if (!asset) return;
+    const err = validateAttachment(asset.mimeType, asset.size);
+    if (err) { Alert.alert("Can't attach that", err); return; }
     try {
       const name = asset.uri.split('/').pop() || 'file';
       const path = await messenger.uploadChatAttachment(asset.uri, asset.mimeType, channelId);
@@ -270,6 +315,44 @@ export default function MessengerThreadScreen({ route }: any) {
       notifyOthersOfMessage(`📎 ${name}`);
     } catch (e: any) {
       Alert.alert('Upload failed', e.message);
+    }
+  };
+
+  // Phase 11.3 — voice notes via expo-audio. Records to the app's cache
+  // dir, uploads through the exact same chat-attachments path a photo
+  // already goes through.
+  useEffect(() => {
+    (async () => {
+      const status = await AudioModule.requestRecordingPermissionsAsync();
+      if (!status.granted) return;
+      await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: true });
+    })();
+  }, []);
+
+  const startVoiceRecording = async () => {
+    try {
+      const status = await AudioModule.requestRecordingPermissionsAsync();
+      if (!status.granted) {
+        Alert.alert('Microphone permission needed', 'Enable microphone access in your device settings to record a voice note.');
+        return;
+      }
+      await audioRecorder.prepareToRecordAsync();
+      audioRecorder.record();
+    } catch (e: any) {
+      Alert.alert('Failed to start recording', e.message);
+    }
+  };
+
+  const stopVoiceRecording = async () => {
+    try {
+      await audioRecorder.stop();
+      const uri = audioRecorder.uri;
+      if (!uri) return;
+      const path = await messenger.uploadChatAttachment(uri, 'audio/m4a', channelId);
+      await messenger.sendMessage(channelId, myId, myName, '🎤 Voice note', { attachmentUrl: path, attachmentType: 'audio', attachmentName: 'voice-note.m4a' });
+      notifyOthersOfMessage('🎤 Voice note');
+    } catch (e: any) {
+      Alert.alert('Voice note failed', e.message);
     }
   };
 
@@ -396,6 +479,11 @@ export default function MessengerThreadScreen({ route }: any) {
         <Pressable onPress={toggleMute} hitSlop={8} style={{ padding: 4 }}>
           {muted ? <BellOff size={17} color={t.colors.textMuted} /> : <Bell size={17} color={t.colors.textMuted} />}
         </Pressable>
+        {messages.some((m) => m.attachment_type === 'image') && (
+          <Pressable onPress={() => setShowGallery(true)} hitSlop={8} style={{ padding: 4 }}>
+            <Images size={17} color={t.colors.textMuted} />
+          </Pressable>
+        )}
       </View>
 
       {showSearch && (
@@ -450,11 +538,32 @@ export default function MessengerThreadScreen({ route }: any) {
                     <Text style={{ fontFamily: t.font.regular, fontStyle: 'italic', fontSize: t.type.body14.size, color: mine ? 'rgba(255,255,255,0.7)' : t.colors.textMuted }}>This message was deleted</Text>
                   ) : (
                     <>
-                      {isImage && msg.attachment_url && attachmentUrls[msg.attachment_url] ? (
-                        <Image source={{ uri: attachmentUrls[msg.attachment_url] }} style={{ width: 180, height: 180, borderRadius: 10, marginBottom: 4 }} resizeMode="cover" />
+                      {isImage && msg.attachment_urls && msg.attachment_urls.length > 1 ? (
+                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginBottom: 4, width: 176 }}>
+                          {msg.attachment_urls.map((path, i) => attachmentUrls[path] ? (
+                            <Pressable key={path} onPress={() => setLightbox({ urls: msg.attachment_urls!.map((p) => attachmentUrls[p]).filter(Boolean), index: i })}>
+                              <Image source={{ uri: attachmentUrls[path] }} style={{ width: 86, height: 86, borderRadius: 8 }} resizeMode="cover" />
+                            </Pressable>
+                          ) : <View key={path} style={{ width: 86, height: 86, borderRadius: 8, backgroundColor: 'rgba(0,0,0,0.1)' }} />)}
+                        </View>
+                      ) : isImage && msg.attachment_url && attachmentUrls[msg.attachment_url] ? (
+                        <Pressable onPress={() => setLightbox({ urls: [attachmentUrls[msg.attachment_url!]], index: 0 })}>
+                          <Image source={{ uri: attachmentUrls[msg.attachment_url] }} style={{ width: 180, height: 180, borderRadius: 10, marginBottom: 4 }} resizeMode="cover" />
+                        </Pressable>
+                      ) : msg.attachment_type === 'audio' && msg.attachment_url && attachmentUrls[msg.attachment_url] ? (
+                        <VoiceNoteBubble uri={attachmentUrls[msg.attachment_url]} mine={mine} />
                       ) : isFile ? (
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                          <FileText size={14} color={mine ? t.colors.onAccent : t.colors.textPrimary} />
+                        <View style={{ marginBottom: 4 }}>
+                          <Pressable
+                            onPress={() => msg.attachment_url && attachmentUrls[msg.attachment_url] && Linking.openURL(attachmentUrls[msg.attachment_url])}
+                            style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
+                          >
+                            <FileText size={14} color={mine ? t.colors.onAccent : t.colors.textPrimary} />
+                            <Text numberOfLines={1} style={{ fontFamily: t.font.semibold, fontSize: t.type.body12.size, color: mine ? t.colors.onAccent : t.colors.accent, textDecorationLine: 'underline', maxWidth: 150 }}>
+                              {msg.attachment_name || 'File'}
+                            </Text>
+                            <Download size={11} color={mine ? t.colors.onAccent : t.colors.accent} />
+                          </Pressable>
                         </View>
                       ) : null}
                       <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body14.size, color: mine ? t.colors.onAccent : t.colors.textPrimary }}>{msg.content}</Text>
@@ -526,6 +635,13 @@ export default function MessengerThreadScreen({ route }: any) {
             <>
               <Pressable onPress={handleAttach} hitSlop={8} style={{ padding: 6 }}>
                 <Paperclip size={18} color={t.colors.textMuted} />
+              </Pressable>
+              <Pressable
+                onPress={recorderState.isRecording ? stopVoiceRecording : startVoiceRecording}
+                hitSlop={8}
+                style={{ padding: 6, borderRadius: 14, backgroundColor: recorderState.isRecording ? t.colors.status.danger.text : 'transparent' }}
+              >
+                {recorderState.isRecording ? <Square size={16} color={t.colors.onAccent} /> : <Mic size={18} color={t.colors.textMuted} />}
               </Pressable>
               <View style={{ flex: 1 }}>
                 {mentionCandidates.length > 0 && (
@@ -619,7 +735,78 @@ export default function MessengerThreadScreen({ route }: any) {
           ))}
         </View>
       </Sheet>
+
+      {/* Gallery — every image sent in this conversation, grid + tap-to-lightbox */}
+      <Sheet open={showGallery} onClose={() => setShowGallery(false)} title="Media" side="bottom">
+        {(() => {
+          const allImageUrls = messages.flatMap((m) =>
+            m.attachment_type !== 'image' ? [] :
+            m.attachment_urls && m.attachment_urls.length > 0 ? m.attachment_urls.map((p) => attachmentUrls[p]).filter(Boolean) :
+            m.attachment_url && attachmentUrls[m.attachment_url] ? [attachmentUrls[m.attachment_url]] : []
+          );
+          return (
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, maxHeight: 400 }}>
+              {allImageUrls.length === 0 && <Text style={p.meta}>No photos yet.</Text>}
+              {allImageUrls.map((url, i) => (
+                <Pressable key={i} onPress={() => { setShowGallery(false); setLightbox({ urls: allImageUrls, index: i }); }}>
+                  <Image source={{ uri: url }} style={{ width: 96, height: 96, borderRadius: 8 }} resizeMode="cover" />
+                </Pressable>
+              ))}
+            </View>
+          );
+        })()}
+      </Sheet>
+
+      {/* Lightbox — full-size image, prev/next through the same set */}
+      <Modal visible={!!lightbox} transparent animationType="fade" onRequestClose={() => setLightbox(null)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.92)', alignItems: 'center', justifyContent: 'center' }}>
+          <Pressable onPress={() => setLightbox(null)} style={{ position: 'absolute', top: 50, right: 20, padding: 8, zIndex: 1 }}>
+            <X size={26} color="#fff" />
+          </Pressable>
+          {lightbox && (
+            <Image
+              source={{ uri: lightbox.urls[lightbox.index] }}
+              style={{ width: Dimensions.get('window').width - 40, height: Dimensions.get('window').height * 0.7 }}
+              resizeMode="contain"
+            />
+          )}
+          {lightbox && lightbox.urls.length > 1 && (
+            <View style={{ flexDirection: 'row', gap: 40, marginTop: 20 }}>
+              <Pressable onPress={() => setLightbox((l) => l && { ...l, index: (l.index - 1 + l.urls.length) % l.urls.length })}>
+                <Text style={{ color: '#fff', fontSize: 28 }}>‹</Text>
+              </Pressable>
+              <Pressable onPress={() => setLightbox((l) => l && { ...l, index: (l.index + 1) % l.urls.length })}>
+                <Text style={{ color: '#fff', fontSize: 28 }}>›</Text>
+              </Pressable>
+            </View>
+          )}
+        </View>
+      </Modal>
     </Screen>
+  );
+}
+
+// Phase 11.3 — one voice-note bubble is one useAudioPlayer instance, so
+// several voice notes in a thread each play/pause independently.
+function VoiceNoteBubble({ uri, mine }: { uri: string; mine: boolean }) {
+  const t = useTheme();
+  const player = useAudioPlayer(uri);
+  const status = useAudioPlayerStatus(player);
+
+  const toggle = () => {
+    if (status.playing) player.pause();
+    else { player.seekTo(0); player.play(); }
+  };
+
+  return (
+    <Pressable onPress={toggle} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, minWidth: 140 }}>
+      <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: mine ? 'rgba(255,255,255,0.25)' : t.colors.accentSoft, alignItems: 'center', justifyContent: 'center' }}>
+        {status.playing ? <Pause size={13} color={mine ? t.colors.onAccent : t.colors.accent} /> : <Play size={13} color={mine ? t.colors.onAccent : t.colors.accent} />}
+      </View>
+      <View style={{ flex: 1, height: 3, borderRadius: 2, backgroundColor: mine ? 'rgba(255,255,255,0.3)' : t.colors.border }}>
+        <View style={{ width: `${status.duration ? Math.min(100, (status.currentTime / status.duration) * 100) : 0}%`, height: 3, borderRadius: 2, backgroundColor: mine ? t.colors.onAccent : t.colors.accent }} />
+      </View>
+    </Pressable>
   );
 }
 

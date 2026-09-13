@@ -8,6 +8,7 @@ import {
   MessageSquare, Search, Users, X, Send, Paperclip, Smile, Reply,
   Phone, Video, Check, CheckCheck, Plus, FileText,
   Pin, Star, Pencil, Trash2, Forward, Copy, MoreVertical, BellOff, Bell, EyeOff,
+  Images, Mic, Square, Download,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../../lib/supabaseClient';
@@ -37,6 +38,23 @@ interface Msg {
   time: string; attachment_url: string | null; attachment_type: string | null; attachment_name: string | null;
   reply_to_id: string | null; created_at: string;
   edited_at?: string | null; deleted_at?: string | null; deleted_by?: string | null; forwarded_from_id?: string | null;
+  attachment_urls?: string[] | null;
+}
+
+// Phase 11.3 — a chat attachment cap, shared by the validator and the
+// error copy. 15MB matches this app's own StockIntakeForm photo-quality
+// setting in spirit (small, chat-appropriate, not a document-transfer tool).
+const MAX_ATTACHMENT_BYTES = 15 * 1024 * 1024;
+const ALLOWED_ATTACHMENT_TYPES = [
+  'image/jpeg', 'image/png', 'image/webp', 'image/gif',
+  'application/pdf', 'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'text/plain', 'text/csv',
+];
+function validateAttachment(file: File): string | null {
+  if (file.size > MAX_ATTACHMENT_BYTES) return `${file.name} is larger than 15MB.`;
+  if (!ALLOWED_ATTACHMENT_TYPES.includes(file.type)) return `${file.name} isn't a supported file type.`;
+  return null;
 }
 
 const REACTION_EMOJIS = ['👍', '❤️', '😂', '🎉', '😮', '👏'];
@@ -136,7 +154,12 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
   const [rowMenuFor, setRowMenuFor] = useState<string | null>(null);
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [readListFor, setReadListFor] = useState<string | null>(null);
+  // Phase 11.3 — attachments & media.
+  const [pdfPreviewFor, setPdfPreviewFor] = useState<string | null>(null);
+  const [lightbox, setLightbox] = useState<{ urls: string[]; index: number } | null>(null);
+  const [showGallery, setShowGallery] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const multiImageInputRef = useRef<HTMLInputElement>(null);
   const presenceChannelRef = useRef<any>(null);
   const typingTimeoutRef = useRef<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -274,9 +297,12 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages.length]);
 
-  // Resolve signed URLs for attachments lazily
+  // Resolve signed URLs for attachments lazily — includes both the
+  // single-attachment column and every path inside a multi-image message.
   useEffect(() => {
-    const paths = messages.filter(m => m.attachment_url && m.attachment_type !== 'call' && !attachmentUrls[m.attachment_url!]).map(m => m.attachment_url!);
+    const single = messages.filter(m => m.attachment_url && m.attachment_type !== 'call' && !attachmentUrls[m.attachment_url!]).map(m => m.attachment_url!);
+    const multi = messages.flatMap(m => (m.attachment_urls || []).filter(p => !attachmentUrls[p]));
+    const paths = Array.from(new Set([...single, ...multi]));
     if (paths.length === 0) return;
     (async () => {
       const entries: Record<string, string> = {};
@@ -441,6 +467,8 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
 
   const handleAttach = async (file: File) => {
     if (!activeChannel) return;
+    const err = validateAttachment(file);
+    if (err) { alert(err); return; }
     try {
       const path = await messenger.uploadChatAttachment(file, activeChannel.id);
       const isImage = file.type.startsWith('image/');
@@ -450,6 +478,64 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
       });
       notifyOthersOfMessage(preview);
     } catch (e) { console.error('Attachment upload failed:', e); }
+  };
+
+  // Phase 11.3 — several images sent together as one bubble (attachment_urls),
+  // distinct from a single-image message, which keeps using attachment_url.
+  const handleAttachMultiple = async (files: File[]) => {
+    if (!activeChannel || files.length === 0) return;
+    for (const f of files) {
+      const err = validateAttachment(f);
+      if (err) { alert(err); return; }
+    }
+    try {
+      const paths = await Promise.all(files.map(f => messenger.uploadChatAttachment(f, activeChannel.id)));
+      const preview = `📷 ${files.length} Photos`;
+      await messenger.sendMessage(activeChannel.id, myId, myName, preview, {
+        attachmentUrls: paths, attachmentType: 'image',
+      });
+      notifyOthersOfMessage(preview);
+    } catch (e) { console.error('Attachment upload failed:', e); }
+  };
+
+  // Phase 11.3 — voice notes via the browser's native MediaRecorder, no
+  // new dependency. Records to a Blob, uploads it through the exact same
+  // chat-attachments path a photo/file already goes through.
+  const [isRecording, setIsRecording] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordedChunksRef = useRef<Blob[]>([]);
+
+  const startVoiceRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      recordedChunksRef.current = [];
+      recorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunksRef.current.push(e.data); };
+      recorder.onstop = async () => {
+        stream.getTracks().forEach(t => t.stop());
+        const blob = new Blob(recordedChunksRef.current, { type: 'audio/webm' });
+        if (!activeChannel || blob.size === 0) return;
+        try {
+          const file = new File([blob], `voice-note-${Date.now()}.webm`, { type: 'audio/webm' });
+          const path = await messenger.uploadChatAttachment(file, activeChannel.id);
+          await messenger.sendMessage(activeChannel.id, myId, myName, '🎤 Voice note', {
+            attachmentUrl: path, attachmentType: 'audio', attachmentName: file.name,
+          });
+          notifyOthersOfMessage('🎤 Voice note');
+        } catch (e) { console.error('Voice note upload failed:', e); }
+      };
+      mediaRecorderRef.current = recorder;
+      recorder.start();
+      setIsRecording(true);
+    } catch (e) {
+      alert('Microphone access is required to record a voice note.');
+    }
+  };
+
+  const stopVoiceRecording = () => {
+    mediaRecorderRef.current?.stop();
+    mediaRecorderRef.current = null;
+    setIsRecording(false);
   };
 
   // ── Phase 11.1: core message actions ──
@@ -679,6 +765,11 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
                       <button onClick={() => setShowThreadSearch(v => !v)} className={`p-2 rounded-lg hover:bg-[var(--accent-light)] cursor-pointer ${showThreadSearch ? 'text-[var(--accent)]' : 'text-[var(--text-muted)]'}`} title="Search this conversation">
                         <Search size={16} />
                       </button>
+                      {messages.some(m => m.attachment_type === 'image') && (
+                        <button onClick={() => setShowGallery(true)} className="p-2 rounded-lg hover:bg-[var(--accent-light)] text-[var(--text-muted)] cursor-pointer" title="Media in this conversation">
+                          <Images size={16} />
+                        </button>
+                      )}
                       <button onClick={() => startCall('voice')} className="p-2 rounded-lg hover:bg-[var(--accent-light)] text-[var(--accent)] cursor-pointer" title="Voice call"><Phone size={16} /></button>
                       <button onClick={() => startCall('video')} className="p-2 rounded-lg hover:bg-[var(--accent-light)] text-[var(--accent)] cursor-pointer" title="Video call"><Video size={16} /></button>
                     </>
@@ -736,12 +827,34 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
                             }} className={`flex items-center gap-2 text-xs font-bold cursor-pointer underline ${mine ? 'text-white' : 'text-[var(--accent)]'}`}>
                               {msg.content}
                             </button>
+                          ) : msg.attachment_type === 'image' && msg.attachment_urls && msg.attachment_urls.length > 1 ? (
+                            <div className="grid grid-cols-2 gap-1 mb-1 max-w-[220px]">
+                              {msg.attachment_urls.map((path, i) => attachmentUrls[path] ? (
+                                <button key={path} onClick={() => setLightbox({ urls: msg.attachment_urls!.map(p => attachmentUrls[p]).filter(Boolean), index: i })} className="cursor-pointer">
+                                  <img src={attachmentUrls[path]} alt="attachment" className="rounded-lg w-full h-20 object-cover" />
+                                </button>
+                              ) : <div key={path} className="rounded-lg w-full h-20 bg-black/10" />)}
+                            </div>
                           ) : msg.attachment_type === 'image' && msg.attachment_url && attachmentUrls[msg.attachment_url] ? (
-                            <img src={attachmentUrls[msg.attachment_url]} alt="attachment" className="rounded-lg max-w-full max-h-52 mb-1" />
+                            <button onClick={() => setLightbox({ urls: [attachmentUrls[msg.attachment_url!]], index: 0 })} className="cursor-pointer">
+                              <img src={attachmentUrls[msg.attachment_url]} alt="attachment" className="rounded-lg max-w-full max-h-52 mb-1" />
+                            </button>
+                          ) : msg.attachment_type === 'audio' && msg.attachment_url && attachmentUrls[msg.attachment_url] ? (
+                            <audio controls src={attachmentUrls[msg.attachment_url]} className="max-w-full mb-1" style={{ height: 32 }} />
                           ) : msg.attachment_type === 'file' && msg.attachment_url && attachmentUrls[msg.attachment_url] ? (
-                            <a href={attachmentUrls[msg.attachment_url]} target="_blank" rel="noreferrer" className={`flex items-center gap-1.5 text-xs font-semibold underline ${mine ? 'text-white' : 'text-[var(--accent)]'}`}>
-                              <FileText size={13} /> {msg.attachment_name || 'File'}
-                            </a>
+                            <div className="mb-1">
+                              <a href={attachmentUrls[msg.attachment_url]} target="_blank" rel="noreferrer" className={`flex items-center gap-1.5 text-xs font-semibold underline ${mine ? 'text-white' : 'text-[var(--accent)]'}`}>
+                                <FileText size={13} /> {msg.attachment_name || 'File'} <Download size={11} />
+                              </a>
+                              {msg.attachment_name?.toLowerCase().endsWith('.pdf') && (
+                                <button onClick={() => setPdfPreviewFor(pdfPreviewFor === msg.id ? null : msg.id)} className={`text-[10px] underline mt-0.5 cursor-pointer ${mine ? 'text-white/80' : 'text-[var(--accent)]'}`}>
+                                  {pdfPreviewFor === msg.id ? 'Hide preview' : 'Preview'}
+                                </button>
+                              )}
+                              {pdfPreviewFor === msg.id && (
+                                <iframe src={attachmentUrls[msg.attachment_url]} title={msg.attachment_name || 'PDF preview'} className="w-64 h-80 mt-1 rounded-lg border border-[var(--border)] bg-white" />
+                              )}
+                            </div>
                           ) : null}
                           {!isCall && !isDeleted && <p className="text-xs leading-relaxed">{msg.content}</p>}
                           <div className="flex items-center gap-1 justify-end mt-0.5">
@@ -842,7 +955,16 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
                   ) : (
                     <>
                       <input ref={fileInputRef} type="file" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleAttach(f); e.target.value = ''; }} />
-                      <button onClick={() => fileInputRef.current?.click()} className="p-2 rounded-lg hover:bg-[var(--bg-input)] text-[var(--text-muted)] cursor-pointer shrink-0"><Paperclip size={16} /></button>
+                      <button onClick={() => fileInputRef.current?.click()} title="Attach a file" className="p-2 rounded-lg hover:bg-[var(--bg-input)] text-[var(--text-muted)] cursor-pointer shrink-0"><Paperclip size={16} /></button>
+                      <input ref={multiImageInputRef} type="file" accept="image/*" multiple className="hidden" onChange={e => { const files = Array.from(e.target.files || []); if (files.length === 1) handleAttach(files[0]); else if (files.length > 1) handleAttachMultiple(files); e.target.value = ''; }} />
+                      <button onClick={() => multiImageInputRef.current?.click()} title="Send photos" className="p-2 rounded-lg hover:bg-[var(--bg-input)] text-[var(--text-muted)] cursor-pointer shrink-0"><Images size={16} /></button>
+                      <button
+                        onClick={isRecording ? stopVoiceRecording : startVoiceRecording}
+                        title={isRecording ? 'Stop recording' : 'Record a voice note'}
+                        className={`p-2 rounded-lg cursor-pointer shrink-0 ${isRecording ? 'bg-rose-500 text-white animate-pulse' : 'hover:bg-[var(--bg-input)] text-[var(--text-muted)]'}`}
+                      >
+                        {isRecording ? <Square size={16} /> : <Mic size={16} />}
+                      </button>
                       <div className="relative flex-1">
                         {mentionCandidates.length > 0 && (
                           <div className="absolute bottom-full mb-1 left-0 right-0 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-card py-1 z-10">
@@ -953,6 +1075,47 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
             ))}
           </div>
         </div>
+      </div>
+    )}
+
+    {/* Gallery — every image sent in this conversation, grid + tap-to-lightbox */}
+    {showGallery && (() => {
+      const allImageUrls = messages.flatMap(m =>
+        m.attachment_type !== 'image' ? [] :
+        m.attachment_urls && m.attachment_urls.length > 0 ? m.attachment_urls.map(p => attachmentUrls[p]).filter(Boolean) :
+        m.attachment_url && attachmentUrls[m.attachment_url] ? [attachmentUrls[m.attachment_url]] : []
+      );
+      return (
+        <div className="fixed inset-0 z-[1600] bg-black/50 flex items-center justify-center p-4" onClick={() => setShowGallery(false)}>
+          <div className="bg-[var(--bg-card)] rounded-2xl shadow-2xl w-full max-w-lg max-h-[70vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
+              <h3 className="font-bold text-sm text-[var(--text-primary)] flex items-center gap-2"><Images size={14} /> Media</h3>
+              <button onClick={() => setShowGallery(false)} className="p-1 cursor-pointer"><X size={16} /></button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-3 grid grid-cols-3 gap-1.5">
+              {allImageUrls.length === 0 && <p className="col-span-3 text-xs text-[var(--text-muted)] text-center py-10">No photos yet.</p>}
+              {allImageUrls.map((url, i) => (
+                <button key={i} onClick={() => setLightbox({ urls: allImageUrls, index: i })} className="cursor-pointer">
+                  <img src={url} alt="" className="w-full h-24 object-cover rounded-lg" />
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    })()}
+
+    {/* Lightbox — full-size image, prev/next through the same set */}
+    {lightbox && (
+      <div className="fixed inset-0 z-[1700] bg-black/90 flex items-center justify-center p-6" onClick={() => setLightbox(null)}>
+        <button onClick={() => setLightbox(null)} className="absolute top-4 right-4 p-2 text-white cursor-pointer"><X size={22} /></button>
+        {lightbox.urls.length > 1 && (
+          <button onClick={e => { e.stopPropagation(); setLightbox(l => l && { ...l, index: (l.index - 1 + l.urls.length) % l.urls.length }); }} className="absolute left-4 p-2 text-white cursor-pointer text-2xl">‹</button>
+        )}
+        <img src={lightbox.urls[lightbox.index]} alt="" className="max-w-full max-h-full rounded-lg" onClick={e => e.stopPropagation()} />
+        {lightbox.urls.length > 1 && (
+          <button onClick={e => { e.stopPropagation(); setLightbox(l => l && { ...l, index: (l.index + 1) % l.urls.length }); }} className="absolute right-4 p-2 text-white cursor-pointer text-2xl">›</button>
+        )}
       </div>
     )}
 

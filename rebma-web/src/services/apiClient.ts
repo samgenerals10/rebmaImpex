@@ -2336,7 +2336,7 @@ export const messenger = {
     return data || [];
   },
 
-  sendMessage: async (channelId: string, senderId: string, senderName: string, content: string, opts?: { attachmentUrl?: string; attachmentType?: string; attachmentName?: string; replyToId?: string; forwardedFromId?: string }) => {
+  sendMessage: async (channelId: string, senderId: string, senderName: string, content: string, opts?: { attachmentUrl?: string; attachmentUrls?: string[]; attachmentType?: string; attachmentName?: string; replyToId?: string; forwardedFromId?: string }) => {
     const { data, error } = await supabase.from('chat_messages').insert({
       channel_id: channelId,
       sender_id: senderId,
@@ -2344,6 +2344,7 @@ export const messenger = {
       content,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       attachment_url: opts?.attachmentUrl || null,
+      attachment_urls: opts?.attachmentUrls && opts.attachmentUrls.length > 0 ? opts.attachmentUrls : null,
       attachment_type: opts?.attachmentType || null,
       attachment_name: opts?.attachmentName || null,
       reply_to_id: opts?.replyToId || null,

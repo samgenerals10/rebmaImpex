@@ -27,6 +27,7 @@ import * as DocumentPicker from 'expo-document-picker';
 export interface PickedAsset {
   uri: string;
   mimeType: string;
+  size?: number;
 }
 
 async function requestCameraPerm(): Promise<boolean> {
@@ -85,12 +86,12 @@ export function pickOrCaptureImageAsset(): Promise<PickedAsset | null> {
     async () => {
       if (!(await requestCameraPerm())) return null;
       const r = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 0.6 });
-      return r.canceled || !r.assets?.[0] ? null : { uri: r.assets[0].uri, mimeType: r.assets[0].mimeType || 'image/jpeg' };
+      return r.canceled || !r.assets?.[0] ? null : { uri: r.assets[0].uri, mimeType: r.assets[0].mimeType || 'image/jpeg', size: r.assets[0].fileSize };
     },
     async () => {
       if (!(await requestLibraryPerm())) return null;
       const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.6 });
-      return r.canceled || !r.assets?.[0] ? null : { uri: r.assets[0].uri, mimeType: r.assets[0].mimeType || 'image/jpeg' };
+      return r.canceled || !r.assets?.[0] ? null : { uri: r.assets[0].uri, mimeType: r.assets[0].mimeType || 'image/jpeg', size: r.assets[0].fileSize };
     }
   );
 }
@@ -106,5 +107,31 @@ export async function pickDocument(): Promise<PickedAsset | null> {
     copyToCacheDirectory: true,
   });
   if (r.canceled || !r.assets?.[0]) return null;
-  return { uri: r.assets[0].uri, mimeType: r.assets[0].mimeType || 'application/pdf' };
+  return { uri: r.assets[0].uri, mimeType: r.assets[0].mimeType || 'application/pdf', size: r.assets[0].size };
+}
+
+// Phase 11.3 — several photos sent together as one message. Library only
+// (a camera can't produce "several" in one action) — capped at 10, a
+// reasonable chat-appropriate batch, not a bulk-upload tool.
+export async function pickMultipleImageAssets(limit = 10): Promise<PickedAsset[] | null> {
+  if (!(await requestLibraryPerm())) return null;
+  const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsMultipleSelection: true, selectionLimit: limit, quality: 0.6 });
+  if (r.canceled || !r.assets || r.assets.length === 0) return null;
+  return r.assets.map((a) => ({ uri: a.uri, mimeType: a.mimeType || 'image/jpeg', size: a.fileSize }));
+}
+
+// Phase 11.3 — same cap/allowlist as web's validateAttachment(), so a
+// rejected file gets the same "too big"/"unsupported type" reasoning on
+// both platforms.
+const MAX_ATTACHMENT_BYTES = 15 * 1024 * 1024;
+const ALLOWED_ATTACHMENT_TYPES = [
+  'image/jpeg', 'image/png', 'image/webp', 'image/gif',
+  'application/pdf', 'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'text/plain', 'text/csv',
+];
+export function validateAttachment(mimeType: string, sizeBytes?: number): string | null {
+  if (sizeBytes && sizeBytes > MAX_ATTACHMENT_BYTES) return 'That file is larger than 15MB.';
+  if (!ALLOWED_ATTACHMENT_TYPES.includes(mimeType)) return "That file type isn't supported here.";
+  return null;
 }

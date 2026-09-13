@@ -11,6 +11,7 @@
     "@react-navigation/native-stack": "^7.17.10",
     "@supabase/supabase-js": "^2.110.5",
     "expo": "~56.0.4",
+    "expo-audio": "~56.0.13",
     "expo-camera": "~56.0.8",
     "expo-clipboard": "~56.0.4",
     "expo-constants": "~56.0.25",
