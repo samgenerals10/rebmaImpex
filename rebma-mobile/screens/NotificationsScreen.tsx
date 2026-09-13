@@ -14,6 +14,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { View, Text, Pressable, Linking } from 'react-native';
 import { Bell, CheckCheck, Trash2, ExternalLink } from 'lucide-react-native';
 import { supabase } from '../lib/supabaseClient';
+import { navigationRef } from '../navigation/navigationRef';
 import { useAuthStore } from '../store/authStore';
 import { useNotificationsStore } from '../store/notificationsStore';
 import { useTheme } from '../theme/ThemeProvider';
@@ -26,6 +27,7 @@ import { SkeletonList } from '../components/ui/Skeleton';
 interface DbNotification {
   id: string; title: string; message: string; type: string; read: boolean;
   created_at: string; action_url: string | null; action_label: string | null;
+  sender_name?: string | null;
 }
 
 function timeAgo(iso: string) {
@@ -71,7 +73,20 @@ export default function NotificationsScreen() {
     setNotifs((prev) => prev.map((x) => (x.id === n.id ? { ...x, read: true } : x)));
     await supabase.from('notifications').update({ read: true }).eq('id', n.id);
     if (profile) refreshUnreadCount(profile.id, profile.department);
-    if (n.action_url?.startsWith('http')) Linking.openURL(n.action_url);
+    if (!n.action_url) return;
+    // Phase 11.2 — chat_message/chat_mention notifications store a channel
+    // id in action_url, not a URL; deep-link straight into that thread.
+    if (n.type === 'chat_message' || n.type === 'chat_mention') {
+      const { data: ch } = await supabase.from('channels').select('*').eq('id', n.action_url).maybeSingle();
+      if (ch && navigationRef.isReady()) {
+        // notifyUsers() stores the sender's full name as the notification's
+        // own title, so it's the right fallback DM/group header here too.
+        const title = ch.type === 'everyone' ? 'Everyone' : ch.type === 'group' ? ch.name || 'Group' : n.title || 'Direct Message';
+        (navigationRef.navigate as any)('Messenger', { screen: 'MessengerThread', params: { channelId: ch.id, channelType: ch.type, title, subtitle: ch.type === 'everyone' ? 'Company-wide broadcast' : undefined } });
+      }
+      return;
+    }
+    if (n.action_url.startsWith('http')) Linking.openURL(n.action_url);
   };
 
   const markAllRead = async () => {

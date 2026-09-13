@@ -7,11 +7,12 @@ import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   MessageSquare, Search, Users, X, Send, Paperclip, Smile, Reply,
   Phone, Video, Check, CheckCheck, Plus, FileText,
-  Pin, Star, Pencil, Trash2, Forward, Copy, MoreVertical,
+  Pin, Star, Pencil, Trash2, Forward, Copy, MoreVertical, BellOff, Bell, EyeOff,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../../lib/supabaseClient';
 import { messenger } from '../../services/apiClient';
+import { subscribeToLiveUsers, type PresencePayload } from '../../lib/presence';
 import { useCeoSettings } from '../../contexts/CeoSettingsContext';
 import JitsiCallModal from './JitsiCallModal';
 import type { CurrentUser } from '../../types/erp';
@@ -24,6 +25,9 @@ interface Props {
   // the messenger to open straight into a DM with a specific person rather
   // than landing on Everyone. Idempotent — safe to pass on every open.
   targetUserId?: string | null;
+  // Set by a notification tap (chat_message/chat_mention) to jump straight
+  // into the exact channel that notification was about, whatever its type.
+  targetChannelId?: string | null;
 }
 
 interface Profile { id: string; fullName: string; department: string; email: string; }
@@ -50,7 +54,45 @@ function UnreadBadge({ count }: { count?: number }) {
   );
 }
 
-export default function Messenger({ isOpen, onClose, currentUser, targetUserId }: Props) {
+// Phase 11.2 — one sidebar row, with an on-hover kebab menu (Mark as
+// unread / Mute) that a plain nested <button> couldn't express.
+function SidebarRow({
+  active, onClick, icon, title, subtitle, unread, muted, menuOpen, onToggleMenu, onMarkUnread, onToggleMute,
+}: {
+  active: boolean; onClick: () => void; icon: React.ReactNode; title: string; subtitle?: string;
+  unread?: number; muted?: boolean; menuOpen?: boolean;
+  onToggleMenu?: () => void; onMarkUnread?: () => void; onToggleMute?: () => void;
+}) {
+  return (
+    <div className={`group relative flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl cursor-pointer ${active ? 'bg-[var(--accent-light)]' : 'hover:bg-[var(--accent-light)]'}`}>
+      <button onClick={onClick} className="flex items-center gap-2.5 flex-1 min-w-0 cursor-pointer text-left">
+        {icon}
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-bold text-[var(--text-primary)] truncate flex items-center gap-1">{title} {muted && <BellOff size={10} className="text-[var(--text-muted)]" />}</p>
+          {subtitle && <p className="text-[10px] text-[var(--text-muted)] truncate">{subtitle}</p>}
+        </div>
+      </button>
+      <UnreadBadge count={unread} />
+      {onToggleMenu && (
+        <div className="relative shrink-0">
+          <button onClick={onToggleMenu} className="p-1 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-[var(--bg-card)] cursor-pointer text-[var(--text-muted)]">
+            <MoreVertical size={13} />
+          </button>
+          {menuOpen && (
+            <div className="absolute right-0 top-6 flex flex-col bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-card z-20 min-w-[150px] py-1">
+              <button onClick={onMarkUnread} className="flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-[var(--accent-light)] cursor-pointer text-left text-[var(--text-primary)]"><EyeOff size={12} /> Mark as unread</button>
+              <button onClick={onToggleMute} className="flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-[var(--accent-light)] cursor-pointer text-left text-[var(--text-primary)]">
+                {muted ? <Bell size={12} /> : <BellOff size={12} />} {muted ? 'Unmute' : 'Mute'}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function Messenger({ isOpen, onClose, currentUser, targetUserId, targetChannelId }: Props) {
   const { getSetting } = useCeoSettings();
   const globalChatEnabled = getSetting('global_chat_enabled', true);
   const departmentChatEnabled = getSetting('department_chat_enabled', true);
@@ -87,6 +129,13 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId }
   const [showThreadSearch, setShowThreadSearch] = useState(false);
   const [showPinnedList, setShowPinnedList] = useState(false);
   const [starredOnly, setStarredOnly] = useState(false);
+  // Phase 11.2 — presence-derived online status, mute state, mention
+  // autocomplete, per-row menu, read-receipt "who's read this" popover.
+  const [onlineIds, setOnlineIds] = useState<Set<string>>(new Set());
+  const [mutedChannelIds, setMutedChannelIds] = useState<Set<string>>(new Set());
+  const [rowMenuFor, setRowMenuFor] = useState<string | null>(null);
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+  const [readListFor, setReadListFor] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const presenceChannelRef = useRef<any>(null);
   const typingTimeoutRef = useRef<any>(null);
@@ -271,6 +320,44 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, myId, targetUserId]);
 
+  // Jump straight into a specific channel — from a chat notification tap.
+  // Only fires once that channel is actually in `channels` (it will be:
+  // you can't have been notified about a channel you're not a member of).
+  useEffect(() => {
+    if (!isOpen || !targetChannelId) return;
+    const ch = channels.find(c => c.id === targetChannelId);
+    if (ch) setActiveChannel(ch);
+  }, [isOpen, targetChannelId, channels]);
+
+  // Who's online right now — reuses the exact same shared presence
+  // channel every session already tracks itself on for Live Users
+  // (lib/presence.ts), not a second mechanism.
+  useEffect(() => {
+    if (!isOpen) return;
+    return subscribeToLiveUsers((users: PresencePayload[]) => setOnlineIds(new Set(users.map(u => u.userId))));
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen || !myId) return;
+    messenger.fetchMutedChannelIds(myId).then(ids => setMutedChannelIds(new Set(ids)));
+  }, [isOpen, myId]);
+
+  const toggleMuteChannel = async (channelId: string) => {
+    await messenger.toggleMute(channelId, myId);
+    setMutedChannelIds(prev => {
+      const next = new Set(prev);
+      if (next.has(channelId)) next.delete(channelId); else next.add(channelId);
+      return next;
+    });
+    setRowMenuFor(null);
+  };
+
+  const markChannelUnread = async (channelId: string) => {
+    await messenger.markChannelUnread(channelId, myId);
+    refreshUnreadCounts();
+    setRowMenuFor(null);
+  };
+
   const activeChannelMemberIds = useRef<string[]>([]);
   useEffect(() => {
     if (!activeChannel) { activeChannelMemberIds.current = []; return; }
@@ -285,18 +372,37 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId }
     if (activeChannel.type === 'group') return { title: activeChannel.name || 'Group', subtitle: 'Group channel' };
     const otherId = Object.keys(dmChannelByUser).find(uid => dmChannelByUser[uid].id === activeChannel.id);
     const other = profiles.find(p => p.id === otherId);
-    return { title: other?.fullName || 'Direct Message', subtitle: other?.department || '' };
+    const online = otherId ? onlineIds.has(otherId) : false;
+    return { title: other?.fullName || 'Direct Message', subtitle: online ? 'Online' : (other?.department || '') };
   };
 
   // Gap fix — a DM/group message never notified its recipients (Everyone
   // is deliberately excluded: notifying every staff member on every
   // broadcast would be pure noise). Best-effort — a failure here must
-  // never block the send itself, so it's fire-and-forget.
-  const notifyOthersOfMessage = (preview: string) => {
+  // never block the send itself, so it's fire-and-forget. Muted
+  // recipients (Phase 11.2) are filtered out here — @mentions below use
+  // their own, separate notifyUsers call that skips this filter entirely,
+  // since a mention should cut through a mute.
+  const notifyOthersOfMessage = async (preview: string) => {
     if (!activeChannel || activeChannel.type === 'everyone') return;
     const others = activeChannelMemberIds.current.filter((id) => id !== myId);
     if (others.length === 0) return;
-    messenger.notifyUsers(others, 'chat_message', myName, preview.slice(0, 120), activeChannel.id).catch(() => {});
+    try {
+      const muted = await messenger.fetchMutedUserIds(activeChannel.id, others);
+      const toNotify = others.filter((id) => !muted.includes(id));
+      if (toNotify.length > 0) await messenger.notifyUsers(toNotify, 'chat_message', myName, preview.slice(0, 120), activeChannel.id);
+    } catch { /* best-effort */ }
+  };
+
+  // @mentions — matched against this channel's own member list by full
+  // name, so "@Sam" only pings a Sam who's actually in this conversation.
+  // Deliberately bypasses the mute filter above: getting @mentioned is
+  // the one notification a muted conversation should still surface.
+  const notifyMentions = (text: string) => {
+    if (!activeChannel) return;
+    const mentioned = profiles.filter(pr => activeChannelMemberIds.current.includes(pr.id) && text.includes('@' + pr.fullName));
+    if (mentioned.length === 0) return;
+    messenger.notifyUsers(mentioned.map(pr => pr.id), 'chat_mention', myName, `mentioned you: ${text.slice(0, 100)}`, activeChannel.id).catch(() => {});
   };
 
   const handleSend = async () => {
@@ -307,11 +413,31 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId }
     const text = composer;
     setComposer('');
     setReplyTo(null);
+    setMentionQuery(null);
     try {
       await messenger.sendMessage(activeChannel.id, myId, myName, text, replyTo ? { replyToId: replyTo.id } : undefined);
       notifyOthersOfMessage(text);
+      notifyMentions(text);
     } catch (e) { console.error('Send failed:', e); }
   };
+
+  // Detects a trailing "@partial" token as the user types, to drive the
+  // mention-autocomplete dropdown. Cleared once a space follows the @.
+  const handleComposerChange = (value: string) => {
+    setComposer(value);
+    notifyTyping();
+    const match = value.match(/@([^\s@]*)$/);
+    setMentionQuery(match ? match[1] : null);
+  };
+
+  const insertMention = (fullName: string) => {
+    setComposer(prev => prev.replace(/@([^\s@]*)$/, `@${fullName} `));
+    setMentionQuery(null);
+  };
+
+  const mentionCandidates = mentionQuery !== null
+    ? profiles.filter(pr => activeChannelMemberIds.current.includes(pr.id) && pr.fullName.toLowerCase().includes(mentionQuery.toLowerCase())).slice(0, 6)
+    : [];
 
   const handleAttach = async (file: File) => {
     if (!activeChannel) return;
@@ -471,35 +597,61 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId }
               </div>
               <div className="flex-1 overflow-y-auto px-2 pb-2">
                 {everyoneChannel && globalChatEnabled && (
-                  <button onClick={() => setActiveChannel(everyoneChannel)}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl cursor-pointer text-left ${activeChannel?.id === everyoneChannel.id ? 'bg-[var(--accent-light)]' : 'hover:bg-[var(--accent-light)]'}`}>
-                    <div className="w-9 h-9 rounded-full bg-[var(--accent)] text-white flex items-center justify-center shrink-0"><Users size={15} /></div>
-                    <div className="min-w-0 flex-1"><p className="text-xs font-bold text-[var(--text-primary)]">Everyone</p><p className="text-[10px] text-[var(--text-muted)]">Company-wide broadcast</p></div>
-                    <UnreadBadge count={unreadCounts[everyoneChannel.id]} />
-                  </button>
+                  <SidebarRow
+                    active={activeChannel?.id === everyoneChannel.id}
+                    onClick={() => setActiveChannel(everyoneChannel)}
+                    icon={<div className="w-9 h-9 rounded-full bg-[var(--accent)] text-white flex items-center justify-center shrink-0"><Users size={15} /></div>}
+                    title="Everyone" subtitle="Company-wide broadcast"
+                    unread={unreadCounts[everyoneChannel.id]}
+                    muted={mutedChannelIds.has(everyoneChannel.id)}
+                    menuOpen={rowMenuFor === everyoneChannel.id}
+                    onToggleMenu={() => setRowMenuFor(rowMenuFor === everyoneChannel.id ? null : everyoneChannel.id)}
+                    onMarkUnread={() => markChannelUnread(everyoneChannel.id)}
+                    onToggleMute={() => toggleMuteChannel(everyoneChannel.id)}
+                  />
                 )}
                 {departmentChatEnabled && groupChannels.length > 0 && (
                   <p className="text-[9px] font-bold uppercase tracking-wider text-[var(--text-muted)] px-2.5 pt-3 pb-1">Groups</p>
                 )}
                 {departmentChatEnabled && groupChannels.map(ch => (
-                  <button key={ch.id} onClick={() => setActiveChannel(ch)}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl cursor-pointer text-left ${activeChannel?.id === ch.id ? 'bg-[var(--accent-light)]' : 'hover:bg-[var(--accent-light)]'}`}>
-                    <div className="w-9 h-9 rounded-full bg-[var(--accent-light)] text-[var(--accent)] flex items-center justify-center text-xs font-bold shrink-0">{initials(ch.name || 'GC')}</div>
-                    <div className="min-w-0 flex-1"><p className="text-xs font-bold text-[var(--text-primary)] truncate">{ch.name}</p></div>
-                    <UnreadBadge count={unreadCounts[ch.id]} />
-                  </button>
+                  <SidebarRow
+                    key={ch.id}
+                    active={activeChannel?.id === ch.id}
+                    onClick={() => setActiveChannel(ch)}
+                    icon={<div className="w-9 h-9 rounded-full bg-[var(--accent-light)] text-[var(--accent)] flex items-center justify-center text-xs font-bold shrink-0">{initials(ch.name || 'GC')}</div>}
+                    title={ch.name || 'Group'}
+                    unread={unreadCounts[ch.id]}
+                    muted={mutedChannelIds.has(ch.id)}
+                    menuOpen={rowMenuFor === ch.id}
+                    onToggleMenu={() => setRowMenuFor(rowMenuFor === ch.id ? null : ch.id)}
+                    onMarkUnread={() => markChannelUnread(ch.id)}
+                    onToggleMute={() => toggleMuteChannel(ch.id)}
+                  />
                 ))}
                 <p className="text-[9px] font-bold uppercase tracking-wider text-[var(--text-muted)] px-2.5 pt-3 pb-1">People</p>
                 {filteredContacts.map(c => {
                   const dm = dmChannelByUser[c.id];
                   const isActive = dm && activeChannel?.id === dm.id;
+                  const online = onlineIds.has(c.id);
                   return (
-                    <button key={c.id} onClick={() => openDm(c.id)}
-                      className={`w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl cursor-pointer text-left ${isActive ? 'bg-[var(--accent-light)]' : 'hover:bg-[var(--accent-light)]'}`}>
-                      <div className="w-9 h-9 rounded-full bg-[var(--accent-light)] text-[var(--accent)] flex items-center justify-center text-xs font-bold shrink-0">{initials(c.fullName)}</div>
-                      <div className="min-w-0 flex-1"><p className="text-xs font-bold text-[var(--text-primary)] truncate">{c.fullName}</p><p className="text-[10px] text-[var(--text-muted)] truncate">{c.department}</p></div>
-                      <UnreadBadge count={dm ? unreadCounts[dm.id] : undefined} />
-                    </button>
+                    <SidebarRow
+                      key={c.id}
+                      active={!!isActive}
+                      onClick={() => openDm(c.id)}
+                      icon={
+                        <div className="relative shrink-0">
+                          <div className="w-9 h-9 rounded-full bg-[var(--accent-light)] text-[var(--accent)] flex items-center justify-center text-xs font-bold">{initials(c.fullName)}</div>
+                          {online && <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-[var(--bg-card)]" />}
+                        </div>
+                      }
+                      title={c.fullName} subtitle={online ? 'Online' : c.department}
+                      unread={dm ? unreadCounts[dm.id] : undefined}
+                      muted={dm ? mutedChannelIds.has(dm.id) : false}
+                      menuOpen={!!dm && rowMenuFor === dm.id}
+                      onToggleMenu={dm ? () => setRowMenuFor(rowMenuFor === dm.id ? null : dm.id) : undefined}
+                      onMarkUnread={dm ? () => markChannelUnread(dm.id) : undefined}
+                      onToggleMute={dm ? () => toggleMuteChannel(dm.id) : undefined}
+                    />
                   );
                 })}
               </div>
@@ -597,8 +749,22 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId }
                             {isStarred && <Star size={9} fill="currentColor" className="text-amber-400" />}
                             {msg.edited_at && !isDeleted && <span className={`text-[9px] ${mine ? 'text-white/70' : 'text-[var(--text-muted)]'}`}>(edited)</span>}
                             <span className={`text-[9px] ${mine ? 'text-white/70' : 'text-[var(--text-muted)]'}`}>{msg.time}</span>
-                            {mine && (readByOthers ? <CheckCheck size={11} className="text-white/90" /> : <Check size={11} className="text-white/70" />)}
+                            {mine && (
+                              <button onClick={() => setReadListFor(readListFor === msg.id ? null : msg.id)} className="cursor-pointer" title="Who's read this">
+                                {readByOthers ? <CheckCheck size={11} className="text-white/90" /> : <Check size={11} className="text-white/70" />}
+                              </button>
+                            )}
                           </div>
+                          {readListFor === msg.id && (
+                            <div className={`absolute top-full mt-1 ${mine ? 'right-0' : 'left-0'} bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-card z-10 min-w-[160px] p-2`}>
+                              <p className="text-[9px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-1">Read by</p>
+                              {(reads[msg.id] || []).filter(uid => uid !== myId).length === 0 ? (
+                                <p className="text-[10px] text-[var(--text-muted)]">No one yet</p>
+                              ) : (reads[msg.id] || []).filter(uid => uid !== myId).map(uid => (
+                                <p key={uid} className="text-[10px] text-[var(--text-primary)] py-0.5">{profiles.find(pr => pr.id === uid)?.fullName || 'Unknown'}</p>
+                              ))}
+                            </div>
+                          )}
 
                           {/* Hover actions */}
                           {!isDeleted && (
@@ -677,12 +843,24 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId }
                     <>
                       <input ref={fileInputRef} type="file" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleAttach(f); e.target.value = ''; }} />
                       <button onClick={() => fileInputRef.current?.click()} className="p-2 rounded-lg hover:bg-[var(--bg-input)] text-[var(--text-muted)] cursor-pointer shrink-0"><Paperclip size={16} /></button>
-                      <input
-                        type="text" placeholder="Type message..." value={composer}
-                        onChange={e => { setComposer(e.target.value); notifyTyping(); }}
-                        onKeyDown={e => e.key === 'Enter' && handleSend()}
-                        className="flex-1 px-3 py-2 bg-[var(--bg-input)] border border-[var(--border)] rounded-xl text-xs text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-[var(--accent)]"
-                      />
+                      <div className="relative flex-1">
+                        {mentionCandidates.length > 0 && (
+                          <div className="absolute bottom-full mb-1 left-0 right-0 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-card py-1 z-10">
+                            {mentionCandidates.map(pr => (
+                              <button key={pr.id} onClick={() => insertMention(pr.fullName)} className="w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-[var(--accent-light)] cursor-pointer text-left text-[var(--text-primary)]">
+                                <span className="font-bold">@{pr.fullName}</span>
+                                <span className="text-[10px] text-[var(--text-muted)]">{pr.department}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                        <input
+                          type="text" placeholder="Type message..." value={composer}
+                          onChange={e => handleComposerChange(e.target.value)}
+                          onKeyDown={e => e.key === 'Enter' && handleSend()}
+                          className="w-full px-3 py-2 bg-[var(--bg-input)] border border-[var(--border)] rounded-xl text-xs text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-[var(--accent)]"
+                        />
+                      </div>
                       <button onClick={handleSend} className="p-2 bg-[var(--accent)] text-white rounded-xl cursor-pointer hover:opacity-90 shrink-0"><Send size={15} /></button>
                     </>
                   )}

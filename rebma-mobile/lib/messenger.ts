@@ -180,6 +180,36 @@ export const messenger = {
     }
   },
 
+  // Phase 11.2 — manually mark a conversation unread again, by deleting
+  // the caller's own read receipt on its most recent message (mirrors
+  // apiClient.ts's markChannelUnread exactly — no new column/mechanism).
+  markChannelUnread: async (channelId: string, userId: string) => {
+    const { data: last } = await supabase.from('chat_messages').select('id').eq('channel_id', channelId).order('created_at', { ascending: false }).limit(1);
+    const lastId = last?.[0]?.id;
+    if (!lastId) return;
+    await supabase.from('chat_message_reads').delete().eq('message_id', lastId).eq('user_id', userId);
+  },
+
+  fetchMutedChannelIds: async (userId: string): Promise<string[]> => {
+    const { data } = await supabase.from('chat_channel_mutes').select('channel_id').eq('user_id', userId);
+    return (data || []).map((r: any) => r.channel_id as string);
+  },
+
+  toggleMute: async (channelId: string, userId: string) => {
+    const { data: existing } = await supabase.from('chat_channel_mutes').select('*').eq('channel_id', channelId).eq('user_id', userId).limit(1);
+    if (existing && existing.length > 0) {
+      await supabase.from('chat_channel_mutes').delete().eq('channel_id', channelId).eq('user_id', userId);
+    } else {
+      await supabase.from('chat_channel_mutes').insert({ channel_id: channelId, user_id: userId });
+    }
+  },
+
+  fetchMutedUserIds: async (channelId: string, candidateUserIds: string[]): Promise<string[]> => {
+    if (candidateUserIds.length === 0) return [];
+    const { data } = await supabase.from('chat_channel_mutes').select('user_id').eq('channel_id', channelId).in('user_id', candidateUserIds);
+    return (data || []).map((r: any) => r.user_id as string);
+  },
+
   toggleReaction: async (messageId: string, userId: string, emoji: string) => {
     const { data: existing } = await supabase
       .from('chat_message_reactions')

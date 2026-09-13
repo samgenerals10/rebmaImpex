@@ -2416,6 +2416,44 @@ export const messenger = {
     }
   },
 
+  // Phase 11.2 — manually mark a conversation unread again. The unread
+  // count is entirely derived from the absence of a chat_message_reads
+  // row (get_unread_message_counts()), so "marking unread" just deletes
+  // the caller's own read receipt on that channel's most recent message —
+  // no new column, no new mechanism.
+  markChannelUnread: async (channelId: string, userId: string) => {
+    const { data: last } = await supabase.from('chat_messages').select('id').eq('channel_id', channelId).order('created_at', { ascending: false }).limit(1);
+    const lastId = last?.[0]?.id;
+    if (!lastId) return;
+    await supabase.from('chat_message_reads').delete().eq('message_id', lastId).eq('user_id', userId);
+  },
+
+  // Per-conversation mute — silences notifications only, never affects
+  // unread counting (see supabase_messenger_mute.sql's header note).
+  fetchMutedChannelIds: async (userId: string): Promise<string[]> => {
+    const { data } = await supabase.from('chat_channel_mutes').select('channel_id').eq('user_id', userId);
+    return (data || []).map((r: any) => r.channel_id as string);
+  },
+
+  toggleMute: async (channelId: string, userId: string) => {
+    const { data: existing } = await supabase.from('chat_channel_mutes').select('*').eq('channel_id', channelId).eq('user_id', userId).limit(1);
+    if (existing && existing.length > 0) {
+      await supabase.from('chat_channel_mutes').delete().eq('channel_id', channelId).eq('user_id', userId);
+    } else {
+      await supabase.from('chat_channel_mutes').insert({ channel_id: channelId, user_id: userId });
+    }
+  },
+
+  // Which of these candidate recipients have this one channel muted —
+  // used to exclude them from a plain chat_message notify (mentions
+  // deliberately skip this check and always notify, see notifyUsers'
+  // caller in Messenger.tsx).
+  fetchMutedUserIds: async (channelId: string, candidateUserIds: string[]): Promise<string[]> => {
+    if (candidateUserIds.length === 0) return [];
+    const { data } = await supabase.from('chat_channel_mutes').select('user_id').eq('channel_id', channelId).in('user_id', candidateUserIds);
+    return (data || []).map((r: any) => r.user_id as string);
+  },
+
   toggleReaction: async (messageId: string, userId: string, emoji: string) => {
     const { data: existing } = await supabase.from('chat_message_reactions').select('*').eq('message_id', messageId).eq('user_id', userId).eq('emoji', emoji).limit(1);
     if (existing && existing.length > 0) {

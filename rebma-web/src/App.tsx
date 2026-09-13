@@ -1575,6 +1575,9 @@ export default function App() {
   // Set when a caller (Live Users' "Send Message") wants the messenger to
   // open straight into a DM with a specific person instead of Everyone.
   const [messengerTargetUserId, setMessengerTargetUserId] = useState<string | null>(null);
+  // Phase 11.2 — set when a chat notification is tapped, so the Messenger
+  // opens straight into that exact channel (Everyone/group/DM alike).
+  const [messengerTargetChannelId, setMessengerTargetChannelId] = useState<string | null>(null);
   // Phase 11.0 gap fix — the Messenger's own unread badges only exist
   // while it's open; this keeps the header's chat icon dotted even when
   // it's closed, polled independently so it doesn't depend on Messenger
@@ -3115,7 +3118,7 @@ export default function App() {
     if (activeSubTab === 'Notes') return <NotesPanel currentUser={currentUser} addNotification={addNotification} />;
     if (activeSubTab === 'Tasks') return <TasksPanel currentUser={currentUser} addNotification={addNotification} />;
     if (activeSubTab === 'Emails') return <EmailsPanel currentUser={currentUser} addNotification={addNotification} onUnreadCountChange={setUnreadEmailCount} />;
-    if (activeSubTab === 'Notifications') return <NotificationsPanel notifications={notifications} onNavigate={goToNotificationLink} onClear={() => setNotifications([])} currentUser={currentUser ?? undefined} />;
+    if (activeSubTab === 'Notifications') return <NotificationsPanel notifications={notifications} onNavigate={goToNotificationLink} onClear={() => setNotifications([])} currentUser={currentUser ?? undefined} onOpenChatChannel={(channelId) => { setMessengerTargetChannelId(channelId); setIsChatOpen(true); }} />;
     if (activeSubTab === 'HelpDesk') return <HelpDeskPanel currentUser={currentUser} addNotification={addNotification} />;
     if (activeSubTab === 'Feedback') return <FeedbackPanel currentUser={currentUser} addNotification={addNotification} />;
     if (activeSubTab === 'HrQueries') return <HrQueriesPanel currentUser={currentUser} addNotification={addNotification} />;
@@ -4001,6 +4004,8 @@ export default function App() {
         isChatOpen={isChatOpen}
         setIsChatOpen={setIsChatOpen}
         messengerTargetUserId={messengerTargetUserId}
+        setMessengerTargetChannelId={setMessengerTargetChannelId}
+        messengerTargetChannelId={messengerTargetChannelId}
         chatUnreadCount={chatUnreadCount}
         setMessengerTargetUserId={setMessengerTargetUserId}
         chatMessages={chatMessages}
@@ -4061,7 +4066,7 @@ function AppInner({
   currentUser, reducedMotion, motionSetting, activeDepartment, setActiveDepartment,
   activeSubTab, setActiveSubTab, theme, notifications, setNotifications,
   addNotification, goToNotificationLink, renderDashboard, renderAlertModal, renderPromptModal,
-  renderConfirmModal, isChatOpen, setIsChatOpen, messengerTargetUserId, setMessengerTargetUserId, chatUnreadCount, chatMessages, sendChatMessage,
+  renderConfirmModal, isChatOpen, setIsChatOpen, messengerTargetUserId, setMessengerTargetUserId, messengerTargetChannelId, setMessengerTargetChannelId, chatUnreadCount, chatMessages, sendChatMessage,
   boardroomMinutes, setBoardroomMinutes, onLogout, openBoardroom,
   sidebarCollapsed, setSidebarCollapsed, unreadEmailCount,
   setIsAuthenticated, setCurrentUser, setCurrentDriver, isSidebarOpen, setIsSidebarOpen,
@@ -4297,9 +4302,10 @@ function AppInner({
         {/* 8. COLLABORATIVE MESSENGER (chat + calls) */}
         <Messenger
           isOpen={isChatOpen}
-          onClose={() => { setIsChatOpen(false); setMessengerTargetUserId(null); }}
+          onClose={() => { setIsChatOpen(false); setMessengerTargetUserId(null); setMessengerTargetChannelId(null); }}
           currentUser={currentUser}
           targetUserId={messengerTargetUserId}
+          targetChannelId={messengerTargetChannelId}
         />
 
         {/* 9. GLOBAL TOAST NOTIFICATION OVERLAY */}

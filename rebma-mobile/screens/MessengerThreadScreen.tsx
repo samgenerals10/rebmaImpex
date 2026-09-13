@@ -9,11 +9,12 @@ import { View, Text, TextInput, Pressable, ScrollView, Alert, Image } from 'reac
 import * as Clipboard from 'expo-clipboard';
 import {
   Send, Paperclip, Smile, Reply, X, Check, CheckCheck, FileText,
-  Pin, Star, Pencil, Trash2, Forward, Copy, MoreVertical, Search, Users,
+  Pin, Star, Pencil, Trash2, Forward, Copy, MoreVertical, Search, Users, Bell, BellOff,
 } from 'lucide-react-native';
 import { supabase } from '../lib/supabaseClient';
 import { messenger, type ChatMessage, type Channel } from '../lib/messenger';
 import { pickOrCaptureImageAsset, pickDocument } from '../lib/media';
+import { subscribeToLiveUsers, type PresencePayload } from '../lib/presence';
 import { useAuthStore } from '../store/authStore';
 import { useTheme } from '../theme/ThemeProvider';
 import { usePresets } from '../theme/presets';
@@ -56,6 +57,12 @@ export default function MessengerThreadScreen({ route }: any) {
   const [showPinned, setShowPinned] = useState(false);
   const [typingNames, setTypingNames] = useState<string[]>([]);
   const [sending, setSending] = useState(false);
+  // Phase 11.2 — online status, mute, mentions, read-list.
+  const [profiles, setProfiles] = useState<{ id: string; fullName: string; department: string }[]>([]);
+  const [onlineIds, setOnlineIds] = useState<Set<string>>(new Set());
+  const [muted, setMuted] = useState(false);
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+  const [readListFor, setReadListFor] = useState<string | null>(null);
   const scrollRef = useRef<ScrollView>(null);
   const memberIds = useRef<string[]>([]);
   const presenceRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
@@ -91,6 +98,30 @@ export default function MessengerThreadScreen({ route }: any) {
       memberIds.current = (data || []).map((m: any) => m.user_id);
     });
   }, [channelId]);
+
+  // For @mention autocomplete + "read by" names — the full active
+  // directory, same source MessengerChannelsScreen uses.
+  useEffect(() => {
+    supabase.from('profiles_directory').select('id, full_name, department').eq('status', 'ACTIVE').then(({ data }) => {
+      setProfiles((data || []).map((row: any) => ({ id: row.id, fullName: row.full_name || 'Unknown', department: row.department || '' })));
+    });
+  }, []);
+
+  // Who's online right now — same shared presence channel Live Users and
+  // the channel list already use.
+  useEffect(() => {
+    return subscribeToLiveUsers((users: PresencePayload[]) => setOnlineIds(new Set(users.map((u) => u.userId))));
+  }, []);
+
+  useEffect(() => {
+    if (!myId) return;
+    messenger.fetchMutedChannelIds(myId).then((ids) => setMuted(ids.includes(channelId)));
+  }, [myId, channelId]);
+
+  const toggleMute = async () => {
+    await messenger.toggleMute(channelId, myId);
+    setMuted((v) => !v);
+  };
 
   // Realtime — scoped to this one screen instance, which mounts/unmounts
   // cleanly on push/pop, so no shared-singleton risk like the presence
@@ -153,23 +184,55 @@ export default function MessengerThreadScreen({ route }: any) {
     })();
   }, [messages, attachmentUrls]);
 
-  const notifyOthersOfMessage = (preview: string, targetChannelId = channelId, targetType = channelType, targetMembers = memberIds.current) => {
+  // Muted recipients (Phase 11.2) are filtered out here — @mentions use a
+  // separate notify call below that always fires, mute or not.
+  const notifyOthersOfMessage = async (preview: string, targetChannelId = channelId, targetType = channelType, targetMembers = memberIds.current) => {
     if (targetType === 'everyone') return;
     const others = targetMembers.filter((id) => id !== myId);
     if (others.length === 0) return;
-    messenger.notifyUsers(others, 'chat_message', myName, preview.slice(0, 120), targetChannelId).catch(() => {});
+    try {
+      const mutedIds = await messenger.fetchMutedUserIds(targetChannelId, others);
+      const toNotify = others.filter((id) => !mutedIds.includes(id));
+      if (toNotify.length > 0) await messenger.notifyUsers(toNotify, 'chat_message', myName, preview.slice(0, 120), targetChannelId);
+    } catch { /* best-effort */ }
   };
+
+  // @mentions — matched against this channel's own member list, same as
+  // web. Deliberately skips the mute filter above.
+  const notifyMentions = (text: string) => {
+    const mentioned = profiles.filter((pr) => memberIds.current.includes(pr.id) && text.includes('@' + pr.fullName));
+    if (mentioned.length === 0) return;
+    messenger.notifyUsers(mentioned.map((pr) => pr.id), 'chat_mention', myName, `mentioned you: ${text.slice(0, 100)}`, channelId).catch(() => {});
+  };
+
+  const handleComposerChange = (value: string) => {
+    setComposer(value);
+    notifyTyping();
+    const match = value.match(/@([^\s@]*)$/);
+    setMentionQuery(match ? match[1] : null);
+  };
+
+  const insertMention = (fullName: string) => {
+    setComposer((prev) => prev.replace(/@([^\s@]*)$/, `@${fullName} `));
+    setMentionQuery(null);
+  };
+
+  const mentionCandidates = mentionQuery !== null
+    ? profiles.filter((pr) => memberIds.current.includes(pr.id) && pr.fullName.toLowerCase().includes(mentionQuery.toLowerCase())).slice(0, 5)
+    : [];
 
   const handleSend = async () => {
     if (!composer.trim() || sending) return;
     const text = composer;
     setComposer('');
+    setMentionQuery(null);
     const replying = replyTo;
     setReplyTo(null);
     setSending(true);
     try {
       await messenger.sendMessage(channelId, myId, myName, text, replying ? { replyToId: replying.id } : undefined);
       notifyOthersOfMessage(text);
+      notifyMentions(text);
     } catch (e: any) {
       Alert.alert('Failed to send', e.message);
     } finally {
@@ -305,8 +368,16 @@ export default function MessengerThreadScreen({ route }: any) {
   });
   const pinnedMessages = messages.filter((m) => pinnedIds.has(m.id));
 
+  const otherOnline = channelType === 'dm' && memberIds.current.some((id) => id !== myId && onlineIds.has(id));
+
   return (
     <Screen>
+      {otherOnline && (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: t.spacing.lg, paddingTop: t.spacing.sm }}>
+          <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: t.colors.status.success.text }} />
+          <Text style={p.meta}>Online</Text>
+        </View>
+      )}
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm, paddingHorizontal: t.spacing.lg, paddingTop: t.spacing.sm }}>
         {pinnedMessages.length > 0 && (
           <Pressable onPress={() => setShowPinned(true)} hitSlop={8} style={{ padding: 4, position: 'relative' }}>
@@ -321,6 +392,9 @@ export default function MessengerThreadScreen({ route }: any) {
         </Pressable>
         <Pressable onPress={() => setShowSearch((v) => !v)} hitSlop={8} style={{ padding: 4 }}>
           <Search size={17} color={showSearch ? t.colors.accent : t.colors.textMuted} />
+        </Pressable>
+        <Pressable onPress={toggleMute} hitSlop={8} style={{ padding: 4 }}>
+          {muted ? <BellOff size={17} color={t.colors.textMuted} /> : <Bell size={17} color={t.colors.textMuted} />}
         </Pressable>
       </View>
 
@@ -392,7 +466,11 @@ export default function MessengerThreadScreen({ route }: any) {
                   {isStarred && <Star size={9} color="#f59e0b" fill="#f59e0b" />}
                   {msg.edited_at && !isDeleted && <Text style={p.meta}>(edited)</Text>}
                   <Text style={p.meta}>{msg.time}</Text>
-                  {mine && (readByOthers ? <CheckCheck size={12} color={t.colors.accent} /> : <Check size={12} color={t.colors.textMuted} />)}
+                  {mine && (
+                    <Pressable onPress={() => setReadListFor(msg.id)} hitSlop={6}>
+                      {readByOthers ? <CheckCheck size={12} color={t.colors.accent} /> : <Check size={12} color={t.colors.textMuted} />}
+                    </Pressable>
+                  )}
                 </View>
                 {msgReactions.length > 0 && (
                   <View style={{ flexDirection: 'row', gap: 4, marginTop: 4, flexWrap: 'wrap' }}>
@@ -449,14 +527,25 @@ export default function MessengerThreadScreen({ route }: any) {
               <Pressable onPress={handleAttach} hitSlop={8} style={{ padding: 6 }}>
                 <Paperclip size={18} color={t.colors.textMuted} />
               </Pressable>
-              <TextInput
-                value={composer}
-                onChangeText={(v) => { setComposer(v); notifyTyping(); }}
-                placeholder="Type a message…"
-                placeholderTextColor={t.colors.textMuted}
-                style={{ flex: 1, backgroundColor: t.colors.bgInput, borderWidth: 1, borderColor: t.colors.border, borderRadius: t.radius.pill, paddingHorizontal: t.spacing.lg, paddingVertical: t.spacing.smd, fontFamily: t.font.regular, fontSize: t.type.body14.size, color: t.colors.textPrimary }}
-                onSubmitEditing={handleSend}
-              />
+              <View style={{ flex: 1 }}>
+                {mentionCandidates.length > 0 && (
+                  <View style={{ position: 'absolute', bottom: '100%', left: 0, right: 0, marginBottom: 4, backgroundColor: t.colors.bgCard, borderWidth: 1, borderColor: t.colors.border, borderRadius: t.radius.md, paddingVertical: 4, ...t.shadow('dropdown') }}>
+                    {mentionCandidates.map((pr) => (
+                      <Pressable key={pr.id} onPress={() => insertMention(pr.fullName)} style={{ paddingHorizontal: t.spacing.md, paddingVertical: 6 }}>
+                        <Text style={{ ...p.body, fontFamily: t.font.semibold }}>@{pr.fullName} <Text style={p.meta}>{pr.department}</Text></Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                )}
+                <TextInput
+                  value={composer}
+                  onChangeText={handleComposerChange}
+                  placeholder="Type a message…"
+                  placeholderTextColor={t.colors.textMuted}
+                  style={{ backgroundColor: t.colors.bgInput, borderWidth: 1, borderColor: t.colors.border, borderRadius: t.radius.pill, paddingHorizontal: t.spacing.lg, paddingVertical: t.spacing.smd, fontFamily: t.font.regular, fontSize: t.type.body14.size, color: t.colors.textPrimary }}
+                  onSubmitEditing={handleSend}
+                />
+              </View>
               <Pressable onPress={handleSend} disabled={sending || !composer.trim()} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: t.colors.accent, alignItems: 'center', justifyContent: 'center', opacity: sending || !composer.trim() ? 0.5 : 1 }}>
                 <Send size={15} color={t.colors.onAccent} />
               </Pressable>
@@ -517,6 +606,16 @@ export default function MessengerThreadScreen({ route }: any) {
               <Text style={{ ...p.meta, fontFamily: t.font.bold }}>{m.sender}</Text>
               <Text style={{ ...p.body, marginTop: 2 }}>{m.deleted_at ? 'This message was deleted' : m.content}</Text>
             </View>
+          ))}
+        </View>
+      </Sheet>
+
+      <Sheet open={!!readListFor} onClose={() => setReadListFor(null)} title="Read by" side="bottom">
+        <View style={{ gap: t.spacing.xs }}>
+          {readListFor && (reads[readListFor] || []).filter((uid) => uid !== myId).length === 0 ? (
+            <Text style={p.meta}>No one yet</Text>
+          ) : readListFor && (reads[readListFor] || []).filter((uid) => uid !== myId).map((uid) => (
+            <Text key={uid} style={p.body}>{profiles.find((pr) => pr.id === uid)?.fullName || 'Unknown'}</Text>
           ))}
         </View>
       </Sheet>

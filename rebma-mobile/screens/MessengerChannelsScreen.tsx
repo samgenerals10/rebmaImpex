@@ -4,11 +4,12 @@
 // Reachable from AppHeader's new chat icon (any department) rather than
 // nested under one department — messaging isn't department-scoped.
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, Text, Pressable, FlatList } from 'react-native';
+import { View, Text, Pressable, FlatList, Alert } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { MessageSquare, Plus, Search, Users, X, Check } from 'lucide-react-native';
+import { MessageSquare, Plus, Search, Users, X, Check, BellOff, MoreVertical } from 'lucide-react-native';
 import { supabase } from '../lib/supabaseClient';
 import { messenger, type Channel } from '../lib/messenger';
+import { subscribeToLiveUsers, type PresencePayload } from '../lib/presence';
 import { useAuthStore } from '../store/authStore';
 import { useTheme } from '../theme/ThemeProvider';
 import { usePresets } from '../theme/presets';
@@ -38,6 +39,8 @@ export default function MessengerChannelsScreen({ navigation }: any) {
   const [channels, setChannels] = useState<Channel[]>([]);
   const [dmChannelByUser, setDmChannelByUser] = useState<Record<string, Channel>>({});
   const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
+  const [mutedChannelIds, setMutedChannelIds] = useState<Set<string>>(new Set());
+  const [onlineIds, setOnlineIds] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState('');
   const [showNewGroup, setShowNewGroup] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
@@ -77,6 +80,40 @@ export default function MessengerChannelsScreen({ navigation }: any) {
   // needed at the list level, matching this app's established "poll on
   // focus/interval for secondary state" posture.
   useFocusEffect(useCallback(() => { messenger.getUnreadCounts().then(setUnreadCounts); }, []));
+
+  useEffect(() => {
+    if (!myId) return;
+    messenger.fetchMutedChannelIds(myId).then((ids) => setMutedChannelIds(new Set(ids)));
+  }, [myId]);
+
+  // Who's online right now — the same shared presence channel every
+  // session already tracks itself on for Live Users (lib/presence.ts).
+  useEffect(() => {
+    return subscribeToLiveUsers((users: PresencePayload[]) => setOnlineIds(new Set(users.map((u) => u.userId))));
+  }, []);
+
+  const toggleMuteChannel = async (channelId: string) => {
+    await messenger.toggleMute(channelId, myId);
+    setMutedChannelIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(channelId)) next.delete(channelId); else next.add(channelId);
+      return next;
+    });
+  };
+
+  const markChannelUnread = async (channelId: string) => {
+    await messenger.markChannelUnread(channelId, myId);
+    messenger.getUnreadCounts().then(setUnreadCounts);
+  };
+
+  const openRowMenu = (channelId: string) => {
+    const muted = mutedChannelIds.has(channelId);
+    Alert.alert('Conversation options', undefined, [
+      { text: 'Mark as unread', onPress: () => markChannelUnread(channelId) },
+      { text: muted ? 'Unmute' : 'Mute', onPress: () => toggleMuteChannel(channelId) },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  };
 
   const everyoneChannel = channels.find((c) => c.type === 'everyone');
   const groupChannels = channels.filter((c) => c.type === 'group');
@@ -180,7 +217,9 @@ export default function MessengerChannelsScreen({ navigation }: any) {
                 icon={<Users size={16} color={t.colors.onAccent} />}
                 iconBg={t.colors.accent}
                 unread={unreadCounts[everyoneChannel.id]}
+                muted={mutedChannelIds.has(everyoneChannel.id)}
                 onPress={() => openThread(everyoneChannel, 'Everyone', 'Company-wide broadcast')}
+                onMenu={() => openRowMenu(everyoneChannel.id)}
               />
             )}
             {groupChannels.length > 0 && <Text style={{ ...p.label9, marginTop: t.spacing.md, marginBottom: t.spacing.xs }}>Groups</Text>}
@@ -191,22 +230,28 @@ export default function MessengerChannelsScreen({ navigation }: any) {
                 subtitle="Group channel"
                 initialsText={initials(ch.name || 'GC')}
                 unread={unreadCounts[ch.id]}
+                muted={mutedChannelIds.has(ch.id)}
                 onPress={() => openThread(ch, ch.name || 'Group', 'Group channel')}
+                onMenu={() => openRowMenu(ch.id)}
               />
             ))}
             <Text style={{ ...p.label9, marginTop: t.spacing.md, marginBottom: t.spacing.xs }}>People</Text>
             {filteredContacts.length === 0 && <Text style={{ ...p.meta, paddingVertical: t.spacing.md }}>No one matches your search.</Text>}
             {filteredContacts.map((c) => {
               const dm = dmChannelByUser[c.id];
+              const online = onlineIds.has(c.id);
               return (
                 <Row
                   key={c.id}
                   title={c.fullName}
-                  subtitle={c.department}
+                  subtitle={online ? 'Online' : c.department}
                   photo={undefined}
                   initialsText={initials(c.fullName)}
+                  online={online}
                   unread={dm ? unreadCounts[dm.id] : undefined}
+                  muted={dm ? mutedChannelIds.has(dm.id) : false}
                   onPress={() => openDm(c)}
+                  onMenu={dm ? () => openRowMenu(dm.id) : undefined}
                 />
               );
             })}
@@ -243,29 +288,42 @@ export default function MessengerChannelsScreen({ navigation }: any) {
 }
 
 function Row({
-  title, subtitle, icon, iconBg, photo, initialsText, unread, onPress,
+  title, subtitle, icon, iconBg, photo, initialsText, online, unread, muted, onPress, onMenu,
 }: {
   title: string; subtitle?: string; icon?: React.ReactNode; iconBg?: string; photo?: string;
-  initialsText?: string; unread?: number; onPress: () => void;
+  initialsText?: string; online?: boolean; unread?: number; muted?: boolean; onPress: () => void; onMenu?: () => void;
 }) {
   const t = useTheme();
   const p = usePresets();
   return (
-    <Pressable onPress={onPress} style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm, paddingVertical: t.spacing.sm }}>
-      {icon ? (
-        <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: iconBg || t.colors.accent, alignItems: 'center', justifyContent: 'center' }}>{icon}</View>
-      ) : (
-        <Avatar name={initialsText ? initialsText : title} photo={photo} size={40} />
-      )}
-      <View style={{ flex: 1, minWidth: 0 }}>
-        <Text numberOfLines={1} style={{ ...p.body, fontFamily: t.font.semibold }}>{title}</Text>
-        {!!subtitle && <Text numberOfLines={1} style={p.meta}>{subtitle}</Text>}
-      </View>
-      {!!unread && unread > 0 && (
-        <View style={{ minWidth: 20, height: 20, paddingHorizontal: 5, borderRadius: 10, backgroundColor: t.colors.accent, alignItems: 'center', justifyContent: 'center' }}>
-          <Text style={{ fontFamily: t.font.bold, fontSize: 10, color: t.colors.onAccent }}>{unread > 99 ? '99+' : unread}</Text>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm }}>
+      <Pressable onPress={onPress} style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm, paddingVertical: t.spacing.sm, flex: 1 }}>
+        {icon ? (
+          <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: iconBg || t.colors.accent, alignItems: 'center', justifyContent: 'center' }}>{icon}</View>
+        ) : (
+          <View>
+            <Avatar name={initialsText ? initialsText : title} photo={photo} size={40} />
+            {online && <View style={{ position: 'absolute', bottom: 0, right: 0, width: 11, height: 11, borderRadius: 6, backgroundColor: t.colors.status.success.text, borderWidth: 2, borderColor: t.colors.bgPage }} />}
+          </View>
+        )}
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <Text numberOfLines={1} style={{ ...p.body, fontFamily: t.font.semibold }}>{title}</Text>
+            {muted && <BellOff size={11} color={t.colors.textMuted} />}
+          </View>
+          {!!subtitle && <Text numberOfLines={1} style={p.meta}>{subtitle}</Text>}
         </View>
+        {!!unread && unread > 0 && (
+          <View style={{ minWidth: 20, height: 20, paddingHorizontal: 5, borderRadius: 10, backgroundColor: t.colors.accent, alignItems: 'center', justifyContent: 'center' }}>
+            <Text style={{ fontFamily: t.font.bold, fontSize: 10, color: t.colors.onAccent }}>{unread > 99 ? '99+' : unread}</Text>
+          </View>
+        )}
+      </Pressable>
+      {onMenu && (
+        <Pressable onPress={onMenu} hitSlop={8} style={{ padding: 6 }}>
+          <MoreVertical size={15} color={t.colors.textMuted} />
+        </Pressable>
       )}
-    </Pressable>
+    </View>
   );
 }

@@ -26,9 +26,14 @@ interface NotificationsPanelProps {
   onNavigate?: (linkDept?: string, linkTab?: string) => void;
   onClear?: () => void;
   currentUser?: { id: string; department: string; fullName?: string } | null;
+  // Phase 11.2 — chat_message/chat_mention notifications store a
+  // channel id in action_url, not a hash route; tapping one should open
+  // the Messenger straight into that channel instead of the generic
+  // hash-navigation path below.
+  onOpenChatChannel?: (channelId: string) => void;
 }
 
-export default function NotificationsPanel({ notifications = [], onNavigate, onClear, currentUser }: NotificationsPanelProps) {
+export default function NotificationsPanel({ notifications = [], onNavigate, onClear, currentUser, onOpenChatChannel }: NotificationsPanelProps) {
   const [dbNotifs, setDbNotifs] = useState<DbNotification[]>([]);
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
@@ -109,17 +114,20 @@ export default function NotificationsPanel({ notifications = [], onNavigate, onC
     init();
   }, [currentUser, load]);
 
-  const markRead = async (id: string, actionUrl?: string | null) => {
+  const markRead = async (id: string, actionUrl?: string | null, type?: string) => {
     stopAlertSound(id); // only stops if this notification triggered the alert
     setDbNotifs(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
     supabase.from('notifications').update({ read: true }).eq('id', id).then(() => {}, () => {});
-    if (actionUrl) {
-      // Navigate within the SPA if it's a hash/path, or open external URL
-      if (actionUrl.startsWith('http')) {
-        window.open(actionUrl, '_blank', 'noopener');
-      } else {
-        window.location.hash = actionUrl;
-      }
+    if (!actionUrl) return;
+    if (type === 'chat_message' || type === 'chat_mention') {
+      onOpenChatChannel?.(actionUrl);
+      return;
+    }
+    // Navigate within the SPA if it's a hash/path, or open external URL
+    if (actionUrl.startsWith('http')) {
+      window.open(actionUrl, '_blank', 'noopener');
+    } else {
+      window.location.hash = actionUrl;
     }
   };
 
@@ -213,7 +221,7 @@ export default function NotificationsPanel({ notifications = [], onNavigate, onC
           {dbNotifs.map(n => (
             <button
               key={n.id}
-              onClick={() => markRead(n.id, n.action_url)}
+              onClick={() => markRead(n.id, n.action_url, n.type)}
               className={`w-full text-left flex items-start gap-3 border border-[var(--border)] rounded-xl p-3 transition-all cursor-pointer ${
                 n.read
                   ? 'bg-[var(--bg-card)] opacity-60'
