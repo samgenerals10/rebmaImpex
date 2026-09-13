@@ -1,22 +1,32 @@
 // rebma-mobile/screens/MessengerThreadScreen.tsx
-// Phase 11.0 — mobile's real Messenger, one thread. Ports:
+// Phase 11.0/11.1 — mobile's real Messenger, one thread. Ports:
 // rebma-web/src/components/collaborative/Messenger.tsx's main panel
 // (attachments, reactions, threaded replies, read receipts, typing
-// indicator, realtime) for the channel the caller navigated in with.
+// indicator, realtime, edit/delete/pin/forward/star/copy/search-within-
+// conversation) for the channel the caller navigated in with.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, TextInput, Pressable, ScrollView, Alert, Image } from 'react-native';
-import { Send, Paperclip, Smile, Reply, X, Check, CheckCheck, FileText } from 'lucide-react-native';
+import * as Clipboard from 'expo-clipboard';
+import {
+  Send, Paperclip, Smile, Reply, X, Check, CheckCheck, FileText,
+  Pin, Star, Pencil, Trash2, Forward, Copy, MoreVertical, Search, Users,
+} from 'lucide-react-native';
 import { supabase } from '../lib/supabaseClient';
-import { messenger, type ChatMessage } from '../lib/messenger';
+import { messenger, type ChatMessage, type Channel } from '../lib/messenger';
 import { pickOrCaptureImageAsset, pickDocument } from '../lib/media';
 import { useAuthStore } from '../store/authStore';
 import { useTheme } from '../theme/ThemeProvider';
 import { usePresets } from '../theme/presets';
 import Screen from '../components/ui/Screen';
 import Sheet from '../components/ui/Sheet';
+import Avatar from '../components/ui/Avatar';
 import StickyActionBar from '../components/ui/StickyActionBar';
 
 const REACTION_EMOJIS = ['👍', '❤️', '😂', '🎉', '😮', '👏'];
+
+function initials(name: string) {
+  return (name || '').split(' ').slice(0, 2).map((n) => n[0]).join('').toUpperCase();
+}
 
 export default function MessengerThreadScreen({ route }: any) {
   const { channelId, channelType, title, subtitle } = route.params as { channelId: string; channelType: string; title: string; subtitle?: string };
@@ -29,10 +39,21 @@ export default function MessengerThreadScreen({ route }: any) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [reactions, setReactions] = useState<Record<string, { emoji: string; user_id: string }[]>>({});
   const [reads, setReads] = useState<Record<string, string[]>>({});
+  const [starredIds, setStarredIds] = useState<Set<string>>(new Set());
+  const [pinnedIds, setPinnedIds] = useState<Set<string>>(new Set());
   const [attachmentUrls, setAttachmentUrls] = useState<Record<string, string>>({});
   const [composer, setComposer] = useState('');
   const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
   const [reactionPickerFor, setReactionPickerFor] = useState<string | null>(null);
+  const [actionMenuFor, setActionMenuFor] = useState<ChatMessage | null>(null);
+  const [editingMessage, setEditingMessage] = useState<ChatMessage | null>(null);
+  const [editText, setEditText] = useState('');
+  const [forwardTarget, setForwardTarget] = useState<ChatMessage | null>(null);
+  const [forwardChannels, setForwardChannels] = useState<Channel[]>([]);
+  const [showSearch, setShowSearch] = useState(false);
+  const [search, setSearch] = useState('');
+  const [starredOnly, setStarredOnly] = useState(false);
+  const [showPinned, setShowPinned] = useState(false);
   const [typingNames, setTypingNames] = useState<string[]>([]);
   const [sending, setSending] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
@@ -41,18 +62,25 @@ export default function MessengerThreadScreen({ route }: any) {
   const typingTimeout = useRef<any>(null);
 
   const loadThread = useCallback(async () => {
-    const msgs = await messenger.fetchMessages(channelId);
+    const all = await messenger.fetchMessages(channelId);
+    const allIds = all.map((m) => m.id);
+    const hiddenIds = new Set(await messenger.fetchHiddenMessageIds(myId, allIds));
+    const msgs = all.filter((m) => !hiddenIds.has(m.id));
     setMessages(msgs);
     const ids = msgs.map((m) => m.id);
-    const [rx, rd] = await Promise.all([messenger.fetchReactions(ids), messenger.fetchReads(ids)]);
+    const [rx, rd, starred, pins] = await Promise.all([
+      messenger.fetchReactions(ids), messenger.fetchReads(ids), messenger.fetchStars(myId, ids), messenger.fetchPinned(channelId),
+    ]);
     const rxMap: Record<string, { emoji: string; user_id: string }[]> = {};
     for (const r of rx) (rxMap[r.message_id] ||= []).push({ emoji: r.emoji, user_id: r.user_id });
     setReactions(rxMap);
     const rdMap: Record<string, string[]> = {};
     for (const r of rd) (rdMap[r.message_id] ||= []).push(r.user_id);
     setReads(rdMap);
+    setStarredIds(new Set(starred));
+    setPinnedIds(new Set(pins.map((pin) => pin.message_id)));
     for (const m of msgs) {
-      if (m.sender_id !== myId) messenger.markRead(m.id, myId);
+      if (m.sender_id !== myId && !m.deleted_at) messenger.markRead(m.id, myId);
     }
   }, [channelId, myId]);
 
@@ -74,8 +102,12 @@ export default function MessengerThreadScreen({ route }: any) {
         setMessages((prev) => (prev.some((m) => m.id === (payload.new as any).id) ? prev : [...prev, payload.new as ChatMessage]));
         if ((payload.new as any).sender_id !== myId) messenger.markRead((payload.new as any).id, myId);
       })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'chat_messages', filter: `channel_id=eq.${channelId}` }, (payload) => {
+        setMessages((prev) => prev.map((m) => (m.id === (payload.new as any).id ? (payload.new as ChatMessage) : m)));
+      })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_message_reactions' }, () => loadThread())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_message_reads' }, () => loadThread())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_pinned_messages' }, () => loadThread())
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [channelId, loadThread, myId]);
@@ -121,11 +153,11 @@ export default function MessengerThreadScreen({ route }: any) {
     })();
   }, [messages, attachmentUrls]);
 
-  const notifyOthersOfMessage = (preview: string) => {
-    if (channelType === 'everyone') return;
-    const others = memberIds.current.filter((id) => id !== myId);
+  const notifyOthersOfMessage = (preview: string, targetChannelId = channelId, targetType = channelType, targetMembers = memberIds.current) => {
+    if (targetType === 'everyone') return;
+    const others = targetMembers.filter((id) => id !== myId);
     if (others.length === 0) return;
-    messenger.notifyUsers(others, 'chat_message', myName, preview.slice(0, 120), channelId).catch(() => {});
+    messenger.notifyUsers(others, 'chat_message', myName, preview.slice(0, 120), targetChannelId).catch(() => {});
   };
 
   const handleSend = async () => {
@@ -184,47 +216,181 @@ export default function MessengerThreadScreen({ route }: any) {
     loadThread();
   };
 
+  // ── Phase 11.1: core message actions ──
+  const startEdit = (msg: ChatMessage) => { setEditingMessage(msg); setEditText(msg.content); setActionMenuFor(null); };
+
+  const saveEdit = async () => {
+    if (!editingMessage || !editText.trim()) return;
+    try {
+      await messenger.editMessage(editingMessage.id, myId, editText.trim());
+      setMessages((prev) => prev.map((m) => (m.id === editingMessage.id ? { ...m, content: editText.trim(), edited_at: new Date().toISOString() } : m)));
+    } catch (e: any) {
+      Alert.alert('Edit failed', e.message);
+    }
+    setEditingMessage(null);
+    setEditText('');
+  };
+
+  const deleteForMe = async (msg: ChatMessage) => {
+    await messenger.deleteMessageForMe(msg.id, myId);
+    setMessages((prev) => prev.filter((m) => m.id !== msg.id));
+    setActionMenuFor(null);
+  };
+
+  const deleteForEveryone = async (msg: ChatMessage) => {
+    if (msg.sender_id !== myId) return;
+    try {
+      await messenger.deleteMessageForEveryone(msg.id, myId);
+      setMessages((prev) => prev.map((m) => (m.id === msg.id ? { ...m, content: '', attachment_url: null, deleted_at: new Date().toISOString() } : m)));
+    } catch (e: any) {
+      Alert.alert('Delete failed', e.message);
+    }
+    setActionMenuFor(null);
+  };
+
+  const toggleStarMessage = async (msg: ChatMessage) => {
+    await messenger.toggleStar(msg.id, myId);
+    setStarredIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(msg.id)) next.delete(msg.id); else next.add(msg.id);
+      return next;
+    });
+    setActionMenuFor(null);
+  };
+
+  const togglePinMessage = async (msg: ChatMessage) => {
+    await messenger.togglePin(channelId, msg.id, myId, myName);
+    setPinnedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(msg.id)) next.delete(msg.id); else next.add(msg.id);
+      return next;
+    });
+    setActionMenuFor(null);
+  };
+
+  const copyMessage = async (msg: ChatMessage) => {
+    await Clipboard.setStringAsync(msg.content);
+    setActionMenuFor(null);
+  };
+
+  const openForward = async (msg: ChatMessage) => {
+    setActionMenuFor(null);
+    setForwardTarget(msg);
+    if (!me) return;
+    const chans = await messenger.listMyChannels(me.id);
+    setForwardChannels(chans);
+  };
+
+  const forwardMessage = async (target: Channel) => {
+    if (!forwardTarget || !me) return;
+    try {
+      await messenger.sendMessage(target.id, myId, myName, forwardTarget.content, {
+        attachmentUrl: forwardTarget.attachment_url || undefined,
+        attachmentType: forwardTarget.attachment_type || undefined,
+        attachmentName: forwardTarget.attachment_name || undefined,
+        forwardedFromId: forwardTarget.id,
+      });
+      const { data: members } = await supabase.from('channel_members').select('user_id').eq('channel_id', target.id);
+      notifyOthersOfMessage(forwardTarget.content, target.id, target.type, (members || []).map((mm: any) => mm.user_id));
+    } catch (e: any) {
+      Alert.alert('Forward failed', e.message);
+    }
+    setForwardTarget(null);
+  };
+
+  const visibleMessages = messages.filter((m) => {
+    if (starredOnly && !starredIds.has(m.id)) return false;
+    if (search.trim() && !m.content.toLowerCase().includes(search.trim().toLowerCase())) return false;
+    return true;
+  });
+  const pinnedMessages = messages.filter((m) => pinnedIds.has(m.id));
+
   return (
     <Screen>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm, paddingHorizontal: t.spacing.lg, paddingTop: t.spacing.sm }}>
+        {pinnedMessages.length > 0 && (
+          <Pressable onPress={() => setShowPinned(true)} hitSlop={8} style={{ padding: 4, position: 'relative' }}>
+            <Pin size={17} color={t.colors.accent} />
+            <View style={{ position: 'absolute', top: 0, right: 0, minWidth: 13, height: 13, borderRadius: 7, backgroundColor: t.colors.accent, alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={{ fontSize: 8, fontFamily: t.font.bold, color: t.colors.onAccent }}>{pinnedMessages.length}</Text>
+            </View>
+          </Pressable>
+        )}
+        <Pressable onPress={() => setStarredOnly((v) => !v)} hitSlop={8} style={{ padding: 4 }}>
+          <Star size={17} color={starredOnly ? '#f59e0b' : t.colors.textMuted} fill={starredOnly ? '#f59e0b' : 'none'} />
+        </Pressable>
+        <Pressable onPress={() => setShowSearch((v) => !v)} hitSlop={8} style={{ padding: 4 }}>
+          <Search size={17} color={showSearch ? t.colors.accent : t.colors.textMuted} />
+        </Pressable>
+      </View>
+
+      {showSearch && (
+        <View style={{ paddingHorizontal: t.spacing.lg, paddingVertical: t.spacing.sm }}>
+          <TextInput
+            autoFocus
+            value={search}
+            onChangeText={setSearch}
+            placeholder="Search this conversation…"
+            placeholderTextColor={t.colors.textMuted}
+            style={{ backgroundColor: t.colors.bgInput, borderWidth: 1, borderColor: t.colors.border, borderRadius: t.radius.sm, paddingHorizontal: t.spacing.lg, paddingVertical: t.spacing.smd, fontFamily: t.font.regular, fontSize: t.type.body14.size, color: t.colors.textPrimary }}
+          />
+        </View>
+      )}
+
       <ScrollView ref={scrollRef} style={{ flex: 1 }} contentContainerStyle={{ padding: t.spacing.lg, gap: t.spacing.sm }}>
         {messages.length === 0 && <Text style={{ ...p.meta, textAlign: 'center', paddingVertical: t.spacing.xxxl }}>No messages yet — say hello.</Text>}
-        {messages.map((msg) => {
+        {messages.length > 0 && visibleMessages.length === 0 && (
+          <Text style={{ ...p.meta, textAlign: 'center', paddingVertical: t.spacing.xxxl }}>{starredOnly ? 'No starred messages.' : 'No messages match your search.'}</Text>
+        )}
+        {visibleMessages.map((msg) => {
           const mine = msg.sender_id === myId;
           const quoted = msg.reply_to_id ? messages.find((m) => m.id === msg.reply_to_id) : null;
           const msgReactions = reactions[msg.id] || [];
           const readByOthers = (reads[msg.id] || []).filter((uid) => uid !== myId).length > 0;
           const isImage = msg.attachment_type === 'image';
           const isFile = msg.attachment_type === 'file';
+          const isDeleted = !!msg.deleted_at;
+          const isStarred = starredIds.has(msg.id);
+          const isPinned = pinnedIds.has(msg.id);
           return (
             <Pressable
               key={msg.id}
-              onLongPress={() => {
-                Alert.alert('Message options', undefined, [
-                  { text: 'React', onPress: () => setReactionPickerFor(msg.id) },
-                  { text: 'Reply', onPress: () => setReplyTo(msg) },
-                  { text: 'Cancel', style: 'cancel' },
-                ]);
-              }}
+              onLongPress={() => !isDeleted && setActionMenuFor(msg)}
               style={{ alignItems: mine ? 'flex-end' : 'flex-start' }}
             >
               <View style={{ maxWidth: '78%' }}>
                 {!mine && channelType !== 'dm' && <Text style={{ ...p.meta, fontFamily: t.font.bold, marginBottom: 2, marginLeft: 4 }}>{msg.sender}</Text>}
-                {quoted && (
+                {msg.forwarded_from_id && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 2, justifyContent: mine ? 'flex-end' : 'flex-start' }}>
+                    <Forward size={9} color={t.colors.textMuted} />
+                    <Text style={{ ...p.meta, fontStyle: 'italic', fontSize: 9 }}>Forwarded</Text>
+                  </View>
+                )}
+                {quoted && !isDeleted && (
                   <View style={{ marginBottom: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, backgroundColor: t.colors.bgInput, borderLeftWidth: 2, borderLeftColor: t.colors.accent }}>
-                    <Text numberOfLines={1} style={{ ...p.meta, fontSize: 10 }}>{quoted.sender}: {quoted.content}</Text>
+                    <Text numberOfLines={1} style={{ ...p.meta, fontSize: 10 }}>{quoted.sender}: {quoted.deleted_at ? 'This message was deleted' : quoted.content}</Text>
                   </View>
                 )}
                 <View style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 16, backgroundColor: mine ? t.colors.accent : t.colors.bgInput }}>
-                  {isImage && msg.attachment_url && attachmentUrls[msg.attachment_url] ? (
-                    <Image source={{ uri: attachmentUrls[msg.attachment_url] }} style={{ width: 180, height: 180, borderRadius: 10, marginBottom: 4 }} resizeMode="cover" />
-                  ) : isFile ? (
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                      <FileText size={14} color={mine ? t.colors.onAccent : t.colors.textPrimary} />
-                    </View>
-                  ) : null}
-                  <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body14.size, color: mine ? t.colors.onAccent : t.colors.textPrimary }}>{msg.content}</Text>
+                  {isDeleted ? (
+                    <Text style={{ fontFamily: t.font.regular, fontStyle: 'italic', fontSize: t.type.body14.size, color: mine ? 'rgba(255,255,255,0.7)' : t.colors.textMuted }}>This message was deleted</Text>
+                  ) : (
+                    <>
+                      {isImage && msg.attachment_url && attachmentUrls[msg.attachment_url] ? (
+                        <Image source={{ uri: attachmentUrls[msg.attachment_url] }} style={{ width: 180, height: 180, borderRadius: 10, marginBottom: 4 }} resizeMode="cover" />
+                      ) : isFile ? (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                          <FileText size={14} color={mine ? t.colors.onAccent : t.colors.textPrimary} />
+                        </View>
+                      ) : null}
+                      <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body14.size, color: mine ? t.colors.onAccent : t.colors.textPrimary }}>{msg.content}</Text>
+                    </>
+                  )}
                 </View>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2, justifyContent: mine ? 'flex-end' : 'flex-start' }}>
+                  {isPinned && <Pin size={9} color={t.colors.textMuted} />}
+                  {isStarred && <Star size={9} color="#f59e0b" fill="#f59e0b" />}
+                  {msg.edited_at && !isDeleted && <Text style={p.meta}>(edited)</Text>}
                   <Text style={p.meta}>{msg.time}</Text>
                   {mine && (readByOthers ? <CheckCheck size={12} color={t.colors.accent} /> : <Check size={12} color={t.colors.textMuted} />)}
                 </View>
@@ -250,28 +416,52 @@ export default function MessengerThreadScreen({ route }: any) {
       </ScrollView>
 
       <StickyActionBar>
-        {replyTo && (
+        {replyTo && !editingMessage && (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm, marginBottom: t.spacing.sm, padding: t.spacing.sm, backgroundColor: t.colors.bgInput, borderRadius: t.radius.sm }}>
             <Reply size={14} color={t.colors.accent} />
             <Text numberOfLines={1} style={{ ...p.meta, flex: 1 }}>Replying to {replyTo.sender}: {replyTo.content}</Text>
             <Pressable onPress={() => setReplyTo(null)}><X size={14} color={t.colors.textMuted} /></Pressable>
           </View>
         )}
+        {editingMessage && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm, marginBottom: t.spacing.sm, padding: t.spacing.sm, backgroundColor: t.colors.bgInput, borderRadius: t.radius.sm }}>
+            <Pencil size={14} color="#f59e0b" />
+            <Text style={{ ...p.meta, flex: 1 }}>Editing message</Text>
+            <Pressable onPress={() => { setEditingMessage(null); setEditText(''); }}><X size={14} color={t.colors.textMuted} /></Pressable>
+          </View>
+        )}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm }}>
-          <Pressable onPress={handleAttach} hitSlop={8} style={{ padding: 6 }}>
-            <Paperclip size={18} color={t.colors.textMuted} />
-          </Pressable>
-          <TextInput
-            value={composer}
-            onChangeText={(v) => { setComposer(v); notifyTyping(); }}
-            placeholder="Type a message…"
-            placeholderTextColor={t.colors.textMuted}
-            style={{ flex: 1, backgroundColor: t.colors.bgInput, borderWidth: 1, borderColor: t.colors.border, borderRadius: t.radius.pill, paddingHorizontal: t.spacing.lg, paddingVertical: t.spacing.smd, fontFamily: t.font.regular, fontSize: t.type.body14.size, color: t.colors.textPrimary }}
-            onSubmitEditing={handleSend}
-          />
-          <Pressable onPress={handleSend} disabled={sending || !composer.trim()} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: t.colors.accent, alignItems: 'center', justifyContent: 'center', opacity: sending || !composer.trim() ? 0.5 : 1 }}>
-            <Send size={15} color={t.colors.onAccent} />
-          </Pressable>
+          {editingMessage ? (
+            <>
+              <TextInput
+                autoFocus
+                value={editText}
+                onChangeText={setEditText}
+                style={{ flex: 1, backgroundColor: t.colors.bgInput, borderWidth: 1, borderColor: '#f59e0b', borderRadius: t.radius.pill, paddingHorizontal: t.spacing.lg, paddingVertical: t.spacing.smd, fontFamily: t.font.regular, fontSize: t.type.body14.size, color: t.colors.textPrimary }}
+                onSubmitEditing={saveEdit}
+              />
+              <Pressable onPress={saveEdit} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: t.colors.accent, alignItems: 'center', justifyContent: 'center' }}>
+                <Check size={15} color={t.colors.onAccent} />
+              </Pressable>
+            </>
+          ) : (
+            <>
+              <Pressable onPress={handleAttach} hitSlop={8} style={{ padding: 6 }}>
+                <Paperclip size={18} color={t.colors.textMuted} />
+              </Pressable>
+              <TextInput
+                value={composer}
+                onChangeText={(v) => { setComposer(v); notifyTyping(); }}
+                placeholder="Type a message…"
+                placeholderTextColor={t.colors.textMuted}
+                style={{ flex: 1, backgroundColor: t.colors.bgInput, borderWidth: 1, borderColor: t.colors.border, borderRadius: t.radius.pill, paddingHorizontal: t.spacing.lg, paddingVertical: t.spacing.smd, fontFamily: t.font.regular, fontSize: t.type.body14.size, color: t.colors.textPrimary }}
+                onSubmitEditing={handleSend}
+              />
+              <Pressable onPress={handleSend} disabled={sending || !composer.trim()} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: t.colors.accent, alignItems: 'center', justifyContent: 'center', opacity: sending || !composer.trim() ? 0.5 : 1 }}>
+                <Send size={15} color={t.colors.onAccent} />
+              </Pressable>
+            </>
+          )}
         </View>
       </StickyActionBar>
 
@@ -284,6 +474,62 @@ export default function MessengerThreadScreen({ route }: any) {
           ))}
         </View>
       </Sheet>
+
+      <Sheet open={!!actionMenuFor} onClose={() => setActionMenuFor(null)} title="Message" side="bottom">
+        {actionMenuFor && (
+          <View style={{ paddingBottom: t.spacing.sm }}>
+            <ActionRow icon={<Smile size={16} color={t.colors.textPrimary} />} label="React" onPress={() => { setReactionPickerFor(actionMenuFor.id); setActionMenuFor(null); }} />
+            <ActionRow icon={<Reply size={16} color={t.colors.textPrimary} />} label="Reply" onPress={() => { setReplyTo(actionMenuFor); setActionMenuFor(null); }} />
+            <ActionRow icon={<Copy size={16} color={t.colors.textPrimary} />} label="Copy" onPress={() => copyMessage(actionMenuFor)} />
+            <ActionRow icon={<Star size={16} color={t.colors.textPrimary} />} label={starredIds.has(actionMenuFor.id) ? 'Unstar' : 'Star'} onPress={() => toggleStarMessage(actionMenuFor)} />
+            <ActionRow icon={<Pin size={16} color={t.colors.textPrimary} />} label={pinnedIds.has(actionMenuFor.id) ? 'Unpin' : 'Pin'} onPress={() => togglePinMessage(actionMenuFor)} />
+            <ActionRow icon={<Forward size={16} color={t.colors.textPrimary} />} label="Forward" onPress={() => openForward(actionMenuFor)} />
+            {actionMenuFor.sender_id === myId && (
+              <ActionRow icon={<Pencil size={16} color={t.colors.textPrimary} />} label="Edit" onPress={() => startEdit(actionMenuFor)} />
+            )}
+            <ActionRow icon={<Trash2 size={16} color={t.colors.status.danger.text} />} label="Delete for me" danger onPress={() => deleteForMe(actionMenuFor)} />
+            {actionMenuFor.sender_id === myId && (
+              <ActionRow icon={<Trash2 size={16} color={t.colors.status.danger.text} />} label="Delete for everyone" danger onPress={() => deleteForEveryone(actionMenuFor)} />
+            )}
+          </View>
+        )}
+      </Sheet>
+
+      <Sheet open={!!forwardTarget} onClose={() => setForwardTarget(null)} title="Forward to…" side="bottom">
+        <View style={{ maxHeight: 320 }}>
+          {forwardChannels.map((ch) => (
+            <Pressable key={ch.id} onPress={() => forwardMessage(ch)} style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm, paddingVertical: t.spacing.sm }}>
+              {ch.type === 'everyone' ? (
+                <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: t.colors.accent, alignItems: 'center', justifyContent: 'center' }}><Users size={15} color={t.colors.onAccent} /></View>
+              ) : (
+                <Avatar name={ch.name || 'GC'} size={36} />
+              )}
+              <Text style={{ ...p.body, fontFamily: t.font.semibold, flex: 1 }}>{ch.type === 'everyone' ? 'Everyone' : ch.name || 'Group'}</Text>
+            </Pressable>
+          ))}
+        </View>
+      </Sheet>
+
+      <Sheet open={showPinned} onClose={() => setShowPinned(false)} title="Pinned Messages" side="bottom">
+        <View style={{ maxHeight: 320, gap: t.spacing.sm }}>
+          {pinnedMessages.map((m) => (
+            <View key={m.id} style={{ padding: t.spacing.sm, backgroundColor: t.colors.bgInput, borderRadius: t.radius.sm }}>
+              <Text style={{ ...p.meta, fontFamily: t.font.bold }}>{m.sender}</Text>
+              <Text style={{ ...p.body, marginTop: 2 }}>{m.deleted_at ? 'This message was deleted' : m.content}</Text>
+            </View>
+          ))}
+        </View>
+      </Sheet>
     </Screen>
+  );
+}
+
+function ActionRow({ icon, label, onPress, danger }: { icon: React.ReactNode; label: string; onPress: () => void; danger?: boolean }) {
+  const t = useTheme();
+  return (
+    <Pressable onPress={onPress} style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.md, paddingVertical: t.spacing.sm }}>
+      {icon}
+      <Text style={{ fontFamily: t.font.medium, fontSize: t.type.body14.size, color: danger ? t.colors.status.danger.text : t.colors.textPrimary }}>{label}</Text>
+    </Pressable>
   );
 }

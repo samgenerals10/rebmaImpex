@@ -33,6 +33,10 @@ export interface ChatMessage {
   attachment_name: string | null;
   reply_to_id: string | null;
   created_at: string;
+  edited_at?: string | null;
+  deleted_at?: string | null;
+  deleted_by?: string | null;
+  forwarded_from_id?: string | null;
 }
 
 export const messenger = {
@@ -104,7 +108,7 @@ export const messenger = {
     senderId: string,
     senderName: string,
     content: string,
-    opts?: { attachmentUrl?: string; attachmentType?: string; attachmentName?: string; replyToId?: string }
+    opts?: { attachmentUrl?: string; attachmentType?: string; attachmentName?: string; replyToId?: string; forwardedFromId?: string }
   ): Promise<ChatMessage | null> => {
     const { data, error } = await supabase.from('chat_messages').insert({
       channel_id: channelId,
@@ -116,9 +120,64 @@ export const messenger = {
       attachment_type: opts?.attachmentType || null,
       attachment_name: opts?.attachmentName || null,
       reply_to_id: opts?.replyToId || null,
+      forwarded_from_id: opts?.forwardedFromId || null,
     }).select();
     if (error) throw new Error(error.message);
     return (data?.[0] as ChatMessage) || null;
+  },
+
+  // Phase 11.1 — sender-only, enforced at this call site (mirrors
+  // apiClient.ts's editMessage; see supabase_messenger_message_actions.sql's
+  // header note on why chat_messages' own RLS isn't touched).
+  editMessage: async (messageId: string, senderId: string, newContent: string) => {
+    const { error } = await supabase.from('chat_messages').update({ content: newContent, edited_at: new Date().toISOString() }).eq('id', messageId).eq('sender_id', senderId);
+    if (error) throw new Error(error.message);
+  },
+
+  deleteMessageForMe: async (messageId: string, userId: string) => {
+    await supabase.from('chat_message_hidden').upsert({ message_id: messageId, user_id: userId }, { onConflict: 'message_id,user_id' });
+  },
+
+  fetchHiddenMessageIds: async (userId: string, messageIds: string[]): Promise<string[]> => {
+    if (messageIds.length === 0) return [];
+    const { data } = await supabase.from('chat_message_hidden').select('message_id').eq('user_id', userId).in('message_id', messageIds);
+    return (data || []).map((r: any) => r.message_id as string);
+  },
+
+  deleteMessageForEveryone: async (messageId: string, senderId: string) => {
+    const { error } = await supabase.from('chat_messages').update({
+      deleted_at: new Date().toISOString(), deleted_by: senderId, content: '', attachment_url: null, attachment_type: null, attachment_name: null,
+    }).eq('id', messageId).eq('sender_id', senderId);
+    if (error) throw new Error(error.message);
+  },
+
+  fetchPinned: async (channelId: string): Promise<{ message_id: string; pinned_by: string | null; pinned_by_name: string | null; pinned_at: string }[]> => {
+    const { data } = await supabase.from('chat_pinned_messages').select('*').eq('channel_id', channelId).order('pinned_at', { ascending: false });
+    return data || [];
+  },
+
+  togglePin: async (channelId: string, messageId: string, userId: string, userName: string) => {
+    const { data: existing } = await supabase.from('chat_pinned_messages').select('*').eq('channel_id', channelId).eq('message_id', messageId).limit(1);
+    if (existing && existing.length > 0) {
+      await supabase.from('chat_pinned_messages').delete().eq('channel_id', channelId).eq('message_id', messageId);
+    } else {
+      await supabase.from('chat_pinned_messages').insert({ channel_id: channelId, message_id: messageId, pinned_by: userId, pinned_by_name: userName });
+    }
+  },
+
+  fetchStars: async (userId: string, messageIds: string[]): Promise<string[]> => {
+    if (messageIds.length === 0) return [];
+    const { data } = await supabase.from('chat_message_stars').select('message_id').eq('user_id', userId).in('message_id', messageIds);
+    return (data || []).map((r: any) => r.message_id as string);
+  },
+
+  toggleStar: async (messageId: string, userId: string) => {
+    const { data: existing } = await supabase.from('chat_message_stars').select('*').eq('message_id', messageId).eq('user_id', userId).limit(1);
+    if (existing && existing.length > 0) {
+      await supabase.from('chat_message_stars').delete().eq('message_id', messageId).eq('user_id', userId);
+    } else {
+      await supabase.from('chat_message_stars').insert({ message_id: messageId, user_id: userId });
+    }
   },
 
   toggleReaction: async (messageId: string, userId: string, emoji: string) => {

@@ -7,6 +7,7 @@ import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   MessageSquare, Search, Users, X, Send, Paperclip, Smile, Reply,
   Phone, Video, Check, CheckCheck, Plus, FileText,
+  Pin, Star, Pencil, Trash2, Forward, Copy, MoreVertical,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../../lib/supabaseClient';
@@ -31,6 +32,7 @@ interface Msg {
   id: string; channel_id: string; sender_id: string | null; sender: string; content: string;
   time: string; attachment_url: string | null; attachment_type: string | null; attachment_name: string | null;
   reply_to_id: string | null; created_at: string;
+  edited_at?: string | null; deleted_at?: string | null; deleted_by?: string | null; forwarded_from_id?: string | null;
 }
 
 const REACTION_EMOJIS = ['👍', '❤️', '😂', '🎉', '😮', '👏'];
@@ -74,6 +76,17 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId }
   const [messagingAllowed, setMessagingAllowed] = useState(true);
   const [checkingAccess, setCheckingAccess] = useState(true);
   const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
+  // Phase 11.1 — core message actions.
+  const [starredIds, setStarredIds] = useState<Set<string>>(new Set());
+  const [pinnedIds, setPinnedIds] = useState<Set<string>>(new Set());
+  const [actionMenuFor, setActionMenuFor] = useState<string | null>(null);
+  const [editingMessage, setEditingMessage] = useState<Msg | null>(null);
+  const [editText, setEditText] = useState('');
+  const [forwardTarget, setForwardTarget] = useState<Msg | null>(null);
+  const [threadSearch, setThreadSearch] = useState('');
+  const [showThreadSearch, setShowThreadSearch] = useState(false);
+  const [showPinnedList, setShowPinnedList] = useState(false);
+  const [starredOnly, setStarredOnly] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const presenceChannelRef = useRef<any>(null);
   const typingTimeoutRef = useRef<any>(null);
@@ -131,19 +144,26 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId }
   // ── Load messages + reactions/reads for active channel ──
   const loadThread = useCallback(async () => {
     if (!activeChannel) return;
-    const msgs = await messenger.fetchMessages(activeChannel.id);
-    setMessages(msgs as Msg[]);
-    const ids = msgs.map((m: any) => m.id);
-    const [rx, rd] = await Promise.all([messenger.fetchReactions(ids), messenger.fetchReads(ids)]);
+    const all = await messenger.fetchMessages(activeChannel.id) as Msg[];
+    const allIds = all.map((m) => m.id);
+    const hiddenIds = new Set(await messenger.fetchHiddenMessageIds(myId, allIds));
+    const msgs = all.filter((m) => !hiddenIds.has(m.id));
+    setMessages(msgs);
+    const ids = msgs.map((m) => m.id);
+    const [rx, rd, starred, pins] = await Promise.all([
+      messenger.fetchReactions(ids), messenger.fetchReads(ids), messenger.fetchStars(myId, ids), messenger.fetchPinned(activeChannel.id),
+    ]);
     const rxMap: Record<string, { emoji: string; user_id: string }[]> = {};
     for (const r of rx) { (rxMap[r.message_id] ||= []).push({ emoji: r.emoji, user_id: r.user_id }); }
     setReactions(rxMap);
     const rdMap: Record<string, string[]> = {};
     for (const r of rd) { (rdMap[r.message_id] ||= []).push(r.user_id); }
     setReads(rdMap);
+    setStarredIds(new Set(starred));
+    setPinnedIds(new Set((pins as any[]).map((p) => p.message_id)));
     // Mark all as read by me
-    for (const m of msgs as Msg[]) {
-      if (m.sender_id !== myId) messenger.markRead(m.id, myId);
+    for (const m of msgs) {
+      if (m.sender_id !== myId && !m.deleted_at) messenger.markRead(m.id, myId);
     }
     refreshUnreadCounts();
   }, [activeChannel, myId, refreshUnreadCounts]);
@@ -306,6 +326,86 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId }
     } catch (e) { console.error('Attachment upload failed:', e); }
   };
 
+  // ── Phase 11.1: core message actions ──
+  const startEdit = (msg: Msg) => { setEditingMessage(msg); setEditText(msg.content); setActionMenuFor(null); };
+
+  const saveEdit = async () => {
+    if (!editingMessage || !editText.trim()) return;
+    try {
+      await messenger.editMessage(editingMessage.id, myId, editText.trim());
+      setMessages(prev => prev.map(m => m.id === editingMessage.id ? { ...m, content: editText.trim(), edited_at: new Date().toISOString() } : m));
+    } catch (e) { console.error('Edit failed:', e); }
+    setEditingMessage(null);
+    setEditText('');
+  };
+
+  const deleteForMe = async (msg: Msg) => {
+    await messenger.deleteMessageForMe(msg.id, myId);
+    setMessages(prev => prev.filter(m => m.id !== msg.id));
+    setActionMenuFor(null);
+  };
+
+  const deleteForEveryone = async (msg: Msg) => {
+    if (msg.sender_id !== myId) return;
+    try {
+      await messenger.deleteMessageForEveryone(msg.id, myId);
+      setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, content: '', attachment_url: null, deleted_at: new Date().toISOString() } : m));
+    } catch (e) { console.error('Delete failed:', e); }
+    setActionMenuFor(null);
+  };
+
+  const toggleStarMessage = async (msg: Msg) => {
+    await messenger.toggleStar(msg.id, myId);
+    setStarredIds(prev => {
+      const next = new Set(prev);
+      if (next.has(msg.id)) next.delete(msg.id); else next.add(msg.id);
+      return next;
+    });
+    setActionMenuFor(null);
+  };
+
+  const togglePinMessage = async (msg: Msg) => {
+    if (!activeChannel) return;
+    await messenger.togglePin(activeChannel.id, msg.id, myId, myName);
+    setPinnedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(msg.id)) next.delete(msg.id); else next.add(msg.id);
+      return next;
+    });
+    setActionMenuFor(null);
+  };
+
+  const copyMessage = (msg: Msg) => {
+    navigator.clipboard?.writeText(msg.content).catch(() => {});
+    setActionMenuFor(null);
+  };
+
+  const forwardMessage = async (targetChannel: Channel) => {
+    if (!forwardTarget) return;
+    try {
+      await messenger.sendMessage(targetChannel.id, myId, myName, forwardTarget.content, {
+        attachmentUrl: forwardTarget.attachment_url || undefined,
+        attachmentType: forwardTarget.attachment_type || undefined,
+        attachmentName: forwardTarget.attachment_name || undefined,
+        forwardedFromId: forwardTarget.id,
+      });
+      if (targetChannel.type !== 'everyone') {
+        const { data: members } = await supabase.from('channel_members').select('user_id').eq('channel_id', targetChannel.id);
+        const others = (members || []).map((m: any) => m.user_id).filter((id: string) => id !== myId);
+        if (others.length > 0) messenger.notifyUsers(others, 'chat_message', myName, forwardTarget.content.slice(0, 120), targetChannel.id).catch(() => {});
+      }
+    } catch (e) { console.error('Forward failed:', e); }
+    setForwardTarget(null);
+  };
+
+  const visibleMessages = messages.filter((m) => {
+    if (starredOnly && !starredIds.has(m.id)) return false;
+    if (threadSearch.trim() && !m.content.toLowerCase().includes(threadSearch.trim().toLowerCase())) return false;
+    return true;
+  });
+
+  const pinnedMessages = messages.filter((m) => pinnedIds.has(m.id));
+
   const handleCreateChannel = async () => {
     if (!newChannelName.trim() || newChannelMembers.length === 0) return;
     const ch = await messenger.createGroupChannel(newChannelName.trim(), newChannelMembers, myId);
@@ -415,6 +515,18 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId }
                 <div className="flex items-center gap-1">
                   {activeChannel && (
                     <>
+                      {pinnedMessages.length > 0 && (
+                        <button onClick={() => setShowPinnedList(true)} className="p-2 rounded-lg hover:bg-[var(--accent-light)] text-[var(--accent)] cursor-pointer relative" title="Pinned messages">
+                          <Pin size={16} />
+                          <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] px-0.5 rounded-full bg-[var(--accent)] text-white text-[8px] font-bold flex items-center justify-center">{pinnedMessages.length}</span>
+                        </button>
+                      )}
+                      <button onClick={() => setStarredOnly(v => !v)} className={`p-2 rounded-lg hover:bg-[var(--accent-light)] cursor-pointer ${starredOnly ? 'text-amber-500' : 'text-[var(--text-muted)]'}`} title="Starred only">
+                        <Star size={16} fill={starredOnly ? 'currentColor' : 'none'} />
+                      </button>
+                      <button onClick={() => setShowThreadSearch(v => !v)} className={`p-2 rounded-lg hover:bg-[var(--accent-light)] cursor-pointer ${showThreadSearch ? 'text-[var(--accent)]' : 'text-[var(--text-muted)]'}`} title="Search this conversation">
+                        <Search size={16} />
+                      </button>
                       <button onClick={() => startCall('voice')} className="p-2 rounded-lg hover:bg-[var(--accent-light)] text-[var(--accent)] cursor-pointer" title="Voice call"><Phone size={16} /></button>
                       <button onClick={() => startCall('video')} className="p-2 rounded-lg hover:bg-[var(--accent-light)] text-[var(--accent)] cursor-pointer" title="Video call"><Video size={16} /></button>
                     </>
@@ -423,26 +535,49 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId }
                 </div>
               </div>
 
+              {showThreadSearch && activeChannel && (
+                <div className="px-4 py-2 border-b border-[var(--border)] shrink-0">
+                  <input
+                    autoFocus
+                    value={threadSearch}
+                    onChange={e => setThreadSearch(e.target.value)}
+                    placeholder="Search this conversation…"
+                    className="w-full px-3 py-1.5 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-[var(--accent)]"
+                  />
+                </div>
+              )}
+
               <div className="flex-1 overflow-y-auto p-4 space-y-3">
                 {!activeChannel && <p className="text-xs text-[var(--text-muted)] text-center py-10">Pick a person or channel to start chatting.</p>}
                 {activeChannel && messages.length === 0 && <p className="text-xs text-[var(--text-muted)] text-center py-10">No messages yet — say hello.</p>}
-                {messages.map(msg => {
+                {activeChannel && messages.length > 0 && visibleMessages.length === 0 && (
+                  <p className="text-xs text-[var(--text-muted)] text-center py-10">{starredOnly ? 'No starred messages.' : 'No messages match your search.'}</p>
+                )}
+                {visibleMessages.map(msg => {
                   const mine = msg.sender_id === myId;
                   const quoted = msg.reply_to_id ? messages.find(m => m.id === msg.reply_to_id) : null;
                   const msgReactions = reactions[msg.id] || [];
                   const readByOthers = (reads[msg.id] || []).filter(uid => uid !== myId).length > 0;
                   const isCall = msg.attachment_type === 'call';
+                  const isDeleted = !!msg.deleted_at;
+                  const isStarred = starredIds.has(msg.id);
+                  const isPinned = pinnedIds.has(msg.id);
                   return (
                     <div key={msg.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
                       <div className="max-w-[70%]">
                         {!mine && activeChannel?.type !== 'dm' && <p className="text-[9px] font-bold text-[var(--text-muted)] mb-0.5 ml-1">{msg.sender}</p>}
-                        {quoted && (
+                        {msg.forwarded_from_id && (
+                          <p className={`text-[9px] italic mb-0.5 flex items-center gap-1 ${mine ? 'justify-end' : ''} text-[var(--text-muted)]`}><Forward size={9} /> Forwarded</p>
+                        )}
+                        {quoted && !isDeleted && (
                           <div className="mb-1 px-2.5 py-1.5 rounded-lg bg-[var(--bg-input)] border-l-2 border-[var(--accent)] text-[10px] text-[var(--text-muted)] truncate">
-                            {quoted.sender}: {quoted.content}
+                            {quoted.sender}: {quoted.deleted_at ? 'This message was deleted' : quoted.content}
                           </div>
                         )}
                         <div className={`group relative px-3 py-2 rounded-2xl ${mine ? 'bg-[var(--accent)] text-white' : 'bg-[var(--bg-input)] text-[var(--text-primary)]'}`}>
-                          {isCall ? (
+                          {isDeleted ? (
+                            <p className={`text-xs italic ${mine ? 'text-white/70' : 'text-[var(--text-muted)]'}`}>This message was deleted</p>
+                          ) : isCall ? (
                             <button onClick={async () => {
                               const { data } = await supabase.from('meetings').select('*').eq('id', msg.attachment_url).limit(1);
                               if (data && data[0]) setActiveCall({ room: data[0].jitsi_room, title: data[0].title, kind: data[0].title.includes('Video') ? 'video' : 'voice' });
@@ -456,22 +591,39 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId }
                               <FileText size={13} /> {msg.attachment_name || 'File'}
                             </a>
                           ) : null}
-                          {!isCall && <p className="text-xs leading-relaxed">{msg.content}</p>}
+                          {!isCall && !isDeleted && <p className="text-xs leading-relaxed">{msg.content}</p>}
                           <div className="flex items-center gap-1 justify-end mt-0.5">
+                            {isPinned && <Pin size={9} className={mine ? 'text-white/70' : 'text-[var(--text-muted)]'} />}
+                            {isStarred && <Star size={9} fill="currentColor" className="text-amber-400" />}
+                            {msg.edited_at && !isDeleted && <span className={`text-[9px] ${mine ? 'text-white/70' : 'text-[var(--text-muted)]'}`}>(edited)</span>}
                             <span className={`text-[9px] ${mine ? 'text-white/70' : 'text-[var(--text-muted)]'}`}>{msg.time}</span>
                             {mine && (readByOthers ? <CheckCheck size={11} className="text-white/90" /> : <Check size={11} className="text-white/70" />)}
                           </div>
 
                           {/* Hover actions */}
-                          <div className={`absolute -top-3 ${mine ? 'left-0' : 'right-0'} hidden group-hover:flex items-center gap-0.5 bg-[var(--bg-card)] border border-[var(--border)] rounded-full px-1 py-0.5 shadow-card`}>
-                            <button onClick={() => setReactionPickerFor(reactionPickerFor === msg.id ? null : msg.id)} className="p-1 hover:bg-[var(--accent-light)] rounded-full cursor-pointer"><Smile size={12} /></button>
-                            <button onClick={() => setReplyTo(msg)} className="p-1 hover:bg-[var(--accent-light)] rounded-full cursor-pointer"><Reply size={12} /></button>
-                          </div>
+                          {!isDeleted && (
+                            <div className={`absolute -top-3 ${mine ? 'left-0' : 'right-0'} hidden group-hover:flex items-center gap-0.5 bg-[var(--bg-card)] border border-[var(--border)] rounded-full px-1 py-0.5 shadow-card`}>
+                              <button onClick={() => setReactionPickerFor(reactionPickerFor === msg.id ? null : msg.id)} className="p-1 hover:bg-[var(--accent-light)] rounded-full cursor-pointer"><Smile size={12} /></button>
+                              <button onClick={() => setReplyTo(msg)} className="p-1 hover:bg-[var(--accent-light)] rounded-full cursor-pointer"><Reply size={12} /></button>
+                              <button onClick={() => setActionMenuFor(actionMenuFor === msg.id ? null : msg.id)} className="p-1 hover:bg-[var(--accent-light)] rounded-full cursor-pointer"><MoreVertical size={12} /></button>
+                            </div>
+                          )}
                           {reactionPickerFor === msg.id && (
                             <div className={`absolute -top-10 ${mine ? 'left-0' : 'right-0'} flex gap-1 bg-[var(--bg-card)] border border-[var(--border)] rounded-full px-2 py-1 shadow-card z-10`}>
                               {REACTION_EMOJIS.map(e => (
                                 <button key={e} onClick={() => { messenger.toggleReaction(msg.id, myId, e); setReactionPickerFor(null); }} className="text-sm hover:scale-125 transition-transform cursor-pointer">{e}</button>
                               ))}
+                            </div>
+                          )}
+                          {actionMenuFor === msg.id && (
+                            <div className={`absolute top-6 ${mine ? 'left-0' : 'right-0'} flex flex-col bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-card z-10 min-w-[160px] py-1 text-[var(--text-primary)]`}>
+                              <button onClick={() => copyMessage(msg)} className="flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-[var(--accent-light)] cursor-pointer text-left"><Copy size={12} /> Copy</button>
+                              <button onClick={() => toggleStarMessage(msg)} className="flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-[var(--accent-light)] cursor-pointer text-left"><Star size={12} /> {isStarred ? 'Unstar' : 'Star'}</button>
+                              <button onClick={() => togglePinMessage(msg)} className="flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-[var(--accent-light)] cursor-pointer text-left"><Pin size={12} /> {isPinned ? 'Unpin' : 'Pin'}</button>
+                              <button onClick={() => { setForwardTarget(msg); setActionMenuFor(null); }} className="flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-[var(--accent-light)] cursor-pointer text-left"><Forward size={12} /> Forward</button>
+                              {mine && <button onClick={() => startEdit(msg)} className="flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-[var(--accent-light)] cursor-pointer text-left"><Pencil size={12} /> Edit</button>}
+                              <button onClick={() => deleteForMe(msg)} className="flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-[var(--accent-light)] cursor-pointer text-left text-rose-500"><Trash2 size={12} /> Delete for me</button>
+                              {mine && <button onClick={() => deleteForEveryone(msg)} className="flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-[var(--accent-light)] cursor-pointer text-left text-rose-500"><Trash2 size={12} /> Delete for everyone</button>}
                             </div>
                           )}
                         </div>
@@ -495,24 +647,45 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId }
                 <p className="text-[10px] text-[var(--text-muted)] px-4 pb-1 italic">{typingNames.join(', ')} typing…</p>
               )}
 
-              {replyTo && (
+              {replyTo && !editingMessage && (
                 <div className="mx-4 mb-1 px-3 py-1.5 rounded-lg bg-[var(--bg-input)] border-l-2 border-[var(--accent)] flex items-center justify-between">
                   <p className="text-[10px] text-[var(--text-muted)] truncate">Replying to {replyTo.sender}: {replyTo.content}</p>
                   <button onClick={() => setReplyTo(null)} className="p-0.5 cursor-pointer"><X size={12} /></button>
                 </div>
               )}
 
+              {editingMessage && (
+                <div className="mx-4 mb-1 px-3 py-1.5 rounded-lg bg-[var(--bg-input)] border-l-2 border-amber-400 flex items-center justify-between">
+                  <p className="text-[10px] text-[var(--text-muted)] flex items-center gap-1"><Pencil size={10} /> Editing message</p>
+                  <button onClick={() => { setEditingMessage(null); setEditText(''); }} className="p-0.5 cursor-pointer"><X size={12} /></button>
+                </div>
+              )}
+
               {activeChannel && (
                 <div className="flex items-center gap-2 p-3 border-t border-[var(--border)] shrink-0">
-                  <input ref={fileInputRef} type="file" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleAttach(f); e.target.value = ''; }} />
-                  <button onClick={() => fileInputRef.current?.click()} className="p-2 rounded-lg hover:bg-[var(--bg-input)] text-[var(--text-muted)] cursor-pointer shrink-0"><Paperclip size={16} /></button>
-                  <input
-                    type="text" placeholder="Type message..." value={composer}
-                    onChange={e => { setComposer(e.target.value); notifyTyping(); }}
-                    onKeyDown={e => e.key === 'Enter' && handleSend()}
-                    className="flex-1 px-3 py-2 bg-[var(--bg-input)] border border-[var(--border)] rounded-xl text-xs text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-[var(--accent)]"
-                  />
-                  <button onClick={handleSend} className="p-2 bg-[var(--accent)] text-white rounded-xl cursor-pointer hover:opacity-90 shrink-0"><Send size={15} /></button>
+                  {editingMessage ? (
+                    <>
+                      <input
+                        type="text" value={editText} autoFocus
+                        onChange={e => setEditText(e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && saveEdit()}
+                        className="flex-1 px-3 py-2 bg-[var(--bg-input)] border border-amber-400 rounded-xl text-xs text-[var(--text-primary)] outline-none"
+                      />
+                      <button onClick={saveEdit} className="p-2 bg-[var(--accent)] text-white rounded-xl cursor-pointer hover:opacity-90 shrink-0"><Check size={15} /></button>
+                    </>
+                  ) : (
+                    <>
+                      <input ref={fileInputRef} type="file" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleAttach(f); e.target.value = ''; }} />
+                      <button onClick={() => fileInputRef.current?.click()} className="p-2 rounded-lg hover:bg-[var(--bg-input)] text-[var(--text-muted)] cursor-pointer shrink-0"><Paperclip size={16} /></button>
+                      <input
+                        type="text" placeholder="Type message..." value={composer}
+                        onChange={e => { setComposer(e.target.value); notifyTyping(); }}
+                        onKeyDown={e => e.key === 'Enter' && handleSend()}
+                        className="flex-1 px-3 py-2 bg-[var(--bg-input)] border border-[var(--border)] rounded-xl text-xs text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-[var(--accent)]"
+                      />
+                      <button onClick={handleSend} className="p-2 bg-[var(--accent)] text-white rounded-xl cursor-pointer hover:opacity-90 shrink-0"><Send size={15} /></button>
+                    </>
+                  )}
                 </div>
               )}
             </div>
@@ -548,6 +721,58 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId }
           <div className="flex justify-end gap-2 px-5 py-4 border-t border-[var(--border)]">
             <button onClick={() => setShowNewChannel(false)} className="px-4 py-2 text-xs font-semibold text-[var(--text-secondary)] cursor-pointer">Cancel</button>
             <button onClick={handleCreateChannel} className="px-4 py-2 text-xs font-bold text-white rounded-xl cursor-pointer" style={{ background: 'var(--accent)' }}>Create</button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Forward-to picker */}
+    {forwardTarget && (
+      <div className="fixed inset-0 z-[1600] bg-black/50 flex items-center justify-center p-4" onClick={() => setForwardTarget(null)}>
+        <div className="bg-[var(--bg-card)] rounded-2xl shadow-2xl w-full max-w-md max-h-[70vh] flex flex-col" onClick={e => e.stopPropagation()}>
+          <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
+            <h3 className="font-bold text-sm text-[var(--text-primary)]">Forward to…</h3>
+            <button onClick={() => setForwardTarget(null)} className="p-1 cursor-pointer"><X size={16} /></button>
+          </div>
+          <div className="flex-1 overflow-y-auto p-2">
+            {everyoneChannel && (
+              <button onClick={() => forwardMessage(everyoneChannel)} className="w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl hover:bg-[var(--accent-light)] cursor-pointer text-left">
+                <div className="w-8 h-8 rounded-full bg-[var(--accent)] text-white flex items-center justify-center shrink-0"><Users size={14} /></div>
+                <p className="text-xs font-bold text-[var(--text-primary)]">Everyone</p>
+              </button>
+            )}
+            {groupChannels.map(ch => (
+              <button key={ch.id} onClick={() => forwardMessage(ch)} className="w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl hover:bg-[var(--accent-light)] cursor-pointer text-left">
+                <div className="w-8 h-8 rounded-full bg-[var(--accent-light)] text-[var(--accent)] flex items-center justify-center text-xs font-bold shrink-0">{initials(ch.name || 'GC')}</div>
+                <p className="text-xs font-bold text-[var(--text-primary)] truncate">{ch.name}</p>
+              </button>
+            ))}
+            {profiles.map(c => (
+              <button key={c.id} onClick={async () => forwardMessage(dmChannelByUser[c.id] || await messenger.getOrCreateDmChannel(myId, c.id))} className="w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl hover:bg-[var(--accent-light)] cursor-pointer text-left">
+                <div className="w-8 h-8 rounded-full bg-[var(--accent-light)] text-[var(--accent)] flex items-center justify-center text-xs font-bold shrink-0">{initials(c.fullName)}</div>
+                <p className="text-xs font-bold text-[var(--text-primary)] truncate">{c.fullName}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Pinned messages */}
+    {showPinnedList && (
+      <div className="fixed inset-0 z-[1600] bg-black/50 flex items-center justify-center p-4" onClick={() => setShowPinnedList(false)}>
+        <div className="bg-[var(--bg-card)] rounded-2xl shadow-2xl w-full max-w-md max-h-[70vh] flex flex-col" onClick={e => e.stopPropagation()}>
+          <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
+            <h3 className="font-bold text-sm text-[var(--text-primary)] flex items-center gap-2"><Pin size={14} /> Pinned Messages</h3>
+            <button onClick={() => setShowPinnedList(false)} className="p-1 cursor-pointer"><X size={16} /></button>
+          </div>
+          <div className="flex-1 overflow-y-auto p-3 space-y-2">
+            {pinnedMessages.map(m => (
+              <div key={m.id} className="p-2.5 rounded-xl bg-[var(--bg-input)]">
+                <p className="text-[10px] font-bold text-[var(--text-muted)]">{m.sender}</p>
+                <p className="text-xs text-[var(--text-primary)] mt-0.5">{m.deleted_at ? 'This message was deleted' : m.content}</p>
+              </div>
+            ))}
           </div>
         </div>
       </div>
