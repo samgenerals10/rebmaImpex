@@ -47,6 +47,7 @@ import SearchablePicker from '../../components/ui/SearchablePicker';
 import EmptyState from '../../components/ui/EmptyState';
 import Sheet, { SheetSection } from '../../components/ui/Sheet';
 import DocumentTemplatesEditor from '../../components/shared/DocumentTemplatesEditor';
+import ExportSheet from '../../components/shared/ExportSheet';
 
 type SettingField =
   | { key: string; label: string; description?: string; kind: 'bool' }
@@ -116,6 +117,9 @@ const SECTIONS: Section[] = [
       { key: 'global_chat_enabled', label: 'Global Chat Enabled', kind: 'bool' },
       { key: 'department_chat_enabled', label: 'Department Chat Enabled', kind: 'bool' },
       { key: 'direct_messages_enabled', label: 'Direct Messages Enabled', kind: 'bool' },
+      { key: 'messenger_calls_enabled', label: 'Voice/Video Calls Enabled', kind: 'bool' },
+      { key: 'messenger_attachments_enabled', label: 'Attachments Enabled', kind: 'bool' },
+      { key: 'message_retention_days', label: 'Message Retention (days, 0 = off)', kind: 'number' },
       { key: 'external_email_enabled', label: 'External Email Enabled', kind: 'bool' },
       { key: 'whatsapp_enabled', label: 'WhatsApp Enabled', kind: 'bool' },
       { key: 'payment_reminders_enabled', label: 'Payment Reminders Enabled', kind: 'bool' },
@@ -264,6 +268,14 @@ export default function ControlCenterScreen() {
   const [activeSection, setActiveSection] = useState('access');
   const [settings, setSettings] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
+  // Phase 11.6 — message export + audit trail (mirrors web's
+  // MessageExportSection exactly, reusing the Gap-Closure Backlog's
+  // ExportSheet/lib/exportEngine.ts infra).
+  const [exportChannels, setExportChannels] = useState<{ id: string; name: string | null; type: string }[]>([]);
+  const [exportChannelId, setExportChannelId] = useState('');
+  const [exportRows, setExportRows] = useState<any[]>([]);
+  const [showExportSheet, setShowExportSheet] = useState(false);
+  const [preparingExport, setPreparingExport] = useState(false);
 
   const [staff, setStaff] = useState<StaffRow[]>([]);
   const [staffSearch, setStaffSearch] = useState('');
@@ -323,6 +335,40 @@ export default function ControlCenterScreen() {
     loadStaffAndDepts();
     loadInvitesAndDelegates();
   }, [isAdmin, loadSettings, loadStaffAndDepts, loadInvitesAndDelegates]);
+
+  useEffect(() => {
+    if (!isAdmin || activeSection !== 'messages' || exportChannels.length > 0) return;
+    supabase.from('channels').select('id, name, type').then(({ data }) => setExportChannels(data || []));
+  }, [isAdmin, activeSection, exportChannels.length]);
+
+  const channelExportLabel = (c: { id: string; name: string | null; type: string }) =>
+    c.type === 'everyone' ? 'Everyone' : c.type === 'group' ? (c.name || 'Group') : `DM ${c.id.slice(-6)}`;
+
+  const prepareMessageExport = async () => {
+    setPreparingExport(true);
+    try {
+      let query = supabase.from('chat_messages').select('*').order('created_at', { ascending: true });
+      if (exportChannelId) query = query.eq('channel_id', exportChannelId);
+      const { data, error } = await query;
+      if (error) throw new Error(error.message);
+      const rows = (data || []).map((m: any) => ({
+        channel_id: m.channel_id, sender: m.sender, content: m.deleted_at ? '(deleted)' : m.content,
+        time: m.time, created_at: m.created_at, attachment_type: m.attachment_type || '',
+      }));
+      setExportRows(rows);
+      setShowExportSheet(true);
+      await supabase.from('global_audit_history').insert({
+        department: 'CEO',
+        action: `EXPORT: Messenger history — ${exportChannelId ? channelExportLabel(exportChannels.find((c) => c.id === exportChannelId)!) : 'All conversations'} (${rows.length} messages)`,
+        performed_by: profile?.fullName || 'CEO',
+        reference_id: exportChannelId || null,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (e: any) {
+      Alert.alert('Export failed', e.message);
+    }
+    setPreparingExport(false);
+  };
 
   const updateSetting = async (field: SettingField, value: any) => {
     if (field.key === 'maintenance_mode' && value === true) {
@@ -616,6 +662,7 @@ export default function ControlCenterScreen() {
             { id: 'invites', title: `Invite Links${invites.length ? ` (${invites.length})` : ''}` },
             { id: 'delegates', title: `Delegated Access${delegates.length ? ` (${delegates.length})` : ''}` },
             { id: 'templates', title: 'Document Templates' },
+            { id: 'messages', title: 'Message Export' },
             { id: 'reset', title: 'Data Reset Center' },
           ].map((s) => (
             <Button key={s.id} label={s.title} size="sm" variant={activeSection === s.id ? 'primary' : 'ghost'} onPress={() => setActiveSection(s.id)} />
@@ -762,6 +809,20 @@ export default function ControlCenterScreen() {
         </View>
       ) : activeSection === 'templates' ? (
         <DocumentTemplatesEditor updatedBy={profile?.fullName || 'CEO'} />
+      ) : activeSection === 'messages' ? (
+        <View style={{ gap: t.spacing.md }}>
+          <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted, lineHeight: 16 }}>
+            Export a conversation's full message history as CSV. Leave the picker blank to export every conversation. Every export is itself logged to the audit trail.
+          </Text>
+          <SearchablePicker
+            label="Conversation"
+            value={exportChannelId}
+            onChange={setExportChannelId}
+            placeholder="All conversations"
+            options={[{ value: '', label: 'All conversations' }, ...exportChannels.map((c) => ({ value: c.id, label: channelExportLabel(c) }))]}
+          />
+          <Button label="Export CSV" onPress={prepareMessageExport} loading={preparingExport} />
+        </View>
       ) : activeSection === 'reset' ? (
         <View style={{ gap: t.spacing.md }}>
           <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted, lineHeight: 16 }}>
@@ -838,6 +899,21 @@ export default function ControlCenterScreen() {
           </Sheet>
         );
       })() : null}
+
+      <ExportSheet
+        open={showExportSheet}
+        onClose={() => setShowExportSheet(false)}
+        title="Messenger Export"
+        data={exportRows}
+        columns={[
+          { key: 'channel_id', label: 'Channel' },
+          { key: 'sender', label: 'Sender' },
+          { key: 'content', label: 'Content' },
+          { key: 'time', label: 'Time' },
+          { key: 'created_at', label: 'Created At' },
+          { key: 'attachment_type', label: 'Attachment Type' },
+        ]}
+      />
     </Screen>
   );
 }

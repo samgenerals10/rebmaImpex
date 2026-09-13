@@ -13,6 +13,7 @@ import DocumentTemplatesView from '../management/DocumentTemplatesView';
 import SidePanel from '../../components/ui/SidePanel';
 import SearchableDropdown from '../../components/ui/SearchableDropdown';
 import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
+import { exportToCSV } from '../../utils/export';
 
 interface Props {
   currentUser: { id?: string; fullName: string; department: string; isAdmin?: boolean } | null;
@@ -330,6 +331,70 @@ const DEPT_TABLES: Record<string, { label: string; tables: { name: string; label
     { name: 'global_audit_history', label: 'Global Audit History' }, { name: 'supplier_order_notifications', label: 'Supplier Order Notifications' },
   ]},
 };
+
+// Phase 11.6 — message export + audit trail. Reads channels/chat_messages
+// directly (the CEO's is_admin() bypasses whatever RLS those tables have,
+// so this isn't scoped to channels the CEO happens to be a member of —
+// it's a real, full audit tool). Logs its own use to global_audit_history,
+// matching this app's standing convention for sensitive admin actions.
+function MessageExportSection({ currentUser, addNotification }: { currentUser: Props['currentUser']; addNotification: (m: string) => void }) {
+  const [channels, setChannels] = useState<{ id: string; name: string | null; type: string }[]>([]);
+  const [selectedChannel, setSelectedChannel] = useState('');
+  const [exporting, setExporting] = useState(false);
+
+  useEffect(() => {
+    supabase.from('channels').select('id, name, type').then(({ data }) => setChannels(data || []));
+  }, []);
+
+  const channelLabel = (c: { id: string; name: string | null; type: string }) =>
+    c.type === 'everyone' ? 'Everyone' : c.type === 'group' ? (c.name || 'Group') : `DM ${c.id.slice(-6)}`;
+
+  const runExport = async () => {
+    setExporting(true);
+    try {
+      let query = supabase.from('chat_messages').select('*').order('created_at', { ascending: true });
+      if (selectedChannel) query = query.eq('channel_id', selectedChannel);
+      const { data, error } = await query;
+      if (error) throw new Error(error.message);
+      const rows = (data || []).map((m: any) => ({
+        channel_id: m.channel_id, sender: m.sender, content: m.deleted_at ? '(deleted)' : m.content,
+        time: m.time, created_at: m.created_at, attachment_type: m.attachment_type || '',
+      }));
+      exportToCSV(rows, ['channel_id', 'sender', 'content', 'time', 'created_at', 'attachment_type'], `messenger-export-${selectedChannel || 'all'}-${Date.now()}`);
+      await supabase.from('global_audit_history').insert({
+        department: 'CEO',
+        action: `EXPORT: Messenger history — ${selectedChannel ? channelLabel(channels.find(c => c.id === selectedChannel)!) : 'All conversations'} (${rows.length} messages)`,
+        performed_by: currentUser?.fullName || 'CEO',
+        reference_id: selectedChannel || null,
+        timestamp: new Date().toISOString(),
+      });
+      addNotification(`Exported ${rows.length} messages.`);
+    } catch (e: any) {
+      addNotification(`Export failed: ${e.message}`);
+    }
+    setExporting(false);
+  };
+
+  return (
+    <div className="flex items-center justify-between gap-4 py-3 border-b border-[var(--border)] last:border-0">
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold text-[var(--text-primary)]">Message Export & Audit Trail</p>
+        <p className="text-xs text-[var(--text-muted)] mt-0.5 leading-relaxed">Export a conversation's full message history as CSV. Leave the picker blank to export every conversation. Every export is itself logged to the audit trail below.</p>
+        <div className="mt-2 flex items-center gap-2">
+          <SearchableDropdown
+            value={selectedChannel}
+            onChange={setSelectedChannel}
+            options={[{ value: '', label: 'All conversations' }, ...channels.map(c => ({ value: c.id, label: channelLabel(c) }))]}
+            className="min-w-[220px]"
+          />
+          <button onClick={runExport} disabled={exporting} className="px-3 py-1.5 rounded-xl text-xs font-bold text-white disabled:opacity-40 cursor-pointer" style={{ background: 'var(--accent)' }}>
+            {exporting ? 'Exporting…' : 'Export CSV'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function DataResetSection({ addNotification }: { addNotification: (m: string) => void }) {
   const [selectedDept, setSelectedDept] = useState('');
@@ -1275,6 +1340,13 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
           settingKey="messaging_access_allowed"
           label="Messaging Access"
           description="Master switch for whether an account can use chat at all (web and mobile), on top of the three toggles above. Add an email exception below to block or allow one specific person regardless of the master switch." />
+        <SettingToggle settingKey="messenger_calls_enabled" label="Voice/Video Calls Enabled"
+          description="Allow starting an ad-hoc voice or video call from any conversation in Messenger. When OFF the call buttons are hidden." />
+        <SettingToggle settingKey="messenger_attachments_enabled" label="Attachments Enabled"
+          description="Allow sending photos, files, and voice notes in Messenger. When OFF only plain text messages can be sent." />
+        <SettingNumber settingKey="message_retention_days" label="Message Retention"
+          description="Hide messages older than this many days from every conversation view. 0 disables retention (messages are kept indefinitely). This hides old messages from view — it does not delete them from the database." unit="days" min={0} max={3650} />
+        <MessageExportSection currentUser={currentUser} addNotification={addNotification} />
         <SettingToggle settingKey="external_email_enabled" label="External Email Enabled"
           description="Allow sending emails to suppliers and customers from within the app." />
         <SettingToggle settingKey="whatsapp_enabled" label="WhatsApp Enabled"

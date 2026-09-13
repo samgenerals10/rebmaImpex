@@ -2325,6 +2325,37 @@ export const messenger = {
     return channel;
   },
 
+  // Phase 11.4 — group management. No admin/member-role distinction
+  // exists anywhere in this schema, so any current member may rename,
+  // re-photo, or add/remove another member — same "flat, no hierarchy"
+  // posture already established for pinning a message (11.1).
+  renameChannel: async (channelId: string, name: string) => {
+    const { error } = await supabase.from('channels').update({ name }).eq('id', channelId);
+    if (error) throw new Error(error.message);
+  },
+
+  setChannelPhoto: async (channelId: string, photoPath: string | null) => {
+    const { error } = await supabase.from('channels').update({ photo_url: photoPath }).eq('id', channelId);
+    if (error) throw new Error(error.message);
+  },
+
+  fetchChannelMembers: async (channelId: string): Promise<{ id: string; full_name: string; department: string }[]> => {
+    const { data: memberRows } = await supabase.from('channel_members').select('user_id').eq('channel_id', channelId);
+    const ids = (memberRows || []).map((r: any) => r.user_id);
+    if (ids.length === 0) return [];
+    const { data } = await supabase.from('profiles_directory').select('id, full_name, department').in('id', ids);
+    return (data || []) as any;
+  },
+
+  addChannelMembers: async (channelId: string, userIds: string[]) => {
+    if (userIds.length === 0) return;
+    await supabase.from('channel_members').upsert(userIds.map(uid => ({ channel_id: channelId, user_id: uid })), { onConflict: 'channel_id,user_id' });
+  },
+
+  removeChannelMember: async (channelId: string, userId: string) => {
+    await supabase.from('channel_members').delete().eq('channel_id', channelId).eq('user_id', userId);
+  },
+
   fetchMessages: async (channelId: string) => {
     const { data, error } = await supabase
       .from('chat_messages')
@@ -2533,9 +2564,88 @@ export const messenger = {
     const meeting = created[0];
     await supabase.from('meeting_attendees').insert(memberIds.map(uid => ({ meeting_id: meeting.id, user_id: uid, rsvp_status: uid === organizerId ? 'ACCEPTED' : 'INVITED' })));
     const callMsg = await messenger.sendMessage(channelId, organizerId, organizerName, `📞 ${kind === 'voice' ? 'Voice' : 'Video'} call started — tap to join.`, { attachmentType: 'call', attachmentUrl: meeting.id });
-    void callMsg;
     await messenger.notifyUsers(memberIds.filter(id => id !== organizerId), 'call_started', `${organizerName} started a ${kind} call`, 'Tap to join now', meeting.id);
-    return meeting;
+    // Phase 11.5 — callMessageId lets the caller detect, when the call
+    // ends, which invited members never opened it (missed_call).
+    return { ...meeting, callMessageId: callMsg?.id as string | undefined };
+  },
+
+  // Phase 11.5 — fired when a call ends (JitsiCallModal's onClose), for
+  // any invited member who never read the call-started message. Not a
+  // perfect "did they actually join the Jitsi room" signal (this app has
+  // no server-side scheduler/cron to watch that reliably), but a real,
+  // simple, immediately-actionable one: if they hadn't even opened the
+  // notification/message by the time the call ended, they missed it.
+  notifyMissedCall: async (channelId: string, callMessageId: string, memberIds: string[], organizerId: string, organizerName: string) => {
+    const others = memberIds.filter(id => id !== organizerId);
+    if (others.length === 0) return;
+    const { data: readRows } = await supabase.from('chat_message_reads').select('user_id').eq('message_id', callMessageId).in('user_id', others);
+    const readIds = new Set((readRows || []).map((r: any) => r.user_id));
+    const missed = others.filter(id => !readIds.has(id));
+    if (missed.length === 0) return;
+    await messenger.notifyUsers(missed, 'missed_call', `Missed call from ${organizerName}`, 'You missed a call', channelId).catch(() => {});
+  },
+
+  // Phase 11.6 — conversation-level pin/archive, self-only.
+  fetchPinnedChannelIds: async (userId: string): Promise<string[]> => {
+    const { data } = await supabase.from('chat_channel_pins').select('channel_id').eq('user_id', userId);
+    return (data || []).map((r: any) => r.channel_id as string);
+  },
+
+  toggleChannelPin: async (channelId: string, userId: string) => {
+    const { data: existing } = await supabase.from('chat_channel_pins').select('*').eq('channel_id', channelId).eq('user_id', userId).limit(1);
+    if (existing && existing.length > 0) {
+      await supabase.from('chat_channel_pins').delete().eq('channel_id', channelId).eq('user_id', userId);
+    } else {
+      await supabase.from('chat_channel_pins').insert({ channel_id: channelId, user_id: userId });
+    }
+  },
+
+  fetchArchivedChannelIds: async (userId: string): Promise<string[]> => {
+    const { data } = await supabase.from('chat_channel_archived').select('channel_id').eq('user_id', userId);
+    return (data || []).map((r: any) => r.channel_id as string);
+  },
+
+  toggleChannelArchive: async (channelId: string, userId: string) => {
+    const { data: existing } = await supabase.from('chat_channel_archived').select('*').eq('channel_id', channelId).eq('user_id', userId).limit(1);
+    if (existing && existing.length > 0) {
+      await supabase.from('chat_channel_archived').delete().eq('channel_id', channelId).eq('user_id', userId);
+    } else {
+      await supabase.from('chat_channel_archived').insert({ channel_id: channelId, user_id: userId });
+    }
+  },
+
+  // "Clear history" reuses delete-for-me's own mechanism (chat_message_hidden),
+  // applied to every message currently in the channel — the row itself,
+  // and everyone else's view of it, is untouched, matching every
+  // mainstream chat app's own "clear chat" semantics.
+  clearChannelHistory: async (channelId: string, userId: string) => {
+    const { data: msgs } = await supabase.from('chat_messages').select('id').eq('channel_id', channelId);
+    const ids = (msgs || []).map((m: any) => m.id);
+    if (ids.length === 0) return;
+    await supabase.from('chat_message_hidden').upsert(ids.map((id: string) => ({ message_id: id, user_id: userId })), { onConflict: 'message_id,user_id' });
+  },
+
+  // Phase 11.6 — search across every conversation the caller belongs to,
+  // not just the one currently open (that's the existing per-thread
+  // search from 11.1). Excludes messages already hidden-for-me and
+  // deleted ones, matching what the thread view itself would show.
+  searchAllMyMessages: async (userId: string, query: string): Promise<any[]> => {
+    if (!query.trim()) return [];
+    const { data: memberships } = await supabase.from('channel_members').select('channel_id').eq('user_id', userId);
+    const channelIds = (memberships || []).map((m: any) => m.channel_id);
+    if (channelIds.length === 0) return [];
+    const { data: hidden } = await supabase.from('chat_message_hidden').select('message_id').eq('user_id', userId);
+    const hiddenIds = new Set((hidden || []).map((h: any) => h.message_id));
+    const { data } = await supabase
+      .from('chat_messages')
+      .select('*')
+      .in('channel_id', channelIds)
+      .ilike('content', `%${query.trim()}%`)
+      .is('deleted_at', null)
+      .order('created_at', { ascending: false })
+      .limit(100);
+    return (data || []).filter((m: any) => !hiddenIds.has(m.id));
   },
 
   // Phase 11.0 gap fix — per-user messaging access, same master-switch-

@@ -19,6 +19,7 @@ export interface Channel {
   type: 'group' | 'dm' | 'everyone';
   created_by: string | null;
   created_at: string;
+  photo_url?: string | null;
 }
 
 export interface ChatMessage {
@@ -91,6 +92,36 @@ export const messenger = {
     const allMembers = Array.from(new Set([...memberIds, creatorId]));
     await supabase.from('channel_members').insert(allMembers.map((uid) => ({ channel_id: channel.id, user_id: uid })));
     return channel as Channel;
+  },
+
+  // Phase 11.4 — group management. No admin/member-role distinction
+  // exists anywhere in this schema, so any current member may rename,
+  // re-photo, or add/remove another member (mirrors web's apiClient.ts).
+  renameChannel: async (channelId: string, name: string) => {
+    const { error } = await supabase.from('channels').update({ name }).eq('id', channelId);
+    if (error) throw new Error(error.message);
+  },
+
+  setChannelPhoto: async (channelId: string, photoPath: string | null) => {
+    const { error } = await supabase.from('channels').update({ photo_url: photoPath }).eq('id', channelId);
+    if (error) throw new Error(error.message);
+  },
+
+  fetchChannelMembers: async (channelId: string): Promise<{ id: string; full_name: string; department: string }[]> => {
+    const { data: memberRows } = await supabase.from('channel_members').select('user_id').eq('channel_id', channelId);
+    const ids = (memberRows || []).map((r: any) => r.user_id);
+    if (ids.length === 0) return [];
+    const { data } = await supabase.from('profiles_directory').select('id, full_name, department').in('id', ids);
+    return (data || []) as any;
+  },
+
+  addChannelMembers: async (channelId: string, userIds: string[]) => {
+    if (userIds.length === 0) return;
+    await supabase.from('channel_members').upsert(userIds.map((uid) => ({ channel_id: channelId, user_id: uid })), { onConflict: 'channel_id,user_id' });
+  },
+
+  removeChannelMember: async (channelId: string, userId: string) => {
+    await supabase.from('channel_members').delete().eq('channel_id', channelId).eq('user_id', userId);
   },
 
   fetchMessages: async (channelId: string): Promise<ChatMessage[]> => {
@@ -210,6 +241,96 @@ export const messenger = {
     if (candidateUserIds.length === 0) return [];
     const { data } = await supabase.from('chat_channel_mutes').select('user_id').eq('channel_id', channelId).in('user_id', candidateUserIds);
     return (data || []).map((r: any) => r.user_id as string);
+  },
+
+  // Phase 11.5 — ad-hoc voice/video call, mirrors apiClient.ts's
+  // startCall() exactly (same meetings/meeting_attendees/call-started
+  // message/notify shape) so a call started from a phone behaves
+  // identically to one started on web.
+  startCall: async (channelId: string, memberIds: string[], organizerId: string, organizerName: string, kind: 'voice' | 'video') => {
+    const room = `Rebma-${kind === 'voice' ? 'Call' : 'Video'}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+    const { data: created, error } = await supabase.from('meetings').insert({
+      title: `${kind === 'voice' ? 'Voice' : 'Video'} call started by ${organizerName}`,
+      scheduled_at: new Date().toISOString(),
+      duration_minutes: 60,
+      organizer_id: organizerId,
+      jitsi_room: room,
+      status: 'IN_PROGRESS',
+    }).select();
+    if (error || !created) throw new Error(error?.message || 'Failed to start call');
+    const meeting = created[0];
+    await supabase.from('meeting_attendees').insert(memberIds.map((uid) => ({ meeting_id: meeting.id, user_id: uid, rsvp_status: uid === organizerId ? 'ACCEPTED' : 'INVITED' })));
+    const callMsg = await messenger.sendMessage(channelId, organizerId, organizerName, `📞 ${kind === 'voice' ? 'Voice' : 'Video'} call started — tap to join.`, { attachmentType: 'call', attachmentUrl: meeting.id });
+    await messenger.notifyUsers(memberIds.filter((id) => id !== organizerId), 'call_started', `${organizerName} started a ${kind} call`, 'Tap to join now', meeting.id);
+    return { ...meeting, callMessageId: callMsg?.id as string | undefined };
+  },
+
+  // Phase 11.5 — fired when a call ends, for any invited member who
+  // never opened the call-started message (see apiClient.ts's own
+  // notifyMissedCall for the "not perfect, but real and simple" scope note).
+  notifyMissedCall: async (channelId: string, callMessageId: string, memberIds: string[], organizerId: string, organizerName: string) => {
+    const others = memberIds.filter((id) => id !== organizerId);
+    if (others.length === 0) return;
+    const { data: readRows } = await supabase.from('chat_message_reads').select('user_id').eq('message_id', callMessageId).in('user_id', others);
+    const readIds = new Set((readRows || []).map((r: any) => r.user_id));
+    const missed = others.filter((id) => !readIds.has(id));
+    if (missed.length === 0) return;
+    await messenger.notifyUsers(missed, 'missed_call', `Missed call from ${organizerName}`, 'You missed a call', channelId).catch(() => {});
+  },
+
+  // Phase 11.6 — conversation-level pin/archive, self-only. Mirrors
+  // apiClient.ts exactly.
+  fetchPinnedChannelIds: async (userId: string): Promise<string[]> => {
+    const { data } = await supabase.from('chat_channel_pins').select('channel_id').eq('user_id', userId);
+    return (data || []).map((r: any) => r.channel_id as string);
+  },
+
+  toggleChannelPin: async (channelId: string, userId: string) => {
+    const { data: existing } = await supabase.from('chat_channel_pins').select('*').eq('channel_id', channelId).eq('user_id', userId).limit(1);
+    if (existing && existing.length > 0) {
+      await supabase.from('chat_channel_pins').delete().eq('channel_id', channelId).eq('user_id', userId);
+    } else {
+      await supabase.from('chat_channel_pins').insert({ channel_id: channelId, user_id: userId });
+    }
+  },
+
+  fetchArchivedChannelIds: async (userId: string): Promise<string[]> => {
+    const { data } = await supabase.from('chat_channel_archived').select('channel_id').eq('user_id', userId);
+    return (data || []).map((r: any) => r.channel_id as string);
+  },
+
+  toggleChannelArchive: async (channelId: string, userId: string) => {
+    const { data: existing } = await supabase.from('chat_channel_archived').select('*').eq('channel_id', channelId).eq('user_id', userId).limit(1);
+    if (existing && existing.length > 0) {
+      await supabase.from('chat_channel_archived').delete().eq('channel_id', channelId).eq('user_id', userId);
+    } else {
+      await supabase.from('chat_channel_archived').insert({ channel_id: channelId, user_id: userId });
+    }
+  },
+
+  clearChannelHistory: async (channelId: string, userId: string) => {
+    const { data: msgs } = await supabase.from('chat_messages').select('id').eq('channel_id', channelId);
+    const ids = (msgs || []).map((m: any) => m.id);
+    if (ids.length === 0) return;
+    await supabase.from('chat_message_hidden').upsert(ids.map((id: string) => ({ message_id: id, user_id: userId })), { onConflict: 'message_id,user_id' });
+  },
+
+  searchAllMyMessages: async (userId: string, query: string): Promise<ChatMessage[]> => {
+    if (!query.trim()) return [];
+    const { data: memberships } = await supabase.from('channel_members').select('channel_id').eq('user_id', userId);
+    const channelIds = (memberships || []).map((m: any) => m.channel_id);
+    if (channelIds.length === 0) return [];
+    const { data: hidden } = await supabase.from('chat_message_hidden').select('message_id').eq('user_id', userId);
+    const hiddenIds = new Set((hidden || []).map((h: any) => h.message_id));
+    const { data } = await supabase
+      .from('chat_messages')
+      .select('*')
+      .in('channel_id', channelIds)
+      .ilike('content', `%${query.trim()}%`)
+      .is('deleted_at', null)
+      .order('created_at', { ascending: false })
+      .limit(100);
+    return ((data || []) as ChatMessage[]).filter((m) => !hiddenIds.has(m.id));
   },
 
   toggleReaction: async (messageId: string, userId: string, emoji: string) => {

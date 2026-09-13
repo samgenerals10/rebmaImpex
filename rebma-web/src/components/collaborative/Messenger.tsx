@@ -8,7 +8,7 @@ import {
   MessageSquare, Search, Users, X, Send, Paperclip, Smile, Reply,
   Phone, Video, Check, CheckCheck, Plus, FileText,
   Pin, Star, Pencil, Trash2, Forward, Copy, MoreVertical, BellOff, Bell, EyeOff,
-  Images, Mic, Square, Download,
+  Images, Mic, Square, Download, Clock, Archive,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../../lib/supabaseClient';
@@ -32,7 +32,7 @@ interface Props {
 }
 
 interface Profile { id: string; fullName: string; department: string; email: string; }
-interface Channel { id: string; name: string | null; type: 'group' | 'dm' | 'everyone'; created_by: string | null; created_at: string; }
+interface Channel { id: string; name: string | null; type: 'group' | 'dm' | 'everyone'; created_by: string | null; created_at: string; photo_url?: string | null; }
 interface Msg {
   id: string; channel_id: string; sender_id: string | null; sender: string; content: string;
   time: string; attachment_url: string | null; attachment_type: string | null; attachment_name: string | null;
@@ -75,18 +75,21 @@ function UnreadBadge({ count }: { count?: number }) {
 // Phase 11.2 — one sidebar row, with an on-hover kebab menu (Mark as
 // unread / Mute) that a plain nested <button> couldn't express.
 function SidebarRow({
-  active, onClick, icon, title, subtitle, unread, muted, menuOpen, onToggleMenu, onMarkUnread, onToggleMute,
+  active, onClick, icon, title, subtitle, unread, muted, pinned, menuOpen, onToggleMenu, onMarkUnread, onToggleMute, onTogglePin, onToggleArchive, onClearHistory, archived,
 }: {
   active: boolean; onClick: () => void; icon: React.ReactNode; title: string; subtitle?: string;
-  unread?: number; muted?: boolean; menuOpen?: boolean;
+  unread?: number; muted?: boolean; pinned?: boolean; archived?: boolean; menuOpen?: boolean;
   onToggleMenu?: () => void; onMarkUnread?: () => void; onToggleMute?: () => void;
+  onTogglePin?: () => void; onToggleArchive?: () => void; onClearHistory?: () => void;
 }) {
   return (
     <div className={`group relative flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl cursor-pointer ${active ? 'bg-[var(--accent-light)]' : 'hover:bg-[var(--accent-light)]'}`}>
       <button onClick={onClick} className="flex items-center gap-2.5 flex-1 min-w-0 cursor-pointer text-left">
         {icon}
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-bold text-[var(--text-primary)] truncate flex items-center gap-1">{title} {muted && <BellOff size={10} className="text-[var(--text-muted)]" />}</p>
+          <p className="text-xs font-bold text-[var(--text-primary)] truncate flex items-center gap-1">
+            {pinned && <Pin size={9} className="text-[var(--accent)] shrink-0" />} {title} {muted && <BellOff size={10} className="text-[var(--text-muted)]" />}
+          </p>
           {subtitle && <p className="text-[10px] text-[var(--text-muted)] truncate">{subtitle}</p>}
         </div>
       </button>
@@ -97,11 +100,26 @@ function SidebarRow({
             <MoreVertical size={13} />
           </button>
           {menuOpen && (
-            <div className="absolute right-0 top-6 flex flex-col bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-card z-20 min-w-[150px] py-1">
+            <div className="absolute right-0 top-6 flex flex-col bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-card z-20 min-w-[160px] py-1">
               <button onClick={onMarkUnread} className="flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-[var(--accent-light)] cursor-pointer text-left text-[var(--text-primary)]"><EyeOff size={12} /> Mark as unread</button>
               <button onClick={onToggleMute} className="flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-[var(--accent-light)] cursor-pointer text-left text-[var(--text-primary)]">
                 {muted ? <Bell size={12} /> : <BellOff size={12} />} {muted ? 'Unmute' : 'Mute'}
               </button>
+              {onTogglePin && (
+                <button onClick={onTogglePin} className="flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-[var(--accent-light)] cursor-pointer text-left text-[var(--text-primary)]">
+                  <Pin size={12} /> {pinned ? 'Unpin' : 'Pin'} conversation
+                </button>
+              )}
+              {onToggleArchive && (
+                <button onClick={onToggleArchive} className="flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-[var(--accent-light)] cursor-pointer text-left text-[var(--text-primary)]">
+                  <Archive size={12} /> {archived ? 'Unarchive' : 'Archive'}
+                </button>
+              )}
+              {onClearHistory && (
+                <button onClick={onClearHistory} className="flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-[var(--accent-light)] cursor-pointer text-left text-rose-500">
+                  <Trash2 size={12} /> Clear history
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -115,6 +133,8 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
   const globalChatEnabled = getSetting('global_chat_enabled', true);
   const departmentChatEnabled = getSetting('department_chat_enabled', true);
   const directMessagesEnabled = getSetting('direct_messages_enabled', true);
+  const callsEnabled = getSetting('messenger_calls_enabled', true);
+  const attachmentsEnabled = getSetting('messenger_attachments_enabled', true);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [channels, setChannels] = useState<Channel[]>([]);
   const [dmChannelByUser, setDmChannelByUser] = useState<Record<string, Channel>>({});
@@ -130,7 +150,7 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
   const [showNewChannel, setShowNewChannel] = useState(false);
   const [newChannelName, setNewChannelName] = useState('');
   const [newChannelMembers, setNewChannelMembers] = useState<string[]>([]);
-  const [activeCall, setActiveCall] = useState<{ room: string; title: string; kind: 'voice' | 'video' } | null>(null);
+  const [activeCall, setActiveCall] = useState<{ room: string; title: string; kind: 'voice' | 'video'; channelId: string; callMessageId?: string; memberIds: string[] } | null>(null);
   const [attachmentUrls, setAttachmentUrls] = useState<Record<string, string>>({});
   // Phase 11.0 gap fixes — per-user access gate + unread badges.
   const [messagingAllowed, setMessagingAllowed] = useState(true);
@@ -158,6 +178,25 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
   const [pdfPreviewFor, setPdfPreviewFor] = useState<string | null>(null);
   const [lightbox, setLightbox] = useState<{ urls: string[]; index: number } | null>(null);
   const [showGallery, setShowGallery] = useState(false);
+  // Phase 11.5 — call history.
+  const [showCallHistory, setShowCallHistory] = useState(false);
+  // Phase 11.6 — conversation organization + global search.
+  const [pinnedChannelIds, setPinnedChannelIds] = useState<Set<string>>(new Set());
+  const [archivedChannelIds, setArchivedChannelIds] = useState<Set<string>>(new Set());
+  const [showArchived, setShowArchived] = useState(false);
+  const [sidebarFilter, setSidebarFilter] = useState<'all' | 'unread' | 'pinned' | 'muted'>('all');
+  const [showGlobalSearch, setShowGlobalSearch] = useState(false);
+  const [globalSearchQuery, setGlobalSearchQuery] = useState('');
+  const [globalSearchResults, setGlobalSearchResults] = useState<Msg[]>([]);
+  const [searchingGlobally, setSearchingGlobally] = useState(false);
+  // Phase 11.4 — group management.
+  const [showGroupInfo, setShowGroupInfo] = useState(false);
+  const [groupMembers, setGroupMembers] = useState<{ id: string; full_name: string; department: string }[]>([]);
+  const [groupNameEdit, setGroupNameEdit] = useState('');
+  const [savingGroupInfo, setSavingGroupInfo] = useState(false);
+  const [addingGroupMembers, setAddingGroupMembers] = useState(false);
+  const [newGroupMemberIds, setNewGroupMemberIds] = useState<string[]>([]);
+  const groupPhotoInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const multiImageInputRef = useRef<HTMLInputElement>(null);
   const presenceChannelRef = useRef<any>(null);
@@ -297,12 +336,14 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages.length]);
 
-  // Resolve signed URLs for attachments lazily — includes both the
-  // single-attachment column and every path inside a multi-image message.
+  // Resolve signed URLs for attachments lazily — includes the
+  // single-attachment column, every path inside a multi-image message,
+  // and any group's photo_url (Phase 11.4 — same bucket, same signing).
   useEffect(() => {
     const single = messages.filter(m => m.attachment_url && m.attachment_type !== 'call' && !attachmentUrls[m.attachment_url!]).map(m => m.attachment_url!);
     const multi = messages.flatMap(m => (m.attachment_urls || []).filter(p => !attachmentUrls[p]));
-    const paths = Array.from(new Set([...single, ...multi]));
+    const groupPhotos = channels.filter(c => c.photo_url && !attachmentUrls[c.photo_url]).map(c => c.photo_url!);
+    const paths = Array.from(new Set([...single, ...multi, ...groupPhotos]));
     if (paths.length === 0) return;
     (async () => {
       const entries: Record<string, string> = {};
@@ -312,7 +353,7 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
       }
       setAttachmentUrls(prev => ({ ...prev, ...entries }));
     })();
-  }, [messages, attachmentUrls]);
+  }, [messages, attachmentUrls, channels]);
 
   const filteredContacts = useMemo(() => {
     const q = search.toLowerCase();
@@ -326,6 +367,19 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
 
   const groupChannels = channels.filter(c => c.type === 'group');
   const everyoneChannel = channels.find(c => c.type === 'everyone');
+
+  // Phase 11.6 — a channel is visible in the main list only if it isn't
+  // archived (or the user is explicitly viewing the Archived list), and
+  // passes whichever Unread/Pinned/Muted filter chip is active.
+  const channelVisible = (channelId: string): boolean => {
+    const isArchived = archivedChannelIds.has(channelId);
+    if (showArchived) return isArchived;
+    if (isArchived) return false;
+    if (sidebarFilter === 'unread') return (unreadCounts[channelId] || 0) > 0;
+    if (sidebarFilter === 'pinned') return pinnedChannelIds.has(channelId);
+    if (sidebarFilter === 'muted') return mutedChannelIds.has(channelId);
+    return true;
+  };
 
   const openDm = async (otherId: string) => {
     let ch = dmChannelByUser[otherId];
@@ -366,7 +420,45 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
   useEffect(() => {
     if (!isOpen || !myId) return;
     messenger.fetchMutedChannelIds(myId).then(ids => setMutedChannelIds(new Set(ids)));
+    messenger.fetchPinnedChannelIds(myId).then(ids => setPinnedChannelIds(new Set(ids)));
+    messenger.fetchArchivedChannelIds(myId).then(ids => setArchivedChannelIds(new Set(ids)));
   }, [isOpen, myId]);
+
+  const toggleChannelPin = async (channelId: string) => {
+    await messenger.toggleChannelPin(channelId, myId);
+    setPinnedChannelIds(prev => {
+      const next = new Set(prev);
+      if (next.has(channelId)) next.delete(channelId); else next.add(channelId);
+      return next;
+    });
+    setRowMenuFor(null);
+  };
+
+  const toggleChannelArchive = async (channelId: string) => {
+    await messenger.toggleChannelArchive(channelId, myId);
+    setArchivedChannelIds(prev => {
+      const next = new Set(prev);
+      if (next.has(channelId)) next.delete(channelId); else next.add(channelId);
+      return next;
+    });
+    setRowMenuFor(null);
+  };
+
+  const clearChannelHistory = async (channelId: string) => {
+    if (!confirm('Clear this conversation\'s history? This only clears your own view — the other participant(s) keep theirs.')) return;
+    await messenger.clearChannelHistory(channelId, myId);
+    if (activeChannel?.id === channelId) setMessages([]);
+    setRowMenuFor(null);
+  };
+
+  const runGlobalSearch = async (query: string) => {
+    setGlobalSearchQuery(query);
+    if (!query.trim()) { setGlobalSearchResults([]); return; }
+    setSearchingGlobally(true);
+    const results = await messenger.searchAllMyMessages(myId, query);
+    setGlobalSearchResults(results as Msg[]);
+    setSearchingGlobally(false);
+  };
 
   const toggleMuteChannel = async (channelId: string) => {
     await messenger.toggleMute(channelId, myId);
@@ -382,6 +474,63 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
     await messenger.markChannelUnread(channelId, myId);
     refreshUnreadCounts();
     setRowMenuFor(null);
+  };
+
+  // ── Phase 11.4: group management ──
+  const openGroupInfo = async () => {
+    if (!activeChannel || activeChannel.type !== 'group') return;
+    setGroupNameEdit(activeChannel.name || '');
+    setShowGroupInfo(true);
+    const members = await messenger.fetchChannelMembers(activeChannel.id);
+    setGroupMembers(members);
+  };
+
+  const saveGroupName = async () => {
+    if (!activeChannel || !groupNameEdit.trim() || savingGroupInfo) return;
+    setSavingGroupInfo(true);
+    try {
+      await messenger.renameChannel(activeChannel.id, groupNameEdit.trim());
+      setChannels(prev => prev.map(c => c.id === activeChannel.id ? { ...c, name: groupNameEdit.trim() } : c));
+      setActiveChannel(prev => prev && { ...prev, name: groupNameEdit.trim() });
+    } catch (e) { console.error('Rename failed:', e); }
+    setSavingGroupInfo(false);
+  };
+
+  const handleGroupPhotoChange = async (file: File) => {
+    if (!activeChannel) return;
+    const err = validateAttachment(file);
+    if (err) { alert(err); return; }
+    try {
+      const path = await messenger.uploadChatAttachment(file, activeChannel.id);
+      await messenger.setChannelPhoto(activeChannel.id, path);
+      setChannels(prev => prev.map(c => c.id === activeChannel.id ? { ...c, photo_url: path } : c));
+      setActiveChannel(prev => prev && { ...prev, photo_url: path });
+      const url = await messenger.getSignedAttachmentUrl(path);
+      if (url) setAttachmentUrls(prev => ({ ...prev, [path]: url }));
+    } catch (e) { console.error('Group photo upload failed:', e); }
+  };
+
+  const addSelectedMembers = async () => {
+    if (!activeChannel || newGroupMemberIds.length === 0) return;
+    await messenger.addChannelMembers(activeChannel.id, newGroupMemberIds);
+    const members = await messenger.fetchChannelMembers(activeChannel.id);
+    setGroupMembers(members);
+    setNewGroupMemberIds([]);
+    setAddingGroupMembers(false);
+  };
+
+  const removeGroupMember = async (userId: string) => {
+    if (!activeChannel) return;
+    await messenger.removeChannelMember(activeChannel.id, userId);
+    setGroupMembers(prev => prev.filter(m => m.id !== userId));
+  };
+
+  const leaveGroup = async () => {
+    if (!activeChannel) return;
+    await messenger.removeChannelMember(activeChannel.id, myId);
+    setChannels(prev => prev.filter(c => c.id !== activeChannel.id));
+    setActiveChannel(null);
+    setShowGroupInfo(false);
   };
 
   const activeChannelMemberIds = useRef<string[]>([]);
@@ -610,9 +759,15 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
     setForwardTarget(null);
   };
 
+  // Phase 11.6 — CEO-configurable retention: hides (doesn't delete) any
+  // message older than N days. 0/unset means "keep indefinitely".
+  const retentionDays = getSetting('message_retention_days', 0);
+  const retentionCutoff = retentionDays > 0 ? Date.now() - retentionDays * 86400000 : null;
+
   const visibleMessages = messages.filter((m) => {
     if (starredOnly && !starredIds.has(m.id)) return false;
     if (threadSearch.trim() && !m.content.toLowerCase().includes(threadSearch.trim().toLowerCase())) return false;
+    if (retentionCutoff && new Date(m.created_at).getTime() < retentionCutoff) return false;
     return true;
   });
 
@@ -633,8 +788,17 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
     const memberIds = activeChannelMemberIds.current.length > 0 ? activeChannelMemberIds.current : [myId];
     try {
       const meeting = await messenger.startCall(activeChannel.id, memberIds, myId, myName, kind);
-      setActiveCall({ room: meeting.jitsi_room, title: meeting.title, kind });
+      setActiveCall({ room: meeting.jitsi_room, title: meeting.title, kind, channelId: activeChannel.id, callMessageId: meeting.callMessageId, memberIds });
     } catch (e) { console.error('Failed to start call:', e); }
+  };
+
+  // Phase 11.5 — fires once, when the call screen actually closes, for
+  // whichever invited members never opened the call-started message.
+  const endActiveCall = () => {
+    if (activeCall?.callMessageId) {
+      messenger.notifyMissedCall(activeCall.channelId, activeCall.callMessageId, activeCall.memberIds, myId, myName).catch(() => {});
+    }
+    setActiveCall(null);
   };
 
   const label = activeChannelLabel();
@@ -675,14 +839,29 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
                 </button>
               </div>
               <div className="px-3 pt-3 pb-2">
-                <div className="relative">
+                <div className="relative flex items-center gap-1">
                   <Search className="w-3.5 h-3.5 text-[var(--text-muted)] absolute left-2.5 top-1/2 -translate-y-1/2" />
                   <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search people…"
-                    className="w-full pl-8 pr-3 py-2 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-[var(--accent)]" />
+                    className="w-full pl-8 pr-8 py-2 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-[var(--accent)]" />
+                  <button onClick={() => setShowGlobalSearch(true)} title="Search all messages" className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-[var(--text-muted)] hover:text-[var(--accent)] cursor-pointer">
+                    <MessageSquare size={13} />
+                  </button>
+                </div>
+                <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                  {(['all', 'unread', 'pinned', 'muted'] as const).map(f => (
+                    <button key={f} onClick={() => setSidebarFilter(f)}
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-semibold capitalize cursor-pointer ${sidebarFilter === f ? 'bg-[var(--accent)] text-white' : 'bg-[var(--bg-input)] text-[var(--text-muted)] hover:bg-[var(--accent-light)]'}`}>
+                      {f}
+                    </button>
+                  ))}
+                  <button onClick={() => setShowArchived(v => !v)}
+                    className={`ml-auto flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold cursor-pointer ${showArchived ? 'bg-[var(--accent)] text-white' : 'bg-[var(--bg-input)] text-[var(--text-muted)] hover:bg-[var(--accent-light)]'}`}>
+                    <Archive size={10} /> Archived
+                  </button>
                 </div>
               </div>
               <div className="flex-1 overflow-y-auto px-2 pb-2">
-                {everyoneChannel && globalChatEnabled && (
+                {everyoneChannel && globalChatEnabled && channelVisible(everyoneChannel.id) && (
                   <SidebarRow
                     active={activeChannel?.id === everyoneChannel.id}
                     onClick={() => setActiveChannel(everyoneChannel)}
@@ -690,32 +869,51 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
                     title="Everyone" subtitle="Company-wide broadcast"
                     unread={unreadCounts[everyoneChannel.id]}
                     muted={mutedChannelIds.has(everyoneChannel.id)}
+                    pinned={pinnedChannelIds.has(everyoneChannel.id)}
+                    archived={archivedChannelIds.has(everyoneChannel.id)}
                     menuOpen={rowMenuFor === everyoneChannel.id}
                     onToggleMenu={() => setRowMenuFor(rowMenuFor === everyoneChannel.id ? null : everyoneChannel.id)}
                     onMarkUnread={() => markChannelUnread(everyoneChannel.id)}
                     onToggleMute={() => toggleMuteChannel(everyoneChannel.id)}
+                    onTogglePin={() => toggleChannelPin(everyoneChannel.id)}
+                    onToggleArchive={() => toggleChannelArchive(everyoneChannel.id)}
+                    onClearHistory={() => clearChannelHistory(everyoneChannel.id)}
                   />
                 )}
-                {departmentChatEnabled && groupChannels.length > 0 && (
+                {departmentChatEnabled && groupChannels.some(ch => channelVisible(ch.id)) && (
                   <p className="text-[9px] font-bold uppercase tracking-wider text-[var(--text-muted)] px-2.5 pt-3 pb-1">Groups</p>
                 )}
-                {departmentChatEnabled && groupChannels.map(ch => (
+                {departmentChatEnabled && [...groupChannels].filter(ch => channelVisible(ch.id)).sort((a, b) => Number(pinnedChannelIds.has(b.id)) - Number(pinnedChannelIds.has(a.id))).map(ch => (
                   <SidebarRow
                     key={ch.id}
                     active={activeChannel?.id === ch.id}
                     onClick={() => setActiveChannel(ch)}
-                    icon={<div className="w-9 h-9 rounded-full bg-[var(--accent-light)] text-[var(--accent)] flex items-center justify-center text-xs font-bold shrink-0">{initials(ch.name || 'GC')}</div>}
+                    icon={
+                      ch.photo_url && attachmentUrls[ch.photo_url] ? (
+                        <img src={attachmentUrls[ch.photo_url]} alt="" className="w-9 h-9 rounded-full object-cover shrink-0" />
+                      ) : (
+                        <div className="w-9 h-9 rounded-full bg-[var(--accent-light)] text-[var(--accent)] flex items-center justify-center text-xs font-bold shrink-0">{initials(ch.name || 'GC')}</div>
+                      )
+                    }
                     title={ch.name || 'Group'}
                     unread={unreadCounts[ch.id]}
                     muted={mutedChannelIds.has(ch.id)}
+                    pinned={pinnedChannelIds.has(ch.id)}
+                    archived={archivedChannelIds.has(ch.id)}
                     menuOpen={rowMenuFor === ch.id}
                     onToggleMenu={() => setRowMenuFor(rowMenuFor === ch.id ? null : ch.id)}
                     onMarkUnread={() => markChannelUnread(ch.id)}
                     onToggleMute={() => toggleMuteChannel(ch.id)}
+                    onTogglePin={() => toggleChannelPin(ch.id)}
+                    onToggleArchive={() => toggleChannelArchive(ch.id)}
+                    onClearHistory={() => clearChannelHistory(ch.id)}
                   />
                 ))}
                 <p className="text-[9px] font-bold uppercase tracking-wider text-[var(--text-muted)] px-2.5 pt-3 pb-1">People</p>
-                {filteredContacts.map(c => {
+                {[...filteredContacts].sort((a, b) => {
+                  const da = dmChannelByUser[a.id], db = dmChannelByUser[b.id];
+                  return Number(db && pinnedChannelIds.has(db.id)) - Number(da && pinnedChannelIds.has(da.id));
+                }).filter(c => { const dm = dmChannelByUser[c.id]; return !dm || channelVisible(dm.id); }).map(c => {
                   const dm = dmChannelByUser[c.id];
                   const isActive = dm && activeChannel?.id === dm.id;
                   const online = onlineIds.has(c.id);
@@ -733,10 +931,15 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
                       title={c.fullName} subtitle={online ? 'Online' : c.department}
                       unread={dm ? unreadCounts[dm.id] : undefined}
                       muted={dm ? mutedChannelIds.has(dm.id) : false}
+                      pinned={dm ? pinnedChannelIds.has(dm.id) : false}
+                      archived={dm ? archivedChannelIds.has(dm.id) : false}
                       menuOpen={!!dm && rowMenuFor === dm.id}
                       onToggleMenu={dm ? () => setRowMenuFor(rowMenuFor === dm.id ? null : dm.id) : undefined}
                       onMarkUnread={dm ? () => markChannelUnread(dm.id) : undefined}
                       onToggleMute={dm ? () => toggleMuteChannel(dm.id) : undefined}
+                      onTogglePin={dm ? () => toggleChannelPin(dm.id) : undefined}
+                      onToggleArchive={dm ? () => toggleChannelArchive(dm.id) : undefined}
+                      onClearHistory={dm ? () => clearChannelHistory(dm.id) : undefined}
                     />
                   );
                 })}
@@ -746,13 +949,22 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
             {/* Main thread */}
             <div className="flex-1 flex flex-col min-w-0">
               <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)] shrink-0">
-                <div>
+                <button
+                  onClick={activeChannel?.type === 'group' ? openGroupInfo : undefined}
+                  className={activeChannel?.type === 'group' ? 'text-left cursor-pointer' : 'text-left'}
+                  disabled={activeChannel?.type !== 'group'}
+                >
                   <p className="text-sm font-bold text-[var(--text-primary)]">{label.title || 'Select a conversation'}</p>
                   {label.subtitle && <p className="text-[10px] text-[var(--text-muted)]">{label.subtitle}</p>}
-                </div>
+                </button>
                 <div className="flex items-center gap-1">
                   {activeChannel && (
                     <>
+                      {activeChannel.type === 'group' && (
+                        <button onClick={openGroupInfo} className="p-2 rounded-lg hover:bg-[var(--accent-light)] text-[var(--text-muted)] cursor-pointer" title="Group info">
+                          <Users size={16} />
+                        </button>
+                      )}
                       {pinnedMessages.length > 0 && (
                         <button onClick={() => setShowPinnedList(true)} className="p-2 rounded-lg hover:bg-[var(--accent-light)] text-[var(--accent)] cursor-pointer relative" title="Pinned messages">
                           <Pin size={16} />
@@ -770,8 +982,17 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
                           <Images size={16} />
                         </button>
                       )}
-                      <button onClick={() => startCall('voice')} className="p-2 rounded-lg hover:bg-[var(--accent-light)] text-[var(--accent)] cursor-pointer" title="Voice call"><Phone size={16} /></button>
-                      <button onClick={() => startCall('video')} className="p-2 rounded-lg hover:bg-[var(--accent-light)] text-[var(--accent)] cursor-pointer" title="Video call"><Video size={16} /></button>
+                      {messages.some(m => m.attachment_type === 'call') && (
+                        <button onClick={() => setShowCallHistory(true)} className="p-2 rounded-lg hover:bg-[var(--accent-light)] text-[var(--text-muted)] cursor-pointer" title="Call history">
+                          <Clock size={16} />
+                        </button>
+                      )}
+                      {callsEnabled && (
+                        <>
+                          <button onClick={() => startCall('voice')} className="p-2 rounded-lg hover:bg-[var(--accent-light)] text-[var(--accent)] cursor-pointer" title="Voice call"><Phone size={16} /></button>
+                          <button onClick={() => startCall('video')} className="p-2 rounded-lg hover:bg-[var(--accent-light)] text-[var(--accent)] cursor-pointer" title="Video call"><Video size={16} /></button>
+                        </>
+                      )}
                     </>
                   )}
                   <button onClick={onClose} className="p-2 rounded-lg hover:bg-[var(--bg-input)] text-[var(--text-muted)] cursor-pointer ml-1"><X size={16} /></button>
@@ -823,7 +1044,10 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
                           ) : isCall ? (
                             <button onClick={async () => {
                               const { data } = await supabase.from('meetings').select('*').eq('id', msg.attachment_url).limit(1);
-                              if (data && data[0]) setActiveCall({ room: data[0].jitsi_room, title: data[0].title, kind: data[0].title.includes('Video') ? 'video' : 'voice' });
+                              // Rejoining someone else's call — not the
+                              // organizer's own "end call" moment, so no
+                              // missed-call check fires on close (no callMessageId).
+                              if (data && data[0]) setActiveCall({ room: data[0].jitsi_room, title: data[0].title, kind: data[0].title.includes('Video') ? 'video' : 'voice', channelId: msg.channel_id, memberIds: [] });
                             }} className={`flex items-center gap-2 text-xs font-bold cursor-pointer underline ${mine ? 'text-white' : 'text-[var(--accent)]'}`}>
                               {msg.content}
                             </button>
@@ -954,17 +1178,21 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
                     </>
                   ) : (
                     <>
-                      <input ref={fileInputRef} type="file" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleAttach(f); e.target.value = ''; }} />
-                      <button onClick={() => fileInputRef.current?.click()} title="Attach a file" className="p-2 rounded-lg hover:bg-[var(--bg-input)] text-[var(--text-muted)] cursor-pointer shrink-0"><Paperclip size={16} /></button>
-                      <input ref={multiImageInputRef} type="file" accept="image/*" multiple className="hidden" onChange={e => { const files = Array.from(e.target.files || []); if (files.length === 1) handleAttach(files[0]); else if (files.length > 1) handleAttachMultiple(files); e.target.value = ''; }} />
-                      <button onClick={() => multiImageInputRef.current?.click()} title="Send photos" className="p-2 rounded-lg hover:bg-[var(--bg-input)] text-[var(--text-muted)] cursor-pointer shrink-0"><Images size={16} /></button>
-                      <button
-                        onClick={isRecording ? stopVoiceRecording : startVoiceRecording}
-                        title={isRecording ? 'Stop recording' : 'Record a voice note'}
-                        className={`p-2 rounded-lg cursor-pointer shrink-0 ${isRecording ? 'bg-rose-500 text-white animate-pulse' : 'hover:bg-[var(--bg-input)] text-[var(--text-muted)]'}`}
-                      >
-                        {isRecording ? <Square size={16} /> : <Mic size={16} />}
-                      </button>
+                      {attachmentsEnabled && (
+                        <>
+                          <input ref={fileInputRef} type="file" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleAttach(f); e.target.value = ''; }} />
+                          <button onClick={() => fileInputRef.current?.click()} title="Attach a file" className="p-2 rounded-lg hover:bg-[var(--bg-input)] text-[var(--text-muted)] cursor-pointer shrink-0"><Paperclip size={16} /></button>
+                          <input ref={multiImageInputRef} type="file" accept="image/*" multiple className="hidden" onChange={e => { const files = Array.from(e.target.files || []); if (files.length === 1) handleAttach(files[0]); else if (files.length > 1) handleAttachMultiple(files); e.target.value = ''; }} />
+                          <button onClick={() => multiImageInputRef.current?.click()} title="Send photos" className="p-2 rounded-lg hover:bg-[var(--bg-input)] text-[var(--text-muted)] cursor-pointer shrink-0"><Images size={16} /></button>
+                          <button
+                            onClick={isRecording ? stopVoiceRecording : startVoiceRecording}
+                            title={isRecording ? 'Stop recording' : 'Record a voice note'}
+                            className={`p-2 rounded-lg cursor-pointer shrink-0 ${isRecording ? 'bg-rose-500 text-white animate-pulse' : 'hover:bg-[var(--bg-input)] text-[var(--text-muted)]'}`}
+                          >
+                            {isRecording ? <Square size={16} /> : <Mic size={16} />}
+                          </button>
+                        </>
+                      )}
                       <div className="relative flex-1">
                         {mentionCandidates.length > 0 && (
                           <div className="absolute bottom-full mb-1 left-0 right-0 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-card py-1 z-10">
@@ -1078,6 +1306,155 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
       </div>
     )}
 
+    {/* Group info — rename, photo, member list, add/remove, leave */}
+    {showGroupInfo && activeChannel && (
+      <div className="fixed inset-0 z-[1600] bg-black/50 flex items-center justify-center p-4" onClick={() => setShowGroupInfo(false)}>
+        <div className="bg-[var(--bg-card)] rounded-2xl shadow-2xl w-full max-w-md max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
+          <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
+            <h3 className="font-bold text-sm text-[var(--text-primary)] flex items-center gap-2"><Users size={14} /> Group Info</h3>
+            <button onClick={() => setShowGroupInfo(false)} className="p-1 cursor-pointer"><X size={16} /></button>
+          </div>
+          <div className="flex-1 overflow-y-auto p-5 space-y-4">
+            <div className="flex flex-col items-center gap-2">
+              <input ref={groupPhotoInputRef} type="file" accept="image/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleGroupPhotoChange(f); e.target.value = ''; }} />
+              <button onClick={() => groupPhotoInputRef.current?.click()} className="relative cursor-pointer">
+                {activeChannel.photo_url && attachmentUrls[activeChannel.photo_url] ? (
+                  <img src={attachmentUrls[activeChannel.photo_url]} alt="Group" className="w-16 h-16 rounded-full object-cover" />
+                ) : (
+                  <div className="w-16 h-16 rounded-full bg-[var(--accent-light)] text-[var(--accent)] flex items-center justify-center text-lg font-bold">{initials(activeChannel.name || 'GC')}</div>
+                )}
+                <span className="absolute bottom-0 right-0 w-5 h-5 rounded-full bg-[var(--accent)] text-white flex items-center justify-center text-[9px]">✎</span>
+              </button>
+              <div className="flex items-center gap-2 w-full">
+                <input value={groupNameEdit} onChange={e => setGroupNameEdit(e.target.value)} className="flex-1 px-3 py-1.5 text-sm text-center bg-[var(--bg-input)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-[var(--accent)]" />
+                {groupNameEdit.trim() !== activeChannel.name && (
+                  <button onClick={saveGroupName} disabled={savingGroupInfo} className="px-3 py-1.5 text-xs font-bold text-white rounded-xl cursor-pointer" style={{ background: 'var(--accent)' }}>Save</button>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <p className="text-[9px] font-bold uppercase tracking-wider text-[var(--text-muted)]">{groupMembers.length} Members</p>
+              <button onClick={() => setAddingGroupMembers(true)} className="text-xs font-semibold text-[var(--accent)] cursor-pointer flex items-center gap-1"><Plus size={12} /> Add</button>
+            </div>
+            <div className="space-y-1">
+              {groupMembers.map(m => (
+                <div key={m.id} className="flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg hover:bg-[var(--bg-input)]">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="w-8 h-8 rounded-full bg-[var(--accent-light)] text-[var(--accent)] flex items-center justify-center text-[10px] font-bold shrink-0">{initials(m.full_name)}</div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-[var(--text-primary)] truncate">{m.full_name}{m.id === myId ? ' (you)' : ''}</p>
+                      <p className="text-[10px] text-[var(--text-muted)]">{m.department}</p>
+                    </div>
+                  </div>
+                  {m.id !== myId && (
+                    <button onClick={() => removeGroupMember(m.id)} className="p-1 text-[var(--text-muted)] hover:text-rose-500 cursor-pointer" title="Remove"><X size={13} /></button>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <button onClick={leaveGroup} className="w-full px-3 py-2 text-xs font-bold text-rose-500 border border-rose-500/30 rounded-xl cursor-pointer hover:bg-rose-500/10">Leave Group</button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Add members to group */}
+    {addingGroupMembers && (
+      <div className="fixed inset-0 z-[1700] bg-black/50 flex items-center justify-center p-4" onClick={() => setAddingGroupMembers(false)}>
+        <div className="bg-[var(--bg-card)] rounded-2xl shadow-2xl w-full max-w-md max-h-[70vh] flex flex-col" onClick={e => e.stopPropagation()}>
+          <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
+            <h3 className="font-bold text-sm text-[var(--text-primary)]">Add Members</h3>
+            <button onClick={() => setAddingGroupMembers(false)} className="p-1 cursor-pointer"><X size={16} /></button>
+          </div>
+          <div className="flex-1 overflow-y-auto p-2">
+            {profiles.filter(p => !groupMembers.some(m => m.id === p.id)).map(c => {
+              const selected = newGroupMemberIds.includes(c.id);
+              return (
+                <button key={c.id} onClick={() => setNewGroupMemberIds(prev => selected ? prev.filter(id => id !== c.id) : [...prev, c.id])}
+                  className="w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl hover:bg-[var(--accent-light)] cursor-pointer text-left">
+                  <div className="w-8 h-8 rounded-full bg-[var(--accent-light)] text-[var(--accent)] flex items-center justify-center text-xs font-bold shrink-0">{initials(c.fullName)}</div>
+                  <div className="min-w-0 flex-1"><p className="text-xs font-bold text-[var(--text-primary)] truncate">{c.fullName}</p></div>
+                  {selected ? <Check size={16} className="text-[var(--accent)]" /> : <div className="w-4 h-4 rounded border border-[var(--border)]" />}
+                </button>
+              );
+            })}
+          </div>
+          <div className="flex justify-end gap-2 px-5 py-4 border-t border-[var(--border)]">
+            <button onClick={() => { setAddingGroupMembers(false); setNewGroupMemberIds([]); }} className="px-4 py-2 text-xs font-semibold text-[var(--text-secondary)] cursor-pointer">Cancel</button>
+            <button onClick={addSelectedMembers} disabled={newGroupMemberIds.length === 0} className="px-4 py-2 text-xs font-bold text-white rounded-xl cursor-pointer disabled:opacity-40" style={{ background: 'var(--accent)' }}>Add</button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Global search — every conversation the caller belongs to, not just the open one */}
+    {showGlobalSearch && (
+      <div className="fixed inset-0 z-[1700] bg-black/50 flex items-center justify-center p-4" onClick={() => { setShowGlobalSearch(false); setGlobalSearchQuery(''); setGlobalSearchResults([]); }}>
+        <div className="bg-[var(--bg-card)] rounded-2xl shadow-2xl w-full max-w-md max-h-[70vh] flex flex-col" onClick={e => e.stopPropagation()}>
+          <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
+            <h3 className="font-bold text-sm text-[var(--text-primary)]">Search All Messages</h3>
+            <button onClick={() => setShowGlobalSearch(false)} className="p-1 cursor-pointer"><X size={16} /></button>
+          </div>
+          <div className="px-4 py-3 border-b border-[var(--border)]">
+            <input autoFocus value={globalSearchQuery} onChange={e => runGlobalSearch(e.target.value)} placeholder="Search across every conversation…"
+              className="w-full px-3 py-2 text-xs bg-[var(--bg-input)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-[var(--accent)]" />
+          </div>
+          <div className="flex-1 overflow-y-auto p-2">
+            {searchingGlobally && <p className="text-xs text-[var(--text-muted)] text-center py-6">Searching…</p>}
+            {!searchingGlobally && globalSearchQuery.trim() && globalSearchResults.length === 0 && <p className="text-xs text-[var(--text-muted)] text-center py-6">No messages found.</p>}
+            {globalSearchResults.map(m => {
+              const ch = channels.find(c => c.id === m.channel_id);
+              const chLabel = ch?.type === 'everyone' ? 'Everyone' : ch?.type === 'group' ? (ch.name || 'Group') : (profiles.find(p => dmChannelByUser[p.id]?.id === m.channel_id)?.fullName || 'Direct Message');
+              return (
+                <button key={m.id} onClick={() => { if (ch) setActiveChannel(ch); setShowGlobalSearch(false); }} className="w-full text-left px-3 py-2 rounded-xl hover:bg-[var(--accent-light)] cursor-pointer">
+                  <div className="flex items-center justify-between">
+                    <p className="text-[10px] font-bold text-[var(--accent)]">{chLabel}</p>
+                    <p className="text-[9px] text-[var(--text-muted)]">{new Date(m.created_at).toLocaleDateString()}</p>
+                  </div>
+                  <p className="text-xs text-[var(--text-primary)] truncate"><span className="font-semibold">{m.sender}:</span> {m.content}</p>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Call history — every call started in this conversation, tap to rejoin */}
+    {showCallHistory && (
+      <div className="fixed inset-0 z-[1600] bg-black/50 flex items-center justify-center p-4" onClick={() => setShowCallHistory(false)}>
+        <div className="bg-[var(--bg-card)] rounded-2xl shadow-2xl w-full max-w-md max-h-[70vh] flex flex-col" onClick={e => e.stopPropagation()}>
+          <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
+            <h3 className="font-bold text-sm text-[var(--text-primary)] flex items-center gap-2"><Clock size={14} /> Call History</h3>
+            <button onClick={() => setShowCallHistory(false)} className="p-1 cursor-pointer"><X size={16} /></button>
+          </div>
+          <div className="flex-1 overflow-y-auto p-3 space-y-2">
+            {messages.filter(m => m.attachment_type === 'call').length === 0 && <p className="text-xs text-[var(--text-muted)] text-center py-10">No calls yet.</p>}
+            {messages.filter(m => m.attachment_type === 'call').reverse().map(m => (
+              <button
+                key={m.id}
+                onClick={async () => {
+                  const { data } = await supabase.from('meetings').select('*').eq('id', m.attachment_url).limit(1);
+                  if (data && data[0]) { setActiveCall({ room: data[0].jitsi_room, title: data[0].title, kind: data[0].title.includes('Video') ? 'video' : 'voice', channelId: m.channel_id, memberIds: [] }); setShowCallHistory(false); }
+                }}
+                className="w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl hover:bg-[var(--accent-light)] cursor-pointer text-left"
+              >
+                <div className="w-8 h-8 rounded-full bg-[var(--accent-light)] text-[var(--accent)] flex items-center justify-center shrink-0">
+                  {m.content.toLowerCase().includes('video') ? <Video size={14} /> : <Phone size={14} />}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-bold text-[var(--text-primary)]">{m.sender}</p>
+                  <p className="text-[10px] text-[var(--text-muted)]">{new Date(m.created_at).toLocaleString()}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    )}
+
     {/* Gallery — every image sent in this conversation, grid + tap-to-lightbox */}
     {showGallery && (() => {
       const allImageUrls = messages.flatMap(m =>
@@ -1120,7 +1497,7 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
     )}
 
     {activeCall && (
-      <JitsiCallModal room={activeCall.room} title={activeCall.title} kind={activeCall.kind} onClose={() => setActiveCall(null)} />
+      <JitsiCallModal room={activeCall.room} title={activeCall.title} kind={activeCall.kind} onClose={endActiveCall} />
     )}
     </>
   );

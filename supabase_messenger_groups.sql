@@ -1,0 +1,17 @@
+-- supabase_messenger_groups.sql
+-- Phase 11.4 — group management (rename, photo, member add/remove/leave).
+--
+-- Purely additive: one new nullable column. No RLS changes to channels/
+-- channel_members — same reasoning as chat_messages in
+-- supabase_messenger_message_actions.sql: no tracked CREATE TABLE/RLS
+-- exists anywhere in this repo for either table, and every write this
+-- phase needs (rename, set photo, add/remove member, leave) is the same
+-- class of insert/update/delete that createGroupChannel()/joinChannel()
+-- already perform successfully today, so the existing (unknown, but
+-- evidently permissive-enough) policies already cover it. Membership
+-- itself is the real app-layer gate: every one of these actions is only
+-- ever offered from inside a channel a user already reached via
+-- listMyChannels(), so a non-member never sees the controls to begin
+-- with. Same accepted-gap posture as message edit/delete, documented
+-- rather than guessed at.
+alter table public.channels add column if not exists photo_url text;

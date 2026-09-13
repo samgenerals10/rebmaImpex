@@ -11,7 +11,7 @@ import { useAudioRecorder, useAudioRecorderState, useAudioPlayer, useAudioPlayer
 import {
   Send, Paperclip, Smile, Reply, X, Check, CheckCheck, FileText,
   Pin, Star, Pencil, Trash2, Forward, Copy, MoreVertical, Search, Users, Bell, BellOff,
-  Images, Mic, Square, Play, Pause, Download,
+  Images, Mic, Square, Play, Pause, Download, Plus, Phone as PhoneIcon, Video, Clock,
 } from 'lucide-react-native';
 import { supabase } from '../lib/supabaseClient';
 import { messenger, type ChatMessage, type Channel } from '../lib/messenger';
@@ -23,7 +23,9 @@ import { usePresets } from '../theme/presets';
 import Screen from '../components/ui/Screen';
 import Sheet from '../components/ui/Sheet';
 import Avatar from '../components/ui/Avatar';
+import Button from '../components/ui/Button';
 import StickyActionBar from '../components/ui/StickyActionBar';
+import JitsiCallSheet from '../components/shared/JitsiCallSheet';
 
 const REACTION_EMOJIS = ['👍', '❤️', '😂', '🎉', '😮', '👏'];
 
@@ -31,7 +33,7 @@ function initials(name: string) {
   return (name || '').split(' ').slice(0, 2).map((n) => n[0]).join('').toUpperCase();
 }
 
-export default function MessengerThreadScreen({ route }: any) {
+export default function MessengerThreadScreen({ route, navigation }: any) {
   const { channelId, channelType, title, subtitle } = route.params as { channelId: string; channelType: string; title: string; subtitle?: string };
   const t = useTheme();
   const p = usePresets();
@@ -71,6 +73,17 @@ export default function MessengerThreadScreen({ route }: any) {
   const [showGallery, setShowGallery] = useState(false);
   const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const recorderState = useAudioRecorderState(audioRecorder);
+  // Phase 11.4 — group management.
+  const [groupName, setGroupName] = useState(title);
+  const [groupPhotoPath, setGroupPhotoPath] = useState<string | null>(null);
+  const [showGroupInfo, setShowGroupInfo] = useState(false);
+  const [groupMembers, setGroupMembers] = useState<{ id: string; full_name: string; department: string }[]>([]);
+  const [groupNameEdit, setGroupNameEdit] = useState('');
+  const [addingGroupMembers, setAddingGroupMembers] = useState(false);
+  const [newGroupMemberIds, setNewGroupMemberIds] = useState<string[]>([]);
+  // Phase 11.5 — ad-hoc calls (previously Meetings-only on mobile).
+  const [activeCall, setActiveCall] = useState<{ room: string; title: string; kind: 'voice' | 'video'; callMessageId?: string; memberIds: string[] } | null>(null);
+  const [showCallHistory, setShowCallHistory] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
   const memberIds = useRef<string[]>([]);
   const presenceRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
@@ -131,6 +144,98 @@ export default function MessengerThreadScreen({ route }: any) {
     setMuted((v) => !v);
   };
 
+  // Phase 11.4 — group management. Any current member may rename,
+  // re-photo, or add/remove another member — no admin/member-role
+  // distinction exists anywhere in this schema (mirrors web exactly).
+  useEffect(() => {
+    if (channelType !== 'group') return;
+    supabase.from('channels').select('name, photo_url').eq('id', channelId).maybeSingle().then(({ data }) => {
+      if (data) { setGroupName(data.name || title); setGroupPhotoPath(data.photo_url || null); }
+    });
+  }, [channelId, channelType]);
+
+  const openGroupInfo = async () => {
+    setGroupNameEdit(groupName);
+    setShowGroupInfo(true);
+    const members = await messenger.fetchChannelMembers(channelId);
+    setGroupMembers(members);
+  };
+
+  const saveGroupName = async () => {
+    if (!groupNameEdit.trim()) return;
+    try {
+      await messenger.renameChannel(channelId, groupNameEdit.trim());
+      setGroupName(groupNameEdit.trim());
+    } catch (e: any) {
+      Alert.alert('Rename failed', e.message);
+    }
+  };
+
+  const handleGroupPhotoChange = async () => {
+    const asset = await pickOrCaptureImageAsset();
+    if (!asset) return;
+    const err = validateAttachment(asset.mimeType, asset.size);
+    if (err) { Alert.alert("Can't use that photo", err); return; }
+    try {
+      const path = await messenger.uploadChatAttachment(asset.uri, asset.mimeType, channelId);
+      await messenger.setChannelPhoto(channelId, path);
+      setGroupPhotoPath(path);
+      const url = await messenger.getSignedAttachmentUrl(path);
+      if (url) setAttachmentUrls((prev) => ({ ...prev, [path]: url }));
+    } catch (e: any) {
+      Alert.alert('Photo upload failed', e.message);
+    }
+  };
+
+  const addSelectedMembers = async () => {
+    if (newGroupMemberIds.length === 0) return;
+    await messenger.addChannelMembers(channelId, newGroupMemberIds);
+    const members = await messenger.fetchChannelMembers(channelId);
+    setGroupMembers(members);
+    setNewGroupMemberIds([]);
+    setAddingGroupMembers(false);
+  };
+
+  const removeGroupMember = async (userId: string) => {
+    await messenger.removeChannelMember(channelId, userId);
+    setGroupMembers((prev) => prev.filter((m) => m.id !== userId));
+  };
+
+  const leaveGroup = async () => {
+    await messenger.removeChannelMember(channelId, myId);
+    setShowGroupInfo(false);
+    navigation.goBack();
+  };
+
+  // Phase 11.5 — ad-hoc calls, ported from web's Messenger.tsx equally to
+  // every conversation type (previously mobile only reached Jitsi through
+  // scheduled Meetings). Reuses the existing JitsiCallSheet as-is.
+  const startCall = async (kind: 'voice' | 'video') => {
+    const members = memberIds.current.length > 0 ? memberIds.current : [myId];
+    try {
+      const meeting = await messenger.startCall(channelId, members, myId, myName, kind);
+      setActiveCall({ room: meeting.jitsi_room, title: meeting.title, kind, callMessageId: meeting.callMessageId, memberIds: members });
+    } catch (e: any) {
+      Alert.alert('Failed to start call', e.message);
+    }
+  };
+
+  // Fires once, when the call screen actually closes, for whichever
+  // invited members never opened the call-started message.
+  const endActiveCall = () => {
+    if (activeCall?.callMessageId) {
+      messenger.notifyMissedCall(channelId, activeCall.callMessageId, activeCall.memberIds, myId, myName).catch(() => {});
+    }
+    setActiveCall(null);
+  };
+
+  // Rejoining someone else's call — not the organizer's own "end call"
+  // moment, so no missed-call check fires on close (no callMessageId).
+  const rejoinCall = async (msg: ChatMessage) => {
+    const { data } = await supabase.from('meetings').select('*').eq('id', msg.attachment_url).maybeSingle();
+    if (data) setActiveCall({ room: data.jitsi_room, title: data.title, kind: data.title.toLowerCase().includes('video') ? 'video' : 'voice', memberIds: [] });
+  };
+
   // Realtime — scoped to this one screen instance, which mounts/unmounts
   // cleanly on push/pop, so no shared-singleton risk like the presence
   // channel (only one thread is ever open at a time on mobile).
@@ -179,12 +284,13 @@ export default function MessengerThreadScreen({ route }: any) {
   useEffect(() => { scrollRef.current?.scrollToEnd({ animated: true }); }, [messages.length]);
 
   // Resolve signed URLs for attachments lazily, same as web — includes
-  // both the single-attachment column and every path inside a
-  // multi-image message.
+  // the single-attachment column, every path inside a multi-image
+  // message, and the group photo (Phase 11.4 — same bucket, same signing).
   useEffect(() => {
     const single = messages.filter((m) => m.attachment_url && m.attachment_type !== 'call' && !attachmentUrls[m.attachment_url!]).map((m) => m.attachment_url!);
     const multi = messages.flatMap((m) => (m.attachment_urls || []).filter((p) => !attachmentUrls[p]));
-    const paths = Array.from(new Set([...single, ...multi]));
+    const groupPhoto = groupPhotoPath && !attachmentUrls[groupPhotoPath] ? [groupPhotoPath] : [];
+    const paths = Array.from(new Set([...single, ...multi, ...groupPhoto]));
     if (paths.length === 0) return;
     (async () => {
       const entries: Record<string, string> = {};
@@ -194,7 +300,7 @@ export default function MessengerThreadScreen({ route }: any) {
       }
       setAttachmentUrls((prev) => ({ ...prev, ...entries }));
     })();
-  }, [messages, attachmentUrls]);
+  }, [messages, attachmentUrls, groupPhotoPath]);
 
   // Muted recipients (Phase 11.2) are filtered out here — @mentions use a
   // separate notify call below that always fires, mute or not.
@@ -484,6 +590,22 @@ export default function MessengerThreadScreen({ route }: any) {
             <Images size={17} color={t.colors.textMuted} />
           </Pressable>
         )}
+        {channelType === 'group' && (
+          <Pressable onPress={openGroupInfo} hitSlop={8} style={{ padding: 4 }}>
+            <Users size={17} color={t.colors.textMuted} />
+          </Pressable>
+        )}
+        {messages.some((m) => m.attachment_type === 'call') && (
+          <Pressable onPress={() => setShowCallHistory(true)} hitSlop={8} style={{ padding: 4 }}>
+            <Clock size={17} color={t.colors.textMuted} />
+          </Pressable>
+        )}
+        <Pressable onPress={() => startCall('voice')} hitSlop={8} style={{ padding: 4 }}>
+          <PhoneIcon size={17} color={t.colors.accent} />
+        </Pressable>
+        <Pressable onPress={() => startCall('video')} hitSlop={8} style={{ padding: 4 }}>
+          <Video size={17} color={t.colors.accent} />
+        </Pressable>
       </View>
 
       {showSearch && (
@@ -511,6 +633,7 @@ export default function MessengerThreadScreen({ route }: any) {
           const readByOthers = (reads[msg.id] || []).filter((uid) => uid !== myId).length > 0;
           const isImage = msg.attachment_type === 'image';
           const isFile = msg.attachment_type === 'file';
+          const isCall = msg.attachment_type === 'call';
           const isDeleted = !!msg.deleted_at;
           const isStarred = starredIds.has(msg.id);
           const isPinned = pinnedIds.has(msg.id);
@@ -552,6 +675,11 @@ export default function MessengerThreadScreen({ route }: any) {
                         </Pressable>
                       ) : msg.attachment_type === 'audio' && msg.attachment_url && attachmentUrls[msg.attachment_url] ? (
                         <VoiceNoteBubble uri={attachmentUrls[msg.attachment_url]} mine={mine} />
+                      ) : isCall ? (
+                        <Pressable onPress={() => rejoinCall(msg)} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          {msg.content.toLowerCase().includes('video') ? <Video size={14} color={mine ? t.colors.onAccent : t.colors.accent} /> : <PhoneIcon size={14} color={mine ? t.colors.onAccent : t.colors.accent} />}
+                          <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.body14.size, color: mine ? t.colors.onAccent : t.colors.accent, textDecorationLine: 'underline' }}>{msg.content}</Text>
+                        </Pressable>
                       ) : isFile ? (
                         <View style={{ marginBottom: 4 }}>
                           <Pressable
@@ -566,7 +694,9 @@ export default function MessengerThreadScreen({ route }: any) {
                           </Pressable>
                         </View>
                       ) : null}
-                      <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body14.size, color: mine ? t.colors.onAccent : t.colors.textPrimary }}>{msg.content}</Text>
+                      {!isCall && (
+                        <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body14.size, color: mine ? t.colors.onAccent : t.colors.textPrimary }}>{msg.content}</Text>
+                      )}
                     </>
                   )}
                 </View>
@@ -757,6 +887,99 @@ export default function MessengerThreadScreen({ route }: any) {
         })()}
       </Sheet>
 
+      {/* Call history — every call started in this conversation, tap to rejoin */}
+      <Sheet open={showCallHistory} onClose={() => setShowCallHistory(false)} title="Call History" side="bottom">
+        <View style={{ maxHeight: 320, gap: t.spacing.xs }}>
+          {messages.filter((m) => m.attachment_type === 'call').length === 0 && <Text style={p.meta}>No calls yet.</Text>}
+          {messages.filter((m) => m.attachment_type === 'call').slice().reverse().map((m) => (
+            <Pressable
+              key={m.id}
+              onPress={() => { setShowCallHistory(false); rejoinCall(m); }}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm, paddingVertical: t.spacing.sm }}
+            >
+              <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: t.colors.accentSoft, alignItems: 'center', justifyContent: 'center' }}>
+                {m.content.toLowerCase().includes('video') ? <Video size={14} color={t.colors.accent} /> : <PhoneIcon size={14} color={t.colors.accent} />}
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ ...p.body, fontFamily: t.font.semibold }}>{m.sender}</Text>
+                <Text style={p.meta}>{new Date(m.created_at).toLocaleString()}</Text>
+              </View>
+            </Pressable>
+          ))}
+        </View>
+      </Sheet>
+
+      {/* Group info — rename, photo, member list, add/remove, leave */}
+      <Sheet open={showGroupInfo} onClose={() => setShowGroupInfo(false)} title="Group Info" side="bottom">
+        <View style={{ alignItems: 'center', gap: t.spacing.sm, marginBottom: t.spacing.lg }}>
+          <Pressable onPress={handleGroupPhotoChange}>
+            {groupPhotoPath && attachmentUrls[groupPhotoPath] ? (
+              <Image source={{ uri: attachmentUrls[groupPhotoPath] }} style={{ width: 64, height: 64, borderRadius: 32 }} />
+            ) : (
+              <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: t.colors.accentSoft, alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ fontFamily: t.font.bold, fontSize: 20, color: t.colors.accent }}>{initials(groupName)}</Text>
+              </View>
+            )}
+          </Pressable>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm, width: '100%' }}>
+            <TextInput
+              value={groupNameEdit}
+              onChangeText={setGroupNameEdit}
+              style={{ flex: 1, textAlign: 'center', backgroundColor: t.colors.bgInput, borderWidth: 1, borderColor: t.colors.border, borderRadius: t.radius.pill, paddingHorizontal: t.spacing.lg, paddingVertical: t.spacing.smd, fontFamily: t.font.regular, fontSize: t.type.body14.size, color: t.colors.textPrimary }}
+            />
+            {groupNameEdit.trim() !== groupName && (
+              <Pressable onPress={saveGroupName} style={{ paddingHorizontal: t.spacing.md, paddingVertical: t.spacing.smd, borderRadius: t.radius.pill, backgroundColor: t.colors.accent }}>
+                <Text style={{ fontFamily: t.font.bold, fontSize: t.type.meta11.size, color: t.colors.onAccent }}>Save</Text>
+              </Pressable>
+            )}
+          </View>
+        </View>
+
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: t.spacing.sm }}>
+          <Text style={p.label9}>{groupMembers.length} Members</Text>
+          <Pressable onPress={() => setAddingGroupMembers(true)} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <Plus size={13} color={t.colors.accent} />
+            <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.meta11.size, color: t.colors.accent }}>Add</Text>
+          </Pressable>
+        </View>
+        <View style={{ maxHeight: 260 }}>
+          {groupMembers.map((m) => (
+            <View key={m.id} style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm, paddingVertical: t.spacing.xs }}>
+              <Avatar name={m.full_name} size={32} />
+              <View style={{ flex: 1 }}>
+                <Text style={{ ...p.body, fontFamily: t.font.semibold }}>{m.full_name}{m.id === myId ? ' (you)' : ''}</Text>
+                <Text style={p.meta}>{m.department}</Text>
+              </View>
+              {m.id !== myId && (
+                <Pressable onPress={() => removeGroupMember(m.id)} hitSlop={8}>
+                  <X size={15} color={t.colors.textMuted} />
+                </Pressable>
+              )}
+            </View>
+          ))}
+        </View>
+        <Pressable onPress={leaveGroup} style={{ marginTop: t.spacing.lg, paddingVertical: t.spacing.sm, borderRadius: t.radius.pill, borderWidth: 1, borderColor: t.colors.status.danger.text, alignItems: 'center' }}>
+          <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.status.danger.text }}>Leave Group</Text>
+        </Pressable>
+      </Sheet>
+
+      {/* Add members to group */}
+      <Sheet open={addingGroupMembers} onClose={() => { setAddingGroupMembers(false); setNewGroupMemberIds([]); }} title="Add Members" side="bottom">
+        <View style={{ maxHeight: 320 }}>
+          {profiles.filter((pr) => !groupMembers.some((m) => m.id === pr.id)).map((pr) => {
+            const selected = newGroupMemberIds.includes(pr.id);
+            return (
+              <Pressable key={pr.id} onPress={() => setNewGroupMemberIds((prev) => (selected ? prev.filter((id) => id !== pr.id) : [...prev, pr.id]))} style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm, paddingVertical: t.spacing.sm }}>
+                <Avatar name={pr.fullName} size={32} />
+                <Text style={{ ...p.body, fontFamily: t.font.semibold, flex: 1 }}>{pr.fullName}</Text>
+                {selected ? <Check size={18} color={t.colors.accent} /> : <View style={{ width: 18, height: 18, borderRadius: 4, borderWidth: 1, borderColor: t.colors.border }} />}
+              </Pressable>
+            );
+          })}
+        </View>
+        <Button label="Add" onPress={addSelectedMembers} disabled={newGroupMemberIds.length === 0} fullWidth style={{ marginTop: t.spacing.md }} />
+      </Sheet>
+
       {/* Lightbox — full-size image, prev/next through the same set */}
       <Modal visible={!!lightbox} transparent animationType="fade" onRequestClose={() => setLightbox(null)}>
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.92)', alignItems: 'center', justifyContent: 'center' }}>
@@ -782,6 +1005,10 @@ export default function MessengerThreadScreen({ route }: any) {
           )}
         </View>
       </Modal>
+
+      {activeCall && (
+        <JitsiCallSheet room={activeCall.room} title={activeCall.title} kind={activeCall.kind} onClose={endActiveCall} />
+      )}
     </Screen>
   );
 }
