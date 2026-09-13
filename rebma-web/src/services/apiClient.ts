@@ -327,6 +327,12 @@ export const auth = {
       if (userStatus === 'REJECTED') {
         throw new Error('Your account access has been denied.');
       }
+      if (userStatus === 'BLOCKED') {
+        throw new Error('Your account has been blocked by the CEO. Contact HR if you believe this is a mistake.');
+      }
+      if (userStatus === 'SUSPENDED') {
+        throw new Error('Your account has been suspended.');
+      }
       throw new Error(`Your account status is ${dbUser.status}.`);
     }
 

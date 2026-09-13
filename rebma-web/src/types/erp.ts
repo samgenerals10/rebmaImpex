@@ -185,7 +185,7 @@ export interface StaffMember {
   phone: string;
   photo?: string;
   joinedAt: string;
-  status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
+  status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED' | 'BLOCKED';
   employeeNumber?: string;
   resumeUrl?: string;
   address?: string;

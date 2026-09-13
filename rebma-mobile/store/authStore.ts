@@ -54,6 +54,8 @@ function statusErrorMessage(status: string): string {
   const s = (status || '').toUpperCase();
   if (s === 'PENDING' || s === 'PENDING_APPROVAL') return 'Your account is pending HR approval.';
   if (s === 'REJECTED') return 'Your account access has been denied.';
+  if (s === 'BLOCKED') return 'Your account has been blocked by the CEO. Contact HR if you believe this is a mistake.';
+  if (s === 'SUSPENDED') return 'Your account has been suspended.';
   if (s === 'ACTIVE') return '';
   return `Your account status is ${status}.`;
 }

@@ -1572,6 +1572,9 @@ export default function App() {
 
   // Real-Time Chat & Boardroom States
   const [isChatOpen, setIsChatOpen] = useState<boolean>(false);
+  // Set when a caller (Live Users' "Send Message") wants the messenger to
+  // open straight into a DM with a specific person instead of Everyone.
+  const [messengerTargetUserId, setMessengerTargetUserId] = useState<string | null>(null);
   const [chatMessages, setChatMessagesState] = useState<ChatMessage[]>([
     { id: '1', sender: 'System Terminal', content: 'Supabase Realtime initialized. Boardroom chat active.', time: '09:00 AM' }
   ]);
@@ -3125,7 +3128,7 @@ export default function App() {
       if (activeSubTab === 'PriceCatalog')    return <GoodsPriceCatalogView addNotification={addNotification} currentUser={currentUser} department={activeDepartment} />;
       if (activeSubTab === 'SupplierOrders')  return <CeoSupplierOrdersView currentUser={currentUser} addNotification={addNotification} />;
       if (activeSubTab === 'DeptActivity')    return <DeptActivityView currentUser={currentUser} addNotification={addNotification} />;
-      if (activeSubTab === 'LiveUsers')       return <LiveUsersView />;
+      if (activeSubTab === 'LiveUsers')       return <LiveUsersView currentUser={currentUser} addNotification={addNotification} onMessageUser={(userId: string) => { setMessengerTargetUserId(userId); setIsChatOpen(true); }} />;
       if (activeSubTab === 'FleetOverview')  return <LogisticsFleetOverviewView addNotification={addNotification} />;
       if (activeSubTab === 'FuelManagement') return <LogisticsFuelManagementView addNotification={addNotification} />;
       if (activeSubTab === 'Maintenance')    return <LogisticsMaintenanceView addNotification={addNotification} />;
@@ -3985,6 +3988,8 @@ export default function App() {
         renderConfirmModal={renderConfirmModal}
         isChatOpen={isChatOpen}
         setIsChatOpen={setIsChatOpen}
+        messengerTargetUserId={messengerTargetUserId}
+        setMessengerTargetUserId={setMessengerTargetUserId}
         chatMessages={chatMessages}
         sendChatMessage={sendChatMessage}
         boardroomMinutes={boardroomMinutes}
@@ -4043,7 +4048,7 @@ function AppInner({
   currentUser, reducedMotion, motionSetting, activeDepartment, setActiveDepartment,
   activeSubTab, setActiveSubTab, theme, notifications, setNotifications,
   addNotification, goToNotificationLink, renderDashboard, renderAlertModal, renderPromptModal,
-  renderConfirmModal, isChatOpen, setIsChatOpen, chatMessages, sendChatMessage,
+  renderConfirmModal, isChatOpen, setIsChatOpen, messengerTargetUserId, setMessengerTargetUserId, chatMessages, sendChatMessage,
   boardroomMinutes, setBoardroomMinutes, onLogout, openBoardroom,
   sidebarCollapsed, setSidebarCollapsed, unreadEmailCount,
   setIsAuthenticated, setCurrentUser, setCurrentDriver, isSidebarOpen, setIsSidebarOpen,
@@ -4278,8 +4283,9 @@ function AppInner({
         {/* 8. COLLABORATIVE MESSENGER (chat + calls) */}
         <Messenger
           isOpen={isChatOpen}
-          onClose={() => setIsChatOpen(false)}
+          onClose={() => { setIsChatOpen(false); setMessengerTargetUserId(null); }}
           currentUser={currentUser}
+          targetUserId={messengerTargetUserId}
         />
 
         {/* 9. GLOBAL TOAST NOTIFICATION OVERLAY */}

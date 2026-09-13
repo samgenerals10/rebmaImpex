@@ -29,7 +29,17 @@ let channel: RealtimeChannel | null = null;
 let subscribed = false;
 let currentUsers: PresencePayload[] = [];
 let pendingTrack: PresencePayload | null = null;
+let myUserId: string | null = null;
 const listeners = new Set<(users: PresencePayload[]) => void>();
+
+// CEO's "Kick Offline" action (Live Users). There's no real way to force
+// a sign-out by user ID alone — Supabase's admin signOut() needs that
+// user's own active token, which the caller never has. A targeted
+// broadcast on the same shared channel, telling that one session to sign
+// itself out right now, is a genuinely real mechanism — it only reaches
+// someone who is actually connected, which is exactly the precondition
+// for them appearing in this list at all.
+const FORCE_SIGNOUT_EVENT = 'force-signout';
 
 function getSharedChannel(): RealtimeChannel {
   if (channel) return channel;
@@ -39,6 +49,11 @@ function getSharedChannel(): RealtimeChannel {
     const state = channel!.presenceState<PresencePayload>();
     currentUsers = Object.values(state).flat().filter(Boolean) as unknown as PresencePayload[];
     listeners.forEach((l) => l(currentUsers));
+  });
+  channel.on('broadcast', { event: FORCE_SIGNOUT_EVENT }, ({ payload }: { payload: { targetUserId: string } }) => {
+    if (myUserId && payload.targetUserId === myUserId) {
+      supabase.auth.signOut();
+    }
   });
   channel.subscribe(async (status) => {
     if (status === 'SUBSCRIBED') {
@@ -54,6 +69,7 @@ function getSharedChannel(): RealtimeChannel {
 }
 
 export function joinLiveUsersChannel(payload: PresencePayload): RealtimeChannel {
+  myUserId = payload.userId;
   const ch = getSharedChannel();
   if (subscribed) {
     ch.track(payload);
@@ -70,6 +86,13 @@ export function subscribeToLiveUsers(listener: (users: PresencePayload[]) => voi
   return () => { listeners.delete(listener); };
 }
 
+// CEO action — tells one specific online user's session to sign out
+// immediately. Only affects someone who's actually connected right now.
+export function kickUserOffline(targetUserId: string) {
+  const ch = getSharedChannel();
+  ch.send({ type: 'broadcast', event: FORCE_SIGNOUT_EVENT, payload: { targetUserId } });
+}
+
 export function leaveLiveUsersChannel() {
   if (channel) {
     channel.unsubscribe();
@@ -78,5 +101,6 @@ export function leaveLiveUsersChannel() {
   subscribed = false;
   currentUsers = [];
   pendingTrack = null;
+  myUserId = null;
   listeners.clear();
 }

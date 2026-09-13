@@ -2,15 +2,33 @@
 // Ports: rebma-web/src/views/ceo/LiveUsersView.tsx — Phase 10.3. Same
 // shared Realtime Presence channel (lib/presence.ts) every signed-in
 // session (web or mobile) tracks itself on — no table, no polling.
+//
+// Actions mirror web's LiveUsersView.tsx exactly:
+//  - Suspend/Reactivate, Block/Unblock: profiles.status flip, same
+//    mechanism as web's Suspend button and CEO Control Center.
+//  - Kick Offline: presence.ts's kickUserOffline — a real-time broadcast
+//    telling that one connected session to sign itself out right now.
+//    NOT account deletion.
+//  - Send Message: mobile has no full Messenger.tsx UI yet (a later,
+//    larger phase), so this opens a small composer that writes to the
+//    exact same channels/chat_messages tables via lib/directMessage.ts —
+//    a real message, visible in the recipient's web Messenger thread.
 import { useEffect, useState } from 'react';
-import { View, Text, Image } from 'react-native';
-import { Radio } from 'lucide-react-native';
-import { subscribeToLiveUsers, type PresencePayload } from '../../lib/presence';
+import { View, Text, Image, Pressable, Alert } from 'react-native';
+import { Radio, MessageSquare, LogOut, Ban, ShieldOff, ShieldCheck, UserCheck } from 'lucide-react-native';
+import { subscribeToLiveUsers, kickUserOffline, type PresencePayload } from '../../lib/presence';
+import { supabase } from '../../lib/supabaseClient';
+import { getOrCreateDmChannel, sendDirectMessage } from '../../lib/directMessage';
+import { useAuthStore } from '../../store/authStore';
 import { useTheme } from '../../theme/ThemeProvider';
 import { usePresets } from '../../theme/presets';
 import Screen from '../../components/ui/Screen';
 import Card from '../../components/ui/Card';
 import Avatar from '../../components/ui/Avatar';
+import Badge from '../../components/ui/Badge';
+import Button from '../../components/ui/Button';
+import Sheet from '../../components/ui/Sheet';
+import Input from '../../components/ui/Input';
 import EmptyState from '../../components/ui/EmptyState';
 
 function formatDuration(ms: number): string {
@@ -23,17 +41,25 @@ function formatDuration(ms: number): string {
   return `${s}s`;
 }
 
+function statusTone(status: string): 'success' | 'warning' | 'danger' {
+  if (status === 'BLOCKED') return 'danger';
+  if (status === 'SUSPENDED') return 'warning';
+  return 'success';
+}
+
 export default function LiveUsersScreen() {
   const t = useTheme();
   const p = usePresets();
+  const me = useAuthStore((s) => s.profile);
   const [users, setUsers] = useState<PresencePayload[]>([]);
   const [now, setNow] = useState(Date.now());
+  const [statusByUser, setStatusByUser] = useState<Record<string, string>>({});
+  const [busyUserId, setBusyUserId] = useState<string | null>(null);
+  const [messageTarget, setMessageTarget] = useState<PresencePayload | null>(null);
+  const [messageText, setMessageText] = useState('');
+  const [sendingMessage, setSendingMessage] = useState(false);
+  const [photoPreview, setPhotoPreview] = useState<{ uri: string; name: string } | null>(null);
 
-  // Reads the shared presence channel AppShell.tsx already opened at
-  // login — never opens a second channel of its own (that was the bug:
-  // Supabase rejects adding a presence listener to an already-subscribed
-  // channel, and a second `.channel()` call with the same name returns
-  // that same already-subscribed instance).
   useEffect(() => {
     return subscribeToLiveUsers(setUsers);
   }, []);
@@ -42,6 +68,53 @@ export default function LiveUsersScreen() {
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
   }, []);
+
+  useEffect(() => {
+    const ids = users.map((u) => u.userId);
+    if (ids.length === 0) return;
+    supabase.from('profiles').select('id, status').in('id', ids).then(({ data }) => {
+      const next: Record<string, string> = {};
+      (data || []).forEach((row: any) => { next[row.id] = row.status; });
+      setStatusByUser((prev) => ({ ...prev, ...next }));
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [users.map((u) => u.userId).join(',')]);
+
+  const setStatus = async (userId: string, name: string, status: 'ACTIVE' | 'SUSPENDED' | 'BLOCKED', verb: string) => {
+    if (busyUserId) return;
+    setBusyUserId(userId);
+    try {
+      const { error } = await supabase.from('profiles').update({ status }).eq('id', userId);
+      if (error) throw error;
+      setStatusByUser((prev) => ({ ...prev, [userId]: status }));
+    } catch (err: any) {
+      Alert.alert('Failed', `Could not update ${name}: ${err.message}`);
+    } finally {
+      setBusyUserId(null);
+    }
+  };
+
+  const handleKick = (userId: string, name: string) => {
+    kickUserOffline(userId);
+    Alert.alert('Kicked offline', `${name} has been signed out.`);
+  };
+
+  const handleSendMessage = async () => {
+    if (!messageTarget || !me || !messageText.trim() || sendingMessage) return;
+    setSendingMessage(true);
+    try {
+      const channel = await getOrCreateDmChannel(me.id, messageTarget.userId);
+      await sendDirectMessage(channel.id, me.id, me.fullName, messageText.trim());
+      setMessageText('');
+      setMessageTarget(null);
+    } catch (err: any) {
+      Alert.alert('Failed to send', err.message);
+    } finally {
+      setSendingMessage(false);
+    }
+  };
+
+  const sorted = [...users].sort((a, b) => new Date(a.loggedInAt).getTime() - new Date(b.loggedInAt).getTime());
 
   return (
     <Screen scroll>
@@ -59,26 +132,105 @@ export default function LiveUsersScreen() {
         <EmptyState title="No one else is online right now" />
       ) : (
         <View style={{ paddingHorizontal: t.spacing.lg, gap: t.spacing.sm }}>
-          {users
-            .sort((a, b) => new Date(a.loggedInAt).getTime() - new Date(b.loggedInAt).getTime())
-            .map((u) => (
+          {sorted.map((u) => {
+            const status = statusByUser[u.userId] || 'ACTIVE';
+            const isSelf = me?.id === u.userId;
+            const isBusy = busyUserId === u.userId;
+            return (
               <Card key={u.userId} padded>
                 <View style={{ flexDirection: 'row', gap: t.spacing.md }}>
-                  <Avatar name={u.fullName} photo={u.photo} size={44} />
+                  <Pressable onPress={() => u.photo && setPhotoPreview({ uri: u.photo, name: u.fullName })}>
+                    <Avatar name={u.fullName} photo={u.photo} size={44} />
+                  </Pressable>
                   <View style={{ flex: 1 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                       <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: t.colors.status.success.text }} />
-                      <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.body14.size, color: t.colors.textPrimary }}>{u.fullName}</Text>
+                      <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.body14.size, color: t.colors.textPrimary }}>
+                        {u.fullName}{isSelf ? ' (you)' : ''}
+                      </Text>
                     </View>
-                    <Text style={{ ...p.meta, marginTop: 2 }}>{u.department}</Text>
+                    <Text style={{ ...p.meta, marginTop: 2 }}>{u.department}{u.role ? ` · ${u.role}` : ''}</Text>
                     <Text style={{ ...p.meta, marginTop: 6 }}>Online for {formatDuration(now - new Date(u.loggedInAt).getTime())}</Text>
                     <Text style={{ ...p.meta }}>Since {new Date(u.loggedInAt).toLocaleString()}</Text>
+                    <View style={{ marginTop: 8 }}>
+                      <Badge tone={statusTone(status)} label={status} size="xs" />
+                    </View>
                   </View>
                 </View>
+
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: t.spacing.md, paddingTop: t.spacing.sm, borderTopWidth: 1, borderTopColor: t.colors.border }}>
+                  {!isSelf && (
+                    <>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        label={status === 'SUSPENDED' ? 'Reactivate' : 'Suspend'}
+                        icon={status === 'SUSPENDED' ? <UserCheck size={13} color={t.colors.status.warning.text} /> : <ShieldOff size={13} color={t.colors.status.warning.text} />}
+                        disabled={isBusy}
+                        onPress={() => setStatus(u.userId, u.fullName, status === 'SUSPENDED' ? 'ACTIVE' : 'SUSPENDED', status === 'SUSPENDED' ? 'reactivated' : 'suspended')}
+                      />
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        label={status === 'BLOCKED' ? 'Unblock' : 'Block'}
+                        icon={status === 'BLOCKED' ? <ShieldCheck size={13} color={t.colors.status.danger.text} /> : <Ban size={13} color={t.colors.status.danger.text} />}
+                        disabled={isBusy}
+                        onPress={() => setStatus(u.userId, u.fullName, status === 'BLOCKED' ? 'ACTIVE' : 'BLOCKED', status === 'BLOCKED' ? 'unblocked' : 'blocked')}
+                      />
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        label="Kick"
+                        icon={<LogOut size={13} color={t.colors.textMuted} />}
+                        onPress={() => handleKick(u.userId, u.fullName)}
+                      />
+                    </>
+                  )}
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    label="Message"
+                    icon={<MessageSquare size={13} color={t.colors.accent} />}
+                    onPress={() => setMessageTarget(u)}
+                  />
+                </View>
               </Card>
-            ))}
+            );
+          })}
         </View>
       )}
+
+      <Sheet
+        open={!!messageTarget}
+        onClose={() => { setMessageTarget(null); setMessageText(''); }}
+        title={`Message ${messageTarget?.fullName || ''}`}
+        footer={
+          <Button label="Send" onPress={handleSendMessage} loading={sendingMessage} disabled={!messageText.trim()} fullWidth />
+        }
+      >
+        <Input
+          value={messageText}
+          onChangeText={setMessageText}
+          placeholder="Type a message..."
+          multiline
+          numberOfLines={4}
+          style={{ minHeight: 100, textAlignVertical: 'top' }}
+        />
+      </Sheet>
+
+      <Sheet
+        open={!!photoPreview}
+        onClose={() => setPhotoPreview(null)}
+        title={photoPreview?.name}
+      >
+        {photoPreview && (
+          <Image
+            source={{ uri: photoPreview.uri }}
+            style={{ width: '100%', aspectRatio: 1, borderRadius: t.radius.md }}
+            resizeMode="cover"
+          />
+        )}
+      </Sheet>
     </Screen>
   );
 }

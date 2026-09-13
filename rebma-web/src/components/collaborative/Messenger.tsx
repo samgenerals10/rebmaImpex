@@ -19,6 +19,10 @@ interface Props {
   isOpen: boolean;
   onClose: () => void;
   currentUser?: CurrentUser | null;
+  // Set by callers (e.g. CEO's Live Users "Send Message" action) that want
+  // the messenger to open straight into a DM with a specific person rather
+  // than landing on Everyone. Idempotent — safe to pass on every open.
+  targetUserId?: string | null;
 }
 
 interface Profile { id: string; fullName: string; department: string; }
@@ -35,7 +39,7 @@ function initials(name: string) {
   return name.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase();
 }
 
-export default function Messenger({ isOpen, onClose, currentUser }: Props) {
+export default function Messenger({ isOpen, onClose, currentUser, targetUserId }: Props) {
   const { getSetting } = useCeoSettings();
   const globalChatEnabled = getSetting('global_chat_enabled', true);
   const departmentChatEnabled = getSetting('department_chat_enabled', true);
@@ -191,6 +195,15 @@ export default function Messenger({ isOpen, onClose, currentUser }: Props) {
     }
     setActiveChannel(ch);
   };
+
+  // Jump straight into a DM when a caller (e.g. Live Users' "Send Message")
+  // opens the messenger with a specific target in mind. getOrCreateDmChannel
+  // is idempotent, so this is safe to fire on every open/target change.
+  useEffect(() => {
+    if (!isOpen || !myId || !targetUserId) return;
+    openDm(targetUserId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, myId, targetUserId]);
 
   const activeChannelMemberIds = useRef<string[]>([]);
   useEffect(() => {
