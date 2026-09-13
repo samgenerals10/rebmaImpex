@@ -7,6 +7,7 @@ dist/
 # Local environment variables containing credentials
 .env
 .env.local
+.env.example
 
 # Operating System files
 .DS_Store

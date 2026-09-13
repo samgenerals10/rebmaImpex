@@ -1,16 +1,32 @@
 import { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView, SafeAreaView, Switch, Alert, StatusBar, Linking } from 'react-native';
+import { Text, View, Pressable, ScrollView, Switch, Alert, StatusBar, Linking } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import { Wifi, WifiOff, LogOut, RefreshCw, Navigation } from 'lucide-react-native';
 import { supabase, type DriverRow } from '../../lib/supabaseClient';
 import { useAuthStore } from '../../store/authStore';
 import { useDeliveryStore } from '../../store/deliveryStore';
+import { useTheme } from '../../theme/ThemeProvider';
+import Card from '../../components/ui/Card';
+import Button from '../../components/ui/Button';
 
 function mapsLink(address: string): string {
   return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}`;
 }
 
+// Root-level screen (D6) — rendered outside the tab shell entirely, exactly
+// as rebma-web's App.tsx short-circuits to DriverTrackingView before any
+// department chrome renders. Phase 7.0: restyled in place, GPS/offline
+// logic below is byte-identical to before this pass.
+//
+// Phase 7.12, D121: `networkOnline` is now driven automatically by a real
+// NetInfo listener (App.tsx's root-level startConnectivityWatch()), not
+// only this Switch. The Switch is kept, but relabeled "Force Offline" —
+// it now drives `forcedOffline`, a manual override for testing that ANDs
+// against the real connectivity signal, rather than being the sole source
+// of truth it was before this phase.
 export default function DispatchHomeScreen() {
+  const t = useTheme();
   const { profile, driver, signOut } = useAuthStore();
   const [activeDeliveryClient, setActiveDeliveryClient] = useState('');
   const [activeDeliveryDestination, setActiveDeliveryDestination] = useState('');
@@ -23,10 +39,11 @@ export default function DispatchHomeScreen() {
     activeOrderId,
     gpsActive,
     networkOnline,
+    forcedOffline,
     coordinateBuffer,
     setActiveOrder,
     setGpsActive,
-    setNetworkOnline,
+    setForcedOffline,
     bufferCoordinate,
     clearBuffer,
     markOrderDelivered,
@@ -178,192 +195,139 @@ export default function DispatchHomeScreen() {
   const handleDeliver = async () => {
     if (!activeOrderId) return;
     const now = new Date().toISOString();
+    // Driver completion must NOT be able to bypass Risk — this now always
+    // enters PENDING_RISK_REVIEW, never DELIVERED directly. Risk's own POD
+    // Review screen is what ultimately marks the delivery DELIVERED, via
+    // the risk_review_pod() RPC, which is the only path either
+    // delivery_logs.status or orders.status can reach DELIVERED —
+    // enforced by a database trigger, not just this screen's convention.
     const { error } = await supabase
       .from('delivery_logs')
-      .update({ status: 'DELIVERED', delivered_at: now, updated_at: now })
+      .update({ status: 'PENDING_RISK_REVIEW', updated_at: now })
       .eq('id', activeOrderId);
     if (error) {
       Alert.alert('Failed to Update', error.message);
       return;
     }
-    if (activeDeliveryOrderId) {
-      await supabase.from('orders').update({ status: 'DELIVERED', updated_at: now }).eq('id', activeDeliveryOrderId);
-    }
+    try {
+      await supabase.from('supplier_order_notifications').insert([{ message: `Proof of delivery submitted for Risk review: Delivery ${activeOrderId}`, notified_department: 'RISK', read: false }]);
+    } catch {}
     markOrderDelivered(activeOrderId);
     setActiveDeliveryClient('');
     setActiveDeliveryDestination('');
     setActiveDeliveryOrderId(null);
     setActiveDeliveryStatus(null);
-    Alert.alert('Delivery Logged', 'Order status updated to DELIVERED.', [{ text: 'Dismiss' }]);
+    Alert.alert('Submitted for Review', 'Delivery submitted to Risk for review before it can be marked delivered.', [{ text: 'Dismiss' }]);
   };
 
   return (
-    <SafeAreaView style={styles.safeContainer}>
-      <StatusBar barStyle="dark-content" />
-      <View style={styles.header}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: t.colors.bgPage }} edges={['top', 'left', 'right']}>
+      <StatusBar barStyle="dark-content" backgroundColor={t.colors.bgPage} />
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: t.spacing.lg, paddingVertical: t.spacing.md, borderBottomWidth: 1, borderBottomColor: t.colors.border, backgroundColor: t.colors.bgCard }}>
         <View>
-          <Text style={styles.userTitle}>{driver?.full_name || profile?.fullName}</Text>
-          <Text style={styles.roleSub}>Dispatch Dashboard</Text>
+          <Text style={{ fontFamily: t.font.bold, fontSize: t.type.base16.size, color: t.colors.textPrimary }}>{driver?.full_name || profile?.fullName}</Text>
+          <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.meta11.size, color: t.colors.textMuted, textTransform: 'uppercase', marginTop: 2 }}>Dispatch Driver</Text>
         </View>
-        <TouchableOpacity style={styles.logoutBtn} onPress={signOut}>
-          <LogOut size={18} color="#ef4444" />
-        </TouchableOpacity>
+        <Pressable onPress={signOut} style={{ padding: t.spacing.sm, backgroundColor: t.colors.status.danger.bg, borderRadius: t.radius.pill }}>
+          <LogOut size={18} color={t.colors.status.danger.text} />
+        </Pressable>
       </View>
 
-      <View style={[styles.networkStatusContainer, networkOnline ? styles.networkOnlineBg : styles.networkOfflineBg]}>
-        <View style={styles.networkInfo}>
-          {networkOnline ? <Wifi size={14} color="#10b981" /> : <WifiOff size={14} color="#f43f5e" />}
-          <Text style={[styles.networkStatusText, networkOnline ? styles.textOnline : styles.textOffline]}>
-            {networkOnline ? 'Server Connection: Active' : 'Server Connection: Offline Mode'}
+      <View
+        style={{
+          flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+          paddingHorizontal: t.spacing.lg, paddingVertical: t.spacing.smd, borderBottomWidth: 1,
+          backgroundColor: networkOnline ? t.colors.status.success.bg : t.colors.status.danger.bg,
+          borderBottomColor: networkOnline ? t.colors.status.success.text : t.colors.status.danger.text,
+        }}
+      >
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.xs }}>
+          {networkOnline ? <Wifi size={14} color={t.colors.status.success.text} /> : <WifiOff size={14} color={t.colors.status.danger.text} />}
+          <Text style={{ fontFamily: t.font.bold, fontSize: t.type.meta11.size, color: networkOnline ? t.colors.status.success.text : t.colors.status.danger.text }}>
+            {networkOnline ? 'Server Connection: Active' : forcedOffline ? 'Server Connection: Forced Offline' : 'Server Connection: Offline (no signal)'}
           </Text>
         </View>
-        <Switch
-          value={networkOnline}
-          onValueChange={setNetworkOnline}
-          thumbColor={networkOnline ? '#10b981' : '#f43f5e'}
-          trackColor={{ false: '#fca5a5', true: '#a7f3d0' }}
-        />
+        <View style={{ alignItems: 'flex-end' }}>
+          <Switch value={forcedOffline} onValueChange={setForcedOffline} thumbColor={forcedOffline ? t.colors.status.danger.text : t.colors.status.success.text} trackColor={{ false: '#a7f3d0', true: '#fca5a5' }} />
+          <Text style={{ fontFamily: t.font.regular, fontSize: 9, color: networkOnline ? t.colors.status.success.text : t.colors.status.danger.text, marginTop: 2 }}>Force Offline</Text>
+        </View>
       </View>
 
-      <ScrollView style={styles.contentContainer} contentContainerStyle={styles.scrollContent}>
-        <View style={styles.sectionSpace}>
-          <View style={styles.card}>
-            <Text style={styles.cardHeader}>Active Route Assignments</Text>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: t.spacing.lg, gap: t.spacing.xl }}>
+        <Card>
+          <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary, marginBottom: t.spacing.md }}>Active Route Assignments</Text>
 
-            {!activeOrderId ? (
-              <View style={styles.emptyContainer}>
-                <Text style={styles.emptyText}>No routes currently active. Dispatch will assign your next delivery.</Text>
-                <TouchableOpacity style={styles.actionBtn} onPress={() => driver && loadActiveDelivery(driver)}>
-                  <Text style={styles.actionBtnText}>Check for New Assignment</Text>
-                </TouchableOpacity>
+          {!activeOrderId ? (
+            <View style={{ alignItems: 'center', paddingVertical: t.spacing.lg }}>
+              <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textMuted, marginBottom: t.spacing.lg, textAlign: 'center' }}>
+                No routes currently active. Dispatch will assign your next delivery.
+              </Text>
+              <Button label="Check for New Assignment" onPress={() => driver && loadActiveDelivery(driver)} />
+            </View>
+          ) : (
+            <View style={{ gap: t.spacing.lg }}>
+              <View style={{ padding: t.spacing.md, backgroundColor: t.colors.bgPage, borderRadius: t.radius.md, borderWidth: 1, borderColor: t.colors.border }}>
+                <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body12.size, color: t.colors.textPrimary }}>Order Ref: {activeOrderId}</Text>
+                <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta11.size, color: t.colors.textMuted, marginTop: 2 }}>Client: {activeDeliveryClient || 'N/A'}</Text>
+                {!!activeDeliveryDestination && <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta11.size, color: t.colors.textMuted, marginTop: 2 }}>To: {activeDeliveryDestination}</Text>}
               </View>
-            ) : (
-              <View style={styles.routeDetails}>
-                <View style={styles.routeHeader}>
-                  <Text style={styles.routeId}>Order Ref: {activeOrderId}</Text>
-                  <Text style={styles.routeTarget}>Client: {activeDeliveryClient || 'N/A'}</Text>
-                  {!!activeDeliveryDestination && <Text style={styles.routeTarget}>To: {activeDeliveryDestination}</Text>}
+
+              <View style={{ flexDirection: 'row', gap: t.spacing.md }}>
+                <View style={{ flex: 1, padding: t.spacing.md, backgroundColor: t.colors.bgPage, borderRadius: t.radius.md, borderWidth: 1, borderColor: t.colors.border }}>
+                  <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.meta10.size, color: t.colors.textMuted, textTransform: 'uppercase' }}>Latitude</Text>
+                  <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary, marginTop: 4 }}>{lastLat !== null ? lastLat.toFixed(5) : '—'}</Text>
                 </View>
-
-                <View style={styles.trackingMetrics}>
-                  <View style={styles.metricItem}>
-                    <Text style={styles.metricLabel}>Latitude</Text>
-                    <Text style={styles.metricValue}>{lastLat !== null ? lastLat.toFixed(5) : '—'}</Text>
-                  </View>
-                  <View style={styles.metricItem}>
-                    <Text style={styles.metricLabel}>Longitude</Text>
-                    <Text style={styles.metricValue}>{lastLng !== null ? lastLng.toFixed(5) : '—'}</Text>
-                  </View>
+                <View style={{ flex: 1, padding: t.spacing.md, backgroundColor: t.colors.bgPage, borderRadius: t.radius.md, borderWidth: 1, borderColor: t.colors.border }}>
+                  <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.meta10.size, color: t.colors.textMuted, textTransform: 'uppercase' }}>Longitude</Text>
+                  <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary, marginTop: 4 }}>{lastLng !== null ? lastLng.toFixed(5) : '—'}</Text>
                 </View>
-
-                {!!activeDeliveryDestination && (
-                  <TouchableOpacity style={styles.navigateBtn} onPress={handleNavigate}>
-                    <Navigation size={14} color="#ffffff" />
-                    <Text style={styles.btnText}>Navigate</Text>
-                  </TouchableOpacity>
-                )}
-
-                <View style={styles.toggleRow}>
-                  <Text style={styles.toggleLabel}>Share Live Location with Dispatch</Text>
-                  <Switch value={gpsActive} onValueChange={setGpsActive} />
-                </View>
-                <Text style={styles.subText}>Keep this app open while tracking is on — location only updates while the app is in the foreground.</Text>
-
-                <TouchableOpacity style={styles.deliverBtn} onPress={handleDeliver}>
-                  <Text style={styles.btnText}>Mark Order as Delivered</Text>
-                </TouchableOpacity>
               </View>
+
+              {!!activeDeliveryDestination && (
+                <Button label="Navigate" onPress={handleNavigate} fullWidth icon={<Navigation size={14} color="#fff" />} />
+              )}
+
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Text style={{ flex: 1, fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textSecondary, marginRight: t.spacing.sm }}>Share Live Location with Dispatch</Text>
+                <Switch value={gpsActive} onValueChange={setGpsActive} trackColor={{ false: t.colors.border, true: t.colors.accentSoft }} thumbColor={gpsActive ? t.colors.accent : undefined} />
+              </View>
+              <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textMuted }}>
+                Keep this app open while tracking is on — location only updates while the app is in the foreground.
+              </Text>
+
+              <Button label="Mark Order as Delivered" onPress={handleDeliver} fullWidth />
+            </View>
+          )}
+        </Card>
+
+        <Card>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: t.spacing.md }}>
+            <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary }}>Offline Sync Buffer Queue</Text>
+            {coordinateBuffer.length > 0 && (
+              <Pressable onPress={triggerBufferSync} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: t.spacing.xs, paddingHorizontal: t.spacing.md, backgroundColor: t.colors.status.info.bg, borderRadius: t.radius.sm }}>
+                <RefreshCw size={14} color={t.colors.status.info.text} />
+                <Text style={{ fontFamily: t.font.bold, fontSize: t.type.meta10.size, color: t.colors.status.info.text }}>Sync Queue</Text>
+              </Pressable>
             )}
           </View>
 
-          <View style={styles.card}>
-            <View style={styles.queueHeader}>
-              <Text style={styles.cardHeader}>Offline Sync Buffer Queue</Text>
-              {coordinateBuffer.length > 0 && (
-                <TouchableOpacity style={styles.syncBtn} onPress={triggerBufferSync}>
-                  <RefreshCw size={14} color="#0f55ff" />
-                  <Text style={styles.syncBtnText}>Sync Queue</Text>
-                </TouchableOpacity>
-              )}
-            </View>
+          <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textSecondary, marginBottom: t.spacing.md }}>
+            Coordinates buffered locally: <Text style={{ fontFamily: t.font.bold, color: t.colors.status.info.text }}>{coordinateBuffer.length}</Text>
+          </Text>
 
-            <Text style={styles.queueStats}>
-              Coordinates buffered locally: <Text style={styles.queueCount}>{coordinateBuffer.length}</Text>
-            </Text>
-
-            <ScrollView style={styles.logConsole} nestedScrollEnabled>
-              {coordinateBuffer.length === 0 ? (
-                <Text style={styles.emptyLogText}>Queue is empty. Active tracking streams live to the server.</Text>
-              ) : (
-                coordinateBuffer.map((pt, index) => (
-                  <Text key={index} style={styles.logLine}>
-                    [{index + 1}] Lat: {pt.latitude.toFixed(5)} | Lng: {pt.longitude.toFixed(5)} (Stored offline)
-                  </Text>
-                ))
-              )}
-            </ScrollView>
-          </View>
-        </View>
+          <ScrollView style={{ height: 150, backgroundColor: t.colors.textPrimary, borderRadius: t.radius.md, padding: t.spacing.md }} nestedScrollEnabled>
+            {coordinateBuffer.length === 0 ? (
+              <Text style={{ fontFamily: t.font.regular, fontStyle: 'italic', fontSize: t.type.meta11.size, color: t.colors.textMuted }}>Queue is empty. Active tracking streams live to the server.</Text>
+            ) : (
+              coordinateBuffer.map((pt, index) => (
+                <Text key={index} style={{ fontFamily: 'monospace', fontSize: t.type.meta10.size, color: '#cbd5e1', marginBottom: 6 }}>
+                  [{index + 1}] Lat: {pt.latitude.toFixed(5)} | Lng: {pt.longitude.toFixed(5)} (Stored offline)
+                </Text>
+              ))
+            )}
+          </ScrollView>
+        </Card>
       </ScrollView>
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safeContainer: { flex: 1, backgroundColor: '#f8fafc' },
-  header: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#e2e8f0', backgroundColor: '#ffffff',
-  },
-  userTitle: { fontSize: 16, fontWeight: 'bold', color: '#0f172a' },
-  roleSub: { fontSize: 11, color: '#64748b', textTransform: 'uppercase', marginTop: 2 },
-  logoutBtn: { padding: 8, backgroundColor: '#fef2f2', borderRadius: 50 },
-  networkStatusContainer: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: 20, paddingVertical: 10, borderBottomWidth: 1,
-  },
-  networkOnlineBg: { backgroundColor: '#ecfdf5', borderBottomColor: '#a7f3d0' },
-  networkOfflineBg: { backgroundColor: '#fff1f2', borderBottomColor: '#fca5a5' },
-  networkInfo: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  networkStatusText: { fontSize: 11, fontWeight: 'bold' },
-  textOnline: { color: '#10b981' },
-  textOffline: { color: '#f43f5e' },
-  contentContainer: { flex: 1 },
-  scrollContent: { padding: 20 },
-  sectionSpace: { gap: 20 },
-  card: {
-    backgroundColor: '#ffffff', borderRadius: 20, padding: 20,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8,
-    elevation: 3, borderWidth: 1, borderColor: '#e2e8f0',
-  },
-  cardHeader: { fontSize: 14, fontWeight: 'bold', color: '#0f172a', marginBottom: 12 },
-  emptyContainer: { alignItems: 'center', paddingVertical: 16 },
-  emptyText: { fontSize: 12, color: '#64748b', marginBottom: 16 },
-  actionBtn: { paddingVertical: 12, paddingHorizontal: 24, backgroundColor: '#0f55ff', borderRadius: 12 },
-  actionBtnText: { color: '#ffffff', fontSize: 12, fontWeight: 'bold' },
-  routeDetails: { gap: 16 },
-  routeHeader: { padding: 12, backgroundColor: '#f8fafc', borderRadius: 12, borderWidth: 1, borderColor: '#e2e8f0' },
-  routeId: { fontSize: 13, fontWeight: 'bold', color: '#0f172a' },
-  routeTarget: { fontSize: 11, color: '#64748b', marginTop: 2 },
-  trackingMetrics: { flexDirection: 'row', gap: 12 },
-  metricItem: { flex: 1, padding: 12, backgroundColor: '#f8fafc', borderRadius: 12, borderWidth: 1, borderColor: '#e2e8f0' },
-  metricLabel: { fontSize: 10, color: '#64748b', textTransform: 'uppercase' },
-  metricValue: { fontSize: 14, fontWeight: 'bold', color: '#0f172a', marginTop: 4 },
-  toggleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  toggleLabel: { fontSize: 12, color: '#475569' },
-  navigateBtn: {
-    height: 44, backgroundColor: '#0f55ff', borderRadius: 12,
-    flexDirection: 'row', gap: 6, justifyContent: 'center', alignItems: 'center',
-  },
-  deliverBtn: { height: 44, backgroundColor: '#10b981', borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginTop: 4 },
-  btnText: { color: '#ffffff', fontSize: 14, fontWeight: 'bold' },
-  queueHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  syncBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 6, paddingHorizontal: 12, backgroundColor: '#e0f2fe', borderRadius: 8 },
-  syncBtnText: { fontSize: 10, fontWeight: 'bold', color: '#0f55ff' },
-  queueStats: { fontSize: 12, color: '#475569', marginBottom: 12 },
-  queueCount: { fontWeight: 'bold', color: '#0f55ff' },
-  logConsole: { height: 150, backgroundColor: '#0f172a', borderRadius: 12, padding: 12 },
-  emptyLogText: { fontSize: 11, color: '#64748b', fontStyle: 'italic' },
-  logLine: { fontSize: 10, fontFamily: 'monospace', color: '#cbd5e1', marginBottom: 6 },
-  subText: { fontSize: 12, color: '#64748b', marginBottom: 16 },
-});

@@ -10,7 +10,7 @@ import SidePanel from '../../components/ui/SidePanel';
 import SearchableDropdown from '../../components/ui/SearchableDropdown';
 import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
 import CountUp from '../../components/CountUp';
-import { documentTemplates, type DocumentTemplate } from '../../services/apiClient';
+import { documentTemplates, dispatch as dispatchApi, type DocumentTemplate } from '../../services/apiClient';
 import { useCeoSettings } from '../../contexts/CeoSettingsContext';
 
 // ── Brand colors from REBMA logo ──────────────────────────────────────────
@@ -45,35 +45,50 @@ type OrderSort = { field: keyof ApprovedOrder; dir: 'asc' | 'desc' };
 
 interface Props { addNotification?: (msg: string) => void; setActiveSubTab?: (t: string) => void }
 
-// ── ticket printer ──────────────────────────────────────────────────────────
-async function printOperationsTicket(order: ApprovedOrder, template: DocumentTemplate, dispatchedQty?: number, printedBy?: string, printEnabled: boolean = true) {
+// ── waybill printer (was "Operations Ticket" — extended into a proper
+// Waybill per the enhancement blueprint: adds Waybill Number, Container
+// Number, Vehicle, Driver; removes Payment Mode, which stays on the Sales
+// Order for Finance but has no place on a document that travels with the
+// shipment) ──────────────────────────────────────────────────────────────
+async function printWaybill(order: ApprovedOrder, template: DocumentTemplate, dispatchedQty?: number, printedBy?: string, printEnabled: boolean = true) {
   const t = template;
-  // Shown on the printed ticket itself exactly as before — an email here is
-  // legitimate identification, not a bug. Only the copy embedded in the QR
-  // payload gets sanitized, since that's the one iOS's scanner misreads as
-  // a "Mail" action instead of showing the ticket content.
+
+  // A waybill only means something once there's an actual dispatch (vehicle
+  // + driver) — look up the most recent delivery_logs row for this order,
+  // and get-or-create its waybill only if one exists. Printing before
+  // dispatch still works (Operations may want a preview), it just shows
+  // "Not yet dispatched" instead of minting a waybill number prematurely.
+  let vehicleId = '';
+  let driverName = '';
+  let waybillNumber = '';
+  let containerNumber = '';
+  try {
+    const { data: dlRows } = await supabase.from('delivery_logs').select('*').eq('order_id', order.id).order('created_at', { ascending: false }).limit(1);
+    const deliveryLog = dlRows?.[0];
+    if (deliveryLog) {
+      vehicleId = deliveryLog.vehicle_id || '';
+      driverName = deliveryLog.driver_name || '';
+      const waybill = await dispatchApi.getOrCreateWaybill(order.id, deliveryLog.id);
+      waybillNumber = waybill?.waybillNumber || '';
+      containerNumber = waybill?.containerNumber || '';
+    }
+  } catch (err) { console.error('Waybill lookup failed for order', order.id, err); }
+
+  // Shown on the printed document itself exactly as before — an email here
+  // is legitimate identification, not a bug. Only the copy embedded in the
+  // QR payload gets sanitized, since that's the one iOS's scanner misreads
+  // as a "Mail" action instead of showing the document content.
   const issuedBy = order.issuedBy && order.issuedBy !== '—' ? order.issuedBy : 'Pending record';
-  const issuedByForQr = safeDisplayName(order.issuedBy, 'Pending record');
-  const printedByForQr = printedBy ? safeDisplayName(printedBy, '') : '';
   let qrDataUrl = '';
   try {
+    // JSON, not the old human-readable text block — the whole point of the
+    // new Scanner is to actually decode and look this up by waybillNumber,
+    // not just be eyeballed.
     qrDataUrl = await QRCode.toDataURL(
-      [
-        'REBMA IMPEX GHANA LIMITED',
-        `Ticket: ${order.ticketNumber}`,
-        `Invoice Ref: ${order.ticketNumber}`,
-        `Client: ${order.clientName}`,
-        `Product: ${order.productName}`,
-        dispatchedQty ? `Quantity: ${dispatchedQty}` : '',
-        `Destination: ${order.destination}`,
-        `Payment: ${order.paymentMode}`,
-        `Status: ${order.status}`,
-        `Issued by: ${issuedByForQr}`,
-        printedByForQr ? `Printed by: ${printedByForQr}` : '',
-      ].filter(Boolean).join('\n'),
+      JSON.stringify({ waybillNumber: waybillNumber || null, orderId: order.id, containerNumber: containerNumber || null }),
       { width: 160, margin: 1, color: { dark: '#1a5c32', light: '#ffffff' } }
     );
-  } catch (err) { console.error('QR generation failed for ticket', order.ticketNumber, err); qrDataUrl = ''; }
+  } catch (err) { console.error('QR generation failed for waybill', order.ticketNumber, err); qrDataUrl = ''; }
 
   const statusColors: Record<string, [string, string]> = {
     APPROVED:        ['#f0fdf4', '#166534'],
@@ -84,7 +99,7 @@ async function printOperationsTicket(order: ApprovedOrder, template: DocumentTem
   const [sBg, sColor] = statusColors[order.status] || ['#f8fafc', '#334155'];
 
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/>
-  <title>Ops Ticket ${order.ticketNumber} — REBMA IMPEX</title>
+  <title>Waybill ${waybillNumber || order.ticketNumber} — REBMA IMPEX</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     body{font-family:'Segoe UI',Arial,sans-serif;background:#e8f4ea;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:32px}
@@ -148,9 +163,9 @@ async function printOperationsTicket(order: ApprovedOrder, template: DocumentTem
             </div>
           </div>
           <div class="ticket-meta">
-            <div class="label">Ticket No.</div>
-            <div class="tno">${order.ticketNumber || `TKT-${order.id.slice(0, 6).toUpperCase()}`}</div>
-            <div class="tdate">${new Date(order.createdAt || Date.now()).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
+            <div class="label">Waybill No.</div>
+            <div class="tno">${waybillNumber || 'Not yet dispatched'}</div>
+            <div class="tdate">Ref: ${order.ticketNumber || `TKT-${order.id.slice(0, 6).toUpperCase()}`} · ${new Date(order.createdAt || Date.now()).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
           </div>
         </div>
 
@@ -167,8 +182,16 @@ async function printOperationsTicket(order: ApprovedOrder, template: DocumentTem
             <div class="sv">${order.status.replace(/_/g, ' ')}</div>
           </div>
           <div class="sb-item">
-            <div class="sl">Payment Mode</div>
-            <div class="sv">${order.paymentMode}</div>
+            <div class="sl">Container No.</div>
+            <div class="sv">${containerNumber || '—'}</div>
+          </div>
+          <div class="sb-item">
+            <div class="sl">Vehicle</div>
+            <div class="sv" style="font-size:11px">${vehicleId || 'Not yet dispatched'}</div>
+          </div>
+          <div class="sb-item">
+            <div class="sl">Driver</div>
+            <div class="sv" style="font-size:11px">${driverName || 'Not yet assigned'}</div>
           </div>
           <div class="sb-item">
             <div class="sl">Issued By (Finance)</div>
@@ -228,7 +251,7 @@ async function printOperationsTicket(order: ApprovedOrder, template: DocumentTem
           </div>
           <div class="qr-wrap">
             ${qrDataUrl
-              ? `<img src="${qrDataUrl}" alt="Ticket QR"/>`
+              ? `<img src="${qrDataUrl}" alt="Waybill QR"/>`
               : `<div style="width:92px;height:92px;border:2px dashed #e2e8f0;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:8px;color:#94a3b8">QR</div>`}
             <div class="ql">Scan to verify</div>
             <div class="ql2">Matches customer invoice</div>
@@ -237,12 +260,12 @@ async function printOperationsTicket(order: ApprovedOrder, template: DocumentTem
 
       </div>
       <div class="foot-bar">
-        <span>${t.companyName} Ghana Limited · Ticket ${order.ticketNumber} · ${new Date().toLocaleDateString('en-GB')}</span>
+        <span>${t.companyName} Ghana Limited · Waybill ${waybillNumber || order.ticketNumber} · ${new Date().toLocaleDateString('en-GB')}</span>
         <span class="brand-slug">${t.website}</span>
       </div>
     </div>
     <div style="text-align:center;margin-top:16px;display:flex;gap:10px;justify-content:center">
-      ${printEnabled ? `<button onclick="window.print()" style="background:${BRAND.green};color:#fff;border:none;padding:11px 30px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer">🖨 Print Ticket</button>` : `<button disabled title="Printing is currently disabled by the CEO" style="background:#cbd5e1;color:#64748b;border:none;padding:11px 30px;border-radius:9px;font-size:13px;font-weight:700;cursor:not-allowed">🖨 Print (disabled)</button>`}
+      ${printEnabled ? `<button onclick="window.print()" style="background:${BRAND.green};color:#fff;border:none;padding:11px 30px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer">🖨 Print Waybill</button>` : `<button disabled title="Printing is currently disabled by the CEO" style="background:#cbd5e1;color:#64748b;border:none;padding:11px 30px;border-radius:9px;font-size:13px;font-weight:700;cursor:not-allowed">🖨 Print (disabled)</button>`}
       <button onclick="window.close()" style="background:#f1f5f9;color:#334155;border:1px solid #e2e8f0;padding:11px 26px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer">Close</button>
     </div>
   </div>
@@ -250,7 +273,7 @@ async function printOperationsTicket(order: ApprovedOrder, template: DocumentTem
 
   const win = window.open('', '_blank', 'width=700,height=860');
   if (win) { win.document.write(html); win.document.close(); }
-  else { alert('Your browser blocked the ticket pop-up. Please allow pop-ups for this site, then try again.'); }
+  else { alert('Your browser blocked the waybill pop-up. Please allow pop-ups for this site, then try again.'); }
 }
 
 // ── helpers ────────────────────────────────────────────────────────────────
@@ -287,7 +310,10 @@ export default function ApprovedGoodsView({ addNotification, setActiveSubTab: _s
 
   // Dispatch modal
   const [dispatchTarget, setDispatchTarget] = useState<ApprovedOrder | null>(null);
-  const [dispatchForm, setDispatchForm] = useState({ vehicleId: '', driverName: '' });
+  // vehicleId/driverName removed from this form (Phase 9) — Admin & Warehouse
+  // no longer assigns either; Risk does, once the order lands in their
+  // Dispatch queue as PENDING_ASSIGNMENT.
+  const [dispatchForm, setDispatchForm] = useState({ containerNumber: '' });
   const [dispatching, setDispatching] = useState(false);
 
   // Get current logged-in user once
@@ -363,22 +389,33 @@ export default function ApprovedGoodsView({ addNotification, setActiveSubTab: _s
     try {
       // 1. Create delivery_log — this is the sole handoff point from
       // Operations to Dispatch (Finance's approval no longer creates one).
-      // Driver name is optional here: if Operations names a driver on the
-      // spot the delivery starts ASSIGNED, otherwise it lands as
-      // PENDING_ASSIGNMENT so it shows up in Dispatch's own "Assign Driver"
-      // queue for them to pick one.
-      const { error: dispatchInsertError } = await supabase.from('delivery_logs').insert({
+      // Phase 9: Admin & Warehouse no longer assigns a vehicle or driver
+      // here — that's Risk's job now. Always lands as PENDING_ASSIGNMENT,
+      // which is exactly the status Risk's relocated "Assign Driver" queue
+      // already reads (assignDriverToDelivery() in apiClient.ts).
+      const { data: dispatchInsertRows, error: dispatchInsertError } = await supabase.from('delivery_logs').insert({
         order_id: dispatchTarget.id,
         customer_name: dispatchTarget.clientName,
         delivery_address: dispatchTarget.destination,
         destination_lat: dispatchTarget.destinationLat,
         destination_lng: dispatchTarget.destinationLng,
-        vehicle_id: dispatchForm.vehicleId || 'TBD',
-        driver_name: dispatchForm.driverName || null,
-        status: dispatchForm.driverName ? 'ASSIGNED' : 'PENDING_ASSIGNMENT',
+        vehicle_id: 'TBD',
+        driver_name: null,
+        status: 'PENDING_ASSIGNMENT',
         updated_at: new Date().toISOString(),
-      });
+      }).select();
       if (dispatchInsertError) throw dispatchInsertError;
+
+      // Waybill Number is issued right here, at the actual dispatch event —
+      // not earlier, since a waybill represents a real shipment, not an
+      // order still sitting in the approval queue.
+      if (dispatchInsertRows && dispatchInsertRows[0]) {
+        try {
+          await dispatchApi.getOrCreateWaybill(dispatchTarget.id, dispatchInsertRows[0].id, dispatchForm.containerNumber || undefined, currentUserEmail);
+        } catch (e) {
+          console.error('Waybill creation failed:', e);
+        }
+      }
 
       // 2. Order stays at its current status (APPROVED/PROCESSING) — being
       // assigned a driver isn't the same as the driver actually moving.
@@ -395,16 +432,16 @@ export default function ApprovedGoodsView({ addNotification, setActiveSubTab: _s
         department: 'OPERATIONS',
         performed_by: currentUserEmail,
         user_id: currentUserId,
-        details: `Order ${dispatchTarget.ticketNumber} loaded to dispatch. Product: ${dispatchTarget.productName}, Qty: ${totalQty}, Client: ${dispatchTarget.clientName}, Destination: ${dispatchTarget.destination}. Vehicle: ${dispatchForm.vehicleId || 'TBD'}, Driver: ${dispatchForm.driverName || 'TBD'}.`,
+        details: `Order ${dispatchTarget.ticketNumber} loaded to dispatch. Product: ${dispatchTarget.productName}, Qty: ${totalQty}, Client: ${dispatchTarget.clientName}, Destination: ${dispatchTarget.destination}. Sent to Risk for vehicle and driver assignment.`,
         timestamp: new Date().toISOString(),
       });
 
       // 5. Update local state
       setDispatchedOrderIds(prev => new Set(prev).add(dispatchTarget.id));
 
-      addNotification?.(`Order ${dispatchTarget.ticketNumber} assigned to a driver — will show Out for Delivery once they start the trip.`);
+      addNotification?.(`Order ${dispatchTarget.ticketNumber} sent to Risk for vehicle and driver assignment.`);
       setDispatchTarget(null);
-      setDispatchForm({ vehicleId: '', driverName: '' });
+      setDispatchForm({ containerNumber: '' });
     } catch (e: any) {
       alert(e.message || 'Failed to send to dispatch.');
     }
@@ -476,9 +513,9 @@ export default function ApprovedGoodsView({ addNotification, setActiveSubTab: _s
           <p className="text-xs font-bold" style={{ color: BRAND.green }}>Operations Workflow</p>
           <p className="text-[11px] mt-0.5" style={{ color: '#2d7a50' }}>
             Finance approves payment → order appears here as <strong>APPROVED</strong> →
-            Operations verifies, enters quantity + vehicle, clicks <strong>"Load to Dispatch"</strong> →
-            stock ledger updated → Dispatch team picks up → Driver delivers → <strong>DELIVERED</strong>.
-            Print the <strong>Ticket</strong> (Ops keeps) · <strong>Invoice</strong> goes via Marketing to customer.
+            Operations verifies quantity, clicks <strong>"Load to Dispatch"</strong> →
+            stock ledger updated → Risk assigns vehicle and driver → Driver delivers → <strong>DELIVERED</strong>.
+            Print the <strong>Waybill</strong> (Ops keeps, travels with the shipment) · <strong>Invoice</strong> goes via Marketing to customer.
           </p>
         </div>
       </div>
@@ -569,15 +606,15 @@ export default function ApprovedGoodsView({ addNotification, setActiveSubTab: _s
                         ? o.metadata.items.reduce((sum: number, it: any) => sum + (Number(it.quantity) || 0), 0)
                         : Number(o.metadata?.quantity || (o as any).quantity || 1);
                       const template = await documentTemplates.get('TICKET');
-                      printOperationsTicket(o, template, totalQty, currentUserEmail, getSetting('print_enabled', true));
+                      printWaybill(o, template, totalQty, currentUserEmail, getSetting('print_enabled', true));
                     }}
-                    title="Print Operations Ticket"
+                    title="Print Waybill"
                     className="flex items-center gap-1 px-2.5 py-1.5 bg-[var(--bg)] border border-[var(--border)] rounded-lg text-[10px] font-semibold text-[var(--text-secondary)] hover:bg-[var(--accent-light)] cursor-pointer whitespace-nowrap transition-colors">
-                    <Printer size={11} /> Ticket
+                    <Printer size={11} /> Waybill
                   </button>
                   {(o.status === 'APPROVED' || o.status === 'PROCESSING') && !dispatchedOrderIds.has(o.id) && (
-                    <button onClick={() => { setDispatchTarget(o); setDispatchForm({ vehicleId: '', driverName: '' }); }}
-                      title="Assign a vehicle and driver, then release this order to Dispatch"
+                    <button onClick={() => { setDispatchTarget(o); setDispatchForm({ containerNumber: '' }); }}
+                      title="Confirm goods are ready — Risk assigns the vehicle and driver next"
                       className="flex items-center gap-1 px-2.5 py-1.5 text-white rounded-lg text-[10px] font-bold hover:opacity-90 cursor-pointer whitespace-nowrap transition-opacity"
                       style={{ background: 'var(--accent)' }}>
                       <Truck size={11} /> Dispatch
@@ -671,14 +708,14 @@ export default function ApprovedGoodsView({ addNotification, setActiveSubTab: _s
         open={!!dispatchTarget}
         onClose={() => setDispatchTarget(null)}
         title="Load to Dispatch"
-        subtitle="Confirm goods, vehicle and driver to release this order"
+        subtitle="Confirm goods are checked and ready — Risk assigns the vehicle and driver next"
         footer={
           <>
             <button onClick={() => setDispatchTarget(null)} className="erp-btn erp-btn-ghost">Cancel</button>
             <button onClick={handleDispatch} disabled={dispatching}
-              title="Deducts stock, creates a delivery log, and releases this order to the assigned driver"
+              title="Creates a delivery log and hands this order to Risk to assign a vehicle and driver"
               className="erp-btn erp-btn-primary disabled:opacity-50">
-              <Truck size={13} /> {dispatching ? 'Sending…' : 'Confirm & Load to Dispatch'}
+              <Truck size={13} /> {dispatching ? 'Sending…' : 'Confirm & Send to Risk for Dispatch'}
             </button>
           </>
         }
@@ -713,15 +750,14 @@ export default function ApprovedGoodsView({ addNotification, setActiveSubTab: _s
                 </div>
                 <p className="text-[10px] text-[var(--text-muted)]">This quantity will be recorded as OUT in the stock ledger</p>
               </div>
-              <div className="erp-form-group">
-                <label className="erp-label">Vehicle ID / Plate Number</label>
-                <input value={dispatchForm.vehicleId} onChange={e => setDispatchForm(f => ({ ...f, vehicleId: e.target.value }))}
-                  placeholder="e.g. GH-1234-22" className="erp-input" />
+              <div className="bg-[var(--bg)] border border-[var(--border)] rounded-xl px-4 py-3 text-[11px] text-[var(--text-muted)]">
+                Vehicle and driver are no longer assigned here — Risk picks them once this order lands in their Dispatch queue.
               </div>
               <div className="erp-form-group">
-                <label className="erp-label">Driver Name <span className="font-normal normal-case text-[var(--text-muted)]">(optional)</span></label>
-                <input value={dispatchForm.driverName} onChange={e => setDispatchForm(f => ({ ...f, driverName: e.target.value }))}
-                  placeholder="e.g. Kofi Mensah" className="erp-input" />
+                <label className="erp-label">Container Number <span className="font-normal normal-case text-[var(--text-muted)]">(optional)</span></label>
+                <input value={dispatchForm.containerNumber} onChange={e => setDispatchForm(f => ({ ...f, containerNumber: e.target.value }))}
+                  placeholder="e.g. MSKU-1234567" className="erp-input" />
+                <p className="text-[10px] text-[var(--text-muted)] mt-1">Printed on the Waybill — sets the shipment's number once, at dispatch.</p>
               </div>
             </div>
 

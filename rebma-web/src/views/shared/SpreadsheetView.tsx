@@ -43,12 +43,10 @@ const DEPT_TABLES: Record<string, Array<{ id: string; label: string }>> = {
   FINANCE:    [{ id: 'finance_payments', label: 'Finance Payments' }, { id: 'orders', label: 'Customer Orders' }, { id: 'stock', label: 'Stock Inventory' }],
   MANAGEMENT: [{ id: 'cargo_intake', label: 'Cargo Intake' }, { id: 'orders', label: 'Customer Orders' }, { id: 'production_requests', label: 'Production Requests' }, { id: 'general_purchases', label: 'General Purchases' }],
   MARKETING:  [{ id: 'orders', label: 'Customer Orders' }],
-  OPERATIONS: [{ id: 'cargo_intake', label: 'Cargo Intake' }, { id: 'stock', label: 'Stock Inventory' }, { id: 'stock_ledger', label: 'Stock Ledger' }],
-  DISPATCH:   [{ id: 'delivery_logs', label: 'Delivery Logs' }],
+  ADMIN_WAREHOUSE: [{ id: 'cargo_intake', label: 'Cargo Intake' }, { id: 'stock', label: 'Stock Inventory' }, { id: 'stock_ledger', label: 'Stock Ledger' }, { id: 'delivery_logs', label: 'Delivery Logs' }, { id: 'drivers', label: 'Drivers' }],
   HR:         [{ id: 'profiles', label: 'Staff Profiles' }, { id: 'attendance', label: 'Attendance Logs' }],
   RECEPTION:  [{ id: 'visitors', label: 'Visitor Log' }, { id: 'attendance', label: 'Attendance Logs' }],
   PRODUCTION: [{ id: 'production_requests', label: 'Production Requests' }, { id: 'production_logs', label: 'Production Output' }, { id: 'wip_stock', label: 'WIP Stock' }],
-  LOGISTICS:  [{ id: 'delivery_logs', label: 'Delivery Logs' }, { id: 'drivers', label: 'Drivers' }],
 };
 
 const NON_EDITABLE_COLS = new Set(['id', 'created_at', 'updated_at', 'last_updated', 'read']);

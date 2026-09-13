@@ -3,6 +3,7 @@
 import { supabase } from '../lib/supabaseClient';
 import { sendNotification } from '../utils/sendNotification';
 import { waLink, buildDirectionsMessage } from '../utils/whatsapp';
+import { normalizeDeptCode } from '../utils/departments';
 
 // A stalled network call (flaky connection, rate-limit) otherwise hangs
 // whatever awaits it forever — Supabase calls have no built-in timeout, so
@@ -49,7 +50,7 @@ const mapProfileToFrontend = (db: any): any => {
     id: db.id,
     email: db.email,
     fullName: db.full_name || db.fullName || db.email,
-    department: (db.role || db.department || '').toUpperCase(),
+    department: normalizeDeptCode(db.role || db.department || ''),
     ghanaCardId: db.ghana_card_id || db.ghanaCardId,
     phone: db.phone,
     status: db.status,
@@ -60,6 +61,22 @@ const mapProfileToFrontend = (db: any): any => {
     createdAt: db.created_at || db.createdAt,
     updatedAt: db.updated_at || db.updatedAt,
     requiresPasswordReset: db.requires_password_reset ?? db.requiresPasswordReset ?? false,
+    employeeNumber: db.employee_number,
+    resumeUrl: db.resume_url,
+    address: db.address,
+    hrRemarks: db.hr_remarks,
+    guarantorName: db.guarantor_name,
+    guarantorPhone: db.guarantor_phone,
+    guarantorRelationship: db.guarantor_relationship,
+    guarantorIdNumber: db.guarantor_id_number,
+    guarantorAddress: db.guarantor_address,
+    staffCategory: db.staff_category,
+    performanceTaskScore: db.performance_task_score,
+    performanceTeamScore: db.performance_team_score,
+    performanceQualityScore: db.performance_quality_score,
+    performanceNotes: db.performance_notes,
+    performanceReviewedBy: db.performance_reviewed_by,
+    performanceReviewedAt: db.performance_reviewed_at,
   };
 };
 
@@ -77,6 +94,19 @@ const mapAttendanceToFrontend = (db: any): any => {
       fullName: db.user.full_name || db.user.fullName,
       department: db.user.role || db.user.department
     } : null
+  };
+};
+
+const mapWaybillToFrontend = (db: any): any => {
+  if (!db) return null;
+  return {
+    id: db.id,
+    waybillNumber: db.waybill_number,
+    orderId: db.order_id,
+    deliveryLogId: db.delivery_log_id,
+    containerNumber: db.container_number,
+    createdAt: db.created_at,
+    createdBy: db.created_by,
   };
 };
 
@@ -107,6 +137,8 @@ const mapCargoToFrontend = (db: any): any => {
     weight: db.weight,
     discrepancies: db.discrepancies,
     isFaulty: db.is_fault_or_damaged ?? db.is_faulty ?? db.isFaulty,
+    containerNumber: db.container_number,
+    rejectionReason: db.rejection_reason,
     status: db.status,
     unitPrice: db.unit_price || db.unitPrice,
     approvedById: db.approved_by_id || db.approvedById,
@@ -131,6 +163,9 @@ const mapOrderToFrontend = (db: any): any => {
     totalAmount: Number(db.total_amount ?? db.totalAmount ?? 0),
     status: db.status,
     quantity: db.quantity,
+    customerId: db.customer_id || db.customerId,
+    amountPaid: Number(db.amount_paid ?? db.amountPaid ?? 0),
+    rejectionReason: db.rejection_reason,
     metadata: db.metadata || null,
     createdById: db.created_by || db.created_by_id || db.createdById,
     createdAt: db.created_at || db.createdAt,
@@ -179,7 +214,8 @@ const mapAuditToFrontend = (db: any): any => {
     performedBy: db.performed_by || db.performedBy,
     userId: db.user_id || db.userId,
     details: db.details,
-    timestamp: db.timestamp
+    timestamp: db.timestamp,
+    referenceId: db.reference_id || db.referenceId,
   };
 };
 
@@ -213,6 +249,22 @@ const mapCustomerToFrontend = (db: any): any => {
     updatedAt: db.updated_at || db.updatedAt,
     isSpecialCustomer: db.is_special_customer ?? false,
     discountPercent: Number(db.discount_percent) || 0,
+    houseAddress: db.house_address,
+    companyAddress: db.company_address,
+    gpsLat: db.gps_lat != null ? Number(db.gps_lat) : undefined,
+    gpsLng: db.gps_lng != null ? Number(db.gps_lng) : undefined,
+    ghanaCard2: db.ghana_card_id_2,
+    partnerName: db.partner_name,
+    businessCertificateUrl: db.business_certificate_url,
+    notes: db.notes,
+    status: db.status || 'PENDING',
+    verifiedBy: db.verified_by,
+    verifiedAt: db.verified_at,
+    rejectionReason: db.rejection_reason,
+    creditLimit: db.credit_limit != null ? Number(db.credit_limit) : null,
+    creditStatus: db.credit_status || 'ACTIVE',
+    creditTermsSetBy: db.credit_terms_set_by,
+    creditTermsSetAt: db.credit_terms_set_at,
   };
 };
 
@@ -299,7 +351,7 @@ export const auth = {
 
   register: async (data: {
     email: string; fullName: string;
-    department: string; ghanaCardId?: string; phone?: string; inviteToken?: string;
+    department?: string; ghanaCardId?: string; phone?: string; inviteToken?: string;
   }) => {
     const res = await fetch('/api/register-standard-user', {
       method: 'POST',
@@ -411,7 +463,7 @@ export const hr = {
    * Approve or deny a user — calls the serverless endpoint which uses
    * the service_role key to update the profile and send the magic link email.
    */
-  approveUser: async (userId: string, approve: boolean, generatedPassword?: string, _token?: string) => {
+  approveUser: async (userId: string, approve: boolean, generatedPassword?: string, _token?: string, remark?: string) => {
     const { data: sessionData } = await supabase.auth.getSession();
     const accessToken = sessionData.session?.access_token;
     if (!accessToken) throw new Error('Not authenticated');
@@ -422,7 +474,7 @@ export const hr = {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${accessToken}`,
       },
-      body: JSON.stringify({ userId, approve, generatedPassword }),
+      body: JSON.stringify({ userId, approve, generatedPassword, remark }),
     });
 
     const body = await res.json();
@@ -441,6 +493,46 @@ export const hr = {
     if (error) throw new Error(error.message);
     return (data || []).map(mapAttendanceToFrontend);
   },
+
+  // HR-editable fields that aren't set at registration time — address,
+  // resume, guarantor info, staff category. A plain update, same shape as
+  // marketing's setCustomerVerification (Phase 2).
+  updateStaffDetails: async (staffId: string, fields: {
+    address?: string; resumeUrl?: string; hrRemarks?: string; staffCategory?: string;
+    guarantorName?: string; guarantorPhone?: string; guarantorRelationship?: string;
+    guarantorIdNumber?: string; guarantorAddress?: string;
+  }) => {
+    const { error } = await supabase.from('profiles').update({
+      address: fields.address ?? null,
+      resume_url: fields.resumeUrl ?? null,
+      hr_remarks: fields.hrRemarks ?? null,
+      staff_category: fields.staffCategory ?? null,
+      guarantor_name: fields.guarantorName ?? null,
+      guarantor_phone: fields.guarantorPhone ?? null,
+      guarantor_relationship: fields.guarantorRelationship ?? null,
+      guarantor_id_number: fields.guarantorIdNumber ?? null,
+      guarantor_address: fields.guarantorAddress ?? null,
+      updated_at: new Date().toISOString(),
+    }).eq('id', staffId);
+    if (error) throw new Error(error.message);
+  },
+
+  // Sets the current performance snapshot — a single record per employee,
+  // not a versioned review history (see plan for the reasoning).
+  updatePerformance: async (staffId: string, scores: {
+    taskScore?: number | null; teamScore?: number | null; qualityScore?: number | null; notes?: string;
+  }, reviewedBy: string) => {
+    const { error } = await supabase.from('profiles').update({
+      performance_task_score: scores.taskScore ?? null,
+      performance_team_score: scores.teamScore ?? null,
+      performance_quality_score: scores.qualityScore ?? null,
+      performance_notes: scores.notes || null,
+      performance_reviewed_by: reviewedBy,
+      performance_reviewed_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }).eq('id', staffId);
+    if (error) throw new Error(error.message);
+  },
 };
 
 // ── Operations ────────────────────────────────────────────────
@@ -458,6 +550,7 @@ export const operations = {
     productName?: string; goodsCode?: string; destination?: string;
     country: string; company: string; quantity: number; weight: number;
     discrepancies?: string; isFaulty?: boolean; productImage?: string;
+    containerNumber?: string;
     metadata?: any;
   }) => {
     const { data: sessionData } = await supabase.auth.getSession();
@@ -479,7 +572,8 @@ export const operations = {
         weight: Number(data.weight),
         discrepancies: data.discrepancies || null,
         is_fault_or_damaged: !!data.isFaulty,
-        status: 'PENDING_MANAGEMENT_APPROVAL',
+        container_number: data.containerNumber || null,
+        status: 'PENDING_RISK_APPROVAL',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         metadata: data.metadata || null
@@ -498,6 +592,12 @@ export const operations = {
       });
     } catch (e) {
       console.error('Audit entry failed:', e);
+    }
+
+    try {
+      await supabase.from('supplier_order_notifications').insert([{ message: `New cargo intake awaiting Risk review: ${data.productName || data.company} (${data.quantity} units). Code: ${intakeCode}`, notified_department: 'RISK', read: false }]);
+    } catch (e) {
+      console.error('Risk notification failed:', e);
     }
 
     return intake ? intake.map(mapCargoToFrontend) : null;
@@ -554,6 +654,14 @@ export const operations = {
 
     // Stock was already removed when the order was finalized (invoiced) — dispatch
     // just hands the already-committed goods to a vehicle, no further stock change.
+
+    // This is the second of two independent delivery_logs-insert paths in
+    // the app (the other is ApprovedGoodsView.tsx's manual dispatch modal) —
+    // a waybill needs creating here too, or auto-assigned deliveries would
+    // silently never get one.
+    if (delivery && delivery[0]) {
+      try { await dispatch.getOrCreateWaybill(orderId, delivery[0].id); } catch (e) { console.error('Waybill creation failed:', e); }
+    }
 
     return {
       order: mapOrderToFrontend(order),
@@ -873,6 +981,48 @@ export const management = {
     if (error) throw new Error(error.message);
   },
 
+  // Called by Risk's Customer Verification lane (RiskApprovalsView.tsx) —
+  // approve/reject/return a customer, mirroring the shape of
+  // setCustomerDiscount/setCustomerSpecial above.
+  setCustomerVerification: async (
+    customerId: string,
+    status: 'APPROVED' | 'REJECTED' | 'RETURNED_FOR_CORRECTION',
+    opts?: { verifiedBy?: string; rejectionReason?: string }
+  ) => {
+    const { error } = await supabase
+      .from('customers')
+      .update({
+        status,
+        verified_by: opts?.verifiedBy || null,
+        verified_at: new Date().toISOString(),
+        rejection_reason: status === 'APPROVED' ? null : (opts?.rejectionReason || null),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', customerId);
+    if (error) throw new Error(error.message);
+  },
+
+  // Called by Risk's Customer Credit screen (CustomerCreditView.tsx) — Risk
+  // owns individual credit terms, mirroring the shape of setCustomerVerification
+  // above. Passing creditLimit: null clears the per-customer override, falling
+  // back to the org-wide ceo_settings cap enforced by create_order_with_stock_check().
+  setCustomerCreditTerms: async (
+    customerId: string,
+    opts: { creditLimit: number | null; creditStatus: 'ACTIVE' | 'ON_HOLD'; setBy?: string }
+  ) => {
+    const { error } = await supabase
+      .from('customers')
+      .update({
+        credit_limit: opts.creditLimit,
+        credit_status: opts.creditStatus,
+        credit_terms_set_by: opts.setBy || null,
+        credit_terms_set_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', customerId);
+    if (error) throw new Error(error.message);
+  },
+
   approveIntake: async (intakeId: string, approve: boolean, unitPrice?: number) => {
     const { data: sessionData } = await supabase.auth.getSession();
     const performerId = sessionData.session?.user?.id || null;
@@ -1156,6 +1306,8 @@ export const marketing = {
     name: string; phone: string; email?: string;
     location: string; companyName: string; ghanaCard?: string; photo?: string;
     ghanaCardFront?: string; ghanaCardBack?: string; isSpecialCustomer?: boolean;
+    houseAddress?: string; companyAddress?: string; gpsLat?: number; gpsLng?: number;
+    ghanaCard2?: string; partnerName?: string; businessCertificateUrl?: string; notes?: string;
   }) => {
     const basePayload = {
       name: data.name,
@@ -1167,6 +1319,14 @@ export const marketing = {
       customer_photo: data.photo || null,
       ghana_card_front: data.ghanaCardFront || null,
       ghana_card_back: data.ghanaCardBack || null,
+      house_address: data.houseAddress || null,
+      company_address: data.companyAddress || null,
+      gps_lat: data.gpsLat ?? null,
+      gps_lng: data.gpsLng ?? null,
+      ghana_card_id_2: data.ghanaCard2 || null,
+      partner_name: data.partnerName || null,
+      business_certificate_url: data.businessCertificateUrl || null,
+      notes: data.notes || null,
       registered_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
@@ -1180,6 +1340,13 @@ export const marketing = {
       ({ data: customer, error } = await supabase.from('customers').insert(basePayload).select());
     }
     if (error) throw new Error(error.message);
+
+    try {
+      await supabase.from('supplier_order_notifications').insert([{ message: `New customer awaiting Risk verification: ${data.name}`, notified_department: 'RISK', read: false }]);
+    } catch (e) {
+      console.error('Risk notification failed:', e);
+    }
+
     return customer ? mapCustomerToFrontend(customer[0]) : null;
   },
 };
@@ -1412,6 +1579,24 @@ export const production = {
 
 // ── Dispatch ──────────────────────────────────────────────────
 export const dispatch = {
+  // Returns the existing waybill for a delivery if one was already created,
+  // otherwise creates one (the DB assigns a sequential waybill_number via
+  // its column default — see supabase_waybills.sql). Container number is
+  // only set on first creation; re-printing never changes an issued number.
+  getOrCreateWaybill: async (orderId: string, deliveryLogId: string, containerNumber?: string, createdBy?: string) => {
+    const { data: existing } = await supabase.from('waybills').select('*').eq('delivery_log_id', deliveryLogId).limit(1);
+    if (existing && existing[0]) return mapWaybillToFrontend(existing[0]);
+
+    const { data: created, error } = await supabase.from('waybills').insert({
+      order_id: orderId,
+      delivery_log_id: deliveryLogId,
+      container_number: containerNumber || null,
+      created_by: createdBy || null,
+    }).select();
+    if (error) throw new Error(error.message);
+    return created && created[0] ? mapWaybillToFrontend(created[0]) : null;
+  },
+
   getDeliveries: async () => {
     const { data, error } = await supabase
       .from('delivery_logs')

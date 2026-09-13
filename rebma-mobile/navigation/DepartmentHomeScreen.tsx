@@ -1,26 +1,37 @@
+// rebma-mobile/navigation/DepartmentHomeScreen.tsx
+//
+// Registry-driven router (Phase 7.0) — replaces the hand-written
+// switch(profile.department). Driver handling has moved out of this file
+// entirely: it's now a root-stack decision (RootNavigator, D6), matching
+// rebma-web's App.tsx where driver identity outranks department before any
+// shell renders. This screen only ever runs for a non-driver session.
+//
+// Reads uiStore's `activeDepartment` (not profile.department directly) so
+// the CEO/admin department switcher can actually change what's displayed —
+// it's seeded from the signed-in profile's own department on login/session
+// restore and only diverges when an admin explicitly switches channels.
+import { useEffect } from 'react';
 import { useAuthStore } from '../store/authStore';
-import DispatchHomeScreen from '../screens/dispatch/DispatchHomeScreen';
-import OperationsHomeScreen from '../screens/operations/OperationsHomeScreen';
-import ReceptionHomeScreen from '../screens/reception/ReceptionHomeScreen';
-import ComingSoonScreen from '../screens/ComingSoonScreen';
+import { useUIStore } from '../store/uiStore';
+import { getDepartmentEntry } from './departmentRegistry';
+import DepartmentPlaceholderScreen from '../screens/DepartmentPlaceholderScreen';
 
-// Picks which department's screen to render based on the signed-in profile.
-// Mirrors rebma-web's App.tsx department switch (activeDepartment derived from
-// profiles.role) — new departments get slotted in here as they're built.
 export default function DepartmentHomeScreen() {
-  const { profile, driver } = useAuthStore();
+  const { profile } = useAuthStore();
+  const activeDepartment = useUIStore((s) => s.activeDepartment);
+  const setActiveDepartment = useUIStore((s) => s.setActiveDepartment);
+
+  useEffect(() => {
+    if (profile && !activeDepartment) setActiveDepartment(profile.department);
+  }, [profile?.department]);
+
   if (!profile) return null;
 
-  switch (profile.department) {
-    case 'DISPATCH':
-      return driver
-        ? <DispatchHomeScreen />
-        : <ComingSoonScreen department="Dispatch" reason="This account isn't linked to a driver profile yet — ask Dispatch to invite you from the Drivers screen." />;
-    case 'OPERATIONS':
-      return <OperationsHomeScreen />;
-    case 'RECEPTION':
-      return <ReceptionHomeScreen />;
-    default:
-      return <ComingSoonScreen department={profile.department} />;
-  }
+  const effectiveDepartment = activeDepartment || profile.department;
+  const dept = getDepartmentEntry(effectiveDepartment);
+  const HomeScreen = dept.screens.home;
+
+  if (HomeScreen) return <HomeScreen />;
+
+  return <DepartmentPlaceholderScreen department={effectiveDepartment} />;
 }

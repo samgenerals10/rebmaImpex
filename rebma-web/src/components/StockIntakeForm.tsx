@@ -162,7 +162,7 @@ export default function StockIntakeForm({
     }
     // Fetch known products from goods_prices and cargo_intake
     Promise.all([
-      supabase.from('goods_prices').select('product_name').order('product_name'),
+      supabase.from('goods_prices_catalog').select('product_name').order('product_name'),
       supabase.from('cargo_intake').select('product_name').order('product_name'),
     ]).then(([priceRes, cargoRes]) => {
       const names = new Set<string>();

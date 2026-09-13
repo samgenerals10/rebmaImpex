@@ -1,12 +1,13 @@
 // rebma-web/src/components/layout/Header.tsx
 
 import { useState } from 'react';
-import { 
+import {
   Search, MessageSquare, Bell, Wifi, X, CheckCheck, Menu, Sun, Moon, MoreVertical,
-  User, ShieldCheck, Layers, Users, TrendingUp, Activity, DollarSign, Clipboard, Truck, Video, Settings, LogOut, Calendar
+  User, ShieldCheck, ShieldAlert, Layers, Users, TrendingUp, Activity, DollarSign, Clipboard, Truck, Video, Settings, LogOut, Calendar, Warehouse
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { CurrentUser } from '../../types/erp';
+import { normalizeDeptCode, DEFAULT_SUBTAB } from '../../utils/departments';
 import CountUp from '../CountUp';
 
 interface HeaderProps {
@@ -80,15 +81,14 @@ export default function Header({
 
   const allDepts = [
     { value: 'CEO', label: 'CEO Command', icon: ShieldCheck },
+    { value: 'RISK', label: 'Risk & Compliance', icon: ShieldAlert },
     { value: 'MANAGEMENT', label: 'Management Office', icon: Layers },
     { value: 'HR', label: 'Human Resources', icon: Users },
     { value: 'MARKETING', label: 'Marketing Pipeline', icon: TrendingUp },
-    { value: 'OPERATIONS', label: 'Operations & Stock', icon: Activity },
+    { value: 'ADMIN_WAREHOUSE', label: 'Admin & Warehouse', icon: Warehouse },
     { value: 'FINANCE', label: 'Finance Ledgers', icon: DollarSign },
     { value: 'PRODUCTION', label: 'Production Line', icon: Clipboard },
     { value: 'RECEPTION', label: 'Reception Terminal', icon: Users },
-    { value: 'DISPATCH', label: 'Dispatch Fleet', icon: Truck },
-    { value: 'LOGISTICS', label: 'Logistics Fleet', icon: Truck },
     { value: 'BOARDROOM', label: 'Executive Boardroom', icon: Video },
     { value: 'SETTINGS', label: 'ERP Settings', icon: Settings },
   ];
@@ -96,7 +96,7 @@ export default function Header({
   const availableDepts = allDepts.filter(d => {
     if (isSuperAdmin || isAdmin) return true;
     const rawDept = currentUser?.department || '';
-    const normalizedUserDept = rawDept.toUpperCase() === 'HUMAN RESOURCES' ? 'HR' : rawDept.toUpperCase();
+    const normalizedUserDept = normalizeDeptCode(rawDept);
     if (d.value === 'BOARDROOM' || d.value === 'SETTINGS') return true;
     if (normalizedUserDept === 'HR') return d.value === 'HR';
     return d.value === normalizedUserDept;
@@ -118,8 +118,8 @@ export default function Header({
     const isAdmin = currentUser?.isAdmin || currentUser?.department?.toUpperCase() === 'CEO';
     const dept = activeDepartment || currentUser?.department || '';
 
-    // 1. Orders search (accessible by CEO, MARKETING, FINANCE, MANAGEMENT)
-    if (isAdmin || dept === 'MARKETING' || dept === 'FINANCE' || dept === 'MANAGEMENT') {
+    // 1. Orders search (accessible by CEO, MARKETING, FINANCE, MANAGEMENT, RISK)
+    if (isAdmin || dept === 'MARKETING' || dept === 'FINANCE' || dept === 'MANAGEMENT' || dept === 'RISK') {
       const matchedOrders = (ordersList || []).filter((o: any) =>
         String(o.id || '').toLowerCase().includes(q) ||
         String(o.clientName || '').toLowerCase().includes(q) ||
@@ -132,15 +132,15 @@ export default function Header({
           title: `Order: ${o.clientName}`,
           subtitle: `${o.productName || 'Unnamed'} (Qty: ${o.quantity || 1}) · GHS ${Number(o.totalAmount || 0).toLocaleString()} [${o.status}]`,
           category: 'Orders',
-          dept: isAdmin ? 'CEO' : (dept === 'FINANCE' ? 'FINANCE' : 'MARKETING'),
-          tab: isAdmin ? 'Invoices' : (dept === 'FINANCE' ? 'OrdersQueue' : 'SalesHistory'),
+          dept: isAdmin ? 'CEO' : (dept === 'FINANCE' ? 'FINANCE' : dept === 'RISK' ? 'RISK' : 'MARKETING'),
+          tab: isAdmin ? 'Invoices' : (dept === 'FINANCE' ? 'OrdersQueue' : dept === 'RISK' ? 'RiskApprovals' : 'SalesHistory'),
           icon: Clipboard
         });
       });
     }
 
-    // 2. Cargo Ingestions (accessible by CEO, OPERATIONS, MANAGEMENT)
-    if (isAdmin || dept === 'OPERATIONS' || dept === 'MANAGEMENT') {
+    // 2. Cargo Ingestions (accessible by CEO, ADMIN_WAREHOUSE, MANAGEMENT, RISK)
+    if (isAdmin || dept === 'ADMIN_WAREHOUSE' || dept === 'MANAGEMENT' || dept === 'RISK') {
       const matchedCargo = (incomingGoodsList || []).filter((c: any) =>
         String(c.id || '').toLowerCase().includes(q) ||
         String(c.goodsCode || '').toLowerCase().includes(q) ||
@@ -153,8 +153,8 @@ export default function Header({
           title: `Cargo: ${c.productName || 'Incoming Goods'}`,
           subtitle: `Code: ${c.goodsCode} · Carrier: ${c.company} · Qty: ${c.quantity} [${c.status}]`,
           category: 'Logistics / Intake',
-          dept: isAdmin ? 'MANAGEMENT' : 'OPERATIONS',
-          tab: isAdmin ? 'CargoApproval' : 'LoggedCargo',
+          dept: isAdmin ? 'MANAGEMENT' : (dept === 'RISK' ? 'RISK' : 'ADMIN_WAREHOUSE'),
+          tab: isAdmin ? 'CargoApproval' : (dept === 'RISK' ? 'RiskApprovals' : 'PortIngestion'),
           icon: Truck
         });
       });
@@ -288,14 +288,8 @@ export default function Header({
                           onClick={() => {
                             if (setActiveDepartment) {
                               setActiveDepartment(d.value);
-                              const defaultSubTabs: Record<string, string> = {
-                                CEO: 'Overview', MANAGEMENT: 'CargoApproval', HR: 'Employees',
-                                MARKETING: 'CreateOrder', OPERATIONS: 'PortIngestion', FINANCE: 'Evaluation',
-                                PRODUCTION: 'Requisition', RECEPTION: 'VisitorLog', DISPATCH: 'Deliveries',
-                                LOGISTICS: 'Maintenance', BOARDROOM: 'VideoConf', SETTINGS: 'Appearance'
-                              };
                               if (setActiveSubTab) {
-                                setActiveSubTab(defaultSubTabs[d.value] || 'Overview');
+                                setActiveSubTab(DEFAULT_SUBTAB[d.value] || 'Overview');
                               }
                             }
                             setShowAvatarDropdown(false);
@@ -696,14 +690,8 @@ export default function Header({
                             onClick={() => {
                               if (setActiveDepartment) {
                                 setActiveDepartment(d.value);
-                                const defaultSubTabs: Record<string, string> = {
-                                  CEO: 'Overview', MANAGEMENT: 'CargoApproval', HR: 'Employees',
-                                  MARKETING: 'CreateOrder', OPERATIONS: 'PortIngestion', FINANCE: 'Evaluation',
-                                  PRODUCTION: 'Requisition', RECEPTION: 'VisitorLog', DISPATCH: 'Deliveries',
-                                  LOGISTICS: 'Maintenance', BOARDROOM: 'VideoConf', SETTINGS: 'Appearance'
-                                };
                                 if (setActiveSubTab) {
-                                  setActiveSubTab(defaultSubTabs[d.value] || 'Overview');
+                                  setActiveSubTab(DEFAULT_SUBTAB[d.value] || 'Overview');
                                 }
                               }
                               setShowAvatarDropdown(false);

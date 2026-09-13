@@ -2,6 +2,7 @@
 // Runs alert checks on load + every 30 minutes. Inserts alerts into `performance_alerts` Supabase table.
 
 import { supabase } from '../lib/supabaseClient';
+import { deptAliasGroup } from './departments';
 
 export interface PerformanceAlert {
   id?: string;
@@ -21,9 +22,13 @@ const FINANCE_HIGH_THRESHOLD = 500000; // GHS
 
 // profiles.role uses mixed casing per its DB check constraint (e.g. 'marketing', 'HR', 'receptionist')
 // rather than the uppercase department labels used across the UI — map explicitly instead of guessing.
-const DEPT_TO_ROLE: Record<string, string> = {
-  HR: 'HR', MARKETING: 'marketing', OPERATIONS: 'operations', PRODUCTION: 'production',
-  RECEPTION: 'receptionist', DISPATCH: 'dispatch', FINANCE: 'finance',
+// ADMIN_WAREHOUSE (Phase 5) covers all four role strings that can now sit
+// behind the merged department, since existing operations/dispatch/logistics
+// accounts were not bulk-migrated to admin_warehouse.
+const DEPT_TO_ROLE: Record<string, string[]> = {
+  HR: ['HR'], MARKETING: ['marketing'], PRODUCTION: ['production'],
+  RECEPTION: ['receptionist'], FINANCE: ['finance'],
+  ADMIN_WAREHOUSE: ['operations', 'dispatch', 'logistics', 'admin_warehouse'],
 };
 
 // Check if a department has had any activity (orders/payments/records) in the last 24 hours
@@ -31,14 +36,17 @@ async function checkDeptInactivity(): Promise<PerformanceAlert[]> {
   const alerts: PerformanceAlert[] = [];
   const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
-  const depts = ['MARKETING', 'OPERATIONS', 'PRODUCTION', 'RECEPTION', 'DISPATCH'];
+  // ADMIN_WAREHOUSE is a new entry here — Logistics previously had neither a
+  // DEPT_TO_ROLE key nor a slot in this list, so this is the first time its
+  // activity is covered by performance alerts at all.
+  const depts = ['MARKETING', 'ADMIN_WAREHOUSE', 'PRODUCTION', 'RECEPTION'];
 
   for (const dept of depts) {
     try {
       const { count } = await supabase
         .from('global_audit_history')
         .select('*', { count: 'exact', head: true })
-        .eq('department', dept)
+        .in('department', deptAliasGroup(dept))
         .gte('timestamp', yesterday);
 
       if ((count ?? 0) === 0) {
@@ -62,17 +70,17 @@ async function checkAttendanceAlerts(): Promise<PerformanceAlert[]> {
   const alerts: PerformanceAlert[] = [];
   const today = new Date().toISOString().split('T')[0];
 
-  for (const [dept, role] of Object.entries(DEPT_TO_ROLE)) {
+  for (const [dept, roles] of Object.entries(DEPT_TO_ROLE)) {
     try {
       const { count: total } = await supabase
         .from('profiles')
         .select('*', { count: 'exact', head: true })
-        .ilike('role', role);
+        .in('role', roles);
 
       const { count: present } = await supabase
         .from('attendance')
         .select('*', { count: 'exact', head: true })
-        .eq('department', dept)
+        .in('department', deptAliasGroup(dept))
         .gte('check_in_time', today);
 
       if ((total ?? 0) > 0) {

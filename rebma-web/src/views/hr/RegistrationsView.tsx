@@ -12,20 +12,18 @@ import SidePanel from '../../components/ui/SidePanel';
 import SearchableDropdown from '../../components/ui/SearchableDropdown';
 import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
 
-const DEPARTMENTS = ['All', 'Operations', 'Finance', 'Logistics', 'HR', 'Marketing', 'Reception', 'Production', 'Management', 'Dispatch'];
+const DEPARTMENTS = ['All', 'Admin & Warehouse', 'Finance', 'HR', 'Marketing', 'Reception', 'Production', 'Management'];
 const STATUSES = ['All', 'PENDING', 'APPROVED', 'REJECTED'];
 
 const deptToRole = (dept: string): string => {
   const map: Record<string, string> = {
     'HR': 'HR',
-    'Operations': 'operations',
+    'Admin & Warehouse': 'admin_warehouse',
     'Finance': 'finance',
-    'Logistics': 'logistics',
     'Marketing': 'marketing',
     'Reception': 'receptionist',
     'Production': 'production',
     'Management': 'management',
-    'Dispatch': 'dispatch'
   };
   return map[dept] || 'Staff';
 };

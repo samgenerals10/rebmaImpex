@@ -18,11 +18,13 @@ export interface Order {
   ghanaCard?: string;
   paymentMode: string;
   totalAmount: number;
-  status: 'PENDING_FINANCE' | 'PENDING_MANAGEMENT' | 'APPROVED' | 'PROCESSING' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | 'REJECTED';
+  status: 'PENDING_RISK' | 'PENDING_MANAGEMENT' | 'PENDING_FINANCE' | 'PENDING_RISK_RELEASE' | 'APPROVED' | 'PROCESSING' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | 'REJECTED' | 'RETURNED_FOR_CORRECTION';
   createdAt: string;
   quantity?: number;
   products?: string;
   submittedBy?: string;
+  amountPaid?: number;
+  rejectionReason?: string;
   metadata?: {
     items?: OrderLineItem[];
     [key: string]: any;
@@ -40,9 +42,21 @@ export interface IncomingGoods {
   quantity: number;
   weight: number;
   discrepancies: string;
-  status: 'PENDING_MANAGEMENT_APPROVAL' | 'APPROVED' | 'REJECTED';
+  status: 'PENDING_RISK_APPROVAL' | 'APPROVED' | 'REJECTED' | 'RETURNED_FOR_CORRECTION';
   unitPrice?: number;
   createdAt?: string;
+  containerNumber?: string;
+  rejectionReason?: string;
+}
+
+export interface Waybill {
+  id: string;
+  waybillNumber: string;
+  orderId?: string;
+  deliveryLogId?: string;
+  containerNumber?: string;
+  createdAt: string;
+  createdBy?: string;
 }
 
 export interface ProductionRequest {
@@ -116,13 +130,34 @@ export interface Customer {
   location: string;
   companyName: string;
   ghanaCard?: string;
+  ghanaCardFront?: string;
+  ghanaCardBack?: string;
   email?: string;
   photo?: string; // base64 data URL
   registeredAt: string;
+  updatedAt?: string;
   orderHistory?: string[];
   creditHistory?: Array<{ orderId: string; amount: number; date: string; status: string }>;
   isSpecialCustomer?: boolean;
   discountPercent?: number;
+  houseAddress?: string;
+  companyAddress?: string;
+  gpsLat?: number;
+  gpsLng?: number;
+  ghanaCard2?: string;
+  partnerName?: string;
+  businessCertificateUrl?: string;
+  notes?: string;
+  status?: 'PENDING' | 'APPROVED' | 'REJECTED' | 'RETURNED_FOR_CORRECTION';
+  verifiedBy?: string;
+  verifiedAt?: string;
+  rejectionReason?: string;
+  // Individual credit terms — Risk-owned (Phase 6). null/undefined limit
+  // means "no per-customer override, the global CEO cap applies."
+  creditLimit?: number | null;
+  creditStatus?: 'ACTIVE' | 'ON_HOLD';
+  creditTermsSetBy?: string;
+  creditTermsSetAt?: string;
 }
 
 export interface Driver {
@@ -151,6 +186,36 @@ export interface StaffMember {
   photo?: string;
   joinedAt: string;
   status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
+  employeeNumber?: string;
+  resumeUrl?: string;
+  address?: string;
+  hrRemarks?: string;
+  guarantorName?: string;
+  guarantorPhone?: string;
+  guarantorRelationship?: string;
+  guarantorIdNumber?: string;
+  guarantorAddress?: string;
+  staffCategory?: string;
+  performanceTaskScore?: number;
+  performanceTeamScore?: number;
+  performanceQualityScore?: number;
+  performanceNotes?: string;
+  performanceReviewedBy?: string;
+  performanceReviewedAt?: string;
+}
+
+export interface EmployeeQuery {
+  id: string;
+  staffId: string;
+  staffName: string;
+  department: string;
+  subject: string;
+  body: string;
+  status: 'OPEN' | 'RESOLVED';
+  response?: string;
+  respondedBy?: string;
+  respondedAt?: string;
+  createdAt: string;
 }
 
 export interface PendingRegistration {
@@ -181,6 +246,7 @@ export interface AuditEntry {
   performedBy: string;
   details: string;
   timestamp: string;
+  referenceId?: string;
 }
 
 export interface DeliveryRecord {
@@ -192,7 +258,7 @@ export interface DeliveryRecord {
   driverId: string;
   dispatchedAt: string;
   deliveredAt?: string;
-  status: 'PENDING_ASSIGNMENT' | 'ASSIGNED' | 'IN_TRANSIT' | 'DELIVERED' | 'FAILED';
+  status: 'PENDING_ASSIGNMENT' | 'ASSIGNED' | 'IN_TRANSIT' | 'PENDING_RISK_REVIEW' | 'POD_REJECTED' | 'DELIVERED' | 'FAILED';
   vehicleId?: string;
   proofUrl?: string;
   recipientName?: string;

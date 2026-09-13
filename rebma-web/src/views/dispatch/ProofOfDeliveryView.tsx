@@ -14,14 +14,16 @@ interface Delivery {
   address: string;
   driver: string;
   proof_url?: string;
-  status: 'pending_proof' | 'confirmed' | 'disputed';
+  status: 'pending_proof' | 'pending_risk_review' | 'confirmed' | 'pod_rejected' | 'disputed';
   delivered_at?: string;
 }
 
 const STATUS_STYLES = {
-  pending_proof: 'bg-amber-100 text-amber-700',
-  confirmed:     'bg-emerald-100 text-emerald-700',
-  disputed:      'bg-rose-100 text-rose-700',
+  pending_proof:      'bg-amber-100 text-amber-700',
+  pending_risk_review: 'bg-sky-100 text-sky-700',
+  confirmed:           'bg-emerald-100 text-emerald-700',
+  pod_rejected:        'bg-rose-100 text-rose-700',
+  disputed:            'bg-rose-100 text-rose-700',
 };
 
 interface Props { currentUser: CurrentUser | null; addNotification: (msg: string) => void }
@@ -50,6 +52,10 @@ export default function ProofOfDeliveryView({ addNotification }: Props) {
         let uiStatus: Delivery['status'] = 'pending_proof';
         if (row.status === 'DELIVERED') {
           uiStatus = 'confirmed';
+        } else if (row.status === 'PENDING_RISK_REVIEW') {
+          uiStatus = 'pending_risk_review';
+        } else if (row.status === 'POD_REJECTED') {
+          uiStatus = 'pod_rejected';
         } else if (row.status === 'FAILED') {
           uiStatus = 'disputed';
         }
@@ -79,26 +85,28 @@ export default function ProofOfDeliveryView({ addNotification }: Props) {
     load();
   }, []);
 
+  // Confirming here no longer closes out the delivery directly — it submits
+  // the proof to Risk's Proof of Delivery queue for review. Risk's approval
+  // (RiskApprovalsView.tsx) is what actually sets DELIVERED on both
+  // delivery_logs and the linked order.
   const markConfirmed = async (id: string) => {
     const target = rows.find(r => r.id === id);
     if (getSetting('proof_of_delivery_required', false) && !target?.proof_url) {
-      addNotification('A proof-of-delivery photo is required by the CEO before this can be confirmed.');
+      addNotification('A proof-of-delivery photo is required by the CEO before this can be submitted for review.');
       return;
     }
-    setRows(prev => prev.map(r => r.id === id ? { ...r, status: 'confirmed', delivered_at: new Date().toISOString() } : r));
+    setRows(prev => prev.map(r => r.id === id ? { ...r, status: 'pending_risk_review' } : r));
     try {
       await supabase
         .from('delivery_logs')
-        .update({
-          status: 'DELIVERED',
-          delivered_at: new Date().toISOString()
-        })
+        .update({ status: 'PENDING_RISK_REVIEW' })
         .eq('id', id);
-      addNotification(`Delivery ${id} confirmed.`);
+      await supabase.from('supplier_order_notifications').insert([{ message: `Proof of delivery submitted for Risk review: Delivery ${id}`, notified_department: 'RISK', read: false }]);
+      addNotification(`Delivery ${id} submitted for Risk review.`);
       load();
     } catch (e) {
       console.error(e);
-      addNotification(`Failed to confirm delivery ${id}.`);
+      addNotification(`Failed to submit delivery ${id} for review.`);
     }
   };
 
@@ -211,9 +219,10 @@ export default function ProofOfDeliveryView({ addNotification }: Props) {
     await uploadProof(file, targetId);
   };
 
-  const pending   = rows.filter(r => r.status === 'pending_proof');
-  const confirmed = rows.filter(r => r.status === 'confirmed');
-  const disputed  = rows.filter(r => r.status === 'disputed');
+  const pending    = rows.filter(r => r.status === 'pending_proof' || r.status === 'pod_rejected');
+  const inReview   = rows.filter(r => r.status === 'pending_risk_review');
+  const confirmed  = rows.filter(r => r.status === 'confirmed');
+  const disputed   = rows.filter(r => r.status === 'disputed');
 
   return (
     <div className="space-y-5">
@@ -224,11 +233,12 @@ export default function ProofOfDeliveryView({ addNotification }: Props) {
       </div>
 
       {/* Summary */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: 'Pending Proof', count: pending.length,   cls: 'text-amber-600',   bg: 'bg-amber-50' },
-          { label: 'Confirmed',     count: confirmed.length, cls: 'text-emerald-600', bg: 'bg-emerald-50' },
-          { label: 'Disputed',      count: disputed.length,  cls: 'text-rose-600',    bg: 'bg-rose-50' },
+          { label: 'Pending Proof',  count: pending.length,   cls: 'text-amber-600',   bg: 'bg-amber-50' },
+          { label: 'Awaiting Risk',  count: inReview.length,  cls: 'text-sky-600',     bg: 'bg-sky-50' },
+          { label: 'Confirmed',      count: confirmed.length, cls: 'text-emerald-600', bg: 'bg-emerald-50' },
+          { label: 'Disputed',       count: disputed.length,  cls: 'text-rose-600',    bg: 'bg-rose-50' },
         ].map((s, i) => (
           <div key={i} className={`${s.bg} border border-[var(--border)] rounded-2xl p-4`}>
             <p className="text-[10px] font-semibold text-[var(--text-secondary)] uppercase tracking-wide">{s.label}</p>
@@ -250,14 +260,14 @@ export default function ProofOfDeliveryView({ addNotification }: Props) {
           {rows.map(row => (
             <div key={row.id} className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4 shadow-[var(--box-shadow)]">
               <div className="flex items-center gap-4">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${row.status === 'confirmed' ? 'bg-emerald-100' : row.status === 'disputed' ? 'bg-rose-100' : 'bg-amber-100'}`}>
-                  {row.status === 'confirmed' ? <CheckCircle className="w-5 h-5 text-emerald-600" /> : row.status === 'disputed' ? <Camera className="w-5 h-5 text-rose-600" /> : <Clock className="w-5 h-5 text-amber-600" />}
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${row.status === 'confirmed' ? 'bg-emerald-100' : row.status === 'pending_risk_review' ? 'bg-sky-100' : row.status === 'pod_rejected' || row.status === 'disputed' ? 'bg-rose-100' : 'bg-amber-100'}`}>
+                  {row.status === 'confirmed' ? <CheckCircle className="w-5 h-5 text-emerald-600" /> : row.status === 'pending_risk_review' ? <Clock className="w-5 h-5 text-sky-600" /> : row.status === 'pod_rejected' || row.status === 'disputed' ? <Camera className="w-5 h-5 text-rose-600" /> : <Clock className="w-5 h-5 text-amber-600" />}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <p className="text-sm font-bold text-[var(--text-primary)]">{row.customer}</p>
                     <span className="text-[9px] font-bold text-[var(--text-muted)]">{row.id} ({row.order_id})</span>
-                    <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${STATUS_STYLES[row.status]}`}>{row.status.replace('_',' ')}</span>
+                    <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${STATUS_STYLES[row.status]}`}>{row.status.replace(/_/g,' ')}</span>
                   </div>
                   <p className="text-[10px] text-[var(--text-muted)] truncate">{row.address} · Driver: {row.driver}</p>
                   {row.delivered_at && <p className="text-[9px] text-emerald-600 font-semibold">{new Date(row.delivered_at).toLocaleString('en-GB', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })}</p>}
@@ -268,7 +278,10 @@ export default function ProofOfDeliveryView({ addNotification }: Props) {
                       <Eye className="w-3.5 h-3.5" /> View Proof
                     </button>
                   )}
-                  {row.status === 'pending_proof' && (
+                  {row.status === 'pending_risk_review' && (
+                    <span className="text-[10px] font-semibold text-sky-600">Awaiting Risk review</span>
+                  )}
+                  {(row.status === 'pending_proof' || row.status === 'pod_rejected') && (
                     <>
                       <button
                         onClick={() => handleUpload(row.id)}
@@ -284,7 +297,7 @@ export default function ProofOfDeliveryView({ addNotification }: Props) {
                         )}
                       </button>
                       <button onClick={() => markConfirmed(row.id)} className="flex items-center gap-1 px-2.5 py-1 bg-emerald-500 text-white text-xs font-semibold rounded-lg cursor-pointer hover:bg-emerald-600">
-                        <CheckCircle className="w-3.5 h-3.5" /> Confirm
+                        <CheckCircle className="w-3.5 h-3.5" /> {row.status === 'pod_rejected' ? 'Resubmit' : 'Submit for Risk Review'}
                       </button>
                     </>
                   )}

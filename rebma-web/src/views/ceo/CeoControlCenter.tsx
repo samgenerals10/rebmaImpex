@@ -972,8 +972,18 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
         />
         <SettingToggle
           settingKey="invitation_only"
-          label="Invitation Only"
-          description="When ON only staff who receive a CEO-generated invite link can register. The public registration form is disabled."
+          label="Show CEO Invite Panel"
+          description="Registration is invite-only for everyone except CEO, always — this toggle only shows or hides your own Invite Staff panel below, for quickly inviting someone yourself (e.g. a new HR hire)."
+        />
+        <SettingToggle
+          settingKey="hr_can_invite_staff"
+          label="HR Can Invite Staff"
+          description="When OFF, HR's Add Staff screen is disabled app-wide — HR cannot generate or send new staff invites until this is turned back on."
+        />
+        <SettingToggleWithException
+          settingKey="mobile_app_access_allowed"
+          label="Mobile App Access"
+          description="Master switch for who can sign in to the mobile app. Use the email exceptions below to allow or block specific people regardless of this switch."
         />
 
         {/* Invite Staff (visible when invitation_only = true) */}
@@ -1008,7 +1018,7 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
                     <SearchableDropdown
                       value={inviteForm.department}
                       onChange={v => setInviteForm(p => ({ ...p, department: v }))}
-                      options={['MARKETING','FINANCE','OPERATIONS','DISPATCH','HR','PRODUCTION','RECEPTION','MANAGEMENT','LOGISTICS'].map(d => ({ value: d, label: d }))}
+                      options={[...['MARKETING','FINANCE','HR','PRODUCTION','RECEPTION','MANAGEMENT'].map(d => ({ value: d, label: d })), { value: 'admin_warehouse', label: 'ADMIN & WAREHOUSE' }]}
                     />
                   </div>
                   <div>
@@ -1393,7 +1403,31 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
         />
       </Section>
 
-      {/* ── SECTION 10: DATA RESET CENTER ────────────────────────────── */}
+      {/* ── SECTION 10: RISK CONTROLS ────────────────────────────────────
+          Risk had no toggles of its own at all before this — every other
+          department does. What's genuinely safe to offer here, and what
+          isn't: Risk's core approval gates (Cargo Intake, Sales Order,
+          Proof of Delivery review) are enforced by a database trigger,
+          not the UI — a toggle claiming to turn those off would either do
+          nothing or need the trigger itself rewritten, so they are
+          deliberately NOT here. ceo_cosign_credit_threshold,
+          ceo_cosign_order_threshold (Section 8), and
+          discrepancy_auto_alert_ceo (Section 3) already give CEO control
+          over Risk-adjacent behavior and are not duplicated here. */}
+      <Section title="Section 10 — Risk Controls" icon={AlertTriangle}>
+        <SettingToggle
+          settingKey="risk_customer_verification_required"
+          label="Customer Verification Required"
+          description="Customer verification is non-blocking by design — a pending customer can still be ordered for. This only controls whether Risk treats verification as mandatory, not any order transition."
+        />
+        <SettingToggle
+          settingKey="risk_credit_hold_notify_marketing"
+          label="Notify Marketing on Credit Hold"
+          description="When ON, Marketing is notified whenever Risk puts a customer on credit hold."
+        />
+      </Section>
+
+      {/* ── SECTION 11: DATA RESET CENTER ────────────────────────────── */}
       <Section title="Section 10 — Data Reset Center" icon={Trash2} defaultOpen={false}>
         <DataResetSection addNotification={addNotification} />
       </Section>

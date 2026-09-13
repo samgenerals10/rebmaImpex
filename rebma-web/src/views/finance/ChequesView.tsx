@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { Search, Download, MoreVertical, Plus, CheckCircle, XCircle, Clock, AlertTriangle } from 'lucide-react';
-import { exportToCSV } from '../../utils/export';
+import UniversalExportModal, { type ExportColumn } from '../../components/common/UniversalExportModal';
 import EntityDetailPanel from '../../components/global/EntityDetailPanel';
 import CountUp from '../../components/CountUp';
 import { useCeoSettings } from '../../contexts/CeoSettingsContext';
@@ -56,6 +56,18 @@ export default function FinanceChequesView({ addNotification, currentUser }: Pro
     pageSize: 100,
     map: mapCheque,
   });
+  const [exportOpen, setExportOpen] = useState(false);
+
+  const chequeExportCols: ExportColumn[] = [
+    { key: 'chequeNumber', label: 'Cheque #' },
+    { key: 'bankName', label: 'Bank' },
+    { key: 'accountName', label: 'Account Name' },
+    { key: 'amount', label: 'Amount (GHS)', render: c => c.amount.toLocaleString() },
+    { key: 'chequeDate', label: 'Cheque Date' },
+    { key: 'expectedClearing', label: 'Expected Clearing' },
+    { key: 'status', label: 'Status' },
+    { key: 'orderRef', label: 'Order Ref', render: c => c.orderRef || '—' },
+  ];
 
   const handlePrint = () => {
     if (!getSetting('print_enabled', true)) { addNotification?.('Printing is currently disabled by the CEO.'); return; }
@@ -235,13 +247,20 @@ export default function FinanceChequesView({ addNotification, currentUser }: Pro
 
   return (
     <div className="p-4 md:p-6 space-y-6">
+      <UniversalExportModal
+        open={exportOpen}
+        onClose={() => setExportOpen(false)}
+        title="Cheque Register"
+        data={filtered}
+        columns={chequeExportCols}
+      />
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-[var(--text-primary)]">Cheque Register</h1>
           <p className="text-sm text-[var(--text-secondary)]">Track all received cheques and clearance status</p>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => exportToCSV(filtered.map(c => ({ Cheque: c.chequeNumber, Bank: c.bankName, Account: c.accountName, Amount: c.amount, Date: c.chequeDate, Clearing: c.expectedClearing, Status: c.status })), ['Cheque', 'Bank', 'Account', 'Amount', 'Date', 'Clearing', 'Status'], 'cheque_register')} className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[var(--border)] text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-card)]"><Download size={14} /> Export</button>
+          <button onClick={() => setExportOpen(true)} className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[var(--border)] text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-card)]"><Download size={14} /> Export</button>
           <button onClick={() => setShowForm(true)} className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-white text-sm font-medium" style={{ background: 'var(--accent)' }}><Plus size={14} /> Add Cheque</button>
         </div>
       </div>

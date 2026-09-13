@@ -2,18 +2,19 @@
 
 import { useState } from 'react';
 import {
-  ShieldCheck, Layers, Users, TrendingUp, DollarSign, Activity, Clipboard, Truck, Video,
+  ShieldCheck, Layers, Users, TrendingUp, DollarSign, Activity, Clipboard, Truck, Video, Radio,
   Settings, LogOut, MessagesSquare, Tag, History, Warehouse, PackageCheck, FileText,
   TicketCheck, X, ChevronLeft, ChevronRight, StickyNote, CheckSquare, Mail, Bell,
   HelpCircle, MessageSquarePlus, LayoutDashboard, BarChart2, ArrowLeftRight, Wallet,
   CreditCard, ClipboardCheck, MapPin, MessageCircle, RefreshCw, Banknote, ShoppingCart,
   Package, AlertTriangle, UserCheck, Camera, UserPlus, Calendar, Building2, AlertCircle,
   FileBarChart, ClipboardList, Factory, Wrench, BarChart3, Gauge, Plus, ShoppingBag,
-  Smartphone, Receipt, Calculator, PiggyBank, Shield, FileSpreadsheet
+  Smartphone, Receipt, Calculator, PiggyBank, Shield, FileSpreadsheet, ShieldAlert, QrCode
 } from 'lucide-react';
 import type { CurrentUser } from '../../types/erp';
 import MiniCalendar from './MiniCalendar';
 import { motion } from 'framer-motion';
+import { normalizeDeptCode } from '../../utils/departments';
 
 interface SidebarProps {
   activeDepartment: string;
@@ -98,6 +99,7 @@ export default function Sidebar({
       { id: 'PriceApprovals',  label: 'Price Approvals',       icon: Banknote },
       { id: 'Tracking',        label: 'GPS Tracking',          icon: MapPin },
       { id: 'Messages',        label: 'Messages & Boardroom',  icon: MessageCircle },
+      { id: 'LiveUsers',       label: 'Live Users',             icon: Radio },
       { id: 'DeptActivity',    label: 'Dept Activity',          icon: Activity },
       { id: 'Spreadsheets',    label: 'Spreadsheets',           icon: FileSpreadsheet },
     ],
@@ -120,6 +122,23 @@ export default function Sidebar({
       { id: 'FinReports',        label: 'Reports',                icon: BarChart2 },
       { id: 'Payroll',           label: 'Payroll',                icon: Banknote },
       { id: 'Spreadsheets',      label: 'Spreadsheets',           icon: FileSpreadsheet },
+    ],
+    RISK: [
+      { id: 'RiskOverview',    label: 'Dashboard',            icon: LayoutDashboard },
+      { id: 'RiskApprovals',   label: 'Approvals',            icon: ClipboardCheck },
+      { id: 'CustomerCredit',  label: 'Customer Credit',      icon: CreditCard },
+      { id: 'Recruitment',     label: 'Recruitment',          icon: UserPlus },
+      // Dispatch's delivery-facing screens (Phase 9) — moved here from
+      // Admin & Warehouse. Same components; Risk now assigns the vehicle
+      // and driver and owns the delivery lifecycle through to POD review.
+      { id: 'Deliveries',       label: 'Dispatch Board',       icon: Truck },
+      { id: 'ActiveDeliveries', label: 'Deliveries',           icon: Truck },
+      { id: 'Drivers',          label: 'Drivers',              icon: UserCheck },
+      { id: 'Tracking',         label: 'GPS Tracking',         icon: MapPin },
+      { id: 'ProofOfDelivery',  label: 'Proof of Delivery',    icon: Camera },
+      { id: 'Scanner',          label: 'Scanner',              icon: QrCode },
+      { id: 'DeptActivity',    label: 'Dept Activity',        icon: Activity },
+      { id: 'Spreadsheets',    label: 'Spreadsheets',         icon: FileSpreadsheet },
     ],
     MANAGEMENT: [
       { id: 'CargoApproval',   label: 'Dashboard',           icon: LayoutDashboard },
@@ -152,31 +171,32 @@ export default function Sidebar({
       { id: 'CreateOrder',       label: 'Orders',            icon: ShoppingCart },
       { id: 'RegisterCustomer',  label: 'Customers',         icon: Users },
       { id: 'Invoices',          label: 'Invoices',          icon: FileText },
-      { id: 'Receipts',          label: 'Receipts',          icon: Receipt },
       { id: 'PriceCatalog',      label: 'Price Catalog',     icon: Tag },
       { id: 'SalesHistory',      label: 'Sales History',     icon: TrendingUp },
       { id: 'CreditRequests',    label: 'Credit Requests',   icon: CreditCard },
       { id: 'MktAnalytics',      label: 'Analytics',         icon: BarChart2 },
       { id: 'Spreadsheets',      label: 'Spreadsheets',      icon: FileSpreadsheet },
     ],
-    OPERATIONS: [
-      { id: 'Overview',        label: 'Dashboard',            icon: LayoutDashboard },
-      { id: 'PortIngestion',   label: 'Stock Intake',          icon: Package },
-      { id: 'ApprovedGoods',   label: 'Approved Goods',        icon: PackageCheck },
-      { id: 'Stock',           label: 'Stock',                 icon: Layers },
-      { id: 'OpsHistory',      label: 'Discrepancy Reports',   icon: AlertTriangle },
-      { id: 'Releases',        label: 'Fulfillment',           icon: PackageCheck },
-      { id: 'OpsAnalytics',    label: 'Analytics',             icon: BarChart2 },
-      { id: 'Spreadsheets',    label: 'Spreadsheets',          icon: FileSpreadsheet },
+    // ADMIN_WAREHOUSE (Phase 5): merged Operations + Dispatch + Logistics.
+    // Kept as one flat source of truth; the sectioned nav rendered below
+    // (§ "ADMIN_WAREHOUSE: Grouped Warehouse & Fleet Navigation") groups
+    // these same tabs into 4 sections rather than reading this array directly.
+    ADMIN_WAREHOUSE: [
+      { id: 'Overview',         label: 'Dashboard',            icon: LayoutDashboard },
+      { id: 'PortIngestion',    label: 'Stock Intake',         icon: Package },
+      { id: 'ApprovedGoods',    label: 'Approved Goods',       icon: PackageCheck },
+      { id: 'Stock',            label: 'Stock',                icon: Layers },
+      { id: 'Releases',         label: 'Fulfillment',          icon: PackageCheck },
+      { id: 'OpsHistory',       label: 'Discrepancy Reports',  icon: AlertTriangle },
+      { id: 'FleetOverview',    label: 'Fleet Overview',        icon: Truck },
+      { id: 'FuelManagement',   label: 'Fuel Management',       icon: Gauge },
+      { id: 'Maintenance',      label: 'Maintenance Schedule',  icon: Wrench },
+      { id: 'FleetAnalytics',   label: 'Fleet Analytics',       icon: BarChart3 },
+      { id: 'OpsAnalytics',     label: 'Warehouse Analytics',   icon: BarChart2 },
+      { id: 'Spreadsheets',     label: 'Spreadsheets',          icon: FileSpreadsheet },
     ],
-    DISPATCH: [
-      { id: 'Deliveries',       label: 'Dashboard',              icon: LayoutDashboard },
-      { id: 'ActiveDeliveries', label: 'Deliveries',              icon: Truck },
-      { id: 'Drivers',          label: 'Drivers',                 icon: UserCheck },
-      { id: 'Tracking',         label: 'GPS Tracking',            icon: MapPin },
-      { id: 'ProofOfDelivery',  label: 'Proof of Delivery',       icon: Camera },
-      { id: 'Spreadsheets',     label: 'Spreadsheets',             icon: FileSpreadsheet },
-    ],
+    // Injection subset used only inside CEO/Management/HR's own sidebars
+    // (see showLogisticsSection below) — not a department key itself.
     HR_LOGISTICS_VIEW: [
       { id: 'FleetOverview',    label: 'Fleet Overview',        icon: Truck },
       { id: 'FuelManagement',   label: 'Fuel Management',       icon: Gauge },
@@ -199,14 +219,6 @@ export default function Sidebar({
       { id: 'ProdAnalytics',     label: 'Analytics',              icon: BarChart2 },
       { id: 'Spreadsheets',      label: 'Spreadsheets',           icon: FileSpreadsheet },
     ],
-    LOGISTICS: [
-      { id: 'Overview',          label: 'Dashboard',              icon: LayoutDashboard },
-      { id: 'FleetOverview',     label: 'Fleet Overview',          icon: Truck },
-      { id: 'FuelManagement',    label: 'Fuel Management',         icon: Gauge },
-      { id: 'Maintenance',       label: 'Maintenance Schedule',    icon: Wrench },
-      { id: 'FleetAnalytics',    label: 'Fleet Analytics',         icon: BarChart3 },
-      { id: 'Spreadsheets',      label: 'Spreadsheets',            icon: FileSpreadsheet },
-    ],
     BOARDROOM: [
       { id: 'VideoConf',       label: 'Live Video Minutes',   icon: Video },
       { id: 'Announcements',   label: 'Announcements',         icon: Users },
@@ -228,15 +240,14 @@ export default function Sidebar({
 
   const allDepts = [
     { value: 'CEO',        label: 'CEO Command' },
+    { value: 'RISK',       label: 'Risk & Compliance' },
     { value: 'MANAGEMENT', label: 'Management Office' },
     { value: 'HR',         label: 'Human Resources' },
     { value: 'MARKETING',  label: 'Marketing Pipeline' },
-    { value: 'OPERATIONS', label: 'Operations & Stock' },
+    { value: 'ADMIN_WAREHOUSE', label: 'Admin & Warehouse' },
     { value: 'FINANCE',    label: 'Finance Ledgers' },
     { value: 'PRODUCTION', label: 'Production Line' },
     { value: 'RECEPTION',  label: 'Reception Terminal' },
-    { value: 'DISPATCH',   label: 'Dispatch Fleet' },
-    { value: 'LOGISTICS',  label: 'Logistics Fleet' },
     { value: 'SETTINGS',   label: 'ERP Settings' },
   ];
 
@@ -245,7 +256,7 @@ export default function Sidebar({
     const isUserCeo = currentUser?.isAdmin || currentUser?.department?.toUpperCase() === 'CEO';
     if (isUserCeo) return true;
     const rawDept = currentUser?.department || '';
-    const normalizedUserDept = rawDept.toUpperCase() === 'HUMAN RESOURCES' ? 'HR' : rawDept.toUpperCase();
+    const normalizedUserDept = normalizeDeptCode(rawDept);
     if (d.value === 'SETTINGS') return true;
     if (normalizedUserDept === 'HR') return d.value === 'HR';
     return d.value === normalizedUserDept;
@@ -253,15 +264,14 @@ export default function Sidebar({
 
   const getIconForDept = (val: string) => {
     if (val === 'CEO') return ShieldCheck;
+    if (val === 'RISK') return ShieldAlert;
     if (val === 'MANAGEMENT') return Layers;
     if (val === 'HR') return Users;
     if (val === 'MARKETING') return TrendingUp;
-    if (val === 'OPERATIONS') return Warehouse;
+    if (val === 'ADMIN_WAREHOUSE') return Warehouse;
     if (val === 'FINANCE') return DollarSign;
     if (val === 'PRODUCTION') return Activity;
     if (val === 'RECEPTION') return Users;
-    if (val === 'DISPATCH') return Truck;
-    if (val === 'LOGISTICS') return Truck;
     return Settings;
   };
 
@@ -271,7 +281,7 @@ export default function Sidebar({
     addNotification('Opening Executive Boardroom hub.');
   };
 
-  const showLogisticsSection = isAdmin || isManagement || currentUser?.department === 'HR';
+  const showLogisticsSection = (isAdmin || isManagement || currentUser?.department === 'HR') && activeDepartment !== 'ADMIN_WAREHOUSE';
 
   // Render nav button for a tab
   const renderNavBtn = (tab: { id: string; label: string; icon: any }, _badge = 0) => {
@@ -538,6 +548,39 @@ export default function Sidebar({
                   ].map(tab => renderNavBtn(tab))}
                 </div>
               </>
+            ) : activeDepartment === 'ADMIN_WAREHOUSE' ? (
+              <>
+                {/* ADMIN_WAREHOUSE (Phase 5): Grouped Warehouse & Fleet Navigation */}
+                {sectionLabel('Warehouse & Stock')}
+                <div className="space-y-0.5">
+                  {[
+                    { id: 'Overview',      label: 'Dashboard',            icon: LayoutDashboard },
+                    { id: 'PortIngestion', label: 'Stock Intake',         icon: Package },
+                    { id: 'ApprovedGoods', label: 'Approved Goods',       icon: PackageCheck },
+                    { id: 'Stock',         label: 'Stock',                icon: Layers },
+                    { id: 'Releases',      label: 'Fulfillment',          icon: PackageCheck },
+                    { id: 'OpsHistory',    label: 'Discrepancy Reports',  icon: AlertTriangle },
+                  ].map(tab => renderNavBtn(tab))}
+                </div>
+
+                {sectionLabel('Fleet & Maintenance')}
+                <div className="space-y-0.5">
+                  {[
+                    { id: 'FleetOverview',  label: 'Fleet Overview',       icon: Truck },
+                    { id: 'FuelManagement', label: 'Fuel Management',      icon: Gauge },
+                    { id: 'Maintenance',    label: 'Maintenance Schedule', icon: Wrench },
+                    { id: 'FleetAnalytics', label: 'Fleet Analytics',      icon: BarChart3 },
+                  ].map(tab => renderNavBtn(tab))}
+                </div>
+
+                {sectionLabel('Reports & Data')}
+                <div className="space-y-0.5">
+                  {[
+                    { id: 'OpsAnalytics',  label: 'Warehouse Analytics', icon: BarChart2 },
+                    { id: 'Spreadsheets',  label: 'Spreadsheets',        icon: FileSpreadsheet },
+                  ].map(tab => renderNavBtn(tab))}
+                </div>
+              </>
             ) : (
               <>
                 {/* Default flat MENU for all other departments */}
@@ -546,10 +589,10 @@ export default function Sidebar({
                   {currentTabs.map(tab => renderNavBtn(tab))}
                 </div>
 
-                {/* LOGISTICS section (CEO / Management / HR only) */}
+                {/* Fleet injection (CEO / Management / HR only) */}
                 {showLogisticsSection && (
                   <>
-                    {sectionLabel('Logistics & Fleet')}
+                    {sectionLabel('Fleet (Admin & Warehouse)')}
                     <div className="space-y-0.5">
                       {departmentTabs['HR_LOGISTICS_VIEW'].map(tab => renderNavBtn(tab))}
                     </div>
@@ -578,6 +621,7 @@ export default function Sidebar({
               {[
                 { id: 'HelpDesk', label: 'Help & News', icon: HelpCircle },
                 { id: 'Feedback', label: 'Feedback',    icon: MessageSquarePlus },
+                { id: 'HrQueries', label: 'HR Queries', icon: TicketCheck },
               ].map(t => renderNavBtn(t))}
             </div>
           </div>

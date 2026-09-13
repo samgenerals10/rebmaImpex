@@ -7,7 +7,7 @@
 // pipeline (APPROVED/PROCESSING/etc.) — an order not yet delivered still
 // reflects real, committed purchasing behavior, just not the same thing as
 // the "Total Spend (Delivered)" figure shown elsewhere on the customer page.
-import type { Order } from '../types/erp';
+import type { Order, Customer } from '../types/erp';
 
 // Orders link to a customer by free-typed name (client_name), not always a
 // stable customer_id — and real records here have already drifted (e.g. a
@@ -21,6 +21,28 @@ export function sameCustomerName(a: string, b: string): boolean {
 
 export function ordersForCustomer(orders: Order[], customerName: string): Order[] {
   return orders.filter(o => sameCustomerName(o.clientName, customerName));
+}
+
+// Same matching rule the create_order_with_stock_check() RPC uses server-side
+// (Phase 6): prefer the real customer_id FK, fall back to a normalized name
+// match only for orders with no customer_id — those predate the FK being
+// populated on every new order, and customer names have already drifted in
+// this data (see the header comment above). Keeping this one definition in
+// one place is what stops the frontend's "outstanding" figure from silently
+// disagreeing with what the RPC actually enforces.
+export function ordersForCustomerRow(orders: Order[], customer: Pick<Customer, 'id' | 'name'>): Order[] {
+  return orders.filter(o => o.customerId ? o.customerId === customer.id : sameCustomerName(o.clientName, customer.name));
+}
+
+// Unpaid portion of a customer's live credit orders — mirrors the RPC's
+// definition exactly: driven by amountPaid, not status (a DELIVERED credit
+// order is delivered, not paid), excluding orders that never became real
+// exposure (REJECTED/CANCELLED/RETURNED_FOR_CORRECTION).
+export function outstandingCreditFor(orders: Order[], customer: Pick<Customer, 'id' | 'name'>): number {
+  return ordersForCustomerRow(orders, customer)
+    .filter(o => (o.paymentMode || '').toUpperCase() === 'CREDIT')
+    .filter(o => !['REJECTED', 'CANCELLED', 'RETURNED_FOR_CORRECTION'].includes(o.status))
+    .reduce((sum, o) => sum + Math.max((o.totalAmount || 0) - (o.amountPaid || 0), 0), 0);
 }
 
 export interface CustomerRating {

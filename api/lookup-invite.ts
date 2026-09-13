@@ -24,7 +24,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const { data: invites } = await supabaseAdmin
     .from('staff_invites')
-    .select('email, full_name, department, role, status, expires_at')
+    .select('email, full_name, department, role, phone, status, expires_at')
     .eq('token', token)
     .limit(1);
 
@@ -40,5 +40,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     fullName: invite.full_name,
     department: invite.department,
     role: invite.role,
+    phone: invite.phone,
   });
 }

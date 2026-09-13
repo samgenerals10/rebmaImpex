@@ -2,16 +2,16 @@
 import { ChevronRight } from 'lucide-react';
 
 const DEPT_LABELS: Record<string, string> = {
-  CEO: 'CEO Command', MANAGEMENT: 'Management Office', HR: 'Human Resources',
-  MARKETING: 'Marketing', OPERATIONS: 'Operations', FINANCE: 'Finance',
-  PRODUCTION: 'Production', RECEPTION: 'Reception', DISPATCH: 'Dispatch',
-  LOGISTICS: 'Logistics', BOARDROOM: 'Boardroom', SETTINGS: 'Settings',
+  CEO: 'CEO Command', RISK: 'Risk & Compliance', MANAGEMENT: 'Management Office', HR: 'Human Resources',
+  MARKETING: 'Marketing', ADMIN_WAREHOUSE: 'Admin & Warehouse', FINANCE: 'Finance',
+  PRODUCTION: 'Production', RECEPTION: 'Reception',
+  BOARDROOM: 'Boardroom', SETTINGS: 'Settings',
 };
 
 const SUBTAB_LABELS: Record<string, string> = {
   Overview: 'Dashboard', Analytics: 'Analytics', Transactions: 'Transactions',
   Invoices: 'Invoices', Wallets: 'Wallets', Accounts: 'Accounts',
-  Approvals: 'Approvals', Tracking: 'GPS Tracking', Messages: 'Messages & Boardroom',
+  Approvals: 'Approvals', RiskApprovals: 'Approvals', CustomerCredit: 'Customer Credit', Recruitment: 'Recruitment', Tracking: 'GPS Tracking', Messages: 'Messages & Boardroom', LiveUsers: 'Live Users',
   Evaluation: 'Dashboard', RecurringPayments: 'Recurring', RecordPayment: 'Payments', Receipts: 'Receipts',
   OrdersQueue: 'Orders Queue', Payroll: 'Payroll', CargoApproval: 'Dashboard',
   CreditApproval: 'Approvals', SetPrices: 'Price Setting', Ledger: 'Audit Log',
@@ -20,7 +20,7 @@ const SUBTAB_LABELS: Record<string, string> = {
   DepartmentManager: 'Department Manager', PerformanceAlerts: 'Performance Alerts',
   CreateOrder: 'Orders', RegisterCustomer: 'Customers', SalesHistory: 'Sales History',
   PortIngestion: 'Stock Intake', Stock: 'Stock', OpsHistory: 'Discrepancy Reports',
-  Releases: 'Fulfillment', Deliveries: 'Dashboard', ActiveDeliveries: 'Deliveries',
+  Releases: 'Fulfillment', Deliveries: 'Dispatch Board', ActiveDeliveries: 'Deliveries',
   Drivers: 'Drivers', ProofOfDelivery: 'Proof of Delivery', FleetOverview: 'Fleet Overview',
   FuelManagement: 'Fuel Management', Maintenance: 'Maintenance Schedule',
   FleetAnalytics: 'Fleet Analytics', VisitorLog: 'Dashboard', Visitors: 'Visitors',
@@ -31,13 +31,13 @@ const SUBTAB_LABELS: Record<string, string> = {
   Appearance: 'Display & Appearance', Profile: 'Profile & Account',
   ChangePassword: 'Change Password', TwoFactor: 'Two-Factor Authentication', DeleteAccount: 'Delete Account',
   Notes: 'Notes', Tasks: 'Tasks', Emails: 'Emails', Notifications: 'Notifications',
-  HelpDesk: 'Help & News', Feedback: 'Feedback',
+  HelpDesk: 'Help & News', Feedback: 'Feedback', HrQueries: 'HR Queries', Scanner: 'Scanner',
 };
 
 // Tabs that are the "dashboard" (top-level) for their dept — no sub-label shown
 const DASHBOARD_TABS = new Set([
-  'Overview','Evaluation','CargoApproval','Employees','Deliveries',
-  'VisitorLog','Requisition',
+  'Overview','Evaluation','CargoApproval','Employees',
+  'VisitorLog','Requisition','RiskOverview',
 ]);
 
 interface BreadcrumbBarProps {

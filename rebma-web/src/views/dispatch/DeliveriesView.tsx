@@ -23,11 +23,13 @@ import ResponsiveDataView, { type DataColumn } from '../../components/mobile/Res
 type StatusFilter = 'ALL' | 'PENDING_ASSIGNMENT' | 'ASSIGNED' | 'IN_TRANSIT' | 'DELIVERED' | 'FAILED';
 
 const STATUS_META: Record<string, { bg: string; color: string; label: string }> = {
-  PENDING_ASSIGNMENT: { bg: 'bg-gray-100',   color: 'text-gray-600',   label: 'Pending Assignment' },
-  ASSIGNED:           { bg: 'bg-yellow-100', color: 'text-yellow-700', label: 'Assigned' },
-  IN_TRANSIT:         { bg: 'bg-blue-100',   color: 'text-blue-700',   label: 'In Transit' },
-  DELIVERED:          { bg: 'bg-green-100',  color: 'text-green-700',  label: 'Delivered' },
-  FAILED:             { bg: 'bg-red-100',    color: 'text-red-700',    label: 'Failed' },
+  PENDING_ASSIGNMENT:  { bg: 'bg-gray-100',   color: 'text-gray-600',   label: 'Pending Assignment' },
+  ASSIGNED:            { bg: 'bg-yellow-100', color: 'text-yellow-700', label: 'Assigned' },
+  IN_TRANSIT:          { bg: 'bg-blue-100',   color: 'text-blue-700',   label: 'In Transit' },
+  PENDING_RISK_REVIEW: { bg: 'bg-sky-100',    color: 'text-sky-700',    label: 'Awaiting Risk Review' },
+  POD_REJECTED:        { bg: 'bg-rose-100',   color: 'text-rose-700',   label: 'POD Rejected' },
+  DELIVERED:           { bg: 'bg-green-100',  color: 'text-green-700',  label: 'Delivered' },
+  FAILED:              { bg: 'bg-red-100',    color: 'text-red-700',    label: 'Failed' },
 };
 
 const fmt = (iso?: string) =>
@@ -322,7 +324,7 @@ function DeliveryDetail({
         <div className="flex flex-wrap gap-3">
           <button onClick={() => onMarkDelivered(delivery.id)}
             className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-sm font-semibold" style={{ background: '#10b981' }}>
-            <CheckCircle size={15} /> Mark as Delivered
+            <CheckCircle size={15} /> Submit for Risk Review
           </button>
           <button onClick={() => {
               downloadRowPDF(`Delivery Note - ${delivery.id}`, {
@@ -492,32 +494,29 @@ export default function DeliveriesView({ addNotification, currentUser, setActive
     return matchSearch && matchStatus && matchDriver && matchDate;
   });
 
+  // This no longer closes out the delivery directly — it submits the proof
+  // to Risk's Proof of Delivery queue. Risk's approval is what actually sets
+  // DELIVERED on both delivery_logs and the linked order (RiskApprovalsView.tsx).
   const markDelivered = async (id: string) => {
     if (submitting) return;
     if (getSetting('proof_of_delivery_required', false) && !deliveries.find(d => d.id === id)?.proofUrl) {
-      addNotification('A proof-of-delivery photo is required by the CEO before this can be marked delivered.');
+      addNotification('A proof-of-delivery photo is required by the CEO before this can be submitted for review.');
       return;
     }
     setSubmitting(true);
     try {
-      const now = new Date().toISOString();
-      const { error } = await supabase.from('delivery_logs').update({ status: 'DELIVERED', delivered_at: now }).eq('id', id);
+      const { error } = await supabase.from('delivery_logs').update({ status: 'PENDING_RISK_REVIEW' }).eq('id', id);
       if (error) throw error;
 
-      setDeliveries(prev => prev.map(d => d.id === id ? { ...d, status: 'DELIVERED', deliveredAt: now } : d));
-      
-      const delivery = deliveries.find(d => d.id === id);
-      if (delivery?.orderId) {
-        await supabase.from('orders').update({ status: 'DELIVERED' }).eq('id', delivery.orderId);
-      }
-      
-      await supabase.from('global_audit_history').insert({ department: 'DISPATCH', action: `Delivery ${id} marked as delivered`, performed_by: currentUser?.fullName || 'Dispatch', timestamp: now });
-      
-      addNotification(`Delivery ${id} marked as delivered.`);
-      if (detailRecord?.id === id) setDetailRecord(prev => prev ? { ...prev, status: 'DELIVERED', deliveredAt: now } : prev);
+      setDeliveries(prev => prev.map(d => d.id === id ? { ...d, status: 'PENDING_RISK_REVIEW' } : d));
+
+      await supabase.from('supplier_order_notifications').insert([{ message: `Proof of delivery submitted for Risk review: Delivery ${id}`, notified_department: 'RISK', read: false }]);
+
+      addNotification(`Delivery ${id} submitted for Risk review.`);
+      if (detailRecord?.id === id) setDetailRecord(prev => prev ? { ...prev, status: 'PENDING_RISK_REVIEW' } : prev);
       setMenuOpen(null);
     } catch (e: any) {
-      alert(e.message || 'Failed to mark as delivered.');
+      alert(e.message || 'Failed to submit for Risk review.');
     } finally {
       setSubmitting(false);
     }
@@ -744,7 +743,7 @@ export default function DeliveriesView({ addNotification, currentUser, setActive
                         </button>
                       )}
                       {d.status === 'IN_TRANSIT' && (
-                        <button onClick={() => markDelivered(d.id)} className="w-full text-left px-3 py-2 text-xs text-green-600 hover:bg-[var(--bg-input)] flex items-center gap-2"><CheckCircle size={11} /> Mark as Delivered</button>
+                        <button onClick={() => markDelivered(d.id)} className="w-full text-left px-3 py-2 text-xs text-green-600 hover:bg-[var(--bg-input)] flex items-center gap-2"><CheckCircle size={11} /> Submit for Risk Review</button>
                       )}
                       <button onClick={() => { setMenuOpen(null); addNotification(`Proof of delivery camera opened for ${d.id}`); }} className="w-full text-left px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--bg-input)] flex items-center gap-2"><Camera size={11} /> Proof of Delivery</button>
                       {d.status !== 'DELIVERED' && d.status !== 'FAILED' && (

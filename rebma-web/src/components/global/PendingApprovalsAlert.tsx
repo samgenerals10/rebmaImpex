@@ -45,18 +45,38 @@ export async function fetchPendingForDept(department: string): Promise<PendingIt
 
   try {
     if (department === 'MANAGEMENT') {
-      const [cargo, credit, requisitions, floats] = await Promise.all([
-        supabase.from('cargo_intake').select('id', { count: 'exact', head: true }).eq('status', 'PENDING_MANAGEMENT_APPROVAL'),
+      // Cargo approval stays Risk's entirely — Management has no cargo
+      // lane. The 'orders' query below now counts EVERY order Risk has
+      // cleared its initial review on — Management approval is a
+      // mandatory stage in the canonical order workflow (Marketing ->
+      // Risk Initial -> Management -> Accounts -> Risk Final Release ->
+      // Admin & Warehouse -> Dispatch -> Risk POD -> Delivered), not an
+      // optional Risk escalation as it was before this change.
+      const [pendingOrders, requisitions, floats] = await Promise.all([
         supabase.from('orders').select('id', { count: 'exact', head: true }).eq('status', 'PENDING_MANAGEMENT'),
         supabase.from('material_requisitions').select('id', { count: 'exact', head: true }).eq('status', 'PENDING_MANAGEMENT').then(r => r, () => ({ count: 0 })),
         supabase.from('float_requests').select('id', { count: 'exact', head: true }).eq('status', 'PENDING_MANAGEMENT').then(r => r, () => ({ count: 0 })),
       ]);
-      // All four surface together on the single "Approvals" page (id CreditApproval) —
+      // All three surface together on the single "Approvals" page (id CreditApproval) —
       // MgmtApprovalsView.tsx, not split across Dashboard/Approvals as the tab ids might suggest.
-      if ((cargo.count ?? 0) > 0) items.push({ label: 'cargo approvals', count: cargo.count!, tab: 'CreditApproval' });
-      if ((credit.count ?? 0) > 0) items.push({ label: 'credit approvals', count: credit.count!, tab: 'CreditApproval' });
+      if ((pendingOrders.count ?? 0) > 0) items.push({ label: 'orders awaiting your approval', count: pendingOrders.count!, tab: 'CreditApproval' });
       if ((requisitions.count ?? 0) > 0) items.push({ label: 'material requisitions', count: requisitions.count!, tab: 'CreditApproval' });
       if ((floats.count ?? 0) > 0) items.push({ label: 'float requests', count: floats.count!, tab: 'CreditApproval' });
+    }
+
+    if (department === 'RISK') {
+      const [cargo, orders, finalRelease, pod, customersPending] = await Promise.all([
+        supabase.from('cargo_intake').select('id', { count: 'exact', head: true }).eq('status', 'PENDING_RISK_APPROVAL'),
+        supabase.from('orders').select('id', { count: 'exact', head: true }).eq('status', 'PENDING_RISK'),
+        supabase.from('orders').select('id', { count: 'exact', head: true }).eq('status', 'PENDING_RISK_RELEASE'),
+        supabase.from('delivery_logs').select('id', { count: 'exact', head: true }).eq('status', 'PENDING_RISK_REVIEW'),
+        supabase.from('customers').select('id', { count: 'exact', head: true }).eq('status', 'PENDING').then(r => r, () => ({ count: 0 })),
+      ]);
+      if ((cargo.count ?? 0) > 0) items.push({ label: 'cargo intakes awaiting review', count: cargo.count!, tab: 'RiskApprovals' });
+      if ((orders.count ?? 0) > 0) items.push({ label: 'sales orders awaiting initial review', count: orders.count!, tab: 'RiskApprovals' });
+      if ((finalRelease.count ?? 0) > 0) items.push({ label: 'orders awaiting final release', count: finalRelease.count!, tab: 'RiskApprovals' });
+      if ((pod.count ?? 0) > 0) items.push({ label: 'proof of delivery awaiting review', count: pod.count!, tab: 'RiskApprovals' });
+      if ((customersPending.count ?? 0) > 0) items.push({ label: 'new customers awaiting verification', count: customersPending.count!, tab: 'RiskApprovals' });
     }
 
     if (department === 'CEO') {
@@ -73,7 +93,7 @@ export async function fetchPendingForDept(department: string): Promise<PendingIt
       const [orders, requisitions, newPrices] = await Promise.all([
         supabase.from('orders').select('id', { count: 'exact', head: true }).eq('status', 'PENDING_FINANCE'),
         supabase.from('material_requisitions').select('id', { count: 'exact', head: true }).eq('status', 'PENDING_FINANCE'),
-        supabase.from('goods_prices').select('id', { count: 'exact', head: true }).gte('updated_at', sincePriceView),
+        supabase.from('goods_prices_catalog').select('id', { count: 'exact', head: true }).gte('updated_at', sincePriceView),
       ]);
       if ((orders.count ?? 0) > 0) items.push({ label: 'orders awaiting evaluation', count: orders.count!, tab: 'OrdersQueue' });
       if ((requisitions.count ?? 0) > 0) items.push({ label: 'material requisitions to record', count: requisitions.count!, tab: 'Evaluation' });
@@ -82,7 +102,7 @@ export async function fetchPendingForDept(department: string): Promise<PendingIt
 
     if (department === 'MARKETING') {
       const sincePriceView = await priceCatalogLastViewed();
-      const { count } = await supabase.from('goods_prices').select('id', { count: 'exact', head: true }).gte('updated_at', sincePriceView);
+      const { count } = await supabase.from('goods_prices_catalog').select('id', { count: 'exact', head: true }).gte('updated_at', sincePriceView);
       if ((count ?? 0) > 0) items.push({ label: 'newly priced items ready to sell', count: count!, tab: 'PriceCatalog' });
     }
 
@@ -91,13 +111,16 @@ export async function fetchPendingForDept(department: string): Promise<PendingIt
       if ((count ?? 0) > 0) items.push({ label: 'registration approvals', count: count!, tab: 'Registrations' });
     }
 
-    if (department === 'OPERATIONS') {
+    if (department === 'ADMIN_WAREHOUSE') {
+      // Merged Operations + Dispatch pending items (Phase 5) — Logistics
+      // contributes none: fuel_logs/maintenance_schedule have no pending
+      // concept and aren't queried for badges even pre-merge.
       const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
       const [cargo, cargoApproved, production, rawMaterial, orders] = await Promise.all([
-        supabase.from('cargo_intake').select('id', { count: 'exact', head: true }).eq('status', 'PENDING_MANAGEMENT_APPROVAL'),
-        // Management just signed off — this is what tells Operations cargo
+        supabase.from('cargo_intake').select('id', { count: 'exact', head: true }).eq('status', 'PENDING_RISK_APPROVAL'),
+        // Risk just signed off — this is what tells Operations cargo
         // is ready to log into stock. Previously missing: only the "still
-        // waiting on Management" query above existed, so an approval never
+        // waiting on approval" query above existed, so an approval never
         // surfaced a badge here.
         supabase.from('cargo_intake').select('id', { count: 'exact', head: true }).eq('status', 'APPROVED').gte('updated_at', since),
         supabase.from('fulfillment_tickets').select('id', { count: 'exact', head: true }).eq('type', 'PRODUCTION_RELEASE').eq('status', 'PENDING').then(r => r, () => ({ count: 0 })),
@@ -109,7 +132,7 @@ export async function fetchPendingForDept(department: string): Promise<PendingIt
         // APPROVED barely exists as an observable state on its own).
         supabase.from('orders').select('id').in('status', ['APPROVED', 'PROCESSING']),
       ]);
-      if ((cargo.count ?? 0) > 0) items.push({ label: 'cargo pending management sign-off', count: cargo.count!, tab: 'PortIngestion' });
+      if ((cargo.count ?? 0) > 0) items.push({ label: 'cargo pending Risk sign-off', count: cargo.count!, tab: 'PortIngestion' });
       if ((cargoApproved.count ?? 0) > 0) items.push({ label: 'cargo approved and ready to log into stock', count: cargoApproved.count!, tab: 'Stock' });
       if ((production.count ?? 0) > 0) items.push({ label: 'production releases to prepare', count: production.count!, tab: 'Releases' });
       if ((rawMaterial.count ?? 0) > 0) items.push({ label: 'raw material releases to prepare', count: rawMaterial.count!, tab: 'Releases' });
@@ -126,21 +149,19 @@ export async function fetchPendingForDept(department: string): Promise<PendingIt
         readyToDispatchCount = orderIds.filter(id => !dispatchedIds.has(id)).length;
       }
       if (readyToDispatchCount > 0) items.push({ label: 'orders ready to dispatch', count: readyToDispatchCount, tab: 'ApprovedGoods' });
-    }
 
-    if (department === 'DISPATCH') {
       // 'ActiveDeliveries' is the real actionable Deliveries screen — the
       // 'Deliveries' id is just the Dispatch dashboard and has no orders
       // query at all, so a badge pointing there went nowhere.
       // Keyed off delivery_logs, not raw order status — an order sitting at
       // APPROVED/PROCESSING isn't Dispatch's business yet; it only becomes
-      // that once Operations hands it off (creates the delivery_logs row).
-      // Covers both PENDING_ASSIGNMENT (Operations left the driver blank)
-      // and ASSIGNED (Operations picked one on the spot) — either way it's a
-      // fresh handoff Dispatch hasn't started tracking yet. Once it moves to
-      // IN_TRANSIT/DELIVERED/FAILED it's no longer "new" and drops off.
-      const { count } = await supabase.from('delivery_logs').select('id', { count: 'exact', head: true }).in('status', ['PENDING_ASSIGNMENT', 'ASSIGNED']);
-      if ((count ?? 0) > 0) items.push({ label: 'new deliveries from Operations', count: count!, tab: 'ActiveDeliveries' });
+      // that once it's been handed off (creates the delivery_logs row).
+      // Covers both PENDING_ASSIGNMENT (driver left blank) and ASSIGNED
+      // (driver picked on the spot) — either way it's a fresh handoff not
+      // yet tracked. Once it moves to IN_TRANSIT/DELIVERED/FAILED it's no
+      // longer "new" and drops off.
+      const { count: newDeliveriesCount } = await supabase.from('delivery_logs').select('id', { count: 'exact', head: true }).in('status', ['PENDING_ASSIGNMENT', 'ASSIGNED']);
+      if ((newDeliveriesCount ?? 0) > 0) items.push({ label: 'new deliveries to assign', count: newDeliveriesCount!, tab: 'ActiveDeliveries' });
     }
 
     if (department === 'PRODUCTION') {

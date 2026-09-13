@@ -189,9 +189,17 @@ export default function DriverTrackingView({ driver, onLogout }: DriverTrackingV
         return;
       }
     }
+    // Driver completion must NOT be able to bypass Risk — this now always
+    // enters PENDING_RISK_REVIEW, never DELIVERED directly. Risk's own POD
+    // Review lane (RiskApprovalsView.tsx) is what ultimately marks the
+    // delivery DELIVERED, via the risk_review_pod() RPC, which is the only
+    // path either delivery_logs.status or orders.status can reach
+    // DELIVERED — enforced by a database trigger, not just this screen's
+    // own convention. This mirrors exactly what the staff-side
+    // ProofOfDeliveryView.tsx/DeliveriesView.tsx already do.
     const { error } = await supabase
       .from('delivery_logs')
-      .update({ status: 'DELIVERED', delivered_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+      .update({ status: 'PENDING_RISK_REVIEW', updated_at: new Date().toISOString() })
       .eq('id', stop.id);
     setMarkingId(null);
     setMarkingStage(null);
@@ -199,9 +207,9 @@ export default function DriverTrackingView({ driver, onLogout }: DriverTrackingV
       setProofError(`Failed to update delivery: ${error.message}`);
       return;
     }
-    if (stop.orderId) {
-      await supabase.from('orders').update({ status: 'DELIVERED', updated_at: new Date().toISOString() }).eq('id', stop.orderId);
-    }
+    try {
+      await supabase.from('supplier_order_notifications').insert([{ message: `Proof of delivery submitted for Risk review: Delivery ${stop.id}`, notified_department: 'RISK', read: false }]);
+    } catch {}
     setStops(prev => prev.filter(s => s.id !== stop.id));
   };
 

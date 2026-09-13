@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
-import { Plus, Download, Search, MoreVertical, X, ChevronLeft, ChevronRight, FileText } from 'lucide-react';
+import { Plus, Download, Search, MoreVertical, X, ChevronLeft, ChevronRight, FileText, History } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useFullscreenToggle, FullscreenButton } from '../../components/global/FullscreenToggle';
 import RatingBadge from '../../components/RatingBadge';
-import { computeCustomerRating, ordersForCustomer } from '../../utils/customerRating';
+import { computeCustomerRating, ordersForCustomer, ordersForCustomerRow, outstandingCreditFor } from '../../utils/customerRating';
 import CountUp from '../../components/CountUp';
 import { useCeoSettings } from '../../contexts/CeoSettingsContext';
 import DestinationLocator, { type Coords } from '../../components/dispatch/DestinationLocator';
@@ -11,31 +11,46 @@ import type { Order, OrderLineItem } from '../../types/erp';
 import SidePanel, { SidePanelSection } from '../../components/ui/SidePanel';
 import SearchableDropdown from '../../components/ui/SearchableDropdown';
 import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
+import RequestTimelinePanel from '../../components/global/RequestTimelinePanel';
 
 
 const STATUS_STYLES: Record<Order['status'], string> = {
-  PENDING_FINANCE: 'bg-amber-100 text-amber-700',
+  PENDING_RISK: 'bg-sky-100 text-sky-700',
   PENDING_MANAGEMENT: 'bg-amber-100 text-amber-700',
+  PENDING_FINANCE: 'bg-amber-100 text-amber-700',
+  PENDING_RISK_RELEASE: 'bg-rose-100 text-rose-700',
   APPROVED: 'bg-blue-100 text-blue-700',
   PROCESSING: 'bg-indigo-100 text-indigo-700',
   OUT_FOR_DELIVERY: 'bg-violet-100 text-violet-700',
   DELIVERED: 'bg-emerald-100 text-emerald-700',
   REJECTED: 'bg-rose-100 text-rose-700',
+  RETURNED_FOR_CORRECTION: 'bg-orange-100 text-orange-700',
 };
 
+// Canonical order flow: Marketing -> Risk Initial -> Management ->
+// Accounts -> Risk Final Release -> Admin & Warehouse -> Dispatch ->
+// Risk POD -> Delivered. Management is now a mandatory stage every order
+// passes through, not an optional Risk escalation — the old "Special
+// Dispensation (Mgmt)" label reflected the pre-reconciliation workflow
+// and no longer applies.
 const STATUS_LABEL: Record<Order['status'], string> = {
-  PENDING_FINANCE: 'Pending Finance',
-  PENDING_MANAGEMENT: 'Pending Mgmt',
+  PENDING_RISK: 'Pending Risk Review',
+  PENDING_MANAGEMENT: 'Pending Management Approval',
+  PENDING_FINANCE: 'Pending Accounts',
+  PENDING_RISK_RELEASE: 'Pending Risk Final Release',
   APPROVED: 'Approved',
   PROCESSING: 'Processing',
   OUT_FOR_DELIVERY: 'Out for Delivery',
   DELIVERED: 'Delivered',
   REJECTED: 'Rejected',
+  RETURNED_FOR_CORRECTION: 'Returned for Correction',
 };
 
 const STEPPER = [
-  { key: 'PENDING_MANAGEMENT', label: 'Pending Management' },
-  { key: 'PENDING_FINANCE', label: 'Pending Finance' },
+  { key: 'PENDING_RISK', label: 'Risk Initial Review' },
+  { key: 'PENDING_MANAGEMENT', label: 'Management Approval' },
+  { key: 'PENDING_FINANCE', label: 'Accounts Office' },
+  { key: 'PENDING_RISK_RELEASE', label: 'Risk Final Release' },
   { key: 'APPROVED', label: 'Approved' },
   { key: 'PROCESSING', label: 'Processing' },
   { key: 'OUT_FOR_DELIVERY', label: 'Out for Delivery' },
@@ -64,15 +79,16 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
 
   const [productPrices, setProductPrices] = useState<Record<string, number>>({});
   const [stockLevels, setStockLevels] = useState<Record<string, number>>({});
-  const [customers, setCustomers] = useState<{ id: string; name: string; phone: string; discountPercent: number; isSpecialCustomer: boolean }[]>([]);
+  const [customers, setCustomers] = useState<{ id: string; name: string; phone: string; discountPercent: number; isSpecialCustomer: boolean; creditLimit: number | null; creditStatus: string }[]>([]);
   const [destinationCoords, setDestinationCoords] = useState<Coords | null>(null);
+  const [showOrderTimeline, setShowOrderTimeline] = useState(false);
 
   const openNewOrderModal = () => {
     setShowNewModal(true);
     setLineItems([{ productName: '', quantity: 1 }]);
     setForm({ clientName: '', destination: '', paymentMode: 'CASH', customerId: '', phone: '' });
     setDestinationCoords(null);
-    supabase.from('goods_prices').select('product_name, unit_price').order('product_name').then(({ data }) => {
+    supabase.from('goods_prices_catalog').select('product_name, unit_price').order('product_name').then(({ data }) => {
       setAvailableProducts((data || []).map((r: any) => String(r.product_name)));
       const priceMap: Record<string, number> = {};
       (data || []).forEach((r: any) => { priceMap[r.product_name] = Number(r.unit_price ?? 0); });
@@ -101,6 +117,8 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
         phone: String(r.phone || '').trim(),
         discountPercent: Number(r.discount_percent) || 0,
         isSpecialCustomer: r.is_special_customer ?? false,
+        creditLimit: r.credit_limit != null ? Number(r.credit_limit) : null,
+        creditStatus: r.credit_status || 'ACTIVE',
       })));
     }, () => {});
   };
@@ -141,6 +159,8 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
     status: r.status || 'PENDING_FINANCE',
     createdAt: r.created_at || r.createdAt || new Date().toISOString(),
     quantity: Number(r.quantity ?? 0),
+    amountPaid: Number(r.amount_paid ?? r.amountPaid ?? 0),
+    rejectionReason: r.rejection_reason || r.rejectionReason || undefined,
     metadata: r.metadata || null,
   });
 
@@ -182,7 +202,7 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
   const paginated = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
   const totalValue = orders.reduce((s, o) => s + o.totalAmount, 0);
-  const pending = orders.filter(o => o.status === 'PENDING_FINANCE' || o.status === 'PENDING_MANAGEMENT').length;
+  const pending = orders.filter(o => o.status === 'PENDING_FINANCE' || o.status === 'PENDING_MANAGEMENT' || o.status === 'PENDING_RISK').length;
   const active = orders.filter(o => o.status === 'PROCESSING' || o.status === 'DELIVERED').length;
 
   const handleSave = async () => {
@@ -216,8 +236,28 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
       });
       const orderTotal = itemsWithPricing.reduce((s, i) => s + i.lineTotal, 0);
 
+      // Client-side pre-check mirroring the RPC's own rules (Phase 6) so the
+      // common case never round-trips — the RPC re-checks server-side
+      // regardless (create_order_with_stock_check), so this is a fast-fail
+      // convenience, not the actual enforcement boundary.
+      if (form.paymentMode === 'CREDIT' && resolvedCustomer) {
+        if (resolvedCustomer.creditStatus === 'ON_HOLD') {
+          addNotification(`Credit is ON HOLD for ${resolvedCustomer.name} — new credit orders are blocked. Contact Risk.`);
+          setSubmitting(false);
+          return;
+        }
+        if (resolvedCustomer.creditLimit != null) {
+          const outstanding = outstandingCreditFor(orders, { id: resolvedCustomer.id, name: resolvedCustomer.name });
+          if (outstanding + orderTotal > resolvedCustomer.creditLimit) {
+            addNotification(`Credit limit exceeded for ${resolvedCustomer.name}: limit GHS ${resolvedCustomer.creditLimit.toLocaleString()}, currently outstanding GHS ${outstanding.toLocaleString()}, this order GHS ${orderTotal.toLocaleString()}.`);
+            setSubmitting(false);
+            return;
+          }
+        }
+      }
+
       const creditLimit = getSetting('max_credit_amount', 0);
-      if (form.paymentMode === 'CREDIT' && creditLimit > 0 && orderTotal > creditLimit) {
+      if (form.paymentMode === 'CREDIT' && !resolvedCustomer?.creditLimit && creditLimit > 0 && orderTotal > creditLimit) {
         addNotification(`Credit orders are capped at GHS ${Number(creditLimit).toLocaleString()} by the CEO — this order is GHS ${orderTotal.toLocaleString()}.`);
         setSubmitting(false);
         return;
@@ -238,7 +278,7 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
         p_destination: form.destination || null,
         p_payment_mode: form.paymentMode,
         p_total_amount: orderTotal,
-        p_status: 'PENDING_MANAGEMENT',
+        p_status: 'PENDING_RISK',
         p_metadata: { items: itemsWithPricing, discountPercent: discountPct },
         p_customer_id: resolvedCustomer?.id || null,
         p_destination_lat: destinationCoords?.lat ?? null,
@@ -251,7 +291,7 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
         id: `ord-${Date.now()}`, ticket_number: ticketNumber,
         client_name: form.clientName, product_name: productDisplay,
         destination: form.destination, payment_mode: form.paymentMode,
-        total_amount: orderTotal, status: 'PENDING_MANAGEMENT', created_at: now,
+        total_amount: orderTotal, status: 'PENDING_RISK', created_at: now,
       });
       onCreateOrder(newOrder);
       setOrders(prev => [newOrder, ...prev]);
@@ -259,7 +299,8 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
       setLineItems([{ productName: '', quantity: 1 }]);
       setForm({ clientName: '', destination: '', paymentMode: 'CASH', customerId: '', phone: '' });
       setDestinationCoords(null);
-      addNotification('Order created successfully. Routed to Management for review.');
+      await supabase.from('supplier_order_notifications').insert([{ message: `New order awaiting Risk review: ${form.clientName.trim()} — GHS ${orderTotal.toLocaleString()}`, notified_department: 'RISK', read: false }]);
+      addNotification('Order created successfully. Routed to Risk for review.');
     } catch (e: any) {
       console.error(e);
       addNotification(`Error creating order: ${e.message}`);
@@ -328,13 +369,15 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
             onChange={v => { setStatusFilter(v); setPage(0); }}
             options={[
               { value: 'ALL', label: 'All Statuses' },
+              { value: 'PENDING_RISK', label: 'Pending Risk Review' },
               { value: 'PENDING_FINANCE', label: 'Pending Finance' },
-              { value: 'PENDING_MANAGEMENT', label: 'Pending Mgmt' },
+              { value: 'PENDING_MANAGEMENT', label: 'Special Dispensation (Mgmt)' },
               { value: 'APPROVED', label: 'Approved' },
               { value: 'PROCESSING', label: 'Processing' },
               { value: 'OUT_FOR_DELIVERY', label: 'Out for Delivery' },
               { value: 'DELIVERED', label: 'Delivered' },
               { value: 'REJECTED', label: 'Rejected' },
+              { value: 'RETURNED_FOR_CORRECTION', label: 'Returned for Correction' },
             ]}
             className="w-48"
           />
@@ -461,6 +504,19 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
                     {customers.find(c => c.id === form.customerId)?.discountPercent}% customer discount will be applied
                   </p>
                 )}
+                {form.paymentMode === 'CREDIT' && form.customerId && (() => {
+                  const cust = customers.find(c => c.id === form.customerId);
+                  if (!cust) return null;
+                  if (cust.creditStatus === 'ON_HOLD') {
+                    return <p className="text-[10px] font-bold text-rose-600 mt-1">⚠ Credit is ON HOLD for this customer — new credit orders will be blocked.</p>;
+                  }
+                  const outstanding = outstandingCreditFor(orders, { id: cust.id, name: cust.name });
+                  return (
+                    <p className="text-[10px] font-semibold text-[var(--text-muted)] mt-1">
+                      Credit: {cust.creditLimit != null ? `GHS ${cust.creditLimit.toLocaleString()} limit` : 'no per-customer limit — global cap applies'} · GHS {outstanding.toLocaleString()} outstanding
+                    </p>
+                  );
+                })()}
               </div>
               <div className="erp-form-group">
                 <label className="erp-label">Customer Phone</label>
@@ -570,6 +626,7 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
       {selectedOrder && (() => {
         const lineItems: OrderLineItem[] | undefined = selectedOrder.metadata?.items;
         return (
+          <>
           <SidePanel
             open
             onClose={() => setSelectedOrder(null)}
@@ -637,7 +694,7 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
                 </div>
 
                 {/* Progress stepper */}
-                {selectedOrder.status !== 'REJECTED' && (
+                {selectedOrder.status !== 'REJECTED' && selectedOrder.status !== 'RETURNED_FOR_CORRECTION' && (
                   <div>
                     <p className="text-xs font-semibold text-[var(--text-muted)] mb-3">Order Progress</p>
                     <div className="flex items-center gap-1 overflow-x-auto pb-1">
@@ -657,11 +714,26 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
                     </div>
                   </div>
                 )}
-                {selectedOrder.status === 'REJECTED' && (
-                  <div className="rounded-xl bg-rose-50 border border-rose-200 px-4 py-3 text-sm text-rose-700 font-medium">Order Rejected</div>
+                {(selectedOrder.status === 'REJECTED' || selectedOrder.status === 'RETURNED_FOR_CORRECTION') && (
+                  <div className="rounded-xl bg-rose-50 border border-rose-200 px-4 py-3 text-sm text-rose-700">
+                    <p className="font-medium">{selectedOrder.status === 'REJECTED' ? 'Order Rejected' : 'Returned for Correction'}</p>
+                    {selectedOrder.rejectionReason && (
+                      <p className="mt-1"><strong>Reason:</strong> {selectedOrder.rejectionReason}</p>
+                    )}
+                  </div>
                 )}
+                <button onClick={() => setShowOrderTimeline(true)} className="flex items-center gap-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--accent)]">
+                  <History size={13} /> View Timeline
+                </button>
             </div>
           </SidePanel>
+          <RequestTimelinePanel
+            open={showOrderTimeline}
+            onClose={() => setShowOrderTimeline(false)}
+            referenceId={selectedOrder.id}
+            displayId={selectedOrder.ticketNumber || selectedOrder.id}
+          />
+          </>
         );
       })()}
     </div>

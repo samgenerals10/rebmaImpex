@@ -5,7 +5,7 @@ import {
   ArrowLeft, Package, Clock, DollarSign, CreditCard, Smartphone,
   FileText, Camera, Upload, RefreshCw
 } from 'lucide-react';
-import { exportToCSV } from '../../utils/export';
+import UniversalExportModal, { type ExportColumn } from '../../components/common/UniversalExportModal';
 import type { Order } from '../../types/erp';
 import InvoiceLineItems, { getProductSummary, getProductSummaryWithQty } from '../../components/InvoiceLineItems';
 import { useFullscreenToggle, FullscreenButton } from '../../components/global/FullscreenToggle';
@@ -99,6 +99,54 @@ function mapRow(r: any): Order {
   };
 }
 
+// THE RECONCILIATION POINT — both OrdersQueueView's own Approve action
+// (below) AND FinanceDashboard.tsx's "Settle Credit" block call this
+// exact function, which calls the shared accounts_review_order() RPC for
+// the status transition (PENDING_FINANCE -> PENDING_RISK_RELEASE, the
+// only legal next status, database-trigger-enforced) plus the
+// stock-shortage guard, stock deduction, notifications, and audit log
+// that used to exist only on this screen and not on FinanceDashboard's —
+// closing that gap by construction rather than duplicating the logic a
+// second time. Returns false (without throwing) on a stock shortage, so
+// callers can bail out cleanly the same way this screen's own button
+// already did.
+export async function approveAccountsReview(order: Order, currentUser?: { fullName: string } | null, addNotification?: (msg: string) => void) {
+  const shortages = await checkStockAvailability(order);
+  if (shortages.length > 0) {
+    addNotification?.(shortageMessage(shortages));
+    return false;
+  }
+
+  const { data: sessionData } = await supabase.auth.getSession();
+  const performedBy = currentUser?.fullName || 'Finance';
+  const performedByEmail = sessionData?.session?.user?.email || null;
+  const now = new Date().toISOString();
+
+  const { error: rpcError } = await supabase.rpc('accounts_review_order', {
+    p_order_id: order.id,
+    p_action: 'approve',
+    p_note: null,
+    p_approved_by: performedBy,
+    p_approved_by_email: performedByEmail,
+  });
+  if (rpcError) throw rpcError;
+
+  // Deduct sold stock the moment the sale is confirmed.
+  const ticketRef = order.ticketNumber || `ORD-${String(order.id).slice(0, 6).toUpperCase()}`;
+  await deductStockForOrder(order, `Order Approved: ${ticketRef}`);
+
+  // No delivery_logs row here — that handoff still only happens when
+  // Admin & Warehouse clicks Dispatch/Fulfillment in ApprovedGoodsView,
+  // now gated on Risk's Final Release clearing the order first.
+  await supabase.from('supplier_order_notifications').insert([
+    { message: `Accounts cleared order ${order.ticketNumber || order.id} for ${order.clientName} — awaiting Risk's final release check.`, notified_department: 'RISK', read: false },
+    { message: `Your order ${order.ticketNumber || order.id} has cleared Accounts and is awaiting Risk's final release check.`, notified_department: 'MARKETING', read: false },
+  ]);
+  await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Order ${order.ticketNumber || order.id} APPROVED for ${order.clientName} — GHS ${(Number(order.totalAmount ?? 0)).toLocaleString()}`, performed_by: performedBy, reference_id: order.id, timestamp: now }]);
+
+  return true;
+}
+
 export default function FinanceOrdersQueueView({ addNotification, ordersList: propOrders, setOrdersList, onEvaluateOrder, currentUser }: Props) {
   const { getSetting } = useCeoSettings();
   const handlePrint = () => {
@@ -113,12 +161,25 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const [selected, setSelected] = useState<Order | null>(null);
   const [rejectModal, setRejectModal] = useState<string | null>(null);
+  const [rejectMode, setRejectMode] = useState<'reject' | 'return'>('reject');
   const [rejectReason, setRejectReason] = useState('');
   const [payForm, setPayForm] = useState<PaymentForm>({ ...EMPTY_FORM });
   const [allOrders, setAllOrders] = useState<Order[]>([]);
   const [isPartPayment, setIsPartPayment] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const tableFullscreen = useFullscreenToggle();
+  const [exportOpen, setExportOpen] = useState(false);
+
+  const orderExportCols: ExportColumn[] = [
+    { key: 'id', label: 'Order ID' },
+    { key: 'clientName', label: 'Customer' },
+    { key: 'totalAmount', label: 'Amount (GHS)', render: o => Number(o.totalAmount ?? 0).toLocaleString() },
+    { key: 'paymentMode', label: 'Payment Mode' },
+    { key: 'status', label: 'Status' },
+    { key: 'submittedBy', label: 'Submitted By', render: o => o.submittedBy || '—' },
+    { key: 'createdAt', label: 'Date', render: o => o.createdAt ? o.createdAt.split('T')[0] : '—' },
+  ];
+
 
   useEffect(() => {
     if (selected) {
@@ -175,59 +236,32 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
   const approvedValue = approved.reduce((s, o) => s + o.totalAmount, 0);
   const deliveredValue = delivered.reduce((s, o) => s + o.totalAmount, 0);
 
-  async function approveOrder(order: Order, updatedStatus: Order['status'] = 'APPROVED') {
+  // THE RECONCILIATION POINT: both this screen's Approve action AND
+  // FinanceDashboard.tsx's "Settle Credit" block (which imports this
+  // exact function — same cross-view-export pattern this file already
+  // uses for generateReceiptNumber/printReceipt from ReceiptsView.tsx)
+  // Both this screen's Approve action AND FinanceDashboard.tsx's "Settle
+  // Credit" block call the same module-level approveAccountsReview()
+  // (defined below, outside this component, and imported by
+  // FinanceDashboard.tsx — same cross-view-export pattern this file
+  // already uses for generateReceiptNumber/printReceipt from
+  // ReceiptsView.tsx) — the actual reconciliation of the two paths.
+  async function approveOrder(order: Order) {
     if (submitting) return;
     setSubmitting(true);
     try {
-      // Guard against overselling — same check apiClient's finance.evaluateOrder()
-      // already does; this screen's own approve button never called it, which is
-      // how stock could reach 0 available while an order still went through.
-      const shortages = await checkStockAvailability(order);
-      if (shortages.length > 0) {
-        addNotification?.(shortageMessage(shortages));
-        setSubmitting(false);
-        return;
-      }
+      const ok = await approveAccountsReview(order, currentUser, addNotification);
+      if (!ok) { setSubmitting(false); return; }
 
-      const updateLocal = (prev: Order[]) => prev.map(o => o.id === order.id ? { ...o, status: updatedStatus } : o);
+      const updateLocal = (prev: Order[]) => prev.map(o => o.id === order.id ? { ...o, status: 'PENDING_RISK_RELEASE' as const } : o);
       setAllOrders(updateLocal);
-      setOrdersList?.(prev => prev.map(o => o.id === order.id ? { ...o, status: updatedStatus } : o));
+      setOrdersList?.(prev => prev.map(o => o.id === order.id ? { ...o, status: 'PENDING_RISK_RELEASE' as const } : o));
 
-      // Get current user for audit trail
-      const { data: sessionData } = await supabase.auth.getSession();
-      const userId = sessionData?.session?.user?.id || '';
-      const performedBy = currentUser?.fullName || 'Finance';
-      const performedByEmail = sessionData?.session?.user?.email || null;
-      const now = new Date().toISOString();
-
-      await supabase.from('orders').update({
-        status: updatedStatus,
-        finance_approved_by: performedBy,
-        finance_approved_by_email: performedByEmail,
-      }).eq('id', order.id);
-
-      // Deduct sold stock the moment the sale is confirmed — same trigger point
-      // finance.evaluateOrder() uses in apiClient.ts. That function is correct
-      // but was never actually called by this screen's Approve button, which is
-      // why stock quantities never moved for orders approved here.
-      const ticketRef = order.ticketNumber || `ORD-${String(order.id).slice(0, 6).toUpperCase()}`;
-      await deductStockForOrder(order, `Order Approved: ${ticketRef}`);
-
-      // No delivery_logs row here — creating one the instant Finance approves
-      // is what let an order show up in Dispatch's driver-assignment screen
-      // before Operations had done anything at all. That handoff now only
-      // happens when Operations clicks Dispatch/Fulfillment in
-      // ApprovedGoodsView, which is the one place that inserts it.
-      await supabase.from('supplier_order_notifications').insert([
-        { message: `Finance approved order ${order.ticketNumber || order.id} for ${order.clientName}. Please prepare goods for dispatch.`, notified_department: 'OPERATIONS', read: false },
-        { message: `Your order ${order.ticketNumber || order.id} has been approved by Finance. Operations is preparing your goods.`, notified_department: 'MARKETING', read: false },
-      ]);
-      await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Order ${order.ticketNumber || order.id} APPROVED for ${order.clientName} — GHS ${(Number(order.totalAmount ?? 0)).toLocaleString()}`, performed_by: performedBy, timestamp: now }]);
-
-      addNotification?.(`Order ${order.ticketNumber || order.id} approved. Invoice generated. Operations notified.`);
+      addNotification?.(`Order ${order.ticketNumber || order.id} approved — sent to Risk for final release.`);
       setSelected(null);
     } catch (e) {
       console.error(e);
+      addNotification?.('Approval failed.');
     } finally {
       setSubmitting(false);
     }
@@ -237,15 +271,28 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
     if (submitting) return;
     setSubmitting(true);
     try {
-      const updateLocal = (prev: Order[]) => prev.map(o => o.id === id ? { ...o, status: 'REJECTED' as const } : o);
+      const isReturn = rejectMode === 'return';
+      const { error: rpcError } = await supabase.rpc('accounts_review_order', {
+        p_order_id: id,
+        p_action: isReturn ? 'return' : 'reject',
+        p_note: rejectReason,
+      });
+      if (rpcError) throw rpcError;
+
+      const newStatus = isReturn ? 'RETURNED_FOR_CORRECTION' as const : 'REJECTED' as const;
+      const updateLocal = (prev: Order[]) => prev.map(o => o.id === id ? { ...o, status: newStatus } : o);
       setAllOrders(updateLocal);
-      setOrdersList?.(prev => prev.map(o => o.id === id ? { ...o, status: 'REJECTED' as const } : o));
+      setOrdersList?.(prev => prev.map(o => o.id === id ? { ...o, status: newStatus } : o));
 
-      await supabase.from('orders').update({ status: 'REJECTED', reject_reason: rejectReason }).eq('id', id);
-      await supabase.from('supplier_order_notifications').insert([{ message: `Order ${id} rejected by Finance. Reason: ${rejectReason}`, notified_department: 'MARKETING', read: false }]);
-      await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Order ${id} REJECTED. Reason: ${rejectReason}`, performed_by: currentUser?.fullName || 'Finance', timestamp: new Date().toISOString() }]);
+      // Return-for-correction re-enters the full chain at PENDING_RISK, not
+      // a shortcut back to Accounts or Management — the whole order/
+      // customer/control chain gets rechecked, matching the approved
+      // decision for this exact case.
+      const verbLabel = isReturn ? 'RETURNED FOR CORRECTION' : 'REJECTED';
+      await supabase.from('supplier_order_notifications').insert([{ message: `Order ${id} ${verbLabel} by Accounts. Reason: ${rejectReason}`, notified_department: 'MARKETING', read: false }]);
+      await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Order ${id} ${verbLabel}. Reason: ${rejectReason}`, performed_by: currentUser?.fullName || 'Finance', reference_id: id, timestamp: new Date().toISOString() }]);
 
-      addNotification?.(`Order ${id} rejected.`);
+      addNotification?.(`Order ${id} ${isReturn ? 'returned for correction' : 'rejected'}.`);
       setRejectModal(null);
       setRejectReason('');
       setSelected(null);
@@ -577,10 +624,17 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
               <div className="flex items-center gap-3 pt-2">
                 <button
                   disabled={submitting}
-                  onClick={() => setRejectModal(selected.id)}
+                  onClick={() => { setRejectMode('reject'); setRejectModal(selected.id); }}
                   className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-red-500 text-white text-sm font-medium hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <XCircle size={16} /> Reject Order
+                </button>
+                <button
+                  disabled={submitting}
+                  onClick={() => { setRejectMode('return'); setRejectModal(selected.id); }}
+                  className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-orange-500 text-white text-sm font-medium hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <XCircle size={16} /> Return for Correction
                 </button>
                 <button
                   disabled={isSubmitDisabled}
@@ -602,13 +656,20 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
 
   return (
     <div className="p-4 md:p-6 space-y-6">
+      <UniversalExportModal
+        open={exportOpen}
+        onClose={() => setExportOpen(false)}
+        title="Orders Queue"
+        data={filtered}
+        columns={orderExportCols}
+      />
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-[var(--text-primary)]">Orders Queue</h1>
           <p className="text-sm text-[var(--text-secondary)]">Review and process orders submitted by Marketing</p>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => exportToCSV(filtered.map(o => ({ ID: o.id, Customer: o.clientName, Amount: o.totalAmount, Mode: o.paymentMode, Status: o.status, Date: o.createdAt })), ['ID', 'Customer', 'Amount', 'Mode', 'Status', 'Date'], 'orders_queue')} className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[var(--border)] text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-card)]">
+          <button onClick={() => setExportOpen(true)} className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[var(--border)] text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-card)]">
             <Download size={14} /> Export
           </button>
           <FullscreenButton expanded={tableFullscreen.expanded} onClick={tableFullscreen.toggle} />
@@ -641,7 +702,7 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by order ID or customer..." className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent)]" />
         </div>
         <SearchableDropdown value={modeFilter} onChange={setModeFilter} options={['All', 'CASH', 'CHEQUE', 'MOBILE_MONEY', 'CREDIT'].map(m => ({ value: m, label: m }))} className="w-44" />
-        <SearchableDropdown value={statusFilter} onChange={setStatusFilter} options={['All', 'PENDING_FINANCE', 'PENDING_MANAGEMENT', 'APPROVED', 'PROCESSING', 'OUT_FOR_DELIVERY', 'DELIVERED', 'REJECTED'].map(s => ({ value: s, label: s }))} className="w-52" />
+        <SearchableDropdown value={statusFilter} onChange={setStatusFilter} options={['All', 'PENDING_RISK', 'PENDING_MANAGEMENT', 'PENDING_FINANCE', 'PENDING_RISK_RELEASE', 'APPROVED', 'PROCESSING', 'OUT_FOR_DELIVERY', 'DELIVERED', 'REJECTED', 'RETURNED_FOR_CORRECTION'].map(s => ({ value: s, label: s }))} className="w-52" />
       </div>
 
       <div className={`bg-[var(--bg-card)] border border-[var(--border)] overflow-hidden ${tableFullscreen.expanded ? `${tableFullscreen.fullscreenClass} p-4` : 'rounded-2xl'}`}>
@@ -670,7 +731,7 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
               {order.status === 'PENDING_FINANCE' && (
                 <>
                   <button onClick={() => { setSelected(order); }} className="p-1.5 rounded-lg hover:bg-green-100" title="Approve"><CheckCircle size={14} className="text-green-500" /></button>
-                  <button onClick={() => { setRejectModal(order.id); }} className="p-1.5 rounded-lg hover:bg-red-100" title="Reject"><XCircle size={14} className="text-red-500" /></button>
+                  <button onClick={() => { setRejectMode('reject'); setRejectModal(order.id); }} className="p-1.5 rounded-lg hover:bg-red-100" title="Reject"><XCircle size={14} className="text-red-500" /></button>
                 </>
               )}
               <div className="relative">
@@ -680,7 +741,8 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
                     <button onClick={() => { setSelected(order); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-input)]">View Full Details</button>
                     {order.status === 'PENDING_FINANCE' && <>
                       <button onClick={() => { setSelected(order); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-sm text-green-600 hover:bg-[var(--bg-input)]">Approve Order</button>
-                      <button onClick={() => { setRejectModal(order.id); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-[var(--bg-input)]">Reject Order</button>
+                      <button onClick={() => { setRejectMode('reject'); setRejectModal(order.id); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-[var(--bg-input)]">Reject Order</button>
+                      <button onClick={() => { setRejectMode('return'); setRejectModal(order.id); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-sm text-orange-600 hover:bg-[var(--bg-input)]">Return for Correction</button>
                     </>}
                     <button onClick={() => { handlePrint(); setMenuOpen(null); }} className="w-full text-left px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-input)]">Export PDF</button>
                   </div>
@@ -694,11 +756,11 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
       <SidePanel
         open={!!rejectModal}
         onClose={() => setRejectModal(null)}
-        title={`Reject Order ${rejectModal || ''}`}
+        title={`${rejectMode === 'return' ? 'Return' : 'Reject'} Order ${rejectModal || ''}`}
         footer={
           <>
             <button onClick={() => setRejectModal(null)} className="erp-btn erp-btn-ghost">Cancel</button>
-            <button onClick={() => rejectOrder(rejectModal!)} disabled={!rejectReason} className="erp-btn erp-btn-danger disabled:opacity-50">Confirm Rejection</button>
+            <button onClick={() => rejectOrder(rejectModal!)} disabled={!rejectReason} className="erp-btn erp-btn-danger disabled:opacity-50">{rejectMode === 'return' ? 'Confirm Return' : 'Confirm Rejection'}</button>
           </>
         }
       >

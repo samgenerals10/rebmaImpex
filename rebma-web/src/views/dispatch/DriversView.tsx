@@ -485,9 +485,13 @@ export default function DriversView({ addNotification }: Props) {
                   <Smartphone size={13} /> Mobile App Linked
                 </span>
               ) : (
-                <button onClick={() => setInviteTarget(profileDriver)} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 12, padding: '10px 16px', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
-                  <Smartphone size={14} /> Invite to Mobile App
-                </button>
+                // Phase 8: the ungated "Invite to Mobile App" shortcut is
+                // retired — drivers now get their login the same way every
+                // other hire does, through HR's invite flow (Risk / Driver).
+                // api/register-driver-user.ts is left in source, unused.
+                <span style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--bg-input)', color: 'var(--text-muted)', borderRadius: 99, padding: '6px 14px', fontSize: 12, fontWeight: 600 }}>
+                  <Smartphone size={13} /> No login yet — invite via HR
+                </span>
               )}
             </div>
           </div>

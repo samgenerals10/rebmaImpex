@@ -8,11 +8,12 @@ import { Search, Receipt as ReceiptIcon, Download } from 'lucide-react';
 import QRCode from 'qrcode';
 import { supabase } from '../../lib/supabaseClient';
 import { useRealtimeChannel } from '../../hooks/useRealtimeChannel';
-import { exportToCSV, safeDisplayName } from '../../utils/export';
+import { safeDisplayName } from '../../utils/export';
 import { documentTemplates, type DocumentTemplate } from '../../services/apiClient';
 import type { OrderLineItem } from '../../types/erp';
 import { useCeoSettings } from '../../contexts/CeoSettingsContext';
 import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
+import UniversalExportModal, { type ExportColumn } from '../../components/common/UniversalExportModal';
 
 const BRAND = { green: '#1a5c32', blue: '#29a9dc', lime: '#7fc241' };
 
@@ -273,6 +274,20 @@ export default function FinanceReceiptsView({ addNotification }: Props) {
   const [receipts, setReceipts] = useState<ReceiptRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [exportOpen, setExportOpen] = useState(false);
+
+  const exportColumns: ExportColumn[] = [
+    { key: 'receiptNumber', label: 'Receipt #' },
+    { key: 'ticketNumber', label: 'Order Ticket' },
+    { key: 'clientName', label: 'Client' },
+    { key: 'amount', label: 'Amount (GHS)', render: r => r.amount.toLocaleString(undefined, { minimumFractionDigits: 2 }) },
+    { key: 'paymentMode', label: 'Payment Mode' },
+    { key: 'paymentType', label: 'Payment Type' },
+    { key: 'orderId', label: 'Order ID', render: r => r.orderId || '—' },
+    { key: 'recordedBy', label: 'Recorded By', render: r => r.recordedBy || '—' },
+    { key: 'status', label: 'Status' },
+    { key: 'createdAt', label: 'Date', render: r => r.createdAt ? new Date(r.createdAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : '—' },
+  ];
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -334,16 +349,23 @@ export default function FinanceReceiptsView({ addNotification }: Props) {
 
   return (
     <div className="space-y-4">
+      <UniversalExportModal
+        open={exportOpen}
+        onClose={() => setExportOpen(false)}
+        title="Receipts"
+        data={filtered}
+        columns={exportColumns}
+      />
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-bold text-[var(--text-primary)]">Receipts</h2>
           <p className="text-xs text-[var(--text-muted)]">{filtered.length} receipt{filtered.length !== 1 ? 's' : ''} · GHS {totalAmount.toLocaleString()} total</p>
         </div>
         <button
-          onClick={() => { exportToCSV(filtered.map(r => ({ Receipt: r.receiptNumber, OrderTicket: r.ticketNumber, Client: r.clientName, Amount: r.amount, PaymentMode: r.paymentMode, PaymentType: r.paymentType, OrderId: r.orderId || '', RecordedBy: r.recordedBy || '', Status: r.status, Date: r.createdAt })), ['Receipt', 'OrderTicket', 'Client', 'Amount', 'PaymentMode', 'PaymentType', 'OrderId', 'RecordedBy', 'Status', 'Date'], 'receipts'); addNotification?.('Exported CSV.'); }}
+          onClick={() => setExportOpen(true)}
           className="flex items-center gap-1 px-3 py-1.5 bg-[var(--accent-light)] text-[var(--accent)] text-xs font-semibold rounded-xl cursor-pointer hover:opacity-90 shrink-0"
         >
-          Export CSV
+          <Download className="w-3 h-3" /> Export
         </button>
       </div>
 

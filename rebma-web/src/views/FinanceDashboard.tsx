@@ -15,6 +15,7 @@ import { supabase } from '../lib/supabaseClient';
 import { useRealtimeChannel } from '../hooks/useRealtimeChannel';
 import ActivityFeed from '../components/global/ActivityFeed';
 import FinanceOverviewView from './finance/OverviewView';
+import { approveAccountsReview } from './finance/OrdersQueueView';
 import CountUp from '../components/CountUp';
 import SidePanel from '../components/ui/SidePanel';
 import SearchableDropdown from '../components/ui/SearchableDropdown';
@@ -325,7 +326,14 @@ export default function FinanceDashboard({
         created_at: now,
       }).select().single();
       if (error) { addNotification(`Payment save failed: ${error.message}`); return; }
-      await supabase.from('orders').update({ status: 'APPROVED', updated_at: now }).eq('id', selectedOrderId);
+      // Reconciled onto the same accounts_review_order() path
+      // OrdersQueueView's own Approve button uses — this used to be a bare
+      // status write with no stock-shortage check, no stock deduction, no
+      // notifications, and no audit log, a real gap found during the
+      // workflow audit. Settling a credit order now goes through the exact
+      // same guarded logic.
+      const ok = await approveAccountsReview(order, null, addNotification);
+      if (!ok) return;
       const newPayment: FinancePayment = {
         id: inserted?.id || `PAY-${Date.now().toString().slice(-4)}`,
         clientName: order.clientName,

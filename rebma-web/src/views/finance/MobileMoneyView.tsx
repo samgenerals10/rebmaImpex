@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { useRealtimeChannel } from '../../hooks/useRealtimeChannel';
 import { Search, Download, MoreVertical, Eye, CheckCircle, Clock, XCircle, Smartphone } from 'lucide-react';
-import { exportToCSV } from '../../utils/export';
+import UniversalExportModal, { type ExportColumn } from '../../components/common/UniversalExportModal';
 import { ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import CountUp from '../../components/CountUp';
 import { useCeoSettings } from '../../contexts/CeoSettingsContext';
@@ -45,6 +45,19 @@ export default function FinanceMobileMoneyView({ addNotification, currentUser }:
   const [editTxn, setEditTxn] = useState<MomoTxn | null>(null);
   const [showEditForm, setShowEditForm] = useState(false);
   const [editForm, setEditForm] = useState({ transactionId: '', network: 'MTN' as MomoTxn['network'], customerName: '', momoNumber: '', amount: '', date: '' });
+  const [exportOpen, setExportOpen] = useState(false);
+
+  const momoExportCols: ExportColumn[] = [
+    { key: 'transactionId', label: 'Transaction ID' },
+    { key: 'network', label: 'Network' },
+    { key: 'customerName', label: 'Customer' },
+    { key: 'momoNumber', label: 'MoMo Number' },
+    { key: 'amount', label: 'Amount (GHS)', render: t => t.amount.toLocaleString() },
+    { key: 'date', label: 'Date' },
+    { key: 'status', label: 'Status' },
+    { key: 'orderRef', label: 'Order Ref', render: t => t.orderRef || '—' },
+  ];
+
 
   const loadRef = useRef<() => void>(() => {});
 
@@ -181,12 +194,19 @@ export default function FinanceMobileMoneyView({ addNotification, currentUser }:
 
   return (
     <div className="p-4 md:p-6 space-y-6">
+      <UniversalExportModal
+        open={exportOpen}
+        onClose={() => setExportOpen(false)}
+        title="Mobile Money Records"
+        data={filtered}
+        columns={momoExportCols}
+      />
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-[var(--text-primary)]">Mobile Money Records</h1>
           <p className="text-sm text-[var(--text-secondary)]">Track and verify all MoMo transactions</p>
         </div>
-        <button onClick={() => exportToCSV(filtered.map(t => ({ TxnID: t.transactionId, Network: t.network, Customer: t.customerName, Number: t.momoNumber, Amount: t.amount, Date: t.date, Status: t.status })), ['TxnID', 'Network', 'Customer', 'Number', 'Amount', 'Date', 'Status'], 'momo_records')} className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[var(--border)] text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-card)]"><Download size={14} /> Export</button>
+        <button onClick={() => setExportOpen(true)} className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[var(--border)] text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-card)]"><Download size={14} /> Export</button>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

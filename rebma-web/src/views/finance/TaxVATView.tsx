@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { Download, Save, FileText, Calculator } from 'lucide-react';
-import { exportToCSV, exportToPDF } from '../../utils/export';
+import { exportToPDF } from '../../utils/export';
+import UniversalExportModal, { type ExportColumn } from '../../components/common/UniversalExportModal';
 import CountUp from '../../components/CountUp';
 import { useCeoSettings } from '../../contexts/CeoSettingsContext';
 import SearchableDropdown from '../../components/ui/SearchableDropdown';
@@ -38,12 +39,23 @@ export default function FinanceTaxVATView({ addNotification, currentUser }: Prop
   const [rates, setRates] = useState<TaxRates>({ vat: 15, nhil: 2.5, getfund: 2.5, covid: 1, autoCalculate: true });
   const [selectedPeriod, setSelectedPeriod] = useState('');
   const [showRates, setShowRates] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
   const [agingData, setAgingData] = useState([
     { label: '0–30 days', invoices: 0, amount: 0, color: 'text-green-500' },
     { label: '31–60 days', invoices: 0, amount: 0, color: 'text-yellow-500' },
     { label: '61–90 days', invoices: 0, amount: 0, color: 'text-orange-500' },
     { label: '90+ days', invoices: 0, amount: 0, color: 'text-red-500' },
   ]);
+
+  const vatExportCols: ExportColumn[] = [
+    { key: 'period', label: 'Period' },
+    { key: 'invoiceCount', label: 'Invoices' },
+    { key: 'grossSales', label: 'Gross Sales (GHS)', render: v => v.grossSales.toLocaleString() },
+    { key: 'vatAmount', label: 'VAT Amount (GHS)', render: v => v.vatAmount.toLocaleString() },
+    { key: 'netSales', label: 'Net Sales (GHS)', render: v => v.netSales.toLocaleString() },
+    { key: 'status', label: 'Status' },
+  ];
+
 
   useEffect(() => {
     const load = async () => {
@@ -107,14 +119,21 @@ export default function FinanceTaxVATView({ addNotification, currentUser }: Prop
 
   return (
     <div className="p-4 md:p-6 space-y-6">
+      <UniversalExportModal
+        open={exportOpen}
+        onClose={() => setExportOpen(false)}
+        title="Tax & VAT Report"
+        data={vatData}
+        columns={vatExportCols}
+      />
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-[var(--text-primary)]">Tax & VAT Management</h1>
+          <h1 className="text-2xl font-bold text-[var(--text-primary)]">Tax &amp; VAT Management</h1>
           <p className="text-sm text-[var(--text-secondary)]">Track VAT collection and tax compliance</p>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => setShowRates(!showRates)} className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[var(--border)] text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-card)]"><Calculator size={14} /> Tax Rates</button>
-          <button onClick={generateReport} className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-white text-sm font-medium" style={{ background: 'var(--accent)' }}><FileText size={14} /> Generate Report</button>
+          <button onClick={() => setExportOpen(true)} className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-white text-sm font-medium" style={{ background: 'var(--accent)' }}><FileText size={14} /> Generate Report</button>
         </div>
       </div>
 
@@ -172,7 +191,7 @@ export default function FinanceTaxVATView({ addNotification, currentUser }: Prop
 
       <div className="flex items-center gap-3">
         <SearchableDropdown value={selectedPeriod} onChange={setSelectedPeriod} options={vatData.map(v => ({ value: v.period, label: v.period }))} className="w-48" />
-        <button onClick={() => exportToCSV(vatData.map(v => ({ Period: v.period, Invoices: v.invoiceCount, 'Gross Sales': v.grossSales, 'VAT Amount': v.vatAmount, 'Net Sales': v.netSales, Status: v.status })), ['Period', 'Invoices', 'Gross Sales', 'VAT Amount', 'Net Sales', 'Status'], 'vat_report')} className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[var(--border)] text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-card)]"><Download size={14} /> Export CSV</button>
+        <button onClick={() => setExportOpen(true)} className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[var(--border)] text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-card)]"><Download size={14} /> Export</button>
       </div>
 
       <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl overflow-hidden">

@@ -66,7 +66,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { email, fullName, department, phone, ghanaCardId } = req.body || {};
+    const {
+      email, fullName, department, phone, ghanaCardId,
+      address, resumeUrl, staffCategory,
+      guarantorName, guarantorPhone, guarantorRelationship, guarantorIdNumber, guarantorAddress,
+    } = req.body || {};
     if (!email || !fullName || !department) {
       return res.status(400).json({ error: 'Email, Full Name, and Department are required.' });
     }
@@ -105,6 +109,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       role: department,
       phone: phone || null,
       ghana_card_id: ghanaCardId || null,
+      address: address || null,
+      resume_url: resumeUrl || null,
+      staff_category: staffCategory || null,
+      guarantor_name: guarantorName || null,
+      guarantor_phone: guarantorPhone || null,
+      guarantor_relationship: guarantorRelationship || null,
+      guarantor_id_number: guarantorIdNumber || null,
+      guarantor_address: guarantorAddress || null,
       status: 'ACTIVE',
       is_admin: department === 'CEO',
       requires_password_reset: true,

@@ -1,8 +1,9 @@
 // src/views/ceo/ApprovalsView.tsx
 import { useState, useEffect } from 'react';
-import { CheckCircle, XCircle, Download } from 'lucide-react';
+import { CheckCircle, XCircle, Download, History } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import SidePanel from '../../components/ui/SidePanel';
+import RequestTimelinePanel from '../../components/global/RequestTimelinePanel';
 import { hr } from '../../services/apiClient';
 import type { CurrentUser } from '../../types/erp';
 import { exportToCSV } from '../../utils/export';
@@ -14,6 +15,9 @@ function generateTempPassword(): string {
 
 interface Approval {
   id: string;
+  // 'credit'/'cargo' stay in the type union so old audit-history rows (from
+  // before Risk took over these two approval types) still render correctly
+  // in the history list below — they're no longer live/actionable tabs.
   type: 'credit' | 'cargo' | 'payment' | 'registration';
   requester: string;
   department: string;
@@ -38,27 +42,18 @@ export default function ApprovalsView({ currentUser, addNotification }: Props) {
   const [tab, setTab]             = useState<'all'|'credit'|'cargo'|'payment'|'registration'>('all');
   const [history, setHistory]     = useState<Approval[]>([]);
   const [credPopup, setCredPopup] = useState<{ fullName: string; password: string } | null>(null);
+  const [decisionModal, setDecisionModal] = useState<{ id: string; action: 'approve' | 'reject' } | null>(null);
+  const [remark, setRemark] = useState('');
+  const [timelineId, setTimelineId] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
     try {
-      // Query pending credit orders
-      const { data: orders } = await supabase
-        .from('orders')
-        .select('id,client_name,total_amount,created_at,status')
-        .eq('payment_mode', 'CREDIT')
-        .eq('status', 'PENDING_MANAGEMENT')
-        .limit(50);
-
-      // Query pending cargo intakes — cargo is actually inserted with
-      // PENDING_MANAGEMENT_APPROVAL (see cargo_intake writes in apiClient.ts);
-      // this previously filtered on a status nothing ever uses, so this tab
-      // was silently always empty.
-      const { data: cargo } = await supabase
-        .from('cargo_intake')
-        .select('id,product_name,company,quantity,created_at,status')
-        .eq('status', 'PENDING_MANAGEMENT_APPROVAL')
-        .limit(50);
+      // Credit and cargo approvals moved to the Risk department — Risk is now
+      // the only writer of decisions for those two request types (see
+      // src/views/risk/RiskApprovalsView.tsx). Querying them here too would
+      // reopen the "two doors into the same rows" problem this fix removes.
+      // Registration stays CEO/HR territory, untouched.
 
       // Query pending registrations from profiles
       const { data: profiles } = await supabase
@@ -68,25 +63,6 @@ export default function ApprovalsView({ currentUser, addNotification }: Props) {
         .limit(50);
 
       const approvals: Approval[] = [
-        ...(orders || []).map((o: any) => ({
-          id: o.id,
-          type: 'credit' as const,
-          requester: o.client_name || 'Unknown Client',
-          department: 'MARKETING',
-          description: `Credit terms request for ${o.client_name}`,
-          amount: Number(o.total_amount || 0),
-          date_submitted: o.created_at?.split('T')[0] || '',
-          status: 'pending' as const,
-        })),
-        ...(cargo || []).map((c: any) => ({
-          id: c.id,
-          type: 'cargo' as const,
-          requester: c.company || 'Unknown Supplier',
-          department: 'OPERATIONS',
-          description: `Intake of ${c.product_name || 'Goods'} - Qty: ${c.quantity || 0}`,
-          date_submitted: c.created_at?.split('T')[0] || '',
-          status: 'pending' as const,
-        })),
         ...(profiles || []).map((p: any) => ({
           id: p.id,
           type: 'registration' as const,
@@ -138,33 +114,23 @@ export default function ApprovalsView({ currentUser, addNotification }: Props) {
 
   const visible = rows.filter(r => tab === 'all' || r.type === tab);
 
-  const handleApprove = async (id: string) => {
+  // 'registration' is the only live type in `rows` today — credit/cargo moved
+  // to Risk (see the comment in load() above), and 'payment' has never had a
+  // row-producing query in this file. The old `item.type !== 'registration'`
+  // branches below were therefore dead code; removed rather than left to rot.
+  const handleApprove = async (id: string, note?: string) => {
     const item = rows.find(r => r.id === id);
     if (!item) return;
     try {
-      if (item.type === 'credit') {
-        await supabase.from('orders').update({ status: 'APPROVED' }).eq('id', id);
-      } else if (item.type === 'cargo') {
-        await supabase.from('cargo_intake').update({ status: 'APPROVED' }).eq('id', id);
-      } else if (item.type === 'registration') {
-        // Routed through the service-role-backed endpoint — a direct client
-        // update silently no-ops here because profiles' RLS only lets a user
-        // update their own row. This also enforces the CEO-only gate for
-        // Management/HR registrants server-side.
-        const pw = generateTempPassword();
-        await hr.approveUser(id, true, pw);
-        setCredPopup({ fullName: item.requester, password: pw });
-      }
-
-      if (item.type !== 'registration') {
-        // approve-user.ts already writes its own audit entry for registrations.
-        await supabase.from('global_audit_history').insert({
-          action: `Approved ${item.type} request`,
-          department: item.department,
-          performed_by: currentUser?.fullName || 'CEO',
-          details: item.description,
-        });
-      }
+      // Routed through the service-role-backed endpoint — a direct client
+      // update silently no-ops here because profiles' RLS only lets a user
+      // update their own row. This also enforces the CEO-only gate for
+      // Management/HR registrants server-side. approve-user.ts writes its
+      // own audit entry (with reference_id + the remark) — no duplicate
+      // insert needed here.
+      const pw = generateTempPassword();
+      await hr.approveUser(id, true, pw, undefined, note);
+      setCredPopup({ fullName: item.requester, password: pw });
 
       addNotification(`Approved ${item.type} request successfully.`);
       setRows(prev => prev.filter(r => r.id !== id));
@@ -175,26 +141,18 @@ export default function ApprovalsView({ currentUser, addNotification }: Props) {
     }
   };
 
-  const handleReject = async (id: string) => {
+  const handleReject = async (id: string, note?: string) => {
     const item = rows.find(r => r.id === id);
     if (!item) return;
     try {
-      if (item.type === 'credit') {
-        await supabase.from('orders').update({ status: 'REJECTED' }).eq('id', id);
-      } else if (item.type === 'cargo') {
-        await supabase.from('cargo_intake').update({ status: 'REJECTED' }).eq('id', id);
-      } else if (item.type === 'registration') {
-        await hr.approveUser(id, false);
-      }
-
-      if (item.type !== 'registration') {
-        await supabase.from('global_audit_history').insert({
-          action: `Rejected ${item.type} request`,
-          department: item.department,
-          performed_by: currentUser?.fullName || 'CEO',
-          details: item.description,
-        });
-      }
+      await hr.approveUser(id, false, undefined, undefined, note);
+      // The registration desk (HR) previously learned nothing about a
+      // rejection unless they happened to notice the row disappear.
+      await supabase.from('supplier_order_notifications').insert([{
+        message: `Registration REJECTED by CEO: ${item.requester} (${item.department})${note ? ` — ${note}` : ''}`,
+        notified_department: 'HR',
+        read: false,
+      }]);
 
       addNotification(`Rejected ${item.type} request.`);
       setRows(prev => prev.filter(r => r.id !== id));
@@ -205,7 +163,7 @@ export default function ApprovalsView({ currentUser, addNotification }: Props) {
     }
   };
 
-  const TABS = ['all','credit','cargo','payment','registration'] as const;
+  const TABS = ['all','payment','registration'] as const;
 
   return (
     <div className="space-y-5">
@@ -256,11 +214,15 @@ export default function ApprovalsView({ currentUser, addNotification }: Props) {
                 <p className="text-base font-bold text-[var(--accent)] shrink-0 whitespace-nowrap">GHS {item.amount.toLocaleString()}</p>
               ) : null}
               <div className="flex items-center gap-2 shrink-0">
-                <button onClick={() => handleApprove(item.id)}
+                <button onClick={() => setTimelineId(item.id)} title="View Timeline"
+                  className="flex items-center gap-1 px-2.5 py-1.5 border border-[var(--border)] text-[var(--text-secondary)] text-xs font-semibold rounded-xl cursor-pointer hover:bg-[var(--bg-input)]">
+                  <History className="w-3.5 h-3.5" />
+                </button>
+                <button onClick={() => { setRemark(''); setDecisionModal({ id: item.id, action: 'approve' }); }}
                   className="flex items-center gap-1 px-3 py-1.5 bg-emerald-500 text-white text-xs font-semibold rounded-xl cursor-pointer hover:bg-emerald-600">
                   <CheckCircle className="w-3.5 h-3.5" /> Approve
                 </button>
-                <button onClick={() => handleReject(item.id)}
+                <button onClick={() => { setRemark(''); setDecisionModal({ id: item.id, action: 'reject' }); }}
                   className="flex items-center gap-1 px-3 py-1.5 bg-rose-500 text-white text-xs font-semibold rounded-xl cursor-pointer hover:bg-rose-600">
                   <XCircle className="w-3.5 h-3.5" /> Reject
                 </button>
@@ -297,6 +259,45 @@ export default function ApprovalsView({ currentUser, addNotification }: Props) {
           </div>
         </div>
       )}
+
+      {/* Approve/Reject remark modal — required on reject, optional on approve */}
+      <SidePanel
+        open={!!decisionModal}
+        onClose={() => setDecisionModal(null)}
+        title={decisionModal?.action === 'approve' ? 'Approve Registration' : 'Reject Registration'}
+        footer={
+          <button
+            disabled={decisionModal?.action === 'reject' && !remark.trim()}
+            onClick={() => {
+              if (!decisionModal) return;
+              const { id, action } = decisionModal;
+              setDecisionModal(null);
+              if (action === 'approve') handleApprove(id, remark.trim() || undefined);
+              else handleReject(id, remark.trim() || undefined);
+            }}
+            className="erp-btn erp-btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {decisionModal?.action === 'approve' ? 'Confirm Approve' : 'Confirm Reject'}
+          </button>
+        }
+      >
+        <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">
+          Remark {decisionModal?.action === 'reject' ? '(required)' : '(optional)'}
+        </label>
+        <textarea
+          value={remark}
+          onChange={e => setRemark(e.target.value)}
+          rows={4}
+          placeholder={decisionModal?.action === 'reject' ? 'Why is this registration being rejected?' : 'Optional note...'}
+          className="w-full px-3 py-2 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
+        />
+      </SidePanel>
+
+      <RequestTimelinePanel
+        open={!!timelineId}
+        onClose={() => setTimelineId(null)}
+        referenceId={timelineId || ''}
+      />
 
       {/* Temp credentials after approving a registration */}
       <SidePanel

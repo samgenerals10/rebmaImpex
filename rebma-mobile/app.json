@@ -1,32 +1,82 @@
 {
   "expo": {
-    "name": "rebma-mobile",
+    "name": "REBMA IMPEX",
     "slug": "rebma-mobile",
+    "scheme": "rebmaimpex",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
+    "primaryColor": "#22c55e",
+    "backgroundColor": "#f0fdf4",
     "ios": {
       "supportsTablet": true,
+      "bundleIdentifier": "com.rebmaimpex.mobile",
+      "buildNumber": "1",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "Rebma Mobile uses your location to share live delivery tracking with dispatch while a delivery is active."
+        "NSLocationWhenInUseUsageDescription": "Rebma Mobile uses your location to share live delivery tracking with dispatch while a delivery is active.",
+        "NSMicrophoneUsageDescription": "Rebma Mobile uses your microphone for Boardroom video and voice calls."
       }
     },
     "android": {
+      "package": "com.rebmaimpex.mobile",
+      "versionCode": 1,
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#22c55e",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "permissions": ["ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION"]
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "RECORD_AUDIO"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      ["expo-location", { "locationWhenInUsePermission": "Rebma Mobile uses your location to share live delivery tracking with dispatch while a delivery is active." }]
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Rebma Mobile uses your location to share live delivery tracking with dispatch while a delivery is active."
+        }
+      ],
+      "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#ffffff"
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Rebma Mobile uses your camera to scan waybill QR codes and capture proof-of-delivery photos.",
+          "microphonePermission": false,
+          "recordAudioAndroid": false
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Rebma Mobile uses your photo library to attach cargo intake and delivery photos.",
+          "cameraPermission": "Rebma Mobile uses your camera to attach cargo intake and delivery photos."
+        }
+      ],
+      "expo-sharing",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/android-icon-foreground.png",
+          "color": "#22c55e"
+        }
+      ]
     ]
   }
 }

@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import {
-  CheckCircle, XCircle, Clock, AlertTriangle, Search,
-  MoreVertical, ArrowLeft, Package, CreditCard,
+  CheckCircle, XCircle, RotateCcw, Clock, AlertTriangle, Search,
+  MoreVertical, ArrowLeft, Package, CreditCard, History,
   UserPlus, FileText, Tag, RefreshCw, Download, Eye, ShoppingCart, Wallet
 } from 'lucide-react';
 import { exportToCSV } from '../../utils/export';
@@ -13,6 +13,7 @@ import ResponsiveDataView, { type DataColumn } from '../../components/mobile/Res
 import MaterialRequisitionsPanel from './MaterialRequisitionsPanel';
 import DriverAssignmentApprovalsPanel from './DriverAssignmentApprovalsPanel';
 import ApprovalHistoryPanel from '../../components/global/ApprovalHistoryPanel';
+import RequestTimelinePanel from '../../components/global/RequestTimelinePanel';
 import { useFullscreenToggle, FullscreenButton } from '../../components/global/FullscreenToggle';
 import CountUp from '../../components/CountUp';
 import { useCeoSettings } from '../../contexts/CeoSettingsContext';
@@ -26,7 +27,7 @@ interface ApprovalItem {
   amount: number | null;
   date: string;
   priority: 'High' | 'Medium' | 'Low';
-  status: 'Pending' | 'Approved' | 'Rejected';
+  status: 'Pending' | 'Approved' | 'Rejected' | 'Returned';
   submittedBy: string;
   notes?: string;
   raw?: Record<string, unknown>;
@@ -57,6 +58,7 @@ const STATUS_COLORS: Record<string, string> = {
   Pending: 'bg-yellow-100 text-yellow-700',
   Approved: 'bg-green-100 text-green-700',
   Rejected: 'bg-red-100 text-red-700',
+  Returned: 'bg-orange-100 text-orange-700',
 };
 
 const TYPE_ICONS: Record<string, React.ElementType> = {
@@ -85,7 +87,7 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
   const [statusFilter, setStatusFilter] = useState('Pending');
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
-  const [showModal, setShowModal] = useState<'approve' | 'reject' | null>(null);
+  const [showModal, setShowModal] = useState<'approve' | 'reject' | 'return' | null>(null);
   const [modalNote, setModalNote] = useState('');
   const [sellingPrice, setSellingPrice] = useState('');
   const [notifyOps, setNotifyOps] = useState(true);
@@ -95,6 +97,7 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
   const [confirmedDamages, setConfirmedDamages] = useState(0);
   const [costPerUnit, setCostPerUnit] = useState(0);
   const [submitting, setSubmitting] = useState(false);
+  const [showTimeline, setShowTimeline] = useState(false);
   // Management can adjust the requested quantity on a Production Request before
   // approving — the stock addition and fulfillment ticket reflect what was
   // actually authorized, not just what was originally asked for.
@@ -125,7 +128,7 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
         .limit(100);
       const parsed: ApprovalItem[] = (data || [])
         .map((row: any): ApprovalItem | null => {
-          const m = String(row.action || '').match(/^(APPROVE|REJECT)[A-Z_]*:\s*([\w-]+)\s*—\s*(.+)$/i);
+          const m = String(row.action || '').match(/^(APPROVE|REJECT|RETURN)[A-Z_]*:\s*([\w-]+)\s*—\s*(.+)$/i);
           if (!m) return null;
           const [, verb, requestId, rest] = m;
           const noteMatch = rest.match(/^(.*?)(?:\s*\|\s*Note:\s*(.*))?$/);
@@ -148,7 +151,7 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
             amount: null,
             date: row.timestamp ? row.timestamp.slice(0, 10) : '',
             priority: 'Medium' as const,
-            status: (/^approve/i.test(verb) ? 'Approved' : 'Rejected') as ApprovalItem['status'],
+            status: (/^approve/i.test(verb) ? 'Approved' : /^return/i.test(verb) ? 'Returned' : 'Rejected') as ApprovalItem['status'],
             submittedBy: row.performed_by || 'Management',
             raw: { timestamp: row.timestamp },
           };
@@ -308,7 +311,7 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected]);
 
-  function handleAction(id: string, action: 'approve' | 'reject') {
+  function handleAction(id: string, action: 'approve' | 'reject' | 'return') {
     setSelected(id);
     setShowModal(action);
     setModalNote('');
@@ -363,12 +366,13 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
           finalDiscrepancyNotes = JSON.stringify(discrepancyJson);
         }
 
-        await supabase.from('cargo_intake').update({ 
+        await supabase.from('cargo_intake').update({
           status: newDbStatus,
           quantity: action === 'approve' ? finalQtyToAdd : incomingQty,
           discrepancies: finalDiscrepancyNotes,
           unit_price: costPerUnit,
-          is_fault_or_damaged: confirmedDamages > 0
+          is_fault_or_damaged: confirmedDamages > 0,
+          rejection_reason: action === 'approve' ? null : (modalNote || null),
         }).eq('id', rawId);
 
         if (action === 'approve') {
@@ -422,20 +426,28 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
           }
           await supabase.from('supplier_order_notifications').insert([{ message: `Cargo intake APPROVED by Management: ${selectedItem.description}`, notified_department: 'FINANCE', read: false }]);
           await supabase.from('supplier_order_notifications').insert([{ message: `New stock approved: ${selectedItem.description}. Update pricing in Marketing.`, notified_department: 'MARKETING', read: false }]);
+        } else {
+          // Cargo reject previously sent no notification at all.
+          await supabase.from('supplier_order_notifications').insert([{ message: `Cargo intake REJECTED by Management: ${selectedItem.description}${modalNote ? ` — ${modalNote}` : ''}`, notified_department: 'OPERATIONS', read: false }]);
         }
       }
 
       if (selectedItem.type === 'Sales Order') {
-        // Every order lands here now regardless of payment mode — Management is
-        // the universal gate. Approving always forwards to Finance, who records
-        // payment (cash/momo/cheque included, not just credit) and finalizes.
-        const newDbStatus = action === 'approve' ? 'PENDING_FINANCE' : 'REJECTED';
+        // Every order lands here now regardless of payment mode — Management
+        // is the mandatory universal gate between Risk's initial review and
+        // Accounts. The status write goes through management_review_order(),
+        // the only place PENDING_MANAGEMENT -> PENDING_FINANCE/REJECTED/
+        // RETURNED_FOR_CORRECTION is legal (database-trigger-enforced, not
+        // just this screen's convention). Line-item editing capability is
+        // unchanged — still fully intact.
         const orderRow = selectedItem.raw as Record<string, any>;
         const originalItems: any[] = Array.isArray(orderRow?.metadata?.items) ? orderRow.metadata.items : [];
+        let p_metadata: any = null;
+        let p_total_amount: number | null = null;
 
         if (action === 'approve' && originalItems.length > 0) {
           // Management's adjusted quantities AND unit prices win — recompute
-          // line totals and the order total so Finance bills what was
+          // line totals and the order total so Accounts bills what was
           // actually authorized, not just what Marketing originally quoted.
           const adjustedItems = originalItems.map((it: any, idx: number) => {
             const draft = orderEdits[idx];
@@ -443,19 +455,24 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
             const unitPrice = draft?.unitPrice !== undefined && draft.unitPrice !== '' ? Math.max(0, Number(draft.unitPrice) || 0) : Number(it.unitPrice) || 0;
             return { ...it, quantity: qty, unitPrice, lineTotal: unitPrice * qty };
           });
-          const newTotal = adjustedItems.reduce((s, it) => s + (Number(it.lineTotal) || 0), 0);
-          await supabase.from('orders').update({
-            status: newDbStatus,
-            total_amount: newTotal,
-            metadata: { ...(orderRow.metadata || {}), items: adjustedItems },
-          }).eq('id', selectedItem.id);
-        } else {
-          await supabase.from('orders').update({ status: newDbStatus }).eq('id', selectedItem.id);
+          p_total_amount = adjustedItems.reduce((s, it) => s + (Number(it.lineTotal) || 0), 0);
+          p_metadata = { ...(orderRow.metadata || {}), items: adjustedItems };
         }
 
+        const { error: rpcError } = await supabase.rpc('management_review_order', {
+          p_order_id: selectedItem.id,
+          p_action: action,
+          p_note: modalNote || null,
+          p_metadata,
+          p_total_amount,
+        });
+        if (rpcError) throw rpcError;
+
         if (action === 'approve') {
-          await supabase.from('supplier_order_notifications').insert([{ message: `Order approved by Management — now awaiting Finance processing: ${selectedItem.description}`, notified_department: 'FINANCE', read: false }]);
-          await supabase.from('supplier_order_notifications').insert([{ message: `Your order has been approved by Management and sent to Finance: ${selectedItem.description}`, notified_department: 'MARKETING', read: false }]);
+          await supabase.from('supplier_order_notifications').insert([{ message: `Order approved by Management — now awaiting Accounts Office processing: ${selectedItem.description}`, notified_department: 'FINANCE', read: false }]);
+          await supabase.from('supplier_order_notifications').insert([{ message: `Your order has been approved by Management and sent to Accounts: ${selectedItem.description}`, notified_department: 'MARKETING', read: false }]);
+        } else if (action === 'return') {
+          await supabase.from('supplier_order_notifications').insert([{ message: `Order RETURNED FOR CORRECTION by Management: ${selectedItem.description}${modalNote ? ` — ${modalNote}` : ''}`, notified_department: 'MARKETING', read: false }]);
         } else {
           await supabase.from('supplier_order_notifications').insert([{ message: `Order REJECTED by Management: ${selectedItem.description}${modalNote ? ` — ${modalNote}` : ''}`, notified_department: 'MARKETING', read: false }]);
         }
@@ -504,16 +521,26 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
           await supabase.from('supplier_order_notifications').insert([{ message: `Production request APPROVED by Management — ready for pickup/repackaging: ${selectedItem.description}`, notified_department: 'PRODUCTION', read: false }]);
           await supabase.from('supplier_order_notifications').insert([{ message: `Production release ready for warehouse handling: ${selectedItem.description}`, notified_department: 'OPERATIONS', read: false }]);
         } else {
-          await supabase.from('production_requests').update({ status: 'REJECTED' }).eq('id', selectedItem.id);
+          await supabase.from('production_requests').update({ status: 'REJECTED', rejection_reason: modalNote || null }).eq('id', selectedItem.id);
+          // Production reject previously sent no notification at all.
+          await supabase.from('supplier_order_notifications').insert([{ message: `Production request REJECTED by Management: ${selectedItem.description}${modalNote ? ` — ${modalNote}` : ''}`, notified_department: 'PRODUCTION', read: false }]);
         }
       }
 
       if (selectedItem.type === 'General Purchase' && selectedItem.raw) {
         const newDbStatus = action === 'approve' ? 'APPROVED' : 'REJECTED';
-        await supabase.from('general_purchases').update({ status: newDbStatus }).eq('id', selectedItem.id);
+        const requestingDept = String(selectedItem.raw.department || 'OPERATIONS');
+        await supabase.from('general_purchases').update({
+          status: newDbStatus,
+          rejection_reason: action === 'approve' ? null : (modalNote || null),
+        }).eq('id', selectedItem.id);
 
         if (action === 'approve') {
-          await supabase.from('supplier_order_notifications').insert([{ message: `General purchase APPROVED by Management: ${selectedItem.description}`, notified_department: action === 'approve' ? (String(selectedItem.raw.department || 'OPERATIONS')) : 'OPERATIONS', read: false }]);
+          await supabase.from('supplier_order_notifications').insert([{ message: `General purchase APPROVED by Management: ${selectedItem.description}`, notified_department: requestingDept, read: false }]);
+        } else {
+          // General purchase reject previously sent no notification — the
+          // requesting department never learned it was turned down.
+          await supabase.from('supplier_order_notifications').insert([{ message: `General purchase REJECTED by Management: ${selectedItem.description}${modalNote ? ` — ${modalNote}` : ''}`, notified_department: requestingDept, read: false }]);
         }
       }
 
@@ -552,9 +579,11 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
         department: 'MANAGEMENT',
         action: `${action.toUpperCase()}: ${selectedItem.requestId} — ${selectedItem.description}${modalNote ? ` | Note: ${modalNote}` : ''}`,
         performed_by: currentUser?.fullName || 'Management',
+        reference_id: selectedItem.id,
+        details: modalNote || null,
       }]);
 
-      addNotification?.(`${selectedItem.requestId} ${action === 'approve' ? 'Approved' : 'Rejected'}${modalNote ? ` — "${modalNote}"` : ''}`);
+      addNotification?.(`${selectedItem.requestId} ${action === 'approve' ? 'Approved' : action === 'return' ? 'Returned for correction' : 'Rejected'}${modalNote ? ` — "${modalNote}"` : ''}`);
     } catch (e) {
       console.error(e);
       addNotification?.('Action execution failed.');
@@ -599,12 +628,18 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
                 <p className="text-sm text-[var(--text-secondary)] mt-1">{selectedItem.description}</p>
               </div>
             </div>
-            {selectedItem.status === 'Pending' && (
-              <div className="flex items-center gap-2">
-                <button onClick={() => handleAction(selectedItem.id, 'reject')} className="px-4 py-2 rounded-xl bg-red-500 text-white text-sm font-medium hover:bg-red-600"><XCircle size={14} className="inline mr-1" />Reject</button>
-                <button onClick={() => handleAction(selectedItem.id, 'approve')} className="px-4 py-2 rounded-xl text-white text-sm font-medium hover:opacity-90" style={{ background: 'var(--accent)' }}><CheckCircle size={14} className="inline mr-1" />Approve</button>
-              </div>
-            )}
+            <div className="flex items-center gap-2 flex-wrap">
+              <button onClick={() => setShowTimeline(true)} className="px-3 py-2 rounded-xl border border-[var(--border)] text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-input)]"><History size={14} className="inline mr-1" />View Timeline</button>
+              {selectedItem.status === 'Pending' && (
+                <>
+                  <button onClick={() => handleAction(selectedItem.id, 'reject')} className="px-4 py-2 rounded-xl bg-red-500 text-white text-sm font-medium hover:bg-red-600"><XCircle size={14} className="inline mr-1" />Reject</button>
+                  {selectedItem.type === 'Sales Order' && (
+                    <button onClick={() => handleAction(selectedItem.id, 'return')} className="px-4 py-2 rounded-xl bg-orange-500 text-white text-sm font-medium hover:bg-orange-600"><RotateCcw size={14} className="inline mr-1" />Return for Correction</button>
+                  )}
+                  <button onClick={() => handleAction(selectedItem.id, 'approve')} className="px-4 py-2 rounded-xl text-white text-sm font-medium hover:opacity-90" style={{ background: 'var(--accent)' }}><CheckCircle size={14} className="inline mr-1" />Approve</button>
+                </>
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -720,6 +755,13 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
             </div>
           )}
         </div>
+
+        <RequestTimelinePanel
+          open={showTimeline}
+          onClose={() => setShowTimeline(false)}
+          referenceId={selectedItem.id}
+          displayId={selectedItem.requestId}
+        />
       </div>
     );
   }
@@ -886,8 +928,8 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
       <SidePanel
         open={!!(showModal && selectedItem)}
         onClose={() => setShowModal(null)}
-        title={selectedItem ? `${showModal === 'approve' ? 'Approve' : 'Reject'}: ${selectedItem.requestId}` : ''}
-        badge={showModal === 'approve' ? <CheckCircle size={16} className="text-green-500" /> : showModal === 'reject' ? <XCircle size={16} className="text-red-500" /> : undefined}
+        title={selectedItem ? `${showModal === 'approve' ? 'Approve' : showModal === 'return' ? 'Return for Correction' : 'Reject'}: ${selectedItem.requestId}` : ''}
+        badge={showModal === 'approve' ? <CheckCircle size={16} className="text-green-500" /> : showModal === 'return' ? <RotateCcw size={16} className="text-orange-500" /> : showModal === 'reject' ? <XCircle size={16} className="text-red-500" /> : undefined}
         width="lg"
         footer={
           <>
@@ -895,9 +937,9 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
             <button
               disabled={submitting}
               onClick={confirmAction}
-              className={`erp-btn text-white disabled:opacity-50 ${showModal === 'approve' ? 'bg-green-500 hover:bg-green-600' : 'bg-red-500 hover:bg-red-600'}`}
+              className={`erp-btn text-white disabled:opacity-50 ${showModal === 'approve' ? 'bg-green-500 hover:bg-green-600' : showModal === 'return' ? 'bg-orange-500 hover:bg-orange-600' : 'bg-red-500 hover:bg-red-600'}`}
             >
-              {submitting ? 'Processing...' : (showModal === 'approve' ? 'Confirm Approval' : 'Confirm Rejection')}
+              {submitting ? 'Processing...' : (showModal === 'approve' ? 'Confirm Approval' : showModal === 'return' ? 'Confirm Return' : 'Confirm Rejection')}
             </button>
           </>
         }
@@ -1065,13 +1107,13 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
 
               <div>
                 <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">
-                  {showModal === 'approve' ? 'Additional notes (optional)' : 'Reason for rejection *'}
+                  {showModal === 'approve' ? 'Additional notes (optional)' : showModal === 'return' ? 'Reason for return *' : 'Reason for rejection *'}
                 </label>
                 <textarea
                   value={modalNote}
                   onChange={e => setModalNote(e.target.value)}
                   rows={3}
-                  placeholder={showModal === 'approve' ? 'Any notes for this approval...' : 'Explain why this is being rejected...'}
+                  placeholder={showModal === 'approve' ? 'Any notes for this approval...' : showModal === 'return' ? 'Explain what needs to be corrected...' : 'Explain why this is being rejected...'}
                   className="w-full px-3 py-2 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent)] resize-none"
                 />
               </div>

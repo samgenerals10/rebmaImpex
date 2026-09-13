@@ -30,6 +30,7 @@ import FinloFlashShell from './components/FinloFlashShell';
 
 import { auth, hr, operations, management, marketing, finance, production, reception, dispatch as dispatchApi, getToken, setToken, clearToken, withTimeout } from './services/apiClient';
 import { supabase, setAuthPersistence } from './lib/supabaseClient';
+import { joinLiveUsersChannel } from './lib/presence';
 
 import NotesPanel from './components/global/NotesPanel';
 import TasksPanel from './components/global/TasksPanel';
@@ -37,6 +38,8 @@ import EmailsPanel from './components/global/EmailsPanel';
 import NotificationsPanel from './components/global/NotificationsPanel';
 import HelpDeskPanel from './components/global/HelpDeskPanel';
 import FeedbackPanel from './components/global/FeedbackPanel';
+import HrQueriesPanel from './components/global/HrQueriesPanel';
+import { normalizeDeptCode, DEFAULT_SUBTAB } from './utils/departments';
 import AnalyticsDashboard from './views/AnalyticsDashboard';
 import DepartmentManager from './views/DepartmentManager';
 import PayrollPanel from './views/PayrollPanel';
@@ -79,6 +82,13 @@ import FinanceReportsView from './views/finance/ReportsView';
 // Management dedicated pages
 import ManagementTransactionsView from './views/management/TransactionsView';
 
+// Risk dedicated pages
+import RiskDashboard from './views/risk/RiskDashboard';
+import RiskApprovalsView from './views/risk/RiskApprovalsView';
+import RiskCustomerCreditView from './views/risk/CustomerCreditView';
+import RiskRecruitmentView from './views/risk/RecruitmentView';
+import LiveUsersView from './views/ceo/LiveUsersView';
+
 // Marketing dedicated pages
 import MarketingInvoicesView from './views/marketing/InvoicesView';
 import MarketingOrdersView from './views/marketing/OrdersView';
@@ -90,6 +100,7 @@ import MarketingAnalyticsView from './views/marketing/AnalyticsView';
 
 // Dispatch dedicated pages
 import DispatchProofOfDeliveryView from './views/dispatch/ProofOfDeliveryView';
+import DispatchScannerView from './views/dispatch/ScannerView';
 import DispatchDeliveriesView from './views/dispatch/DeliveriesView';
 import DispatchDriversView from './views/dispatch/DriversView';
 import DispatchTrackingView from './views/dispatch/TrackingView';
@@ -150,9 +161,9 @@ const isUnknownRoute = currentPath !== '/' && !tripToken && currentPath !== '/re
 
 const DEPT_CODE_TO_LABEL: Record<string, string> = {
   CEO: 'CEO Office (OTP verification)', HR: 'Human Resources', MANAGEMENT: 'Management Office',
-  MARKETING: 'Marketing Department', OPERATIONS: 'Operations (Warehouse)', FINANCE: 'Finance (Ledgers)',
+  MARKETING: 'Marketing Department', ADMIN_WAREHOUSE: 'Admin & Warehouse', FINANCE: 'Finance (Ledgers)',
   PRODUCTION: 'Production Line', RECEPTION: 'Reception Desk', RECEPTIONIST: 'Reception Desk',
-  DISPATCH: 'Dispatch Fleet', LOGISTICS: 'Logistics & Supply Chain',
+  RISK: 'Risk & Compliance',
 };
 
 export default function App() {
@@ -169,10 +180,17 @@ export default function App() {
     if (d === 'Human Resources' || d === 'HR') return 'HR';
     if (d === 'Management Office' || d === 'MANAGEMENT' || d === 'admin' || d === 'management') return 'management';
     if (d === 'Marketing Department' || d === 'MARKETING' || d === 'marketing') return 'marketing';
-    if (d === 'Operations (Warehouse)' || d === 'OPERATIONS' || d === 'operations') return 'operations';
+    if (d === 'Admin & Warehouse' || d === 'ADMIN_WAREHOUSE' || d === 'admin_warehouse') return 'admin_warehouse';
     if (d === 'Finance (Ledgers)' || d === 'FINANCE' || d === 'finance') return 'finance';
     if (d === 'Production Line' || d === 'PRODUCTION' || d === 'production') return 'production';
     if (d === 'Reception Desk' || d === 'RECEPTION' || d === 'receptionist') return 'receptionist';
+    if (d === 'Risk & Compliance' || d === 'RISK' || d === 'risk') return 'risk';
+    // Legacy fallbacks — kept as read-only mappings, not offered anywhere in the
+    // UI going forward. Existing accounts still carry these literal role strings
+    // (no bulk migration), and handleSession's profile-auto-create fallback path
+    // can reach this function for such an account — returning '' there would
+    // write an invalid role instead of preserving the account's real one.
+    if (d === 'Operations (Warehouse)' || d === 'OPERATIONS' || d === 'operations') return 'operations';
     if (d === 'Dispatch Fleet' || d === 'DISPATCH' || d === 'dispatch') return 'dispatch';
     if (d === 'Logistics & Supply Chain' || d === 'LOGISTICS' || d === 'logistics') return 'logistics';
     return d;
@@ -361,13 +379,36 @@ export default function App() {
       setProfileTempName(currentUser.fullName);
     }
   }, [currentUser]);
+
+  // Phase 10.3 — Live Users (CEO feature). One effect, keyed on identity
+  // only (not every currentUser field update, e.g. a name/photo edit),
+  // so a session is tracked exactly once per login and untracked exactly
+  // once on logout — not re-tracked on every unrelated profile change.
+  useEffect(() => {
+    if (!currentUser) return;
+    const loggedInAt = new Date().toISOString();
+    const channel = joinLiveUsersChannel({
+      userId: currentUser.id,
+      fullName: currentUser.fullName,
+      department: currentUser.department,
+      photo: currentUser.photo,
+      loggedInAt,
+    });
+    return () => { channel.unsubscribe(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser?.id]);
   
   // Captured once, before anything else can overwrite sessionStorage —
   // setActiveDepartment/setActiveSubTab below persist to these same keys as
   // a side effect, so re-reading sessionStorage live later (e.g. in the
   // "restore last tab" effect) can pick up a department that was *just*
   // written, making an unrelated leftover tab look like a valid pairing.
-  const initialSessionDeptRef = useRef(sessionStorage.getItem('rebma-last-dept'));
+  const initialSessionDeptRef = useRef(
+    (() => {
+      const raw = sessionStorage.getItem('rebma-last-dept');
+      return raw ? normalizeDeptCode(raw) : raw;
+    })()
+  );
   const initialSessionTabRef = useRef(sessionStorage.getItem('rebma-last-tab'));
   const [activeDepartment, setActiveDepartmentRaw] = useState<string>(
     () => initialSessionDeptRef.current || 'CEO'
@@ -391,9 +432,9 @@ export default function App() {
   const isSuperAdminForBadges = currentUser?.isSuperAdmin ?? false;
   const isCeoForBadges = currentUser?.isAdmin || currentUser?.department?.toUpperCase() === 'CEO';
   const rawUserDeptForBadges = currentUser?.department || '';
-  const normalizedUserDeptForBadges = rawUserDeptForBadges.toUpperCase() === 'HUMAN RESOURCES' ? 'HR' : rawUserDeptForBadges.toUpperCase();
+  const normalizedUserDeptForBadges = normalizeDeptCode(rawUserDeptForBadges);
   const visibleDeptsForBadges = (isSuperAdminForBadges || isCeoForBadges)
-    ? ['CEO', 'MANAGEMENT', 'HR', 'MARKETING', 'OPERATIONS', 'FINANCE', 'PRODUCTION', 'RECEPTION', 'DISPATCH', 'LOGISTICS']
+    ? ['CEO', 'RISK', 'MANAGEMENT', 'HR', 'MARKETING', 'ADMIN_WAREHOUSE', 'FINANCE', 'PRODUCTION', 'RECEPTION']
     : [normalizedUserDeptForBadges];
   const { navBadges: pendingNavBadges, deptBadges } = usePendingBadges(activeDepartment, visibleDeptsForBadges);
   const navBadges = {
@@ -414,9 +455,10 @@ export default function App() {
   });
 
   const setActiveDepartment = (department: string) => {
-    setActiveDepartmentRaw(department);
-    sessionStorage.setItem('rebma-last-dept', department);
-    clearTabAlert(department);
+    const d = normalizeDeptCode(department);
+    setActiveDepartmentRaw(d);
+    sessionStorage.setItem('rebma-last-dept', d);
+    clearTabAlert(d);
   };
 
   const setActiveSubTab = (tab: string) => {
@@ -441,6 +483,13 @@ export default function App() {
   const [registerName, setRegisterName] = useState<string>('');
   const [registerCard, setRegisterCard] = useState<string>('');
   const [registrationMessage, setRegistrationMessage] = useState<string>('');
+  // Registration is invite-only now (Phase 8) — this tracks whether the
+  // token in the URL actually resolved, so renderRegisterForm can show the
+  // locked confirmation screen, the "no invite" message, or an error,
+  // instead of the old open pick-your-own-department form.
+  const [inviteState, setInviteState] = useState<'checking' | 'valid' | 'invalid' | 'none'>(inviteToken ? 'checking' : 'none');
+  const [registerRole, setRegisterRole] = useState<string>('');
+  const [inviteError, setInviteError] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [confirmPassword, setConfirmPassword] = useState<string>('');
   const [showPassword, setShowPassword] = useState<boolean>(false);
@@ -501,16 +550,21 @@ export default function App() {
         const res = await fetch(`/api/lookup-invite?token=${encodeURIComponent(inviteToken)}`);
         const body = await res.json();
         if (!res.ok) {
-          setRegistrationMessage(body.error || 'This invite link is no longer valid.');
+          setInviteError(body.error || 'This invite link is no longer valid.');
+          setInviteState('invalid');
           setAuthScreen('register');
           return;
         }
         if (body.email) setRegisterEmail(body.email);
         if (body.fullName) setRegisterName(body.fullName);
         if (body.department) setRegisterDept(DEPT_CODE_TO_LABEL[String(body.department).toUpperCase()] || body.department);
+        if (body.role) setRegisterRole(body.role);
+        if (body.phone) setRegisterPhone(body.phone);
+        setInviteState('valid');
         setAuthScreen('register');
       } catch {
-        setRegistrationMessage('Could not verify this invite link. Please try again.');
+        setInviteError('Could not verify this invite link. Please try again.');
+        setInviteState('invalid');
         setAuthScreen('register');
       }
     })();
@@ -794,6 +848,7 @@ export default function App() {
         discrepancies: item.discrepancies || 'None',
         status: item.status,
         unitPrice: item.unitPrice || undefined,
+        rejectionReason: item.rejectionReason || undefined,
         createdAt: new Date(item.createdAt).toLocaleString()
       })));
     } catch (e) {
@@ -814,6 +869,9 @@ export default function App() {
         ghanaCard: o.ghanaCard || undefined,
         status: o.status,
         createdAt: o.createdAt || new Date().toISOString(),
+        customerId: o.customerId || undefined,
+        amountPaid: o.amountPaid ?? 0,
+        rejectionReason: o.rejectionReason || undefined,
         metadata: o.metadata || null
       })));
     } catch (e) {
@@ -840,6 +898,27 @@ export default function App() {
         // every periodic customer refetch, even though the DB value was correct.
         isSpecialCustomer: c.isSpecialCustomer ?? false,
         discountPercent: c.discountPercent ?? 0,
+        // Same "must be here or it silently vanishes" rule applies to every
+        // field below — this remap is one of three independent Customer
+        // mapping choke points (see apiClient.ts's mapCustomerToFrontend and
+        // CustomersView.tsx's own inline mapper for the other two).
+        houseAddress: c.houseAddress || undefined,
+        companyAddress: c.companyAddress || undefined,
+        gpsLat: c.gpsLat,
+        gpsLng: c.gpsLng,
+        ghanaCard2: c.ghanaCard2 || undefined,
+        partnerName: c.partnerName || undefined,
+        businessCertificateUrl: c.businessCertificateUrl || undefined,
+        notes: c.notes || undefined,
+        status: c.status || 'PENDING',
+        verifiedBy: c.verifiedBy || undefined,
+        verifiedAt: c.verifiedAt || undefined,
+        rejectionReason: c.rejectionReason || undefined,
+        // Phase 6 — same "must be here or it silently vanishes" choke point.
+        creditLimit: c.creditLimit ?? null,
+        creditStatus: c.creditStatus || 'ACTIVE',
+        creditTermsSetBy: c.creditTermsSetBy || undefined,
+        creditTermsSetAt: c.creditTermsSetAt || undefined,
       })));
     } catch (e) {
       console.log('Skipping customers fetch (unauthorized/error)');
@@ -854,7 +933,8 @@ export default function App() {
         department: log.department,
         performedBy: log.performedBy,
         details: log.details,
-        timestamp: new Date(log.timestamp).toLocaleString()
+        timestamp: new Date(log.timestamp).toLocaleString(),
+        referenceId: log.referenceId || undefined,
       })));
     } catch (e) {
       console.log('Skipping audit log fetch (unauthorized/error)');
@@ -890,9 +970,12 @@ export default function App() {
       console.log('Skipping production requests fetch (unauthorized/error)');
     }
 
-    // Fetch payments
+    // Fetch payments — only for departments the narrowed finance_payments_select
+    // RLS actually grants (finance/management/risk/admin); everyone else would
+    // just get an empty result, so skip the round-trip entirely.
     try {
-      const payments = await finance.getPayments();
+      const canSeePayments = currentUser?.isAdmin || ['FINANCE', 'MANAGEMENT', 'RISK'].includes((currentUser?.department || '').toUpperCase());
+      const payments = canSeePayments ? await finance.getPayments() : [];
       setPaymentsList(payments.map((p: any) => ({
         id: p.id,
         clientName: p.clientName,
@@ -964,7 +1047,25 @@ export default function App() {
         phone: u.phone || 'N/A',
         photo: u.photo || undefined,
         joinedAt: new Date(u.createdAt).toLocaleDateString(),
-        status: 'ACTIVE'
+        status: 'ACTIVE',
+        // Same "must be here or it silently vanishes" rule as the customer
+        // remap above — this is the staff equivalent of that choke point.
+        employeeNumber: u.employeeNumber || undefined,
+        resumeUrl: u.resumeUrl || undefined,
+        address: u.address || undefined,
+        hrRemarks: u.hrRemarks || undefined,
+        guarantorName: u.guarantorName || undefined,
+        guarantorPhone: u.guarantorPhone || undefined,
+        guarantorRelationship: u.guarantorRelationship || undefined,
+        guarantorIdNumber: u.guarantorIdNumber || undefined,
+        guarantorAddress: u.guarantorAddress || undefined,
+        staffCategory: u.staffCategory || undefined,
+        performanceTaskScore: u.performanceTaskScore,
+        performanceTeamScore: u.performanceTeamScore,
+        performanceQualityScore: u.performanceQualityScore,
+        performanceNotes: u.performanceNotes || undefined,
+        performanceReviewedBy: u.performanceReviewedBy || undefined,
+        performanceReviewedAt: u.performanceReviewedAt || undefined,
       })));
     } catch (e) {
       console.log('Skipping staff list fetch (unauthorized/error)');
@@ -995,7 +1096,7 @@ export default function App() {
     try {
       const [cargoRes, pricesRes] = await Promise.all([
         supabase.from('cargo_intake').select('product_name').eq('status', 'APPROVED'),
-        supabase.from('goods_prices').select('product_name')
+        supabase.from('goods_prices_catalog').select('product_name')
       ]);
       if (cargoRes.data && pricesRes.data) {
         const pricedNames = new Set(pricesRes.data.map((p: any) => String(p.product_name).toLowerCase().trim()));
@@ -1294,15 +1395,15 @@ export default function App() {
               }
             } else if (payload.eventType === 'UPDATE') {
               if (oldRecord && oldRecord.status !== 'APPROVED' && newRecord.status === 'APPROVED') {
-                if (currentUser.department === 'OPERATIONS' || currentUser.isAdmin) {
-                  addNotification(`Intake approved: ${newRecord.id}`, { dept: 'OPERATIONS', tab: 'PortIngestion' });
-                  addTabAlert('OPERATIONS');
+                if (currentUser.department === 'ADMIN_WAREHOUSE' || currentUser.isAdmin) {
+                  addNotification(`Intake approved: ${newRecord.id}`, { dept: 'ADMIN_WAREHOUSE', tab: 'PortIngestion' });
+                  addTabAlert('ADMIN_WAREHOUSE');
                   refreshAllData();
                 }
               } else if (oldRecord && oldRecord.status !== 'REJECTED' && newRecord.status === 'REJECTED') {
-                if (currentUser.department === 'OPERATIONS' || currentUser.isAdmin) {
-                  addNotification(`Intake rejected: ${newRecord.id}`, { dept: 'OPERATIONS', tab: 'PortIngestion' });
-                  addTabAlert('OPERATIONS');
+                if (currentUser.department === 'ADMIN_WAREHOUSE' || currentUser.isAdmin) {
+                  addNotification(`Intake rejected: ${newRecord.id}`, { dept: 'ADMIN_WAREHOUSE', tab: 'PortIngestion' });
+                  addTabAlert('ADMIN_WAREHOUSE');
                   refreshAllData();
                 }
               }
@@ -1314,9 +1415,9 @@ export default function App() {
           { event: 'INSERT', schema: 'public', table: 'delivery_logs' },
           (payload) => {
             const newRecord = payload.new as any;
-            if (currentUser.department === 'DISPATCH' || currentUser.isAdmin) {
-              addNotification(`New delivery assigned: Order ${newRecord.order_id || 'N/A'}`, { dept: 'DISPATCH', tab: 'Deliveries' });
-              addTabAlert('DISPATCH');
+            if (currentUser.department === 'ADMIN_WAREHOUSE' || currentUser.isAdmin) {
+              addNotification(`New delivery assigned: Order ${newRecord.order_id || 'N/A'}`, { dept: 'RISK', tab: 'Deliveries' });
+              addTabAlert('ADMIN_WAREHOUSE');
               refreshAllData();
             }
           }
@@ -1350,8 +1451,8 @@ export default function App() {
             } else if (payload.eventType === 'UPDATE') {
               const status = newRecord.status;
               if (status === 'OUT_FOR_DELIVERY' || status === 'APPROVED') {
-                addNotification(`Order ${newRecord.ticket_number || ''} → ${status.replace(/_/g, ' ')}`, { dept: 'OPERATIONS', tab: 'ApprovedGoods' });
-                addTabAlert('OPERATIONS');
+                addNotification(`Order ${newRecord.ticket_number || ''} → ${status.replace(/_/g, ' ')}`, { dept: 'ADMIN_WAREHOUSE', tab: 'ApprovedGoods' });
+                addTabAlert('ADMIN_WAREHOUSE');
               }
             }
             refreshAllData();
@@ -1564,18 +1665,7 @@ export default function App() {
       }
     }
 
-    if (activeDepartment === 'OPERATIONS') setActiveSubTab('PortIngestion');
-    else if (activeDepartment === 'FINANCE') setActiveSubTab('Evaluation');
-    else if (activeDepartment === 'MARKETING') setActiveSubTab('CreateOrder');
-    else if (activeDepartment === 'HR') setActiveSubTab('Employees');
-    else if (activeDepartment === 'PRODUCTION') setActiveSubTab('Requisition');
-    else if (activeDepartment === 'RECEPTION') setActiveSubTab('VisitorLog');
-    else if (activeDepartment === 'LOGISTICS') setActiveSubTab('Maintenance');
-    else if (activeDepartment === 'DISPATCH') setActiveSubTab('Deliveries');
-    else if (activeDepartment === 'MANAGEMENT') setActiveSubTab('CargoApproval');
-    else if (activeDepartment === 'BOARDROOM') setActiveSubTab('VideoConf');
-    else if (activeDepartment === 'SETTINGS') setActiveSubTab('Appearance');
-    else setActiveSubTab('Overview');
+    setActiveSubTab(DEFAULT_SUBTAB[activeDepartment] || 'Overview');
 
     if (activeDepartment !== 'CEO') {
       isInitialLoad.current = false;
@@ -1598,55 +1688,29 @@ export default function App() {
   };
 
   // Handle standard and privileged registration
+  // Registration is invite-only now (Phase 8) — this only ever runs from
+  // the locked confirmation screen, confirming a record HR already
+  // entered. Department, role, phone, and every richer field (résumé,
+  // address, guarantor info, photo) are resolved server-side from the
+  // invite token itself, not from anything submitted here.
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!registerEmail || !registerName) {
-      alert('Please fill out all fields.');
+    if (inviteState !== 'valid' || !inviteToken) {
+      alert('A valid invite link is required to register.');
       return;
     }
-
-    // Strict recognized email domain verification (only Gmail, Outlook, Yahoo, Hotmail)
-    const emailVal = registerEmail.trim();
-    const allowedDomains = ['gmail.com', 'outlook.com', 'yahoo.com', 'hotmail.com'];
-    const emailParts = emailVal.split('@');
-    const domain = emailParts[emailParts.length - 1].toLowerCase();
-    
-    if (emailParts.length !== 2 || !allowedDomains.includes(domain)) {
-      alert("Please register with a valid, recognized email provider (e.g., Gmail, Outlook, Yahoo).");
-      return;
-    }
-
-    // Map the UI dropdown value to the exact database role value
-    const mappedDept = getNormalizedRole(registerDept);
-    const isPrivileged = mappedDept === 'CEO' || mappedDept === 'HR';
     const emailLower = registerEmail.trim().toLowerCase();
-
-    if (isPrivileged) {
-      alert("Registration for CEO and HR roles is restricted on this form.");
-      return;
-    } else {
-      // Standard non-privileged registration
-      try {
-        const res = await auth.register({
-          email: emailLower,
-          fullName: registerName,
-          department: mappedDept,
-          phone: registerPhone.trim() || undefined,
-          ghanaCardId: registerCard || undefined,
-          inviteToken: inviteToken || undefined,
-        });
-        setRegistrationMessage(res.message);
-        setAuthScreen('login');
-        addNotification(`New registration request from ${registerName} (${mappedDept}) submitted.`);
-        
-        // Clear registration states
-        setRegisterName('');
-        setRegisterEmail('');
-        setRegisterPhone('');
-        setRegisterCard('');
-      } catch (err: any) {
-        alert(err.message || 'Registration failed.');
-      }
+    try {
+      const res = await auth.register({
+        email: emailLower,
+        fullName: registerName,
+        inviteToken,
+      });
+      setRegistrationMessage(res.message);
+      setAuthScreen('login');
+      addNotification(`New registration request from ${registerName} submitted.`);
+    } catch (err: any) {
+      alert(err.message || 'Registration failed.');
     }
   };
 
@@ -1830,7 +1894,15 @@ export default function App() {
         ghanaCard: data.ghanaCard,
         email: data.email,
         photo: data.photo,
-        isSpecialCustomer: data.isSpecialCustomer
+        isSpecialCustomer: data.isSpecialCustomer,
+        houseAddress: data.houseAddress,
+        companyAddress: data.companyAddress,
+        gpsLat: data.gpsLat,
+        gpsLng: data.gpsLng,
+        ghanaCard2: data.ghanaCard2,
+        partnerName: data.partnerName,
+        businessCertificateUrl: data.businessCertificateUrl,
+        notes: data.notes,
       });
       addNotification(`Marketing registered new customer successfully.`);
       refreshAllData();
@@ -2345,152 +2417,80 @@ export default function App() {
       </motion.form>
     );
 
-    const renderRegisterForm = () => (
-      <motion.form 
-        key="register"
-        initial={{ opacity: 0, x: -10 }}
-        animate={{ opacity: 1, x: 0 }}
-        exit={{ opacity: 0, x: 10 }}
-        onSubmit={handleRegister} 
-        className="space-y-3.5 text-slate-800"
-      >
-        <div className="text-center pb-0.5">
-          <h3 className="text-2xl font-black text-slate-900 tracking-tight">Create Account</h3>
-          <div className="w-8 h-1 bg-emerald-500 mx-auto rounded-full mt-1.5" />
-        </div>
-
-        {/* Side-by-side SSO Buttons */}
-        <div className="grid grid-cols-2 gap-2">
-          <button 
-            type="button"
-            onClick={() => {
-              setRegisterName('Esi Appiah');
-              setRegisterEmail('esi.appiah@rembaimpex.com');
-              setRegisterDept('Human Resources');
-              addNotification('Staging: Gmail SSO pre-filled HR registration details.');
-            }}
-            className="flex items-center justify-center gap-2 py-2.5 px-3 bg-slate-100/80 hover:bg-slate-200/80 rounded-xl text-xs font-semibold text-slate-700 transition-all cursor-pointer border border-slate-200"
-          >
-            <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
-              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05" />
-              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
-            </svg>
-            <span>Gmail</span>
-          </button>
-          <button 
-            type="button"
-            onClick={() => {
-              setRegisterName('Yaw Boakye');
-              setRegisterEmail('yaw.boakye@rembaimpex.com');
-              setRegisterDept('Production Line');
-              addNotification('Staging: Outlook SSO pre-filled Production registration details.');
-            }}
-            className="flex items-center justify-center gap-2 py-2.5 px-3 bg-slate-100/80 hover:bg-slate-200/80 rounded-xl text-xs font-semibold text-slate-700 transition-all cursor-pointer border border-slate-200"
-          >
-            <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 23 23" fill="currentColor">
-              <path d="M0 0h11v11H0z" fill="#F25022"/>
-              <path d="M12 0h11v11H12z" fill="#7FBA00"/>
-              <path d="M0 12h11v11H0z" fill="#00A4EF"/>
-              <path d="M12 12h11v11H12z" fill="#FFB900"/>
-            </svg>
-            <span>Outlook</span>
-          </button>
-        </div>
-
-        <div className="relative my-2 flex items-center justify-center">
-          <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-200"></div></div>
-          <span className="relative bg-white px-2 text-[9px] font-bold text-slate-400 uppercase tracking-widest">OR REGISTER WITH DETAILS</span>
-        </div>
-
-        {/* Name Input */}
-        <div className="flex items-center gap-3 px-3.5 py-2.5 bg-slate-100/80 focus-within:bg-white border border-slate-200 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 rounded-2xl transition-all">
-          <User className="w-4 h-4 text-slate-400 shrink-0" />
-          <input 
-            type="text" 
-            required 
-            placeholder="Ama Boateng"
-            value={registerName}
-            onChange={(e) => setRegisterName(e.target.value)}
-            className="w-full bg-transparent border-0 p-0 text-sm text-slate-900 placeholder-slate-400 focus:ring-0 focus:outline-none"
-          />
-        </div>
-
-        {/* Email Input */}
-        <div className="flex items-center gap-3 px-3.5 py-2.5 bg-slate-100/80 focus-within:bg-white border border-slate-200 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 rounded-2xl transition-all">
-          <Mail className="w-4 h-4 text-slate-400 shrink-0" />
-          <input 
-            type="email" 
-            required 
-            placeholder="name@rembaimpex.com"
-            value={registerEmail}
-            onChange={(e) => setRegisterEmail(e.target.value)}
-            className="w-full bg-transparent border-0 p-0 text-sm text-slate-900 placeholder-slate-400 focus:ring-0 focus:outline-none"
-          />
-        </div>
-
-        {/* Phone Input */}
-        <div className="flex items-center gap-3 px-3.5 py-2.5 bg-slate-100/80 focus-within:bg-white border border-slate-200 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 rounded-2xl transition-all">
-          <Phone className="w-4 h-4 text-slate-400 shrink-0" />
-          <input 
-            type="tel" 
-            required 
-            placeholder="Phone number (+233...)"
-            value={registerPhone}
-            onChange={(e) => setRegisterPhone(e.target.value)}
-            className="w-full bg-transparent border-0 p-0 text-sm text-slate-900 placeholder-slate-400 focus:ring-0 focus:outline-none"
-          />
-        </div>
-
-        {/* Department Dropdown */}
-        <div className="space-y-1">
-          <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider ml-1">Target Department</label>
-          <select 
-            value={registerDept}
-            onChange={(e) => setRegisterDept(e.target.value)}
-            className="w-full px-3.5 py-2 bg-slate-100/80 border border-slate-200 rounded-2xl text-sm text-slate-900 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 cursor-pointer"
-          >
-            <option value="Management Office">Management Office</option>
-            <option value="Marketing Department">Marketing Department</option>
-            <option value="Operations (Warehouse)">Operations (Warehouse)</option>
-            <option value="Finance (Ledgers)">Finance (Ledgers)</option>
-            <option value="Production Line">Production Line</option>
-            <option value="Reception Desk">Reception Desk</option>
-            <option value="Dispatch Fleet">Dispatch Fleet</option>
-            <option value="Logistics & Supply Chain">Logistics & Supply Chain</option>
-          </select>
-        </div>
-
-        {/* Ghana Card ID Input */}
-        {getNormalizedRole(registerDept) !== 'CEO' && (
-          <div className="flex items-center gap-3 px-3.5 py-2.5 bg-slate-100/80 focus-within:bg-white border border-slate-200 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 rounded-2xl transition-all">
-            <CreditCard className="w-4 h-4 text-slate-400 shrink-0" />
-            <input 
-              type="text" 
-              required={ghanaCardValidation}
-              placeholder="Ghana Card (GHA-123456789-0)"
-              value={registerCard}
-              onChange={(e) => setRegisterCard(e.target.value)}
-              className="w-full bg-transparent border-0 p-0 text-sm text-slate-900 placeholder-slate-400 focus:ring-0 focus:outline-none"
-            />
-          </div>
-        )}
-
-        {(getNormalizedRole(registerDept) === 'CEO' || getNormalizedRole(registerDept) === 'HR') && (
-          <div className="p-2.5 bg-amber-50 rounded-xl border border-amber-200/80 text-[10px] text-amber-800 leading-normal font-medium">
-            <strong>Privileged Role Verification Active:</strong> Phone verification required. Ensure your phone number matches white-list.
-          </div>
-        )}
-
-        <button 
-          type="submit" 
-          className="w-full py-3 bg-gradient-to-r from-amber-500 via-rose-500 to-amber-600 hover:from-amber-600 hover:to-rose-600 rounded-full text-xs font-bold text-white shadow-lg shadow-rose-500/20 hover:shadow-xl transition-all cursor-pointer text-center"
+    // Registration is invite-only now (Phase 8) — nobody except CEO (via
+    // the separate privileged secret-URL path) registers without a link
+    // HR generated for them. Three states, depending on what's in the URL:
+    //   'none'    — no token at all: tell them to get a link from HR.
+    //   'invalid' — a token that didn't resolve (expired/used/revoked).
+    //   'valid'   — a real, pending invite: show the locked confirmation
+    //               (Name/Role/Department/Phone, not editable) and let
+    //               them confirm. Nothing here is typed in by the
+    //               candidate — it's all what HR already entered.
+    const renderRegisterForm = () => {
+      if (inviteState === 'none') {
+        return (
+          <motion.div key="register-none" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }} className="space-y-4 text-center py-4">
+            <h3 className="text-2xl font-black text-slate-900 tracking-tight">Invite Required</h3>
+            <p className="text-sm text-slate-600">Registration requires an invite link from HR. If you were expecting one, check your email, SMS, or WhatsApp, or ask HR to send it again.</p>
+          </motion.div>
+        );
+      }
+      if (inviteState === 'invalid') {
+        return (
+          <motion.div key="register-invalid" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }} className="space-y-4 text-center py-4">
+            <h3 className="text-2xl font-black text-slate-900 tracking-tight">Link No Longer Valid</h3>
+            <p className="text-sm text-rose-600">{inviteError || 'This invite link is no longer valid.'}</p>
+            <p className="text-sm text-slate-600">Ask HR to send a new one.</p>
+          </motion.div>
+        );
+      }
+      if (inviteState === 'checking') {
+        return (
+          <motion.div key="register-checking" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-8 text-sm text-slate-500">
+            Verifying your invite…
+          </motion.div>
+        );
+      }
+      return (
+        <motion.form
+          key="register"
+          initial={{ opacity: 0, x: -10 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: 10 }}
+          onSubmit={handleRegister}
+          className="space-y-3.5 text-slate-800"
         >
-          Register Team
-        </button>
-      </motion.form>
-    );
+          <div className="text-center pb-0.5">
+            <h3 className="text-2xl font-black text-slate-900 tracking-tight">Confirm Your Details</h3>
+            <div className="w-8 h-1 bg-emerald-500 mx-auto rounded-full mt-1.5" />
+            <p className="text-xs text-slate-500 mt-2">HR already entered your record — confirm it's you to complete registration.</p>
+          </div>
+
+          {[
+            { label: 'Full Name', value: registerName, icon: <User className="w-4 h-4 text-slate-400 shrink-0" /> },
+            { label: 'Email', value: registerEmail, icon: <Mail className="w-4 h-4 text-slate-400 shrink-0" /> },
+            { label: 'Department', value: registerDept, icon: <CreditCard className="w-4 h-4 text-slate-400 shrink-0" /> },
+            { label: 'Role', value: registerRole || registerDept, icon: <User className="w-4 h-4 text-slate-400 shrink-0" /> },
+            { label: 'Phone', value: registerPhone, icon: <Phone className="w-4 h-4 text-slate-400 shrink-0" /> },
+          ].map(f => (
+            <div key={f.label} className="space-y-1">
+              <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider ml-1">{f.label}</label>
+              <div className="flex items-center gap-3 px-3.5 py-2.5 bg-slate-100/80 border border-slate-200 rounded-2xl">
+                {f.icon}
+                <span className="text-sm text-slate-900">{f.value || '—'}</span>
+              </div>
+            </div>
+          ))}
+
+          <button
+            type="submit"
+            className="w-full py-3 bg-gradient-to-r from-amber-500 via-rose-500 to-amber-600 hover:from-amber-600 hover:to-rose-600 rounded-full text-xs font-bold text-white shadow-lg shadow-rose-500/20 hover:shadow-xl transition-all cursor-pointer text-center"
+          >
+            Confirm & Register
+          </button>
+        </motion.form>
+      );
+    };
 
     const renderForgotForm = () => {
       const handleForgotPassword = async (e: React.FormEvent) => {
@@ -3103,6 +3103,7 @@ export default function App() {
     if (activeSubTab === 'Notifications') return <NotificationsPanel notifications={notifications} onNavigate={goToNotificationLink} onClear={() => setNotifications([])} currentUser={currentUser ?? undefined} />;
     if (activeSubTab === 'HelpDesk') return <HelpDeskPanel currentUser={currentUser} addNotification={addNotification} />;
     if (activeSubTab === 'Feedback') return <FeedbackPanel currentUser={currentUser} addNotification={addNotification} />;
+    if (activeSubTab === 'HrQueries') return <HrQueriesPanel currentUser={currentUser} addNotification={addNotification} />;
 
     // Cross-department panels — routed by sub-tab before the department switch
     if (activeSubTab === 'Analytics') return <AnalyticsDashboard department={activeDepartment} currentUser={currentUser} addNotification={addNotification} />;
@@ -3121,9 +3122,10 @@ export default function App() {
       if (activeSubTab === 'Accounts')        return <CeoAccountsView setActiveSubTab={setActiveSubTab} />;
       if (activeSubTab === 'Approvals')       return <CeoApprovalsView currentUser={currentUser} addNotification={addNotification} />;
       if (activeSubTab === 'PriceApprovals')  return <CeoPriceApprovalsView currentUser={currentUser} addNotification={addNotification} />;
-      if (activeSubTab === 'PriceCatalog')    return <GoodsPriceCatalogView addNotification={addNotification} currentUser={currentUser} />;
+      if (activeSubTab === 'PriceCatalog')    return <GoodsPriceCatalogView addNotification={addNotification} currentUser={currentUser} department={activeDepartment} />;
       if (activeSubTab === 'SupplierOrders')  return <CeoSupplierOrdersView currentUser={currentUser} addNotification={addNotification} />;
       if (activeSubTab === 'DeptActivity')    return <DeptActivityView currentUser={currentUser} addNotification={addNotification} />;
+      if (activeSubTab === 'LiveUsers')       return <LiveUsersView />;
       if (activeSubTab === 'FleetOverview')  return <LogisticsFleetOverviewView addNotification={addNotification} />;
       if (activeSubTab === 'FuelManagement') return <LogisticsFuelManagementView addNotification={addNotification} />;
       if (activeSubTab === 'Maintenance')    return <LogisticsMaintenanceView addNotification={addNotification} />;
@@ -3139,7 +3141,7 @@ export default function App() {
       if (activeSubTab === 'Wallets')           return <FinanceWalletsView />;
       if (activeSubTab === 'Transactions')      return <FinanceTransactionsView addNotification={addNotification} />;
       if (activeSubTab === 'Invoices')          return <CeoInvoicesView addNotification={addNotification} currentUser={currentUser} />;
-      if (activeSubTab === 'PriceCatalog')      return <GoodsPriceCatalogView addNotification={addNotification} currentUser={currentUser} />;
+      if (activeSubTab === 'PriceCatalog')      return <GoodsPriceCatalogView addNotification={addNotification} currentUser={currentUser} department={activeDepartment} />;
       if (activeSubTab === 'RecurringPayments') return <FinanceRecurringView currentUser={currentUser} addNotification={addNotification} />;
       if (activeSubTab === 'CreditMgmt')        return <FinanceCreditMgmtView addNotification={addNotification} currentUser={currentUser} />;
       if (activeSubTab === 'Expenses')          return <FinanceExpensesView addNotification={addNotification} currentUser={currentUser} />;
@@ -3167,12 +3169,28 @@ export default function App() {
       if (activeSubTab === 'FleetAnalytics')  return <LogisticsFleetAnalyticsView addNotification={addNotification} />;
     }
 
+    // Risk dedicated sub-tab pages. Dispatch's delivery-facing screens moved
+    // in here from Admin & Warehouse (Phase 9) — same components, just
+    // reached from Risk's own sidebar now; nothing inside them changed.
+    if (activeDepartment === 'RISK') {
+      if (activeSubTab === 'RiskOverview')  return <RiskDashboard addNotification={addNotification} setActiveSubTab={setActiveSubTab} currentUser={currentUser} />;
+      if (activeSubTab === 'RiskApprovals') return <RiskApprovalsView addNotification={addNotification} currentUser={currentUser} />;
+      if (activeSubTab === 'CustomerCredit') return <RiskCustomerCreditView addNotification={addNotification} currentUser={currentUser} />;
+      if (activeSubTab === 'Recruitment') return <RiskRecruitmentView addNotification={addNotification} />;
+      if (activeSubTab === 'Deliveries')       return <DispatchOverviewView addNotification={addNotification} setActiveSubTab={setActiveSubTab} currentUser={currentUser} />;
+      if (activeSubTab === 'ProofOfDelivery') return <DispatchProofOfDeliveryView currentUser={currentUser} addNotification={addNotification} />;
+      if (activeSubTab === 'ActiveDeliveries' || activeSubTab === 'DispatchHistory') return <DispatchDeliveriesView addNotification={addNotification} currentUser={currentUser} setActiveSubTab={setActiveSubTab} />;
+      if (activeSubTab === 'Drivers' || activeSubTab === 'DriverLogs') return <DispatchDriversView addNotification={addNotification} />;
+      if (activeSubTab === 'Tracking')         return <DispatchTrackingView addNotification={addNotification} />;
+      if (activeSubTab === 'Scanner')          return <DispatchScannerView addNotification={addNotification} />;
+      if (activeSubTab === 'DeptActivity')  return <DeptActivityView currentUser={currentUser} addNotification={addNotification} />;
+    }
+
     // Marketing dedicated sub-tab pages
     if (activeDepartment === 'MARKETING') {
       if (activeSubTab === 'Overview')          return <MarketingOverviewView addNotification={addNotification} setActiveSubTab={setActiveSubTab} currentUser={currentUser} ordersList={ordersList} customersList={customersList} />;
       if (activeSubTab === 'Invoices')          return <MarketingInvoicesView addNotification={addNotification} currentUser={currentUser} />;
-      if (activeSubTab === 'Receipts')          return <FinanceReceiptsView addNotification={addNotification} />;
-      if (activeSubTab === 'PriceCatalog')      return <GoodsPriceCatalogView addNotification={addNotification} currentUser={currentUser} />;
+      if (activeSubTab === 'PriceCatalog')      return <GoodsPriceCatalogView addNotification={addNotification} currentUser={currentUser} department={activeDepartment} />;
       if (activeSubTab === 'CreateOrder')       return <MarketingOrdersView ordersList={ordersList} onCreateOrder={handleCreateOrder} addNotification={addNotification} />;
       if (activeSubTab === 'RegisterCustomer')  return <MarketingCustomersView customersList={customersList} onRegisterCustomer={handleRegisterCustomer} addNotification={addNotification} />;
       if (activeSubTab === 'SalesHistory')      return <MarketingSalesHistoryView ordersList={ordersList} addNotification={addNotification} />;
@@ -3180,19 +3198,26 @@ export default function App() {
       if (activeSubTab === 'MktAnalytics')      return <MarketingAnalyticsView addNotification={addNotification} currentUser={currentUser} />;
     }
 
-    // Dispatch dedicated sub-tab pages
-    if (activeDepartment === 'DISPATCH') {
-      if (activeSubTab === 'Deliveries')       return <DispatchOverviewView addNotification={addNotification} setActiveSubTab={setActiveSubTab} currentUser={currentUser} />;
-      if (activeSubTab === 'ProofOfDelivery') return <DispatchProofOfDeliveryView currentUser={currentUser} addNotification={addNotification} />;
-      if (activeSubTab === 'ActiveDeliveries' || activeSubTab === 'DispatchHistory') return <DispatchDeliveriesView addNotification={addNotification} currentUser={currentUser} setActiveSubTab={setActiveSubTab} />;
-      if (activeSubTab === 'Drivers' || activeSubTab === 'DriverLogs') return <DispatchDriversView addNotification={addNotification} />;
-      if (activeSubTab === 'Tracking')         return <DispatchTrackingView addNotification={addNotification} />;
+    // Admin & Warehouse dedicated sub-tab pages (merged Operations + Dispatch +
+    // Logistics — Phase 5). 'Overview'/'PortIngestion'/'Releases'/'OpsHistory'
+    // are handled by OperationsDashboard in the switch below, same as before.
+    // Dispatch's delivery-facing screens (Deliveries/ActiveDeliveries/Drivers/
+    // Tracking/ProofOfDelivery/Scanner) moved into Risk (Phase 9) — see the
+    // Risk block below.
+    if (activeDepartment === 'ADMIN_WAREHOUSE') {
+      if (activeSubTab === 'Stock')            return <OperationsStockView incomingGoodsList={incomingGoodsList} addNotification={addNotification} />;
+      if (activeSubTab === 'ApprovedGoods')    return <OperationsApprovedGoodsView addNotification={addNotification} />;
+      if (activeSubTab === 'OpsAnalytics')     return <OperationsAnalyticsView addNotification={addNotification} />;
+      if (activeSubTab === 'FleetOverview')    return <LogisticsFleetOverviewView addNotification={addNotification} />;
+      if (activeSubTab === 'FuelManagement')   return <LogisticsFuelManagementView addNotification={addNotification} />;
+      if (activeSubTab === 'Maintenance')      return <LogisticsMaintenanceView addNotification={addNotification} />;
+      if (activeSubTab === 'FleetAnalytics')   return <LogisticsFleetAnalyticsView addNotification={addNotification} />;
     }
 
     // HR dedicated sub-tab pages
     if (activeDepartment === 'HR') {
       if (activeSubTab === 'Employees')         return <HrOverviewView currentUser={currentUser} addNotification={addNotification} setActiveSubTab={setActiveSubTab} staffList={staffList} pendingRegistrations={pendingRegistrations} attendanceList={attendanceList} onApprove={handleApproveUser} onDeny={handleDenyUser} />;
-      if (activeSubTab === 'Staff')             return <HrStaffView staffList={staffList} addNotification={addNotification} />;
+      if (activeSubTab === 'Staff')             return <HrStaffView staffList={staffList} addNotification={addNotification} currentUser={currentUser} />;
       if (activeSubTab === 'Registrations')     return <HrRegistrationsView pendingRegistrations={pendingRegistrations} addNotification={addNotification} onApprove={handleApproveUser} onDeny={handleDenyUser} />;
       if (activeSubTab === 'Attendance')        return <HrAttendanceView attendanceList={attendanceList} addNotification={addNotification} />;
       if (activeSubTab === 'LeaveManagement')   return <HrLeaveManagementView currentUser={currentUser} addNotification={addNotification} />;
@@ -3214,13 +3239,6 @@ export default function App() {
       if (activeSubTab === 'Analytics')       return <ReceptionAnalyticsView addNotification={addNotification} />;
     }
 
-    // Operations dedicated sub-tab pages
-    if (activeDepartment === 'OPERATIONS') {
-      if (activeSubTab === 'Stock') return <OperationsStockView incomingGoodsList={incomingGoodsList} addNotification={addNotification} />;
-      if (activeSubTab === 'ApprovedGoods') return <OperationsApprovedGoodsView addNotification={addNotification} />;
-      if (activeSubTab === 'OpsAnalytics') return <OperationsAnalyticsView addNotification={addNotification} />;
-    }
-
     // Production dedicated sub-tab pages
     if (activeDepartment === 'PRODUCTION') {
       if (activeSubTab === 'Requisition')     return <ProductionOverviewView currentUser={currentUser} productionRequests={productionRequests} addNotification={addNotification} setActiveSubTab={setActiveSubTab} />;
@@ -3228,14 +3246,6 @@ export default function App() {
       if (activeSubTab === 'OutputRecording') return <ProductionOutputRecordingView addNotification={addNotification} />;
       if (activeSubTab === 'WIPStock')        return <ProductionWipStockView addNotification={addNotification} />;
       if (activeSubTab === 'ProdAnalytics')   return <ProductionAnalyticsView addNotification={addNotification} />;
-    }
-
-    // Logistics dedicated sub-tab pages
-    if (activeDepartment === 'LOGISTICS') {
-      if (activeSubTab === 'FleetOverview')  return <LogisticsFleetOverviewView addNotification={addNotification} />;
-      if (activeSubTab === 'FuelManagement') return <LogisticsFuelManagementView addNotification={addNotification} />;
-      if (activeSubTab === 'Maintenance')    return <LogisticsMaintenanceView addNotification={addNotification} />;
-      if (activeSubTab === 'FleetAnalytics') return <LogisticsFleetAnalyticsView addNotification={addNotification} />;
     }
 
     switch (activeDepartment) {
@@ -3246,6 +3256,14 @@ export default function App() {
             onNavigateToSupplierOrders={() => setActiveSubTab('SupplierOrders')}
             setActiveSubTab={setActiveSubTab}
             addNotification={addNotification}
+          />
+        );
+      case 'RISK':
+        return (
+          <RiskDashboard
+            addNotification={addNotification}
+            setActiveSubTab={setActiveSubTab}
+            currentUser={currentUser}
           />
         );
       case 'MANAGEMENT':
@@ -3288,7 +3306,7 @@ export default function App() {
             addNotification={addNotification}
           />
         );
-      case 'OPERATIONS':
+      case 'ADMIN_WAREHOUSE':
         return (
           <OperationsDashboard
             ordersList={ordersList}
@@ -3522,21 +3540,27 @@ export default function App() {
       } else if (actionName === 'View All Departments') {
         setIsSidebarOpen(true);
       }
-    } else if (dept === 'OPERATIONS') {
+    } else if (dept === 'ADMIN_WAREHOUSE') {
+      // Merged Operations + Dispatch + Logistics quick actions (Phase 5).
       if (actionName === 'Log Cargo Intake') {
-        setActiveDepartment('OPERATIONS');
-        sessionStorage.setItem('rebma-last-dept', 'OPERATIONS');
+        setActiveDepartment('ADMIN_WAREHOUSE');
+        sessionStorage.setItem('rebma-last-dept', 'ADMIN_WAREHOUSE');
         setActiveSubTab('PortIngestion');
         setActiveMobileView('dashboard');
-      } else if (actionName === 'Create Fulfillment Ticket' || actionName === 'Release to Dispatch') {
-        setActiveDepartment('OPERATIONS');
-        sessionStorage.setItem('rebma-last-dept', 'OPERATIONS');
+      } else if (actionName === 'Fulfillment Ticket' || actionName === 'Create Fulfillment Ticket' || actionName === 'Release to Dispatch') {
+        setActiveDepartment('ADMIN_WAREHOUSE');
+        sessionStorage.setItem('rebma-last-dept', 'ADMIN_WAREHOUSE');
         setActiveSubTab('Releases');
         setActiveMobileView('dashboard');
       } else if (actionName === 'Flag Discrepancy') {
-        setActiveDepartment('OPERATIONS');
-        sessionStorage.setItem('rebma-last-dept', 'OPERATIONS');
+        setActiveDepartment('ADMIN_WAREHOUSE');
+        sessionStorage.setItem('rebma-last-dept', 'ADMIN_WAREHOUSE');
         setActiveSubTab('OpsHistory');
+        setActiveMobileView('dashboard');
+      } else if (actionName === 'Fleet & Fuel') {
+        setActiveDepartment('ADMIN_WAREHOUSE');
+        sessionStorage.setItem('rebma-last-dept', 'ADMIN_WAREHOUSE');
+        setActiveSubTab('FleetOverview');
         setActiveMobileView('dashboard');
       }
     } else if (dept === 'FINANCE') {
@@ -3605,28 +3629,6 @@ export default function App() {
         setActiveSubTab('RawMaterials');
         setActiveMobileView('dashboard');
       }
-    } else if (dept === 'DISPATCH') {
-      if (actionName === 'Assign Delivery') {
-        setActiveDepartment('DISPATCH');
-        sessionStorage.setItem('rebma-last-dept', 'DISPATCH');
-        setActiveSubTab('Deliveries');
-        setActiveMobileView('dashboard');
-      } else if (actionName === 'Update GPS') {
-        setActiveDepartment('DISPATCH');
-        sessionStorage.setItem('rebma-last-dept', 'DISPATCH');
-        setActiveSubTab('Tracking');
-        setActiveMobileView('dashboard');
-      } else if (actionName === 'Mark Delivered') {
-        setActiveDepartment('DISPATCH');
-        sessionStorage.setItem('rebma-last-dept', 'DISPATCH');
-        setActiveSubTab('DispatchHistory');
-        setActiveMobileView('dashboard');
-      } else if (actionName === 'View Fleet') {
-        setActiveDepartment('DISPATCH');
-        sessionStorage.setItem('rebma-last-dept', 'DISPATCH');
-        setActiveSubTab('DriverLogs');
-        setActiveMobileView('dashboard');
-      }
     } else if (dept === 'RECEPTION') {
       if (actionName === 'Check In Visitor' || actionName === 'Check Out Visitor' || actionName === 'View Today\'s Log') {
         setActiveDepartment('RECEPTION');
@@ -3639,16 +3641,41 @@ export default function App() {
         setActiveSubTab('EmployeeCheckin');
         setActiveMobileView('dashboard');
       }
-    } else if (dept === 'LOGISTICS') {
-      if (actionName === 'Add Shipment' || actionName === 'Update Route') {
-        setActiveDepartment('LOGISTICS');
-        sessionStorage.setItem('rebma-last-dept', 'LOGISTICS');
-        setActiveSubTab('Dispatch');
+    } else if (dept === 'RISK') {
+      if (actionName === 'Review Cargo' || actionName === 'Review Orders' || actionName === 'Review POD') {
+        setActiveDepartment('RISK');
+        sessionStorage.setItem('rebma-last-dept', 'RISK');
+        setActiveSubTab('RiskApprovals');
         setActiveMobileView('dashboard');
-      } else if (actionName === 'View Supply Chain' || actionName === 'Export Manifest') {
-        setActiveDepartment('LOGISTICS');
-        sessionStorage.setItem('rebma-last-dept', 'LOGISTICS');
-        setActiveSubTab('FleetOverview');
+      } else if (actionName === 'Customer Credit') {
+        setActiveDepartment('RISK');
+        sessionStorage.setItem('rebma-last-dept', 'RISK');
+        setActiveSubTab('CustomerCredit');
+        setActiveMobileView('dashboard');
+      } else if (actionName === 'Assign Delivery') {
+        setActiveDepartment('RISK');
+        sessionStorage.setItem('rebma-last-dept', 'RISK');
+        setActiveSubTab('ActiveDeliveries');
+        setActiveMobileView('dashboard');
+      } else if (actionName === 'Mark Delivered') {
+        setActiveDepartment('RISK');
+        sessionStorage.setItem('rebma-last-dept', 'RISK');
+        setActiveSubTab('DispatchHistory');
+        setActiveMobileView('dashboard');
+      } else if (actionName === 'Update GPS') {
+        setActiveDepartment('RISK');
+        sessionStorage.setItem('rebma-last-dept', 'RISK');
+        setActiveSubTab('Tracking');
+        setActiveMobileView('dashboard');
+      } else if (actionName === 'Scan Waybill') {
+        setActiveDepartment('RISK');
+        sessionStorage.setItem('rebma-last-dept', 'RISK');
+        setActiveSubTab('Scanner');
+        setActiveMobileView('dashboard');
+      } else if (actionName === 'Drivers') {
+        setActiveDepartment('RISK');
+        sessionStorage.setItem('rebma-last-dept', 'RISK');
+        setActiveSubTab('Drivers');
         setActiveMobileView('dashboard');
       }
     } else if (dept === 'MANAGEMENT') {
@@ -4171,13 +4198,7 @@ function AppInner({
               activeDepartment={currentUser?.requiresPasswordReset ? 'SETTINGS' : activeDepartment}
               activeSubTab={currentUser?.requiresPasswordReset ? 'ChangePassword' : activeSubTab}
               onDeptClick={() => {
-                const defaultMap: Record<string, string> = {
-                  CEO: 'Overview', MANAGEMENT: 'CargoApproval', HR: 'Employees',
-                  MARKETING: 'Overview', OPERATIONS: 'Overview', FINANCE: 'Evaluation',
-                  PRODUCTION: 'Requisition', RECEPTION: 'VisitorLog', DISPATCH: 'Deliveries',
-                  LOGISTICS: 'Overview', BOARDROOM: 'VideoConf', SETTINGS: 'Appearance',
-                };
-                setActiveSubTab(defaultMap[activeDepartment] || 'Overview');
+                setActiveSubTab(DEFAULT_SUBTAB[activeDepartment] || 'Overview');
               }}
             />
           </div>

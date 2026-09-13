@@ -1,4 +1,5 @@
 import { Home, Plus, Bell, User } from 'lucide-react';
+import { normalizeDeptCode } from '../../utils/departments';
 
 interface MobileNavProps {
   isSidebarOpen: boolean;
@@ -54,9 +55,7 @@ export function MobileNav({
       <button
         type="button"
         onClick={() => {
-          const userDept = (currentUser?.department || 'CEO').toUpperCase() === 'HUMAN RESOURCES'
-            ? 'HR'
-            : (currentUser?.department || 'CEO').toUpperCase();
+          const userDept = normalizeDeptCode(currentUser?.department || 'CEO');
           setActiveDepartment(userDept);
           sessionStorage.setItem('rebma-last-dept', userDept);
           setIsMobileSearchActive(false);

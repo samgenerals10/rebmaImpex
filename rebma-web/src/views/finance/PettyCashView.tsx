@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { Search, Download, Plus, Upload, Camera, AlertTriangle, MoreVertical } from 'lucide-react';
-import { exportToCSV } from '../../utils/export';
+import UniversalExportModal, { type ExportColumn } from '../../components/common/UniversalExportModal';
 import CountUp from '../../components/CountUp';
 import { usePaginatedQuery } from '../../hooks/usePaginatedQuery';
 import SidePanel from '../../components/ui/SidePanel';
@@ -56,6 +56,18 @@ export default function FinancePettyCashView({ addNotification, currentUser }: P
   const [showReplenForm, setShowReplenForm] = useState(false);
   const [form, setForm] = useState({ amount: '', description: '', disbursedTo: '', category: 'Admin', notes: '' });
   const [replenForm, setReplenForm] = useState({ amount: '', reason: '' });
+  const [exportOpen, setExportOpen] = useState(false);
+
+  const pettyExportCols: ExportColumn[] = [
+    { key: 'date', label: 'Date' },
+    { key: 'description', label: 'Description' },
+    { key: 'amount', label: 'Amount (GHS)', render: e => e.amount.toLocaleString() },
+    { key: 'disbursedTo', label: 'Disbursed To' },
+    { key: 'category', label: 'Category' },
+    { key: 'balanceAfter', label: 'Balance After', render: e => e.balanceAfter.toLocaleString() },
+    { key: 'type', label: 'Type' },
+  ];
+
 
   const currentFloat = entries.length > 0 ? entries[0].balanceAfter : INITIAL_FLOAT;
   const totalDisbursed = entries.filter(e => e.type === 'disbursement').reduce((s, e) => s + e.amount, 0);
@@ -185,13 +197,20 @@ export default function FinancePettyCashView({ addNotification, currentUser }: P
 
   return (
     <div className="p-4 md:p-6 space-y-6">
+      <UniversalExportModal
+        open={exportOpen}
+        onClose={() => setExportOpen(false)}
+        title="Petty Cash Management"
+        data={filtered}
+        columns={pettyExportCols}
+      />
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-[var(--text-primary)]">Petty Cash Management</h1>
           <p className="text-sm text-[var(--text-secondary)]">Track petty cash float and disbursements</p>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => exportToCSV(filtered.map(e => ({ Date: e.date, Description: e.description, Amount: e.amount, To: e.disbursedTo, Category: e.category, Balance: e.balanceAfter, Type: e.type })), ['Date', 'Description', 'Amount', 'To', 'Category', 'Balance', 'Type'], 'petty_cash')} className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[var(--border)] text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-card)]"><Download size={14} /> Export</button>
+          <button onClick={() => setExportOpen(true)} className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[var(--border)] text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-card)]"><Download size={14} /> Export</button>
           <button onClick={() => setShowDisbForm(true)} className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-white text-sm font-medium" style={{ background: 'var(--accent)' }}><Plus size={14} /> Disbursement</button>
         </div>
       </div>

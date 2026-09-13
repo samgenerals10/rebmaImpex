@@ -64,7 +64,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   }
 
-  const { userId, approve, generatedPassword } = req.body || {};
+  const { userId, approve, generatedPassword, remark } = req.body || {};
   if (!userId) {
     return res.status(400).json({ error: 'userId is required.' });
   }
@@ -131,12 +131,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const targetName = targetProfile.full_name || 'Staff';
     const targetDept = targetProfile.role || 'Unknown';
 
+    const baseDetails = `User ${targetName} (${targetDept}) ${approve ? 'approved' : 'rejected'}.`;
     await supabaseAdmin.from('global_audit_history').insert({
       action: approve ? 'APPROVE_USER' : 'REJECT_USER',
       department: 'HR',
       performed_by: performedBy,
       user_id: callerData.user.id,
-      details: `User ${targetName} (${targetDept}) ${approve ? 'approved' : 'rejected'}.`,
+      reference_id: userId,
+      details: remark ? `${baseDetails} ${remark}` : baseDetails,
       timestamp: new Date().toISOString()
     });
   } catch (e) {

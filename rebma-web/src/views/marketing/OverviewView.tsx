@@ -126,8 +126,10 @@ export default function MarketingOverviewView({ addNotification, setActiveSubTab
       setOrders(formattedOrders);
       setCustomers(formattedCustomers);
 
-      // Goods available to sell — prices set by Management
-      supabase.from('goods_prices').select('product_name, unit_price, cost_price, currency, category, product_image').then(({ data }) => {
+      // Goods available to sell — prices set by Management. Reads the
+      // cost-masked view (Marketing never sees cost_price); cost_price was
+      // never rendered here anyway, just fetched into state unused.
+      supabase.from('goods_prices_catalog').select('product_name, unit_price, currency, category, product_image').then(({ data }) => {
         if (data) setGoodsPrices(data as any[]);
       }, () => {});
       supabase.from('stock').select('product_name, quantity').then(({ data }) => {

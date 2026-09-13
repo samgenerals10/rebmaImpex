@@ -44,10 +44,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    const { email, fullName, phone, ghanaCardId, inviteToken } = req.body || {};
-    let { department } = req.body || {};
-    if (!email || !fullName || !department) {
-      return res.status(400).json({ error: 'Email, Full Name, and Department are required.' });
+    const { email, fullName, inviteToken } = req.body || {};
+    let { department, phone, ghanaCardId } = req.body || {};
+    if (!email || !fullName) {
+      return res.status(400).json({ error: 'Email and Full Name are required.' });
     }
 
     const emailLower = email.trim().toLowerCase();
@@ -56,35 +56,38 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { data: gateRows } = await supabaseAdmin
       .from('ceo_settings')
       .select('setting_key, setting_value')
-      .in('setting_key', ['registrations_allowed', 'invitation_only']);
+      .in('setting_key', ['registrations_allowed']);
     const registrationsAllowed = gateRows?.find(r => r.setting_key === 'registrations_allowed')?.setting_value !== false;
-    const invitationOnly = gateRows?.find(r => r.setting_key === 'invitation_only')?.setting_value === true;
     if (!registrationsAllowed) {
       return res.status(403).json({ error: 'New registrations are currently closed.' });
     }
-    if (invitationOnly && !inviteToken) {
-      return res.status(403).json({ error: 'Registration currently requires an invite link — ask HR or the CEO for one.' });
+
+    // Every non-privileged registration now requires a valid invite —
+    // the open, pick-your-own-department form is retired. CEO/HR still
+    // register through the separate privileged secret-URL path, which
+    // never calls this endpoint.
+    if (!inviteToken) {
+      return res.status(403).json({ error: 'Registration requires an invite link from HR.' });
     }
 
-    // If an invite token is present, resolve it server-side and trust its
-    // department/role over whatever the client submitted (the client-side
-    // form is only ever pre-filled from the invite, never authoritative —
-    // a tampered request shouldn't be able to use a valid token to
-    // register into a different department than the one it was issued for).
-    let invite: { id: string; department: string; auto_approve: boolean } | null = null;
-    if (inviteToken) {
-      const { data: invites } = await supabaseAdmin
-        .from('staff_invites')
-        .select('id, department, auto_approve, status, expires_at')
-        .eq('token', inviteToken)
-        .limit(1);
-      const found = invites?.[0];
-      if (!found || found.status !== 'pending' || (found.expires_at && new Date(found.expires_at).getTime() < Date.now())) {
-        return res.status(410).json({ error: 'This invite link is no longer valid.' });
-      }
-      invite = found;
-      department = found.department;
+    // Resolve the invite server-side and trust everything it carries over
+    // whatever the client submitted — the client-side form is only ever
+    // pre-filled from the invite, never authoritative. A tampered request
+    // shouldn't be able to use a valid token to register into a different
+    // department, role, or with different personal details than the ones
+    // HR actually entered.
+    const { data: invites } = await supabaseAdmin
+      .from('staff_invites')
+      .select('id, department, role, phone, photo, resume_url, address, staff_category, guarantor_name, guarantor_phone, guarantor_relationship, guarantor_id_number, guarantor_address, auto_approve, status, expires_at')
+      .eq('token', inviteToken)
+      .limit(1);
+    const invite = invites?.[0];
+    if (!invite || invite.status !== 'pending' || (invite.expires_at && new Date(invite.expires_at).getTime() < Date.now())) {
+      return res.status(410).json({ error: 'This invite link is no longer valid.' });
     }
+    department = invite.department;
+    phone = invite.phone || phone;
+    ghanaCardId = ghanaCardId || null;
 
     // List users to check if user already exists
     const foundUser = await findUserByEmail(supabaseAdmin, emailLower);
@@ -123,19 +126,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // An invite with auto_approve skips the HR/CEO approval queue entirely.
-    const initialStatus = invite?.auto_approve ? 'ACTIVE' : 'PENDING_APPROVAL';
-    await supabaseAdmin.from('profiles').upsert({
-      id: userId,
-      email: emailLower,
-      full_name: fullName,
+    const initialStatus = invite.auto_approve ? 'ACTIVE' : 'PENDING_APPROVAL';
+    const profileFields = {
       role: department,
+      full_name: fullName,
       ghana_card_id: ghanaCardId || null,
       phone: phone || null,
+      photo: invite.photo || null,
+      resume_url: invite.resume_url || null,
+      address: invite.address || null,
+      staff_category: invite.staff_category || null,
+      guarantor_name: invite.guarantor_name || null,
+      guarantor_phone: invite.guarantor_phone || null,
+      guarantor_relationship: invite.guarantor_relationship || null,
+      guarantor_id_number: invite.guarantor_id_number || null,
+      guarantor_address: invite.guarantor_address || null,
       status: initialStatus,
       is_admin: department === 'CEO',
       requires_password_reset: true,
-      created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
+    };
+    await supabaseAdmin.from('profiles').upsert({
+      id: userId,
+      email: emailLower,
+      created_at: new Date().toISOString(),
+      ...profileFields,
       metadata: {
         fullName,
         department,
@@ -147,13 +162,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Also update by email to ensure consistency
     await supabaseAdmin.from('profiles').update({
-      role: department,
-      full_name: fullName,
-      ghana_card_id: ghanaCardId || null,
-      phone: phone || null,
-      status: initialStatus,
-      is_admin: department === 'CEO',
-      requires_password_reset: true,
+      ...profileFields,
       metadata: {
         fullName,
         department,
@@ -161,11 +170,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         phone: phone || null,
         tempAuthSecret: regPassword
       },
-      updated_at: new Date().toISOString()
     }).eq('email', emailLower);
 
-    if (invite) {
-      await supabaseAdmin.from('staff_invites').update({ status: 'used' }).eq('id', invite.id);
+    await supabaseAdmin.from('staff_invites').update({ status: 'used' }).eq('id', invite.id);
+
+    // Phase 9: Dispatch moved into Risk — a Risk / Driver registration
+    // links (or creates) the driver's roster row the same way
+    // register-driver-user.ts already did, just automatically as part of
+    // this registration instead of a separate manual step.
+    if (String(department).toLowerCase() === 'risk' && String(invite.role || '').toLowerCase() === 'driver' && userId) {
+      const { data: existingDriver } = await supabaseAdmin
+        .from('drivers')
+        .select('id, user_id')
+        .eq('user_id', userId)
+        .limit(1);
+      if (!existingDriver?.length) {
+        const { count } = await supabaseAdmin.from('drivers').select('id', { count: 'exact', head: true });
+        const generatedId = `DRV-${String((count || 0) + 1).padStart(3, '0')}`;
+        await supabaseAdmin.from('drivers').insert({
+          driver_id: generatedId,
+          full_name: fullName,
+          phone: phone || null,
+          status: 'ACTIVE',
+          user_id: userId,
+        });
+      }
     }
 
     return res.status(200).json({

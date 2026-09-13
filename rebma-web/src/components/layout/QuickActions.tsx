@@ -2,8 +2,8 @@ import {
   UserPlus, ClipboardList, Calendar, Megaphone, UserCheck,
   BarChart3, Video, AlertCircle, Building2, Ship, Ticket, Flag, Truck,
   DollarSign, FileText, CheckSquare, BookOpen, ShoppingCart, TrendingUp,
-  Download, Boxes, Hammer, PackagePlus, MapPin, LogIn, LogOut, Map,
-  GitMerge, Tag, ShieldAlert, CheckCircle, CreditCard,
+  Download, Boxes, Hammer, PackagePlus, MapPin, LogIn, LogOut,
+  GitMerge, Tag, ShieldAlert, CheckCircle, CreditCard, QrCode,
 } from 'lucide-react';
 
 interface QuickActionsProps {
@@ -61,12 +61,12 @@ export function QuickActions({
               <QABtn icon={<Building2 className="w-5 h-5" />} color="bg-sky-500" label="View All Depts" onClick={() => handleQuickAction('View All Departments', 'CEO')} />
             </>
           )}
-          {activeDepartment === 'OPERATIONS' && (
+          {activeDepartment === 'ADMIN_WAREHOUSE' && (
             <>
-              <QABtn icon={<Ship className="w-5 h-5" />} color="bg-sky-500" label="Log Cargo Intake" onClick={() => handleQuickAction('Log Cargo Intake', 'OPERATIONS')} />
-              <QABtn icon={<Ticket className="w-5 h-5" />} color="bg-teal-500" label="Fulfillment Ticket" onClick={() => handleQuickAction('Create Fulfillment Ticket', 'OPERATIONS')} />
-              <QABtn icon={<Flag className="w-5 h-5" />} color="bg-rose-500" label="Flag Discrepancy" onClick={() => handleQuickAction('Flag Discrepancy', 'OPERATIONS')} />
-              <QABtn icon={<Truck className="w-5 h-5" />} color="bg-amber-500" label="Release Dispatch" onClick={() => handleQuickAction('Release to Dispatch', 'OPERATIONS')} />
+              <QABtn icon={<Ship className="w-5 h-5" />} color="bg-sky-500" label="Log Cargo Intake" onClick={() => handleQuickAction('Log Cargo Intake', 'ADMIN_WAREHOUSE')} />
+              <QABtn icon={<Ticket className="w-5 h-5" />} color="bg-teal-500" label="Fulfillment Ticket" onClick={() => handleQuickAction('Fulfillment Ticket', 'ADMIN_WAREHOUSE')} />
+              <QABtn icon={<Flag className="w-5 h-5" />} color="bg-rose-500" label="Flag Discrepancy" onClick={() => handleQuickAction('Flag Discrepancy', 'ADMIN_WAREHOUSE')} />
+              <QABtn icon={<GitMerge className="w-5 h-5" />} color="bg-amber-500" label="Fleet & Fuel" onClick={() => handleQuickAction('Fleet & Fuel', 'ADMIN_WAREHOUSE')} />
             </>
           )}
           {activeDepartment === 'FINANCE' && (
@@ -93,14 +93,6 @@ export function QuickActions({
               <QABtn icon={<ClipboardList className="w-5 h-5" />} color="bg-blue-500" label="View Requisitions" onClick={() => handleQuickAction('View Requisitions', 'PRODUCTION')} />
             </>
           )}
-          {activeDepartment === 'DISPATCH' && (
-            <>
-              <QABtn icon={<PackagePlus className="w-5 h-5" />} color="bg-blue-500" label="Assign Delivery" onClick={() => handleQuickAction('Assign Delivery', 'DISPATCH')} />
-              <QABtn icon={<MapPin className="w-5 h-5" />} color="bg-rose-500" label="Update GPS" onClick={() => handleQuickAction('Update GPS', 'DISPATCH')} />
-              <QABtn icon={<CheckCircle className="w-5 h-5" />} color="bg-emerald-500" label="Mark Delivered" onClick={() => handleQuickAction('Mark Delivered', 'DISPATCH')} />
-              <QABtn icon={<Truck className="w-5 h-5" />} color="bg-sky-500" label="View Fleet" onClick={() => handleQuickAction('View Fleet', 'DISPATCH')} />
-            </>
-          )}
           {activeDepartment === 'RECEPTION' && (
             <>
               <QABtn icon={<LogIn className="w-5 h-5" />} color="bg-emerald-500" label="Check In Visitor" onClick={() => handleQuickAction('Check In Visitor', 'RECEPTION')} />
@@ -109,12 +101,17 @@ export function QuickActions({
               <QABtn icon={<BookOpen className="w-5 h-5" />} color="bg-indigo-500" label="View Today's Log" onClick={() => handleQuickAction("View Today's Log", 'RECEPTION')} />
             </>
           )}
-          {activeDepartment === 'LOGISTICS' && (
+          {activeDepartment === 'RISK' && (
             <>
-              <QABtn icon={<Ship className="w-5 h-5" />} color="bg-blue-500" label="Add Shipment" onClick={() => handleQuickAction('Add Shipment', 'LOGISTICS')} />
-              <QABtn icon={<Map className="w-5 h-5" />} color="bg-teal-500" label="Update Route" onClick={() => handleQuickAction('Update Route', 'LOGISTICS')} />
-              <QABtn icon={<GitMerge className="w-5 h-5" />} color="bg-indigo-500" label="View Supply Chain" onClick={() => handleQuickAction('View Supply Chain', 'LOGISTICS')} />
-              <QABtn icon={<FileText className="w-5 h-5" />} color="bg-amber-500" label="Export Manifest" onClick={() => handleQuickAction('Export Manifest', 'LOGISTICS')} />
+              <QABtn icon={<Ship className="w-5 h-5" />} color="bg-sky-500" label="Review Cargo" onClick={() => handleQuickAction('Review Cargo', 'RISK')} />
+              <QABtn icon={<CreditCard className="w-5 h-5" />} color="bg-indigo-500" label="Review Orders" onClick={() => handleQuickAction('Review Orders', 'RISK')} />
+              <QABtn icon={<CheckSquare className="w-5 h-5" />} color="bg-emerald-500" label="Review POD" onClick={() => handleQuickAction('Review POD', 'RISK')} />
+              <QABtn icon={<ShieldAlert className="w-5 h-5" />} color="bg-rose-500" label="Customer Credit" onClick={() => handleQuickAction('Customer Credit', 'RISK')} />
+              <QABtn icon={<PackagePlus className="w-5 h-5" />} color="bg-blue-500" label="Assign Delivery" onClick={() => handleQuickAction('Assign Delivery', 'RISK')} />
+              <QABtn icon={<CheckCircle className="w-5 h-5" />} color="bg-emerald-500" label="Mark Delivered" onClick={() => handleQuickAction('Mark Delivered', 'RISK')} />
+              <QABtn icon={<MapPin className="w-5 h-5" />} color="bg-rose-500" label="Update GPS" onClick={() => handleQuickAction('Update GPS', 'RISK')} />
+              <QABtn icon={<QrCode className="w-5 h-5" />} color="bg-indigo-500" label="Scan Waybill" onClick={() => handleQuickAction('Scan Waybill', 'RISK')} />
+              <QABtn icon={<UserCheck className="w-5 h-5" />} color="bg-sky-500" label="Drivers" onClick={() => handleQuickAction('Drivers', 'RISK')} />
             </>
           )}
           {activeDepartment === 'MANAGEMENT' && (
@@ -125,7 +122,7 @@ export function QuickActions({
               <QABtn icon={<ShieldAlert className="w-5 h-5" />} color="bg-rose-500" label="View Audit Log" onClick={() => handleQuickAction('View Audit Log', 'MANAGEMENT')} />
             </>
           )}
-          {['CEO', 'HR', 'MANAGEMENT', 'MARKETING', 'OPERATIONS', 'FINANCE', 'PRODUCTION', 'RECEPTION', 'DISPATCH', 'LOGISTICS'].indexOf(activeDepartment) === -1 && (
+          {['CEO', 'RISK', 'HR', 'MANAGEMENT', 'MARKETING', 'ADMIN_WAREHOUSE', 'FINANCE', 'PRODUCTION', 'RECEPTION'].indexOf(activeDepartment) === -1 && (
             <div className="col-span-2 text-center text-xs text-text-muted py-6">
               No quick actions available.
             </div>

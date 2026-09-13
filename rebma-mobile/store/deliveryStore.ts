@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import NetInfo from '@react-native-community/netinfo';
 
 export interface CoordinatePoint {
   latitude: number;
@@ -10,33 +11,66 @@ export interface CoordinatePoint {
 interface DeliveryStore {
   activeOrderId: string | null;
   gpsActive: boolean;
+  /** Effective connectivity = autoOnline && !forcedOffline — this is what every screen reads. */
   networkOnline: boolean;
+  /** Real, netinfo-driven connectivity (Phase 7.12, D121). */
+  autoOnline: boolean;
+  /** The driver-facing manual override — "Force Offline Mode" for testing, kept from before this phase. */
+  forcedOffline: boolean;
   coordinateBuffer: CoordinatePoint[];
   deliveredOrders: string[];
   setActiveOrder: (orderId: string | null) => void;
   setGpsActive: (active: boolean) => void;
+  /** Deprecated alias for setForcedOffline(!online) — kept so existing call sites (the manual Switch) still work. */
   setNetworkOnline: (online: boolean) => void;
+  setForcedOffline: (forced: boolean) => void;
   bufferCoordinate: (point: CoordinatePoint) => void;
   clearBuffer: () => void;
   markOrderDelivered: (orderId: string) => void;
   loadPersistedData: () => Promise<void>;
+  /** Starts the real NetInfo listener; call once near the root. Returns an unsubscribe fn. */
+  startConnectivityWatch: () => () => void;
 }
 
 export const useDeliveryStore = create<DeliveryStore>((set, get) => ({
   activeOrderId: null,
   gpsActive: false,
   networkOnline: true,
+  autoOnline: true,
+  forcedOffline: false,
   coordinateBuffer: [],
   deliveredOrders: [],
 
   setActiveOrder: (orderId) => set({ activeOrderId: orderId }),
   setGpsActive: (active) => set({ gpsActive: active }),
 
-  setNetworkOnline: (online) => {
-    set({ networkOnline: online });
-    if (online && get().coordinateBuffer.length > 0) {
+  // Kept as a thin alias over setForcedOffline so DispatchHomeScreen's
+  // existing Switch (onValueChange={setNetworkOnline}) didn't need a
+  // rewire — "online=false" from that Switch now means "force offline,"
+  // not "the real network dropped," matching D121's override design.
+  setNetworkOnline: (online) => get().setForcedOffline(!online),
+
+  setForcedOffline: (forced) => {
+    set({ forcedOffline: forced });
+    const effective = get().autoOnline && !forced;
+    set({ networkOnline: effective });
+    if (effective && get().coordinateBuffer.length > 0) {
       get().loadPersistedData();
     }
+  },
+
+  startConnectivityWatch: () => {
+    const unsubscribe = NetInfo.addEventListener((state) => {
+      const auto = !!state.isConnected;
+      set({ autoOnline: auto });
+      const effective = auto && !get().forcedOffline;
+      const wasOffline = !get().networkOnline;
+      set({ networkOnline: effective });
+      if (effective && wasOffline && get().coordinateBuffer.length > 0) {
+        get().loadPersistedData();
+      }
+    });
+    return unsubscribe;
   },
 
   bufferCoordinate: async (point) => {

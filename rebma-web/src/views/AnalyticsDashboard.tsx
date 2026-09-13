@@ -107,11 +107,12 @@ const TREND_CONFIG: Record<string, DeptSeriesConfig> = {
   FINANCE: { table: 'finance_payments', dateField: 'created_at', valueField: 'amount' },
   HR: { table: 'attendance', dateField: 'created_at' },
   MARKETING: { table: 'orders', dateField: 'created_at', valueField: 'total_amount' },
-  OPERATIONS: { table: 'cargo_intake', dateField: 'created_at' },
-  DISPATCH: { table: 'delivery_logs', dateField: 'created_at' },
+  // Reachable only via a stale leftover session (this component only ever
+  // renders for activeSubTab === 'Analytics', which no Admin & Warehouse
+  // tab uses — see ACTIVITY_CONFIG comment below).
+  ADMIN_WAREHOUSE: { table: 'cargo_intake', dateField: 'created_at' },
   PRODUCTION: { table: 'production_logs', dateField: 'created_at', valueField: 'boxes_produced' },
   RECEPTION: { table: 'visitors', dateField: 'check_in_time' },
-  LOGISTICS: { table: 'fuel_logs', dateField: 'created_at', valueField: 'cost' },
 };
 
 const ACTIVITY_CONFIG: Record<string, DeptSeriesConfig> = {
@@ -120,11 +121,15 @@ const ACTIVITY_CONFIG: Record<string, DeptSeriesConfig> = {
   FINANCE: { table: 'orders', dateField: 'created_at' },
   HR: { table: 'leave_requests', dateField: 'created_at' },
   MARKETING: { table: 'customers', dateField: 'registered_at' },
-  OPERATIONS: { table: 'stock_ledger', dateField: 'created_at' },
-  DISPATCH: { table: 'delivery_logs', dateField: 'created_at' },
+  // This component only renders for activeSubTab === 'Analytics', a tab id
+  // none of the merged legacy departments actually use (Operations analytics
+  // is OpsAnalytics, Dispatch has none, Fleet analytics is FleetAnalytics —
+  // all handled by their own dedicated views under the merged sidebar). This
+  // entry only guards a stale rebma-last-tab='Analytics' session against
+  // silently falling back to CEO's config, not a real navigable page.
+  ADMIN_WAREHOUSE: { table: 'delivery_logs', dateField: 'created_at' },
   PRODUCTION: { table: 'production_requests', dateField: 'created_at' },
   RECEPTION: { table: 'attendance', dateField: 'created_at' },
-  LOGISTICS: { table: 'maintenance_schedule', dateField: 'created_at' },
 };
 
 async function fetchSeries(cfg: DeptSeriesConfig, sinceIso: string): Promise<{ created_at: string; value: number }[]> {
@@ -269,34 +274,24 @@ export default function AnalyticsDashboard({ department, currentUser, addNotific
         const byStatus: Record<string, number> = {};
         for (const o of orders || []) byStatus[(o as any).status] = (byStatus[(o as any).status] || 0) + 1;
         setPieData(Object.entries(byStatus).map(([name, value]) => ({ name, value })));
-      } else if (department === 'OPERATIONS') {
-        const [{ count: cargoC }, { count: stockC }, { count: discC }] = await Promise.all([
+      } else if (department === 'ADMIN_WAREHOUSE') {
+        // Merged fallback for a stale rebma-last-tab='Analytics' session
+        // (see ACTIVITY_CONFIG comment above) — four cards, one per real
+        // domain, not a mash-up of all three legacy departments' cards.
+        // Fleet-table cards (fleet_vehicles/fuel_logs/maintenance_schedule)
+        // are deliberately omitted: those tables are confirmed absent from
+        // the live database, so they'd only ever render zeros.
+        const [{ count: cargoC }, { count: stockC }, { count: deliveriesC }, { count: driversC }] = await Promise.all([
           supabase.from('cargo_intake').select('*', { count: 'exact', head: true }),
           supabase.from('stock').select('*', { count: 'exact', head: true }),
-          supabase.from('cargo_intake').select('*', { count: 'exact', head: true }).neq('discrepancies', 'None'),
+          supabase.from('delivery_logs').select('*', { count: 'exact', head: true }),
+          supabase.from('drivers').select('*', { count: 'exact', head: true }).eq('status', 'ACTIVE'),
         ]);
         setLiveStats([
           { label: 'Cargo Intakes', value: cargoC ?? 0, sub: 'Total logged', trend: 0, icon: Package },
           { label: 'Stock Items', value: stockC ?? 0, sub: 'In warehouse', trend: 0, icon: Package },
-          { label: 'Discrepancies', value: discC ?? 0, sub: 'Open issues', trend: 0, icon: TrendingDown },
-          { label: 'Fulfillments', value: null, sub: 'Check deliveries', trend: 0, icon: Truck },
-        ]);
-        const { data: cargo } = await supabase.from('cargo_intake').select('status');
-        const byStatus: Record<string, number> = {};
-        for (const c of cargo || []) byStatus[(c as any).status] = (byStatus[(c as any).status] || 0) + 1;
-        setPieData(Object.entries(byStatus).map(([name, value]) => ({ name, value })));
-      } else if (department === 'DISPATCH') {
-        const [{ count: total }, { count: inTransit }, { count: delivered }, { count: drivers }] = await Promise.all([
-          supabase.from('delivery_logs').select('*', { count: 'exact', head: true }),
-          supabase.from('delivery_logs').select('*', { count: 'exact', head: true }).eq('status', 'IN_TRANSIT'),
-          supabase.from('delivery_logs').select('*', { count: 'exact', head: true }).eq('status', 'DELIVERED'),
-          supabase.from('drivers').select('*', { count: 'exact', head: true }).eq('status', 'ACTIVE'),
-        ]);
-        setLiveStats([
-          { label: 'Deliveries', value: total ?? 0, sub: 'Total', trend: 0, icon: Truck },
-          { label: 'In Transit', value: inTransit ?? 0, sub: 'Currently active', trend: 0, icon: Truck },
-          { label: 'Delivered', value: delivered ?? 0, sub: 'Completed', trend: 0, icon: TrendingUp },
-          { label: 'Active Drivers', value: drivers ?? 0, sub: 'On roster', trend: 0, icon: Users },
+          { label: 'Deliveries', value: deliveriesC ?? 0, sub: 'Total', trend: 0, icon: Truck },
+          { label: 'Active Drivers', value: driversC ?? 0, sub: 'On roster', trend: 0, icon: Users },
         ]);
         const { data: deliveries } = await supabase.from('delivery_logs').select('status');
         const byStatus: Record<string, number> = {};
@@ -336,24 +331,6 @@ export default function AnalyticsDashboard({ department, currentUser, addNotific
         const byPurpose: Record<string, number> = {};
         for (const v of visitors || []) { const p = (v as any).purpose || 'Other'; byPurpose[p] = (byPurpose[p] || 0) + 1; }
         setPieData(Object.entries(byPurpose).slice(0, 6).map(([name, value]) => ({ name, value })));
-      } else if (department === 'LOGISTICS') {
-        const [{ count: vehicleC }, { count: activeC }, { count: maintC }, { data: fuelRows }] = await Promise.all([
-          supabase.from('fleet_vehicles').select('*', { count: 'exact', head: true }),
-          supabase.from('fleet_vehicles').select('*', { count: 'exact', head: true }).eq('status', 'Operational'),
-          supabase.from('maintenance_schedule').select('*', { count: 'exact', head: true }).neq('status', 'Completed'),
-          supabase.from('fuel_logs').select('cost'),
-        ]);
-        const fuelCost = (fuelRows ?? []).reduce((s: number, r: any) => s + Number(r.cost || 0), 0);
-        setLiveStats([
-          { label: 'Total Vehicles', value: vehicleC ?? 0, sub: 'Fleet size', trend: 0, icon: Truck },
-          { label: 'Operational', value: activeC ?? 0, sub: 'Ready to run', trend: 0, icon: Truck },
-          { label: 'Pending Maintenance', value: maintC ?? 0, sub: 'Open work orders', trend: 0, icon: Package },
-          { label: 'Fuel Spend', value: fuelCost, prefix: 'GHS ', sub: 'All time', trend: 0, icon: DollarSign },
-        ]);
-        const { data: vehicles } = await supabase.from('fleet_vehicles').select('status');
-        const byStatus: Record<string, number> = {};
-        for (const v of vehicles || []) byStatus[(v as any).status] = (byStatus[(v as any).status] || 0) + 1;
-        setPieData(Object.entries(byStatus).map(([name, value]) => ({ name, value })));
       }
     } catch { /* silent */ }
   }, [department]);
@@ -370,9 +347,9 @@ export default function AnalyticsDashboard({ department, currentUser, addNotific
 
   const deptTitle: Record<string, string> = {
     CEO: 'Executive Analytics', FINANCE: 'Finance Analytics', HR: 'HR Analytics',
-    MARKETING: 'Sales & Marketing Analytics', OPERATIONS: 'Operations Analytics',
-    DISPATCH: 'Dispatch Analytics', PRODUCTION: 'Production Analytics',
-    RECEPTION: 'Reception Analytics', LOGISTICS: 'Fleet Analytics',
+    MARKETING: 'Sales & Marketing Analytics', ADMIN_WAREHOUSE: 'Admin & Warehouse Analytics',
+    PRODUCTION: 'Production Analytics',
+    RECEPTION: 'Reception Analytics',
     MANAGEMENT: 'Management Analytics',
   };
 

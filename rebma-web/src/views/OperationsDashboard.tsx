@@ -23,6 +23,7 @@ import { useCeoSettings } from '../contexts/CeoSettingsContext';
 import SidePanel from '../components/ui/SidePanel';
 import SearchableDropdown from '../components/ui/SearchableDropdown';
 import ResponsiveDataView, { type DataColumn } from '../components/mobile/ResponsiveDataView';
+import RequestTimelinePanel from '../components/global/RequestTimelinePanel';
 
 interface OperationsDashboardProps {
   ordersList: Order[];
@@ -93,6 +94,7 @@ export default function OperationsDashboard({
   const [goodsCode, setGoodsCode] = useState('');
   const [destination, setDestination] = useState('');
   const [country, setCountry] = useState('');
+  const [containerNumber, setContainerNumber] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const docInputRef = useRef<HTMLInputElement>(null);
@@ -238,6 +240,7 @@ export default function OperationsDashboard({
   const [historyStatusFilter, setHistoryStatusFilter] = useState('ALL');
   const [isHistoryFilterOpen, setIsHistoryFilterOpen] = useState(false);
   const [activeHistoryMenu, setActiveHistoryMenu] = useState<string | null>(null);
+  const [timelineCargoId, setTimelineCargoId] = useState<string | null>(null);
 
   // Sorting states for Orders
   const [ordersSortField, setOrdersSortField] = useState<string>('');
@@ -398,7 +401,7 @@ export default function OperationsDashboard({
 
   const totalTons = localCargo.reduce((acc, item) => acc + item.weight, 0);
   const pendingReleaseCount = localOrders.filter(o => o.status === 'PROCESSING').length;
-  const pendingMgmtApprovalCount = localCargo.filter(item => item.status === 'PENDING_MANAGEMENT_APPROVAL').length;
+  const pendingMgmtApprovalCount = localCargo.filter(item => item.status === 'PENDING_RISK_APPROVAL').length;
   const discrepancyCount = localCargo.filter(item => item.discrepancies !== 'None' && item.discrepancies !== '').length;
 
   const approvedOrders = localOrders.filter(o => ['APPROVED', 'PROCESSING', 'OUT_FOR_DELIVERY', 'DELIVERED'].includes(o.status));
@@ -469,7 +472,7 @@ export default function OperationsDashboard({
       trendData: localCargo.slice(-6).map((c, i) => ({ name: c.goodsCode || `#${i + 1}`, value: Number(c.weight || 0) })),
       breakdownData: [
         { name: 'Approved', value: localCargo.filter(c => c.status === 'APPROVED').length },
-        { name: 'Pending', value: localCargo.filter(c => c.status === 'PENDING_MANAGEMENT_APPROVAL').length },
+        { name: 'Pending', value: localCargo.filter(c => c.status === 'PENDING_RISK_APPROVAL').length },
         { name: 'Rejected', value: localCargo.filter(c => c.status === 'REJECTED').length },
       ],
       tableData: localCargo.slice(0, 8).map(c => ({ ref: c.goodsCode || c.id, product: c.productName || c.company || '—', weight: `${Number(c.weight || 0).toFixed(1)}t`, status: c.status.replace('_', ' ') })),
@@ -488,12 +491,12 @@ export default function OperationsDashboard({
     },
     {
       title: 'Pending Approval', metric: 'Items',
-      trendData: localCargo.filter(c => c.status === 'PENDING_MANAGEMENT_APPROVAL').slice(-6).map((c, i) => ({ name: c.goodsCode || `#${i + 1}`, value: 1 })),
+      trendData: localCargo.filter(c => c.status === 'PENDING_RISK_APPROVAL').slice(-6).map((c, i) => ({ name: c.goodsCode || `#${i + 1}`, value: 1 })),
       breakdownData: [
-        { name: 'Pending', value: localCargo.filter(c => c.status === 'PENDING_MANAGEMENT_APPROVAL').length },
+        { name: 'Pending', value: localCargo.filter(c => c.status === 'PENDING_RISK_APPROVAL').length },
         { name: 'Approved', value: localCargo.filter(c => c.status === 'APPROVED').length },
       ],
-      tableData: localCargo.filter(c => c.status === 'PENDING_MANAGEMENT_APPROVAL').slice(0, 8).map(c => ({ code: c.goodsCode || c.id, name: c.productName || c.company || '—', unit: String((c as any).unit || 'units') })),
+      tableData: localCargo.filter(c => c.status === 'PENDING_RISK_APPROVAL').slice(0, 8).map(c => ({ code: c.goodsCode || c.id, name: c.productName || c.company || '—', unit: String((c as any).unit || 'units') })),
       columns: [{ key: 'code', label: 'Code' }, { key: 'name', label: 'Product' }, { key: 'unit', label: 'Unit' }]
     },
     {
@@ -562,6 +565,7 @@ export default function OperationsDashboard({
       destination: destination || 'Accra Warehouse',
       country: target.country.value,
       company: target.company.value,
+      containerNumber: containerNumber || undefined,
       quantity: parseInt(target.quantity.value),
       weight: parseFloat(target.weight.value),
       discrepancies: target.discrepancies.value || 'None',
@@ -580,6 +584,7 @@ export default function OperationsDashboard({
     setGoodsCode('');
     setDestination('');
     setCountry('');
+    setContainerNumber('');
     (e.target as HTMLFormElement).reset();
   };
 
@@ -615,7 +620,7 @@ export default function OperationsDashboard({
     const map: Record<string, string> = {
       'APPROVED': 'bg-emerald-500/10 text-emerald-400',
       'REJECTED': 'bg-rose-500/10 text-rose-400',
-      'PENDING_MANAGEMENT_APPROVAL': 'bg-amber-500/10 text-amber-400',
+      'PENDING_RISK_APPROVAL': 'bg-amber-500/10 text-amber-400',
       'PROCESSING': 'bg-indigo-500/10 text-indigo-400',
       'DELIVERED': 'bg-emerald-500/10 text-emerald-400',
       'OUT_FOR_DELIVERY': 'bg-blue-500/10 text-blue-400',
@@ -1063,7 +1068,7 @@ export default function OperationsDashboard({
             {activeSubTab === 'Overview' && (
               <div className="space-y-6">
                 {/* Pending approvals alert */}
-                <PendingApprovalsAlert department="OPERATIONS" onNavigate={setActiveSubTab} addNotification={addNotification} />
+                <PendingApprovalsAlert department="ADMIN_WAREHOUSE" onNavigate={setActiveSubTab} addNotification={addNotification} />
 
                 {/* Stats Cards */}
                 <div className="grid grid-cols-2 xl:grid-cols-5 gap-4">
@@ -1393,6 +1398,18 @@ export default function OperationsDashboard({
                     </div>
                   </div>
 
+                  {/* Container Number — optional, not every shipment is containerized */}
+                  <div>
+                    <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Container Number <span className="text-[var(--text-muted)] font-normal">(optional)</span></label>
+                    <input
+                      type="text"
+                      value={containerNumber}
+                      onChange={e => setContainerNumber(e.target.value)}
+                      placeholder="E.g., MSKU-1234567"
+                      className="w-full px-3 py-2 bg-[var(--bg)] text-[var(--text-primary)] border border-[var(--border)] focus:border-[var(--accent)] rounded-xl text-xs focus:outline-none"
+                    />
+                  </div>
+
                   {/* Quantity & Weight */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
@@ -1554,7 +1571,7 @@ export default function OperationsDashboard({
                       </button>
                       {isCargoFilterOpen && (
                         <div className="absolute right-0 top-full mt-1.5 w-full sm:w-48 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl z-20 p-1 flex flex-col text-left">
-                          {(['ALL', 'PENDING_MANAGEMENT_APPROVAL', 'APPROVED', 'REJECTED'] as const).map(st => (
+                          {(['ALL', 'PENDING_RISK_APPROVAL', 'APPROVED', 'REJECTED'] as const).map(st => (
                             <button
                               key={st}
                               onClick={() => { setCargoStatusFilter(st); setIsCargoFilterOpen(false); }}
@@ -1818,6 +1835,13 @@ export default function OperationsDashboard({
                       { key: 'destination', label: 'Destination', render: item => item.destination || '—' },
                       { key: 'createdAt', label: 'Logged At', render: item => <span className="font-mono text-[10px]">{item.createdAt || 'N/A'}</span> },
                       { key: 'status', label: 'Status', status: true, render: item => <span className={`px-2 py-0.5 rounded font-bold text-[9px] ${statusBadge(item.status)}`}>{item.status.replace(/_/g, ' ')}</span> },
+                      {
+                        key: 'rejectionReason', label: 'Reason', render: item => (
+                          (item.status === 'REJECTED' || item.status === 'RETURNED_FOR_CORRECTION') && item.rejectionReason
+                            ? <span className="text-rose-600 text-xs">{item.rejectionReason}</span>
+                            : <span className="text-[var(--text-muted)]">—</span>
+                        )
+                      },
                       { key: 'unitPrice', label: 'Unit Price', align: 'right', render: item => <span className="font-mono font-bold">{item.unitPrice ? `GHS ${item.unitPrice}` : '—'}</span> },
                     ]}
                     data={sortedHistory}
@@ -1833,6 +1857,7 @@ export default function OperationsDashboard({
                         </button>
                         {activeHistoryMenu === item.id && (
                           <div className="absolute right-0 mt-1 w-44 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-xl z-30 p-1 flex flex-col text-left">
+                            <button onClick={() => { setTimelineCargoId(item.id); setActiveHistoryMenu(null); }} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left">🕘 View Timeline</button>
                             <button onClick={() => handleDuplicateCargo(item)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left">📋 Duplicate Log</button>
                             <button onClick={() => handleShareCargo(item)} className="flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-lg transition-colors text-left">🔗 Share Link</button>
                             <div className="h-px bg-[var(--border)] my-1"></div>
@@ -1843,6 +1868,12 @@ export default function OperationsDashboard({
                     )}
                   />
                 </div>
+                <RequestTimelinePanel
+                  open={!!timelineCargoId}
+                  onClose={() => setTimelineCargoId(null)}
+                  referenceId={timelineCargoId || ''}
+                  displayId={sortedHistory.find(c => c.id === timelineCargoId)?.goodsCode}
+                />
 
                 {/* Footer */}
                 <div className="theme-table-footer flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-4 border-t border-[var(--border)] bg-[var(--bg)]">

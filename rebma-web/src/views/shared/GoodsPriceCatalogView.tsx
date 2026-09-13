@@ -21,9 +21,17 @@ interface PriceRow {
 interface Props {
   addNotification?: (msg: string) => void;
   currentUser?: { id: string } | null;
+  department?: string;
 }
 
-export default function GoodsPriceCatalogView({ addNotification, currentUser }: Props) {
+// Cost price / margin are Management & Finance's own numbers — Marketing
+// (and every other department that lands on this shared view) only ever
+// needs the selling price. CEO bypasses every RLS check via is_admin(), so
+// it always sees cost data regardless of this list.
+const CAN_SEE_COST = ['MANAGEMENT', 'FINANCE', 'CEO'];
+
+export default function GoodsPriceCatalogView({ addNotification, currentUser, department }: Props) {
+  const canSeeCost = CAN_SEE_COST.includes((department || '').toUpperCase());
   const [prices, setPrices] = useState<PriceRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -48,8 +56,11 @@ export default function GoodsPriceCatalogView({ addNotification, currentUser }: 
     async function load() {
       setLoading(true);
       try {
+        // Non-privileged departments read the masked view (no cost_price
+        // column at all — data never reaches the browser); Management/
+        // Finance/CEO read the base table directly.
         const { data, error } = await supabase
-          .from('goods_prices')
+          .from(canSeeCost ? 'goods_prices' : 'goods_prices_catalog')
           .select('*')
           .order('updated_at', { ascending: false });
         if (error) console.error('Error loading price catalog:', error);
@@ -57,7 +68,7 @@ export default function GoodsPriceCatalogView({ addNotification, currentUser }: 
           const unitPrice = typeof row.unit_price === 'number' ? row.unit_price : 0;
           // No fabricated cost price — a product with no cost entered has an
           // unknown margin, not an invented "65% of selling price" one.
-          const costPrice = typeof row.cost_price === 'number' ? row.cost_price : null;
+          const costPrice = canSeeCost && typeof row.cost_price === 'number' ? row.cost_price : null;
           return {
             id: String(row.product_name || row.id),
             productName: String(row.product_name || ''),
@@ -97,7 +108,19 @@ export default function GoodsPriceCatalogView({ addNotification, currentUser }: 
           <p className="text-xs text-[var(--text-muted)]">Selling prices set by Management — read only</p>
         </div>
         <button
-          onClick={() => { exportToCSV(filtered.map(p => ({ Product: p.productName, Category: p.category, 'Selling Price': p.unitPrice, 'Cost Price': p.costPrice ?? '', 'Margin %': p.margin !== null ? p.margin.toFixed(1) : '', Currency: p.currency, 'Last Updated': p.lastUpdated, 'Set By': p.updatedBy })), ['Product', 'Category', 'Selling Price', 'Cost Price', 'Margin %', 'Currency', 'Last Updated', 'Set By'], 'price_catalog'); addNotification?.('Exported price catalog.'); }}
+          onClick={() => {
+            const rows = filtered.map(p => {
+              const base: Record<string, any> = { Product: p.productName, Category: p.category, 'Selling Price': p.unitPrice };
+              if (canSeeCost) { base['Cost Price'] = p.costPrice ?? ''; base['Margin %'] = p.margin !== null ? p.margin.toFixed(1) : ''; }
+              base.Currency = p.currency; base['Last Updated'] = p.lastUpdated; base['Set By'] = p.updatedBy;
+              return base;
+            });
+            const headers = canSeeCost
+              ? ['Product', 'Category', 'Selling Price', 'Cost Price', 'Margin %', 'Currency', 'Last Updated', 'Set By']
+              : ['Product', 'Category', 'Selling Price', 'Currency', 'Last Updated', 'Set By'];
+            exportToCSV(rows, headers, 'price_catalog');
+            addNotification?.('Exported price catalog.');
+          }}
           className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[var(--border)] text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-card)] cursor-pointer"
         >
           <Download size={14} /> Export CSV
@@ -105,11 +128,13 @@ export default function GoodsPriceCatalogView({ addNotification, currentUser }: 
       </div>
 
       {/* Summary */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className={canSeeCost ? 'grid grid-cols-3 gap-4' : 'grid grid-cols-1 gap-4'}>
         {[
           { label: 'Total Products', value: prices.length, decimals: 0, suffix: '', color: 'var(--accent)' },
-          { label: 'Avg Margin', value: avgMargin, decimals: 1, suffix: '%', color: '#10b981' },
-          { label: 'High Margin (≥50%)', value: pricedProducts.filter(p => p.margin >= 50).length, decimals: 0, suffix: '', color: '#6366f1' },
+          ...(canSeeCost ? [
+            { label: 'Avg Margin', value: avgMargin, decimals: 1, suffix: '%', color: '#10b981' },
+            { label: 'High Margin (≥50%)', value: pricedProducts.filter(p => p.margin >= 50).length, decimals: 0, suffix: '', color: '#6366f1' },
+          ] : []),
         ].map(({ label, value, decimals, suffix, color }) => (
           <div key={label} className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4 shadow-[var(--box-shadow)]">
             <p className="text-[10px] font-semibold text-[var(--text-secondary)] uppercase tracking-wide mb-1">{label}</p>
@@ -144,15 +169,17 @@ export default function GoodsPriceCatalogView({ addNotification, currentUser }: 
               },
               { key: 'category', label: 'Category', render: item => <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--accent-light)] text-[var(--accent)] font-semibold">{item.category}</span> },
               { key: 'unitPrice', label: 'Selling Price', render: item => <span className="font-bold">{item.currency} {item.unitPrice.toFixed(2)}</span> },
-              { key: 'costPrice', label: 'Cost Price', render: item => item.costPrice !== null ? `${item.currency} ${item.costPrice.toFixed(2)}` : <span className="text-[var(--text-muted)]">Not entered</span> },
-              {
-                key: 'margin', label: 'Margin', status: true, render: item => item.margin !== null ? (
-                  <div className="flex items-center gap-1">
-                    {item.margin >= 50 ? <TrendingUp size={11} className="text-green-500" /> : <TrendingDown size={11} className="text-red-500" />}
-                    <span className={`font-semibold ${item.margin >= 50 ? 'text-green-500' : item.margin >= 40 ? 'text-yellow-500' : 'text-red-500'}`}>{item.margin.toFixed(1)}%</span>
-                  </div>
-                ) : <span className="text-[var(--text-muted)]">—</span>
-              },
+              ...(canSeeCost ? [
+                { key: 'costPrice', label: 'Cost Price', render: (item: PriceRow) => item.costPrice !== null ? `${item.currency} ${item.costPrice.toFixed(2)}` : <span className="text-[var(--text-muted)]">Not entered</span> },
+                {
+                  key: 'margin', label: 'Margin', status: true, render: (item: PriceRow) => item.margin !== null ? (
+                    <div className="flex items-center gap-1">
+                      {item.margin >= 50 ? <TrendingUp size={11} className="text-green-500" /> : <TrendingDown size={11} className="text-red-500" />}
+                      <span className={`font-semibold ${item.margin >= 50 ? 'text-green-500' : item.margin >= 40 ? 'text-yellow-500' : 'text-red-500'}`}>{item.margin.toFixed(1)}%</span>
+                    </div>
+                  ) : <span className="text-[var(--text-muted)]">—</span>
+                },
+              ] as DataColumn<PriceRow>[] : []),
               { key: 'currency', label: 'Currency' },
               { key: 'lastUpdated', label: 'Last Updated' },
               { key: 'updatedBy', label: 'Set By' },

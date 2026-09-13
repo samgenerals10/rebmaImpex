@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { Search, Download, Plus, MoreVertical, CheckCircle, XCircle, Clock, Upload, Camera } from 'lucide-react';
-import { exportToCSV } from '../../utils/export';
+import UniversalExportModal, { type ExportColumn } from '../../components/common/UniversalExportModal';
 import CountUp from '../../components/CountUp';
 import { useCeoSettings } from '../../contexts/CeoSettingsContext';
 import { usePaginatedQuery } from '../../hooks/usePaginatedQuery';
@@ -61,6 +61,17 @@ export default function FinanceExpensesView({ addNotification, currentUser }: Pr
     pageSize: 100,
     map: mapExpense,
   });
+  const [exportOpen, setExportOpen] = useState(false);
+
+  const expenseExportCols: ExportColumn[] = [
+    { key: 'id', label: 'ID' },
+    { key: 'category', label: 'Category' },
+    { key: 'description', label: 'Description' },
+    { key: 'amount', label: 'Amount (GHS)', render: e => e.amount.toLocaleString() },
+    { key: 'date', label: 'Date' },
+    { key: 'status', label: 'Status' },
+    { key: 'submittedBy', label: 'Submitted By' },
+  ];
 
   const handlePrint = () => {
     if (!getSetting('print_enabled', true)) { addNotification?.('Printing is currently disabled by the CEO.'); return; }
@@ -195,13 +206,20 @@ export default function FinanceExpensesView({ addNotification, currentUser }: Pr
 
   return (
     <div className="p-4 md:p-6 space-y-6">
+      <UniversalExportModal
+        open={exportOpen}
+        onClose={() => setExportOpen(false)}
+        title="Expense Management"
+        data={filtered}
+        columns={expenseExportCols}
+      />
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-[var(--text-primary)]">Expense Management</h1>
           <p className="text-sm text-[var(--text-secondary)]">Track and approve company expenses</p>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => exportToCSV(filtered.map(e => ({ ID: e.id, Category: e.category, Description: e.description, Amount: e.amount, Date: e.date, Status: e.status, By: e.submittedBy })), ['ID', 'Category', 'Description', 'Amount', 'Date', 'Status', 'By'], 'expenses')} className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[var(--border)] text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-card)]"><Download size={14} /> Export</button>
+          <button onClick={() => setExportOpen(true)} className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[var(--border)] text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-card)]"><Download size={14} /> Export</button>
           <button onClick={() => setShowForm(true)} className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-white text-sm font-medium" style={{ background: 'var(--accent)' }}><Plus size={14} /> Log Expense</button>
         </div>
       </div>

@@ -1,15 +1,30 @@
 import { useState, useEffect, useRef } from 'react';
-import { Plus, Search, ArrowLeft, Pencil, Trash2, Download, Star, Camera } from 'lucide-react';
+import { Plus, Search, ArrowLeft, Pencil, Trash2, Download, Star, Camera, Upload, FileText, RefreshCw, AlertTriangle, ExternalLink, History } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import type { Customer, Order } from '../../types/erp';
 import CustomerAvatar from '../../components/CustomerAvatar';
 import RatingBadge from '../../components/RatingBadge';
-import { computeCustomerRating, ordersForCustomer } from '../../utils/customerRating';
+import { computeCustomerRating, ordersForCustomer, ordersForCustomerRow, outstandingCreditFor } from '../../utils/customerRating';
 import CountUp from '../../components/CountUp';
-import { uploadFile } from '../../utils/uploadFile';
+import { uploadFile, uploadPrivateFile, getSignedFileUrl } from '../../utils/uploadFile';
 import SidePanel from '../../components/ui/SidePanel';
 import SearchableDropdown from '../../components/ui/SearchableDropdown';
 import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
+import DestinationLocator, { type Coords } from '../../components/dispatch/DestinationLocator';
+import RequestTimelinePanel from '../../components/global/RequestTimelinePanel';
+
+const VERIFICATION_STYLES: Record<string, string> = {
+  PENDING: 'bg-amber-100 text-amber-700',
+  APPROVED: 'bg-emerald-100 text-emerald-700',
+  REJECTED: 'bg-rose-100 text-rose-700',
+  RETURNED_FOR_CORRECTION: 'bg-orange-100 text-orange-700',
+};
+const VERIFICATION_LABELS: Record<string, string> = {
+  PENDING: 'Pending Risk Review',
+  APPROVED: 'Verified',
+  REJECTED: 'Rejected',
+  RETURNED_FOR_CORRECTION: 'Returned for Correction',
+};
 
 interface Props {
   customersList: Customer[];
@@ -24,13 +39,32 @@ export default function CustomersView({ customersList, onRegisterCustomer, addNo
   const [search, setSearch] = useState('');
   const [locationFilter, setLocationFilter] = useState('ALL');
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [showCustomerTimeline, setShowCustomerTimeline] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [editTarget, setEditTarget] = useState<Customer | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Customer | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
-  const [form, setForm] = useState({ name: '', companyName: '', phone: '', location: '', email: '', ghanaCard: '', isSpecialCustomer: false });
+  const [form, setForm] = useState({
+    name: '', companyName: '', phone: '', location: '', email: '', ghanaCard: '', isSpecialCustomer: false,
+    houseAddress: '', companyAddress: '', ghanaCard2: '', partnerName: '', notes: '',
+  });
+
+  // GPS location (reuses the same picker order-creation uses for delivery destinations)
+  const [gpsAddressText, setGpsAddressText] = useState('');
+  const [gpsCoords, setGpsCoords] = useState<Coords | null>(null);
+
+  // Business certificate upload — file picker or live camera capture, same
+  // pattern as dispatch/ProofOfDeliveryView.tsx's proof-of-delivery capture.
+  const [businessCertUrl, setBusinessCertUrl] = useState<string | null>(null);
+  const [uploadingCert, setUploadingCert] = useState(false);
+  const certFileInputRef = useRef<HTMLInputElement>(null);
+  const [isCertCameraActive, setIsCertCameraActive] = useState(false);
+  const [certCameraStream, setCertCameraStream] = useState<MediaStream | null>(null);
+  const [certCameraError, setCertCameraError] = useState<string | null>(null);
+  const certVideoRef = useRef<HTMLVideoElement>(null);
+  const [hasGetUserMedia] = useState(() => !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia));
 
   useEffect(() => {
     const load = async () => {
@@ -54,6 +88,22 @@ export default function CustomersView({ customersList, onRegisterCustomer, addNo
           creditHistory: [],
           isSpecialCustomer: r.is_special_customer ?? false,
           discountPercent: Number(r.discount_percent) || 0,
+          houseAddress: r.house_address || undefined,
+          companyAddress: r.company_address || undefined,
+          gpsLat: r.gps_lat != null ? Number(r.gps_lat) : undefined,
+          gpsLng: r.gps_lng != null ? Number(r.gps_lng) : undefined,
+          ghanaCard2: r.ghana_card_id_2 || undefined,
+          partnerName: r.partner_name || undefined,
+          businessCertificateUrl: r.business_certificate_url || undefined,
+          notes: r.notes || undefined,
+          status: r.status || 'PENDING',
+          verifiedBy: r.verified_by || undefined,
+          verifiedAt: r.verified_at || undefined,
+          rejectionReason: r.rejection_reason || undefined,
+          creditLimit: r.credit_limit != null ? Number(r.credit_limit) : null,
+          creditStatus: r.credit_status || 'ACTIVE',
+          creditTermsSetBy: r.credit_terms_set_by || undefined,
+          creditTermsSetAt: r.credit_terms_set_at || undefined,
         }));
         const mappedOrders = (oData || []).map((r: any) => ({
           id: r.id,
@@ -62,8 +112,11 @@ export default function CustomersView({ customersList, onRegisterCustomer, addNo
           productName: r.product_name || r.productName || '',
           destination: r.destination || '',
           totalAmount: Number(r.total_amount || r.totalAmount || 0),
+          amountPaid: Number(r.amount_paid || r.amountPaid || 0),
+          customerId: r.customer_id || r.customerId || undefined,
           paymentMode: r.payment_mode || r.paymentMode || 'CASH',
           status: r.status || 'PENDING_FINANCE',
+          rejectionReason: r.rejection_reason || undefined,
           createdAt: r.created_at || r.createdAt || new Date().toISOString(),
         }));
         setCustomers(mappedCustomers.length > 0 ? mappedCustomers : customersList.length > 0 ? customersList : []);
@@ -90,7 +143,10 @@ export default function CustomersView({ customersList, onRegisterCustomer, addNo
     return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
   }).length;
   const withOrders = customers.filter(c => (c.orderHistory || []).length > 0).length;
-  const totalCredit = customers.reduce((sum, c) => sum + (c.creditHistory || []).filter(h => h.status !== 'PAID').reduce((s, h) => s + h.amount, 0), 0);
+  // Real per-customer outstanding, summed from live orders — the old
+  // creditHistory array was always empty (never populated by any mapper),
+  // so this figure was silently 0 regardless of actual credit exposure.
+  const totalCredit = customers.reduce((sum, c) => sum + outstandingCreditFor(orders, c), 0);
 
   const filtered = customers.filter(c => {
     if (locationFilter !== 'ALL' && c.location !== locationFilter) return false;
@@ -100,6 +156,13 @@ export default function CustomersView({ customersList, onRegisterCustomer, addNo
     }
     return true;
   });
+
+  const resetForm = () => {
+    setForm({ name: '', companyName: '', phone: '', location: '', email: '', ghanaCard: '', isSpecialCustomer: false, houseAddress: '', companyAddress: '', ghanaCard2: '', partnerName: '', notes: '' });
+    setGpsAddressText('');
+    setGpsCoords(null);
+    setBusinessCertUrl(null);
+  };
 
   const handleSave = async () => {
     if (!form.name || !form.phone) { addNotification('Name and phone are required.'); return; }
@@ -117,37 +180,159 @@ export default function CustomersView({ customersList, onRegisterCustomer, addNo
       creditHistory: [],
       isSpecialCustomer: form.isSpecialCustomer,
       discountPercent: 0,
+      houseAddress: form.houseAddress || undefined,
+      companyAddress: form.companyAddress || undefined,
+      gpsLat: gpsCoords?.lat,
+      gpsLng: gpsCoords?.lng,
+      ghanaCard2: form.ghanaCard2 || undefined,
+      partnerName: form.partnerName || undefined,
+      businessCertificateUrl: businessCertUrl || undefined,
+      notes: form.notes || undefined,
+      status: 'PENDING',
     };
     onRegisterCustomer(newCust);
     setCustomers(prev => [newCust, ...prev]);
     setShowModal(false);
-    setForm({ name: '', companyName: '', phone: '', location: '', email: '', ghanaCard: '', isSpecialCustomer: false });
+    resetForm();
   };
 
   const openEdit = (c: Customer) => {
     setEditTarget(c);
-    setForm({ name: c.name, companyName: c.companyName || '', phone: c.phone, location: c.location || '', email: c.email || '', ghanaCard: c.ghanaCard || '', isSpecialCustomer: c.isSpecialCustomer || false });
+    setForm({
+      name: c.name, companyName: c.companyName || '', phone: c.phone, location: c.location || '', email: c.email || '', ghanaCard: c.ghanaCard || '', isSpecialCustomer: c.isSpecialCustomer || false,
+      houseAddress: c.houseAddress || '', companyAddress: c.companyAddress || '', ghanaCard2: c.ghanaCard2 || '', partnerName: c.partnerName || '', notes: c.notes || '',
+    });
+    setGpsAddressText(c.location || '');
+    setGpsCoords(c.gpsLat != null && c.gpsLng != null ? { lat: c.gpsLat, lng: c.gpsLng } : null);
+    setBusinessCertUrl(c.businessCertificateUrl || null);
     setShowModal(true);
   };
 
   const handleEditSave = async () => {
     if (!editTarget) return;
     if (!form.name || !form.phone) { addNotification('Name and phone are required.'); return; }
-    const basePayload = {
+    const basePayload: Record<string, any> = {
       name: form.name, company_name: form.companyName, phone: form.phone,
       email: form.email || null, location: form.location || null,
       ghana_card_id: form.ghanaCard || null,
+      house_address: form.houseAddress || null,
+      company_address: form.companyAddress || null,
+      gps_lat: gpsCoords?.lat ?? null,
+      gps_lng: gpsCoords?.lng ?? null,
+      ghana_card_id_2: form.ghanaCard2 || null,
+      partner_name: form.partnerName || null,
+      business_certificate_url: businessCertUrl || null,
+      notes: form.notes || null,
       updated_at: new Date().toISOString(),
     };
+    // Editing a record Risk sent back for correction is the implicit
+    // "resubmit" action — no separate button, fixing the field and saving
+    // is what puts it back in Risk's queue.
+    if (editTarget.status === 'RETURNED_FOR_CORRECTION') {
+      basePayload.status = 'PENDING';
+    }
     let { error } = await supabase.from('customers').update({ ...basePayload, is_special_customer: form.isSpecialCustomer }).eq('id', editTarget.id);
     if (error?.message?.includes('is_special_customer')) {
       // Column not migrated yet — don't let that block saving the rest of the edit.
       ({ error } = await supabase.from('customers').update(basePayload).eq('id', editTarget.id));
     }
     if (error) { addNotification(`Update failed: ${error.message}`); return; }
-    setCustomers(prev => prev.map(c => c.id === editTarget.id ? { ...c, ...form, companyName: form.companyName } : c));
+    setCustomers(prev => prev.map(c => c.id === editTarget.id ? {
+      ...c, ...form, companyName: form.companyName,
+      gpsLat: gpsCoords?.lat, gpsLng: gpsCoords?.lng,
+      businessCertificateUrl: businessCertUrl || undefined,
+      status: basePayload.status || c.status,
+    } : c));
+    if (selectedCustomer?.id === editTarget.id) {
+      setSelectedCustomer(prev => prev ? {
+        ...prev, ...form, companyName: form.companyName,
+        gpsLat: gpsCoords?.lat, gpsLng: gpsCoords?.lng,
+        businessCertificateUrl: businessCertUrl || undefined,
+        status: basePayload.status || prev.status,
+      } : prev);
+    }
     setShowModal(false); setEditTarget(null);
     addNotification('Customer updated.');
+  };
+
+  // businessCertificateUrl/businessCertUrl now hold a private-bucket PATH,
+  // not a directly-openable URL — a fresh signed URL is resolved on
+  // demand each time "View Certificate" is clicked, matching the
+  // chat-attachments precedent (never persisted, always re-minted).
+  const viewBusinessCertificate = async (path: string) => {
+    const url = await getSignedFileUrl('business-certificates', path);
+    if (!url) { addNotification('Could not open certificate — it may have been removed.'); return; }
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
+  const uploadCertificateFile = async (file: File) => {
+    setUploadingCert(true);
+    try {
+      // Private bucket — stores the raw storage path, not a public URL.
+      // businessCertUrl keeps its name for minimal diff even though it now
+      // holds a path, matching the same cosmetic mismatch already accepted
+      // for chat-attachments' own attachment_url column.
+      const path = await uploadPrivateFile(file, 'business-certificates', editTarget?.id || `new-${Date.now()}`);
+      if (!path) throw new Error('Upload failed.');
+      setBusinessCertUrl(path);
+      addNotification('Business certificate uploaded.');
+    } catch (e: any) {
+      addNotification(`Certificate upload failed: ${e.message || 'Unknown error'}`);
+    } finally {
+      setUploadingCert(false);
+    }
+  };
+
+  const handleCertFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (file) uploadCertificateFile(file);
+  };
+
+  const startCertCamera = async () => {
+    setIsCertCameraActive(true);
+    setCertCameraError(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      setCertCameraStream(stream);
+    } catch (err: any) {
+      setCertCameraError(err.message || 'Camera access is restricted by your browser permissions or environment.');
+    }
+  };
+
+  useEffect(() => {
+    if (isCertCameraActive && certCameraStream && certVideoRef.current) {
+      certVideoRef.current.srcObject = certCameraStream;
+      certVideoRef.current.play().catch(() => {});
+    }
+  }, [isCertCameraActive, certCameraStream]);
+
+  const stopCertCamera = () => {
+    if (certCameraStream) certCameraStream.getTracks().forEach(t => t.stop());
+    setCertCameraStream(null);
+    setIsCertCameraActive(false);
+    setCertCameraError(null);
+  };
+
+  useEffect(() => {
+    return () => { if (certCameraStream) certCameraStream.getTracks().forEach(t => t.stop()); };
+  }, [certCameraStream]);
+
+  const captureCertPhoto = () => {
+    const video = certVideoRef.current;
+    if (!video) return;
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    canvas.toBlob(async blob => {
+      if (!blob) return;
+      const file = new File([blob], `certificate-${Date.now()}.jpg`, { type: 'image/jpeg' });
+      stopCertCamera();
+      await uploadCertificateFile(file);
+    }, 'image/jpeg', 0.85);
   };
 
   const handleDelete = async () => {
@@ -196,15 +381,30 @@ export default function CustomersView({ customersList, onRegisterCustomer, addNo
   if (selectedCustomer) {
     const custOrders = ordersForCustomer(orders, selectedCustomer.name);
     const totalSpend = custOrders.filter(o => o.status === 'DELIVERED').reduce((s, o) => s + o.totalAmount, 0);
-    const outstanding = (selectedCustomer.creditHistory || []).filter(h => h.status !== 'PAID').reduce((s, h) => s + h.amount, 0);
+    // Real outstanding, matched the same way create_order_with_stock_check()
+    // matches customers server-side (prefer customer_id, fall back to name).
+    const outstanding = outstandingCreditFor(orders, selectedCustomer);
+    const creditOrderRows = ordersForCustomerRow(orders, selectedCustomer)
+      .filter(o => (o.paymentMode || '').toUpperCase() === 'CREDIT')
+      .map(o => ({
+        orderId: o.ticketNumber || o.id,
+        amount: Math.max((o.totalAmount || 0) - (o.amountPaid || 0), 0),
+        date: o.createdAt,
+        status: (o.amountPaid || 0) >= (o.totalAmount || 0) ? 'PAID' : (o.amountPaid || 0) > 0 ? 'PART PAID' : 'UNPAID',
+      }));
     const rating = computeCustomerRating(custOrders);
     return (
+      <>
       <div className="space-y-5">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <button onClick={() => setSelectedCustomer(null)} className="flex items-center gap-2 text-sm text-[var(--text-secondary)] hover:text-[var(--accent)] transition-colors cursor-pointer">
             <ArrowLeft className="w-4 h-4" /> Back to Customers
           </button>
           <div className="flex items-center gap-2">
+            <button onClick={() => setShowCustomerTimeline(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[var(--border)] text-[var(--text-secondary)] text-xs font-semibold hover:bg-[var(--accent-light)] hover:text-[var(--accent)] transition-colors cursor-pointer">
+              <History className="w-3.5 h-3.5" /> Timeline
+            </button>
             <button onClick={() => openEdit(selectedCustomer)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[var(--border)] text-[var(--text-secondary)] text-xs font-semibold hover:bg-[var(--accent-light)] hover:text-[var(--accent)] transition-colors cursor-pointer">
               <Pencil className="w-3.5 h-3.5" /> Edit
@@ -245,16 +445,35 @@ export default function CustomersView({ customersList, onRegisterCustomer, addNo
                     <Star size={9} className="fill-amber-500" /> Special Customer
                   </span>
                 )}
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${VERIFICATION_STYLES[selectedCustomer.status || 'PENDING']}`}>
+                  {VERIFICATION_LABELS[selectedCustomer.status || 'PENDING']}
+                </span>
                 <RatingBadge rating={rating} />
                 <span className="text-[10px] text-[var(--text-muted)]"><CountUp value={rating.orderCount} /> order{rating.orderCount === 1 ? '' : 's'} counted</span>
+                {/* Read-only — only Risk can set credit terms (Customer Credit screen). */}
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[var(--bg-input)] text-[var(--text-secondary)]">
+                  Credit: {selectedCustomer.creditLimit != null ? `GHS ${selectedCustomer.creditLimit.toLocaleString()} limit` : 'No limit set'} · GHS {outstanding.toLocaleString()} outstanding
+                </span>
+                {selectedCustomer.creditStatus === 'ON_HOLD' && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-700">ON CREDIT HOLD</span>
+                )}
               </div>
+              {(selectedCustomer.status === 'REJECTED' || selectedCustomer.status === 'RETURNED_FOR_CORRECTION') && selectedCustomer.rejectionReason && (
+                <div className="sm:col-span-2 p-2.5 rounded-xl bg-rose-500/5 border border-rose-500/10 text-xs text-rose-700">
+                  <strong>Risk's reason:</strong> {selectedCustomer.rejectionReason}
+                </div>
+              )}
               {[
                 ['Full Name', selectedCustomer.name],
                 ['Company', selectedCustomer.companyName],
                 ['Phone', selectedCustomer.phone],
                 ['Email', selectedCustomer.email || '—'],
                 ['Location', selectedCustomer.location],
+                ['House Address', selectedCustomer.houseAddress || '—'],
+                ['Company Address', selectedCustomer.companyAddress || '—'],
                 ['Ghana Card', selectedCustomer.ghanaCard || '—'],
+                ['Second Ghana Card', selectedCustomer.ghanaCard2 || '—'],
+                ['Partner / Second Customer', selectedCustomer.partnerName || '—'],
                 ['Registered', selectedCustomer.registeredAt.split('T')[0]],
               ].map(([k, v]) => (
                 <div key={k}>
@@ -262,9 +481,41 @@ export default function CustomersView({ customersList, onRegisterCustomer, addNo
                   <p className="font-medium text-sm text-[var(--text-primary)]">{v}</p>
                 </div>
               ))}
+              {selectedCustomer.gpsLat != null && selectedCustomer.gpsLng != null && (
+                <div>
+                  <p className="text-xs text-[var(--text-muted)]">GPS Location</p>
+                  <a
+                    href={`https://www.google.com/maps?q=${selectedCustomer.gpsLat},${selectedCustomer.gpsLng}`}
+                    target="_blank" rel="noreferrer"
+                    className="font-medium text-sm text-[var(--accent)] hover:underline inline-flex items-center gap-1"
+                  >
+                    View on map <ExternalLink size={11} />
+                  </a>
+                </div>
+              )}
             </div>
           </div>
         </div>
+
+        {selectedCustomer.notes && (
+          <div className="rounded-2xl bg-[var(--bg-card)] border border-[var(--border)] p-5 shadow-[var(--box-shadow)]">
+            <h4 className="font-semibold text-sm text-[var(--text-primary)] mb-2">Notes</h4>
+            <p className="text-sm text-[var(--text-secondary)] whitespace-pre-wrap">{selectedCustomer.notes}</p>
+          </div>
+        )}
+
+        {selectedCustomer.businessCertificateUrl && (
+          <div className="rounded-2xl bg-[var(--bg-card)] border border-[var(--border)] p-5 shadow-[var(--box-shadow)] flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <FileText className="w-5 h-5 text-[var(--accent)]" />
+              <h4 className="font-semibold text-sm text-[var(--text-primary)]">Business Certificate</h4>
+            </div>
+            <button type="button" onClick={() => viewBusinessCertificate(selectedCustomer.businessCertificateUrl!)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[var(--border)] text-[var(--text-secondary)] text-xs font-semibold hover:bg-[var(--accent-light)] hover:text-[var(--accent)] transition-colors">
+              View Certificate <ExternalLink size={12} />
+            </button>
+          </div>
+        )}
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {[
@@ -313,22 +564,37 @@ export default function CustomersView({ customersList, onRegisterCustomer, addNo
           )}
         </div>
 
-        {(selectedCustomer.creditHistory || []).length > 0 && (
+        {creditOrderRows.length > 0 && (
           <div className="rounded-2xl bg-[var(--bg-card)] border border-[var(--border)] p-5 shadow-[var(--box-shadow)]">
             <h4 className="font-semibold text-sm text-[var(--text-primary)] mb-3">Credit / Payment History</h4>
-            <ResponsiveDataView<NonNullable<typeof selectedCustomer.creditHistory>[number]>
+            <ResponsiveDataView<typeof creditOrderRows[number]>
               columns={[
                 { key: 'orderId', label: 'Order ID', primary: true, render: h => <span className="font-mono text-xs">{h.orderId}</span> },
-                { key: 'amount', label: 'Amount (GHS)', render: h => <span className="text-emerald-600 font-semibold">GHS {h.amount.toLocaleString()}</span> },
-                { key: 'date', label: 'Date' },
-                { key: 'status', label: 'Status', status: true, render: h => <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${h.status === 'PAID' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>{h.status}</span> },
+                { key: 'amount', label: 'Amount Due (GHS)', render: h => <span className="text-emerald-600 font-semibold">GHS {h.amount.toLocaleString()}</span> },
+                { key: 'date', label: 'Date', render: h => (h.date || '').split('T')[0] },
+                {
+                  key: 'status', label: 'Status', status: true, render: h => (
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                      h.status === 'PAID' ? 'bg-emerald-100 text-emerald-700' :
+                      h.status === 'PART PAID' ? 'bg-amber-100 text-amber-700' :
+                      'bg-rose-100 text-rose-700'
+                    }`}>{h.status}</span>
+                  )
+                },
               ]}
-              data={selectedCustomer.creditHistory || []}
+              data={creditOrderRows}
               rowKey={h => `${h.orderId}-${h.date}`}
             />
           </div>
         )}
       </div>
+      <RequestTimelinePanel
+        open={showCustomerTimeline}
+        onClose={() => setShowCustomerTimeline(false)}
+        referenceId={selectedCustomer.id}
+        displayId={selectedCustomer.name}
+      />
+      </>
     );
   }
 
@@ -343,7 +609,7 @@ export default function CustomersView({ customersList, onRegisterCustomer, addNo
           <button onClick={exportAllCSV} className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--bg-card)] border border-[var(--border)] text-[var(--text-secondary)] text-xs font-semibold rounded-xl cursor-pointer hover:bg-[var(--accent-light)]">
             <Download className="w-3.5 h-3.5" /> Export All
           </button>
-          <button onClick={() => { setEditTarget(null); setForm({ name:'',companyName:'',phone:'',location:'',email:'',ghanaCard:'',isSpecialCustomer:false }); setShowModal(true); }} className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--accent)] text-white text-xs font-semibold rounded-xl cursor-pointer hover:opacity-90">
+          <button onClick={() => { setEditTarget(null); resetForm(); setShowModal(true); }} className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--accent)] text-white text-xs font-semibold rounded-xl cursor-pointer hover:opacity-90">
             <Plus className="w-3.5 h-3.5" /> Add Customer
           </button>
         </div>
@@ -438,6 +704,10 @@ export default function CustomersView({ customersList, onRegisterCustomer, addNo
             { label: 'Location', key: 'location', placeholder: 'E.g., Kumasi' },
             { label: 'Email', key: 'email', placeholder: 'client@company.com' },
             { label: 'Ghana Card', key: 'ghanaCard', placeholder: 'E.g., GHA-721839210-9' },
+            { label: 'Second Ghana Card', key: 'ghanaCard2', placeholder: 'E.g., GHA-901234567-1' },
+            { label: 'Partner / Second Customer Name', key: 'partnerName', placeholder: 'E.g., Ama Boateng' },
+            { label: 'House / Residential Address', key: 'houseAddress', placeholder: 'E.g., House No. 12, East Legon' },
+            { label: 'Company Address', key: 'companyAddress', placeholder: 'E.g., Plot 4, Spintex Road' },
           ].map(f => (
             <div key={f.key} className="erp-form-group">
               <label className="erp-label">{f.label}</label>
@@ -446,11 +716,100 @@ export default function CustomersView({ customersList, onRegisterCustomer, addNo
                 className="erp-input" />
             </div>
           ))}
+
+          <div className="erp-form-group">
+            <label className="erp-label">GPS Location</label>
+            <DestinationLocator
+              value={gpsAddressText}
+              onChange={setGpsAddressText}
+              onResolve={setGpsCoords}
+              placeholder="Search an address or drop a pin"
+            />
+            {gpsCoords && <p className="text-[10px] text-[var(--text-muted)] mt-1">Pinned: {gpsCoords.lat.toFixed(5)}, {gpsCoords.lng.toFixed(5)}</p>}
+          </div>
+
+          <div className="erp-form-group">
+            <label className="erp-label">Business Certificate</label>
+            {businessCertUrl ? (
+              <div className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-[var(--bg-input)] border border-[var(--border)]">
+                <span className="flex items-center gap-1.5 text-xs text-[var(--text-primary)] truncate"><FileText size={13} className="text-[var(--accent)] shrink-0" /> Certificate uploaded</span>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button type="button" onClick={() => viewBusinessCertificate(businessCertUrl)} className="text-[10px] font-semibold text-[var(--accent)] hover:underline">View</button>
+                  <button type="button" onClick={() => setBusinessCertUrl(null)} className="text-[10px] font-semibold text-rose-500 hover:underline cursor-pointer">Remove</button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={hasGetUserMedia ? startCertCamera : () => certFileInputRef.current?.click()}
+                  disabled={uploadingCert}
+                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-secondary)] text-xs font-semibold rounded-xl cursor-pointer hover:bg-[var(--accent-light)] disabled:opacity-60">
+                  {uploadingCert ? 'Uploading…' : hasGetUserMedia ? <><Camera size={13} /> Take Photo</> : <><Upload size={13} /> Upload</>}
+                </button>
+                {hasGetUserMedia && (
+                  <button type="button" onClick={() => certFileInputRef.current?.click()} disabled={uploadingCert}
+                    className="flex items-center justify-center gap-1.5 px-3 py-2 bg-[var(--bg-input)] border border-[var(--border)] text-[var(--text-secondary)] text-xs font-semibold rounded-xl cursor-pointer hover:bg-[var(--accent-light)] disabled:opacity-60">
+                    <Upload size={13} /> Upload File
+                  </button>
+                )}
+              </div>
+            )}
+            <input ref={certFileInputRef} type="file" accept="image/*,.pdf" className="hidden" onChange={handleCertFileChange} />
+          </div>
+
+          <div className="erp-form-group">
+            <label className="erp-label">Customer Notes</label>
+            <textarea
+              value={form.notes}
+              onChange={e => setForm(prev => ({ ...prev, notes: e.target.value }))}
+              placeholder="Any notes for Risk or Marketing to see later..."
+              rows={3}
+              className="erp-input resize-none"
+            />
+          </div>
+
           <label className="flex items-center gap-2 text-sm text-[var(--text-secondary)] cursor-pointer">
             <input type="checkbox" checked={form.isSpecialCustomer} onChange={e => setForm(prev => ({ ...prev, isSpecialCustomer: e.target.checked }))}
               className="w-4 h-4 rounded accent-[var(--accent)] cursor-pointer" />
             Special customer <span className="text-xs text-[var(--text-muted)]">(flag for Management's attention. Management sets any discount separately)</span>
           </label>
+
+          {!editTarget && (
+            <p className="text-[10px] text-[var(--text-muted)] -mt-1">New customers are submitted to Risk for verification before showing as "Verified".</p>
+          )}
+        </div>
+      </SidePanel>
+
+      {/* Business certificate live camera capture */}
+      <SidePanel
+        open={isCertCameraActive}
+        onClose={stopCertCamera}
+        title="Capture Business Certificate"
+      >
+        <div className="-mx-5 -my-4 flex flex-col">
+          {certCameraError ? (
+            <div className="p-6 text-center space-y-4 flex flex-col items-center justify-center min-h-[220px]">
+              <AlertTriangle className="w-12 h-12 text-amber-500" />
+              <p className="text-[11px] text-[var(--text-secondary)] max-w-[260px] mx-auto leading-relaxed">Live camera is blocked by browser permissions or environment settings.</p>
+              <div className="flex flex-col gap-2 w-full pt-2">
+                <button type="button" onClick={() => { stopCertCamera(); certFileInputRef.current?.click(); }}
+                  className="w-full py-2.5 bg-[var(--accent)] text-white text-xs font-bold rounded-xl cursor-pointer">Upload File Instead</button>
+                <button type="button" onClick={stopCertCamera} className="w-full py-2 border border-[var(--border)] text-[var(--text-secondary)] text-xs font-semibold rounded-xl cursor-pointer">Cancel</button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="relative aspect-video bg-black flex items-center justify-center overflow-hidden">
+                <video ref={certVideoRef} autoPlay playsInline className="w-full h-full object-cover" />
+              </div>
+              <div className="p-4 flex gap-3 justify-end bg-[var(--bg)]">
+                <button type="button" onClick={stopCertCamera} className="px-4 py-2 border border-[var(--border)] text-xs font-semibold rounded-xl text-[var(--text-secondary)] cursor-pointer">Cancel</button>
+                <button type="button" onClick={captureCertPhoto} disabled={uploadingCert}
+                  className="px-4 py-2 bg-[var(--accent)] text-white text-xs font-bold rounded-xl cursor-pointer flex items-center gap-1.5 disabled:opacity-50">
+                  <Camera className="w-3.5 h-3.5" /> {uploadingCert ? 'Uploading...' : 'Capture & Upload'}
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </SidePanel>
 

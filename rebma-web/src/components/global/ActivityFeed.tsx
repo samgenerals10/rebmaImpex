@@ -26,6 +26,9 @@ const DEPT_COLORS: Record<string, { bg: string; text: string; dot: string }> = {
   HR:          { bg: '#fdf2f8', text: '#831843', dot: '#db2777' },
   CEO:         { bg: '#f8fafc', text: '#1e293b', dot: '#334155' },
   LOGISTICS:   { bg: '#ecfdf5', text: '#065f46', dot: '#059669' },
+  // Phase 5 merge — legacy keys above are kept because historical
+  // global_audit_history rows still carry those literal strings.
+  ADMIN_WAREHOUSE: { bg: '#f0fdf4', text: '#166534', dot: '#16a34a' },
 };
 
 const ACTION_ICONS: Record<string, string> = {

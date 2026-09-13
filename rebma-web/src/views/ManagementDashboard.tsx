@@ -211,7 +211,7 @@ export default function ManagementDashboard({
     loadStockAlertsRef.current();
   });
 
-  const pendingCargoCount = localGoods.filter(i => i.status === 'PENDING_MANAGEMENT_APPROVAL').length;
+  const pendingCargoCount = localGoods.filter(i => i.status === 'PENDING_RISK_APPROVAL').length;
   const totalPendingIntakes = pendingCargoCount + pendingGeneralPurchases.length;
   const pendingCreditCount = localOrders.filter(o => o.status === 'PENDING_MANAGEMENT').length;
   const approvedOrdersCount = localOrders.filter(o => ['APPROVED', 'DELIVERED', 'PROCESSING'].includes(o.status)).length;
@@ -227,7 +227,7 @@ export default function ManagementDashboard({
   ];
 
   const kpiDetails = [
-    { title: 'Cargo Awaiting Price', metric: 'Pending', trendData: [{name:'Now',value:pendingCargoCount}], breakdownData: [{name:'Pending',value:pendingCargoCount}, {name:'Approved',value:localGoods.filter(g=>g.status==='APPROVED').length}], tableData: localGoods.filter(g=>g.status==='PENDING_MANAGEMENT_APPROVAL').slice(0,5).map(g => ({ref: g.goodsCode || g.id, item: g.productName || g.company || '—', status: 'Pending'})), columns: [{key:'ref',label:'Ref #'}, {key:'item',label:'Item'}, {key:'status',label:'Status'}] },
+    { title: 'Cargo Awaiting Price', metric: 'Pending', trendData: [{name:'Now',value:pendingCargoCount}], breakdownData: [{name:'Pending',value:pendingCargoCount}, {name:'Approved',value:localGoods.filter(g=>g.status==='APPROVED').length}], tableData: localGoods.filter(g=>g.status==='PENDING_RISK_APPROVAL').slice(0,5).map(g => ({ref: g.goodsCode || g.id, item: g.productName || g.company || '—', status: 'Pending'})), columns: [{key:'ref',label:'Ref #'}, {key:'item',label:'Item'}, {key:'status',label:'Status'}] },
     { title: 'Credit Audits Pending', metric: 'Audits', trendData: [{name:'Now',value:pendingCreditCount}], breakdownData: [{name:'Approved',value:approvedOrdersCount}, {name:'Pending',value:pendingCreditCount}], tableData: localOrders.filter(o=>o.status==='PENDING_MANAGEMENT').slice(0,5).map(o => ({id: o.id, client: o.clientName, amount: `GHS ${o.totalAmount.toLocaleString()}`})), columns: [{key:'id',label:'Audit ID'}, {key:'client',label:'Client'}, {key:'amount',label:'Amount'}] },
     { title: 'Authorized Orders', metric: 'Orders', trendData: [{name:'Now',value:approvedOrdersCount}], breakdownData: [{name:'Authorized',value:approvedOrdersCount}, {name:'Pending',value:pendingCreditCount+pendingCargoCount}], tableData: localOrders.filter(o=>['APPROVED','DELIVERED','PROCESSING'].includes(o.status)).slice(0,5).map(o => ({order: o.id, client: o.clientName, value: `GHS ${o.totalAmount.toLocaleString()}`})), columns: [{key:'order',label:'Order'}, {key:'client',label:'Client'}, {key:'value',label:'Value'}] },
     { title: 'Net Authorized Value', metric: 'GHS', trendData: [{name:'Now',value:totalApprovedValue}], breakdownData: [{name:'Cleared',value:totalApprovedValue}, {name:'Pending',value:localOrders.filter(o=>o.status.startsWith('PENDING')).reduce((s,o)=>s+o.totalAmount,0)}], tableData: localOrders.filter(o=>['APPROVED','DELIVERED'].includes(o.status)).slice(0,5).map(o=>({order:o.id, client:o.clientName, value:`GHS ${o.totalAmount.toLocaleString()}`})), columns: [{key:'order',label:'Order'}, {key:'client',label:'Client'}, {key:'value',label:'Value'}] }
@@ -259,7 +259,7 @@ export default function ManagementDashboard({
       'PROCESSING': 'bg-blue-500/10 text-blue-400',
       'OUT_FOR_DELIVERY': 'bg-indigo-500/10 text-indigo-400',
       'REJECTED': 'bg-rose-500/10 text-rose-400',
-      'PENDING_MANAGEMENT_APPROVAL': 'bg-amber-500/10 text-amber-400',
+      'PENDING_RISK_APPROVAL': 'bg-amber-500/10 text-amber-400',
       'PENDING_FINANCE': 'bg-sky-500/10 text-sky-400',
       'PENDING_MANAGEMENT': 'bg-amber-500/10 text-amber-400',
     };
@@ -383,7 +383,7 @@ export default function ManagementDashboard({
     return matchesSearch && matchesDept;
   });
 
-  const flatHistoryCargo = localGoods.filter(i => i.status !== 'PENDING_MANAGEMENT_APPROVAL').map(g => ({
+  const flatHistoryCargo = localGoods.filter(i => i.status !== 'PENDING_RISK_APPROVAL').map(g => ({
     id: g.id,
     displayId: g.goodsCode || `CARGO-${g.id}`,
     type: 'CARGO',
@@ -529,14 +529,14 @@ export default function ManagementDashboard({
           <div className="space-y-2">
             {localGoods.slice(0, 6).map(g => (
               <div key={g.id} className="mobile-data-row">
-                <div className="mobile-data-row-icon" style={{ background: g.status === 'APPROVED' ? '#f0fdf4' : g.status === 'PENDING_MANAGEMENT_APPROVAL' ? '#fefce8' : '#fff7ed', color: g.status === 'APPROVED' ? '#16a34a' : '#d97706' }}>
+                <div className="mobile-data-row-icon" style={{ background: g.status === 'APPROVED' ? '#f0fdf4' : g.status === 'PENDING_RISK_APPROVAL' ? '#fefce8' : '#fff7ed', color: g.status === 'APPROVED' ? '#16a34a' : '#d97706' }}>
                   <Clipboard className="w-5 h-5" style={{ color: g.status === 'APPROVED' ? '#16a34a' : '#d97706' }} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-bold text-text-primary truncate">{g.productName || 'Unnamed Cargo'}</p>
                   <p className="text-[10px] text-text-muted truncate">{g.quantity} units • {g.country}</p>
                 </div>
-                <span className={`mobile-status-pill ${g.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-700' : g.status === 'PENDING_MANAGEMENT_APPROVAL' ? 'bg-amber-50 text-amber-700' : 'bg-bg-input text-text-secondary'}`}>
+                <span className={`mobile-status-pill ${g.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-700' : g.status === 'PENDING_RISK_APPROVAL' ? 'bg-amber-50 text-amber-700' : 'bg-bg-input text-text-secondary'}`}>
                   {g.status.replace(/_/g, ' ')}
                 </span>
               </div>
@@ -660,12 +660,12 @@ export default function ManagementDashboard({
             <h3 className="text-sm font-bold text-[var(--text-primary)]">Pending Approvals</h3>
             <button onClick={() => setActiveSubTab?.('CargoApproval')} className="text-xs text-[var(--accent)] font-semibold hover:underline cursor-pointer">View All →</button>
           </div>
-          {localGoods.filter(g => g.status === 'PENDING_MANAGEMENT_APPROVAL').length === 0 && pendingGeneralPurchases.length === 0 && localOrders.filter(o => o.status === 'PENDING_MANAGEMENT').length === 0 ? (
+          {localGoods.filter(g => g.status === 'PENDING_RISK_APPROVAL').length === 0 && pendingGeneralPurchases.length === 0 && localOrders.filter(o => o.status === 'PENDING_MANAGEMENT').length === 0 ? (
             <p className="text-xs text-emerald-600 font-semibold py-4 text-center">No pending approvals 🎉</p>
           ) : (
             <div className="space-y-2">
               {[
-                ...localGoods.filter(g => g.status === 'PENDING_MANAGEMENT_APPROVAL').slice(0, 3).map(g => ({
+                ...localGoods.filter(g => g.status === 'PENDING_RISK_APPROVAL').slice(0, 3).map(g => ({
                   id: g.id, icon: '📦', title: `Cargo: ${g.productName || g.company || 'Unknown'}`,
                   sub: `Operations · ${g.createdAt || 'Just now'}`, type: 'Cargo', amount: g.unitPrice ? `GHS ${g.unitPrice}` : undefined,
                   onApprove: () => { setActiveSubTab?.('CargoApproval'); addNotification?.(`Opening cargo approval for ${g.goodsCode || g.id}. Set a price to approve.`); },
@@ -785,7 +785,7 @@ export default function ManagementDashboard({
             <h3 className="text-lg font-bold text-[var(--text-primary)]">Workflow A: Port Cargo Approval Queue</h3>
             <p className="text-xs text-[var(--text-muted)]">Inspect logged intakes, set unit prices, and approve or reject cargo batches.</p>
             <div className="space-y-4">
-              {localGoods.filter(i => i.status === 'PENDING_MANAGEMENT_APPROVAL').map(item => (
+              {localGoods.filter(i => i.status === 'PENDING_RISK_APPROVAL').map(item => (
                 <div key={item.id} className="p-4 bg-[var(--bg)] border border-[var(--border)] rounded-xl space-y-3">
                   <div className="flex flex-col sm:flex-row items-start gap-4">
                     {item.productImage ? (
@@ -840,7 +840,7 @@ export default function ManagementDashboard({
                   </div>
                 </div>
               ))}
-              {localGoods.filter(i => i.status === 'PENDING_MANAGEMENT_APPROVAL').length === 0 && (
+              {localGoods.filter(i => i.status === 'PENDING_RISK_APPROVAL').length === 0 && (
                 <p className="text-xs text-[var(--text-muted)] text-center py-6">No cargo awaiting management pricing reviews.</p>
               )}
             </div>
