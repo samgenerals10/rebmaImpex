@@ -9,16 +9,16 @@
 //  - Kick Offline: presence.ts's kickUserOffline — a real-time broadcast
 //    telling that one connected session to sign itself out right now.
 //    NOT account deletion.
-//  - Send Message: mobile has no full Messenger.tsx UI yet (a later,
-//    larger phase), so this opens a small composer that writes to the
-//    exact same channels/chat_messages tables via lib/directMessage.ts —
-//    a real message, visible in the recipient's web Messenger thread.
+//  - Send Message: opens the real mobile Messenger (Phase 11.0) straight
+//    into a DM with that person — the same channels/chat_messages tables
+//    web's Messenger.tsx uses, not a one-off composer anymore.
 import { useEffect, useState } from 'react';
 import { View, Text, Image, Pressable, Alert } from 'react-native';
 import { Radio, MessageSquare, LogOut, Ban, ShieldOff, ShieldCheck, UserCheck } from 'lucide-react-native';
 import { subscribeToLiveUsers, kickUserOffline, type PresencePayload } from '../../lib/presence';
 import { supabase } from '../../lib/supabaseClient';
-import { getOrCreateDmChannel, sendDirectMessage } from '../../lib/directMessage';
+import { messenger } from '../../lib/messenger';
+import { navigationRef } from '../../navigation/navigationRef';
 import { useAuthStore } from '../../store/authStore';
 import { useTheme } from '../../theme/ThemeProvider';
 import { usePresets } from '../../theme/presets';
@@ -28,7 +28,6 @@ import Avatar from '../../components/ui/Avatar';
 import Badge from '../../components/ui/Badge';
 import Button from '../../components/ui/Button';
 import Sheet from '../../components/ui/Sheet';
-import Input from '../../components/ui/Input';
 import EmptyState from '../../components/ui/EmptyState';
 
 function formatDuration(ms: number): string {
@@ -55,9 +54,7 @@ export default function LiveUsersScreen() {
   const [now, setNow] = useState(Date.now());
   const [statusByUser, setStatusByUser] = useState<Record<string, string>>({});
   const [busyUserId, setBusyUserId] = useState<string | null>(null);
-  const [messageTarget, setMessageTarget] = useState<PresencePayload | null>(null);
-  const [messageText, setMessageText] = useState('');
-  const [sendingMessage, setSendingMessage] = useState(false);
+  const [openingMessageFor, setOpeningMessageFor] = useState<string | null>(null);
   const [photoPreview, setPhotoPreview] = useState<{ uri: string; name: string } | null>(null);
 
   useEffect(() => {
@@ -99,18 +96,18 @@ export default function LiveUsersScreen() {
     Alert.alert('Kicked offline', `${name} has been signed out.`);
   };
 
-  const handleSendMessage = async () => {
-    if (!messageTarget || !me || !messageText.trim() || sendingMessage) return;
-    setSendingMessage(true);
+  const handleOpenMessage = async (u: PresencePayload) => {
+    if (!me || openingMessageFor) return;
+    setOpeningMessageFor(u.userId);
     try {
-      const channel = await getOrCreateDmChannel(me.id, messageTarget.userId);
-      await sendDirectMessage(channel.id, me.id, me.fullName, messageText.trim());
-      setMessageText('');
-      setMessageTarget(null);
+      const channel = await messenger.getOrCreateDmChannel(me.id, u.userId);
+      if (navigationRef.isReady()) {
+        (navigationRef.navigate as any)('Messenger', { screen: 'MessengerThread', params: { channelId: channel.id, channelType: 'dm', title: u.fullName, subtitle: u.department } });
+      }
     } catch (err: any) {
-      Alert.alert('Failed to send', err.message);
+      Alert.alert('Failed to open conversation', err.message);
     } finally {
-      setSendingMessage(false);
+      setOpeningMessageFor(null);
     }
   };
 
@@ -191,7 +188,8 @@ export default function LiveUsersScreen() {
                     variant="ghost"
                     label="Message"
                     icon={<MessageSquare size={13} color={t.colors.accent} />}
-                    onPress={() => setMessageTarget(u)}
+                    loading={openingMessageFor === u.userId}
+                    onPress={() => handleOpenMessage(u)}
                   />
                 </View>
               </Card>
@@ -199,24 +197,6 @@ export default function LiveUsersScreen() {
           })}
         </View>
       )}
-
-      <Sheet
-        open={!!messageTarget}
-        onClose={() => { setMessageTarget(null); setMessageText(''); }}
-        title={`Message ${messageTarget?.fullName || ''}`}
-        footer={
-          <Button label="Send" onPress={handleSendMessage} loading={sendingMessage} disabled={!messageText.trim()} fullWidth />
-        }
-      >
-        <Input
-          value={messageText}
-          onChangeText={setMessageText}
-          placeholder="Type a message..."
-          multiline
-          numberOfLines={4}
-          style={{ minHeight: 100, textAlignVertical: 'top' }}
-        />
-      </Sheet>
 
       <Sheet
         open={!!photoPreview}

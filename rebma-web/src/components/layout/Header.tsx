@@ -14,6 +14,7 @@ interface HeaderProps {
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   onOpenChat: () => void;
+  chatUnreadCount?: number;
   networkOnline?: boolean;
   notifications?: Array<{ id: string; msg: string; time: string }>;
   onClearNotifications?: () => void;
@@ -49,6 +50,7 @@ export default function Header({
   searchQuery,
   setSearchQuery,
   onOpenChat,
+  chatUnreadCount = 0,
   networkOnline = true,
   notifications = [],
   onClearNotifications,
@@ -349,10 +351,13 @@ export default function Header({
             {/* Chat Icon */}
             <button
               onClick={onOpenChat}
-              className="p-2 text-text-secondary dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl cursor-pointer transition-all"
+              className="p-2 text-text-secondary dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl cursor-pointer relative transition-all"
               title="Open Chat"
             >
               <MessageSquare className="w-5 h-5" />
+              {chatUnreadCount > 0 && (
+                <span className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full" />
+              )}
             </button>
 
             {/* Notification Bell */}
@@ -541,10 +546,13 @@ export default function Header({
           {/* Chat Button */}
           <button
             onClick={onOpenChat}
-            className="p-2 bg-[var(--bg-card)] hover:bg-[var(--accent-light)] border border-[var(--border)] rounded-xl text-[var(--text-secondary)] hover:text-[var(--accent)] transition-all cursor-pointer shadow-card shrink-0"
+            className="p-2 bg-[var(--bg-card)] hover:bg-[var(--accent-light)] border border-[var(--border)] rounded-xl text-[var(--text-secondary)] hover:text-[var(--accent)] transition-all cursor-pointer shadow-card shrink-0 relative"
             title="Open Chat Terminal"
           >
             <MessageSquare className="w-4 h-4" />
+            {chatUnreadCount > 0 && (
+              <span className="absolute top-1 right-1 w-2 h-2 bg-rose-500 rounded-full" />
+            )}
           </button>
 
           {/* Foodie date chip */}

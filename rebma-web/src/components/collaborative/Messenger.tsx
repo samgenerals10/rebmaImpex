@@ -25,7 +25,7 @@ interface Props {
   targetUserId?: string | null;
 }
 
-interface Profile { id: string; fullName: string; department: string; }
+interface Profile { id: string; fullName: string; department: string; email: string; }
 interface Channel { id: string; name: string | null; type: 'group' | 'dm' | 'everyone'; created_by: string | null; created_at: string; }
 interface Msg {
   id: string; channel_id: string; sender_id: string | null; sender: string; content: string;
@@ -37,6 +37,15 @@ const REACTION_EMOJIS = ['👍', '❤️', '😂', '🎉', '😮', '👏'];
 
 function initials(name: string) {
   return name.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase();
+}
+
+function UnreadBadge({ count }: { count?: number }) {
+  if (!count || count <= 0) return null;
+  return (
+    <span className="shrink-0 min-w-[18px] h-[18px] px-1 rounded-full bg-[var(--accent)] text-white text-[10px] font-bold flex items-center justify-center">
+      {count > 99 ? '99+' : count}
+    </span>
+  );
 }
 
 export default function Messenger({ isOpen, onClose, currentUser, targetUserId }: Props) {
@@ -61,6 +70,10 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId }
   const [newChannelMembers, setNewChannelMembers] = useState<string[]>([]);
   const [activeCall, setActiveCall] = useState<{ room: string; title: string; kind: 'voice' | 'video' } | null>(null);
   const [attachmentUrls, setAttachmentUrls] = useState<Record<string, string>>({});
+  // Phase 11.0 gap fixes — per-user access gate + unread badges.
+  const [messagingAllowed, setMessagingAllowed] = useState(true);
+  const [checkingAccess, setCheckingAccess] = useState(true);
+  const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
   const presenceChannelRef = useRef<any>(null);
   const typingTimeoutRef = useRef<any>(null);
@@ -69,12 +82,29 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId }
   const myId = currentUser?.id || '';
   const myName = currentUser?.fullName || 'Me';
 
+  // ── Access gate: master switch + per-user email exception ──
+  useEffect(() => {
+    if (!isOpen) return;
+    setCheckingAccess(true);
+    messenger.checkMessagingAccess(currentUser?.email).then((allowed) => {
+      setMessagingAllowed(allowed);
+      setCheckingAccess(false);
+    });
+  }, [isOpen, currentUser?.email]);
+
+  // ── Unread badges: refreshed on open and after every thread load ──
+  const refreshUnreadCounts = useCallback(() => {
+    if (!myId) return;
+    messenger.getUnreadCounts().then(setUnreadCounts);
+  }, [myId]);
+  useEffect(() => { if (isOpen && myId) refreshUnreadCounts(); }, [isOpen, myId, refreshUnreadCounts]);
+
   // ── Bootstrap: profiles + my channels ──
   useEffect(() => {
     if (!isOpen || !myId) return;
     (async () => {
-      const { data } = await supabase.from('profiles_directory').select('id, full_name, department').eq('status', 'ACTIVE').order('full_name', { ascending: true });
-      setProfiles((data || []).map((p: any) => ({ id: p.id, fullName: p.full_name || 'Unknown', department: p.department || '' })).filter(p => p.id !== myId));
+      const { data } = await supabase.from('profiles_directory').select('id, full_name, department, email').eq('status', 'ACTIVE').order('full_name', { ascending: true });
+      setProfiles((data || []).map((p: any) => ({ id: p.id, fullName: p.full_name || 'Unknown', department: p.department || '', email: p.email || '' })).filter(p => p.id !== myId));
 
       const everyoneId = await messenger.ensureEveryoneChannel();
       if (everyoneId) await messenger.joinChannel(everyoneId, myId);
@@ -115,9 +145,20 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId }
     for (const m of msgs as Msg[]) {
       if (m.sender_id !== myId) messenger.markRead(m.id, myId);
     }
-  }, [activeChannel, myId]);
+    refreshUnreadCounts();
+  }, [activeChannel, myId, refreshUnreadCounts]);
 
   useEffect(() => { loadThread(); }, [loadThread]);
+
+  // Cross-channel unread badges won't move just from the active thread's
+  // own realtime subscription (it's filtered to that one channel_id) — a
+  // light poll while the panel is open keeps every other row's badge
+  // reasonably fresh, same posture as this app's other secondary-badge polls.
+  useEffect(() => {
+    if (!isOpen || !myId) return;
+    const iv = setInterval(refreshUnreadCounts, 20000);
+    return () => clearInterval(iv);
+  }, [isOpen, myId, refreshUnreadCounts]);
 
   // ── Realtime: new messages + reactions + reads in this channel ──
   useEffect(() => {
@@ -178,10 +219,15 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId }
     })();
   }, [messages, attachmentUrls]);
 
-  const filteredContacts = useMemo(
-    () => profiles.filter(p => p.fullName.toLowerCase().includes(search.toLowerCase())),
-    [profiles, search]
-  );
+  const filteredContacts = useMemo(() => {
+    const q = search.toLowerCase();
+    if (!q) return profiles;
+    return profiles.filter(p =>
+      p.fullName.toLowerCase().includes(q) ||
+      p.department.toLowerCase().includes(q) ||
+      p.email.toLowerCase().includes(q)
+    );
+  }, [profiles, search]);
 
   const groupChannels = channels.filter(c => c.type === 'group');
   const everyoneChannel = channels.find(c => c.type === 'everyone');
@@ -222,6 +268,17 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId }
     return { title: other?.fullName || 'Direct Message', subtitle: other?.department || '' };
   };
 
+  // Gap fix — a DM/group message never notified its recipients (Everyone
+  // is deliberately excluded: notifying every staff member on every
+  // broadcast would be pure noise). Best-effort — a failure here must
+  // never block the send itself, so it's fire-and-forget.
+  const notifyOthersOfMessage = (preview: string) => {
+    if (!activeChannel || activeChannel.type === 'everyone') return;
+    const others = activeChannelMemberIds.current.filter((id) => id !== myId);
+    if (others.length === 0) return;
+    messenger.notifyUsers(others, 'chat_message', myName, preview.slice(0, 120), activeChannel.id).catch(() => {});
+  };
+
   const handleSend = async () => {
     if (!composer.trim() || !activeChannel) return;
     if (activeChannel.type === 'everyone' && !globalChatEnabled) return;
@@ -232,6 +289,7 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId }
     setReplyTo(null);
     try {
       await messenger.sendMessage(activeChannel.id, myId, myName, text, replyTo ? { replyToId: replyTo.id } : undefined);
+      notifyOthersOfMessage(text);
     } catch (e) { console.error('Send failed:', e); }
   };
 
@@ -240,9 +298,11 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId }
     try {
       const path = await messenger.uploadChatAttachment(file, activeChannel.id);
       const isImage = file.type.startsWith('image/');
-      await messenger.sendMessage(activeChannel.id, myId, myName, isImage ? '📷 Photo' : `📎 ${file.name}`, {
+      const preview = isImage ? '📷 Photo' : `📎 ${file.name}`;
+      await messenger.sendMessage(activeChannel.id, myId, myName, preview, {
         attachmentUrl: path, attachmentType: isImage ? 'image' : 'file', attachmentName: file.name,
       });
+      notifyOthersOfMessage(preview);
     } catch (e) { console.error('Attachment upload failed:', e); }
   };
 
@@ -279,6 +339,19 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId }
             initial={{ scale: 0.97, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.97, opacity: 0 }}
             className="bg-[var(--bg-card)] rounded-2xl shadow-2xl w-full max-w-5xl h-[85vh] flex overflow-hidden"
           >
+          {checkingAccess ? (
+            <div className="flex-1 flex items-center justify-center">
+              <p className="text-xs text-[var(--text-muted)]">Loading…</p>
+            </div>
+          ) : !messagingAllowed ? (
+            <div className="flex-1 flex flex-col items-center justify-center gap-3 p-8 text-center">
+              <MessageSquare className="w-10 h-10 text-[var(--text-muted)]" />
+              <p className="text-sm font-bold text-[var(--text-primary)]">Messaging is disabled for your account</p>
+              <p className="text-xs text-[var(--text-muted)] max-w-xs">The CEO has turned off chat access for this account. Contact your administrator if you believe this is a mistake.</p>
+              <button onClick={onClose} className="erp-btn erp-btn-ghost mt-2">Close</button>
+            </div>
+          ) : (
+          <>
             {/* Sidebar */}
             <div className="w-72 shrink-0 border-r border-[var(--border)] flex flex-col">
               <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
@@ -302,6 +375,7 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId }
                     className={`w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl cursor-pointer text-left ${activeChannel?.id === everyoneChannel.id ? 'bg-[var(--accent-light)]' : 'hover:bg-[var(--accent-light)]'}`}>
                     <div className="w-9 h-9 rounded-full bg-[var(--accent)] text-white flex items-center justify-center shrink-0"><Users size={15} /></div>
                     <div className="min-w-0 flex-1"><p className="text-xs font-bold text-[var(--text-primary)]">Everyone</p><p className="text-[10px] text-[var(--text-muted)]">Company-wide broadcast</p></div>
+                    <UnreadBadge count={unreadCounts[everyoneChannel.id]} />
                   </button>
                 )}
                 {departmentChatEnabled && groupChannels.length > 0 && (
@@ -312,6 +386,7 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId }
                     className={`w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl cursor-pointer text-left ${activeChannel?.id === ch.id ? 'bg-[var(--accent-light)]' : 'hover:bg-[var(--accent-light)]'}`}>
                     <div className="w-9 h-9 rounded-full bg-[var(--accent-light)] text-[var(--accent)] flex items-center justify-center text-xs font-bold shrink-0">{initials(ch.name || 'GC')}</div>
                     <div className="min-w-0 flex-1"><p className="text-xs font-bold text-[var(--text-primary)] truncate">{ch.name}</p></div>
+                    <UnreadBadge count={unreadCounts[ch.id]} />
                   </button>
                 ))}
                 <p className="text-[9px] font-bold uppercase tracking-wider text-[var(--text-muted)] px-2.5 pt-3 pb-1">People</p>
@@ -323,6 +398,7 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId }
                       className={`w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl cursor-pointer text-left ${isActive ? 'bg-[var(--accent-light)]' : 'hover:bg-[var(--accent-light)]'}`}>
                       <div className="w-9 h-9 rounded-full bg-[var(--accent-light)] text-[var(--accent)] flex items-center justify-center text-xs font-bold shrink-0">{initials(c.fullName)}</div>
                       <div className="min-w-0 flex-1"><p className="text-xs font-bold text-[var(--text-primary)] truncate">{c.fullName}</p><p className="text-[10px] text-[var(--text-muted)] truncate">{c.department}</p></div>
+                      <UnreadBadge count={dm ? unreadCounts[dm.id] : undefined} />
                     </button>
                   );
                 })}
@@ -440,6 +516,8 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId }
                 </div>
               )}
             </div>
+          </>
+          )}
           </motion.div>
         </motion.div>
       )}

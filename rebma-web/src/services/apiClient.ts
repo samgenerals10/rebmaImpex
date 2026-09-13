@@ -2434,6 +2434,41 @@ export const messenger = {
     await messenger.notifyUsers(memberIds.filter(id => id !== organizerId), 'call_started', `${organizerName} started a ${kind} call`, 'Tap to join now', meeting.id);
     return meeting;
   },
+
+  // Phase 11.0 gap fix — per-user messaging access, same master-switch-
+  // plus-email-exception mechanism as mobile_app_access_allowed
+  // (CeoControlCenter.tsx's SettingToggleWithException / ceo_feature_exceptions).
+  // A missing setting/exception row degrades to "allowed" — same
+  // fail-open posture as every other secondary CEO-gate lookup in this app.
+  checkMessagingAccess: async (email: string | null | undefined): Promise<boolean> => {
+    try {
+      const [{ data: setting }, { data: exception }] = await Promise.all([
+        supabase.from('ceo_settings').select('setting_value').eq('setting_key', 'messaging_access_allowed').maybeSingle(),
+        email
+          ? supabase.from('ceo_feature_exceptions').select('allowed').eq('feature_key', 'messaging_access_allowed').eq('user_email', email.toLowerCase()).maybeSingle()
+          : Promise.resolve({ data: null }),
+      ]);
+      const masterAllowed = setting?.setting_value !== false;
+      return exception ? !!exception.allowed : masterAllowed;
+    } catch {
+      return true;
+    }
+  },
+
+  // Phase 11.0 gap fix — per-channel + global unread counts. Backed by
+  // get_unread_message_counts() (supabase_messenger_unread_counts.sql),
+  // which reuses the exact same chat_message_reads rows the read-receipt
+  // ticks already write via markRead() — no new table, no separate
+  // "last seen" bookkeeping to keep in sync.
+  getUnreadCounts: async (): Promise<Record<string, number>> => {
+    const { data, error } = await supabase.rpc('get_unread_message_counts');
+    if (error || !data) return {};
+    const map: Record<string, number> = {};
+    for (const row of data as { channel_id: string; unread_count: number }[]) {
+      map[row.channel_id] = Number(row.unread_count) || 0;
+    }
+    return map;
+  },
 };
 
 // ── Meeting App (scheduling, RSVP, recap notes) ────────────────────────

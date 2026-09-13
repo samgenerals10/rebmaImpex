@@ -16,6 +16,7 @@ import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import DispatchHomeScreen from '../screens/dispatch/DispatchHomeScreen';
 import AppShell from './AppShell';
+import MessengerStack from './MessengerStack';
 import { navigationRef } from './navigationRef';
 
 const Stack = createNativeStackNavigator();
@@ -66,7 +67,10 @@ export default function RootNavigator() {
         ) : driver ? (
           <Stack.Screen name="DriverTracking" component={DispatchHomeScreen} />
         ) : (
-          <Stack.Screen name="App" component={AppShell} />
+          <>
+            <Stack.Screen name="App" component={AppShell} />
+            <Stack.Screen name="Messenger" component={MessengerStack} options={{ presentation: 'card' }} />
+          </>
         )}
       </Stack.Navigator>
     </NavigationContainer>

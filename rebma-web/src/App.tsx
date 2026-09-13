@@ -28,7 +28,7 @@ import AczoneShell from './components/AczoneShell';
 import LiamFinanceShell from './components/LiamFinanceShell';
 import FinloFlashShell from './components/FinloFlashShell';
 
-import { auth, hr, operations, management, marketing, finance, production, reception, dispatch as dispatchApi, getToken, setToken, clearToken, withTimeout } from './services/apiClient';
+import { auth, hr, operations, management, marketing, finance, production, reception, dispatch as dispatchApi, messenger, getToken, setToken, clearToken, withTimeout } from './services/apiClient';
 import { supabase, setAuthPersistence } from './lib/supabaseClient';
 import { joinLiveUsersChannel, leaveLiveUsersChannel } from './lib/presence';
 
@@ -1575,6 +1575,18 @@ export default function App() {
   // Set when a caller (Live Users' "Send Message") wants the messenger to
   // open straight into a DM with a specific person instead of Everyone.
   const [messengerTargetUserId, setMessengerTargetUserId] = useState<string | null>(null);
+  // Phase 11.0 gap fix — the Messenger's own unread badges only exist
+  // while it's open; this keeps the header's chat icon dotted even when
+  // it's closed, polled independently so it doesn't depend on Messenger
+  // ever having mounted.
+  const [chatUnreadCount, setChatUnreadCount] = useState(0);
+  useEffect(() => {
+    if (!currentUser?.id) { setChatUnreadCount(0); return; }
+    const refresh = () => messenger.getUnreadCounts().then((m) => setChatUnreadCount(Object.values(m).reduce((a, b) => a + b, 0)));
+    refresh();
+    const iv = setInterval(refresh, 30000);
+    return () => clearInterval(iv);
+  }, [currentUser?.id]);
   const [chatMessages, setChatMessagesState] = useState<ChatMessage[]>([
     { id: '1', sender: 'System Terminal', content: 'Supabase Realtime initialized. Boardroom chat active.', time: '09:00 AM' }
   ]);
@@ -3989,6 +4001,7 @@ export default function App() {
         isChatOpen={isChatOpen}
         setIsChatOpen={setIsChatOpen}
         messengerTargetUserId={messengerTargetUserId}
+        chatUnreadCount={chatUnreadCount}
         setMessengerTargetUserId={setMessengerTargetUserId}
         chatMessages={chatMessages}
         sendChatMessage={sendChatMessage}
@@ -4048,7 +4061,7 @@ function AppInner({
   currentUser, reducedMotion, motionSetting, activeDepartment, setActiveDepartment,
   activeSubTab, setActiveSubTab, theme, notifications, setNotifications,
   addNotification, goToNotificationLink, renderDashboard, renderAlertModal, renderPromptModal,
-  renderConfirmModal, isChatOpen, setIsChatOpen, messengerTargetUserId, setMessengerTargetUserId, chatMessages, sendChatMessage,
+  renderConfirmModal, isChatOpen, setIsChatOpen, messengerTargetUserId, setMessengerTargetUserId, chatUnreadCount, chatMessages, sendChatMessage,
   boardroomMinutes, setBoardroomMinutes, onLogout, openBoardroom,
   sidebarCollapsed, setSidebarCollapsed, unreadEmailCount,
   setIsAuthenticated, setCurrentUser, setCurrentDriver, isSidebarOpen, setIsSidebarOpen,
@@ -4169,6 +4182,7 @@ function AppInner({
               staffList={staffList}
               customersList={customersList}
               onOpenChat={() => setIsChatOpen(true)}
+              chatUnreadCount={chatUnreadCount}
               notifications={notifications}
               onClearNotifications={() => { setNotifications([]); setActiveToastIds(new Set()); }}
               onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}

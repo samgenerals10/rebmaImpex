@@ -4,12 +4,14 @@
 // toggle are deferred (7.10 / 7.12), left out rather than stubbed.
 import { useEffect, useState } from 'react';
 import { View, Text, Pressable } from 'react-native';
-import { Bell, MoreVertical, Search } from 'lucide-react-native';
+import { Bell, MessageSquare, MoreVertical, Search } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeProvider';
 import { useAuthStore } from '../../store/authStore';
 import { useUIStore } from '../../store/uiStore';
 import { useNotificationsStore } from '../../store/notificationsStore';
+import { useMessengerUnreadStore } from '../../store/messengerUnreadStore';
 import { getDepartmentEntry } from '../../navigation/departmentRegistry';
+import { navigationRef } from '../../navigation/navigationRef';
 import Avatar from '../ui/Avatar';
 import Sheet from '../ui/Sheet';
 
@@ -33,7 +35,16 @@ export default function AppHeader({ onNavigateProfile, onNavigateAlerts }: Props
   const openSearch = useUIStore((s) => s.openSearch);
   const unreadCount = useNotificationsStore((s) => s.unreadCount);
   const refreshUnreadCount = useNotificationsStore((s) => s.refreshUnreadCount);
+  const chatUnreadCount = useMessengerUnreadStore((s) => s.unreadCount);
+  const refreshChatUnreadCount = useMessengerUnreadStore((s) => s.refreshUnreadCount);
   const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => {
+    if (!profile) return;
+    refreshChatUnreadCount();
+    const iv = setInterval(refreshChatUnreadCount, 30000);
+    return () => clearInterval(iv);
+  }, [profile?.id]);
 
   useEffect(() => {
     if (!profile) return;
@@ -54,6 +65,12 @@ export default function AppHeader({ onNavigateProfile, onNavigateAlerts }: Props
         </Pressable>
         <Text style={{ fontFamily: t.font.extrabold, fontSize: t.type.base16.size, letterSpacing: 1, color: t.colors.textPrimary }}>REBMA IMPEX</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm }}>
+          <Pressable hitSlop={8} onPress={() => navigationRef.isReady() && navigationRef.navigate('Messenger' as never)} style={{ position: 'relative' }}>
+            <MessageSquare size={20} color={t.colors.textSecondary} />
+            {chatUnreadCount > 0 && (
+              <View style={{ position: 'absolute', top: -2, right: -2, width: 8, height: 8, borderRadius: 4, backgroundColor: t.colors.status.danger.text }} />
+            )}
+          </Pressable>
           <Pressable hitSlop={8} onPress={onNavigateAlerts} style={{ position: 'relative' }}>
             <Bell size={20} color={t.colors.textSecondary} />
             {unreadCount > 0 && (
@@ -89,6 +106,7 @@ export default function AppHeader({ onNavigateProfile, onNavigateAlerts }: Props
       <Sheet open={menuOpen} onClose={() => setMenuOpen(false)} title="Menu" side="bottom">
         <MenuRow label="Profile" onPress={() => { setMenuOpen(false); onNavigateProfile(); }} />
         <MenuRow label="Switch Department" onPress={() => { setMenuOpen(false); openDepartmentSwitcher(); }} />
+        <MenuRow label="Messages" onPress={() => { setMenuOpen(false); navigationRef.isReady() && navigationRef.navigate('Messenger' as never); }} />
         <MenuRow label="Notifications" onPress={() => { setMenuOpen(false); onNavigateAlerts(); }} />
         <MenuRow label="Sign Out" danger onPress={() => { setMenuOpen(false); signOut(); }} />
       </Sheet>

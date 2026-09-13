@@ -1271,6 +1271,10 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
           description="Enable department-specific chat channels." />
         <SettingToggle settingKey="direct_messages_enabled" label="Direct Messages Enabled"
           description="Allow private messaging between individual staff members." />
+        <SettingToggleWithException
+          settingKey="messaging_access_allowed"
+          label="Messaging Access"
+          description="Master switch for whether an account can use chat at all (web and mobile), on top of the three toggles above. Add an email exception below to block or allow one specific person regardless of the master switch." />
         <SettingToggle settingKey="external_email_enabled" label="External Email Enabled"
           description="Allow sending emails to suppliers and customers from within the app." />
         <SettingToggle settingKey="whatsapp_enabled" label="WhatsApp Enabled"
