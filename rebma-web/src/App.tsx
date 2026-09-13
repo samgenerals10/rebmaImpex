@@ -30,7 +30,7 @@ import FinloFlashShell from './components/FinloFlashShell';
 
 import { auth, hr, operations, management, marketing, finance, production, reception, dispatch as dispatchApi, getToken, setToken, clearToken, withTimeout } from './services/apiClient';
 import { supabase, setAuthPersistence } from './lib/supabaseClient';
-import { joinLiveUsersChannel } from './lib/presence';
+import { joinLiveUsersChannel, leaveLiveUsersChannel } from './lib/presence';
 
 import NotesPanel from './components/global/NotesPanel';
 import TasksPanel from './components/global/TasksPanel';
@@ -387,14 +387,14 @@ export default function App() {
   useEffect(() => {
     if (!currentUser) return;
     const loggedInAt = new Date().toISOString();
-    const channel = joinLiveUsersChannel({
+    joinLiveUsersChannel({
       userId: currentUser.id,
       fullName: currentUser.fullName,
       department: currentUser.department,
       photo: currentUser.photo,
       loggedInAt,
     });
-    return () => { channel.unsubscribe(); };
+    return () => { leaveLiveUsersChannel(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser?.id]);
   

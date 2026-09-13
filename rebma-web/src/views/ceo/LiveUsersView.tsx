@@ -6,8 +6,7 @@
 // means the websocket connection is actually live right now.
 import { useEffect, useState } from 'react';
 import { Radio } from 'lucide-react';
-import { supabase } from '../../lib/supabaseClient';
-import { LIVE_USERS_CHANNEL, type PresencePayload } from '../../lib/presence';
+import { subscribeToLiveUsers, type PresencePayload } from '../../lib/presence';
 
 function formatDuration(ms: number): string {
   const totalSeconds = Math.max(0, Math.floor(ms / 1000));
@@ -23,16 +22,13 @@ export default function LiveUsersView() {
   const [users, setUsers] = useState<PresencePayload[]>([]);
   const [now, setNow] = useState(Date.now());
 
+  // Reads the shared presence channel App.tsx already opened at login —
+  // never opens a second channel of its own (that was the bug: Supabase
+  // rejects adding a presence listener to a channel that's already
+  // subscribed, and a second `.channel()` call with the same name
+  // returns that same already-subscribed instance).
   useEffect(() => {
-    const channel = supabase.channel(LIVE_USERS_CHANNEL);
-    channel
-      .on('presence', { event: 'sync' }, () => {
-        const state = channel.presenceState<PresencePayload>();
-        const flat = Object.values(state).flat().filter(Boolean) as unknown as PresencePayload[];
-        setUsers(flat);
-      })
-      .subscribe();
-    return () => { channel.unsubscribe(); };
+    return subscribeToLiveUsers(setUsers);
   }, []);
 
   useEffect(() => {

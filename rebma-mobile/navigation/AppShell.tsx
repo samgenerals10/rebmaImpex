@@ -9,7 +9,7 @@
 // routes (see store/uiStore.ts for why).
 import { useEffect } from 'react';
 import { View } from 'react-native';
-import { joinLiveUsersChannel } from '../lib/presence';
+import { joinLiveUsersChannel, leaveLiveUsersChannel } from '../lib/presence';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import AppTabBar from './AppTabBar';
@@ -110,14 +110,14 @@ export default function AppShell() {
   // untracks on sign-out/unmount — same shape as web's App.tsx effect.
   useEffect(() => {
     if (!profile) return;
-    const channel = joinLiveUsersChannel({
+    joinLiveUsersChannel({
       userId: profile.id,
       fullName: profile.fullName,
       department: profile.department,
       photo: profile.photo,
       loggedInAt: new Date().toISOString(),
     });
-    return () => { channel.unsubscribe(); };
+    return () => { leaveLiveUsersChannel(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile?.id]);
 
