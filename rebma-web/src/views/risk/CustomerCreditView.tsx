@@ -95,7 +95,6 @@ export default function CustomerCreditView({ addNotification, currentUser }: Pro
       await management.setCustomerCreditTerms(customerId, {
         creditLimit: limit,
         creditStatus: target?.creditStatus || 'ACTIVE',
-        setBy: currentUser?.fullName,
       });
       setCustomers(prev => prev.map(c => c.id === customerId ? { ...c, creditLimit: limit } : c));
       setLimitDraft(prev => { const next = { ...prev }; delete next[customerId]; return next; });
@@ -104,7 +103,7 @@ export default function CustomerCreditView({ addNotification, currentUser }: Pro
         department: 'RISK',
         performed_by: currentUser?.fullName || 'Risk',
         reference_id: customerId,
-        details: limit === null ? 'Credit limit cleared — global cap applies' : `Credit limit set to GHS ${limit.toLocaleString()}`,
+        details: limit === null ? 'Credit limit cleared, global cap applies' : `Credit limit set to GHS ${limit.toLocaleString()}`,
         timestamp: new Date().toISOString(),
       });
       addNotification?.('Credit limit updated.');
@@ -122,7 +121,6 @@ export default function CustomerCreditView({ addNotification, currentUser }: Pro
       await management.setCustomerCreditTerms(customerId, {
         creditLimit: target?.creditLimit ?? null,
         creditStatus: next,
-        setBy: currentUser?.fullName,
       });
       setCustomers(prev => prev.map(c => c.id === customerId ? { ...c, creditStatus: next } : c));
       await supabase.from('global_audit_history').insert({
@@ -130,7 +128,7 @@ export default function CustomerCreditView({ addNotification, currentUser }: Pro
         department: 'RISK',
         performed_by: currentUser?.fullName || 'Risk',
         reference_id: customerId,
-        details: next === 'ON_HOLD' ? 'Credit placed ON HOLD — new credit orders blocked' : 'Credit hold lifted',
+        details: next === 'ON_HOLD' ? 'Credit placed ON HOLD, new credit orders blocked' : 'Credit hold lifted',
         timestamp: new Date().toISOString(),
       });
       addNotification?.(next === 'ON_HOLD' ? 'Customer placed on credit hold.' : 'Credit hold lifted.');

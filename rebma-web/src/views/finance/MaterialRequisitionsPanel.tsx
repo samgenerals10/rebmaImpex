@@ -66,7 +66,7 @@ export default function FinanceMaterialRequisitionsPanel({ addNotification, curr
       });
 
       await supabase.from('supplier_order_notifications').insert([{
-        message: `Raw material requisition recorded by Finance — ready for release: ${summary}`,
+        message: `Raw material requisition recorded by Finance and ready for release: ${summary}`,
         notified_department: 'OPERATIONS', read: false,
       }]);
       await supabase.from('supplier_order_notifications').insert([{

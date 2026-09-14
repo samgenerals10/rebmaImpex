@@ -11,7 +11,7 @@
 // chequeExportCols, keys adapted to this screen's raw snake_case fields
 // (mobile has no camelCase mapper layer) — the web `render` for `amount`
 // and `orderRef`'s '—' fallback are both preserved.
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, Alert } from 'react-native';
 import { Download } from 'lucide-react-native';
 import { supabase } from '../../lib/supabaseClient';
@@ -24,6 +24,7 @@ import Button from '../../components/ui/Button';
 import MetricCard from '../../components/ui/MetricCard';
 import Sheet from '../../components/ui/Sheet';
 import Input, { Field } from '../../components/ui/Input';
+import SearchablePicker from '../../components/ui/SearchablePicker';
 import ExportSheet from '../../components/shared/ExportSheet';
 import type { ExportColumn } from '../../lib/exportEngine';
 
@@ -53,9 +54,12 @@ export default function ChequesScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
+  const [editTarget, setEditTarget] = useState<ChequeRow | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [submitting, setSubmitting] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('All');
 
   const load = useCallback(async () => {
     const { data, error } = await supabase.from('finance_cheques').select('*').order('cheque_date', { ascending: false }).limit(300);
@@ -63,6 +67,15 @@ export default function ChequesScreen() {
     setLoading(false);
     setRefreshing(false);
   }, []);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return cheques.filter((c) => {
+      const matchesSearch = !q || c.cheque_number.toLowerCase().includes(q) || c.account_name.toLowerCase().includes(q) || (c.bank_name || '').toLowerCase().includes(q);
+      const matchesStatus = statusFilter === 'All' || c.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [cheques, search, statusFilter]);
 
   useEffect(() => {
     load();
@@ -77,7 +90,17 @@ export default function ChequesScreen() {
 
   const closeForm = () => {
     setShowAdd(false);
+    setEditTarget(null);
     setForm(emptyForm);
+  };
+
+  const openEdit = (c: ChequeRow) => {
+    setForm({
+      chequeNumber: c.cheque_number, bankName: c.bank_name, accountName: c.account_name,
+      accountNumber: c.account_number || '', amount: String(c.amount), chequeDate: c.cheque_date || '',
+      expectedClearing: c.expected_clearing || '', orderRef: c.order_ref || '',
+    });
+    setEditTarget(c);
   };
 
   const save = async () => {
@@ -86,6 +109,20 @@ export default function ChequesScreen() {
       return;
     }
     setSubmitting(true);
+    if (editTarget) {
+      const { error } = await supabase.from('finance_cheques').update({
+        cheque_number: form.chequeNumber.trim(), bank_name: form.bankName.trim(), account_name: form.accountName.trim(),
+        account_number: form.accountNumber.trim() || null, amount: parseFloat(form.amount) || 0,
+        cheque_date: form.chequeDate || null, expected_clearing: form.expectedClearing || null,
+        order_ref: form.orderRef.trim() || null, updated_at: new Date().toISOString(),
+      }).eq('id', editTarget.id);
+      setSubmitting(false);
+      if (error) { Alert.alert('Update Failed', error.message); return; }
+      await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Cheque ${editTarget.id} updated`, performed_by: profile?.fullName || 'Finance', timestamp: new Date().toISOString() }]);
+      closeForm();
+      load();
+      return;
+    }
     const { error } = await supabase.from('finance_cheques').insert([{
       cheque_number: form.chequeNumber.trim(), bank_name: form.bankName.trim(), account_name: form.accountName.trim(),
       account_number: form.accountNumber.trim() || null, amount: parseFloat(form.amount) || 0,
@@ -99,6 +136,20 @@ export default function ChequesScreen() {
     }
     closeForm();
     load();
+  };
+
+  const removeCheque = (c: ChequeRow) => {
+    Alert.alert('Delete Cheque', 'Are you sure you want to delete this cheque?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete', style: 'destructive', onPress: async () => {
+          const { error } = await supabase.from('finance_cheques').delete().eq('id', c.id);
+          if (error) { Alert.alert('Delete Failed', error.message); return; }
+          await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Cheque ${c.id} deleted`, performed_by: profile?.fullName || 'Finance', timestamp: new Date().toISOString() }]);
+          load();
+        },
+      },
+    ]);
   };
 
   const updateStatus = async (c: ChequeRow, status: ChequeRow['status']) => {
@@ -153,22 +204,29 @@ export default function ChequesScreen() {
           <View style={{ width: '47%' }}><MetricCard label="Bounced" value={loading ? '—' : totals.bounced} tone="danger" /></View>
         </View>
 
+        <Input value={search} onChangeText={setSearch} placeholder="Search cheque #, account, or bank…" />
+        <SearchablePicker label="Status" value={statusFilter} onChange={setStatusFilter} options={['All', 'Received', 'Deposited', 'Cleared', 'Bounced'].map((s) => ({ value: s, label: s }))} />
+
         <DataList
           columns={columns}
-          data={cheques}
+          data={filtered}
           rowKey={(c) => c.id}
           loading={loading}
           emptyTitle="No cheques on file"
+          onRowPress={openEdit}
           renderActions={(c) => (
-            <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.sm }}>
+              {c.status === 'Received' && <Button label="Mark Deposited" size="sm" onPress={() => updateStatus(c, 'Deposited')} />}
               {c.status !== 'Cleared' && <Button label="Mark Cleared" size="sm" onPress={() => updateStatus(c, 'Cleared')} />}
               {c.status !== 'Bounced' && <Button label="Mark Bounced" size="sm" variant="danger" onPress={() => updateStatus(c, 'Bounced')} />}
+              <Button label="Edit" size="sm" variant="ghost" onPress={() => openEdit(c)} />
+              <Button label="Delete" size="sm" variant="danger" onPress={() => removeCheque(c)} />
             </View>
           )}
         />
       </View>
 
-      <Sheet open={showAdd} onClose={closeForm} title="Add Cheque" side="bottom" maxHeight={640}
+      <Sheet open={showAdd || !!editTarget} onClose={closeForm} title={editTarget ? 'Edit Cheque' : 'Add Cheque'} side="bottom" maxHeight={640}
         footer={<Button label={submitting ? 'Saving…' : 'Save Cheque'} onPress={save} loading={submitting} disabled={submitting} fullWidth />}
       >
         <Field label="Cheque Number *"><Input value={form.chequeNumber} onChangeText={(v) => setForm((f) => ({ ...f, chequeNumber: v }))} /></Field>

@@ -18,6 +18,7 @@ import { Radio, MessageSquare, LogOut, Ban, ShieldOff, ShieldCheck, UserCheck } 
 import { subscribeToLiveUsers, kickUserOffline, type PresencePayload } from '../../lib/presence';
 import { supabase } from '../../lib/supabaseClient';
 import { messenger } from '../../lib/messenger';
+import { callPrivilegedApi } from '../../lib/apiBase';
 import { navigationRef } from '../../navigation/navigationRef';
 import { useAuthStore } from '../../store/authStore';
 import { useTheme } from '../../theme/ThemeProvider';
@@ -91,9 +92,28 @@ export default function LiveUsersScreen() {
     }
   };
 
-  const handleKick = (userId: string, name: string) => {
-    kickUserOffline(userId);
-    Alert.alert('Kicked offline', `${name} has been signed out.`);
+  // Routed through api/kick-user.ts (the same new privileged endpoint web
+  // now uses), which does a real server-side session invalidation
+  // (supabase.auth.admin.signOut) — the old implementation was only a
+  // client-side Realtime broadcast with no authorization check at all.
+  // Security/gap audit fix. Uses the same callPrivilegedApi gate HR's
+  // Add Staff/Approve Registration already use, so it fails with a clear
+  // "not configured yet" message rather than a guessed URL if
+  // EXPO_PUBLIC_API_BASE_URL isn't set. The broadcast is still sent
+  // afterward (unchanged) purely so the target's already-open screen
+  // updates immediately if it's still running.
+  const handleKick = async (userId: string, name: string) => {
+    if (busyUserId) return;
+    setBusyUserId(userId);
+    try {
+      await callPrivilegedApi('/api/kick-user', { userId });
+      kickUserOffline(userId);
+      Alert.alert('Kicked offline', `${name} has been signed out.`);
+    } catch (err: any) {
+      Alert.alert('Failed', `Could not kick ${name} offline: ${err.message}`);
+    } finally {
+      setBusyUserId(null);
+    }
   };
 
   const handleOpenMessage = async (u: PresencePayload) => {

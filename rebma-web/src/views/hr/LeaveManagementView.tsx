@@ -433,7 +433,7 @@ export default function LeaveManagementView({ currentUser, addNotification }: Pr
         })}
         {!loadingLeaves && filtered.length === 0 && (
           <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)', background: 'var(--bg-card)', borderRadius: 12, border: '1px solid var(--border)' }}>
-            {leaves.length === 0 ? 'No leave requests yet — they will appear here once submitted' : 'No leave requests found'}
+            {leaves.length === 0 ? 'No leave requests yet. They will appear here once submitted' : 'No leave requests found'}
           </div>
         )}
       </div>

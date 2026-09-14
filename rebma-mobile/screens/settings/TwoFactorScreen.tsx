@@ -70,7 +70,7 @@ export default function TwoFactorScreen() {
       const { data: challenge, error: challengeError } = await supabase.auth.mfa.challenge({ factorId: pendingFactorId });
       if (challengeError || !challenge) throw new Error(challengeError?.message || 'Failed to start verification.');
       const { error: verifyError } = await supabase.auth.mfa.verify({ factorId: pendingFactorId, challengeId: challenge.id, code });
-      if (verifyError) throw new Error('Incorrect code — check your authenticator app and try again.');
+      if (verifyError) throw new Error('Incorrect code. Check your authenticator app and try again.');
       Alert.alert('Success', 'Two-factor authentication enabled.');
       setEnrolledFactorId(pendingFactorId);
       setPendingFactorId(null);
@@ -133,7 +133,7 @@ export default function TwoFactorScreen() {
               <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary }}>Two-factor authentication is off</Text>
             </View>
             <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textMuted }}>
-              Add a second step at login using an authenticator app (Google Authenticator, Authy, 1Password, etc.) — a code from your phone alongside your password.
+              Add a second step at login using an authenticator app (Google Authenticator, Authy, 1Password, etc.): a code from your phone alongside your password.
             </Text>
             <Button label="Enable 2FA" onPress={startEnroll} />
           </View>

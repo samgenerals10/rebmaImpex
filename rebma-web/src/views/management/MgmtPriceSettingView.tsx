@@ -596,7 +596,7 @@ export default function MgmtPriceSettingView({ addNotification, currentUser }: P
         <div className="p-4 border-b border-[var(--border)] flex items-center justify-between gap-3 flex-wrap">
           <div>
             <h3 className="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-1.5"><Percent size={14} /> Customer Discounts</h3>
-            <p className="text-xs text-[var(--text-muted)] mt-0.5">Award any customer a discount based on their performance — not limited to customers flagged "special."</p>
+            <p className="text-xs text-[var(--text-muted)] mt-0.5">Award any customer a discount based on their performance, not limited to customers flagged "special."</p>
           </div>
           <div className="relative w-full sm:w-64">
             <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />

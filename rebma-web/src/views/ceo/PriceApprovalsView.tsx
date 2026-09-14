@@ -76,7 +76,7 @@ export default function PriceApprovalsView({ currentUser, addNotification }: Pro
         rejection_reason: approve ? null : (note || null),
       }).eq('id', req.id);
 
-      const details = `${req.product_name} → ${req.currency} ${Number(req.unit_price).toLocaleString()}${note ? ` — ${note}` : ''}`;
+      const details = `${req.product_name} → ${req.currency} ${Number(req.unit_price).toLocaleString()}${note ? `: ${note}` : ''}`;
       await supabase.from('global_audit_history').insert({
         action: `${approve ? 'Approved' : 'Rejected'} price request`,
         department: 'MANAGEMENT',
@@ -89,7 +89,7 @@ export default function PriceApprovalsView({ currentUser, addNotification }: Pro
       // either way — only Marketing/Finance ever saw the resulting price
       // change (or didn't, on reject) with no explanation.
       await supabase.from('supplier_order_notifications').insert([{
-        message: `Price change ${approve ? 'APPROVED' : 'REJECTED'} by CEO: ${req.product_name} → ${req.currency} ${Number(req.unit_price).toLocaleString()}${note ? ` — ${note}` : ''}`,
+        message: `Price change ${approve ? 'APPROVED' : 'REJECTED'} by CEO: ${req.product_name} → ${req.currency} ${Number(req.unit_price).toLocaleString()}${note ? `: ${note}` : ''}`,
         notified_department: 'MANAGEMENT',
         read: false,
       }]);

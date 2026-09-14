@@ -272,7 +272,7 @@ export default function RiskApprovalsView({ addNotification, currentUser }: Prop
         id: row.id,
         requestId: `ORD-${row.id.slice(-6).toUpperCase()}`,
         type: 'Risk Final Release' as const,
-        description: `${row.payment_mode === 'CREDIT' ? 'Credit order' : `${row.payment_mode || 'Cash'} order`} for ${row.client_name} — GHS ${Number(row.total_amount || 0).toLocaleString()} — cleared by Accounts, awaiting release`,
+        description: `${row.payment_mode === 'CREDIT' ? 'Credit order' : `${row.payment_mode || 'Cash'} order`} for ${row.client_name} — GHS ${Number(row.total_amount || 0).toLocaleString()} (cleared by Accounts, awaiting release)`,
         department: 'FINANCE',
         amount: Number(row.total_amount || 0),
         date: row.created_at?.slice(0, 10) || '',
@@ -353,16 +353,19 @@ export default function RiskApprovalsView({ addNotification, currentUser }: Prop
         const rawId = String(selectedItem.raw.id);
         const cargoRow = selectedItem.raw as Record<string, any>;
         const incomingQty = Number(cargoRow.quantity || cargoRow.qty_received || 0);
-        const finalQtyToAdd = Math.max(0, incomingQty - confirmedDamages);
-        const discrepancyCost = confirmedDamages * costPerUnit;
+        // Clamped so a reviewer can't report more damaged units than the
+        // shipment actually received — security/gap audit fix.
+        const clampedDamages = Math.max(0, Math.min(confirmedDamages, incomingQty));
+        const finalQtyToAdd = Math.max(0, incomingQty - clampedDamages);
+        const discrepancyCost = clampedDamages * costPerUnit;
         const sellingPriceVal = sellingPrice ? parseFloat(sellingPrice) : 0;
         const rawDiscrepancies = String(cargoRow.discrepancies || '');
 
         let finalDiscrepancyNotes = rawDiscrepancies;
-        if (action === 'approve' && confirmedDamages > 0) {
+        if (action === 'approve' && clampedDamages > 0) {
           const discrepancyJson = {
             originalQty: incomingQty,
-            damagedCount: confirmedDamages,
+            damagedCount: clampedDamages,
             unitCost: costPerUnit,
             costLoss: discrepancyCost,
             sellingPrice: sellingPriceVal,
@@ -376,7 +379,7 @@ export default function RiskApprovalsView({ addNotification, currentUser }: Prop
           quantity: action === 'approve' ? finalQtyToAdd : incomingQty,
           discrepancies: finalDiscrepancyNotes,
           unit_price: costPerUnit,
-          is_fault_or_damaged: action === 'approve' ? confirmedDamages > 0 : cargoRow.is_fault_or_damaged,
+          is_fault_or_damaged: action === 'approve' ? clampedDamages > 0 : cargoRow.is_fault_or_damaged,
           rejection_reason: action === 'approve' ? null : (modalNote || null),
         }).eq('id', rawId);
 
@@ -399,17 +402,21 @@ export default function RiskApprovalsView({ addNotification, currentUser }: Prop
             movement_type: 'ADD',
             quantity: finalQtyToAdd,
             reference: `Cargo approved: ${selectedItem.requestId}`,
-            notes: `${selectedItem.description}${confirmedDamages > 0 ? ` (${confirmedDamages} units damaged/lost)` : ''}`,
+            notes: `${selectedItem.description}${clampedDamages > 0 ? ` (${clampedDamages} units damaged/lost)` : ''}`,
             created_at: now
           });
 
           if (discrepancyCost > 0) {
+            // Posted as Pending, not auto-Approved — a single Risk
+            // reviewer should not be able to single-handedly book an
+            // arbitrary-size approved expense with no Finance sign-off.
+            // Security/gap audit fix.
             await supabase.from('finance_expenses').insert([{
               category: 'Damaged Goods',
-              description: `Loss from damaged goods in Cargo Intake ${selectedItem.requestId} (${productName}: ${confirmedDamages} units)`,
+              description: `Loss from damaged goods in Cargo Intake ${selectedItem.requestId} (${productName}: ${clampedDamages} units)`,
               amount: discrepancyCost,
               date: now.slice(0, 10),
-              status: 'Approved',
+              status: 'Pending',
               submitted_by: 'Risk (Auto-generated)',
               notes: `Auto-generated from Cargo Intake approval. Discrepancy details: ${selectedItem.description}`
             }]);
@@ -427,11 +434,11 @@ export default function RiskApprovalsView({ addNotification, currentUser }: Prop
           await supabase.from('supplier_order_notifications').insert([{ message: `Cargo intake APPROVED by Risk: ${selectedItem.description}`, notified_department: 'FINANCE', read: false }]);
           await supabase.from('supplier_order_notifications').insert([{ message: `New stock approved: ${selectedItem.description}. Update pricing in Marketing.`, notified_department: 'MARKETING', read: false }]);
         } else if (action === 'return') {
-          await supabase.from('supplier_order_notifications').insert([{ message: `Cargo intake RETURNED FOR CORRECTION by Risk: ${selectedItem.description}${modalNote ? ` — ${modalNote}` : ''}`, notified_department: 'OPERATIONS', read: false }]);
+          await supabase.from('supplier_order_notifications').insert([{ message: `Cargo intake RETURNED FOR CORRECTION by Risk: ${selectedItem.description}${modalNote ? ` (${modalNote})` : ''}`, notified_department: 'OPERATIONS', read: false }]);
         } else {
           // Straight reject previously sent no notification at all — Admin &
           // Warehouse had no way to learn a cargo intake was rejected outright.
-          await supabase.from('supplier_order_notifications').insert([{ message: `Cargo intake REJECTED by Risk: ${selectedItem.description}${modalNote ? ` — ${modalNote}` : ''}`, notified_department: 'OPERATIONS', read: false }]);
+          await supabase.from('supplier_order_notifications').insert([{ message: `Cargo intake REJECTED by Risk: ${selectedItem.description}${modalNote ? ` (${modalNote})` : ''}`, notified_department: 'OPERATIONS', read: false }]);
         }
       }
 
@@ -467,11 +474,11 @@ export default function RiskApprovalsView({ addNotification, currentUser }: Prop
         if (rpcError) throw rpcError;
 
         if (action === 'approve') {
-          await supabase.from('supplier_order_notifications').insert([{ message: `Order cleared Risk's initial review — awaiting your approval: ${selectedItem.description}`, notified_department: 'MANAGEMENT', read: false }]);
+          await supabase.from('supplier_order_notifications').insert([{ message: `Order cleared Risk's initial review, awaiting your approval: ${selectedItem.description}`, notified_department: 'MANAGEMENT', read: false }]);
           await supabase.from('supplier_order_notifications').insert([{ message: `Your order passed Risk's initial review and is now with Management: ${selectedItem.description}`, notified_department: 'MARKETING', read: false }]);
         } else {
           const verbLabel = action === 'return' ? 'RETURNED FOR CORRECTION' : 'REJECTED';
-          await supabase.from('supplier_order_notifications').insert([{ message: `Order ${verbLabel} by Risk: ${selectedItem.description}${modalNote ? ` — ${modalNote}` : ''}`, notified_department: 'MARKETING', read: false }]);
+          await supabase.from('supplier_order_notifications').insert([{ message: `Order ${verbLabel} by Risk: ${selectedItem.description}${modalNote ? ` (${modalNote})` : ''}`, notified_department: 'MARKETING', read: false }]);
         }
       }
 
@@ -491,22 +498,21 @@ export default function RiskApprovalsView({ addNotification, currentUser }: Prop
         if (rpcError) throw rpcError;
 
         if (action === 'approve') {
-          await supabase.from('supplier_order_notifications').insert([{ message: `Order cleared Risk's final release check — ready for warehouse: ${selectedItem.description}`, notified_department: 'ADMIN_WAREHOUSE', read: false }]);
+          await supabase.from('supplier_order_notifications').insert([{ message: `Order cleared Risk's final release check, ready for warehouse: ${selectedItem.description}`, notified_department: 'ADMIN_WAREHOUSE', read: false }]);
           await supabase.from('supplier_order_notifications').insert([{ message: `Your order has been fully cleared by Risk and is being prepared for dispatch: ${selectedItem.description}`, notified_department: 'MARKETING', read: false }]);
         } else {
           const verbLabel = action === 'return' ? 'RETURNED FOR CORRECTION' : 'REJECTED';
-          await supabase.from('supplier_order_notifications').insert([{ message: `Order ${verbLabel} by Risk at final release: ${selectedItem.description}${modalNote ? ` — ${modalNote}` : ''}`, notified_department: 'MARKETING', read: false }]);
+          await supabase.from('supplier_order_notifications').insert([{ message: `Order ${verbLabel} by Risk at final release: ${selectedItem.description}${modalNote ? ` (${modalNote})` : ''}`, notified_department: 'MARKETING', read: false }]);
         }
       }
 
       if (selectedItem.type === 'Customer Verification' && selectedItem.raw) {
         const custStatus = action === 'approve' ? 'APPROVED' : action === 'return' ? 'RETURNED_FOR_CORRECTION' : 'REJECTED';
         await management.setCustomerVerification(selectedItem.id, custStatus as 'APPROVED' | 'REJECTED' | 'RETURNED_FOR_CORRECTION', {
-          verifiedBy: currentUser?.fullName || 'Risk',
           rejectionReason: modalNote || undefined,
         });
         const verbLabel = action === 'approve' ? 'APPROVED' : action === 'return' ? 'RETURNED FOR CORRECTION' : 'REJECTED';
-        await supabase.from('supplier_order_notifications').insert([{ message: `Customer ${verbLabel} by Risk: ${selectedItem.description}${modalNote ? ` — ${modalNote}` : ''}`, notified_department: 'MARKETING', read: false }]);
+        await supabase.from('supplier_order_notifications').insert([{ message: `Customer ${verbLabel} by Risk: ${selectedItem.description}${modalNote ? ` (${modalNote})` : ''}`, notified_department: 'MARKETING', read: false }]);
       }
 
       if (selectedItem.type === 'Proof of Delivery' && selectedItem.raw) {
@@ -522,9 +528,9 @@ export default function RiskApprovalsView({ addNotification, currentUser }: Prop
         if (rpcError) throw rpcError;
 
         if (action === 'approve') {
-          await supabase.from('supplier_order_notifications').insert([{ message: `Proof of delivery APPROVED by Risk — delivery closed out: ${selectedItem.description}`, notified_department: 'DISPATCH', read: false }]);
+          await supabase.from('supplier_order_notifications').insert([{ message: `Proof of delivery APPROVED by Risk, delivery closed out: ${selectedItem.description}`, notified_department: 'DISPATCH', read: false }]);
         } else {
-          await supabase.from('supplier_order_notifications').insert([{ message: `Proof of delivery REJECTED by Risk: ${selectedItem.description}${modalNote ? ` — ${modalNote}` : ''}`, notified_department: 'DISPATCH', read: false }]);
+          await supabase.from('supplier_order_notifications').insert([{ message: `Proof of delivery REJECTED by Risk: ${selectedItem.description}${modalNote ? ` (${modalNote})` : ''}`, notified_department: 'DISPATCH', read: false }]);
         }
       }
 
@@ -537,7 +543,7 @@ export default function RiskApprovalsView({ addNotification, currentUser }: Prop
       }]);
 
       const verbPastTense = action === 'approve' ? 'Approved' : action === 'reject' ? 'Rejected' : 'Returned for correction';
-      addNotification?.(`${selectedItem.requestId} ${verbPastTense}${modalNote ? ` — "${modalNote}"` : ''}`);
+      addNotification?.(`${selectedItem.requestId} ${verbPastTense}${modalNote ? ` ("${modalNote}")` : ''}`);
     } catch (e) {
       console.error(e);
       addNotification?.('Action execution failed.');
@@ -640,13 +646,13 @@ export default function RiskApprovalsView({ addNotification, currentUser }: Prop
                 <p className="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider">Customer Credit Position</p>
                 {onHold && (
                   <div className="px-3 py-2 rounded-xl bg-amber-100 text-amber-800 text-xs font-bold">
-                    ⚠ CREDIT ON HOLD — this customer is currently blocked from new credit orders.
+                    ⚠ CREDIT ON HOLD. This customer is currently blocked from new credit orders.
                   </div>
                 )}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <div>
                     <p className="text-[10px] text-[var(--text-muted)]">Credit Limit</p>
-                    <p className="text-sm font-semibold text-[var(--text-primary)]">{limit !== null ? `GHS ${limit.toLocaleString()}` : 'No limit — global cap applies'}</p>
+                    <p className="text-sm font-semibold text-[var(--text-primary)]">{limit !== null ? `GHS ${limit.toLocaleString()}` : 'No limit, global cap applies'}</p>
                   </div>
                   <div>
                     <p className="text-[10px] text-[var(--text-muted)]">Currently Outstanding</p>
@@ -671,10 +677,10 @@ export default function RiskApprovalsView({ addNotification, currentUser }: Prop
               <div className="flex items-center justify-between flex-wrap gap-1">
                 <p className="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider">Order Items breakdown</p>
                 {selectedItem.type === 'Sales Order' && selectedItem.status === 'Pending' && (
-                  <span className="text-[10px] text-[var(--text-muted)]">Editable — adjust qty/price before approving</span>
+                  <span className="text-[10px] text-[var(--text-muted)]">Editable, adjust qty/price before approving</span>
                 )}
                 {selectedItem.type === 'Risk Final Release' && (
-                  <span className="text-[10px] text-[var(--text-muted)]">Read-only — already verified by Accounts</span>
+                  <span className="text-[10px] text-[var(--text-muted)]">Read-only, already verified by Accounts</span>
                 )}
               </div>
               {selectedItem.type === 'Sales Order' && selectedItem.status === 'Pending' && Array.isArray((selectedItem.raw as any)?.metadata?.items) && (selectedItem.raw as any).metadata.items.length > 0 ? (() => {
@@ -903,7 +909,7 @@ export default function RiskApprovalsView({ addNotification, currentUser }: Prop
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center p-12 gap-2 text-[var(--text-muted)]">
             <CheckCircle size={32} className="opacity-30" />
-            <p className="text-sm">No pending items — you're all caught up.</p>
+            <p className="text-sm">No pending items, you're all caught up.</p>
           </div>
         ) : (
           <div className="p-3">
@@ -1076,7 +1082,7 @@ export default function RiskApprovalsView({ addNotification, currentUser }: Prop
                   </div>
 
                   <div className="mt-2 border-t border-[var(--border)] pt-2">
-                    <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Selling Price (GHS) — optional</label>
+                    <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Selling Price (GHS), optional</label>
                     <input
                       type="number"
                       value={sellingPrice}
@@ -1130,7 +1136,7 @@ export default function RiskApprovalsView({ addNotification, currentUser }: Prop
 
               {showModal === 'approve' && selectedItem.type === 'Sales Order' && (
                 <div className="p-3 bg-indigo-50 border border-indigo-200 rounded-xl text-xs text-indigo-700">
-                  Approving forwards this order to <strong>Management</strong> for the next mandatory review — it does not go straight to Finance.
+                  Approving forwards this order to <strong>Management</strong> for the next mandatory review. It does not go straight to Finance.
                 </div>
               )}
 
@@ -1148,7 +1154,7 @@ export default function RiskApprovalsView({ addNotification, currentUser }: Prop
 
               {showModal === 'approve' && selectedItem.type === 'Customer Verification' && (
                 <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-700">
-                  Approving marks this customer <strong>Verified</strong> — Marketing will see the badge update on the customer's profile.
+                  Approving marks this customer <strong>Verified</strong>. Marketing will see the badge update on the customer's profile.
                 </div>
               )}
 

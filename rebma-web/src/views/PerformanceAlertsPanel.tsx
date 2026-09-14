@@ -34,7 +34,7 @@ export default function PerformanceAlertsPanel({ currentUser, addNotification }:
   const run = async () => {
     setRunning(true);
     const newAlerts = await runPerformanceAlerts();
-    addNotification(`Alert check complete — ${newAlerts.length} alert(s) triggered.`);
+    addNotification(`Alert check complete: ${newAlerts.length} alert(s) triggered.`);
     await load();
     setRunning(false);
   };
@@ -57,7 +57,7 @@ export default function PerformanceAlertsPanel({ currentUser, addNotification }:
         <div>
           <h2 className="text-lg font-bold text-[var(--text-primary)]">Performance Alerts</h2>
           <p className="text-xs text-[var(--text-muted)] mt-0.5">
-            Automatic monitoring — department activity, attendance, and finance thresholds
+            Automatic monitoring of department activity, attendance, and finance thresholds
           </p>
         </div>
         <div className="flex items-center gap-2">

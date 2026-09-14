@@ -30,7 +30,7 @@ const fmtAgo = (iso: string) => {
 };
 
 const stateConfig: Record<DriverState, { color: string; bg: string; label: string; pulse: boolean }> = {
-  ASSIGNED: { color: '#8b5cf6', bg: '#ede9fe', label: 'Assigned — awaiting start', pulse: false },
+  ASSIGNED: { color: '#8b5cf6', bg: '#ede9fe', label: 'Assigned, awaiting start', pulse: false },
   ON_THE_WAY: { color: '#3b82f6', bg: '#dbeafe', label: 'On the way', pulse: true },
   RETURNING: { color: '#f59e0b', bg: '#fef3c7', label: 'Returning to company', pulse: true },
   AT_COMPANY: { color: '#10b981', bg: '#d1fae5', label: 'At the company', pulse: false },
@@ -104,7 +104,7 @@ export default function TrackingView({ addNotification: _addNotification }: Prop
               ghanaCard: d.ghana_card_id || '—',
               licenseNumber: d.license_number || '—',
               photo: d.photo || undefined,
-              lastKnownLocation: lastPing ? `Live GPS · updated ${fmtAgo(lastPing)}` : 'No GPS ping yet — driver hasn’t opened the mobile app during a delivery',
+              lastKnownLocation: lastPing ? `Live GPS · updated ${fmtAgo(lastPing)}` : 'No GPS ping yet, driver hasn’t opened the mobile app during a delivery',
               lastUpdated: lastPing || new Date().toISOString(),
               lastDelivery: lastDelivery ? {
                 id: lastDelivery.id,
@@ -152,7 +152,7 @@ export default function TrackingView({ addNotification: _addNotification }: Prop
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 24 }}>
         {[
           { label: 'On the Way', value: onTheWay, color: stateConfig.ON_THE_WAY.color, icon: <Truck size={18} /> },
-          { label: 'Assigned — Awaiting Start', value: assignedWaiting, color: stateConfig.ASSIGNED.color, icon: <Clock size={18} /> },
+          { label: 'Assigned, Awaiting Start', value: assignedWaiting, color: stateConfig.ASSIGNED.color, icon: <Clock size={18} /> },
           { label: 'Returning', value: returning, color: stateConfig.RETURNING.color, icon: <Navigation size={18} /> },
           { label: 'At the Company', value: atCompany, color: stateConfig.AT_COMPANY.color, icon: <MapPin size={18} /> },
           { label: 'Last Update', value: lastUpdate ? fmtAgo(lastUpdate.lastUpdated) : 'N/A', color: 'var(--accent)', icon: <Clock size={18} /> },
@@ -242,7 +242,7 @@ export default function TrackingView({ addNotification: _addNotification }: Prop
             <p style={{ margin: '0 0 6px', fontWeight: 700, color: 'var(--text-primary)', fontSize: 14 }}>How live tracking works</p>
             <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: 13, lineHeight: 1.6 }}>
               Drivers with a mobile app login share their phone's real GPS position while a delivery is active and the app is open.
-              Invite a driver from the Drivers screen to give them access. Positions update on this map as soon as they come in — no hardware tracker required.
+              Invite a driver from the Drivers screen to give them access. Positions update on this map as soon as they come in, no hardware tracker required.
               A driver's color is inferred from their most recent delivery: violet once assigned but before they've started sharing location, blue once they actually start the trip, amber once it's marked delivered (heading back), green once they're idle with nothing pending.
             </p>
           </div>

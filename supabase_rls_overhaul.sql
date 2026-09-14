@@ -523,6 +523,20 @@ end $$;
 -- ceo_settings: broad read (CeoSettingsContext needs feature-flag/
 -- maintenance-mode values for every session); write is CEO-only. This is
 -- what closes "any account can flip maintenance mode / approval thresholds".
+--
+-- ⚠️ Re-run hazard (found during a security audit, not fixed here to
+-- avoid duplicating supabase_control_center.sql's own logic in two
+-- places): supabase_control_center.sql later REPLACES this exact
+-- "ceo_settings_write_admin_only" policy with a wider
+-- "ceo_settings_write_admin_or_delegate" one (adds
+-- has_delegated_permission() support for the CEO's Delegated Access
+-- feature). Re-running *this* file after control_center.sql has already
+-- run will silently drop the delegate-aware policy and restore the
+-- admin-only one — every CEO-granted delegate will then get silent RLS
+-- failures on every settings write with no error surfaced, until
+-- control_center.sql is re-applied. If you ever re-run this file in a
+-- database where Delegated Access has been used, re-run
+-- supabase_control_center.sql immediately afterward too.
 create policy "ceo_settings_select_broad" on public.ceo_settings
   for select to authenticated using (true);
 create policy "ceo_settings_write_admin_only" on public.ceo_settings

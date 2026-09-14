@@ -104,7 +104,7 @@ export default function VisitorLogScreen() {
     setSubmitting(false);
     if (error) {
       await enqueue(QUEUE_KEYS.receptionVisitors, 'visitors', payload);
-      Alert.alert('Saved Offline', 'No connection right now — this visitor will sync automatically once you\'re back online.');
+      Alert.alert('Saved Offline', 'No connection right now, so this visitor will sync automatically once you\'re back online.');
     }
     setFullName('');
     setPurpose('');

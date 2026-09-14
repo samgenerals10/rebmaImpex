@@ -261,7 +261,7 @@ export default function CustomersView({ customersList, onRegisterCustomer, addNo
   // chat-attachments precedent (never persisted, always re-minted).
   const viewBusinessCertificate = async (path: string) => {
     const url = await getSignedFileUrl('business-certificates', path);
-    if (!url) { addNotification('Could not open certificate — it may have been removed.'); return; }
+    if (!url) { addNotification('Could not open certificate. It may have been removed.'); return; }
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 

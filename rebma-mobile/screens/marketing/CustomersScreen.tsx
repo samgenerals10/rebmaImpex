@@ -145,7 +145,7 @@ export default function CustomersScreen() {
   // time "View Certificate" is tapped, matching web's equivalent.
   const viewBusinessCertificate = async (path: string) => {
     const url = await getSignedUrl('business-certificates', path);
-    if (!url) { Alert.alert('Unavailable', 'Could not open certificate — it may have been removed.'); return; }
+    if (!url) { Alert.alert('Unavailable', 'Could not open certificate. It may have been removed.'); return; }
     Linking.openURL(url);
   };
 

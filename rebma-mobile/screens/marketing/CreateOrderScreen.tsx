@@ -140,7 +140,7 @@ export default function CreateOrderScreen() {
       return;
     }
     if (creditBlocked) {
-      Alert.alert('Credit On Hold', `Credit is ON HOLD for ${resolvedCustomer!.name} — new credit orders are blocked. Contact Risk.`);
+      Alert.alert('Credit On Hold', `Credit is ON HOLD for ${resolvedCustomer!.name}, so new credit orders are blocked. Contact Risk.`);
       return;
     }
     if (paymentMode === 'CREDIT' && resolvedCustomer?.credit_limit != null && overLimit) {
@@ -148,7 +148,7 @@ export default function CreateOrderScreen() {
       return;
     }
     if (paymentMode === 'CREDIT' && !resolvedCustomer?.credit_limit && maxCreditAmount > 0 && orderTotal > maxCreditAmount) {
-      Alert.alert('Credit Cap Exceeded', `Credit orders are capped at GHS ${maxCreditAmount.toLocaleString()} by the CEO — this order is GHS ${orderTotal.toLocaleString()}.`);
+      Alert.alert('Credit Cap Exceeded', `Credit orders are capped at GHS ${maxCreditAmount.toLocaleString()} by the CEO, but this order is GHS ${orderTotal.toLocaleString()}.`);
       return;
     }
 
@@ -175,7 +175,7 @@ export default function CreateOrderScreen() {
     }
     try {
       await supabase.from('supplier_order_notifications').insert([{
-        message: `New order from ${clientName.trim()} — GHS ${orderTotal.toLocaleString()}, awaiting Risk approval.`,
+        message: `New order from ${clientName.trim()}, GHS ${orderTotal.toLocaleString()}, awaiting Risk approval.`,
         notified_department: 'RISK',
         read: false,
         created_at: new Date().toISOString(),
@@ -200,7 +200,7 @@ export default function CreateOrderScreen() {
               value={clientName}
               onChangeText={(v) => { setClientName(v); setShowSuggestions(true); }}
               onFocus={() => setShowSuggestions(true)}
-              placeholder="Type a name — existing customers will suggest"
+              placeholder="Type a name and existing customers will suggest"
             />
           </Field>
           {showSuggestions && suggestions.length > 0 && (
@@ -261,16 +261,16 @@ export default function CreateOrderScreen() {
           {paymentMode === 'CREDIT' && resolvedCustomer && (
             <View style={{ backgroundColor: creditBlocked || overLimit ? t.colors.status.danger.bg : t.colors.status.info.bg, borderRadius: t.radius.md, padding: t.spacing.md, marginTop: t.spacing.sm }}>
               {creditBlocked ? (
-                <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body12.size, color: t.colors.status.danger.text }}>CREDIT ON HOLD for {resolvedCustomer.name} — contact Risk.</Text>
+                <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body12.size, color: t.colors.status.danger.text }}>CREDIT ON HOLD for {resolvedCustomer.name}. Contact Risk.</Text>
               ) : (
                 <>
                   <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body12.size, color: t.colors.textPrimary }}>Credit Position</Text>
                   <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta11.size, color: t.colors.textSecondary, marginTop: 2 }}>
-                    Limit: {resolvedCustomer.credit_limit != null ? `GHS ${resolvedCustomer.credit_limit.toLocaleString()}` : 'No per-customer limit — global cap applies'}
+                    Limit: {resolvedCustomer.credit_limit != null ? `GHS ${resolvedCustomer.credit_limit.toLocaleString()}` : 'No per-customer limit, so the global cap applies'}
                   </Text>
                   <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta11.size, color: t.colors.textSecondary }}>Outstanding: GHS {outstanding.toLocaleString()}</Text>
                   <Text style={{ fontFamily: t.font.bold, fontSize: t.type.meta11.size, color: overLimit ? t.colors.status.danger.text : t.colors.textPrimary }}>
-                    Would total: GHS {wouldTotal.toLocaleString()}{overLimit ? ' — exceeds limit' : ''}
+                    Would total: GHS {wouldTotal.toLocaleString()}{overLimit ? ' (exceeds limit)' : ''}
                   </Text>
                 </>
               )}

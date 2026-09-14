@@ -221,7 +221,7 @@ export default function FinancePettyCashView({ addNotification, currentUser }: P
           <p className="text-3xl font-bold">GHS <CountUp value={currentFloat} /></p>
           {currentFloat < LOW_THRESHOLD && (
             <div className="flex items-center gap-1.5 mt-2">
-              <AlertTriangle size={12} /><span className="text-xs">Low float — replenishment needed</span>
+              <AlertTriangle size={12} /><span className="text-xs">Low float, replenishment needed</span>
             </div>
           )}
           {currentFloat < LOW_THRESHOLD && (

@@ -432,7 +432,7 @@ export default function StockIntakeForm({
 
               {/* CAMERA */}
               <CameraCapture onCapture={setIhPhoto} />
-              {ihPhoto && <p className="text-[10px] text-[var(--text-muted)]">Photo attached — will be saved with intake record.</p>}
+              {ihPhoto && <p className="text-[10px] text-[var(--text-muted)]">Photo attached. It will be saved with the intake record.</p>}
 
               {/* NOTE INFO */}
               <div className="p-3.5 bg-[var(--accent-light)] border border-[var(--border)] rounded-xl text-xs text-[var(--accent)] flex items-start gap-2.5">
@@ -538,7 +538,7 @@ export default function StockIntakeForm({
 
               {/* CAMERA */}
               <CameraCapture onCapture={setGpPhoto} />
-              {gpPhoto && <p className="text-[10px] text-[var(--text-muted)]">Photo attached — will be saved with intake record.</p>}
+              {gpPhoto && <p className="text-[10px] text-[var(--text-muted)]">Photo attached. It will be saved with the intake record.</p>}
 
               {/* NOTE INFO */}
               <div className="p-3.5 bg-[var(--accent-light)] border border-[var(--border)] rounded-xl text-xs text-[var(--accent)] flex items-start gap-2.5">

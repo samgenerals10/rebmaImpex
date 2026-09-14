@@ -329,7 +329,7 @@ export default function SetPricesScreen() {
 
         <View>
           <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary, marginBottom: t.spacing.xs }}>Customer Discounts</Text>
-          <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta11.size, color: t.colors.textMuted, marginBottom: t.spacing.sm }}>Based on performance, loyalty, and volume — not limited to customers Marketing flagged special.</Text>
+          <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta11.size, color: t.colors.textMuted, marginBottom: t.spacing.sm }}>Based on performance, loyalty, and volume, not limited to customers Marketing flagged special.</Text>
           <Input value={customerSearch} onChangeText={setCustomerSearch} placeholder="Search customers..." />
         </View>
         <DataList
@@ -367,7 +367,7 @@ export default function SetPricesScreen() {
           <View style={{ flex: 1 }}><Field label="Cost Price"><Input value={form.costPrice} onChangeText={(v) => setForm((f) => ({ ...f, costPrice: v }))} keyboardType="decimal-pad" /></Field></View>
         </View>
         <Field label="Currency"><SearchablePicker value={form.currency} onChange={(v) => setForm((f) => ({ ...f, currency: v as 'GHS' | 'USD' }))} options={[{ value: 'GHS', label: 'GHS' }, { value: 'USD', label: 'USD' }]} /></Field>
-        <Field label="Product Photo — optional">
+        <Field label="Product Photo (optional)">
           <Button label={imagePreview ? 'Retake Photo' : 'Add Photo'} variant="ghost" onPress={captureImage} />
         </Field>
         <SheetSection label="Broadcast Notification">

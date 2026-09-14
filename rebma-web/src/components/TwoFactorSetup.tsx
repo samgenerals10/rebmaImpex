@@ -74,7 +74,7 @@ export default function TwoFactorSetup({ onEnrolled }: Props) {
     const { error: verifyError } = await supabase.auth.mfa.verify({ factorId: pendingFactorId, challengeId: challenge.id, code });
     setSubmitting(false);
     if (verifyError) {
-      setMessage({ text: 'Incorrect code — check your authenticator app and try again.', ok: false });
+      setMessage({ text: 'Incorrect code. Check your authenticator app and try again.', ok: false });
       return;
     }
     setMessage({ text: '✅ Two-factor authentication enabled.', ok: true });
@@ -127,7 +127,7 @@ export default function TwoFactorSetup({ onEnrolled }: Props) {
             <Smartphone className="w-5 h-5" />
             <span className="text-sm font-bold text-[var(--text-primary)]">Two-factor authentication is off</span>
           </div>
-          <p className="text-xs text-[var(--text-muted)]">Add a second step at login using an authenticator app (Google Authenticator, Authy, 1Password, etc.) — a code from your phone alongside your password.</p>
+          <p className="text-xs text-[var(--text-muted)]">Add a second step at login using an authenticator app (Google Authenticator, Authy, 1Password, etc.). You'll enter a code from your phone alongside your password.</p>
           <button onClick={startEnroll} className="px-4 py-2 bg-[var(--accent)] text-white rounded-xl text-xs font-bold cursor-pointer hover:opacity-90">
             Enable 2FA
           </button>

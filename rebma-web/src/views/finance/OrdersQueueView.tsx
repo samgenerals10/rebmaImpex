@@ -21,7 +21,6 @@ interface Props {
   addNotification?: (msg: string) => void;
   ordersList?: Order[];
   setOrdersList?: React.Dispatch<React.SetStateAction<Order[]>>;
-  onEvaluateOrder?: (id: string, approve: boolean) => void;
   currentUser?: { fullName: string; department: string } | null;
 }
 
@@ -139,7 +138,7 @@ export async function approveAccountsReview(order: Order, currentUser?: { fullNa
   // Admin & Warehouse clicks Dispatch/Fulfillment in ApprovedGoodsView,
   // now gated on Risk's Final Release clearing the order first.
   await supabase.from('supplier_order_notifications').insert([
-    { message: `Accounts cleared order ${order.ticketNumber || order.id} for ${order.clientName} — awaiting Risk's final release check.`, notified_department: 'RISK', read: false },
+    { message: `Accounts cleared order ${order.ticketNumber || order.id} for ${order.clientName}, awaiting Risk's final release check.`, notified_department: 'RISK', read: false },
     { message: `Your order ${order.ticketNumber || order.id} has cleared Accounts and is awaiting Risk's final release check.`, notified_department: 'MARKETING', read: false },
   ]);
   await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Order ${order.ticketNumber || order.id} APPROVED for ${order.clientName} — GHS ${(Number(order.totalAmount ?? 0)).toLocaleString()}`, performed_by: performedBy, reference_id: order.id, timestamp: now }]);
@@ -147,7 +146,7 @@ export async function approveAccountsReview(order: Order, currentUser?: { fullNa
   return true;
 }
 
-export default function FinanceOrdersQueueView({ addNotification, ordersList: propOrders, setOrdersList, onEvaluateOrder, currentUser }: Props) {
+export default function FinanceOrdersQueueView({ addNotification, ordersList: propOrders, setOrdersList, currentUser }: Props) {
   const { getSetting } = useCeoSettings();
   const handlePrint = () => {
     if (!getSetting('print_enabled', true)) { addNotification?.('Printing is currently disabled by the CEO.'); return; }
@@ -257,7 +256,7 @@ export default function FinanceOrdersQueueView({ addNotification, ordersList: pr
       setAllOrders(updateLocal);
       setOrdersList?.(prev => prev.map(o => o.id === order.id ? { ...o, status: 'PENDING_RISK_RELEASE' as const } : o));
 
-      addNotification?.(`Order ${order.ticketNumber || order.id} approved — sent to Risk for final release.`);
+      addNotification?.(`Order ${order.ticketNumber || order.id} approved and sent to Risk for final release.`);
       setSelected(null);
     } catch (e) {
       console.error(e);

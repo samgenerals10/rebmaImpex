@@ -96,9 +96,36 @@ export default function LiveUsersView({ currentUser, addNotification, onMessageU
     }
   };
 
-  const handleKick = (userId: string, name: string) => {
-    kickUserOffline(userId);
-    addNotification(`${name} has been kicked offline.`);
+  // Routed through api/kick-user.ts, which does a real server-side
+  // session invalidation (supabase.auth.admin.signOut) — the old
+  // implementation was only a client-side Realtime broadcast with no
+  // authorization check at all, and asked the target's own client to
+  // sign itself out, which a modified client could simply ignore.
+  // Security/gap audit fix. The broadcast is still sent afterward
+  // (unchanged) purely so the target's already-open screen updates
+  // immediately if it's still running — a UX nicety now, not the
+  // enforcement itself.
+  const handleKick = async (userId: string, name: string) => {
+    if (busyUserId) return;
+    setBusyUserId(userId);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+      if (!accessToken) throw new Error('Not authenticated.');
+      const res = await fetch('/api/kick-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({ userId }),
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error || 'Failed to kick user offline.');
+      kickUserOffline(userId);
+      addNotification(body.message || `${name} has been kicked offline.`);
+    } catch (err: any) {
+      addNotification(`Failed to kick ${name} offline: ${err.message}`);
+    } finally {
+      setBusyUserId(null);
+    }
   };
 
   const sorted = [...users].sort((a, b) => new Date(a.loggedInAt).getTime() - new Date(b.loggedInAt).getTime());

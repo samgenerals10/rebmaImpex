@@ -333,10 +333,13 @@ const DEPT_TABLES: Record<string, { label: string; tables: { name: string; label
 };
 
 // Phase 11.6 — message export + audit trail. Reads channels/chat_messages
-// directly (the CEO's is_admin() bypasses whatever RLS those tables have,
-// so this isn't scoped to channels the CEO happens to be a member of —
-// it's a real, full audit tool). Logs its own use to global_audit_history,
-// matching this app's standing convention for sensitive admin actions.
+// directly, scoped by is_admin() in RLS (see
+// supabase_messenger_security_hardening.sql's chat_messages_select/
+// channels_select policies) — so this is a real, full audit tool for the
+// CEO specifically, not just the same wide-open table read every other
+// account already had before that migration. Logs its own use to
+// global_audit_history, matching this app's standing convention for
+// sensitive admin actions.
 function MessageExportSection({ currentUser, addNotification }: { currentUser: Props['currentUser']; addNotification: (m: string) => void }) {
   const [channels, setChannels] = useState<{ id: string; name: string | null; type: string }[]>([]);
   const [selectedChannel, setSelectedChannel] = useState('');
@@ -1038,12 +1041,12 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
         <SettingToggle
           settingKey="invitation_only"
           label="Show CEO Invite Panel"
-          description="Registration is invite-only for everyone except CEO, always — this toggle only shows or hides your own Invite Staff panel below, for quickly inviting someone yourself (e.g. a new HR hire)."
+          description="Registration is always invite-only for everyone except CEO. This toggle only shows or hides your own Invite Staff panel below, for quickly inviting someone yourself (e.g. a new HR hire)."
         />
         <SettingToggle
           settingKey="hr_can_invite_staff"
           label="HR Can Invite Staff"
-          description="When OFF, HR's Add Staff screen is disabled app-wide — HR cannot generate or send new staff invites until this is turned back on."
+          description="When OFF, HR's Add Staff screen is disabled app-wide, and HR cannot generate or send new staff invites until this is turned back on."
         />
         <SettingToggleWithException
           settingKey="mobile_app_access_allowed"
@@ -1345,7 +1348,7 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
         <SettingToggle settingKey="messenger_attachments_enabled" label="Attachments Enabled"
           description="Allow sending photos, files, and voice notes in Messenger. When OFF only plain text messages can be sent." />
         <SettingNumber settingKey="message_retention_days" label="Message Retention"
-          description="Hide messages older than this many days from every conversation view. 0 disables retention (messages are kept indefinitely). This hides old messages from view — it does not delete them from the database." unit="days" min={0} max={3650} />
+          description="Hide messages older than this many days from every conversation view. 0 disables retention (messages are kept indefinitely). This only hides old messages from view; it does not delete them from the database." unit="days" min={0} max={3650} />
         <MessageExportSection currentUser={currentUser} addNotification={addNotification} />
         <SettingToggle settingKey="external_email_enabled" label="External Email Enabled"
           description="Allow sending emails to suppliers and customers from within the app." />
@@ -1494,7 +1497,7 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
         <SettingToggle
           settingKey="risk_customer_verification_required"
           label="Customer Verification Required"
-          description="Customer verification is non-blocking by design — a pending customer can still be ordered for. This only controls whether Risk treats verification as mandatory, not any order transition."
+          description="Customer verification is non-blocking by design, so a pending customer can still be ordered for. This only controls whether Risk treats verification as mandatory, not any order transition."
         />
         <SettingToggle
           settingKey="risk_credit_hold_notify_marketing"

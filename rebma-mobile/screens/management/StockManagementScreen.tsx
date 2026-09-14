@@ -105,7 +105,7 @@ export default function StockManagementScreen() {
       }
 
       await supabase.from('global_audit_history').insert({
-        action: `CORRECT_CARGO: ${correctionTarget.goods_code || correctionTarget.id} — ${correctionTarget.product_name}`,
+        action: `CORRECT_CARGO: ${correctionTarget.goods_code || correctionTarget.id}, ${correctionTarget.product_name}`,
         department: 'MANAGEMENT', performed_by: performedBy,
         details: `Corrected cargo entry. Qty ${oldQty} → ${newQty}${delta !== 0 ? ` (stock adjusted by ${delta > 0 ? '+' : ''}${delta})` : ''}. Reason: ${correctionForm.note.trim()}`,
         timestamp: new Date().toISOString(),
@@ -196,7 +196,7 @@ export default function StockManagementScreen() {
     <Screen refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchData(); }}>
       <View style={{ gap: t.spacing.xl }}>
         <View>
-          <SectionHeader title="Approved Cargo — Corrections" subtitle="Fix a quantity, weight, or discrepancy entry error after approval" />
+          <SectionHeader title="Approved Cargo Corrections" subtitle="Fix a quantity, weight, or discrepancy entry error after approval" />
           <Input value={cargoSearch} onChangeText={setCargoSearch} placeholder="Search cargo..." />
         </View>
         <DataList
@@ -209,7 +209,7 @@ export default function StockManagementScreen() {
         />
 
         <View>
-          <SectionHeader title="Stock — Deletion" subtitle="Type-to-confirm required; open orders against a product are flagged first" />
+          <SectionHeader title="Stock Deletion" subtitle="Type-to-confirm required; open orders against a product are flagged first" />
           <Input value={stockSearch} onChangeText={setStockSearch} placeholder="Search stock..." />
         </View>
         <DataList

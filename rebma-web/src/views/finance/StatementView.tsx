@@ -124,7 +124,7 @@ export default function StatementView({ addNotification }: Props) {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-bold text-[var(--text-primary)]">Statement</h2>
-          <p className="text-xs text-[var(--text-muted)]">Every product purchase — who bought it, where it went, and live stock. Click any row for full detail.</p>
+          <p className="text-xs text-[var(--text-muted)]">Every product purchase: who bought it, where it went, and live stock. Click any row for full detail.</p>
         </div>
         <button
           onClick={() => { exportToCSV(filtered, ['ticketNumber', 'date', 'productName', 'quantity', 'clientName', 'destination', 'paymentMode', 'status', 'stockRemaining'], 'statement'); addNotification?.('Exported CSV.'); }}
@@ -157,7 +157,7 @@ export default function StatementView({ addNotification }: Props) {
             {
               key: 'stockRemaining', label: 'Stock Left', render: row => row.stockRemaining !== null ? (
                 row.stockRemaining < 0 ? (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-rose-100 text-rose-700" title="Stock went negative — more was sold/released than was ever recorded as in stock. Investigate this product's ledger.">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-rose-100 text-rose-700" title="Stock went negative, more was sold or released than was ever recorded as in stock. Investigate this product's ledger.">
                     OVERSOLD ({row.stockRemaining.toLocaleString()})
                   </span>
                 ) : (
@@ -267,7 +267,7 @@ export default function StatementView({ addNotification }: Props) {
               ))}
             </div>
           ) : (
-            <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>No matching customer record found for "{selected.clientName}" — they may have been registered under a different name, or this was a walk-in sale.</p>
+            <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>No matching customer record found for "{selected.clientName}". They may have been registered under a different name, or this was a walk-in sale.</p>
           )
         )}
 

@@ -14,11 +14,15 @@
 // future CEO phase to reuse unmodified.
 import { useCallback, useEffect, useState } from 'react';
 import { View, Text } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { RefreshCw, ArrowRight } from 'lucide-react-native';
 import { supabase } from '../../lib/supabaseClient';
 import { useTheme } from '../../theme/ThemeProvider';
 import Card from '../ui/Card';
 import MetricCard from '../ui/MetricCard';
 import BarChart from '../ui/BarChart';
+import Button from '../ui/Button';
+import EmptyState from '../ui/EmptyState';
 import { SkeletonList } from '../ui/Skeleton';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -46,12 +50,14 @@ interface ActivityRow {
 
 export default function WalletsGrid() {
   const t = useTheme();
+  const navigation = useNavigation<any>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [totalIn, setTotalIn] = useState(0);
   const [totalOut, setTotalOut] = useState(0);
   const [wallets, setWallets] = useState<{ mode: string; amount: number; count: number }[]>([]);
   const [trend, setTrend] = useState<{ label: string; value: number }[]>([]);
+  const [inOutTrend, setInOutTrend] = useState<{ label: string; value: number; color?: string }[]>([]);
   const [activity, setActivity] = useState<ActivityRow[]>([]);
 
   const load = useCallback(async () => {
@@ -111,6 +117,18 @@ export default function WalletsGrid() {
       return { label: k, value: (monthInMap[k] || 0) - (monthOutMap[k] || 0) };
     });
     setTrend(last6);
+    // Money In vs Out — the same two monthly maps, shown as paired bars
+    // instead of collapsed to one net figure.
+    setInOutTrend(
+      Array.from({ length: 6 }, (_, i) => {
+        const d = new Date(); d.setMonth(d.getMonth() - (5 - i));
+        const k = MONTHS[d.getMonth()];
+        return [
+          { label: `${k} In`, value: monthInMap[k] || 0, color: t.colors.status.success.text },
+          { label: `${k} Out`, value: monthOutMap[k] || 0, color: t.colors.status.danger.text },
+        ];
+      }).flat()
+    );
 
     const feed: ActivityRow[] = [
       ...pays.slice(0, 10).map((p: any) => ({ id: `pay-${p.id}`, label: p.client_name || 'Payment', sub: (p.payment_mode || 'CASH').replace(/_/g, ' '), amount: Number(p.amount || 0), type: 'in' as const, date: p.created_at })),
@@ -137,6 +155,10 @@ export default function WalletsGrid() {
 
   return (
     <View style={{ gap: t.spacing.xl }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
+        <Button label="Refresh" size="sm" variant="ghost" icon={<RefreshCw size={13} color={t.colors.textSecondary} />} onPress={load} />
+      </View>
+
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.md }}>
         <View style={{ width: '100%' }}><MetricCard label="Net Balance" value={loading ? '—' : `GHS ${net.toLocaleString()}`} emphasis="primary" tone={net >= 0 ? 'accent' : 'danger'} /></View>
         <View style={{ width: '47%' }}><MetricCard label="Total In" value={loading ? '—' : `GHS ${totalIn.toLocaleString()}`} tone="accent" /></View>
@@ -149,18 +171,29 @@ export default function WalletsGrid() {
         <>
           <Card>
             <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary, marginBottom: t.spacing.md }}>Wallets by Payment Mode</Text>
-            <View style={{ gap: t.spacing.sm }}>
-              {wallets.map((w) => (
-                <View key={w.mode} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: t.spacing.xs, borderBottomWidth: 1, borderBottomColor: t.colors.border }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm }}>
-                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: MODE_COLOR[w.mode] || t.colors.accent }} />
-                    <Text style={{ fontFamily: t.font.medium, fontSize: t.type.body12.size, color: t.colors.textSecondary }}>{MODE_LABEL[w.mode] || w.mode} ({w.count})</Text>
+            {wallets.length === 0 ? (
+              <EmptyState title="No payment records yet" />
+            ) : (
+              <View style={{ gap: t.spacing.sm }}>
+                {wallets.map((w) => (
+                  <View key={w.mode} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: t.spacing.xs, borderBottomWidth: 1, borderBottomColor: t.colors.border }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm }}>
+                      <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: MODE_COLOR[w.mode] || t.colors.accent }} />
+                      <Text style={{ fontFamily: t.font.medium, fontSize: t.type.body12.size, color: t.colors.textSecondary }}>{MODE_LABEL[w.mode] || w.mode} ({w.count})</Text>
+                    </View>
+                    <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body12.size, color: t.colors.textPrimary }}>GHS {w.amount.toLocaleString()}</Text>
                   </View>
-                  <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body12.size, color: t.colors.textPrimary }}>GHS {w.amount.toLocaleString()}</Text>
-                </View>
-              ))}
-            </View>
+                ))}
+              </View>
+            )}
           </Card>
+
+          {inOutTrend.some((d) => d.value > 0) && (
+            <Card>
+              <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary, marginBottom: t.spacing.md }}>Money In vs Out (6 Months)</Text>
+              <BarChart data={inOutTrend.map((d) => ({ ...d, formattedValue: `GHS ${d.value.toLocaleString()}` }))} />
+            </Card>
+          )}
 
           {trend.length > 0 && (
             <Card>
@@ -170,20 +203,27 @@ export default function WalletsGrid() {
           )}
 
           <Card>
-            <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary, marginBottom: t.spacing.md }}>Recent Activity</Text>
-            <View style={{ gap: t.spacing.sm }}>
-              {activity.map((a) => (
-                <View key={a.id} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: t.spacing.xs }}>
-                  <View style={{ flex: 1, marginRight: t.spacing.sm }}>
-                    <Text style={{ fontFamily: t.font.medium, fontSize: t.type.body12.size, color: t.colors.textPrimary }} numberOfLines={1}>{a.label}</Text>
-                    <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted }}>{a.sub}</Text>
-                  </View>
-                  <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body12.size, color: a.type === 'in' ? t.colors.status.success.text : t.colors.status.danger.text }}>
-                    {a.type === 'in' ? '+' : '−'}GHS {a.amount.toLocaleString()}
-                  </Text>
-                </View>
-              ))}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: t.spacing.md }}>
+              <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary }}>Recent Activity</Text>
+              <Button label="All Transactions" size="sm" variant="ghost" icon={<ArrowRight size={13} color={t.colors.accent} />} onPress={() => navigation.navigate('Transactions')} />
             </View>
+            {activity.length === 0 ? (
+              <EmptyState title="No transactions yet" />
+            ) : (
+              <View style={{ gap: t.spacing.sm }}>
+                {activity.map((a) => (
+                  <View key={a.id} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: t.spacing.xs }}>
+                    <View style={{ flex: 1, marginRight: t.spacing.sm }}>
+                      <Text style={{ fontFamily: t.font.medium, fontSize: t.type.body12.size, color: t.colors.textPrimary }} numberOfLines={1}>{a.label}</Text>
+                      <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted }}>{a.sub}</Text>
+                    </View>
+                    <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body12.size, color: a.type === 'in' ? t.colors.status.success.text : t.colors.status.danger.text }}>
+                      {a.type === 'in' ? '+' : '−'}GHS {a.amount.toLocaleString()}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            )}
           </Card>
         </>
       )}

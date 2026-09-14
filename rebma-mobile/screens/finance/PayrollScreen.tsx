@@ -43,12 +43,16 @@ export default function PayrollScreen() {
     load();
   }, [load]);
 
-  const totalPaid = batches.filter((b) => b.status === 'paid').reduce((s, b) => s + Number(b.total_amount || 0), 0);
+  const statusTotals = (['draft', 'approved', 'paid'] as const).map((s) => ({
+    status: s,
+    total: batches.filter((b) => b.status === s).reduce((sum, b) => sum + Number(b.total_amount || 0), 0),
+    count: batches.filter((b) => b.status === s).length,
+  }));
 
   const columns: DataColumn<BatchRow>[] = [
     { key: 'name', label: 'Batch', primary: true },
     { key: 'status', label: 'Status', status: true, render: (b) => <Badge tone={STATUS_TONE[b.status] || 'muted'} label={b.status} /> },
-    { key: 'period', label: 'Period', render: (b) => `${b.period_start} — ${b.period_end}` },
+    { key: 'period', label: 'Period', render: (b) => `${b.period_start} to ${b.period_end}` },
     { key: 'total_amount', label: 'Total', render: (b) => `GHS ${Number(b.total_amount || 0).toLocaleString()}` },
     { key: 'item_count', label: 'Staff', render: (b) => String(b.item_count || 0) },
   ];
@@ -56,7 +60,19 @@ export default function PayrollScreen() {
   return (
     <Screen refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }}>
       <View style={{ gap: t.spacing.lg }}>
-        <MetricCard label="Total Paid Out" value={loading ? '—' : `GHS ${totalPaid.toLocaleString()}`} emphasis="primary" tone="accent" sublabel="Summary totals only — individual amounts are confidential" />
+        <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta11.size, color: t.colors.textMuted }}>Summary totals only, individual amounts are confidential</Text>
+        <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
+          {statusTotals.map((s) => (
+            <View key={s.status} style={{ flex: 1 }}>
+              <MetricCard
+                label={s.status.charAt(0).toUpperCase() + s.status.slice(1)}
+                value={loading ? '—' : `GHS ${s.total.toLocaleString()}`}
+                sublabel={loading ? undefined : `${s.count} batch${s.count !== 1 ? 'es' : ''}`}
+                tone={s.status === 'paid' ? 'accent' : undefined}
+              />
+            </View>
+          ))}
+        </View>
         <DataList columns={columns} data={batches} rowKey={(b) => b.id} loading={loading} emptyTitle="No payroll batches yet" />
       </View>
     </Screen>

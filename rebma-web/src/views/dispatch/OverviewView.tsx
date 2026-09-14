@@ -263,7 +263,7 @@ export default function DispatchOverviewView({ addNotification, setActiveSubTab,
     setAssigning(true);
     const driver = drivers.find(d => d.id === assignDriverId);
     const delivery = deliveries.find(d => d.id === assignDeliveryId);
-    if (!driver || !delivery) { addNotification?.('Selection no longer valid — please try again.'); setAssigning(false); return; }
+    if (!driver || !delivery) { addNotification?.('Selection no longer valid, please try again.'); setAssigning(false); return; }
     const now = new Date().toISOString();
     try {
       const { pending } = await dispatchApi.assignDriverToDelivery(assignDeliveryId, driver.id, driver.fullName, driver.truckId || null);
@@ -289,7 +289,7 @@ export default function DispatchOverviewView({ addNotification, setActiveSubTab,
       addNotification?.(`Driver ${driver.fullName} assigned to ${delivery.orderId}`);
       try {
         await dispatchApi.sendWhatsAppDirections(driver.id);
-        addNotification?.(`WhatsApp opened with the trip link for ${driver.fullName} — tap Send to deliver it.`);
+        addNotification?.(`WhatsApp opened with the trip link for ${driver.fullName}, tap Send to deliver it.`);
       } catch (e: any) {
         addNotification?.(`Assigned, but couldn't open WhatsApp: ${e.message}`);
       }
@@ -301,16 +301,24 @@ export default function DispatchOverviewView({ addNotification, setActiveSubTab,
     }
   };
 
-  // Mark delivered quick action
+  // Mark delivered quick action — routed through risk_review_pod(), the
+  // only path that can ever move delivery_logs.status to DELIVERED (a
+  // transition-guard trigger blocks any other write, and this RPC is also
+  // what correctly closes out the linked orders.status at the same time,
+  // which a raw .update() here never did). Previously this button wrote
+  // status:'DELIVERED' directly, bypassing Risk's proof-of-delivery review
+  // entirely — security/gap audit fix.
   const handleMarkDelivered = async (id: string) => {
     if (assigning) return;
     const now = new Date().toISOString();
     setDeliveries(prev => prev.map(d => d.id === id ? { ...d, status: 'DELIVERED', deliveredAt: now } : d));
     try {
-      await supabase.from('delivery_logs').update({ status: 'DELIVERED', delivered_at: now }).eq('id', id);
+      const { error: rpcError } = await supabase.rpc('risk_review_pod', { p_delivery_log_id: id, p_action: 'approve', p_note: null });
+      if (rpcError) throw rpcError;
       addNotification?.(`Delivery ${id} marked as delivered.`);
     } catch (err: any) {
       addNotification?.(`Failed to mark delivered: ${err.message}`);
+      handleRefresh();
     } finally {
       setMenuOpen(null);
     }

@@ -3,13 +3,18 @@
 // block (this sub-tab has no dedicated file on web — confirmed by
 // checking App.tsx's router, it falls through to FinanceDashboard's
 // default case) — `handleRecordPaymentSubmit`'s exact two branches
-// (DIRECT payment vs CREDIT_SETTLEMENT) ported verbatim. Web gates which
-// payment-mode options appear behind CEO settings (cash/cheque/momo
-// enabled toggles) — simplified here to always show all 4, a safe
-// superset that never blocks a legitimate payment mode.
-import { useCallback, useEffect, useState } from 'react';
+// (DIRECT payment vs CREDIT_SETTLEMENT) ported verbatim. Payment-mode
+// options are now gated by the same cash/cheque/momo CEO settings web
+// checks (getCeoSetting), not shown as a fixed list — a prior pass here
+// always showed all 4 regardless of the CEO's toggles, which is a real
+// functional gap (a disabled mode should be unselectable), not a
+// harmless superset.
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, Text, Alert } from 'react-native';
 import { supabase } from '../../lib/supabaseClient';
+import { approveAccountsReview } from '../../lib/financeActions';
+import { getCeoSetting } from '../../lib/ceoSetting';
+import { useAuthStore } from '../../store/authStore';
 import { useTheme } from '../../theme/ThemeProvider';
 import Screen from '../../components/ui/Screen';
 import Card from '../../components/ui/Card';
@@ -17,21 +22,25 @@ import Button from '../../components/ui/Button';
 import Input, { Field } from '../../components/ui/Input';
 import SearchablePicker from '../../components/ui/SearchablePicker';
 
-const PAYMENT_MODES = [
-  { value: 'CASH', label: 'Cash' },
-  { value: 'CHEQUE', label: 'Cheque' },
-  { value: 'MOBILE_MONEY', label: 'Mobile Money' },
-  { value: 'CREDIT', label: 'Credit' },
+const ALL_PAYMENT_MODES = [
+  { value: 'CASH', label: 'Cash', settingKey: 'cash_payments_enabled' },
+  { value: 'CHEQUE', label: 'Cheque', settingKey: 'cheque_payments_enabled' },
+  { value: 'MOBILE_MONEY', label: 'Mobile Money', settingKey: 'momo_payments_enabled' },
+  { value: 'CREDIT', label: 'Credit', settingKey: null },
 ];
 
 interface CreditOrder {
   id: string;
   client_name: string;
   total_amount: number;
+  ticket_number?: string;
+  product_name?: string;
+  metadata?: any;
 }
 
 export default function RecordPaymentScreen() {
   const t = useTheme();
+  const { profile } = useAuthStore();
   const [payType, setPayType] = useState<'DIRECT' | 'CREDIT'>('DIRECT');
   const [clientName, setClientName] = useState('');
   const [amount, setAmount] = useState('');
@@ -39,14 +48,25 @@ export default function RecordPaymentScreen() {
   const [creditOrders, setCreditOrders] = useState<CreditOrder[]>([]);
   const [selectedOrderId, setSelectedOrderId] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [enabledSettings, setEnabledSettings] = useState<Record<string, boolean>>({ cash_payments_enabled: true, cheque_payments_enabled: true, momo_payments_enabled: true });
 
   const load = useCallback(async () => {
-    const { data } = await supabase.from('orders').select('id, client_name, total_amount').eq('payment_mode', 'CREDIT').eq('status', 'PENDING_FINANCE');
+    const { data } = await supabase.from('orders').select('id, client_name, total_amount, ticket_number, product_name, metadata').eq('payment_mode', 'CREDIT').eq('status', 'PENDING_FINANCE');
     if (data) setCreditOrders(data as any);
   }, []);
 
+  const paymentModes = useMemo(
+    () => ALL_PAYMENT_MODES.filter((m) => !m.settingKey || enabledSettings[m.settingKey] !== false),
+    [enabledSettings]
+  );
+
   useEffect(() => {
     load();
+    Promise.all([
+      getCeoSetting('cash_payments_enabled', true),
+      getCeoSetting('cheque_payments_enabled', true),
+      getCeoSetting('momo_payments_enabled', true),
+    ]).then(([cash, cheque, momo]) => setEnabledSettings({ cash_payments_enabled: cash, cheque_payments_enabled: cheque, momo_payments_enabled: momo }));
   }, [load]);
 
   const reset = () => {
@@ -93,9 +113,15 @@ export default function RecordPaymentScreen() {
         Alert.alert('Payment Save Failed', error.message);
         return;
       }
-      await supabase.from('orders').update({ status: 'APPROVED', updated_at: now }).eq('id', selectedOrderId);
+      // Routed through the same guarded path Orders Queue uses (stock
+      // check, accounts_review_order RPC, stock deduction, Risk/Marketing
+      // notifications, audit log) instead of a bare status write, so
+      // settling a credit order from here can't silently skip any of that.
+      const performedBy = profile?.fullName || 'Finance';
+      const approved = await approveAccountsReview(order, performedBy);
       setSubmitting(false);
-      Alert.alert('Settlement Recorded', `Credit settlement recorded for ${order.client_name} — status set to APPROVED.`);
+      if (!approved) return;
+      Alert.alert('Settlement Recorded', `Credit settlement recorded for ${order.client_name}.`);
       reset();
       load();
     }
@@ -134,7 +160,7 @@ export default function RecordPaymentScreen() {
             <Input value={amount} onChangeText={setAmount} placeholder="0.00" keyboardType="decimal-pad" />
           </Field>
           <Field label="Payment Mode">
-            <SearchablePicker value={payMode} onChange={setPayMode} options={PAYMENT_MODES} />
+            <SearchablePicker value={payMode} onChange={setPayMode} options={paymentModes} />
           </Field>
           <Button label={submitting ? 'Recording…' : 'Record Payment'} onPress={submit} loading={submitting} disabled={submitting} fullWidth />
         </Card>

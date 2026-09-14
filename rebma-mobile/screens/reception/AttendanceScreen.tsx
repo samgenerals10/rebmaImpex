@@ -98,7 +98,7 @@ export default function AttendanceScreen() {
     setSubmitting(false);
     if (error) {
       await enqueue(QUEUE_KEYS.receptionAttendance, 'attendance', payload);
-      Alert.alert('Saved Offline', 'No connection right now — this check-in will sync automatically once you\'re back online.');
+      Alert.alert('Saved Offline', 'No connection right now, so this check-in will sync automatically once you\'re back online.');
     }
     setFullName('');
     setVirtual(false);

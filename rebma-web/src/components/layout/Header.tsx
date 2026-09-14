@@ -134,8 +134,12 @@ export default function Header({
           title: `Order: ${o.clientName}`,
           subtitle: `${o.productName || 'Unnamed'} (Qty: ${o.quantity || 1}) · GHS ${Number(o.totalAmount || 0).toLocaleString()} [${o.status}]`,
           category: 'Orders',
-          dept: isAdmin ? 'CEO' : (dept === 'FINANCE' ? 'FINANCE' : dept === 'RISK' ? 'RISK' : 'MARKETING'),
-          tab: isAdmin ? 'Invoices' : (dept === 'FINANCE' ? 'OrdersQueue' : dept === 'RISK' ? 'RiskApprovals' : 'SalesHistory'),
+          // Sales History moved to Finance — a Marketing searcher's order
+          // result now also lands in Finance (the only place that detail
+          // view still exists), matching how Risk searchers already jump
+          // to Risk's own tab rather than staying in their home department.
+          dept: isAdmin ? 'CEO' : (dept === 'RISK' ? 'RISK' : 'FINANCE'),
+          tab: isAdmin ? 'Invoices' : (dept === 'RISK' ? 'RiskApprovals' : (dept === 'FINANCE' ? 'OrdersQueue' : 'SalesHistory')),
           icon: Clipboard
         });
       });

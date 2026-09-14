@@ -7,9 +7,9 @@
 // dropped (D23); the real data capability (create/list/view proformas)
 // is fully preserved. Insert shape matches apiClient.ts's
 // createProforma() exactly, including its 15% default tax rate.
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, Text, Alert } from 'react-native';
-import { Plus, Trash2 } from 'lucide-react-native';
+import { Plus, Trash2, Download } from 'lucide-react-native';
 import { supabase } from '../../lib/supabaseClient';
 import { useTheme } from '../../theme/ThemeProvider';
 import Screen from '../../components/ui/Screen';
@@ -18,16 +18,22 @@ import Badge from '../../components/ui/Badge';
 import Sheet, { SheetSection } from '../../components/ui/Sheet';
 import Button from '../../components/ui/Button';
 import Input, { Field } from '../../components/ui/Input';
+import SearchablePicker from '../../components/ui/SearchablePicker';
+import ExportSheet from '../../components/shared/ExportSheet';
+import type { ExportColumn } from '../../lib/exportEngine';
 
 interface ProformaRow {
   id: string;
+  proforma_no: string;
   client_name: string;
   line_items: { productName: string; quantity: number; unitPrice: number }[];
   subtotal: number;
   tax_amount: number;
   grand_total: number;
+  currency: string;
   status: string;
   created_at: string;
+  notes: string | null;
 }
 
 interface LineItem {
@@ -49,11 +55,15 @@ export default function InvoicesScreen() {
   const [showAdd, setShowAdd] = useState(false);
   const [clientName, setClientName] = useState('');
   const [clientPhone, setClientPhone] = useState('');
+  const [notes, setNotes] = useState('');
   const [lineItems, setLineItems] = useState<LineItem[]>([{ productName: '', quantity: '1', unitPrice: '' }]);
   const [submitting, setSubmitting] = useState(false);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [exportOpen, setExportOpen] = useState(false);
 
   const load = useCallback(async () => {
-    const { data, error } = await supabase.from('proforma_invoices').select('id, client_name, line_items, subtotal, tax_amount, grand_total, status, created_at').order('created_at', { ascending: false }).limit(200);
+    const { data, error } = await supabase.from('proforma_invoices').select('id, proforma_no, client_name, line_items, subtotal, tax_amount, grand_total, currency, status, created_at, notes').order('created_at', { ascending: false }).limit(200);
     if (!error && data) setProformas(data as any);
     setLoading(false);
     setRefreshing(false);
@@ -62,6 +72,15 @@ export default function InvoicesScreen() {
   useEffect(() => {
     load();
   }, [load]);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return proformas.filter((p) => {
+      const matchesSearch = !q || (p.proforma_no || '').toLowerCase().includes(q) || p.client_name.toLowerCase().includes(q);
+      const matchesStatus = statusFilter === 'all' || p.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [proformas, search, statusFilter]);
 
   const addLine = () => setLineItems((prev) => [...prev, { productName: '', quantity: '1', unitPrice: '' }]);
   const removeLine = (idx: number) => setLineItems((prev) => (prev.length > 1 ? prev.filter((_, i) => i !== idx) : prev));
@@ -76,6 +95,7 @@ export default function InvoicesScreen() {
     setShowAdd(false);
     setClientName('');
     setClientPhone('');
+    setNotes('');
     setLineItems([{ productName: '', quantity: '1', unitPrice: '' }]);
   };
 
@@ -100,7 +120,7 @@ export default function InvoicesScreen() {
       currency: 'GHS',
       status: 'DRAFT',
       created_by: sessionData.session?.user?.id || null,
-      notes: null,
+      notes: notes.trim() || null,
       contact_info: { customerPhone: clientPhone.trim() || '', companyPhone: '', companyEmail: '', companyAddress: '' },
     };
     let { error } = await supabase.from('proforma_invoices').insert(record);
@@ -120,7 +140,16 @@ export default function InvoicesScreen() {
   const columns: DataColumn<ProformaRow>[] = [
     { key: 'client_name', label: 'Client', primary: true },
     { key: 'status', label: 'Status', status: true, render: (p) => <Badge tone={STATUS_TONE[p.status] || 'muted'} label={p.status} /> },
+    { key: 'proforma_no', label: 'Proforma #', render: (p) => p.proforma_no || '—' },
     { key: 'grand_total', label: 'Total', render: (p) => `GHS ${Number(p.grand_total || 0).toLocaleString()}` },
+    { key: 'created_at', label: 'Date', render: (p) => new Date(p.created_at).toLocaleDateString() },
+  ];
+
+  const exportColumns: ExportColumn[] = [
+    { key: 'proforma_no', label: 'Proforma #' },
+    { key: 'client_name', label: 'Client' },
+    { key: 'grand_total', label: 'Grand Total', render: (p) => Number(p.grand_total || 0).toLocaleString() },
+    { key: 'status', label: 'Status' },
     { key: 'created_at', label: 'Date', render: (p) => new Date(p.created_at).toLocaleDateString() },
   ];
 
@@ -128,13 +157,21 @@ export default function InvoicesScreen() {
     <Screen refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }}
       footer={<View style={{ padding: t.spacing.lg }}><Button label="Generate Proforma Invoice" onPress={() => setShowAdd(true)} fullWidth /></View>}
     >
-      <DataList columns={columns} data={proformas} rowKey={(p) => p.id} loading={loading} emptyTitle="No proforma invoices yet" onRowPress={setDetail} />
+      <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginBottom: t.spacing.md }}>
+        <Button label="Export CSV" size="sm" variant="ghost" icon={<Download size={13} color={t.colors.textSecondary} />} onPress={() => setExportOpen(true)} />
+      </View>
+      <View style={{ gap: t.spacing.sm, marginBottom: t.spacing.md }}>
+        <Input value={search} onChangeText={setSearch} placeholder="Search proforma # / customer…" />
+        <SearchablePicker label="Status" value={statusFilter} onChange={setStatusFilter} options={[{ value: 'all', label: 'All Status' }, { value: 'DRAFT', label: 'Draft' }, { value: 'SENT', label: 'Sent' }, { value: 'CONVERTED', label: 'Converted' }]} />
+      </View>
+      <DataList columns={columns} data={filtered} rowKey={(p) => p.id} loading={loading} emptyTitle="No proforma invoices yet" onRowPress={setDetail} />
 
       <Sheet open={showAdd} onClose={closeForm} title="Generate Proforma Invoice" side="bottom" maxHeight={680}
         footer={<Button label={submitting ? 'Creating…' : 'Create Proforma'} onPress={submit} loading={submitting} disabled={submitting} fullWidth />}
       >
         <Field label="Client Name *"><Input value={clientName} onChangeText={setClientName} placeholder="Client name" /></Field>
         <Field label="Client Phone" hint="Optional"><Input value={clientPhone} onChangeText={setClientPhone} placeholder="Phone number" keyboardType="phone-pad" /></Field>
+        <Field label="Notes" hint="Optional"><Input value={notes} onChangeText={setNotes} placeholder="Any extra detail for this quote" /></Field>
 
         <SheetSection label="Line Items">
           {lineItems.map((item, idx) => (
@@ -168,22 +205,51 @@ export default function InvoicesScreen() {
         </View>
       </Sheet>
 
-      <Sheet open={!!detail} onClose={() => setDetail(null)} title={detail?.client_name} subtitle={detail?.status} side="bottom" maxHeight={560}>
+      <Sheet open={!!detail} onClose={() => setDetail(null)} title={detail?.proforma_no || detail?.client_name} subtitle={detail?.client_name} side="bottom" maxHeight={640}>
         {detail && (
-          <SheetSection label="Line Items">
-            {(detail.line_items || []).map((item, idx) => (
-              <View key={idx} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 }}>
-                <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textSecondary }}>{item.productName} × {item.quantity}</Text>
-                <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body12.size, color: t.colors.textPrimary }}>GHS {(item.quantity * item.unitPrice).toLocaleString()}</Text>
+          <>
+            <SheetSection label="Summary">
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 2 }}>
+                <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta11.size, color: t.colors.textMuted }}>Proforma No</Text>
+                <Text style={{ fontFamily: t.font.bold, fontSize: t.type.meta11.size, color: t.colors.accent }}>{detail.proforma_no || '—'}</Text>
               </View>
-            ))}
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: t.spacing.md, paddingTop: t.spacing.sm, borderTopWidth: 1, borderTopColor: t.colors.border }}>
-              <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary }}>Grand Total</Text>
-              <Text style={{ fontFamily: t.font.extrabold, fontSize: t.type.title18.size, color: t.colors.accent }}>GHS {Number(detail.grand_total || 0).toLocaleString()}</Text>
-            </View>
-          </SheetSection>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 2 }}>
+                <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta11.size, color: t.colors.textMuted }}>Issued</Text>
+                <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.meta11.size, color: t.colors.textPrimary }}>{new Date(detail.created_at).toISOString().slice(0, 10)}</Text>
+              </View>
+            </SheetSection>
+            <SheetSection label="Line Items">
+              {(detail.line_items || []).map((item, idx) => (
+                <View key={idx} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 }}>
+                  <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textSecondary }}>{item.productName} × {item.quantity}</Text>
+                  <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body12.size, color: t.colors.textPrimary }}>GHS {(item.quantity * item.unitPrice).toLocaleString()}</Text>
+                </View>
+              ))}
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: t.spacing.sm, paddingTop: t.spacing.sm, borderTopWidth: 1, borderTopColor: t.colors.border }}>
+                <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textMuted }}>Subtotal</Text>
+                <Text style={{ fontFamily: t.font.medium, fontSize: t.type.body12.size, color: t.colors.textSecondary }}>GHS {Number(detail.subtotal || 0).toLocaleString()}</Text>
+              </View>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textMuted }}>Tax</Text>
+                <Text style={{ fontFamily: t.font.medium, fontSize: t.type.body12.size, color: t.colors.textSecondary }}>GHS {Number(detail.tax_amount || 0).toLocaleString()}</Text>
+              </View>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: t.spacing.md, paddingTop: t.spacing.sm, borderTopWidth: 1, borderTopColor: t.colors.border }}>
+                <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary }}>Grand Total</Text>
+                <Text style={{ fontFamily: t.font.extrabold, fontSize: t.type.title18.size, color: t.colors.accent }}>GHS {Number(detail.grand_total || 0).toLocaleString()}</Text>
+              </View>
+            </SheetSection>
+          </>
         )}
       </Sheet>
+
+      <ExportSheet
+        open={exportOpen}
+        onClose={() => setExportOpen(false)}
+        title="Proforma Invoices"
+        data={filtered}
+        columns={exportColumns}
+        formats={['csv']}
+      />
     </Screen>
   );
 }

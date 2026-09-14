@@ -242,7 +242,7 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
       // convenience, not the actual enforcement boundary.
       if (form.paymentMode === 'CREDIT' && resolvedCustomer) {
         if (resolvedCustomer.creditStatus === 'ON_HOLD') {
-          addNotification(`Credit is ON HOLD for ${resolvedCustomer.name} — new credit orders are blocked. Contact Risk.`);
+          addNotification(`Credit is ON HOLD for ${resolvedCustomer.name}. New credit orders are blocked. Contact Risk.`);
           setSubmitting(false);
           return;
         }
@@ -258,7 +258,7 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
 
       const creditLimit = getSetting('max_credit_amount', 0);
       if (form.paymentMode === 'CREDIT' && !resolvedCustomer?.creditLimit && creditLimit > 0 && orderTotal > creditLimit) {
-        addNotification(`Credit orders are capped at GHS ${Number(creditLimit).toLocaleString()} by the CEO — this order is GHS ${orderTotal.toLocaleString()}.`);
+        addNotification(`Credit orders are capped at GHS ${Number(creditLimit).toLocaleString()} by the CEO, and this order is GHS ${orderTotal.toLocaleString()}.`);
         setSubmitting(false);
         return;
       }
@@ -508,12 +508,12 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
                   const cust = customers.find(c => c.id === form.customerId);
                   if (!cust) return null;
                   if (cust.creditStatus === 'ON_HOLD') {
-                    return <p className="text-[10px] font-bold text-rose-600 mt-1">⚠ Credit is ON HOLD for this customer — new credit orders will be blocked.</p>;
+                    return <p className="text-[10px] font-bold text-rose-600 mt-1">⚠ Credit is ON HOLD for this customer. New credit orders will be blocked.</p>;
                   }
                   const outstanding = outstandingCreditFor(orders, { id: cust.id, name: cust.name });
                   return (
                     <p className="text-[10px] font-semibold text-[var(--text-muted)] mt-1">
-                      Credit: {cust.creditLimit != null ? `GHS ${cust.creditLimit.toLocaleString()} limit` : 'no per-customer limit — global cap applies'} · GHS {outstanding.toLocaleString()} outstanding
+                      Credit: {cust.creditLimit != null ? `GHS ${cust.creditLimit.toLocaleString()} limit` : 'no per-customer limit, global cap applies'} · GHS {outstanding.toLocaleString()} outstanding
                     </p>
                   );
                 })()}

@@ -29,6 +29,7 @@ import BarChart from '../../components/ui/BarChart';
 import Button from '../../components/ui/Button';
 import SectionHeader from '../../components/ui/SectionHeader';
 import ModuleLauncher from '../../components/chrome/ModuleLauncher';
+import PendingApprovalsAlertCard from '../../components/shared/PendingApprovalsAlertCard';
 
 interface CargoRow {
   id: string;
@@ -99,6 +100,8 @@ export default function OverviewScreen() {
   return (
     <Screen refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }}>
       <View style={{ gap: t.spacing.xl }}>
+        <PendingApprovalsAlertCard department="ADMIN_WAREHOUSE" onNavigate={(tab) => navigation.navigate(tab)} />
+
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.md }}>
           <View style={{ width: '47%' }}>
             <MetricCard label="Cargo Weight" value={loading ? '—' : totalTons.toFixed(1)} sublabel="Tons accumulated" icon={<Layers size={16} color={t.colors.accent} />} />

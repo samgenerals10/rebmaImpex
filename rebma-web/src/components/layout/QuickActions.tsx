@@ -81,8 +81,8 @@ export function QuickActions({
             <>
               <QABtn icon={<ShoppingCart className="w-5 h-5" />} color="bg-emerald-500" label="Create Order" onClick={() => handleQuickAction('Create Order', 'MARKETING')} />
               <QABtn icon={<UserPlus className="w-5 h-5" />} color="bg-blue-500" label="Register Customer" onClick={() => handleQuickAction('Register Customer', 'MARKETING')} />
-              <QABtn icon={<TrendingUp className="w-5 h-5" />} color="bg-indigo-500" label="View Pipeline" onClick={() => handleQuickAction('View Pipeline', 'MARKETING')} />
-              <QABtn icon={<Download className="w-5 h-5" />} color="bg-amber-500" label="Export Report" onClick={() => handleQuickAction('Export Report', 'MARKETING')} />
+              <QABtn icon={<TrendingUp className="w-5 h-5" />} color="bg-indigo-500" label="View Analytics" onClick={() => handleQuickAction('View Analytics', 'MARKETING')} />
+              <QABtn icon={<CreditCard className="w-5 h-5" />} color="bg-amber-500" label="Credit Requests" onClick={() => handleQuickAction('Credit Requests', 'MARKETING')} />
             </>
           )}
           {activeDepartment === 'PRODUCTION' && (

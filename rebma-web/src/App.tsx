@@ -90,10 +90,9 @@ import RiskRecruitmentView from './views/risk/RecruitmentView';
 import LiveUsersView from './views/ceo/LiveUsersView';
 
 // Marketing dedicated pages
-import MarketingInvoicesView from './views/marketing/InvoicesView';
 import MarketingOrdersView from './views/marketing/OrdersView';
 import MarketingCustomersView from './views/marketing/CustomersView';
-import MarketingSalesHistoryView from './views/marketing/SalesHistoryView';
+import FinanceSalesHistoryView from './views/finance/SalesHistoryView';
 import MarketingOverviewView from './views/marketing/OverviewView';
 import MarketingCreditRequestsView from './views/marketing/CreditRequestsView';
 import MarketingAnalyticsView from './views/marketing/AnalyticsView';
@@ -1608,6 +1607,7 @@ export default function App() {
             .from('chat_messages')
             .insert({
               sender: msg.sender,
+              sender_id: currentUser?.id || null,
               content: msg.content,
               time: msg.time,
               receiver: msg.receiver || null
@@ -1929,16 +1929,6 @@ export default function App() {
     }
   };
 
-  const handleEvaluateOrder = async (id: string, approve: boolean) => {
-    try {
-      await finance.evaluateOrder(id, approve);
-      addNotification(`Finance processed evaluation decision.`);
-      refreshAllData();
-    } catch (err: any) {
-      alert(err.message || 'Failed to evaluate order.');
-    }
-  };
-
   const handleManagementCreditDecision = async (id: string, approve: boolean) => {
     try {
       await management.approveCreditOrder(id, approve);
@@ -2082,6 +2072,7 @@ export default function App() {
         .from('chat_messages')
         .insert({
           sender: currentUser?.fullName || 'Self',
+          sender_id: currentUser?.id || null,
           content: content,
           receiver: receiver,
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -2372,7 +2363,7 @@ export default function App() {
       const { error: verifyError } = await supabase.auth.mfa.verify({ factorId: pendingMfa.factorId, challengeId: challenge.id, code: mfaCode });
       setMfaSubmitting(false);
       if (verifyError) {
-        setMfaError('Incorrect code — check your authenticator app and try again.');
+        setMfaError('Incorrect code. Check your authenticator app and try again.');
         return;
       }
       if (pendingMfa.token) setToken(pendingMfa.token);
@@ -2481,7 +2472,7 @@ export default function App() {
           <div className="text-center pb-0.5">
             <h3 className="text-2xl font-black text-slate-900 tracking-tight">Confirm Your Details</h3>
             <div className="w-8 h-1 bg-emerald-500 mx-auto rounded-full mt-1.5" />
-            <p className="text-xs text-slate-500 mt-2">HR already entered your record — confirm it's you to complete registration.</p>
+            <p className="text-xs text-slate-500 mt-2">HR already entered your record. Confirm it's you to complete registration.</p>
           </div>
 
           {[
@@ -3152,13 +3143,14 @@ export default function App() {
 
     // Finance dedicated sub-tab pages
     if (activeDepartment === 'FINANCE') {
-      if (activeSubTab === 'Evaluation')        return <FinanceOverviewView addNotification={addNotification} setActiveSubTab={setActiveSubTab} currentUser={currentUser} ordersList={ordersList} onEvaluateOrder={handleEvaluateOrder} />;
-      if (activeSubTab === 'OrdersQueue')       return <FinanceOrdersQueueView addNotification={addNotification} ordersList={ordersList} setOrdersList={setOrdersList} onEvaluateOrder={handleEvaluateOrder} currentUser={currentUser} />;
+      if (activeSubTab === 'Evaluation')        return <FinanceOverviewView addNotification={addNotification} setActiveSubTab={setActiveSubTab} currentUser={currentUser} ordersList={ordersList} />;
+      if (activeSubTab === 'OrdersQueue')       return <FinanceOrdersQueueView addNotification={addNotification} ordersList={ordersList} setOrdersList={setOrdersList} currentUser={currentUser} />;
       if (activeSubTab === 'Receipts')          return <FinanceReceiptsView addNotification={addNotification} />;
       if (activeSubTab === 'Statement')         return <FinanceStatementView addNotification={addNotification} />;
       if (activeSubTab === 'Wallets')           return <FinanceWalletsView />;
       if (activeSubTab === 'Transactions')      return <FinanceTransactionsView addNotification={addNotification} />;
       if (activeSubTab === 'Invoices')          return <CeoInvoicesView addNotification={addNotification} currentUser={currentUser} />;
+      if (activeSubTab === 'SalesHistory')      return <FinanceSalesHistoryView ordersList={ordersList} addNotification={addNotification} />;
       if (activeSubTab === 'PriceCatalog')      return <GoodsPriceCatalogView addNotification={addNotification} currentUser={currentUser} department={activeDepartment} />;
       if (activeSubTab === 'RecurringPayments') return <FinanceRecurringView currentUser={currentUser} addNotification={addNotification} />;
       if (activeSubTab === 'CreditMgmt')        return <FinanceCreditMgmtView addNotification={addNotification} currentUser={currentUser} />;
@@ -3204,14 +3196,13 @@ export default function App() {
       if (activeSubTab === 'DeptActivity')  return <DeptActivityView currentUser={currentUser} addNotification={addNotification} />;
     }
 
-    // Marketing dedicated sub-tab pages
+    // Marketing dedicated sub-tab pages — Sales History and Invoices
+    // (invoice generation) moved to Finance, see the FINANCE block below.
     if (activeDepartment === 'MARKETING') {
       if (activeSubTab === 'Overview')          return <MarketingOverviewView addNotification={addNotification} setActiveSubTab={setActiveSubTab} currentUser={currentUser} ordersList={ordersList} customersList={customersList} />;
-      if (activeSubTab === 'Invoices')          return <MarketingInvoicesView addNotification={addNotification} currentUser={currentUser} />;
       if (activeSubTab === 'PriceCatalog')      return <GoodsPriceCatalogView addNotification={addNotification} currentUser={currentUser} department={activeDepartment} />;
       if (activeSubTab === 'CreateOrder')       return <MarketingOrdersView ordersList={ordersList} onCreateOrder={handleCreateOrder} addNotification={addNotification} />;
       if (activeSubTab === 'RegisterCustomer')  return <MarketingCustomersView customersList={customersList} onRegisterCustomer={handleRegisterCustomer} addNotification={addNotification} />;
-      if (activeSubTab === 'SalesHistory')      return <MarketingSalesHistoryView ordersList={ordersList} addNotification={addNotification} />;
       if (activeSubTab === 'CreditRequests')    return <MarketingCreditRequestsView addNotification={addNotification} currentUser={currentUser} />;
       if (activeSubTab === 'MktAnalytics')      return <MarketingAnalyticsView addNotification={addNotification} currentUser={currentUser} />;
     }
@@ -3342,7 +3333,6 @@ export default function App() {
           <FinanceDashboard
             ordersList={ordersList}
             setOrdersList={setOrdersList}
-            onEvaluateOrder={handleEvaluateOrder}
             onFinalizeOrder={handleFinalizeOrder}
             activeSubTab={activeSubTab}
             setActiveSubTab={setActiveSubTab}
@@ -3614,15 +3604,17 @@ export default function App() {
         sessionStorage.setItem('rebma-last-dept', 'MARKETING');
         setActiveSubTab('RegisterCustomer');
         setActiveMobileView('dashboard');
-      } else if (actionName === 'View Pipeline') {
+      } else if (actionName === 'View Analytics') {
+        // Sales History (where this used to land) moved to Finance —
+        // Marketing's closest remaining equivalent is its own Analytics tab.
         setActiveDepartment('MARKETING');
         sessionStorage.setItem('rebma-last-dept', 'MARKETING');
-        setActiveSubTab('SalesHistory');
+        setActiveSubTab('MktAnalytics');
         setActiveMobileView('dashboard');
-      } else if (actionName === 'Export Report') {
+      } else if (actionName === 'Credit Requests') {
         setActiveDepartment('MARKETING');
         sessionStorage.setItem('rebma-last-dept', 'MARKETING');
-        setActiveSubTab('SalesHistory');
+        setActiveSubTab('CreditRequests');
         setActiveMobileView('dashboard');
       }
     } else if (dept === 'PRODUCTION') {

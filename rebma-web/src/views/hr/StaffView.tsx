@@ -145,7 +145,7 @@ export default function StaffView({ staffList: propStaff, addNotification, curre
   // time "View" is clicked, matching the chat-attachments precedent.
   const viewResume = async (path: string) => {
     const url = await getSignedFileUrl('staff-resumes', path);
-    if (!url) { addNotification(`Could not open resume — it may have been removed.`); return; }
+    if (!url) { addNotification(`Could not open resume. It may have been removed.`); return; }
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
@@ -285,7 +285,7 @@ export default function StaffView({ staffList: propStaff, addNotification, curre
         read: false,
       });
 
-      addNotification(`Candidate record saved for ${form.fullName} — ready to send.`);
+      addNotification(`Candidate record saved for ${form.fullName} and ready to send.`);
       setShowAdd(false);
       setCreatedInvite({ id: inviteRow.id, token, email: form.email.trim().toLowerCase(), fullName: form.fullName, phone: form.phone, whatsapp: form.phone });
       setSendWhatsappNumber(form.phone);
@@ -400,7 +400,7 @@ export default function StaffView({ staffList: propStaff, addNotification, curre
         title="Send Invite"
         footer={<button onClick={() => setCreatedInvite(null)} className="erp-btn erp-btn-primary w-full">Done</button>}
       >
-        <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '0 0 1rem' }}>Saved. Choose how to send the link to {createdInvite.fullName} — any combination.</p>
+        <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '0 0 1rem' }}>Saved. Choose how to send the link to {createdInvite.fullName}, any combination.</p>
 
         <div style={{ display: 'grid', gap: '1rem' }}>
           <div style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '0.75rem' }}>
@@ -427,7 +427,7 @@ export default function StaffView({ staffList: propStaff, addNotification, curre
                   style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.75rem', fontSize: 13, marginBottom: 8, boxSizing: 'border-box' }} />
                 <pre style={{ whiteSpace: 'pre-wrap', background: 'var(--bg)', borderRadius: 8, padding: '0.5rem 0.75rem', fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 0.5rem' }}>{message}</pre>
                 <button type="button" onClick={openWhatsapp} className="erp-btn erp-btn-primary" style={{ width: '100%' }}>Open WhatsApp to Send</button>
-                <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '6px 0 0' }}>Opens your own WhatsApp with the message ready — you tap Send.</p>
+                <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '6px 0 0' }}>Opens your own WhatsApp with the message ready, so you can tap Send.</p>
               </>
             )}
           </div>
@@ -437,7 +437,7 @@ export default function StaffView({ staffList: propStaff, addNotification, curre
               <input type="checkbox" disabled />
               SMS
             </label>
-            <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '6px 0 0' }}>Not configured yet — needs an SMS gateway account connected.</p>
+            <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '6px 0 0' }}>Not configured yet. Needs an SMS gateway account connected.</p>
           </div>
 
           <div style={{ display: 'flex', gap: 8 }}>

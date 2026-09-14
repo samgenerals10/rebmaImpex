@@ -79,7 +79,7 @@ export default function AppearanceScreen() {
         </Card>
 
         <Card>
-          <SectionHeader title="Dark Mode" subtitle="Matches Web's real toggle — a plain on/off, not a system-match option." />
+          <SectionHeader title="Dark Mode" subtitle="Matches Web's real toggle: a plain on/off, not a system-match option." />
           <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
             <View style={{ flex: 1 }}>
               <Button label="Light" size="sm" variant={!t.darkMode ? 'primary' : 'ghost'} onPress={() => t.darkMode && t.toggleDarkMode()} />

@@ -247,7 +247,7 @@ async function printWaybill(order: ApprovedOrder, template: DocumentTemplate, di
         <div class="footer">
           <div class="legal">
             ${t.footerNote}<br/>
-            Invoice ref: <strong>${order.ticketNumber}</strong> — scan QR to match against customer invoice.
+            Invoice ref: <strong>${order.ticketNumber}</strong>. Scan the QR code to match it against the customer invoice.
           </div>
           <div class="qr-wrap">
             ${qrDataUrl
@@ -614,14 +614,14 @@ export default function ApprovedGoodsView({ addNotification, setActiveSubTab: _s
                   </button>
                   {(o.status === 'APPROVED' || o.status === 'PROCESSING') && !dispatchedOrderIds.has(o.id) && (
                     <button onClick={() => { setDispatchTarget(o); setDispatchForm({ containerNumber: '' }); }}
-                      title="Confirm goods are ready — Risk assigns the vehicle and driver next"
+                      title="Confirm goods are ready. Risk assigns the vehicle and driver next"
                       className="flex items-center gap-1 px-2.5 py-1.5 text-white rounded-lg text-[10px] font-bold hover:opacity-90 cursor-pointer whitespace-nowrap transition-opacity"
                       style={{ background: 'var(--accent)' }}>
                       <Truck size={11} /> Dispatch
                     </button>
                   )}
                   {(o.status === 'APPROVED' || o.status === 'PROCESSING') && dispatchedOrderIds.has(o.id) && (
-                    <span className="text-[9px] font-bold text-blue-600 flex items-center gap-1"><Truck size={9} /> Assigned — awaiting pickup</span>
+                    <span className="text-[9px] font-bold text-blue-600 flex items-center gap-1"><Truck size={9} /> Assigned, awaiting pickup</span>
                   )}
                   {o.status === 'OUT_FOR_DELIVERY' && (
                     <span className="text-[9px] font-bold text-amber-600 flex items-center gap-1"><Truck size={9} /> In Transit</span>
@@ -708,7 +708,7 @@ export default function ApprovedGoodsView({ addNotification, setActiveSubTab: _s
         open={!!dispatchTarget}
         onClose={() => setDispatchTarget(null)}
         title="Load to Dispatch"
-        subtitle="Confirm goods are checked and ready — Risk assigns the vehicle and driver next"
+        subtitle="Confirm goods are checked and ready. Risk assigns the vehicle and driver next"
         footer={
           <>
             <button onClick={() => setDispatchTarget(null)} className="erp-btn erp-btn-ghost">Cancel</button>
@@ -751,13 +751,13 @@ export default function ApprovedGoodsView({ addNotification, setActiveSubTab: _s
                 <p className="text-[10px] text-[var(--text-muted)]">This quantity will be recorded as OUT in the stock ledger</p>
               </div>
               <div className="bg-[var(--bg)] border border-[var(--border)] rounded-xl px-4 py-3 text-[11px] text-[var(--text-muted)]">
-                Vehicle and driver are no longer assigned here — Risk picks them once this order lands in their Dispatch queue.
+                Vehicle and driver are no longer assigned here. Risk picks them once this order lands in their Dispatch queue.
               </div>
               <div className="erp-form-group">
                 <label className="erp-label">Container Number <span className="font-normal normal-case text-[var(--text-muted)]">(optional)</span></label>
                 <input value={dispatchForm.containerNumber} onChange={e => setDispatchForm(f => ({ ...f, containerNumber: e.target.value }))}
                   placeholder="e.g. MSKU-1234567" className="erp-input" />
-                <p className="text-[10px] text-[var(--text-muted)] mt-1">Printed on the Waybill — sets the shipment's number once, at dispatch.</p>
+                <p className="text-[10px] text-[var(--text-muted)] mt-1">Printed on the Waybill, and sets the shipment's number once, at dispatch.</p>
               </div>
             </div>
 
@@ -768,7 +768,7 @@ export default function ApprovedGoodsView({ addNotification, setActiveSubTab: _s
             )}
 
             <p className="text-[10px] text-[var(--text-muted)] text-center">
-              Order to <strong>OUT_FOR_DELIVERY</strong>. Stock ledger REMOVE entry created. Audit trail recorded
+              Marked ready for dispatch. Risk assigns the vehicle and driver next. Stock was already deducted at Finance approval. Audit trail recorded
             </p>
           </div>
         )}

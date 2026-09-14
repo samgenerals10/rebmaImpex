@@ -110,7 +110,7 @@ export default function FinanceCreditMgmtView({ addNotification, currentUser }: 
   async function sendReminder() {
     if (!reminderModal) return;
     if (!getSetting('payment_reminders_enabled', true)) { addNotification?.('Payment reminders are currently disabled by the CEO.'); return; }
-    if (reminderType === 'whatsapp' && !getSetting('whatsapp_enabled', true)) { addNotification?.('WhatsApp is currently disabled by the CEO — switch to Email.'); return; }
+    if (reminderType === 'whatsapp' && !getSetting('whatsapp_enabled', true)) { addNotification?.('WhatsApp is currently disabled by the CEO, switch to Email.'); return; }
     if (submitting) return;
     setSubmitting(true);
     try {

@@ -17,6 +17,7 @@ import { supabase } from '../lib/supabaseClient';
 import { messenger, type ChatMessage, type Channel } from '../lib/messenger';
 import { pickOrCaptureImageAsset, pickDocument, pickMultipleImageAssets, validateAttachment } from '../lib/media';
 import { subscribeToLiveUsers, type PresencePayload } from '../lib/presence';
+import { getCeoSetting } from '../lib/ceoSetting';
 import { useAuthStore } from '../store/authStore';
 import { useTheme } from '../theme/ThemeProvider';
 import { usePresets } from '../theme/presets';
@@ -84,6 +85,26 @@ export default function MessengerThreadScreen({ route, navigation }: any) {
   // Phase 11.5 — ad-hoc calls (previously Meetings-only on mobile).
   const [activeCall, setActiveCall] = useState<{ room: string; title: string; kind: 'voice' | 'video'; callMessageId?: string; memberIds: string[] } | null>(null);
   const [showCallHistory, setShowCallHistory] = useState(false);
+
+  // Security/gap audit fix — these five CEO Communication Controls toggles
+  // (Messenger.tsx already reads all of them via useCeoSettings) were
+  // never wired into this screen at all: calls/attachments/retention had
+  // no enforcement whatsoever, and the three channel-type toggles weren't
+  // checked before a plain send either.
+  const [callsEnabled, setCallsEnabled] = useState(true);
+  const [attachmentsEnabled, setAttachmentsEnabled] = useState(true);
+  const [retentionDays, setRetentionDays] = useState(0);
+  const [globalChatEnabled, setGlobalChatEnabled] = useState(true);
+  const [departmentChatEnabled, setDepartmentChatEnabled] = useState(true);
+  const [directMessagesEnabled, setDirectMessagesEnabled] = useState(true);
+  useEffect(() => {
+    getCeoSetting('messenger_calls_enabled', true).then(setCallsEnabled);
+    getCeoSetting('messenger_attachments_enabled', true).then(setAttachmentsEnabled);
+    getCeoSetting('message_retention_days', 0).then(setRetentionDays);
+    getCeoSetting('global_chat_enabled', true).then(setGlobalChatEnabled);
+    getCeoSetting('department_chat_enabled', true).then(setDepartmentChatEnabled);
+    getCeoSetting('direct_messages_enabled', true).then(setDirectMessagesEnabled);
+  }, []);
   const scrollRef = useRef<ScrollView>(null);
   const memberIds = useRef<string[]>([]);
   const presenceRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
@@ -341,6 +362,12 @@ export default function MessengerThreadScreen({ route, navigation }: any) {
 
   const handleSend = async () => {
     if (!composer.trim() || sending) return;
+    // These three channel-type toggles were never checked on mobile at
+    // all (web's own handleSend already gates on them) — a CEO disabling
+    // Everyone/group/DM chat had no effect on mobile sends.
+    if (channelType === 'everyone' && !globalChatEnabled) return;
+    if (channelType === 'group' && !departmentChatEnabled) return;
+    if (channelType === 'dm' && !directMessagesEnabled) return;
     const text = composer;
     setComposer('');
     setMentionQuery(null);
@@ -535,6 +562,11 @@ export default function MessengerThreadScreen({ route, navigation }: any) {
 
   const forwardMessage = async (target: Channel) => {
     if (!forwardTarget || !me) return;
+    // Same channel-type toggles handleSend now respects, above —
+    // forwarding was bypassing them entirely.
+    if (target.type === 'everyone' && !globalChatEnabled) return;
+    if (target.type === 'group' && !departmentChatEnabled) return;
+    if (target.type === 'dm' && !directMessagesEnabled) return;
     try {
       await messenger.sendMessage(target.id, myId, myName, forwardTarget.content, {
         attachmentUrl: forwardTarget.attachment_url || undefined,
@@ -550,9 +582,14 @@ export default function MessengerThreadScreen({ route, navigation }: any) {
     setForwardTarget(null);
   };
 
+  // CEO-configurable retention (message_retention_days, 0/unset = keep
+  // indefinitely) — hides, doesn't delete, any message older than N days.
+  // Web's Messenger.tsx already did this; mobile never had it at all.
+  const retentionCutoff = retentionDays > 0 ? Date.now() - retentionDays * 86400000 : null;
   const visibleMessages = messages.filter((m) => {
     if (starredOnly && !starredIds.has(m.id)) return false;
     if (search.trim() && !m.content.toLowerCase().includes(search.trim().toLowerCase())) return false;
+    if (retentionCutoff && new Date(m.created_at).getTime() < retentionCutoff) return false;
     return true;
   });
   const pinnedMessages = messages.filter((m) => pinnedIds.has(m.id));
@@ -600,12 +637,16 @@ export default function MessengerThreadScreen({ route, navigation }: any) {
             <Clock size={17} color={t.colors.textMuted} />
           </Pressable>
         )}
-        <Pressable onPress={() => startCall('voice')} hitSlop={8} style={{ padding: 4 }}>
-          <PhoneIcon size={17} color={t.colors.accent} />
-        </Pressable>
-        <Pressable onPress={() => startCall('video')} hitSlop={8} style={{ padding: 4 }}>
-          <Video size={17} color={t.colors.accent} />
-        </Pressable>
+        {callsEnabled && (
+          <Pressable onPress={() => startCall('voice')} hitSlop={8} style={{ padding: 4 }}>
+            <PhoneIcon size={17} color={t.colors.accent} />
+          </Pressable>
+        )}
+        {callsEnabled && (
+          <Pressable onPress={() => startCall('video')} hitSlop={8} style={{ padding: 4 }}>
+            <Video size={17} color={t.colors.accent} />
+          </Pressable>
+        )}
       </View>
 
       {showSearch && (
@@ -622,7 +663,7 @@ export default function MessengerThreadScreen({ route, navigation }: any) {
       )}
 
       <ScrollView ref={scrollRef} style={{ flex: 1 }} contentContainerStyle={{ padding: t.spacing.lg, gap: t.spacing.sm }}>
-        {messages.length === 0 && <Text style={{ ...p.meta, textAlign: 'center', paddingVertical: t.spacing.xxxl }}>No messages yet — say hello.</Text>}
+        {messages.length === 0 && <Text style={{ ...p.meta, textAlign: 'center', paddingVertical: t.spacing.xxxl }}>No messages yet, say hello.</Text>}
         {messages.length > 0 && visibleMessages.length === 0 && (
           <Text style={{ ...p.meta, textAlign: 'center', paddingVertical: t.spacing.xxxl }}>{starredOnly ? 'No starred messages.' : 'No messages match your search.'}</Text>
         )}
@@ -763,16 +804,20 @@ export default function MessengerThreadScreen({ route, navigation }: any) {
             </>
           ) : (
             <>
-              <Pressable onPress={handleAttach} hitSlop={8} style={{ padding: 6 }}>
-                <Paperclip size={18} color={t.colors.textMuted} />
-              </Pressable>
-              <Pressable
-                onPress={recorderState.isRecording ? stopVoiceRecording : startVoiceRecording}
-                hitSlop={8}
-                style={{ padding: 6, borderRadius: 14, backgroundColor: recorderState.isRecording ? t.colors.status.danger.text : 'transparent' }}
-              >
-                {recorderState.isRecording ? <Square size={16} color={t.colors.onAccent} /> : <Mic size={18} color={t.colors.textMuted} />}
-              </Pressable>
+              {attachmentsEnabled && (
+                <Pressable onPress={handleAttach} hitSlop={8} style={{ padding: 6 }}>
+                  <Paperclip size={18} color={t.colors.textMuted} />
+                </Pressable>
+              )}
+              {attachmentsEnabled && (
+                <Pressable
+                  onPress={recorderState.isRecording ? stopVoiceRecording : startVoiceRecording}
+                  hitSlop={8}
+                  style={{ padding: 6, borderRadius: 14, backgroundColor: recorderState.isRecording ? t.colors.status.danger.text : 'transparent' }}
+                >
+                  {recorderState.isRecording ? <Square size={16} color={t.colors.onAccent} /> : <Mic size={18} color={t.colors.textMuted} />}
+                </Pressable>
+              )}
               <View style={{ flex: 1 }}>
                 {mentionCandidates.length > 0 && (
                   <View style={{ position: 'absolute', bottom: '100%', left: 0, right: 0, marginBottom: 4, backgroundColor: t.colors.bgCard, borderWidth: 1, borderColor: t.colors.border, borderRadius: t.radius.md, paddingVertical: 4, ...t.shadow('dropdown') }}>

@@ -20,6 +20,7 @@ import { Ship, Package, Camera as CameraIcon } from 'lucide-react-native';
 import { supabase } from '../../lib/supabaseClient';
 import { pickOrCaptureImage } from '../../lib/media';
 import { enqueue, QUEUE_KEYS } from '../../lib/offlineQueue';
+import { getCeoSetting } from '../../lib/ceoSetting';
 import { useAuthStore } from '../../store/authStore';
 import { useTheme } from '../../theme/ThemeProvider';
 import Screen from '../../components/ui/Screen';
@@ -94,6 +95,10 @@ export default function PortIngestionScreen() {
       Alert.alert('Missing Info', 'Product name, destination, country, company, quantity, and weight are required.');
       return;
     }
+    if (!(await getCeoSetting('forms_control', true))) {
+      Alert.alert('Disabled by CEO', 'Form submissions are currently disabled by the CEO.');
+      return;
+    }
     setSubmitting(true);
     const code = goodsCode.trim() || autoGoodsCode();
     const payload = {
@@ -117,7 +122,7 @@ export default function PortIngestionScreen() {
     if (error) {
       await enqueue(QUEUE_KEYS.portIngestion, 'cargo_intake', payload);
       await logAudit('LOG_CARGO_INTAKE', `Port cargo logged (offline, will sync): ${productName.trim()} (${code})`);
-      Alert.alert('Saved Offline', 'No connection right now — this cargo log will sync automatically once you\'re back online.');
+      Alert.alert('Saved Offline', 'No connection right now, so this cargo log will sync automatically once you\'re back online.');
       resetPortForm();
       setMode(null);
       return;
@@ -129,6 +134,14 @@ export default function PortIngestionScreen() {
   };
 
   const submitInHouse = async () => {
+    if (!(await getCeoSetting('forms_control', true))) {
+      Alert.alert('Disabled by CEO', 'Form submissions are currently disabled by the CEO.');
+      return;
+    }
+    if (!(await getCeoSetting('cargo_intake_enabled', true))) {
+      Alert.alert('Disabled by CEO', 'Cargo intake is currently disabled by the CEO.');
+      return;
+    }
     setSubmitting(true);
     if (classification === 'COMPANY_PRODUCT') {
       if (!ihProductName.trim() || !ihUnits) {
@@ -156,7 +169,7 @@ export default function PortIngestionScreen() {
       if (error) {
         await enqueue(QUEUE_KEYS.portIngestion, 'cargo_intake', payload);
         await logAudit('LOG_CARGO_INTAKE', `Company product stock intake logged (offline, will sync): ${ihProductName.trim()} (${code})`);
-        Alert.alert('Saved Offline', 'No connection right now — this stock intake will sync automatically once you\'re back online.');
+        Alert.alert('Saved Offline', 'No connection right now, so this stock intake will sync automatically once you\'re back online.');
         resetInHouseForm();
         setMode(null);
         return;
@@ -185,7 +198,7 @@ export default function PortIngestionScreen() {
       if (error) {
         await enqueue(QUEUE_KEYS.portIngestion, 'general_purchases', payload);
         await logAudit('LOG_GENERAL_PURCHASE', `General purchase logged (offline, will sync): ${gpItemName.trim()} (${gpQuantity} units, GHS ${gpCost}). Code: ${code}`);
-        Alert.alert('Saved Offline', 'No connection right now — this purchase will sync automatically once you\'re back online.');
+        Alert.alert('Saved Offline', 'No connection right now, so this purchase will sync automatically once you\'re back online.');
         resetInHouseForm();
         setMode(null);
         return;
@@ -212,7 +225,7 @@ export default function PortIngestionScreen() {
         <Field label="Delivery Destination *"><Input value={destination} onChangeText={setDestination} placeholder="E.g., Accra Main Warehouse" /></Field>
         <Field label="Country of Origin *"><Input value={country} onChangeText={setCountry} placeholder="E.g., Germany" /></Field>
         <Field label="Shipping Company *"><Input value={company} onChangeText={setCompany} placeholder="E.g., COSCO, Maersk" /></Field>
-        <Field label="Container Number" hint="Optional — not every shipment is containerized"><Input value={containerNumber} onChangeText={setContainerNumber} placeholder="E.g., MSKU-1234567" /></Field>
+        <Field label="Container Number" hint="Optional, since not every shipment is containerized"><Input value={containerNumber} onChangeText={setContainerNumber} placeholder="E.g., MSKU-1234567" /></Field>
         <Field label="Total Quantity *"><Input value={quantity} onChangeText={setQuantity} placeholder="E.g., 350" keyboardType="numeric" /></Field>
         <Field label="Weight (Metric Tons) *"><Input value={weight} onChangeText={setWeight} placeholder="E.g., 12.5" keyboardType="decimal-pad" /></Field>
         <Field label="Discrepancy Notes / Faults" hint="Optional"><Input value={discrepancies} onChangeText={setDiscrepancies} placeholder="E.g., 2 boxes damaged" /></Field>

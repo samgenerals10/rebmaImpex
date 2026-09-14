@@ -42,7 +42,6 @@ export default function DriversScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [editTarget, setEditTarget] = useState<DriverRow | null>(null);
-  const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [submitting, setSubmitting] = useState(false);
 
@@ -57,49 +56,36 @@ export default function DriversScreen() {
     load();
   }, [load]);
 
-  const openAdd = () => {
-    setForm(emptyForm);
-    setShowAdd(true);
-  };
-
   const openEdit = (d: DriverRow) => {
     setForm({ fullName: d.full_name, phone: d.phone || '', ghanaCard: d.ghana_card_id || '', licenseNumber: d.license_number || '', truckId: d.vehicle_id || '' });
     setEditTarget(d);
   };
 
   const closeForm = () => {
-    setShowAdd(false);
     setEditTarget(null);
     setForm(emptyForm);
   };
 
+  // Edit-only. Drivers now enter the roster exclusively by registering
+  // through HR's recruitment flow (Department: Risk, Role: Driver), which
+  // creates the roster row automatically at registration
+  // (api/register-standard-user.ts) — no manual "Add Driver" path anymore,
+  // matching web's own same fix.
   const save = async () => {
+    if (!editTarget) return;
     if (!form.fullName.trim() || !form.phone.trim()) {
       Alert.alert('Missing Info', 'Full name and phone are required.');
       return;
     }
     setSubmitting(true);
-    if (editTarget) {
-      const { error } = await supabase.from('drivers').update({
-        full_name: form.fullName.trim(), phone: form.phone.trim(), ghana_card_id: form.ghanaCard.trim() || null,
-        license_number: form.licenseNumber.trim() || null, vehicle_id: form.truckId.trim() || null,
-      }).eq('id', editTarget.id);
-      setSubmitting(false);
-      if (error) {
-        Alert.alert('Update Failed', error.message);
-        return;
-      }
-    } else {
-      const generatedId = `DRV-${String(drivers.length + 1).padStart(3, '0')}`;
-      const { error } = await supabase.from('drivers').insert([{
-        driver_id: generatedId, full_name: form.fullName.trim(), phone: form.phone.trim(), ghana_card_id: form.ghanaCard.trim() || null,
-        license_number: form.licenseNumber.trim() || null, vehicle_id: form.truckId.trim() || null, status: 'ACTIVE',
-      }]);
-      setSubmitting(false);
-      if (error) {
-        Alert.alert('Add Failed', error.message);
-        return;
-      }
+    const { error } = await supabase.from('drivers').update({
+      full_name: form.fullName.trim(), phone: form.phone.trim(), ghana_card_id: form.ghanaCard.trim() || null,
+      license_number: form.licenseNumber.trim() || null, vehicle_id: form.truckId.trim() || null,
+    }).eq('id', editTarget.id);
+    setSubmitting(false);
+    if (error) {
+      Alert.alert('Update Failed', error.message);
+      return;
     }
     closeForm();
     load();
@@ -147,9 +133,12 @@ export default function DriversScreen() {
   ];
 
   return (
-    <Screen refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }}
-      footer={<View style={{ padding: t.spacing.lg }}><Button label="Add Driver" onPress={openAdd} fullWidth /></View>}
-    >
+    <Screen refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }}>
+      <View style={{ paddingHorizontal: t.spacing.lg, paddingTop: t.spacing.md }}>
+        <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta11.size, color: t.colors.textMuted }}>
+          New drivers join through HR's recruitment invite (Department: Risk, Role: Driver). Their roster entry here is created automatically once they register.
+        </Text>
+      </View>
       <DataList
         columns={columns}
         data={drivers}
@@ -166,9 +155,9 @@ export default function DriversScreen() {
       />
 
       <Sheet
-        open={showAdd || !!editTarget}
+        open={!!editTarget}
         onClose={closeForm}
-        title={editTarget ? 'Edit Driver' : 'Add Driver'}
+        title="Edit Driver"
         side="bottom"
         footer={<Button label={submitting ? 'Saving…' : 'Save Driver'} onPress={save} loading={submitting} disabled={submitting} fullWidth />}
       >

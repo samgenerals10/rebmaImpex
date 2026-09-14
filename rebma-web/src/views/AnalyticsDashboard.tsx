@@ -364,7 +364,7 @@ export default function AnalyticsDashboard({ department, currentUser, addNotific
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-bold text-[var(--text-primary)]">{deptTitle[department] || 'Analytics'}</h2>
-          <p className="text-xs text-[var(--text-muted)] mt-0.5">Real-time performance insights — {currentUser?.department}</p>
+          <p className="text-xs text-[var(--text-muted)] mt-0.5">Real-time performance insights for {currentUser?.department}</p>
         </div>
         <div className="flex items-center gap-2">
           {/* Period selector */}

@@ -37,7 +37,7 @@ function mapRow(a: any): AttendanceRow {
 
 export default function AttendanceScreen() {
   const t = useTheme();
-  const { rows: records, setRows: setRecords, loading, hasMore, total, reload, loadMore } = usePaginatedQuery<AttendanceRow>({
+  const { rows: records, setRows: setRecords, loading, hasMore, total, error: recordsError, reload, loadMore } = usePaginatedQuery<AttendanceRow>({
     table: 'attendance', select: '*, user:profiles(full_name)', pageSize: 100, orderColumn: 'check_in_time', map: mapRow,
   });
   const [refreshing, setRefreshing] = useState(false);
@@ -148,7 +148,8 @@ export default function AttendanceScreen() {
           data={filtered}
           rowKey={(r) => r.id}
           loading={loading && records.length === 0}
-          emptyTitle="No attendance records"
+          emptyTitle={recordsError ? 'Couldn’t load records' : 'No attendance records'}
+          emptyDescription={recordsError || undefined}
           onRowPress={openEdit}
           renderActions={(r) => (
             <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
@@ -169,7 +170,7 @@ export default function AttendanceScreen() {
       <Sheet open={showAdd} onClose={() => setShowAdd(false)} title="Add Attendance Log" side="bottom" maxHeight={420}
         footer={<Button label={submitting ? 'Saving…' : 'Add'} onPress={saveAdd} loading={submitting} disabled={submitting || !addForm.fullName} fullWidth />}>
         <Field label="Full Name"><Input value={addForm.fullName} onChangeText={(v) => setAddForm((f) => ({ ...f, fullName: v }))} /></Field>
-        <Field label="Check-In Time" hint="Optional — defaults to now"><Input value={addForm.checkInTime} onChangeText={(v) => setAddForm((f) => ({ ...f, checkInTime: v }))} placeholder="HH:MM" /></Field>
+        <Field label="Check-In Time" hint="Optional, defaults to now"><Input value={addForm.checkInTime} onChangeText={(v) => setAddForm((f) => ({ ...f, checkInTime: v }))} placeholder="HH:MM" /></Field>
         <Field label="Status"><SearchablePicker value={addForm.status} onChange={(v) => setAddForm((f) => ({ ...f, status: v as 'PRESENT' | 'LATE' }))} options={[{ value: 'PRESENT', label: 'Present' }, { value: 'LATE', label: 'Late' }]} /></Field>
       </Sheet>
     </Screen>

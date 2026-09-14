@@ -154,7 +154,7 @@ export default function RegistrationsScreen() {
         footer={<Button label="Done" onPress={() => setCredPopup(null)} fullWidth />}>
         {credPopup && (
           <View style={{ gap: t.spacing.sm }}>
-            <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textMuted }}>Share these credentials now — the password won't be shown again.</Text>
+            <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textMuted }}>Share these credentials now, since the password won't be shown again.</Text>
             <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textPrimary }}>Email: {credPopup.email}</Text>
             <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textPrimary }}>Password: {credPopup.password}</Text>
           </View>

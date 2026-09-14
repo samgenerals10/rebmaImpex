@@ -900,7 +900,7 @@ export default function ManagementDashboard({
             <div className="flex justify-between items-center">
               <div>
                 <h3 className="text-lg font-bold text-[var(--text-primary)]">Workflow B: Credit Order Approvals</h3>
-                <p className="text-xs text-[var(--text-muted)]">Review orders with CREDIT terms — full customer details and history shown.</p>
+                <p className="text-xs text-[var(--text-muted)]">Review orders with CREDIT terms. Full customer details and history are shown.</p>
               </div>
               <div className="flex gap-1.5">
                 <button onClick={() => exportToCSV(localOrders.filter(o => o.status === 'PENDING_MANAGEMENT'), ['id', 'ticketNumber', 'clientName', 'productName', 'destination', 'paymentMode', 'totalAmount', 'status', 'createdAt'], 'credit_approvals_ledger')} className="p-1.5 bg-[var(--accent-light)] hover:opacity-90 text-[var(--accent)] rounded cursor-pointer border border-[var(--border)] transition-opacity"><FileSpreadsheet className="w-3.5 h-3.5" /></button>
@@ -1017,7 +1017,7 @@ export default function ManagementDashboard({
                 <Clipboard className="w-5 h-5 text-[var(--accent)]" />
                 <h3 className="text-sm font-bold text-[var(--text-primary)]">Global Audit Ledger</h3>
               </div>
-            <ActivityFeed title="Live Audit Log — All Departments" limit={50} viewerDepartment={currentUser?.department} />
+            <ActivityFeed title="Live Audit Log: All Departments" limit={50} viewerDepartment={currentUser?.department} />
           </div>
         )}
         {activeSubTab === 'Ledger_DISABLED_ORIGINAL' && (

@@ -119,7 +119,11 @@ export default function NotificationsPanel({ notifications = [], onNavigate, onC
     setDbNotifs(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
     supabase.from('notifications').update({ read: true }).eq('id', id).then(() => {}, () => {});
     if (!actionUrl) return;
-    if (type === 'chat_message' || type === 'chat_mention') {
+    // missed_call's action_url is a real channel id too (notifyMissedCall
+    // passes channelId, not a meeting id) — this previously fell through
+    // to the generic hash-navigation branch below, which did nothing
+    // useful for a bare uuid.
+    if (type === 'chat_message' || type === 'chat_mention' || type === 'missed_call') {
       onOpenChatChannel?.(actionUrl);
       return;
     }

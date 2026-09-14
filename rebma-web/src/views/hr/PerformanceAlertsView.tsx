@@ -209,7 +209,7 @@ export default function PerformanceAlertsView({ currentUser, addNotification }: 
           <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-12 text-center">
             <CheckCircle className="w-10 h-10 text-emerald-500 mx-auto mb-3 opacity-60" />
             <p className="text-sm font-semibold text-[var(--text-primary)]">No alerts found</p>
-            <p className="text-xs text-[var(--text-muted)] mt-1">All clear — no performance issues match your filters</p>
+            <p className="text-xs text-[var(--text-muted)] mt-1">All clear, no performance issues match your filters</p>
           </div>
         ) : (
           filtered.map(alert => {

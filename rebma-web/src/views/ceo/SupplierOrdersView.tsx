@@ -629,7 +629,7 @@ function NewOrderForm({ orders, currentUser, addNotification, onClose, onSave }:
               </div>
               {isNewSupplier && (
                 <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-xl p-3 space-y-3">
-                  <p className="text-xs text-blue-700 dark:text-blue-400 font-semibold">New supplier — enter details</p>
+                  <p className="text-xs text-blue-700 dark:text-blue-400 font-semibold">New supplier, enter details</p>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">Country *</label>

@@ -78,7 +78,7 @@ const blankForm = {
 export default function StaffScreen() {
   const t = useTheme();
   const { profile } = useAuthStore();
-  const { rows: staff, setRows: setStaff, loading, hasMore, total, reload, loadMore } = usePaginatedQuery<StaffMember>({
+  const { rows: staff, setRows: setStaff, loading, hasMore, total, error: staffError, reload, loadMore } = usePaginatedQuery<StaffMember>({
     table: 'profiles', pageSize: 100, map: mapStaffRow,
   });
   const [refreshing, setRefreshing] = useState(false);
@@ -183,7 +183,7 @@ export default function StaffScreen() {
   // directly-openable URL — resolved to a fresh signed URL on demand.
   const viewResume = async (path: string) => {
     const url = await getSignedUrl('staff-resumes', path);
-    if (!url) { Alert.alert('Unavailable', 'Could not open resume — it may have been removed.'); return; }
+    if (!url) { Alert.alert('Unavailable', 'Could not open resume. It may have been removed.'); return; }
     Linking.openURL(url);
   };
 
@@ -378,7 +378,8 @@ export default function StaffScreen() {
           data={filtered}
           rowKey={(s) => s.id}
           loading={loading && staff.length === 0}
-          emptyTitle="No staff found"
+          emptyTitle={staffError ? 'Couldn’t load staff' : 'No staff found'}
+          emptyDescription={staffError || undefined}
           onRowPress={(s) => { setSelected(s); setProfileTab('attendance'); }}
         />
         {hasMore && !loading && <Button label="Load More" variant="ghost" onPress={() => loadMore()} fullWidth />}
@@ -604,7 +605,7 @@ export default function StaffScreen() {
                 <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.body12.size, color: t.colors.textPrimary, marginBottom: t.spacing.xs }}>WhatsApp</Text>
                 <Input value={sendWhatsappNumber} onChangeText={setSendWhatsappNumber} placeholder="WhatsApp number" keyboardType="phone-pad" style={{ marginBottom: t.spacing.sm }} />
                 <Button label="Open WhatsApp to Send" onPress={openWhatsapp} fullWidth />
-                <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted, marginTop: t.spacing.xs }}>Opens your own WhatsApp with the message ready — you tap Send.</Text>
+                <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted, marginTop: t.spacing.xs }}>Opens your own WhatsApp with the message ready. You tap Send.</Text>
               </Card>
 
               <Card tone="inset">

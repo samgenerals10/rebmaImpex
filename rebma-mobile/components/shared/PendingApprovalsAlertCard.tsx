@@ -33,8 +33,8 @@ async function fetchPendingForDept(department: string): Promise<PendingItem[]> {
       supabase.from('delivery_logs').select('id', { count: 'exact', head: true }).eq('status', 'PENDING_RISK_REVIEW'),
     ]);
     if ((cargo.count || 0) > 0) items.push({ label: 'cargo intake', count: cargo.count || 0, tab: 'RiskApprovals' });
-    if ((orders.count || 0) > 0) items.push({ label: 'orders — initial review', count: orders.count || 0, tab: 'RiskApprovals' });
-    if ((finalRelease.count || 0) > 0) items.push({ label: 'orders — final release', count: finalRelease.count || 0, tab: 'RiskApprovals' });
+    if ((orders.count || 0) > 0) items.push({ label: 'orders in initial review', count: orders.count || 0, tab: 'RiskApprovals' });
+    if ((finalRelease.count || 0) > 0) items.push({ label: 'orders in final release', count: finalRelease.count || 0, tab: 'RiskApprovals' });
     if ((pod.count || 0) > 0) items.push({ label: 'delivery proofs', count: pod.count || 0, tab: 'RiskApprovals' });
   }
   if (department === 'MANAGEMENT') {
@@ -52,6 +52,43 @@ async function fetchPendingForDept(department: string): Promise<PendingItem[]> {
     if (((production as any).count || 0) > 0) items.push({ label: 'production requests', count: (production as any).count || 0, tab: 'CreditApproval' });
     if (((purchases as any).count || 0) > 0) items.push({ label: 'general purchases', count: (purchases as any).count || 0, tab: 'CreditApproval' });
     if (((float as any).count || 0) > 0) items.push({ label: 'float requests', count: (float as any).count || 0, tab: 'CreditApproval' });
+  }
+  if (department === 'ADMIN_WAREHOUSE') {
+    // Ports rebma-web/src/components/global/PendingApprovalsAlert.tsx's
+    // ADMIN_WAREHOUSE branch — 4 of its 5 items, not 5. Its 5th item
+    // ("new deliveries to assign") points at tab: 'ActiveDeliveries', a
+    // stale reference from before Phase 9 moved Dispatch's screens
+    // (Deliveries/ActiveDeliveries/Drivers/Tracking/ProofOfDelivery/
+    // Scanner) to RISK — confirmed by reading the current
+    // rebma-web/src/components/layout/Sidebar.tsx: ADMIN_WAREHOUSE's own
+    // 12-tab list has no ActiveDeliveries entry any more, on either
+    // platform. Faithfully copying that pointer would just reproduce a
+    // dead-navigation bug that already exists on web; omitted rather than
+    // guessed at.
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const [cargo, cargoApproved, production, rawMaterial, orders] = await Promise.all([
+      supabase.from('cargo_intake').select('id', { count: 'exact', head: true }).eq('status', 'PENDING_RISK_APPROVAL'),
+      supabase.from('cargo_intake').select('id', { count: 'exact', head: true }).eq('status', 'APPROVED').gte('updated_at', since),
+      supabase.from('fulfillment_tickets').select('id', { count: 'exact', head: true }).eq('type', 'PRODUCTION_RELEASE').eq('status', 'PENDING').then((r) => r, () => ({ count: 0 })),
+      supabase.from('fulfillment_tickets').select('id', { count: 'exact', head: true }).eq('type', 'RAW_MATERIAL_RELEASE').eq('status', 'PENDING').then((r) => r, () => ({ count: 0 })),
+      supabase.from('orders').select('id').in('status', ['APPROVED', 'PROCESSING']),
+    ]);
+    if ((cargo.count || 0) > 0) items.push({ label: 'cargo pending Risk sign-off', count: cargo.count || 0, tab: 'PortIngestion' });
+    if ((cargoApproved.count || 0) > 0) items.push({ label: 'cargo approved and ready to log into stock', count: cargoApproved.count || 0, tab: 'Stock' });
+    if (((production as any).count || 0) > 0) items.push({ label: 'production releases to prepare', count: (production as any).count || 0, tab: 'Releases' });
+    if (((rawMaterial as any).count || 0) > 0) items.push({ label: 'raw material releases to prepare', count: (rawMaterial as any).count || 0, tab: 'Releases' });
+    // Same de-dup against delivery_logs web's own count applies — an order
+    // dispatched to a driver doesn't leave APPROVED/PROCESSING on its own
+    // status, so without excluding already-handed-off orders this would
+    // keep counting them long after they left this department's hands.
+    const orderIds = (orders.data || []).map((o: any) => o.id);
+    let readyToDispatchCount = orderIds.length;
+    if (orderIds.length > 0) {
+      const { data: deliveryLogRows } = await supabase.from('delivery_logs').select('order_id').in('order_id', orderIds);
+      const dispatchedIds = new Set((deliveryLogRows || []).map((d: any) => d.order_id).filter(Boolean));
+      readyToDispatchCount = orderIds.filter((id: string) => !dispatchedIds.has(id)).length;
+    }
+    if (readyToDispatchCount > 0) items.push({ label: 'orders ready to dispatch', count: readyToDispatchCount, tab: 'ApprovedGoods' });
   }
   if (department === 'CEO') {
     // Phase 7.9, D71 — the two lanes CEO's own Approvals/PriceApprovals

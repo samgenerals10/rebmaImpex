@@ -298,6 +298,11 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
       .channel('messenger-thread-' + activeChannel.id)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `channel_id=eq.${activeChannel.id}` }, payload => {
         setMessages(prev => prev.some(m => m.id === payload.new.id) ? prev : [...prev, payload.new as Msg]);
+        // Mark read immediately since the thread is actively open — mirrors
+        // mobile's MessengerThreadScreen.tsx, which already does this; web
+        // previously only picked up a read state change indirectly, via
+        // whatever next triggered a full loadThread().
+        if ((payload.new as Msg).sender_id !== myId) messenger.markRead(payload.new.id as string, myId);
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_message_reactions' }, () => loadThread())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_message_reads' }, () => loadThread())
@@ -445,7 +450,7 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
   };
 
   const clearChannelHistory = async (channelId: string) => {
-    if (!confirm('Clear this conversation\'s history? This only clears your own view — the other participant(s) keep theirs.')) return;
+    if (!confirm('Clear this conversation\'s history? This only clears your own view. The other participant(s) keep theirs.')) return;
     await messenger.clearChannelHistory(channelId, myId);
     if (activeChannel?.id === channelId) setMessages([]);
     setRowMenuFor(null);
@@ -743,6 +748,11 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
 
   const forwardMessage = async (targetChannel: Channel) => {
     if (!forwardTarget) return;
+    // Apply the same channel-type toggles a plain send already respects
+    // (handleSend, above) — forwarding was bypassing them entirely.
+    if (targetChannel.type === 'everyone' && !globalChatEnabled) return;
+    if (targetChannel.type === 'group' && !departmentChatEnabled) return;
+    if (targetChannel.type === 'dm' && !directMessagesEnabled) return;
     try {
       await messenger.sendMessage(targetChannel.id, myId, myName, forwardTarget.content, {
         attachmentUrl: forwardTarget.attachment_url || undefined,
@@ -909,8 +919,8 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
                     onClearHistory={() => clearChannelHistory(ch.id)}
                   />
                 ))}
-                <p className="text-[9px] font-bold uppercase tracking-wider text-[var(--text-muted)] px-2.5 pt-3 pb-1">People</p>
-                {[...filteredContacts].sort((a, b) => {
+                {directMessagesEnabled && <p className="text-[9px] font-bold uppercase tracking-wider text-[var(--text-muted)] px-2.5 pt-3 pb-1">People</p>}
+                {directMessagesEnabled && [...filteredContacts].sort((a, b) => {
                   const da = dmChannelByUser[a.id], db = dmChannelByUser[b.id];
                   return Number(db && pinnedChannelIds.has(db.id)) - Number(da && pinnedChannelIds.has(da.id));
                 }).filter(c => { const dm = dmChannelByUser[c.id]; return !dm || channelVisible(dm.id); }).map(c => {
@@ -1013,7 +1023,7 @@ export default function Messenger({ isOpen, onClose, currentUser, targetUserId, 
 
               <div className="flex-1 overflow-y-auto p-4 space-y-3">
                 {!activeChannel && <p className="text-xs text-[var(--text-muted)] text-center py-10">Pick a person or channel to start chatting.</p>}
-                {activeChannel && messages.length === 0 && <p className="text-xs text-[var(--text-muted)] text-center py-10">No messages yet — say hello.</p>}
+                {activeChannel && messages.length === 0 && <p className="text-xs text-[var(--text-muted)] text-center py-10">No messages yet. Say hello.</p>}
                 {activeChannel && messages.length > 0 && visibleMessages.length === 0 && (
                   <p className="text-xs text-[var(--text-muted)] text-center py-10">{starredOnly ? 'No starred messages.' : 'No messages match your search.'}</p>
                 )}

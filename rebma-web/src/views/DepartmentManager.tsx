@@ -74,7 +74,7 @@ export default function DepartmentManager({ currentUser, addNotification }: Depa
         });
         if (error) throw error;
         addNotification(ceoMustApproveDepartments
-          ? `Department "${modal.name}" submitted — pending CEO approval.`
+          ? `Department "${modal.name}" submitted and is pending CEO approval.`
           : `Department "${modal.name}" created.`);
       }
       setModal({ open: false, id: '', ...blank });
@@ -197,7 +197,7 @@ export default function DepartmentManager({ currentUser, addNotification }: Depa
       {/* SQL Hint */}
       <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-800">
         <p className="font-bold mb-1">Supabase Table Required</p>
-        <p>Create <code className="bg-amber-100 px-1 rounded">departments</code> table with columns: <code className="bg-amber-100 px-1 rounded">id uuid primary key, name text, code text unique, description text, head_user_id uuid, active boolean default true, nav_items text[], workflows text[], created_by uuid, created_at timestamptz default now(), updated_at timestamptz</code>. Enable RLS — HR and Management can INSERT/UPDATE; all authenticated users can SELECT.</p>
+        <p>Create <code className="bg-amber-100 px-1 rounded">departments</code> table with columns: <code className="bg-amber-100 px-1 rounded">id uuid primary key, name text, code text unique, description text, head_user_id uuid, active boolean default true, nav_items text[], workflows text[], created_by uuid, created_at timestamptz default now(), updated_at timestamptz</code>. Enable RLS so HR and Management can INSERT/UPDATE; all authenticated users can SELECT.</p>
       </div>
 
       {/* Modal */}

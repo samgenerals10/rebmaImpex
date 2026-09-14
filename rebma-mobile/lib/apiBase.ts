@@ -19,7 +19,7 @@ const BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || '';
 
 export class ApiNotConfiguredError extends Error {
   constructor() {
-    super("This action isn't configured yet — ask an admin to set the API base URL.");
+    super("This action isn't configured yet. Ask an admin to set the API base URL.");
     this.name = 'ApiNotConfiguredError';
   }
 }

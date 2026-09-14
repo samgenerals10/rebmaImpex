@@ -4,7 +4,7 @@
 // full-width below the `sm` breakpoint anyway, so on a phone 'right' and
 // 'full' converge. 'left' doubles as the department-switcher drawer (D5).
 import { useEffect, useRef, type ReactNode } from 'react';
-import { Modal, View, Text, Pressable, Animated, Dimensions, BackHandler, StyleSheet } from 'react-native';
+import { Modal, View, Text, Pressable, Animated, Dimensions, BackHandler, StyleSheet, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { X } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeProvider';
@@ -84,7 +84,7 @@ export default function Sheet({ open, onClose, title, subtitle, badge, children,
             isFull ? {} : t.shadow(isBottom ? 'sheet' : 'dropdown'),
           ]}
         >
-          <SafeAreaView edges={isBottom ? ['bottom'] : ['top', 'bottom']} style={{ flex: isFull ? 1 : undefined }}>
+          <SafeAreaView edges={isBottom ? ['bottom'] : ['top', 'bottom']} style={{ flex: isFull || isLeft ? 1 : undefined }}>
             {isBottom && (
               <View style={{ alignItems: 'center', paddingTop: t.spacing.sm }}>
                 <View style={{ width: 36, height: 4, borderRadius: t.radius.pill, backgroundColor: t.colors.border }} />
@@ -104,9 +104,14 @@ export default function Sheet({ open, onClose, title, subtitle, badge, children,
                 </Pressable>
               </View>
             )}
-            <View style={{ flexShrink: 1, paddingHorizontal: t.spacing.xl, paddingVertical: t.spacing.lg }}>
+            <ScrollView
+              style={{ flexShrink: 1 }}
+              contentContainerStyle={{ paddingHorizontal: t.spacing.xl, paddingVertical: t.spacing.lg }}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
               {children}
-            </View>
+            </ScrollView>
             {footer ? (
               <View style={{ borderTopWidth: 1, borderTopColor: t.colors.border, paddingHorizontal: t.spacing.xl, paddingVertical: t.spacing.lg, flexDirection: 'row', justifyContent: 'flex-end' }}>
                 {footer}

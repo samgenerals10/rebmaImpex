@@ -43,15 +43,15 @@ const REPORTS = [
   { id: 'daily_cash', name: 'Daily Cash Report', description: 'Cash payments received', icon: DollarSign, color: '#10b981' },
   { id: 'weekly_sales', name: 'Weekly Sales Report', description: 'Orders for the selected period', icon: ShoppingCart, color: '#3b82f6' },
   { id: 'monthly_pl', name: 'Monthly P&L Statement', description: 'Revenue vs approved expenses', icon: TrendingUp, color: '#22c55e' },
-  { id: 'quarterly', name: 'Quarterly Financial Summary', description: 'No real data on web either — placeholder', icon: ChartPie, color: '#8b5cf6' },
-  { id: 'annual', name: 'Annual Report', description: 'No real data on web either — placeholder', icon: Calendar, color: '#06b6d4' },
-  { id: 'vat', name: 'VAT Report (GRA Format)', description: 'No real data on web either — placeholder', icon: Receipt, color: '#f59e0b' },
-  { id: 'payroll', name: 'Payroll Summary', description: 'Active staff roster (no pay figures — matches web)', icon: Users, color: '#14b8a6' },
+  { id: 'quarterly', name: 'Quarterly Financial Summary', description: 'No real data on web either, just a placeholder', icon: ChartPie, color: '#8b5cf6' },
+  { id: 'annual', name: 'Annual Report', description: 'No real data on web either, just a placeholder', icon: Calendar, color: '#06b6d4' },
+  { id: 'vat', name: 'VAT Report (GRA Format)', description: 'No real data on web either, just a placeholder', icon: Receipt, color: '#f59e0b' },
+  { id: 'payroll', name: 'Payroll Summary', description: 'Active staff roster (no pay figures, matching web)', icon: Users, color: '#14b8a6' },
   { id: 'credit', name: 'Customer Credit Report', description: 'Outstanding credit balances', icon: CreditCard, color: '#ef4444' },
   { id: 'outstanding_inv', name: 'Outstanding Invoices', description: 'Unpaid/in-progress orders', icon: TriangleAlert, color: '#f97316' },
   { id: 'payment_methods', name: 'Payment Methods Analysis', description: 'Collections grouped by payment mode', icon: Wallet, color: '#0ea5e9' },
-  { id: 'expense', name: 'Expense Report', description: 'General purchases (all statuses — matches web)', icon: FileMinus, color: '#dc2626' },
-  { id: 'bank_recon', name: 'Bank Reconciliation', description: 'No real data on web either — placeholder', icon: Landmark, color: '#64748b' },
+  { id: 'expense', name: 'Expense Report', description: 'General purchases (all statuses, matching web)', icon: FileMinus, color: '#dc2626' },
+  { id: 'bank_recon', name: 'Bank Reconciliation', description: 'No real data on web either, just a placeholder', icon: Landmark, color: '#64748b' },
 ];
 
 function periodStartDate(period: string): string | null {

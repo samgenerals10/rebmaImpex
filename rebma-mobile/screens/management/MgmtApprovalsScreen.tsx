@@ -41,7 +41,16 @@ interface ApprovalItem {
   raw: any;
 }
 
-const TABS: Array<'All' | ItemType> = ['All', 'Cargo Intake', 'Sales Order', 'Production Request', 'General Purchase', 'Float Request'];
+// 'Cargo Intake' removed from this tab list — security/gap audit fix.
+// This file's own header comment above confirmed it was live when built
+// (Phase 7.6), but the Risk-department migration
+// (supabase_risk_department.sql) since restricted cargo_intake writes to
+// operations/risk/admin only, and nothing writes
+// PENDING_MANAGEMENT_APPROVAL on it anymore — this tab was permanently
+// empty (or threw a raw RLS error on a stale legacy row). The underlying
+// query/confirmAction() branch is left in place, unreachable now that
+// the tab can't be selected, matching web's own same-scoped fix.
+const TABS: Array<'All' | ItemType> = ['All', 'Sales Order', 'Production Request', 'General Purchase', 'Float Request'];
 const TYPE_ICON: Record<ItemType, typeof Package> = {
   'Cargo Intake': Package, 'Sales Order': CreditCard, 'Production Request': Factory, 'General Purchase': ShoppingCart, 'Float Request': Wallet,
 };
@@ -88,7 +97,7 @@ export default function MgmtApprovalsScreen() {
       ]);
 
       const mappedCargo: ApprovalItem[] = (cargoData || []).map((row: any) => {
-        const baseDesc = `${row.product_name || 'Goods'} — ${row.qty_received || row.quantity || 0} ${row.goods_type || 'units'} from ${row.company || 'supplier'}`;
+        const baseDesc = `${row.product_name || 'Goods'}, ${row.qty_received || row.quantity || 0} ${row.goods_type || 'units'} from ${row.company || 'supplier'}`;
         return {
           id: row.id, requestId: `CARGO-${row.id.slice(-6).toUpperCase()}`, type: 'Cargo Intake',
           description: row.discrepancies?.trim() ? `${baseDesc} (Discrepancy: ${row.discrepancies})` : baseDesc,
@@ -98,22 +107,22 @@ export default function MgmtApprovalsScreen() {
       });
       const mappedOrders: ApprovalItem[] = (ordersData || []).map((row: any) => ({
         id: row.id, requestId: `ORD-${row.id.slice(-6).toUpperCase()}`, type: 'Sales Order',
-        description: `${row.payment_mode === 'CREDIT' ? 'Credit order' : `${row.payment_mode || 'Cash'} order`} for ${row.client_name} — GHS ${Number(row.total_amount || 0).toLocaleString()}`,
+        description: `${row.payment_mode === 'CREDIT' ? 'Credit order' : `${row.payment_mode || 'Cash'} order`} for ${row.client_name}, GHS ${Number(row.total_amount || 0).toLocaleString()}`,
         amount: Number(row.total_amount || 0), date: row.created_at?.slice(0, 10) || '', raw: row,
       }));
       const mappedProduction: ApprovalItem[] = (productionData || []).map((row: any) => ({
         id: row.id, requestId: `PROD-${row.id.slice(-6).toUpperCase()}`, type: 'Production Request',
-        description: `${row.product_name || row.productName || 'Product'} — ${row.quantity || 0} ${row.unit || 'units'}`,
+        description: `${row.product_name || row.productName || 'Product'}, ${row.quantity || 0} ${row.unit || 'units'}`,
         amount: null, date: row.created_at?.slice(0, 10) || '', raw: row,
       }));
       const mappedPurchases: ApprovalItem[] = (purchasesData || []).map((row: any) => ({
         id: row.id, requestId: `PURCH-${row.id.slice(-6).toUpperCase()}`, type: 'General Purchase',
-        description: `${row.item_name || row.itemName || 'Item'} — ${row.quantity || 0} units`,
+        description: `${row.item_name || row.itemName || 'Item'}, ${row.quantity || 0} units`,
         amount: row.cost ? Number(row.cost) : null, date: row.created_at?.slice(0, 10) || '', raw: row,
       }));
       const mappedFloat: ApprovalItem[] = (floatData || []).map((row: any) => ({
         id: row.id, requestId: `FLOAT-${row.id.slice(-6).toUpperCase()}`, type: 'Float Request',
-        description: `Float replenishment: GHS ${Number(row.amount || 0).toLocaleString()} — ${row.reason || 'No reason given'}`,
+        description: `Float replenishment: GHS ${Number(row.amount || 0).toLocaleString()} (${row.reason || 'No reason given'})`,
         amount: Number(row.amount || 0), date: row.created_at?.slice(0, 10) || '', raw: row,
       }));
 
@@ -213,7 +222,7 @@ export default function MgmtApprovalsScreen() {
           await supabase.from('supplier_order_notifications').insert([{ message: `Cargo intake APPROVED by Management: ${selected.description}`, notified_department: 'FINANCE', read: false }]);
           await supabase.from('supplier_order_notifications').insert([{ message: `New stock approved: ${selected.description}. Update pricing in Marketing.`, notified_department: 'MARKETING', read: false }]);
         } else {
-          await supabase.from('supplier_order_notifications').insert([{ message: `Cargo intake REJECTED by Management: ${selected.description}${modalNote ? ` — ${modalNote}` : ''}`, notified_department: 'OPERATIONS', read: false }]);
+          await supabase.from('supplier_order_notifications').insert([{ message: `Cargo intake REJECTED by Management: ${selected.description}${modalNote ? ` (${modalNote})` : ''}`, notified_department: 'OPERATIONS', read: false }]);
         }
       }
 
@@ -245,12 +254,12 @@ export default function MgmtApprovalsScreen() {
         if (rpcErr) throw rpcErr;
 
         if (action === 'approve') {
-          await supabase.from('supplier_order_notifications').insert([{ message: `Order approved by Management — now awaiting Accounts Office processing: ${selected.description}`, notified_department: 'FINANCE', read: false }]);
+          await supabase.from('supplier_order_notifications').insert([{ message: `Order approved by Management and now awaiting Accounts Office processing: ${selected.description}`, notified_department: 'FINANCE', read: false }]);
           await supabase.from('supplier_order_notifications').insert([{ message: `Your order has been approved by Management and sent to Accounts: ${selected.description}`, notified_department: 'MARKETING', read: false }]);
         } else if (action === 'return') {
-          await supabase.from('supplier_order_notifications').insert([{ message: `Order RETURNED FOR CORRECTION by Management: ${selected.description}${modalNote ? ` — ${modalNote}` : ''}`, notified_department: 'MARKETING', read: false }]);
+          await supabase.from('supplier_order_notifications').insert([{ message: `Order RETURNED FOR CORRECTION by Management: ${selected.description}${modalNote ? ` (${modalNote})` : ''}`, notified_department: 'MARKETING', read: false }]);
         } else {
-          await supabase.from('supplier_order_notifications').insert([{ message: `Order REJECTED by Management: ${selected.description}${modalNote ? ` — ${modalNote}` : ''}`, notified_department: 'MARKETING', read: false }]);
+          await supabase.from('supplier_order_notifications').insert([{ message: `Order REJECTED by Management: ${selected.description}${modalNote ? ` (${modalNote})` : ''}`, notified_department: 'MARKETING', read: false }]);
         }
       }
 
@@ -279,11 +288,11 @@ export default function MgmtApprovalsScreen() {
               notes: qty !== requestedQty ? `Management adjusted requested qty ${requestedQty} → ${qty}` : undefined, created_at: now,
             });
           }
-          await supabase.from('supplier_order_notifications').insert([{ message: `Production request APPROVED by Management — ready for pickup/repackaging: ${selected.description}`, notified_department: 'PRODUCTION', read: false }]);
+          await supabase.from('supplier_order_notifications').insert([{ message: `Production request APPROVED by Management and ready for pickup/repackaging: ${selected.description}`, notified_department: 'PRODUCTION', read: false }]);
           await supabase.from('supplier_order_notifications').insert([{ message: `Production release ready for warehouse handling: ${selected.description}`, notified_department: 'OPERATIONS', read: false }]);
         } else {
           await supabase.from('production_requests').update({ status: 'REJECTED', rejection_reason: modalNote || null }).eq('id', selected.id);
-          await supabase.from('supplier_order_notifications').insert([{ message: `Production request REJECTED by Management: ${selected.description}${modalNote ? ` — ${modalNote}` : ''}`, notified_department: 'PRODUCTION', read: false }]);
+          await supabase.from('supplier_order_notifications').insert([{ message: `Production request REJECTED by Management: ${selected.description}${modalNote ? ` (${modalNote})` : ''}`, notified_department: 'PRODUCTION', read: false }]);
         }
       }
 
@@ -294,7 +303,7 @@ export default function MgmtApprovalsScreen() {
         if (action === 'approve') {
           await supabase.from('supplier_order_notifications').insert([{ message: `General purchase APPROVED by Management: ${selected.description}`, notified_department: requestingDept, read: false }]);
         } else {
-          await supabase.from('supplier_order_notifications').insert([{ message: `General purchase REJECTED by Management: ${selected.description}${modalNote ? ` — ${modalNote}` : ''}`, notified_department: requestingDept, read: false }]);
+          await supabase.from('supplier_order_notifications').insert([{ message: `General purchase REJECTED by Management: ${selected.description}${modalNote ? ` (${modalNote})` : ''}`, notified_department: requestingDept, read: false }]);
         }
       }
 
@@ -314,13 +323,13 @@ export default function MgmtApprovalsScreen() {
           await supabase.from('supplier_order_notifications').insert([{ message: `Float replenishment APPROVED by Management: GHS ${amount.toLocaleString()} added to petty cash.`, notified_department: 'FINANCE', read: false }]);
         } else {
           await supabase.from('float_requests').update({ status: 'REJECTED', rejection_reason: modalNote || null, updated_at: now }).eq('id', selected.id);
-          await supabase.from('supplier_order_notifications').insert([{ message: `Float replenishment REJECTED by Management: ${selected.description}${modalNote ? ` — ${modalNote}` : ''}`, notified_department: 'FINANCE', read: false }]);
+          await supabase.from('supplier_order_notifications').insert([{ message: `Float replenishment REJECTED by Management: ${selected.description}${modalNote ? ` (${modalNote})` : ''}`, notified_department: 'FINANCE', read: false }]);
         }
       }
 
       await supabase.from('global_audit_history').insert([{
         department: 'MANAGEMENT',
-        action: `${action.toUpperCase()}: ${selected.requestId} — ${selected.description}${modalNote ? ` | Note: ${modalNote}` : ''}`,
+        action: `${action.toUpperCase()}: ${selected.requestId}, ${selected.description}${modalNote ? ` | Note: ${modalNote}` : ''}`,
         performed_by: profile?.fullName || 'Management',
         reference_id: selected.id,
         details: modalNote || null,
@@ -372,7 +381,7 @@ export default function MgmtApprovalsScreen() {
           </View>
         </ScrollView>
 
-        <DataList columns={columns} data={filtered} rowKey={(i) => i.id} loading={loading} emptyTitle="No pending items — you're all caught up." onRowPress={(i) => setSelected(i)} />
+        <DataList columns={columns} data={filtered} rowKey={(i) => i.id} loading={loading} emptyTitle="No pending items. You're all caught up." onRowPress={(i) => setSelected(i)} />
       </View>
 
       <Sheet
@@ -396,7 +405,7 @@ export default function MgmtApprovalsScreen() {
             )}
 
             {selected.type === 'Sales Order' && Array.isArray(selected.raw?.metadata?.items) && selected.raw.metadata.items.length > 0 && (
-              <SheetSection label="Order Items — editable before approving">
+              <SheetSection label="Order Items (editable before approving)">
                 <View style={{ gap: t.spacing.sm }}>
                   {selected.raw.metadata.items.map((it: any, idx: number) => {
                     const draft = orderEdits[idx] || { quantity: String(it.quantity ?? ''), unitPrice: String(it.unitPrice ?? '') };
@@ -455,7 +464,7 @@ export default function MgmtApprovalsScreen() {
                   {confirmedDamages} damaged units will be recorded as a system loss of GHS {(confirmedDamages * costPerUnit).toLocaleString()}.
                 </Text>
               )}
-              <Field label="Selling Price (GHS) — optional"><Input value={sellingPrice} onChangeText={setSellingPrice} keyboardType="decimal-pad" /></Field>
+              <Field label="Selling Price (GHS, optional)"><Input value={sellingPrice} onChangeText={setSellingPrice} keyboardType="decimal-pad" /></Field>
               <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
                 <Pressable onPress={() => setNotifyOps((v) => !v)} style={{ flex: 1, padding: t.spacing.sm, borderRadius: t.radius.sm, borderWidth: 1, borderColor: notifyOps ? t.colors.accent : t.colors.border, backgroundColor: notifyOps ? t.colors.accentSoft : t.colors.bgCard }}>
                   <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.meta11.size, color: notifyOps ? t.colors.accent : t.colors.textSecondary, textAlign: 'center' }}>Notify Operations</Text>

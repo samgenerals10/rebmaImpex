@@ -16,10 +16,11 @@ import { useAuthStore } from '../../store/authStore';
 import { useTheme } from '../../theme/ThemeProvider';
 import Screen from '../../components/ui/Screen';
 import Card from '../../components/ui/Card';
+import MetricCard from '../../components/ui/MetricCard';
 import DataList, { type DataColumn } from '../../components/ui/DataList';
 import Badge from '../../components/ui/Badge';
 import BarChart from '../../components/ui/BarChart';
-import Input from '../../components/ui/Input';
+import Input, { Field } from '../../components/ui/Input';
 import SearchablePicker from '../../components/ui/SearchablePicker';
 import Sheet, { SheetSection } from '../../components/ui/Sheet';
 import Button from '../../components/ui/Button';
@@ -51,6 +52,9 @@ export default function MobileMoneyScreen() {
   const [networkFilter, setNetworkFilter] = useState('All');
   const [detail, setDetail] = useState<MomoRow | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<MomoRow | null>(null);
+  const [editForm, setEditForm] = useState({ transactionId: '', network: 'MTN', customerName: '', momoNumber: '', amount: '' });
+  const [savingEdit, setSavingEdit] = useState(false);
 
   const load = useCallback(async () => {
     const { data, error } = await supabase.from('finance_payments').select('id, transaction_id, network, client_name, momo_number, amount, created_at, status, order_id').ilike('payment_mode', 'mobile_money').order('created_at', { ascending: false });
@@ -75,6 +79,26 @@ export default function MobileMoneyScreen() {
   const byNetwork = ['MTN', 'Vodafone', 'AirtelTigo'].map((n) => ({
     label: n, value: txns.filter((t) => t.network === n).reduce((s, t) => s + Number(t.amount || 0), 0), color: NETWORK_COLOR[n],
   }));
+  const totalAmount = txns.reduce((s, t) => s + Number(t.amount || 0), 0);
+
+  const openEdit = (tx: MomoRow) => {
+    setEditForm({ transactionId: tx.transaction_id || '', network: tx.network, customerName: tx.client_name || '', momoNumber: tx.momo_number || '', amount: String(tx.amount) });
+    setEditTarget(tx);
+  };
+
+  const saveEdit = async () => {
+    if (!editTarget || !editForm.transactionId.trim() || !editForm.customerName.trim() || !editForm.amount) return;
+    setSavingEdit(true);
+    const { error } = await supabase.from('finance_payments').update({
+      transaction_id: editForm.transactionId.trim(), network: editForm.network, client_name: editForm.customerName.trim(),
+      momo_number: editForm.momoNumber.trim() || null, amount: parseFloat(editForm.amount) || 0,
+    }).eq('id', editTarget.id);
+    setSavingEdit(false);
+    if (error) { Alert.alert('Update Failed', error.message); return; }
+    await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `MoMo transaction ${editTarget.id} updated`, performed_by: profile?.fullName || 'Finance', timestamp: new Date().toISOString() }]);
+    setEditTarget(null);
+    load();
+  };
 
   const verify = async (tx: MomoRow) => {
     const { error } = await supabase.from('finance_payments').update({ status: 'Verified' }).eq('id', tx.id);
@@ -130,6 +154,12 @@ export default function MobileMoneyScreen() {
         <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
           <Button label="Export" size="sm" variant="ghost" icon={<Download size={13} color={t.colors.textSecondary} />} onPress={() => setExportOpen(true)} />
         </View>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.sm }}>
+          <View style={{ width: '47%' }}><MetricCard label="Total MoMo" value={loading ? '—' : `GHS ${totalAmount.toLocaleString()}`} tone="accent" /></View>
+          <View style={{ width: '47%' }}><MetricCard label="MTN" value={loading ? '—' : `GHS ${byNetwork[0].value.toLocaleString()}`} /></View>
+          <View style={{ width: '47%' }}><MetricCard label="Vodafone" value={loading ? '—' : `GHS ${byNetwork[1].value.toLocaleString()}`} /></View>
+          <View style={{ width: '47%' }}><MetricCard label="AirtelTigo" value={loading ? '—' : `GHS ${byNetwork[2].value.toLocaleString()}`} /></View>
+        </View>
         {!loading && byNetwork.some((n) => n.value > 0) && (
           <Card>
             <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary, marginBottom: t.spacing.md }}>By Network</Text>
@@ -150,12 +180,29 @@ export default function MobileMoneyScreen() {
               <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textSecondary }}>MoMo Number: {detail.momo_number || 'N/A'}</Text>
               <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textSecondary }}>Date: {new Date(detail.created_at).toLocaleString()}</Text>
             </SheetSection>
-            <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.sm }}>
               {detail.status !== 'Verified' && <Button label="Verify" size="sm" onPress={() => verify(detail)} />}
+              <Button label="Edit" size="sm" variant="ghost" onPress={() => openEdit(detail)} />
               <Button label="Delete" size="sm" variant="danger" onPress={() => remove(detail)} />
             </View>
           </>
         )}
+      </Sheet>
+
+      <Sheet
+        open={!!editTarget}
+        onClose={() => setEditTarget(null)}
+        title="Edit Transaction"
+        side="bottom"
+        footer={<Button label={savingEdit ? 'Saving…' : 'Save Changes'} onPress={saveEdit} loading={savingEdit} disabled={savingEdit} fullWidth />}
+      >
+        <Field label="Transaction ID *"><Input value={editForm.transactionId} onChangeText={(v) => setEditForm((f) => ({ ...f, transactionId: v }))} /></Field>
+        <Field label="Network">
+          <SearchablePicker value={editForm.network} onChange={(v) => setEditForm((f) => ({ ...f, network: v }))} options={[{ value: 'MTN', label: 'MTN' }, { value: 'Vodafone', label: 'Vodafone' }, { value: 'AirtelTigo', label: 'AirtelTigo' }]} />
+        </Field>
+        <Field label="Customer Name *"><Input value={editForm.customerName} onChangeText={(v) => setEditForm((f) => ({ ...f, customerName: v }))} /></Field>
+        <Field label="MoMo Number" hint="Optional"><Input value={editForm.momoNumber} onChangeText={(v) => setEditForm((f) => ({ ...f, momoNumber: v }))} /></Field>
+        <Field label="Amount (GHS) *"><Input value={editForm.amount} onChangeText={(v) => setEditForm((f) => ({ ...f, amount: v }))} keyboardType="decimal-pad" /></Field>
       </Sheet>
 
       <ExportSheet

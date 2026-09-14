@@ -178,7 +178,7 @@ export default function RegisterScreen() {
               <View style={styles.cardHeader}>
                 <Text style={styles.cardTitle}>Confirm Your Details</Text>
                 <View style={styles.cardRule} />
-                <Text style={styles.cardSubtitle}>HR already entered your record — confirm it's you</Text>
+                <Text style={styles.cardSubtitle}>HR already entered your record, just confirm it's you</Text>
               </View>
               {[
                 { label: 'Full Name', value: invite.fullName, icon: <User size={16} color={t.colors.textMuted} /> },

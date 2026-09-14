@@ -76,7 +76,10 @@ export default function NotificationsScreen() {
     if (!n.action_url) return;
     // Phase 11.2 — chat_message/chat_mention notifications store a channel
     // id in action_url, not a URL; deep-link straight into that thread.
-    if (n.type === 'chat_message' || n.type === 'chat_mention') {
+    // missed_call's action_url is a real channel id too (notifyMissedCall
+    // passes channelId, not a meeting id) — previously fell through to the
+    // http-only branch below and silently did nothing.
+    if (n.type === 'chat_message' || n.type === 'chat_mention' || n.type === 'missed_call') {
       const { data: ch } = await supabase.from('channels').select('*').eq('id', n.action_url).maybeSingle();
       if (ch && navigationRef.isReady()) {
         // notifyUsers() stores the sender's full name as the notification's

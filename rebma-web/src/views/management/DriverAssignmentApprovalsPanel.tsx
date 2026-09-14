@@ -28,7 +28,7 @@ export default function DriverAssignmentApprovalsPanel({ addNotification }: Prop
     setDecidingId(id);
     try {
       await dispatchApi.decideDriverAssignment(id, approve);
-      addNotification?.(approve ? 'Driver assignment approved — trip link sent.' : 'Driver assignment rejected.');
+      addNotification?.(approve ? 'Driver assignment approved and trip link sent.' : 'Driver assignment rejected.');
       setRequests(prev => prev.filter(r => r.id !== id));
     } catch (e: any) {
       addNotification?.(`Failed to record decision: ${e.message}`);

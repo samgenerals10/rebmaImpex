@@ -38,7 +38,7 @@ export function buildDirectionsMessage(driverName: string, stops: WhatsAppStop[]
     lines.push('');
   }
   lines.push(`Tap to start your trip: ${tripUrl}`);
-  lines.push('This opens Google Maps for each stop, shows the full order details, and shares your location with dispatch — no login needed.');
+  lines.push('This opens Google Maps for each stop, shows the full order details, and shares your location with dispatch. No login needed.');
   return lines.join('\n');
 }
 

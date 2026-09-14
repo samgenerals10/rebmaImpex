@@ -128,7 +128,7 @@ export default function RiskApprovalsScreen() {
       }));
       const mappedFinalRelease: ApprovalItem[] = (finalReleaseData || []).map((row: any) => ({
         id: row.id, requestId: `ORD-${row.id.slice(-6).toUpperCase()}`, type: 'Risk Final Release',
-        description: `${row.payment_mode === 'CREDIT' ? 'Credit order' : `${row.payment_mode || 'Cash'} order`} for ${row.client_name} — GHS ${Number(row.total_amount || 0).toLocaleString()} — cleared by Accounts`,
+        description: `${row.payment_mode === 'CREDIT' ? 'Credit order' : `${row.payment_mode || 'Cash'} order`} for ${row.client_name} — GHS ${Number(row.total_amount || 0).toLocaleString()}, cleared by Accounts`,
         amount: Number(row.total_amount || 0), date: row.created_at?.slice(0, 10) || '', raw: row,
       }));
 
@@ -173,20 +173,24 @@ export default function RiskApprovalsScreen() {
         const rawId = String(selected.raw.id);
         const cargoRow = selected.raw;
         const incomingQty = Number(cargoRow.quantity || cargoRow.qty_received || 0);
-        const finalQtyToAdd = Math.max(0, incomingQty - confirmedDamages);
-        const discrepancyCost = confirmedDamages * costPerUnit;
+        // Clamped so a reviewer can't report more damaged units than the
+        // shipment actually received — security/gap audit fix, matching
+        // web's own fix.
+        const clampedDamages = Math.max(0, Math.min(confirmedDamages, incomingQty));
+        const finalQtyToAdd = Math.max(0, incomingQty - clampedDamages);
+        const discrepancyCost = clampedDamages * costPerUnit;
         const sellingPriceVal = sellingPrice ? parseFloat(sellingPrice) : 0;
         const rawDiscrepancies = String(cargoRow.discrepancies || '');
         let finalDiscrepancyNotes = rawDiscrepancies;
-        if (action === 'approve' && confirmedDamages > 0) {
+        if (action === 'approve' && clampedDamages > 0) {
           finalDiscrepancyNotes = JSON.stringify({
-            originalQty: incomingQty, damagedCount: confirmedDamages, unitCost: costPerUnit, costLoss: discrepancyCost,
+            originalQty: incomingQty, damagedCount: clampedDamages, unitCost: costPerUnit, costLoss: discrepancyCost,
             sellingPrice: sellingPriceVal, notes: rawDiscrepancies && rawDiscrepancies !== 'None' ? rawDiscrepancies : 'Damaged goods write-off',
           });
         }
         await supabase.from('cargo_intake').update({
           status: newDbStatus, quantity: action === 'approve' ? finalQtyToAdd : incomingQty, discrepancies: finalDiscrepancyNotes,
-          unit_price: costPerUnit, is_fault_or_damaged: action === 'approve' ? confirmedDamages > 0 : cargoRow.is_fault_or_damaged,
+          unit_price: costPerUnit, is_fault_or_damaged: action === 'approve' ? clampedDamages > 0 : cargoRow.is_fault_or_damaged,
           rejection_reason: action === 'approve' ? null : (modalNote || null),
         }).eq('id', rawId);
 
@@ -203,12 +207,16 @@ export default function RiskApprovalsScreen() {
           }
           await supabase.from('stock_ledger').insert({
             product_name: productName, movement_type: 'ADD', quantity: finalQtyToAdd, reference: `Cargo approved: ${selected.requestId}`,
-            notes: `${selected.description}${confirmedDamages > 0 ? ` (${confirmedDamages} units damaged/lost)` : ''}`, created_at: now,
+            notes: `${selected.description}${clampedDamages > 0 ? ` (${clampedDamages} units damaged/lost)` : ''}`, created_at: now,
           });
           if (discrepancyCost > 0) {
+            // Posted as Pending, not auto-Approved — a single Risk
+            // reviewer should not be able to single-handedly book an
+            // arbitrary-size approved expense with no Finance sign-off.
+            // Security/gap audit fix, matching web.
             await supabase.from('finance_expenses').insert([{
-              category: 'Damaged Goods', description: `Loss from damaged goods in Cargo Intake ${selected.requestId} (${productName}: ${confirmedDamages} units)`,
-              amount: discrepancyCost, date: now.slice(0, 10), status: 'Approved', submitted_by: 'Risk (Auto-generated)',
+              category: 'Damaged Goods', description: `Loss from damaged goods in Cargo Intake ${selected.requestId} (${productName}: ${clampedDamages} units)`,
+              amount: discrepancyCost, date: now.slice(0, 10), status: 'Pending', submitted_by: 'Risk (Auto-generated)',
               notes: `Auto-generated from Cargo Intake approval. Discrepancy details: ${selected.description}`,
             }]);
           }
@@ -250,7 +258,7 @@ export default function RiskApprovalsScreen() {
         if (rpcErr) throw rpcErr;
 
         if (action === 'approve') {
-          await supabase.from('supplier_order_notifications').insert([{ message: `Order cleared Risk's initial review — awaiting your approval: ${selected.description}`, notified_department: 'MANAGEMENT', read: false }]);
+          await supabase.from('supplier_order_notifications').insert([{ message: `Order cleared Risk's initial review and is awaiting your approval: ${selected.description}`, notified_department: 'MANAGEMENT', read: false }]);
           await supabase.from('supplier_order_notifications').insert([{ message: `Your order passed Risk's initial review and is now with Management: ${selected.description}`, notified_department: 'MARKETING', read: false }]);
         } else {
           const verbLabel = action === 'return' ? 'RETURNED FOR CORRECTION' : 'REJECTED';
@@ -270,7 +278,7 @@ export default function RiskApprovalsScreen() {
         if (rpcErr) throw rpcErr;
 
         if (action === 'approve') {
-          await supabase.from('supplier_order_notifications').insert([{ message: `Order cleared Risk's final release check — ready for warehouse: ${selected.description}`, notified_department: 'ADMIN_WAREHOUSE', read: false }]);
+          await supabase.from('supplier_order_notifications').insert([{ message: `Order cleared Risk's final release check and is ready for warehouse: ${selected.description}`, notified_department: 'ADMIN_WAREHOUSE', read: false }]);
           await supabase.from('supplier_order_notifications').insert([{ message: `Your order has been fully cleared by Risk and is being prepared for dispatch: ${selected.description}`, notified_department: 'MARKETING', read: false }]);
         } else {
           const verbLabel = action === 'return' ? 'RETURNED FOR CORRECTION' : 'REJECTED';
@@ -280,7 +288,7 @@ export default function RiskApprovalsScreen() {
 
       if (selected.type === 'Customer Verification') {
         const custStatus = action === 'approve' ? 'APPROVED' : action === 'return' ? 'RETURNED_FOR_CORRECTION' : 'REJECTED';
-        await setCustomerVerification(selected.id, custStatus, { verifiedBy: profile?.fullName || 'Risk', rejectionReason: modalNote || undefined });
+        await setCustomerVerification(selected.id, custStatus, { rejectionReason: modalNote || undefined });
         const verbLabel = action === 'approve' ? 'APPROVED' : action === 'return' ? 'RETURNED FOR CORRECTION' : 'REJECTED';
         await supabase.from('supplier_order_notifications').insert([{ message: `Customer ${verbLabel} by Risk: ${selected.description}${modalNote ? ` — ${modalNote}` : ''}`, notified_department: 'MARKETING', read: false }]);
       }
@@ -294,7 +302,7 @@ export default function RiskApprovalsScreen() {
         if (rpcErr) throw rpcErr;
 
         if (action === 'approve') {
-          await supabase.from('supplier_order_notifications').insert([{ message: `Proof of delivery APPROVED by Risk — delivery closed out: ${selected.description}`, notified_department: 'DISPATCH', read: false }]);
+          await supabase.from('supplier_order_notifications').insert([{ message: `Proof of delivery APPROVED by Risk, delivery closed out: ${selected.description}`, notified_department: 'DISPATCH', read: false }]);
         } else {
           await supabase.from('supplier_order_notifications').insert([{ message: `Proof of delivery REJECTED by Risk: ${selected.description}${modalNote ? ` — ${modalNote}` : ''}`, notified_department: 'DISPATCH', read: false }]);
         }
@@ -381,7 +389,7 @@ export default function RiskApprovalsScreen() {
           data={filtered}
           rowKey={(i) => i.id}
           loading={loading}
-          emptyTitle="No pending items — you're all caught up."
+          emptyTitle="No pending items. You're all caught up."
           onRowPress={(i) => setSelected(i)}
         />
       </View>
@@ -411,13 +419,13 @@ export default function RiskApprovalsScreen() {
                 <View style={{ gap: t.spacing.sm }}>
                   {creditPosition.onHold && (
                     <View style={{ padding: t.spacing.sm, borderRadius: t.radius.sm, backgroundColor: t.colors.status.warning.bg }}>
-                      <Text style={{ fontFamily: t.font.bold, fontSize: t.type.meta11.size, color: t.colors.status.warning.text }}>⚠ CREDIT ON HOLD — new credit orders are blocked for this customer.</Text>
+                      <Text style={{ fontFamily: t.font.bold, fontSize: t.type.meta11.size, color: t.colors.status.warning.text }}>⚠ CREDIT ON HOLD: new credit orders are blocked for this customer.</Text>
                     </View>
                   )}
                   <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.md }}>
                     <View style={{ width: '47%' }}>
                       <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted }}>Credit Limit</Text>
-                      <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.body12.size, color: t.colors.textPrimary }}>{creditPosition.limit !== null ? `GHS ${creditPosition.limit.toLocaleString()}` : 'No limit — global cap applies'}</Text>
+                      <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.body12.size, color: t.colors.textPrimary }}>{creditPosition.limit !== null ? `GHS ${creditPosition.limit.toLocaleString()}` : 'No limit, global cap applies'}</Text>
                     </View>
                     <View style={{ width: '47%' }}>
                       <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted }}>Currently Outstanding</Text>
@@ -438,7 +446,7 @@ export default function RiskApprovalsScreen() {
             )}
 
             {selected.type === 'Sales Order' && Array.isArray(selected.raw?.metadata?.items) && selected.raw.metadata.items.length > 0 && (
-              <SheetSection label="Order Items — editable before approving">
+              <SheetSection label="Order Items (editable before approving)">
                 <View style={{ gap: t.spacing.sm }}>
                   {selected.raw.metadata.items.map((it: any, idx: number) => {
                     const draft = orderEdits[idx] || { quantity: String(it.quantity ?? ''), unitPrice: String(it.unitPrice ?? '') };
@@ -461,7 +469,7 @@ export default function RiskApprovalsScreen() {
             )}
 
             {selected.type === 'Risk Final Release' && Array.isArray(selected.raw?.metadata?.items) && selected.raw.metadata.items.length > 0 && (
-              <SheetSection label="Order Items — read-only, already verified by Accounts">
+              <SheetSection label="Order Items (read-only, already verified by Accounts)">
                 <View style={{ gap: t.spacing.sm }}>
                   {selected.raw.metadata.items.map((it: any, idx: number) => (
                     <View key={idx} style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
@@ -546,7 +554,7 @@ export default function RiskApprovalsScreen() {
                   {confirmedDamages} damaged units will be recorded as a system loss of GHS {(confirmedDamages * costPerUnit).toLocaleString()}.
                 </Text>
               )}
-              <Field label="Selling Price (GHS) — optional"><Input value={sellingPrice} onChangeText={setSellingPrice} keyboardType="decimal-pad" /></Field>
+              <Field label="Selling Price (GHS, optional)"><Input value={sellingPrice} onChangeText={setSellingPrice} keyboardType="decimal-pad" /></Field>
               <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
                 <Pressable onPress={() => setNotifyOps((v) => !v)} style={{ flex: 1, padding: t.spacing.sm, borderRadius: t.radius.sm, borderWidth: 1, borderColor: notifyOps ? t.colors.accent : t.colors.border, backgroundColor: notifyOps ? t.colors.accentSoft : t.colors.bgCard }}>
                   <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.meta11.size, color: notifyOps ? t.colors.accent : t.colors.textSecondary, textAlign: 'center' }}>Notify Operations</Text>

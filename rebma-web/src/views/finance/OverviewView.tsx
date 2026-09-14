@@ -24,7 +24,6 @@ interface Props {
   setActiveSubTab?: (tab: string) => void;
   currentUser?: { fullName: string; department: string } | null;
   ordersList?: { id: string; clientName: string; totalAmount: number; status: string; paymentMode?: string; createdAt?: string; productName?: string; quantity?: number; metadata?: any }[];
-  onEvaluateOrder?: (id: string, approve: boolean) => void;
 }
 
 interface Bill { id: string; desc: string; amount: number; due: string; status: string; }
@@ -58,7 +57,7 @@ const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?:
   );
 };
 
-export default function FinanceOverviewView({ addNotification, setActiveSubTab, currentUser, ordersList = [], onEvaluateOrder }: Props) {
+export default function FinanceOverviewView({ addNotification, setActiveSubTab, currentUser, ordersList = [] }: Props) {
   const [cashflowTab, setCashflowTab] = useState<'income' | 'expense' | 'savings'>('income');
   const [earnPeriod, setEarnPeriod] = useState('6M');
   const [totalRevenue, setTotalRevenue] = useState(0);

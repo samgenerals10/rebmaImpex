@@ -149,7 +149,7 @@ export default function ApprovalsView({ currentUser, addNotification }: Props) {
       // The registration desk (HR) previously learned nothing about a
       // rejection unless they happened to notice the row disappear.
       await supabase.from('supplier_order_notifications').insert([{
-        message: `Registration REJECTED by CEO: ${item.requester} (${item.department})${note ? ` — ${note}` : ''}`,
+        message: `Registration REJECTED by CEO: ${item.requester} (${item.department})${note ? `: ${note}` : ''}`,
         notified_department: 'HR',
         read: false,
       }]);

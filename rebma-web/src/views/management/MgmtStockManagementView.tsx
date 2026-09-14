@@ -294,7 +294,7 @@ export default function MgmtStockManagementView({ addNotification, currentUser }
             <h3 className="font-bold text-lg text-[var(--text-primary)] flex items-center gap-2">
               <Edit3 size={16} className="text-[var(--accent)]" /> Correct a Cargo Entry
             </h3>
-            <p className="text-xs text-[var(--text-muted)] mt-0.5">Fix a mistake in a previously-approved intake — corrections adjust current stock and are logged to the audit trail.</p>
+            <p className="text-xs text-[var(--text-muted)] mt-0.5">Fix a mistake in a previously-approved intake. Corrections adjust current stock and are logged to the audit trail.</p>
           </div>
           <div className="relative w-full sm:w-64">
             <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
@@ -336,7 +336,7 @@ export default function MgmtStockManagementView({ addNotification, currentUser }
             </h3>
             <p className="text-xs text-[var(--text-muted)] mt-0.5">
               {getSetting('management_can_delete_stock', true)
-                ? 'Remove a stock item entirely — this cannot be undone. A reason is logged to the audit trail.'
+                ? 'Remove a stock item entirely. This cannot be undone. A reason is logged to the audit trail.'
                 : 'Stock deletion is currently disabled by the CEO.'}
             </p>
           </div>

@@ -72,7 +72,7 @@ export default function OverviewScreen() {
         <View>
           <SectionHeader title="Needs Attention" subtitle="Production requests awaiting Management approval" />
           {pending.length === 0 && !loading ? (
-            <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textMuted, textAlign: 'center', paddingVertical: t.spacing.md }}>Nothing pending — all clear.</Text>
+            <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textMuted, textAlign: 'center', paddingVertical: t.spacing.md }}>Nothing pending. All clear.</Text>
           ) : (
             <View style={{ gap: t.spacing.sm }}>
               {pending.map((r) => (

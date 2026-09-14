@@ -185,7 +185,7 @@ const DRIVER_STATE_COLOR: Record<string, string> = {
 };
 
 const DRIVER_STATE_LABEL: Record<string, string> = {
-  ASSIGNED: 'Assigned — awaiting start',
+  ASSIGNED: 'Assigned, awaiting start',
   ON_THE_WAY: 'On the way',
   RETURNING: 'Returning to company',
   AT_COMPANY: 'At the company',
@@ -560,7 +560,7 @@ export default function DispatchMap({ deliveries, focusDeliveryId, height = 320,
                   <p style={{ margin: 0, color: isLive ? '#10b981' : '#94a3b8' }}>
                     {isLive
                       ? `Live · ${point.recordedAt ? new Date(point.recordedAt).toLocaleTimeString() : 'now'}`
-                      : atCompany ? 'At the depot — trip not started yet' : 'No GPS ping yet — last known position'}
+                      : atCompany ? 'At the depot, trip not started yet' : 'No GPS ping yet, last known position'}
                   </p>
                   {onMarkerClick && <p style={{ margin: '4px 0 0', color: '#94a3b8', fontStyle: 'italic' }}>Click marker for full details</p>}
                 </div>

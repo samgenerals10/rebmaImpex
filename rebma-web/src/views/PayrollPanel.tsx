@@ -199,7 +199,7 @@ export default function PayrollPanel({ currentUser, addNotification }: PayrollPa
             {canManage ? 'Payroll Management' : 'Payroll Overview'}
           </h2>
           <p className="text-xs text-[var(--text-muted)] mt-0.5">
-            {canManage ? 'Create batches, add staff, approve and pay' : 'Summary totals only — individual amounts are confidential'}
+            {canManage ? 'Create batches, add staff, approve and pay' : 'Summary totals only, individual amounts are confidential'}
           </p>
         </div>
         {canManage && (

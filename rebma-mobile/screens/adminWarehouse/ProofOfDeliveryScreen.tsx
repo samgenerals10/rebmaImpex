@@ -110,7 +110,7 @@ export default function ProofOfDeliveryScreen() {
     setSubmitting(false);
     if (error) {
       await enqueueUpdate(QUEUE_KEYS.proofOfDelivery, 'delivery_logs', statusPayload, { id: detail.id });
-      Alert.alert('Saved Offline', 'Photo captured — the submit-for-review step will sync automatically once you\'re back online.');
+      Alert.alert('Saved Offline', 'Photo captured. The submit-for-review step will sync automatically once you\'re back online.');
       setDetail(null);
       load();
       return;

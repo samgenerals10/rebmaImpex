@@ -175,7 +175,7 @@ export default function TransactionsView({ addNotification }: Props) {
         <div>
           <h2 className="text-lg font-bold text-[var(--text-primary)]">All Transactions</h2>
           <p className="text-xs text-[var(--text-muted)]">
-            Live ledger — payments, expenses &amp; purchases · {rows.length} records
+            Live ledger of payments, expenses &amp; purchases · {rows.length} records
           </p>
         </div>
         <div className="flex gap-2">

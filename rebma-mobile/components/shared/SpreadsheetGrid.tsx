@@ -33,8 +33,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, Alert, ScrollView, Pressable } from 'react-native';
 import { HyperFormula } from 'hyperformula';
-import { Table, ArrowLeft, FileSpreadsheet, Plus, Trash2 } from 'lucide-react-native';
+import { Table, ArrowLeft, FileSpreadsheet, Plus, Trash2, Lock, RefreshCw } from 'lucide-react-native';
 import { supabase } from '../../lib/supabaseClient';
+import { getCeoSetting } from '../../lib/ceoSetting';
 import { useAuthStore } from '../../store/authStore';
 import { useTheme } from '../../theme/ThemeProvider';
 import Card from '../ui/Card';
@@ -65,11 +66,54 @@ interface Props {
 
 export default function SpreadsheetGrid({ department }: Props) {
   const t = useTheme();
+  const { profile } = useAuthStore();
   const tables = DEPT_TABLES[department] || [];
   const [tab, setTab] = useState<'data' | 'free'>('data');
   const [activeTable, setActiveTable] = useState<{ id: string; label: string } | null>(null);
   const [activeFreeSheet, setActiveFreeSheet] = useState<FreeSheetRecord | { id: null } | null>(null);
   const [freeListVersion, setFreeListVersion] = useState(0);
+
+  // CEO kill-switch: spreadsheets_enabled, with a per-user
+  // ceo_feature_exceptions override checked first — matching
+  // SpreadsheetView.tsx's own access check exactly. Only the read side is
+  // ported (does an exception apply to me); managing exceptions stays a
+  // web-only admin surface, per the Control Center scope note.
+  const [accessAllowed, setAccessAllowed] = useState<boolean | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const masterEnabled = await getCeoSetting('spreadsheets_enabled', true);
+      const userEmail = profile?.email?.toLowerCase();
+      if (!userEmail) { if (!cancelled) setAccessAllowed(masterEnabled); return; }
+      const { data } = await supabase
+        .from('ceo_feature_exceptions')
+        .select('allowed')
+        .eq('feature_key', 'spreadsheets_enabled')
+        .eq('user_email', userEmail)
+        .maybeSingle();
+      if (cancelled) return;
+      setAccessAllowed(data !== null && data !== undefined ? Boolean(data.allowed) : masterEnabled);
+    })();
+    return () => { cancelled = true; };
+  }, [profile?.email]);
+
+  if (accessAllowed === null) {
+    return (
+      <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: t.spacing.xxxl, flexDirection: 'row', gap: t.spacing.sm }}>
+        <RefreshCw size={16} color={t.colors.textMuted} />
+        <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body14.size, color: t.colors.textMuted }}>Checking access…</Text>
+      </View>
+    );
+  }
+  if (!accessAllowed) {
+    return (
+      <EmptyState
+        icon={<Lock size={22} color={t.colors.status.danger.text} />}
+        title="Spreadsheets Disabled"
+        description="The CEO has disabled Spreadsheets for your account or all users. Contact the CEO or administrator to request access."
+      />
+    );
+  }
 
   if (activeTable) {
     return <TableEditor table={activeTable} onBack={() => setActiveTable(null)} />;

@@ -260,7 +260,7 @@ export const messenger = {
     if (error || !created) throw new Error(error?.message || 'Failed to start call');
     const meeting = created[0];
     await supabase.from('meeting_attendees').insert(memberIds.map((uid) => ({ meeting_id: meeting.id, user_id: uid, rsvp_status: uid === organizerId ? 'ACCEPTED' : 'INVITED' })));
-    const callMsg = await messenger.sendMessage(channelId, organizerId, organizerName, `📞 ${kind === 'voice' ? 'Voice' : 'Video'} call started — tap to join.`, { attachmentType: 'call', attachmentUrl: meeting.id });
+    const callMsg = await messenger.sendMessage(channelId, organizerId, organizerName, `📞 ${kind === 'voice' ? 'Voice' : 'Video'} call started, tap to join.`, { attachmentType: 'call', attachmentUrl: meeting.id });
     await messenger.notifyUsers(memberIds.filter((id) => id !== organizerId), 'call_started', `${organizerName} started a ${kind} call`, 'Tap to join now', meeting.id);
     return { ...meeting, callMessageId: callMsg?.id as string | undefined };
   },

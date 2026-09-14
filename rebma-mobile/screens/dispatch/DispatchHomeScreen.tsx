@@ -292,7 +292,7 @@ export default function DispatchHomeScreen() {
                 <Switch value={gpsActive} onValueChange={setGpsActive} trackColor={{ false: t.colors.border, true: t.colors.accentSoft }} thumbColor={gpsActive ? t.colors.accent : undefined} />
               </View>
               <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textMuted }}>
-                Keep this app open while tracking is on — location only updates while the app is in the foreground.
+                Keep this app open while tracking is on, since location only updates while the app is in the foreground.
               </Text>
 
               <Button label="Mark Order as Delivered" onPress={handleDeliver} fullWidth />

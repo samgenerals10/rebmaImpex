@@ -75,7 +75,19 @@ const TYPE_ICONS: Record<string, React.ElementType> = {
 // history rows still render correctly, but it's no longer a live approval
 // type here — registration approval is CEO/HR-only now (see ceo/ApprovalsView.tsx
 // and hr/RegistrationsView.tsx).
-const TABS = ['All', 'Cargo Intake', 'Sales Order', 'Production Request', 'General Purchase', 'Float Request'] as const;
+// 'Cargo Intake' deliberately removed from this tab list — since the
+// Risk-department migration (supabase_risk_department.sql), only
+// operations/risk/admin may write cargo_intake at all, and Risk's own
+// screen owns PENDING_RISK_APPROVAL. Nothing writes
+// PENDING_MANAGEMENT_APPROVAL on cargo_intake anymore, so this tab was
+// permanently empty (or, for a stale legacy row, threw a raw RLS
+// permission error on approve/reject with no explanation). The
+// underlying query/confirmAction() branch is left in place, unreachable
+// now that the tab can't be selected — a fuller cleanup of that dead
+// code is a reasonable follow-up, not done here to avoid touching logic
+// shared with the other, still-live lanes in this same function.
+// Security/gap audit fix.
+const TABS = ['All', 'Sales Order', 'Production Request', 'General Purchase', 'Float Request'] as const;
 
 export default function MgmtApprovalsView({ addNotification, currentUser }: Props) {
   const { getSetting } = useCeoSettings();
@@ -469,7 +481,7 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
         if (rpcError) throw rpcError;
 
         if (action === 'approve') {
-          await supabase.from('supplier_order_notifications').insert([{ message: `Order approved by Management — now awaiting Accounts Office processing: ${selectedItem.description}`, notified_department: 'FINANCE', read: false }]);
+          await supabase.from('supplier_order_notifications').insert([{ message: `Order approved by Management and now awaiting Accounts Office processing: ${selectedItem.description}`, notified_department: 'FINANCE', read: false }]);
           await supabase.from('supplier_order_notifications').insert([{ message: `Your order has been approved by Management and sent to Accounts: ${selectedItem.description}`, notified_department: 'MARKETING', read: false }]);
         } else if (action === 'return') {
           await supabase.from('supplier_order_notifications').insert([{ message: `Order RETURNED FOR CORRECTION by Management: ${selectedItem.description}${modalNote ? ` — ${modalNote}` : ''}`, notified_department: 'MARKETING', read: false }]);
@@ -518,7 +530,7 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
             });
           }
 
-          await supabase.from('supplier_order_notifications').insert([{ message: `Production request APPROVED by Management — ready for pickup/repackaging: ${selectedItem.description}`, notified_department: 'PRODUCTION', read: false }]);
+          await supabase.from('supplier_order_notifications').insert([{ message: `Production request APPROVED by Management and ready for pickup/repackaging: ${selectedItem.description}`, notified_department: 'PRODUCTION', read: false }]);
           await supabase.from('supplier_order_notifications').insert([{ message: `Production release ready for warehouse handling: ${selectedItem.description}`, notified_department: 'OPERATIONS', read: false }]);
         } else {
           await supabase.from('production_requests').update({ status: 'REJECTED', rejection_reason: modalNote || null }).eq('id', selectedItem.id);
@@ -668,7 +680,7 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
               <div className="flex items-center justify-between flex-wrap gap-1">
                 <p className="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider">Order Items breakdown</p>
                 {selectedItem.status === 'Pending' && (
-                  <span className="text-[10px] text-[var(--text-muted)]">Editable — adjust qty/price before approving</span>
+                  <span className="text-[10px] text-[var(--text-muted)]">Editable, adjust qty/price before approving</span>
                 )}
               </div>
               {selectedItem.status === 'Pending' && Array.isArray((selectedItem.raw as any)?.metadata?.items) && (selectedItem.raw as any).metadata.items.length > 0 ? (() => {
@@ -793,9 +805,9 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           { label: 'Total Pending', value: counts.pending, icon: FileText, color: 'var(--accent)', filter: 'Pending', title: 'Everything currently awaiting your approval, across all types' },
-          { label: 'All Approvals', value: counts.total, icon: Clock, color: '#f59e0b', filter: 'All', title: 'Every approval on record — pending, approved, and rejected' },
-          { label: 'Approved Today', value: todayApproved, icon: CheckCircle, color: '#10b981', filter: 'Approved', title: 'Items you approved today — click to see the full approved history' },
-          { label: 'Rejected Today', value: todayRejected, icon: XCircle, color: '#ef4444', filter: 'Rejected', title: 'Items you rejected today — click to see the full rejected history' },
+          { label: 'All Approvals', value: counts.total, icon: Clock, color: '#f59e0b', filter: 'All', title: 'Every approval on record: pending, approved, and rejected' },
+          { label: 'Approved Today', value: todayApproved, icon: CheckCircle, color: '#10b981', filter: 'Approved', title: 'Items you approved today, click to see the full approved history' },
+          { label: 'Rejected Today', value: todayRejected, icon: XCircle, color: '#ef4444', filter: 'Rejected', title: 'Items you rejected today, click to see the full rejected history' },
         ].map(({ label, value, icon: Icon, color, filter, title }) => (
           <button
             key={label}
@@ -865,7 +877,7 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center p-12 gap-2 text-[var(--text-muted)]">
             <CheckCircle size={32} className="opacity-30" />
-            <p className="text-sm">No pending approvals — you're all caught up.</p>
+            <p className="text-sm">No pending approvals. You're all caught up.</p>
           </div>
         ) : (
           <div className="p-3">
@@ -1101,7 +1113,7 @@ export default function MgmtApprovalsView({ addNotification, currentUser }: Prop
                     onChange={e => setApprovedQty(e.target.value)}
                     className="w-full px-3 py-2 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm font-mono text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
                   />
-                  <p className="text-[9px] text-[var(--text-muted)]">This is what gets added to stock and issued on the fulfillment ticket — adjust it if the requested amount isn't what should actually be released.</p>
+                  <p className="text-[9px] text-[var(--text-muted)]">This is what gets added to stock and issued on the fulfillment ticket. Adjust it if the requested amount isn't what should actually be released.</p>
                 </div>
               )}
 

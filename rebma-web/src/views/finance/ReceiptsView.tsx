@@ -115,7 +115,7 @@ export async function printReceipt(r: ReceiptRow, lineItems: OrderLineItem[] | n
           <td class="it-num">GHS ${Number(it.unitPrice).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
           <td class="it-num it-total">GHS ${Number(it.lineTotal).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
         </tr>`).join('')
-    : `<tr><td colspan="4" class="it-empty">Payment for Order ${r.orderId || '—'} — itemized breakdown not available for this record.</td></tr>`;
+    : `<tr><td colspan="4" class="it-empty">Payment for Order ${r.orderId || '—'}. Itemized breakdown not available for this record.</td></tr>`;
 
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/>
   <title>Receipt ${r.receiptNumber} — REBMA IMPEX</title>
@@ -236,7 +236,7 @@ export async function printReceipt(r: ReceiptRow, lineItems: OrderLineItem[] | n
         <div class="footer">
           <div class="legal">
             ${t.footerNote}<br/>
-            Receipt <strong>${r.receiptNumber}</strong> documents this payment; order ticket <strong>${r.ticketNumber || '—'}</strong> is a separate record — scan QR to verify both match.
+            Receipt <strong>${r.receiptNumber}</strong> documents this payment; order ticket <strong>${r.ticketNumber || '—'}</strong> is a separate record. Scan the QR code to verify both match.
           </div>
           <div class="qr-wrap">
             ${qrDataUrl

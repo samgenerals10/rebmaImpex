@@ -23,7 +23,6 @@ import SearchableDropdown from '../components/ui/SearchableDropdown';
 interface FinanceDashboardProps {
   ordersList: Order[];
   setOrdersList: React.Dispatch<React.SetStateAction<Order[]>>;
-  onEvaluateOrder: (id: string, approve: boolean) => void;
   onFinalizeOrder: (id: string) => void;
   activeSubTab: string;
   setActiveSubTab?: (tab: string) => void;
@@ -51,7 +50,6 @@ const handleSort = (
 export default function FinanceDashboard({
   ordersList,
   setOrdersList,
-  onEvaluateOrder,
   onFinalizeOrder,
   activeSubTab = 'Evaluation',
   setActiveSubTab,
@@ -347,7 +345,7 @@ export default function FinanceDashboard({
       setLocalPayments(updated);
       setPaymentsList(updated);
       setOrdersList(prev => prev.map(o => o.id === selectedOrderId ? { ...o, status: 'APPROVED' } : o));
-      addNotification(`Credit settlement recorded for ${order.clientName} (Order ${selectedOrderId}) — Status set to APPROVED.`);
+      addNotification(`Credit settlement recorded for ${order.clientName} (Order ${selectedOrderId}). Status set to APPROVED.`);
       setSelectedOrderId('');
       setAmount('');
     }
@@ -852,15 +850,6 @@ export default function FinanceDashboard({
 
       {/* ══ DESKTOP LAYOUT (lg+) — UNCHANGED ══ */}
       <div className="hidden lg:block">
-        {/* Premium e-commerce overview dashboard */}
-        {activeSubTab === 'Evaluation' && (
-          <FinanceOverviewView
-            addNotification={addNotification}
-            setActiveSubTab={setActiveSubTab as any}
-            ordersList={effectiveOrders as any}
-            onEvaluateOrder={onEvaluateOrder}
-          />
-        )}
         {activeSubTab !== 'Evaluation' && (
         <div className="space-y-6">
           {/* Ticket Modal */}
@@ -987,7 +976,7 @@ export default function FinanceDashboard({
               <p className="text-2xl md:text-3xl font-bold text-emerald-500 font-mono"><CountUp value={totalWarehouseItems} /> <span className="text-xs md:text-base text-[var(--text-secondary)] font-normal font-sans">Units</span></p>
               <p className="text-[10px] text-[var(--text-secondary)] opacity-80">Total approved and released production units currently in warehouse stock.</p>
             </div>
-            <div title="Real stock valuation (quantity × unit price per product) plus approved general purchases — capital currently tied up, not yet converted to sales" className="p-4 md:p-6 bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-[var(--box-shadow)] space-y-3">
+            <div title="Real stock valuation (quantity × unit price per product) plus approved general purchases: capital currently tied up, not yet converted to sales" className="p-4 md:p-6 bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-[var(--box-shadow)] space-y-3">
               <h3 className="text-sm font-bold text-[var(--text-primary)]">Capital Tied Up in Assets</h3>
               <p className="text-2xl md:text-3xl font-bold text-indigo-500 font-mono">₵<CountUp value={totalCapitalAssets} /></p>
               <p className="text-[10px] text-[var(--text-secondary)] opacity-80">Value of finished goods stock plus approved general purchased items.</p>
@@ -1013,7 +1002,7 @@ export default function FinanceDashboard({
             </div>
           </div>
           {activeSubTab === 'RecordPayment' && (
-            <div title="Record a direct payment or settle an outstanding credit order — toggle below" className="p-6 bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-[var(--box-shadow)] space-y-4">
+            <div title="Record a direct payment or settle an outstanding credit order using the toggle below" className="p-6 bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-[var(--box-shadow)] space-y-4">
               <h3 className="text-base font-bold text-[var(--text-primary)]">Record Inbound Payment &amp; Settle Credit</h3>
               <form onSubmit={handleRecordPaymentSubmit} className="space-y-4 text-[var(--text-primary)]">
                 <div>
@@ -1075,8 +1064,8 @@ export default function FinanceDashboard({
                           {amount && (
                             <div className={`rounded-xl px-3 py-2 text-xs font-semibold ${balance <= 0 ? 'bg-emerald-500/10 text-emerald-600' : 'bg-rose-500/10 text-rose-600'}`}>
                               {balance <= 0
-                                ? `Full payment — GHS ${Math.abs(balance).toLocaleString()} ${balance < 0 ? 'overpaid' : 'settled'}`
-                                : `Partial payment — GHS ${balance.toLocaleString()} remaining`}
+                                ? `Full payment: GHS ${Math.abs(balance).toLocaleString()} ${balance < 0 ? 'overpaid' : 'settled'}`
+                                : `Partial payment: GHS ${balance.toLocaleString()} remaining`}
                             </div>
                           )}
                         </div>
@@ -1109,40 +1098,6 @@ export default function FinanceDashboard({
 
           {/* Tab Views */}
           <div className="border-t border-[var(--border)] pt-6">
-
-            {/* PAYMENT TERMS / ORDERS QUEUE */}
-            {(activeSubTab === 'OrdersQueue') && (
-              <div className="p-4 md:p-6 bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-[var(--box-shadow)] space-y-4">
-                <h3 className="text-base md:text-lg font-bold text-[var(--text-primary)]">Workflow B: Order Payment Terms Evaluation Queue</h3>
-                <div className="space-y-3">
-                  {effectiveOrders.filter(o => o.status === 'PENDING_FINANCE').map(order => (
-                    <div key={order.id} className="p-4 bg-[var(--bg)] border border-[var(--border)] rounded-xl">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                        <div>
-                          <div className="flex items-center gap-2 flex-wrap text-[var(--text-primary)]">
-                            <p className="text-xs font-bold">{order.clientName}</p>
-                            <span className="text-[10px] font-mono text-[var(--text-secondary)]">({order.id})</span>
-                            {order.ticketNumber && <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-450 rounded text-[9px] font-bold">🎫 {order.ticketNumber}</span>}
-                          </div>
-                          <p className="text-xs text-[var(--text-secondary)] mt-0.5">Payment Mode: <strong className="text-[var(--text-primary)]">{order.paymentMode}</strong> | Amount: <strong className="text-[var(--text-primary)]">GHS <CountUp value={order.totalAmount} /></strong></p>
-                          {order.productName && <p className="text-[10px] text-[var(--text-secondary)]">Product: {order.productName}</p>}
-                          {order.destination && <p className="text-[10px] text-[var(--text-secondary)]">Destination: {order.destination}</p>}
-                          {order.ghanaCard && <p className="text-[10px] text-[var(--text-secondary)] font-mono">Ghana Card: <code>{order.ghanaCard}</code></p>}
-                          <p className="text-[10px] text-[var(--text-secondary)] font-mono">Submitted: {order.createdAt}</p>
-                        </div>
-                        <div className="flex gap-2 w-full sm:w-auto justify-end shrink-0">
-                          <button onClick={() => onEvaluateOrder(order.id, true)} className="flex-1 sm:flex-none px-3 py-1.5 bg-[var(--accent)] hover:opacity-90 text-white rounded-lg text-xs font-bold cursor-pointer transition-all shadow">Clear Terms</button>
-                          <button onClick={() => onEvaluateOrder(order.id, false)} className="flex-1 sm:flex-none px-3 py-1.5 bg-rose-500/15 text-rose-500 rounded-lg text-xs font-bold cursor-pointer hover:bg-rose-500/25 transition-all">Deny</button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                  {effectiveOrders.filter(o => o.status === 'PENDING_FINANCE').length === 0 && (
-                    <p className="text-xs text-[var(--text-secondary)] text-center py-6">No order payment checks pending clearance.</p>
-                  )}
-                </div>
-              </div>
-            )}
 
             {/* INVOICE PORTAL */}
             {activeSubTab === 'Invoices' && (
@@ -1414,7 +1369,7 @@ export default function FinanceDashboard({
                 {/* Toolbar */}
                 <div className="theme-table-toolbar flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-5 py-4 border-b border-[var(--border)] bg-[var(--bg)] text-[var(--text-primary)]">
                   <div className="flex items-center gap-2">
-                    <h3 className="font-bold text-sm">Warehouse History — Production Output</h3>
+                    <h3 className="font-bold text-sm">Warehouse History: Production Output</h3>
                     <span className="text-xs font-mono text-[var(--text-secondary)] bg-[var(--bg-card)] border border-[var(--border)] px-2 py-0.5 rounded-full">{filteredWarehouse.length} entries</span>
                   </div>
                   <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">

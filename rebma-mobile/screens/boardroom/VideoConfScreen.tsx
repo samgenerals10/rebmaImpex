@@ -54,7 +54,7 @@ export default function VideoConfScreen() {
         </Card>
 
         <Card>
-          <SectionHeader title="Live Meeting Minutes Editor" subtitle="Local to this device for this session — not shared or saved." />
+          <SectionHeader title="Live Meeting Minutes Editor" subtitle="Local to this device for this session, not shared or saved." />
           <Input
             value={minutes}
             onChangeText={setMinutes}

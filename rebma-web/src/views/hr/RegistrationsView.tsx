@@ -196,7 +196,7 @@ export default function RegistrationsView({ pendingRegistrations, addNotificatio
 
       {awaitingCeo > 0 && (
         <div className="text-xs text-[var(--text-secondary)] bg-[var(--accent-light)] border border-[var(--border)] rounded-xl px-3 py-2">
-          {awaitingCeo} Management/HR registration{awaitingCeo === 1 ? '' : 's'} awaiting CEO approval — not shown here.
+          {awaitingCeo} Management/HR registration{awaitingCeo === 1 ? '' : 's'} awaiting CEO approval, not shown here.
         </div>
       )}
 

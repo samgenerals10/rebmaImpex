@@ -101,7 +101,7 @@ export default function PriceApprovalsScreen() {
         rejection_reason: approve ? null : (note || null),
       }).eq('id', req.id);
 
-      const details = `${req.product_name} → ${req.currency} ${Number(req.unit_price).toLocaleString()}${note ? ` — ${note}` : ''}`;
+      const details = `${req.product_name} → ${req.currency} ${Number(req.unit_price).toLocaleString()}${note ? `. Note: ${note}` : ''}`;
       await supabase.from('global_audit_history').insert({
         action: `${approve ? 'Approved' : 'Rejected'} price request`,
         department: 'MANAGEMENT',
@@ -111,7 +111,7 @@ export default function PriceApprovalsScreen() {
       });
 
       await supabase.from('supplier_order_notifications').insert({
-        message: `Price change ${approve ? 'APPROVED' : 'REJECTED'} by CEO: ${req.product_name} → ${req.currency} ${Number(req.unit_price).toLocaleString()}${note ? ` — ${note}` : ''}`,
+        message: `Price change ${approve ? 'APPROVED' : 'REJECTED'} by CEO: ${req.product_name} → ${req.currency} ${Number(req.unit_price).toLocaleString()}${note ? `. Note: ${note}` : ''}`,
         notified_department: 'MANAGEMENT',
         read: false,
       });

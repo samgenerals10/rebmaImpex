@@ -569,7 +569,7 @@ export default function DeliveriesView({ addNotification, currentUser, setActive
       if (detailRecord?.id === delivery.id) setDetailRecord(prev => prev ? { ...prev, driverId, driverName: driver.fullName, vehicleId: driver.truckId, status: 'ASSIGNED' } : prev);
       try {
         await dispatchApi.sendWhatsAppDirections(driverId);
-        addNotification(`WhatsApp opened with the trip link for ${driver.fullName} — tap Send to deliver it.`);
+        addNotification(`WhatsApp opened with the trip link for ${driver.fullName}. Tap Send to deliver it.`);
       } catch (e: any) {
         addNotification(`Assigned, but couldn't open WhatsApp: ${e.message}`);
       }
@@ -732,7 +732,7 @@ export default function DeliveriesView({ addNotification, currentUser, setActive
                             setMenuOpen(null);
                             try {
                               await dispatchApi.sendWhatsAppDirections(d.driverId!);
-                              addNotification(`WhatsApp opened with directions for ${d.driverName || 'driver'} — tap Send to deliver them.`);
+                              addNotification(`WhatsApp opened with directions for ${d.driverName || 'driver'}, tap Send to deliver them.`);
                             } catch (e: any) {
                               addNotification(`Failed to send WhatsApp directions: ${e.message}`);
                             }

@@ -638,6 +638,24 @@ export const operations = {
     if (orderErr || !orders || orders.length === 0) throw new Error('Order not found');
     const order = orders[0];
 
+    // Same dispatch_needs_management gate assignDriverToDelivery already
+    // checks — this insert writes status:'ASSIGNED' directly, which
+    // delivery_logs_staff_insert's own RLS already blocks for a
+    // non-management caller when the setting is on, but pre-checking here
+    // avoids handing floor staff a raw Postgres permission error and
+    // routes them into the same pending-approval flow the manual
+    // assignment path already has. Security/gap audit fix (UX side —
+    // the RLS itself was already correct).
+    const { data: gate } = await supabase.from('ceo_settings').select('setting_value').eq('setting_key', 'dispatch_needs_management').maybeSingle();
+    if (gate?.setting_value === true) {
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data: profile } = await supabase.from('profiles').select('role, is_admin').eq('id', user?.id).maybeSingle();
+      const isManagementOrAdmin = !!profile?.is_admin || profile?.role === 'management';
+      if (!isManagementOrAdmin) {
+        throw new Error('Driver assignment requires Management approval. Use the manual "Assign Driver" flow instead, which routes this to Management for sign-off.');
+      }
+    }
+
     const { data: delivery, error: delErr } = await supabase
       .from('delivery_logs')
       .insert({
@@ -776,7 +794,7 @@ export async function checkStockAvailability(order: any): Promise<{ productName:
 
 export function shortageMessage(shortages: { productName: string; requested: number; available: number }[]): string {
   const list = shortages.map(s => `${s.productName} (need ${s.requested}, only ${s.available} in stock)`).join('; ');
-  return `Insufficient stock — cannot approve: ${list}`;
+  return `Insufficient stock, cannot approve: ${list}`;
 }
 
 // Deducts sold items from stock the moment a sale is confirmed — Finance approving
@@ -788,38 +806,22 @@ export function shortageMessage(shortages: { productName: string; requested: num
 // before this runs, via checkStockAvailability — see evaluateOrder/approveCreditOrder.
 export async function deductStockForOrder(order: any, reference: string) {
   try {
-    const { data: sessionData } = await supabase.auth.getSession();
-    // performed_by / updated_by are UUID FKs to auth.users — must be a real session id or null, never a name/placeholder string
-    const performerId = sessionData.session?.user?.id || null;
-    const now = new Date().toISOString();
-
     const meta = order.metadata || {};
     const metaItems = meta.items || [];
     const lineItems = metaItems.length > 0
       ? metaItems
       : (order.product_name || order.productName) ? [{ productName: order.product_name || order.productName, quantity: Number(order.quantity || 1) }] : [];
+    if (lineItems.length === 0) return;
 
-    for (const item of lineItems) {
-      if (!item.productName) continue;
-      const qty = Number(item.quantity) || 1;
-
-      const { error: ledgerErr } = await supabase.from('stock_ledger').insert({
-        product_name: item.productName,
-        movement_type: 'REMOVE',
-        quantity: qty,
-        reference,
-        performed_by: performerId,
-        created_at: now,
-      });
-      if (ledgerErr) console.error('Stock ledger insert failed during sale confirmation:', ledgerErr);
-
-      const { data: existing } = await supabase.from('stock').select('id, quantity').ilike('product_name', item.productName).limit(1);
-      if (existing && existing.length > 0) {
-        const newQty = Math.max(0, (existing[0].quantity || 0) - qty);
-        const { error: stockErr } = await supabase.from('stock').update({ quantity: newQty, last_updated: now, updated_by: performerId }).eq('id', existing[0].id);
-        if (stockErr) console.error('Stock quantity update failed during sale confirmation:', stockErr);
-      }
-    }
+    // Routed through a SECURITY DEFINER RPC (deduct_stock_for_order) that
+    // takes a per-product advisory lock, same idiom
+    // create_order_with_stock_check() already uses — the previous
+    // read-quantity-then-write-quantity two-step here had no lock between
+    // the two round trips, so two concurrent approvals for the same
+    // product could both read the same starting quantity and both write
+    // a decremented value, losing one decrement (an effective oversell).
+    const { error } = await supabase.rpc('deduct_stock_for_order', { p_line_items: lineItems, p_reference: reference });
+    if (error) console.error('Stock deduction failed during sale confirmation:', error);
   } catch (e) {
     console.error('Stock deduction failed during sale confirmation:', e);
   }
@@ -990,16 +992,25 @@ export const management = {
   // Called by Risk's Customer Verification lane (RiskApprovalsView.tsx) —
   // approve/reject/return a customer, mirroring the shape of
   // setCustomerDiscount/setCustomerSpecial above.
+  // verifiedBy/setBy are now derived server-side from the live session
+  // (mirroring approveIntake's own pattern above), not taken from the
+  // caller — security/gap audit fix: a client could previously pass any
+  // string as verifiedBy/setBy and forge another colleague's name into
+  // the audit trail for a credit-limit or verification decision.
   setCustomerVerification: async (
     customerId: string,
     status: 'APPROVED' | 'REJECTED' | 'RETURNED_FOR_CORRECTION',
-    opts?: { verifiedBy?: string; rejectionReason?: string }
+    opts?: { rejectionReason?: string }
   ) => {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const performerId = sessionData.session?.user?.id || null;
+    const { data: performers } = await supabase.from('profiles').select('full_name').eq('id', performerId).limit(1);
+    const performedBy = performers?.[0]?.full_name || 'Risk';
     const { error } = await supabase
       .from('customers')
       .update({
         status,
-        verified_by: opts?.verifiedBy || null,
+        verified_by: performedBy,
         verified_at: new Date().toISOString(),
         rejection_reason: status === 'APPROVED' ? null : (opts?.rejectionReason || null),
         updated_at: new Date().toISOString(),
@@ -1014,14 +1025,18 @@ export const management = {
   // back to the org-wide ceo_settings cap enforced by create_order_with_stock_check().
   setCustomerCreditTerms: async (
     customerId: string,
-    opts: { creditLimit: number | null; creditStatus: 'ACTIVE' | 'ON_HOLD'; setBy?: string }
+    opts: { creditLimit: number | null; creditStatus: 'ACTIVE' | 'ON_HOLD' }
   ) => {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const performerId = sessionData.session?.user?.id || null;
+    const { data: performers } = await supabase.from('profiles').select('full_name').eq('id', performerId).limit(1);
+    const performedBy = performers?.[0]?.full_name || 'Risk';
     const { error } = await supabase
       .from('customers')
       .update({
         credit_limit: opts.creditLimit,
         credit_status: opts.creditStatus,
-        credit_terms_set_by: opts.setBy || null,
+        credit_terms_set_by: performedBy,
         credit_terms_set_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
@@ -1249,56 +1264,6 @@ export const marketing = {
     return (data || []).map(mapOrderToFrontend);
   },
 
-  createOrder: async (data: {
-    clientName: string; productName?: string; destination?: string;
-    ghanaCard?: string; paymentMode: string; totalAmount: number;
-  }) => {
-    const { data: sessionData } = await supabase.auth.getSession();
-    const performerId = sessionData.session?.user?.id || null;
-    const { data: performers } = await supabase.from('profiles').select('full_name').eq('id', performerId).limit(1);
-    const performedBy = performers?.[0]?.full_name || 'Marketing Staff';
-
-    const ticketNumber = `TKT-${Math.floor(10000 + Math.random() * 90000)}`;
-    const { data: order, error } = await supabase
-      .from('orders')
-      .insert({
-        ticket_number: ticketNumber,
-        client_name: data.clientName,
-        product_name: data.productName || null,
-        destination: data.destination || null,
-        payment_mode: data.paymentMode,
-        total_amount: Number(data.totalAmount),
-        status: 'PENDING_FINANCE',
-        created_by: performerId,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        metadata: {
-          clientName: data.clientName,
-          productName: data.productName || null,
-          destination: data.destination || null,
-          ghanaCard: data.ghanaCard || null,
-          paymentMode: data.paymentMode,
-          totalAmount: Number(data.totalAmount)
-        }
-      }).select();
-    if (error) throw new Error(error.message);
-
-    try {
-      await supabase.from('global_audit_history').insert({
-        action: 'CREATE_ORDER',
-        department: 'MARKETING',
-        performed_by: performedBy,
-        user_id: performerId,
-        details: `Order ${ticketNumber} created for ${data.clientName} — GHS ${data.totalAmount} (${data.paymentMode}).`,
-        timestamp: new Date().toISOString()
-      });
-    } catch (e) {
-      console.error(e);
-    }
-
-    return order ? mapOrderToFrontend(order[0]) : null;
-  },
-
   getCustomers: async () => {
     const { data, error } = await supabase
       .from('customers')
@@ -1397,58 +1362,6 @@ export const finance = {
         ticketNumber: inv.order.ticket_number
       } : null
     }));
-  },
-
-  evaluateOrder: async (orderId: string, approve: boolean) => {
-    const { data: orders } = await supabase.from('orders').select('*').eq('id', orderId).limit(1);
-    const order = orders?.[0];
-    if (!order) throw new Error('Order not found');
-
-    if (!approve) {
-      const { data: rejectedOrder, error } = await supabase
-        .from('orders')
-        .update({ status: 'REJECTED', updated_at: new Date().toISOString() })
-        .eq('id', orderId)
-        .select();
-      if (error) throw new Error(error.message);
-      return { message: 'Order rejected by Finance.', order: rejectedOrder ? mapOrderToFrontend(rejectedOrder[0]) : null };
-    }
-
-    if (order.payment_mode === 'CREDIT' || order.paymentMode === 'CREDIT') {
-      const { data: updatedOrder, error } = await supabase
-        .from('orders')
-        .update({ status: 'PENDING_MANAGEMENT', updated_at: new Date().toISOString() })
-        .eq('id', orderId)
-        .select();
-      if (error) throw new Error(error.message);
-      return { message: 'Credit order sent to Management.', order: updatedOrder ? mapOrderToFrontend(updatedOrder[0]) : null };
-    } else {
-      const shortages = await checkStockAvailability(order);
-      if (shortages.length > 0) throw new Error(shortageMessage(shortages));
-
-      const { data: sessionData } = await supabase.auth.getSession();
-      const performerId = sessionData.session?.user?.id || null;
-      const { data: performers } = await supabase.from('profiles').select('full_name, email').eq('id', performerId).limit(1);
-      const performedBy = performers?.[0]?.full_name || null;
-      const performedByEmail = performers?.[0]?.email || null;
-
-      const { data: updatedOrder, error } = await supabase
-        .from('orders')
-        .update({
-          status: 'APPROVED', updated_at: new Date().toISOString(),
-          finance_approved_by: performedBy, finance_approved_by_email: performedByEmail,
-        })
-        .eq('id', orderId)
-        .select();
-      if (error) throw new Error(error.message);
-
-      const ticketRef = order.ticket_number || order.ticketNumber || `ORD-${orderId.slice(0, 6).toUpperCase()}`;
-      await deductStockForOrder(order, `Order Approved: ${ticketRef}`);
-      await autoGenerateReceiptAndTicket({ ...order, finance_approved_by: performedBy }, `Order Approved: ${ticketRef}`);
-
-      const { data: finalOrder } = await supabase.from('orders').select('*').eq('id', orderId).limit(1);
-      return { message: 'Order approved by Finance.', order: finalOrder?.[0] ? mapOrderToFrontend(finalOrder[0]) : (updatedOrder ? mapOrderToFrontend(updatedOrder[0]) : null) };
-    }
   },
 
   finalizeOrder: async (orderId: string) => {
@@ -1624,32 +1537,6 @@ export const dispatch = {
         totalAmount: del.order.total_amount
       } : null
     }));
-  },
-
-  updateDelivery: async (orderId: string, status: 'IN_TRANSIT' | 'DELIVERED', coordinates?: { lat: number; lng: number }) => {
-    const updateData: any = { status, updated_at: new Date().toISOString() };
-    if (status === 'DELIVERED') {
-      updateData.delivered_at = new Date().toISOString();
-    }
-    if (coordinates) {
-      updateData.active_coordinates = coordinates;
-    }
-
-    const { data: delivery, error: delErr } = await supabase
-      .from('delivery_logs')
-      .update(updateData)
-      .eq('order_id', orderId)
-      .select();
-    if (delErr) throw new Error(delErr.message);
-
-    if (status === 'DELIVERED') {
-      await supabase
-        .from('orders')
-        .update({ status: 'DELIVERED', updated_at: new Date().toISOString() })
-        .eq('id', orderId);
-    }
-
-    return delivery ? delivery[0] : null;
   },
 
   getLatestDriverLocations: async (driverIds: string[]) => {
@@ -2196,7 +2083,7 @@ export interface DocumentTemplate {
 const DOC_TEMPLATE_FALLBACKS: Record<DocumentTemplate['docType'], DocumentTemplate> = {
   RECEIPT: { docType: 'RECEIPT', logoUrl: '/logo.png', companyName: 'REBMA IMPEX', subtitle: 'Official Payment Receipt', companyAddress: 'Accra Business District, Accra, Ghana', companyLat: null, companyLng: null, companyPhone: '', companyEmail: '', website: 'rebmaimpex.com', footerNote: 'This receipt is issued by REBMA IMPEX Ghana Limited Finance. It confirms payment has been received and recorded against the order referenced above.' },
   TICKET: { docType: 'TICKET', logoUrl: '/logo.png', companyName: 'REBMA IMPEX', subtitle: 'Operations Dispatch Ticket', companyAddress: 'Accra Business District, Accra, Ghana', companyLat: null, companyLng: null, companyPhone: '', companyEmail: '', website: 'rebmaimpex.com', footerNote: 'This ticket is issued by REBMA IMPEX Ghana Limited Operations. It authorises the loading and dispatch of the above goods to the stated destination.' },
-  INVOICE: { docType: 'INVOICE', logoUrl: '/logo.png', companyName: 'REBMA IMPEX', subtitle: 'Proforma Invoice — Quote Only', companyAddress: 'Accra Business District, Accra, Ghana', companyLat: null, companyLng: null, companyPhone: '', companyEmail: '', website: 'rebmaimpex.com', footerNote: 'This is a proforma invoice — a quotation only, not a demand for payment or a tax invoice.' },
+  INVOICE: { docType: 'INVOICE', logoUrl: '/logo.png', companyName: 'REBMA IMPEX', subtitle: 'Proforma Invoice — Quote Only', companyAddress: 'Accra Business District, Accra, Ghana', companyLat: null, companyLng: null, companyPhone: '', companyEmail: '', website: 'rebmaimpex.com', footerNote: 'This is a proforma invoice, a quotation only, not a demand for payment or a tax invoice.' },
 };
 
 function mapDocTemplate(row: any, docType: DocumentTemplate['docType']): DocumentTemplate {
@@ -2563,7 +2450,7 @@ export const messenger = {
     if (error || !created) throw new Error(error?.message || 'Failed to start call');
     const meeting = created[0];
     await supabase.from('meeting_attendees').insert(memberIds.map(uid => ({ meeting_id: meeting.id, user_id: uid, rsvp_status: uid === organizerId ? 'ACCEPTED' : 'INVITED' })));
-    const callMsg = await messenger.sendMessage(channelId, organizerId, organizerName, `📞 ${kind === 'voice' ? 'Voice' : 'Video'} call started — tap to join.`, { attachmentType: 'call', attachmentUrl: meeting.id });
+    const callMsg = await messenger.sendMessage(channelId, organizerId, organizerName, `📞 ${kind === 'voice' ? 'Voice' : 'Video'} call started. Tap to join.`, { attachmentType: 'call', attachmentUrl: meeting.id });
     await messenger.notifyUsers(memberIds.filter(id => id !== organizerId), 'call_started', `${organizerName} started a ${kind} call`, 'Tap to join now', meeting.id);
     // Phase 11.5 — callMessageId lets the caller detect, when the call
     // ends, which invited members never opened it (missed_call).

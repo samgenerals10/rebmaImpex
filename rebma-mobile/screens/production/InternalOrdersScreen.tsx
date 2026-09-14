@@ -65,7 +65,7 @@ const getDisplayStatus = (order: any, wipList: any[]) => {
 const REQ_STATUS_LABELS: Record<string, string> = {
   PENDING_MANAGEMENT: 'Awaiting Management',
   PENDING_FINANCE: 'Awaiting Finance',
-  APPROVED: 'Approved — Awaiting Pickup',
+  APPROVED: 'Approved, Awaiting Pickup',
   FULFILLED: 'Materials Released',
   REJECTED: 'Rejected',
 };

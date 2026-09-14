@@ -30,6 +30,10 @@ export function usePaginatedQuery<T = any>({
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [total, setTotal] = useState<number | null>(null);
+  // Security/gap audit fix — an RLS-denied or network-failed query
+  // previously just did nothing on error, rendering identically to "no
+  // records" with no way for a screen to tell the difference.
+  const [error, setError] = useState<string | null>(null);
   const pageRef = useRef(0);
   const filtersRef = useRef(applyFilters);
   const mapRef = useRef(map);
@@ -46,16 +50,19 @@ export function usePaginatedQuery<T = any>({
     if (filtersRef.current) query = filtersRef.current(query);
     query = query.order(orderColumn, { ascending }).range(from, to);
 
-    const { data, error, count } = await query;
-    if (!error) {
+    const { data, error: queryError, count } = await query;
+    if (!queryError) {
       const mapped = mapRef.current ? (data || []).map(mapRef.current) : ((data || []) as T[]);
       setRows((prev) => (reset ? mapped : [...prev, ...mapped]));
       if (typeof count === 'number') setTotal(count);
       setHasMore((data || []).length === pageSize);
       pageRef.current = page + 1;
+      setError(null);
+    } else {
+      setError(queryError.message || 'Failed to load records.');
     }
     setLoading(false);
-    return { data, error };
+    return { data, error: queryError };
   }, [table, select, pageSize, orderColumn, ascending]);
 
   const reload = useCallback(() => fetchPage(true), [fetchPage]);
@@ -66,5 +73,5 @@ export function usePaginatedQuery<T = any>({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [table]);
 
-  return { rows, setRows, loading, hasMore, total, reload, loadMore };
+  return { rows, setRows, loading, hasMore, total, error, reload, loadMore };
 }

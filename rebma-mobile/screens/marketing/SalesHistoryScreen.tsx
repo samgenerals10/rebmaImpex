@@ -13,7 +13,7 @@
 // implementation (not even exportToCSV) with no PDF path at all, so no
 // PDF option is added here (D101 — don't invent a format web never had).
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, Alert } from 'react-native';
 import { Download } from 'lucide-react-native';
 import { supabase } from '../../lib/supabaseClient';
 import { useTheme } from '../../theme/ThemeProvider';
@@ -51,6 +51,7 @@ export default function SalesHistoryScreen() {
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [detail, setDetail] = useState<OrderRow | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
+  const [tab, setTab] = useState<'sales' | 'credit'>('sales');
 
   const load = useCallback(async () => {
     const { data, error } = await supabase
@@ -76,6 +77,29 @@ export default function SalesHistoryScreen() {
     for (const o of orders) map[o.client_name] = (map[o.client_name] || 0) + Number(o.total_amount || 0);
     return Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 5);
   }, [orders]);
+
+  const bestMonth = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const o of orders) {
+      const key = (o.created_at || '').slice(0, 7);
+      if (!key) continue;
+      map[key] = (map[key] || 0) + Number(o.total_amount || 0);
+    }
+    const entries = Object.entries(map).sort((a, b) => b[1] - a[1]);
+    if (entries.length === 0) return { month: '—', revenue: 0 };
+    const [key, revenue] = entries[0];
+    const d = new Date(`${key}-01`);
+    return { month: d.toLocaleDateString('en-GB', { month: 'short', year: '2-digit' }), revenue };
+  }, [orders]);
+
+  // Credit tab — matches web's own SalesHistoryView.tsx exactly, incl. the
+  // "Track" button, which is a fake local toast on web itself (addNotification
+  // with no real navigation), not a working tracker.
+  const creditOrders = useMemo(() => orders.filter((o) => o.payment_mode === 'CREDIT'), [orders]);
+  const creditPending = creditOrders.filter((o) => ['PENDING_FINANCE', 'PENDING_MANAGEMENT'].includes(o.status)).length;
+  const creditApproved = creditOrders.filter((o) => ['APPROVED', 'DELIVERED'].includes(o.status)).length;
+  const creditRejected = creditOrders.filter((o) => o.status === 'REJECTED').length;
+  const creditValue = creditOrders.reduce((s, o) => s + Number(o.total_amount || 0), 0);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -115,26 +139,77 @@ export default function SalesHistoryScreen() {
   return (
     <Screen refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }}>
       <View style={{ gap: t.spacing.xl }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
-          <Button label="Export CSV" size="sm" variant="ghost" icon={<Download size={13} color={t.colors.textSecondary} />} onPress={() => setExportOpen(true)} />
-        </View>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.md }}>
-          <View style={{ width: '47%' }}><MetricCard label="Total Revenue" value={loading ? '—' : `GHS ${totalRevenue.toLocaleString()}`} tone="accent" /></View>
-          <View style={{ width: '47%' }}><MetricCard label="Total Orders" value={loading ? '—' : orders.length} /></View>
-          <View style={{ width: '47%' }}><MetricCard label="Delivered" value={loading ? '—' : deliveredCount} /></View>
-          <View style={{ width: '47%' }}><MetricCard label="Avg Order Value" value={loading ? '—' : `GHS ${avgOrderValue.toFixed(0)}`} /></View>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <View style={{ flexDirection: 'row', backgroundColor: t.colors.bgInput, borderRadius: t.radius.md, padding: 3 }}>
+            {(['sales', 'credit'] as const).map((k) => (
+              <Button key={k} label={k === 'sales' ? 'Sales History' : `Credit (${creditOrders.length})`} size="sm" variant={tab === k ? 'primary' : 'ghost'} onPress={() => setTab(k)} style={{ borderWidth: 0 }} />
+            ))}
+          </View>
+          {tab === 'sales' && <Button label="Export CSV" size="sm" variant="ghost" icon={<Download size={13} color={t.colors.textSecondary} />} onPress={() => setExportOpen(true)} />}
         </View>
 
-        {!loading && topCustomers.length > 0 && (
-          <Card>
-            <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary, marginBottom: t.spacing.md }}>Top Customers</Text>
-            <BarChart data={topCustomers.map(([name, amount]) => ({ label: name, value: amount, formattedValue: `GHS ${amount.toLocaleString()}` }))} />
-          </Card>
+        {tab === 'sales' ? (
+          <>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.md }}>
+              <View style={{ width: '47%' }}><MetricCard label="Total Revenue" value={loading ? '—' : `GHS ${totalRevenue.toLocaleString()}`} tone="accent" /></View>
+              <View style={{ width: '47%' }}><MetricCard label="Completed Orders" value={loading ? '—' : deliveredCount} /></View>
+              <View style={{ width: '47%' }}><MetricCard label="Avg Order Value" value={loading ? '—' : `GHS ${avgOrderValue.toFixed(0)}`} /></View>
+              <View style={{ width: '47%' }}><MetricCard label="Best Month" value={loading ? '—' : bestMonth.month} sublabel={loading ? undefined : `GHS ${bestMonth.revenue.toLocaleString()}`} /></View>
+            </View>
+
+            {!loading && topCustomers.length > 0 && (
+              <Card>
+                <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary, marginBottom: t.spacing.md }}>Top Customers</Text>
+                <BarChart data={topCustomers.map(([name, amount]) => ({ label: name, value: amount, formattedValue: `GHS ${amount.toLocaleString()}` }))} />
+              </Card>
+            )}
+
+            <Input value={search} onChangeText={setSearch} placeholder="Search orders…" />
+            <SearchablePicker label="Status" value={statusFilter} onChange={setStatusFilter} options={statusOptions} />
+            <DataList columns={columns} data={filtered} rowKey={(o) => o.id} loading={loading} emptyTitle="No orders found" onRowPress={setDetail} />
+          </>
+        ) : (
+          <>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.md }}>
+              <View style={{ width: '47%' }}><MetricCard label="Total Credit Requests" value={loading ? '—' : creditOrders.length} /></View>
+              <View style={{ width: '47%' }}><MetricCard label="Pending" value={loading ? '—' : creditPending} tone="warning" /></View>
+              <View style={{ width: '47%' }}><MetricCard label="Approved" value={loading ? '—' : creditApproved} tone="accent" /></View>
+              <View style={{ width: '47%' }}><MetricCard label="Rejected" value={loading ? '—' : creditRejected} tone="danger" /></View>
+            </View>
+
+            {creditValue > 0 && (
+              <Card style={{ backgroundColor: t.colors.status.warning.bg, borderColor: t.colors.status.warning.text + '40' }}>
+                <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.body12.size, color: t.colors.status.warning.text }}>
+                  Total credit value outstanding: <Text style={{ fontFamily: t.font.extrabold }}>GHS {creditValue.toLocaleString()}</Text>
+                </Text>
+              </Card>
+            )}
+
+            <Card>
+              <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.body14.size, color: t.colors.textPrimary, marginBottom: t.spacing.md }}>Credit Requests ({creditOrders.length})</Text>
+              {creditOrders.length === 0 ? (
+                <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textMuted, textAlign: 'center', paddingVertical: t.spacing.lg }}>No credit requests found.</Text>
+              ) : (
+                <View style={{ gap: t.spacing.sm }}>
+                  {creditOrders.map((o) => (
+                    <View key={o.id} style={{ borderWidth: 1, borderColor: t.colors.border, borderRadius: t.radius.lg, padding: t.spacing.md, gap: 4 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm }}>
+                        <Text style={{ fontFamily: t.font.regular, fontSize: t.type.label9.size, color: t.colors.textMuted }}>{o.ticket_number || o.id}</Text>
+                        <Badge tone={statusTone(o.status)} label={o.status.replace(/_/g, ' ')} size="xs" />
+                      </View>
+                      <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.body12.size, color: t.colors.textPrimary }}>{o.client_name}</Text>
+                      <Text style={{ fontFamily: t.font.regular, fontSize: t.type.label9.size, color: t.colors.textMuted }}>{o.product_name || '—'} · Submitted {(o.created_at || '').slice(0, 10)}</Text>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+                        <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body12.size, color: t.colors.status.success.text }}>GHS {Number(o.total_amount || 0).toLocaleString()}</Text>
+                        <Button label="Track" size="sm" variant="ghost" onPress={() => Alert.alert('Tracking', `Tracking order ${o.ticket_number || o.id}.`)} />
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </Card>
+          </>
         )}
-
-        <Input value={search} onChangeText={setSearch} placeholder="Search orders…" />
-        <SearchablePicker label="Status" value={statusFilter} onChange={setStatusFilter} options={statusOptions} />
-        <DataList columns={columns} data={filtered} rowKey={(o) => o.id} loading={loading} emptyTitle="No orders found" onRowPress={setDetail} />
       </View>
 
       <Sheet open={!!detail} onClose={() => setDetail(null)} title={detail?.client_name} subtitle={detail?.ticket_number || undefined} side="bottom" maxHeight={600}>

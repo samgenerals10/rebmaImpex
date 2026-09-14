@@ -10,6 +10,7 @@ import { MessageSquare, Plus, Search, Users, X, Check, BellOff, Bell, MoreVertic
 import { supabase } from '../lib/supabaseClient';
 import { messenger, type Channel } from '../lib/messenger';
 import { subscribeToLiveUsers, type PresencePayload } from '../lib/presence';
+import { getCeoSetting } from '../lib/ceoSetting';
 import { useAuthStore } from '../store/authStore';
 import { useTheme } from '../theme/ThemeProvider';
 import { usePresets } from '../theme/presets';
@@ -53,6 +54,17 @@ export default function MessengerChannelsScreen({ navigation }: any) {
   const [globalSearchResults, setGlobalSearchResults] = useState<any[]>([]);
   const [searchingGlobally, setSearchingGlobally] = useState(false);
   const [search, setSearch] = useState('');
+  // Security/gap audit fix — these channel-type toggles were never
+  // enforced on mobile's sidebar at all (web already gates every one of
+  // these sections on them via useCeoSettings).
+  const [globalChatEnabled, setGlobalChatEnabled] = useState(true);
+  const [departmentChatEnabled, setDepartmentChatEnabled] = useState(true);
+  const [directMessagesEnabled, setDirectMessagesEnabled] = useState(true);
+  useEffect(() => {
+    getCeoSetting('global_chat_enabled', true).then(setGlobalChatEnabled);
+    getCeoSetting('department_chat_enabled', true).then(setDepartmentChatEnabled);
+    getCeoSetting('direct_messages_enabled', true).then(setDirectMessagesEnabled);
+  }, []);
   const [showNewGroup, setShowNewGroup] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
   const [newGroupMembers, setNewGroupMembers] = useState<string[]>([]);
@@ -120,7 +132,7 @@ export default function MessengerChannelsScreen({ navigation }: any) {
   };
 
   const clearChannelHistory = (channelId: string) => {
-    Alert.alert('Clear history?', "This only clears your own view — the other participant(s) keep theirs.", [
+    Alert.alert('Clear history?', "This only clears your own view. The other participant(s) keep theirs.", [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Clear', style: 'destructive', onPress: async () => { await messenger.clearChannelHistory(channelId, myId); setRowMenuFor(null); } },
     ]);
@@ -298,7 +310,7 @@ export default function MessengerChannelsScreen({ navigation }: any) {
         keyExtractor={() => 'root'}
         renderItem={() => (
           <View style={{ paddingHorizontal: t.spacing.lg, paddingBottom: t.spacing.xl }}>
-            {everyoneChannel && channelVisible(everyoneChannel.id) && (
+            {globalChatEnabled && everyoneChannel && channelVisible(everyoneChannel.id) && (
               <Row
                 title="Everyone"
                 subtitle="Company-wide broadcast"
@@ -311,8 +323,8 @@ export default function MessengerChannelsScreen({ navigation }: any) {
                 onMenu={() => openRowMenu(everyoneChannel)}
               />
             )}
-            {groupChannels.some((ch) => channelVisible(ch.id)) && <Text style={{ ...p.label9, marginTop: t.spacing.md, marginBottom: t.spacing.xs }}>Groups</Text>}
-            {[...groupChannels].filter((ch) => channelVisible(ch.id)).sort((a, b) => Number(pinnedChannelIds.has(b.id)) - Number(pinnedChannelIds.has(a.id))).map((ch) => (
+            {departmentChatEnabled && groupChannels.some((ch) => channelVisible(ch.id)) && <Text style={{ ...p.label9, marginTop: t.spacing.md, marginBottom: t.spacing.xs }}>Groups</Text>}
+            {departmentChatEnabled && [...groupChannels].filter((ch) => channelVisible(ch.id)).sort((a, b) => Number(pinnedChannelIds.has(b.id)) - Number(pinnedChannelIds.has(a.id))).map((ch) => (
               <Row
                 key={ch.id}
                 title={ch.name || 'Group'}
@@ -326,9 +338,9 @@ export default function MessengerChannelsScreen({ navigation }: any) {
                 onMenu={() => openRowMenu(ch)}
               />
             ))}
-            <Text style={{ ...p.label9, marginTop: t.spacing.md, marginBottom: t.spacing.xs }}>People</Text>
-            {filteredContacts.length === 0 && <Text style={{ ...p.meta, paddingVertical: t.spacing.md }}>No one matches your search.</Text>}
-            {[...filteredContacts].sort((a, b) => {
+            {directMessagesEnabled && <Text style={{ ...p.label9, marginTop: t.spacing.md, marginBottom: t.spacing.xs }}>People</Text>}
+            {directMessagesEnabled && filteredContacts.length === 0 && <Text style={{ ...p.meta, paddingVertical: t.spacing.md }}>No one matches your search.</Text>}
+            {directMessagesEnabled && [...filteredContacts].sort((a, b) => {
               const da = dmChannelByUser[a.id], db = dmChannelByUser[b.id];
               return Number(db && pinnedChannelIds.has(db.id)) - Number(da && pinnedChannelIds.has(da.id));
             }).filter((c) => { const dm = dmChannelByUser[c.id]; return !dm || channelVisible(dm.id); }).map((c) => {
@@ -431,7 +443,7 @@ export default function MessengerChannelsScreen({ navigation }: any) {
                 }}
                 style={{ paddingVertical: t.spacing.sm, borderBottomWidth: 1, borderBottomColor: t.colors.border }}
               >
-                <Text style={{ ...p.body, fontFamily: t.font.semibold }}>{item.sender_name || 'Unknown'}</Text>
+                <Text style={{ ...p.body, fontFamily: t.font.semibold }}>{item.sender || 'Unknown'}</Text>
                 <Text numberOfLines={2} style={p.meta}>{item.content}</Text>
               </Pressable>
             )}

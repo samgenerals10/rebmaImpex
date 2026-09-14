@@ -70,11 +70,20 @@ export default function CustomerCreditScreen() {
 
   useEffect(() => { load(); }, [load]);
 
+  // credit_terms_set_by is now looked up server-side from the live
+  // profiles row for the caller's own session, not taken from client
+  // state — security/gap audit fix: profile.fullName is just local React
+  // state, forgeable by a client calling this update directly with any
+  // string.
   const writeCreditTerms = async (customerId: string, creditLimit: number | null, creditStatus: 'ACTIVE' | 'ON_HOLD') => {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const performerId = sessionData.session?.user?.id || null;
+    const { data: performers } = await supabase.from('profiles').select('full_name').eq('id', performerId).limit(1);
+    const performedBy = performers?.[0]?.full_name || 'Risk';
     await supabase.from('customers').update({
       credit_limit: creditLimit,
       credit_status: creditStatus,
-      credit_terms_set_by: profile?.fullName || 'Risk',
+      credit_terms_set_by: performedBy,
       credit_terms_set_at: new Date().toISOString(),
     }).eq('id', customerId);
   };
@@ -101,7 +110,7 @@ export default function CustomerCreditScreen() {
       await writeCreditTerms(c.id, limit, c.creditStatus);
       setCustomers((prev) => prev.map((x) => (x.id === c.id ? { ...x, creditLimit: limit } : x)));
       setLimitDraft((prev) => { const next = { ...prev }; delete next[c.id]; return next; });
-      await logCreditTermsAudit(c.id, c.name, limit === null ? 'Credit limit cleared — global cap applies' : `Credit limit set to GHS ${limit.toLocaleString()}`);
+      await logCreditTermsAudit(c.id, c.name, limit === null ? 'Credit limit cleared, so the global cap applies' : `Credit limit set to GHS ${limit.toLocaleString()}`);
     } finally {
       setSavingId(null);
     }
@@ -113,7 +122,7 @@ export default function CustomerCreditScreen() {
     try {
       await writeCreditTerms(c.id, c.creditLimit, next);
       setCustomers((prev) => prev.map((x) => (x.id === c.id ? { ...x, creditStatus: next } : x)));
-      await logCreditTermsAudit(c.id, c.name, next === 'ON_HOLD' ? 'Credit placed ON HOLD — new credit orders blocked' : 'Credit hold lifted');
+      await logCreditTermsAudit(c.id, c.name, next === 'ON_HOLD' ? 'Credit placed ON HOLD, new credit orders blocked' : 'Credit hold lifted');
     } finally {
       setTogglingId(null);
     }

@@ -47,6 +47,7 @@ export default function AnnouncementsScreen() {
     try {
       await supabase.from('chat_messages').insert({
         sender: profile?.fullName || profile?.department || 'Staff Member',
+        sender_id: profile?.id || null,
         content: text.trim(),
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         receiver: null,

@@ -15,7 +15,8 @@
       "buildNumber": "1",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Rebma Mobile uses your location to share live delivery tracking with dispatch while a delivery is active.",
-        "NSMicrophoneUsageDescription": "Rebma Mobile uses your microphone for Boardroom video and voice calls, and to record voice notes in Messenger."
+        "NSMicrophoneUsageDescription": "Rebma Mobile uses your microphone for Boardroom video and voice calls, and to record voice notes in Messenger.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -86,7 +87,8 @@
         {
           "microphonePermission": false
         }
-      ]
+      ],
+      "expo-asset"
     ],
     "extra": {
       "eas": {

@@ -382,7 +382,7 @@ export default function DriverTrackingView({ driver, onLogout }: DriverTrackingV
                 <Navigation className="w-3.5 h-3.5" />
                 {gpsActive ? 'Stop Sharing Location' : 'Share Live Location with Dispatch'}
               </button>
-              <p className="text-[10px] text-text-muted text-center mt-2">Keep this page open while tracking is on — location only updates while the browser tab is active.</p>
+              <p className="text-[10px] text-text-muted text-center mt-2">Keep this page open while tracking is on, since location only updates while the browser tab is active.</p>
               {locationError && <p className="text-[10px] text-rose-500 text-center mt-1">{locationError}</p>}
             </div>
           )}

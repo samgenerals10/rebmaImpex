@@ -24,11 +24,19 @@
 // admin-only write policy) — no genuine new issue, safe to port
 // faithfully. See D94-D98 in the plan file.
 //
-// Still deliberately deferred: the per-user Spreadsheets exception
-// override (SettingToggleWithException on web — spreadsheets_enabled
-// itself is still ported as a plain toggle) — a narrow, rarely-used
-// per-email allow/block list layered on top of one already-ported
-// toggle, genuinely out of scope for this correction pass.
+// Mobile Parity Audit follow-up: hr_can_invite_staff,
+// mobile_app_access_allowed, and messaging_access_allowed were confirmed
+// missing from this screen even though mobile itself enforces the latter
+// two elsewhere (authStore.ts login gate, lib/messenger.ts send gate) —
+// added below as plain toggles.
+//
+// Still deliberately deferred: the per-user exception override
+// (SettingToggleWithException on web) for spreadsheets_enabled,
+// mobile_app_access_allowed, and messaging_access_allowed alike — each of
+// those three toggles is ported as a plain on/off switch, with the
+// per-email allow/block list layered on top of it left to web only. A
+// narrow, rarely-used admin surface, genuinely out of scope for a quick
+// pass; revisit if a real need for it on mobile comes up.
 import { useCallback, useEffect, useState } from 'react';
 import { View, Text, ScrollView, Alert } from 'react-native';
 import { ShieldAlert, Copy, Check, X, Key, Plus } from 'lucide-react-native';
@@ -62,6 +70,8 @@ const SECTIONS: Section[] = [
       { key: 'app_master_switch', label: 'App Master Switch', kind: 'bool' },
       { key: 'registrations_allowed', label: 'Registrations Allowed', kind: 'bool' },
       { key: 'invitation_only', label: 'Invitation Only', kind: 'bool' },
+      { key: 'hr_can_invite_staff', label: 'HR Can Invite Staff', kind: 'bool' },
+      { key: 'mobile_app_access_allowed', label: 'Mobile App Access Allowed', description: 'Per-user email exceptions to this are set on web only, not from mobile.', kind: 'bool' },
       { key: 'hr_can_approve_registrations', label: 'HR Can Approve Registrations', kind: 'bool' },
       { key: 'management_can_approve_registrations', label: 'Management Can Approve Registrations', kind: 'bool' },
       { key: 'ceo_must_approve_registrations', label: 'CEO Must Approve Registrations', kind: 'bool' },
@@ -117,6 +127,7 @@ const SECTIONS: Section[] = [
       { key: 'global_chat_enabled', label: 'Global Chat Enabled', kind: 'bool' },
       { key: 'department_chat_enabled', label: 'Department Chat Enabled', kind: 'bool' },
       { key: 'direct_messages_enabled', label: 'Direct Messages Enabled', kind: 'bool' },
+      { key: 'messaging_access_allowed', label: 'Messaging Access Allowed', description: 'Per-user email exceptions to this are set on web only, not from mobile.', kind: 'bool' },
       { key: 'messenger_calls_enabled', label: 'Voice/Video Calls Enabled', kind: 'bool' },
       { key: 'messenger_attachments_enabled', label: 'Attachments Enabled', kind: 'bool' },
       { key: 'message_retention_days', label: 'Message Retention (days, 0 = off)', kind: 'number' },
@@ -128,7 +139,7 @@ const SECTIONS: Section[] = [
   },
   {
     id: 'system', title: 'System Controls', fields: [
-      { key: 'maintenance_mode', label: 'Maintenance Mode', description: 'Confirm before enabling — blocks normal app use.', kind: 'bool' },
+      { key: 'maintenance_mode', label: 'Maintenance Mode', description: 'Confirm before enabling. It blocks normal app use.', kind: 'bool' },
       { key: 'session_timeout_minutes', label: 'Session Timeout (minutes)', kind: 'number' },
       { key: 'force_2fa_management', label: 'Force 2FA for Management', kind: 'bool' },
       { key: 'force_2fa_finance', label: 'Force 2FA for Finance', kind: 'bool' },
@@ -483,7 +494,7 @@ export default function ControlCenterScreen() {
         setGeneratedLink(`${base}/register?token=${token}`);
       } else {
         setGeneratedLink('');
-        Alert.alert('Not Configured', "The registration link's base URL isn't set yet — ask an admin to set EXPO_PUBLIC_API_BASE_URL. The invite was still created and can be used once it is.");
+        Alert.alert('Not Configured', "The registration link's base URL isn't set yet. Ask an admin to set EXPO_PUBLIC_API_BASE_URL. The invite was still created and can be used once it is.");
       }
       setLinkCopied(false);
       await loadInvitesAndDelegates();
@@ -713,7 +724,7 @@ export default function ControlCenterScreen() {
       ) : activeSection === 'invites' ? (
         <View style={{ gap: t.spacing.md }}>
           <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted }}>
-            Generate a registration link pre-filled with a department, role, and expiry — with an optional auto-approve to skip HR review.
+            Generate a registration link pre-filled with a department, role, and expiry, with an optional auto-approve to skip HR review.
           </Text>
           <Button label={showInviteForm ? 'Close' : 'Generate Invite Link'} size="sm" icon={<Plus size={13} color={showInviteForm ? t.colors.textSecondary : '#fff'} />} variant={showInviteForm ? 'ghost' : 'primary'} onPress={() => setShowInviteForm((p) => !p)} />
 

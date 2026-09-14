@@ -109,6 +109,7 @@ export default function Sidebar({
       { id: 'RecordPayment',     label: 'Payments',               icon: DollarSign },
       { id: 'Receipts',          label: 'Receipts',               icon: Receipt },
       { id: 'Invoices',          label: 'Invoices',               icon: FileText },
+      { id: 'SalesHistory',      label: 'Sales History',          icon: TrendingUp },
       { id: 'PriceCatalog',      label: 'Price Catalog',          icon: Tag },
       { id: 'Wallets',           label: 'Wallets',                icon: Wallet },
       { id: 'Transactions',      label: 'Transactions',           icon: ArrowLeftRight },
@@ -166,13 +167,17 @@ export default function Sidebar({
       { id: 'PerformanceAlerts',  label: 'Performance Alerts',    icon: AlertCircle },
       { id: 'Spreadsheets',       label: 'Spreadsheets',          icon: FileSpreadsheet },
     ],
+    // Sales History and Invoices (invoice generation) moved to Finance —
+    // both now live under the FINANCE tab list above, reusing the exact
+    // same components (SalesHistoryView is re-exported for Finance in
+    // views/finance/SalesHistoryView.tsx; Invoices already was, via
+    // views/marketing/InvoicesView.tsx's own re-export of
+    // views/ceo/InvoicesView.tsx). Marketing keeps everything else.
     MARKETING: [
       { id: 'Overview',          label: 'Dashboard',        icon: LayoutDashboard },
       { id: 'CreateOrder',       label: 'Orders',            icon: ShoppingCart },
       { id: 'RegisterCustomer',  label: 'Customers',         icon: Users },
-      { id: 'Invoices',          label: 'Invoices',          icon: FileText },
       { id: 'PriceCatalog',      label: 'Price Catalog',     icon: Tag },
-      { id: 'SalesHistory',      label: 'Sales History',     icon: TrendingUp },
       { id: 'CreditRequests',    label: 'Credit Requests',   icon: CreditCard },
       { id: 'MktAnalytics',      label: 'Analytics',         icon: BarChart2 },
       { id: 'Spreadsheets',      label: 'Spreadsheets',      icon: FileSpreadsheet },
@@ -513,6 +518,7 @@ export default function Sidebar({
                     { id: 'RecordPayment', label: 'Payments',        icon: DollarSign },
                     { id: 'Receipts',      label: 'Receipts',        icon: Receipt },
                     { id: 'Invoices',      label: 'Invoices',        icon: FileText },
+                    { id: 'SalesHistory',  label: 'Sales History',   icon: TrendingUp },
                     { id: 'PriceCatalog',  label: 'Price Catalog',   icon: Tag },
                   ].map(tab => renderNavBtn(tab))}
                 </div>

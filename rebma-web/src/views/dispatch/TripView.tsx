@@ -222,7 +222,7 @@ export default function TripView({ token }: TripViewProps) {
       <div className="min-h-screen w-full bg-[var(--bg-page)] flex items-center justify-center p-6">
         <div className="text-center">
           <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto mb-3" />
-          <p className="text-sm font-bold text-text-primary">Welcome back — trip closed out.</p>
+          <p className="text-sm font-bold text-text-primary">Welcome back, trip closed out.</p>
         </div>
       </div>
     );
@@ -352,7 +352,7 @@ export default function TripView({ token }: TripViewProps) {
                 <Navigation className="w-3.5 h-3.5" />
                 {gpsActive ? 'Stop Sharing Location' : 'Share Live Location with Dispatch'}
               </button>
-              <p className="text-[10px] text-text-muted text-center mt-2">Keep this page open while tracking is on — location only updates while the browser tab is active.</p>
+              <p className="text-[10px] text-text-muted text-center mt-2">Keep this page open while tracking is on, since location only updates while the browser tab is active.</p>
               {locationError && <p className="text-[10px] text-rose-500 text-center mt-1">{locationError}</p>}
             </div>
           )}

@@ -24,7 +24,7 @@ export default function DepartmentPlaceholderScreen({ department, reason }: Prop
       <EmptyState
         icon={<Icon size={22} color={t.colors.accent} />}
         title={`${dept.label} isn't fully on mobile yet`}
-        description={reason || `${dept.label}'s screens are on the roadmap — more departments land here every phase.`}
+        description={reason || `${dept.label}'s screens are on the roadmap, and more departments land here every phase.`}
       />
 
       {dept.subTabs.length > 0 && (

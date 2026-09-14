@@ -105,7 +105,7 @@ export default function GoodsPriceCatalogView({ addNotification, currentUser, de
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-bold text-[var(--text-primary)]">Goods Price Catalog</h2>
-          <p className="text-xs text-[var(--text-muted)]">Selling prices set by Management — read only</p>
+          <p className="text-xs text-[var(--text-muted)]">Selling prices set by Management, read only</p>
         </div>
         <button
           onClick={() => {

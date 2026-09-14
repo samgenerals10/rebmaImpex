@@ -106,7 +106,13 @@ export default function StatementScreen() {
     { key: 'status', label: 'Status', status: true, render: (r) => <Badge tone={statusTone(r.status)} label={r.status.replace(/_/g, ' ')} /> },
     { key: 'clientName', label: 'Client' },
     { key: 'lineTotal', label: 'Amount', render: (r) => `GHS ${r.lineTotal.toLocaleString()}` },
-    { key: 'quantity', label: 'Qty', render: (r) => `${r.quantity} (${r.stockRemaining ?? '—'} in stock)` },
+    { key: 'quantity', label: 'Qty', render: (r) => `${r.quantity} sold` },
+    {
+      key: 'stockRemaining', label: 'Stock Left',
+      render: (r) => r.stockRemaining == null ? '—' : r.stockRemaining < 0
+        ? <Badge tone="danger" label={`OVERSOLD (${r.stockRemaining.toLocaleString()})`} />
+        : String(r.stockRemaining.toLocaleString()),
+    },
   ];
 
   // Verbatim from StatementView.tsx's own whole-table CSV export.

@@ -52,7 +52,7 @@ export default function RiskRecruitmentView({ addNotification }: Props) {
 
   const viewResume = async (path: string) => {
     const url = await getSignedFileUrl('staff-resumes', path);
-    if (!url) { addNotification?.('Could not open résumé — it may have been removed.'); return; }
+    if (!url) { addNotification?.('Could not open résumé. It may have been removed.'); return; }
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 

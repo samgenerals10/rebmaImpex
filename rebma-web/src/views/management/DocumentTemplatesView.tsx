@@ -108,7 +108,7 @@ export default function DocumentTemplatesView({ addNotification, currentUser, hi
           <h2 className="text-lg font-bold text-[var(--text-primary)]">Document Templates</h2>
           <p className="text-xs text-[var(--text-muted)] mt-0.5">
             Control the header and footer printed on every receipt, dispatch ticket, and proforma invoice.
-            Changes apply to every document of that type going forward — Finance, Operations, and Management can view and issue these documents but not edit them.
+            Changes apply to every document of that type going forward. Finance, Operations, and Management can view and issue these documents but not edit them.
           </p>
         </div>
       )}
@@ -178,7 +178,7 @@ export default function DocumentTemplatesView({ addNotification, currentUser, hi
                   <MapPin size={11} />
                   {draft.companyLat != null
                     ? `Pinned at ${draft.companyLat.toFixed(5)}, ${draft.companyLng?.toFixed(5)}`
-                    : 'Not pinned yet — click the locate icon or the map to drop an exact pin'}
+                    : 'Not pinned yet. Click the locate icon or the map to drop an exact pin'}
                 </p>
                 {/* Each doc type has its own address/pin — only the Dispatch
                     Ticket tab's pin is what the GPS map actually reads,
@@ -215,7 +215,7 @@ export default function DocumentTemplatesView({ addNotification, currentUser, hi
           <div className="pt-2 border-t border-[var(--border)]">
             <h3 className="text-sm font-bold text-[var(--text-primary)] mb-1 mt-3">Footer Note</h3>
             <p className="text-[11px] text-[var(--text-muted)] mb-2">
-              The document number, QR code, and who issued it are always added automatically below this note — they aren't part of what you edit here.
+              The document number, QR code, and who issued it are always added automatically below this note, and aren't part of what you edit here.
             </p>
             <textarea className={inputCls} rows={5} value={draft.footerNote} onChange={e => setField('footerNote', e.target.value)}
               placeholder="e.g. This receipt is issued by REBMA IMPEX Ghana Limited Finance..." />

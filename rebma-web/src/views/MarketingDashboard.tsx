@@ -161,7 +161,7 @@ export default function MarketingDashboard({
     }
     const creditLimit = getSetting('max_credit_amount', 0);
     if (orderPayMode === 'CREDIT' && creditLimit > 0 && parseFloat(orderAmount) > creditLimit) {
-      alert(`Credit orders are capped at GHS ${Number(creditLimit).toLocaleString()} by the CEO — this order is GHS ${parseFloat(orderAmount).toLocaleString()}.`);
+      alert(`Credit orders are capped at GHS ${Number(creditLimit).toLocaleString()} by the CEO, and this order is GHS ${parseFloat(orderAmount).toLocaleString()}.`);
       return;
     }
     const ticketNum = `TKT-${Date.now().toString().slice(-5)}`;
@@ -201,7 +201,7 @@ export default function MarketingDashboard({
     };
     onCreateOrder(newOrder);
     setLocalOrders(prev => [newOrder, ...prev]);
-    addNotification(`New order created for ${orderClient} — Ticket: ${ticketNum}`);
+    addNotification(`New order created for ${orderClient}, Ticket: ${ticketNum}`);
     setShowOrderModal(false);
     setOrderClient(''); setOrderProduct(''); setOrderDestination(''); setOrderAmount(''); setOrderGhanaCard('');
     setOrderPayMode('CASH');

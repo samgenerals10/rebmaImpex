@@ -100,7 +100,7 @@ export default function ApprovalsScreen() {
     try {
       await callPrivilegedApi('/api/approve-user', { userId: item.id, approve: false, remark: note });
       await supabase.from('supplier_order_notifications').insert({
-        message: `Registration REJECTED by CEO: ${item.fullName} (${item.department})${note ? ` — ${note}` : ''}`,
+        message: `Registration REJECTED by CEO: ${item.fullName} (${item.department})${note ? `. Reason: ${note}` : ''}`,
         notified_department: 'HR',
         read: false,
       });

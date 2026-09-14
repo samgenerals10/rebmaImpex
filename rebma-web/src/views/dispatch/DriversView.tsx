@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Plus, ArrowLeft, Edit2, UserMinus, Truck, Trash2, Edit, Smartphone, Copy, Check } from 'lucide-react';
+import { Search, ArrowLeft, Edit2, UserMinus, Truck, Trash2, Edit, Smartphone } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { dispatch as dispatchApi } from '../../services/apiClient';
 import type { Driver, DeliveryRecord } from '../../types/erp';
@@ -94,94 +94,6 @@ function DriverFormModal({ title, form, submitting, onClose, onSave, onChange }:
   );
 }
 
-interface InviteDriverModalProps {
-  driver: Driver;
-  onClose: () => void;
-  onInvited: (userId: string) => void;
-}
-function InviteDriverModal({ driver, onClose, onInvited }: InviteDriverModalProps) {
-  const [email, setEmail] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [result, setResult] = useState<{ email: string; password: string } | null>(null);
-  const [copied, setCopied] = useState(false);
-  const [error, setError] = useState('');
-
-  const submit = async () => {
-    if (!email.trim()) { setError('Email is required.'); return; }
-    setSubmitting(true);
-    setError('');
-    try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const res = await fetch('/api/register-driver-user', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(sessionData.session ? { Authorization: `Bearer ${sessionData.session.access_token}` } : {}),
-        },
-        body: JSON.stringify({ driverRowId: driver.id, email: email.trim() }),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Failed to create mobile account.');
-      setResult({ email: json.email, password: json.password });
-      onInvited(json.userId);
-    } catch (e: any) {
-      setError(e.message || 'Failed to create mobile account.');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const copyCreds = () => {
-    navigator.clipboard.writeText(`Email: ${result?.email}\nPassword: ${result?.password}`);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  return (
-    <SidePanel
-      open
-      onClose={onClose}
-      title="Invite to Mobile App"
-      badge={<Smartphone size={16} />}
-    >
-        {!result ? (
-          <>
-            <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '0 0 16px' }}>
-              Creates a login for <strong>{driver.fullName}</strong> so they can sign in on the Rebma driver app and share live GPS during deliveries.
-            </p>
-            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 5 }}>Driver's Email</label>
-            <input
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              placeholder="driver@rebmaimpex.com"
-              disabled={submitting}
-              style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'var(--text-primary)', fontSize: 14, boxSizing: 'border-box' }}
-            />
-            {error && <p style={{ color: '#dc2626', fontSize: 13, margin: '10px 0 0' }}>{error}</p>}
-            <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
-              <button onClick={onClose} disabled={submitting} style={{ flex: 1, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 12, padding: '12px', fontWeight: 600, color: 'var(--text-secondary)', cursor: submitting ? 'not-allowed' : 'pointer', fontSize: 14 }}>Cancel</button>
-              <button onClick={submit} disabled={submitting} style={{ flex: 1, background: 'var(--accent)', border: 'none', borderRadius: 12, padding: '12px', fontWeight: 600, color: '#fff', cursor: submitting ? 'not-allowed' : 'pointer', fontSize: 14, opacity: submitting ? 0.6 : 1 }}>{submitting ? 'Creating...' : 'Create Login'}</button>
-            </div>
-          </>
-        ) : (
-          <>
-            <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '0 0 16px' }}>Account created. Share these credentials with the driver now. The password won't be shown again.</p>
-            <div style={{ background: 'var(--bg)', borderRadius: 12, padding: '14px 16px', marginBottom: 16, fontFamily: 'monospace', fontSize: 13 }}>
-              <p style={{ margin: '0 0 6px', color: 'var(--text-primary)' }}>Email: {result.email}</p>
-              <p style={{ margin: 0, color: 'var(--text-primary)' }}>Password: {result.password}</p>
-            </div>
-            <div style={{ display: 'flex', gap: 12 }}>
-              <button onClick={copyCreds} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 12, padding: '12px', fontWeight: 600, color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 14 }}>
-                {copied ? <Check size={14} /> : <Copy size={14} />} {copied ? 'Copied' : 'Copy'}
-              </button>
-              <button onClick={onClose} style={{ flex: 1, background: 'var(--accent)', border: 'none', borderRadius: 12, padding: '12px', fontWeight: 600, color: '#fff', cursor: 'pointer', fontSize: 14 }}>Done</button>
-            </div>
-          </>
-        )}
-    </SidePanel>
-  );
-}
-
 interface AssignDeliveryModalProps {
   driver: Driver;
   deliveries: DeliveryRecord[];
@@ -233,10 +145,8 @@ export default function DriversView({ addNotification }: Props) {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | Driver['status']>('ALL');
   const [profileDriver, setProfileDriver] = useState<Driver | null>(null);
-  const [showAdd, setShowAdd] = useState(false);
   const [editDriver, setEditDriver] = useState<Driver | null>(null);
   const [form, setForm] = useState(emptyForm);
-  const [inviteTarget, setInviteTarget] = useState<Driver | null>(null);
   const [assignTarget, setAssignTarget] = useState<Driver | null>(null);
   const [pendingDeliveries, setPendingDeliveries] = useState<DeliveryRecord[]>([]);
   const [pendingLoading, setPendingLoading] = useState(false);
@@ -329,7 +239,7 @@ export default function DriversView({ addNotification }: Props) {
       setAssignTarget(null);
       try {
         await dispatchApi.sendWhatsAppDirections(assignTarget.id);
-        addNotification(`WhatsApp opened with the trip link for ${assignTarget.fullName} — tap Send to deliver it.`);
+        addNotification(`WhatsApp opened with the trip link for ${assignTarget.fullName}, tap Send to deliver it.`);
       } catch (e: any) {
         addNotification(`Assigned, but couldn't open WhatsApp: ${e.message}`);
       }
@@ -363,7 +273,15 @@ export default function DriversView({ addNotification }: Props) {
     });
   };
 
+  // Edit-only — drivers now enter the roster exclusively by registering
+  // through HR's recruitment flow (Department: Risk, Role: Driver), which
+  // creates the roster row automatically at registration
+  // (api/register-standard-user.ts). A separate manual "Add Driver" path
+  // was retired: it let a roster row exist before the person had actually
+  // registered, so the same driver registering later would get a second,
+  // properly-linked row alongside the orphaned manual one.
   const saveDriver = async () => {
+    if (!editDriver) return;
     if (!form.fullName || !form.phone) {
       alert('Full Name and Phone are required.');
       return;
@@ -371,41 +289,19 @@ export default function DriversView({ addNotification }: Props) {
     if (submitting) return;
     setSubmitting(true);
     try {
-      if (editDriver) {
-        const updatedDbRow = mapToDB(form);
-        const { error } = await supabase.from('drivers').update(updatedDbRow).eq('id', editDriver.id);
-        if (!error) {
-          addNotification(`Driver ${form.fullName} updated.`);
-          await loadData();
-          setEditDriver(null);
-          // If viewing profile of this driver, reload profile state too
-          if (profileDriver?.id === editDriver.id) {
-            setProfileDriver({ ...profileDriver, ...form });
-          }
-          setForm(emptyForm);
-        } else {
-          alert(error.message);
+      const updatedDbRow = mapToDB(form);
+      const { error } = await supabase.from('drivers').update(updatedDbRow).eq('id', editDriver.id);
+      if (!error) {
+        addNotification(`Driver ${form.fullName} updated.`);
+        await loadData();
+        setEditDriver(null);
+        // If viewing profile of this driver, reload profile state too
+        if (profileDriver?.id === editDriver.id) {
+          setProfileDriver({ ...profileDriver, ...form });
         }
+        setForm(emptyForm);
       } else {
-        const generatedId = `DRV-${String(drivers.length + 1).padStart(3, '0')}`;
-        const newDbRow = mapToDB({
-          driverId: generatedId,
-          fullName: form.fullName,
-          phone: form.phone,
-          ghanaCard: form.ghanaCard,
-          licenseNumber: form.licenseNumber,
-          truckId: form.truckId,
-          status: 'ACTIVE'
-        });
-        const { error } = await supabase.from('drivers').insert([newDbRow]);
-        if (!error) {
-          addNotification(`Driver ${form.fullName} added.`);
-          await loadData();
-          setShowAdd(false);
-          setForm(emptyForm);
-        } else {
-          alert(error.message);
-        }
+        alert(error.message);
       }
     } catch (e: any) {
       alert(e.message || 'Failed to save driver.');
@@ -490,7 +386,7 @@ export default function DriversView({ addNotification }: Props) {
                 // other hire does, through HR's invite flow (Risk / Driver).
                 // api/register-driver-user.ts is left in source, unused.
                 <span style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--bg-input)', color: 'var(--text-muted)', borderRadius: 99, padding: '6px 14px', fontSize: 12, fontWeight: 600 }}>
-                  <Smartphone size={13} /> No login yet — invite via HR
+                  <Smartphone size={13} /> No login yet, invite via HR
                 </span>
               )}
             </div>
@@ -547,17 +443,6 @@ export default function DriversView({ addNotification }: Props) {
             />
           )}
         </div>
-        {inviteTarget && (
-          <InviteDriverModal
-            driver={inviteTarget}
-            onClose={() => setInviteTarget(null)}
-            onInvited={(userId) => {
-              setProfileDriver(p => p ? { ...p, userId } : p);
-              addNotification(`Mobile app login created for ${inviteTarget.fullName}.`);
-              loadData();
-            }}
-          />
-        )}
         {assignTarget && (
           <AssignDeliveryModal
             driver={assignTarget}
@@ -577,11 +462,8 @@ export default function DriversView({ addNotification }: Props) {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Driver Database</h1>
-          <p style={{ color: 'var(--text-muted)', margin: '4px 0 0', fontSize: 14 }}>Manage all registered drivers</p>
+          <p style={{ color: 'var(--text-muted)', margin: '4px 0 0', fontSize: 14 }}>Manage all registered drivers. New drivers join through HR's recruitment invite (Department: Risk, Role: Driver). Their roster entry here is created automatically once they register.</p>
         </div>
-        <button onClick={() => { setShowAdd(true); setForm(emptyForm); }} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 12, padding: '10px 20px', fontWeight: 600, cursor: 'pointer', fontSize: 14 }}>
-          <Plus size={16} /> Add Driver
-        </button>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 24 }}>
@@ -670,12 +552,12 @@ export default function DriversView({ addNotification }: Props) {
         </div>
       )}
 
-      {(showAdd || editDriver) && (
+      {editDriver && (
         <DriverFormModal
-          title={editDriver ? 'Edit Driver' : 'Add Driver'}
+          title="Edit Driver"
           form={form as Record<string, string>}
           submitting={submitting}
-          onClose={() => { setShowAdd(false); setEditDriver(null); setForm(emptyForm); }}
+          onClose={() => { setEditDriver(null); setForm(emptyForm); }}
           onSave={saveDriver}
           onChange={(key, val) => setForm(p => ({ ...p, [key]: val }))}
         />

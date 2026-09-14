@@ -76,7 +76,7 @@ export default function ConnectivityBanner() {
         >
           {networkOnline
             ? syncing ? 'Syncing…' : `${pending} item${pending === 1 ? '' : 's'} waiting to sync`
-            : pending > 0 ? `Offline — ${pending} item${pending === 1 ? '' : 's'} will sync when back online` : 'Offline — some actions may not save'}
+            : pending > 0 ? `Offline, ${pending} item${pending === 1 ? '' : 's'} will sync when back online` : 'Offline, some actions may not save'}
         </Text>
       </View>
       {networkOnline && pending > 0 && !syncing && (

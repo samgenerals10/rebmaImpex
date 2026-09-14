@@ -1936,7 +1936,7 @@ export default function OperationsDashboard({
                 </div>
                 <div>
                   <p className="text-sm font-bold text-[var(--text-primary)]">Approved Orders with Ticket Numbers</p>
-                  <p className="text-xs text-[var(--text-muted)]">{approvedOrders.length} orders approved — view details in Approved Goods</p>
+                  <p className="text-xs text-[var(--text-muted)]">{approvedOrders.length} orders approved. View details in Approved Goods</p>
                 </div>
               </div>
               <button onClick={() => setActiveSubTab?.('ApprovedGoods')}

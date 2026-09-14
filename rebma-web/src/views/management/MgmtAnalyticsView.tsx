@@ -381,7 +381,7 @@ export default function MgmtAnalyticsView({ addNotification }: Props) {
       <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-[var(--box-shadow)]">
         <div className="px-6 py-4 border-b border-[var(--border)]">
           <h2 className="text-sm font-bold text-[var(--text-primary)]">Department Performance Heatmap (Activity Score / 100)</h2>
-          <p className="text-xs text-[var(--text-muted)] mt-0.5">Based on audit activity — Green ≥ 90 · Teal ≥ 80 · Amber ≥ 70 · Red &lt; 70</p>
+          <p className="text-xs text-[var(--text-muted)] mt-0.5">Based on audit activity: Green ≥ 90 · Teal ≥ 80 · Amber ≥ 70 · Red &lt; 70</p>
         </div>
         {performanceHeatmap.length === 0 ? (
           <div className="py-12 text-center text-[var(--text-muted)] text-sm">No activity data recorded yet</div>

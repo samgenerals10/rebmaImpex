@@ -246,7 +246,7 @@ export default function PayrollScreen() {
 
       <Sheet open={showItemForm} onClose={() => setShowItemForm(false)} title="Add Staff to Batch" side="bottom" maxHeight={520}
         footer={<Button label={saving ? 'Adding…' : 'Add'} onPress={saveItem} loading={saving} disabled={saving || !itemForm.employee_name.trim() || !itemForm.gross_amount} fullWidth />}>
-        <Field label="Link to Staff Account" hint="Optional — leave blank for contractors or anyone not yet registered. Linking is what lets them see this in My Payslips.">
+        <Field label="Link to Staff Account" hint="Optional. Leave blank for contractors or anyone not yet registered. Linking is what lets them see this in My Payslips.">
           <SearchablePicker
             value={itemForm.staffId}
             onChange={(v) => {

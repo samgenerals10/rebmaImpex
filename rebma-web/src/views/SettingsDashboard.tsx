@@ -207,7 +207,7 @@ export default function SettingsDashboard({
     e.preventDefault();
     if (!deleteReason) return;
     setDeleteSubmitted(true);
-    addNotification?.(`Account deletion request submitted for ${currentUser?.fullName}. HR department has been notified and must approve before deletion is complete.`);
+    addNotification?.(`Account deletion request submitted for ${currentUser?.fullName}. Contact your administrator directly to follow up.`);
   };
 
   const pwStrength = () => {
@@ -386,7 +386,7 @@ export default function SettingsDashboard({
         metadata: { appearance: obj },
         updated_at: new Date().toISOString()
       }).eq('id', currentUser.id).then(({ error }) => {
-        if (error) addNotification?.('Applied locally — cloud sync unavailable.');
+        if (error) addNotification?.('Applied locally. Cloud sync is unavailable.');
       });
     }
   };
@@ -579,10 +579,8 @@ export default function SettingsDashboard({
                     <p className="text-xs font-bold text-amber-600">Deletion Request Submitted</p>
                   </div>
                   <p className="text-xs text-amber-700">
-                    Your account deletion request for <strong>{currentUser?.fullName}</strong> has been forwarded to the <strong>HR Department</strong> for review. 
-                    Account deletion will only proceed once HR approves the request.
+                    Your account deletion request for <strong>{currentUser?.fullName}</strong> has been recorded. Contact your administrator directly to follow up.
                   </p>
-                  <p className="text-[10px] text-amber-500 font-semibold">⏳ Awaiting HR Approval — you will be notified via email.</p>
                 </div>
                 <button onClick={() => setDeleteSubmitted(false)} className="w-full py-2 bg-[var(--bg)] border border-[var(--border)] text-[var(--text-primary)] hover:bg-[var(--accent-light)] rounded-xl text-xs font-semibold cursor-pointer">
                   Cancel Request
@@ -830,7 +828,7 @@ export default function SettingsDashboard({
                     >{m.label}</button>
                   ))}
                 </div>
-                <p className="text-[10px] text-[var(--text-muted)]">Controls animation speed/style across the whole app — applies instantly.</p>
+                <p className="text-[10px] text-[var(--text-muted)]">Controls animation speed/style across the whole app and applies instantly.</p>
               </div>
 
               {/* Dark Mode + Sidebar toggles kept here for convenience */}
@@ -1339,7 +1337,7 @@ export default function SettingsDashboard({
                 </div>
               </div>
 
-              <p className="text-[10px] text-[var(--text-muted)] text-center">Preview only — click Apply to save</p>
+              <p className="text-[10px] text-[var(--text-muted)] text-center">Preview only, click Apply to save</p>
             </div>
           </div>
 

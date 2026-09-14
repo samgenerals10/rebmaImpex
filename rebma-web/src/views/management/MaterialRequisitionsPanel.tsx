@@ -65,7 +65,7 @@ export default function MaterialRequisitionsPanel({ addNotification, currentUser
 
       if (approve) {
         await supabase.from('supplier_order_notifications').insert([{
-          message: `Raw material requisition approved by Management — awaiting Finance recording: ${summary} (requested by ${req.requested_by || 'Production'})`,
+          message: `Raw material requisition approved by Management, awaiting Finance recording: ${summary} (requested by ${req.requested_by || 'Production'})`,
           notified_department: 'FINANCE', read: false,
         }]);
       } else {
@@ -81,7 +81,7 @@ export default function MaterialRequisitionsPanel({ addNotification, currentUser
         performed_by: currentUser?.fullName || 'Management',
       }]);
 
-      addNotification?.(`Material requisition ${approve ? 'approved — sent to Finance' : 'rejected'}.`);
+      addNotification?.(`Material requisition ${approve ? 'approved and sent to Finance' : 'rejected'}.`);
       setItemEdits(prev => {
         const next = { ...prev };
         originalItems.forEach((_: any, idx: number) => { delete next[`${req.id}:${idx}`]; });

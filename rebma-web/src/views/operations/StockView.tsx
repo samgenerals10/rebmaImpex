@@ -389,6 +389,13 @@ export default function StockView({ incomingGoodsList: _ig, addNotification }: P
     const delta = adjustForm.type === 'Add' ? parseInt(adjustForm.quantity) : -parseInt(adjustForm.quantity);
     const newQty = Math.max(0, Number(adjustTarget.quantity) + delta);
     try {
+      // performed_by derived from the live session, matching every other
+      // stock-ledger writer in this app (deductStockForOrder, cargo
+      // approval) — this manual-adjustment path was the one place that
+      // left it blank, making a correction unattributable. Security/gap
+      // audit fix.
+      const { data: sessionData } = await supabase.auth.getSession();
+      const performerId = sessionData.session?.user?.id || null;
       await supabase.from('general_purchases').update({ quantity: newQty }).eq('id', adjustTarget.id);
       await supabase.from('stock_ledger').insert({
         product_name: adjustTarget.itemName,
@@ -396,6 +403,7 @@ export default function StockView({ incomingGoodsList: _ig, addNotification }: P
         quantity: Math.abs(delta),
         reference: adjustForm.reason || 'Manual Adjustment',
         notes: adjustForm.notes || '',
+        performed_by: performerId,
         created_at: new Date().toISOString(),
       });
       addNotification(`${adjustTarget.itemName} adjusted by ${delta > 0 ? '+' : ''}${delta}.`);

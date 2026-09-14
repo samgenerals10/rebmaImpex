@@ -13,10 +13,11 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, Text, Alert } from 'react-native';
 import { XCircle, RotateCcw } from 'lucide-react-native';
 import { supabase } from '../../lib/supabaseClient';
-import { checkStockAvailability, shortageMessage, deductStockForOrder } from '../../lib/financeActions';
+import { approveAccountsReview } from '../../lib/financeActions';
 import { useAuthStore } from '../../store/authStore';
 import { useTheme } from '../../theme/ThemeProvider';
 import Screen from '../../components/ui/Screen';
+import MetricCard from '../../components/ui/MetricCard';
 import DataList, { type DataColumn } from '../../components/ui/DataList';
 import Badge, { statusTone } from '../../components/ui/Badge';
 import Sheet, { SheetSection } from '../../components/ui/Sheet';
@@ -57,6 +58,7 @@ export default function OrdersQueueScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('PENDING_FINANCE');
+  const [modeFilter, setModeFilter] = useState('All');
   const [selected, setSelected] = useState<OrderRow | null>(null);
   const [payForm, setPayForm] = useState(EMPTY_FORM);
   const [isPartPayment, setIsPartPayment] = useState(false);
@@ -85,9 +87,18 @@ export default function OrdersQueueScreen() {
     return orders.filter((o) => {
       const matchesSearch = !q || o.client_name.toLowerCase().includes(q) || (o.ticket_number || '').toLowerCase().includes(q);
       const matchesStatus = statusFilter === 'ALL' || o.status === statusFilter;
-      return matchesSearch && matchesStatus;
+      const matchesMode = modeFilter === 'All' || o.payment_mode === modeFilter;
+      return matchesSearch && matchesStatus && matchesMode;
     });
-  }, [orders, search, statusFilter]);
+  }, [orders, search, statusFilter, modeFilter]);
+
+  const pendingOrders = orders.filter((o) => o.status === 'PENDING_FINANCE' || o.status === 'PENDING_MANAGEMENT');
+  const approvedOrders = orders.filter((o) => ['APPROVED', 'PROCESSING', 'OUT_FOR_DELIVERY'].includes(o.status));
+  const deliveredOrders = orders.filter((o) => o.status === 'DELIVERED');
+  const rejectedOrders = orders.filter((o) => o.status === 'REJECTED');
+  const pendingValue = pendingOrders.reduce((s, o) => s + (o.total_amount || 0), 0);
+  const approvedValue = approvedOrders.reduce((s, o) => s + (o.total_amount || 0), 0);
+  const deliveredValue = deliveredOrders.reduce((s, o) => s + (o.total_amount || 0), 0);
 
   const openDetail = (o: OrderRow) => {
     setSelected(o);
@@ -141,34 +152,8 @@ export default function OrdersQueueScreen() {
   };
 
   const approveOrder = async (order: OrderRow) => {
-    const shortages = await checkStockAvailability(order);
-    if (shortages.length > 0) {
-      Alert.alert('Insufficient Stock', shortageMessage(shortages));
-      return false;
-    }
-    const { data: sessionData } = await supabase.auth.getSession();
-    const performedByEmail = sessionData?.session?.user?.email || null;
     const performedBy = profile?.fullName || 'Finance';
-    const now = new Date().toISOString();
-
-    // PENDING_FINANCE -> PENDING_RISK_RELEASE, the only legal next status —
-    // this order now goes to Risk for a final control/release check
-    // before Admin & Warehouse can load the goods, not straight to
-    // Operations as before the workflow reconciliation.
-    const { error: rpcErr } = await supabase.rpc('accounts_review_order', {
-      p_order_id: order.id, p_action: 'approve', p_note: null,
-      p_approved_by: performedBy, p_approved_by_email: performedByEmail,
-    });
-    if (rpcErr) { Alert.alert('Approval Failed', rpcErr.message); return false; }
-
-    const ticketRef = order.ticket_number || `ORD-${String(order.id).slice(0, 6).toUpperCase()}`;
-    await deductStockForOrder(order, `Order Approved: ${ticketRef}`);
-    await supabase.from('supplier_order_notifications').insert([
-      { message: `Accounts cleared order ${order.ticket_number || order.id} for ${order.client_name} — awaiting Risk's final release check.`, notified_department: 'RISK', read: false },
-      { message: `Your order ${order.ticket_number || order.id} has cleared Accounts and is awaiting Risk's final release check.`, notified_department: 'MARKETING', read: false },
-    ]);
-    await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Order ${order.ticket_number || order.id} APPROVED for ${order.client_name} — GHS ${Number(order.total_amount || 0).toLocaleString()}`, performed_by: performedBy, reference_id: order.id, timestamp: now }]);
-    return true;
+    return approveAccountsReview(order, performedBy);
   };
 
   const savePaymentAndApprove = async () => {
@@ -233,7 +218,14 @@ export default function OrdersQueueScreen() {
   return (
     <Screen refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }}>
       <View style={{ gap: t.spacing.md }}>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.sm }}>
+          <View style={{ width: '47%' }}><MetricCard label="Pending Review" value={loading ? '—' : pendingOrders.length} sublabel={`GHS ${pendingValue.toLocaleString()}`} tone="warning" /></View>
+          <View style={{ width: '47%' }}><MetricCard label="Approved / Active" value={loading ? '—' : approvedOrders.length} sublabel={`GHS ${approvedValue.toLocaleString()}`} tone="accent" /></View>
+          <View style={{ width: '47%' }}><MetricCard label="Delivered" value={loading ? '—' : deliveredOrders.length} sublabel={`GHS ${deliveredValue.toLocaleString()}`} /></View>
+          <View style={{ width: '47%' }}><MetricCard label="Rejected" value={loading ? '—' : rejectedOrders.length} sublabel="Orders declined" tone="danger" /></View>
+        </View>
         <Input value={search} onChangeText={setSearch} placeholder="Search orders…" />
+        <SearchablePicker label="Payment Mode" value={modeFilter} onChange={setModeFilter} options={['All', 'CASH', 'CHEQUE', 'MOBILE_MONEY', 'CREDIT'].map((m) => ({ value: m, label: m }))} />
         <SearchablePicker label="Status" value={statusFilter} onChange={setStatusFilter} options={STATUS_OPTIONS.map((s) => ({ value: s, label: s === 'ALL' ? 'All Status' : s.replace(/_/g, ' ') }))} />
         <DataList columns={columns} data={filtered} rowKey={(o) => o.id} loading={loading} emptyTitle="No orders found" onRowPress={openDetail} />
       </View>

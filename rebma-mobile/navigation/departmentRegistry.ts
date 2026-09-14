@@ -45,10 +45,9 @@ import MarketingOverviewScreen from '../screens/marketing/OverviewScreen';
 import CreateOrderScreen from '../screens/marketing/CreateOrderScreen';
 import CustomersScreen from '../screens/marketing/CustomersScreen';
 import MarketingPriceCatalogScreen from '../screens/marketing/PriceCatalogScreen';
-import SalesHistoryScreen from '../screens/marketing/SalesHistoryScreen';
+import FinanceSalesHistoryScreen from '../screens/finance/SalesHistoryScreen';
 import CreditRequestsScreen from '../screens/marketing/CreditRequestsScreen';
 import MarketingAnalyticsScreen from '../screens/marketing/AnalyticsScreen';
-import InvoicesScreen from '../screens/marketing/InvoicesScreen';
 import MarketingSpreadsheetsScreen from '../screens/marketing/SpreadsheetsScreen';
 import FinanceOverviewScreen from '../screens/finance/OverviewScreen';
 import OrdersQueueScreen from '../screens/finance/OrdersQueueScreen';
@@ -233,6 +232,11 @@ export const DEPARTMENT_REGISTRY: Record<string, DepartmentEntry> = {
     },
   },
 
+  // Sales History and Invoices (invoice generation) moved to Finance —
+  // both now live under the FINANCE entry below, reusing the exact same
+  // screen components (screens/finance/SalesHistoryScreen.tsx and
+  // screens/finance/InvoicesScreen.tsx both just re-export Marketing's
+  // originals). Marketing keeps everything else.
   MARKETING: {
     code: 'MARKETING',
     label: 'Marketing',
@@ -242,9 +246,7 @@ export const DEPARTMENT_REGISTRY: Record<string, DepartmentEntry> = {
       { id: 'Overview', label: 'Dashboard', icon: LayoutDashboard },
       { id: 'CreateOrder', label: 'Orders', icon: ShoppingCart },
       { id: 'RegisterCustomer', label: 'Customers', icon: Users },
-      { id: 'Invoices', label: 'Invoices', icon: FileText },
       { id: 'PriceCatalog', label: 'Price Catalog', icon: Tag },
-      { id: 'SalesHistory', label: 'Sales History', icon: TrendingUp },
       { id: 'CreditRequests', label: 'Credit Requests', icon: CreditCard },
       { id: 'MktAnalytics', label: 'Analytics', icon: ChartColumn },
       { id: 'Spreadsheets', label: 'Spreadsheets', icon: FileSpreadsheet },
@@ -252,15 +254,15 @@ export const DEPARTMENT_REGISTRY: Record<string, DepartmentEntry> = {
     quickActions: [
       { label: 'Create Order', actionColor: 'emerald', icon: ShoppingCart, subTab: 'CreateOrder' },
       { label: 'Register Customer', actionColor: 'blue', icon: UserPlus, subTab: 'RegisterCustomer' },
-      { label: 'View Pipeline', actionColor: 'indigo', icon: TrendingUp, subTab: 'SalesHistory' },
+      // Sales History (where this used to land) moved to Finance —
+      // Marketing's closest remaining equivalent is its own Analytics tab.
+      { label: 'View Analytics', actionColor: 'indigo', icon: TrendingUp, subTab: 'MktAnalytics' },
     ],
     screens: {
       home: MarketingOverviewScreen,
       CreateOrder: CreateOrderScreen,
       RegisterCustomer: CustomersScreen,
-      Invoices: InvoicesScreen,
       PriceCatalog: MarketingPriceCatalogScreen,
-      SalesHistory: SalesHistoryScreen,
       CreditRequests: CreditRequestsScreen,
       MktAnalytics: MarketingAnalyticsScreen,
       Spreadsheets: MarketingSpreadsheetsScreen,
@@ -278,6 +280,7 @@ export const DEPARTMENT_REGISTRY: Record<string, DepartmentEntry> = {
       { id: 'RecordPayment', label: 'Payments', icon: DollarSign },
       { id: 'Receipts', label: 'Receipts', icon: Receipt },
       { id: 'Invoices', label: 'Invoices', icon: FileText },
+      { id: 'SalesHistory', label: 'Sales History', icon: TrendingUp },
       { id: 'PriceCatalog', label: 'Price Catalog', icon: Tag },
       { id: 'Wallets', label: 'Wallets & Bank', icon: Wallet },
       { id: 'Transactions', label: 'Transactions', icon: ArrowLeftRight },
@@ -294,7 +297,7 @@ export const DEPARTMENT_REGISTRY: Record<string, DepartmentEntry> = {
       { id: 'Spreadsheets', label: 'Spreadsheets', icon: FileSpreadsheet },
     ],
     sections: [
-      { title: 'E-Commerce Core', tabIds: ['Evaluation', 'OrdersQueue', 'RecordPayment', 'Receipts', 'Invoices', 'PriceCatalog'] },
+      { title: 'E-Commerce Core', tabIds: ['Evaluation', 'OrdersQueue', 'RecordPayment', 'Receipts', 'Invoices', 'SalesHistory', 'PriceCatalog'] },
       { title: 'Treasury & Accounts', tabIds: ['Wallets', 'Transactions', 'CreditMgmt', 'Cheques', 'MobileMoney', 'PettyCash'] },
       { title: 'Expenses & Liabilities', tabIds: ['Expenses', 'Payroll', 'RecurringPayments'] },
       { title: 'Reports & Auditing', tabIds: ['Statement', 'TaxVAT', 'FinReports', 'Spreadsheets'] },
@@ -311,6 +314,7 @@ export const DEPARTMENT_REGISTRY: Record<string, DepartmentEntry> = {
       RecordPayment: RecordPaymentScreen,
       Receipts: ReceiptsScreen,
       Invoices: FinanceInvoicesScreen,
+      SalesHistory: FinanceSalesHistoryScreen,
       PriceCatalog: FinancePriceCatalogScreen,
       Wallets: WalletsScreen,
       Transactions: TransactionsScreen,

@@ -831,7 +831,7 @@ export default function ProductionDashboard({
 
             {/* Approved requisitions — ready to issue */}
             <div className="p-4 md:p-6 bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-[var(--box-shadow)] space-y-4 text-[var(--text-primary)]">
-              <h3 className="text-base md:text-lg font-bold text-[var(--text-primary)]">Approved — Issue Goods Tickets</h3>
+              <h3 className="text-base md:text-lg font-bold text-[var(--text-primary)]">Approved: Issue Goods Tickets</h3>
               <div className="space-y-3">
                 {productionRequests.filter(r => r.status === 'APPROVED').map(req => (
                   <div key={req.id}>

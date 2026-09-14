@@ -88,13 +88,13 @@ export default function DestinationLocator({ value, onChange, onResolve, placeho
         onResolve({ lat, lng });
         setShowMap(true);
       } else {
-        setError('Location not found — try a more specific address, enter coordinates as "lat, lng", or pick it on the map.');
+        setError('Location not found. Try a more specific address, enter coordinates as "lat, lng", or pick it on the map.');
         setCoords(null);
         onResolve(null);
         setShowMap(true);
       }
     } catch {
-      setError('Could not reach the map lookup service — check your connection and try again.');
+      setError('Could not reach the map lookup service. Check your connection and try again.');
     } finally {
       setLoading(false);
     }
@@ -152,7 +152,7 @@ export default function DestinationLocator({ value, onChange, onResolve, placeho
       )}
       {showMap && (
         <p className="text-[10px] text-[var(--text-muted)] mt-1">
-          {coords ? `Resolved to ${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)} — click or drag the pin to adjust` : 'Click anywhere on the map to set the exact destination'}
+          {coords ? `Resolved to ${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}, click or drag the pin to adjust` : 'Click anywhere on the map to set the exact destination'}
         </p>
       )}
     </div>

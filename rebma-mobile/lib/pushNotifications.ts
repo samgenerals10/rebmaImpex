@@ -28,14 +28,27 @@ import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { supabase } from './supabaseClient';
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: false,
-    shouldSetBadge: false,
-  }),
-});
+// Wrapped in try/catch: this runs at module import time, before any
+// screen has rendered, so nothing in the app can catch an error here if
+// it throws (a React error boundary only catches errors during
+// render/effects, never during module evaluation). If the native
+// expo-notifications module isn't available for any reason (an installed
+// build made before this module was linked, a build environment where it
+// wasn't included, etc.), this must not take down the entire app on
+// launch. Every other call in this file already degrades safely instead
+// of throwing; this is the one spot that didn't.
+try {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowBanner: true,
+      shouldShowList: true,
+      shouldPlaySound: false,
+      shouldSetBadge: false,
+    }),
+  });
+} catch (e) {
+  console.log('[push] setNotificationHandler failed, push notifications will be unavailable this session:', e);
+}
 
 export interface PushRegistrationResult {
   token: string | null;
