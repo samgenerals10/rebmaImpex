@@ -8,11 +8,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { View, Text } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { Package, CreditCard, Camera, UserCheck, ShieldAlert, ShieldCheck, CheckCircle, XCircle } from 'lucide-react-native';
+import { Package, CreditCard, Camera, UserCheck, ShieldAlert, ShieldCheck, CheckCircle, XCircle, ClipboardCheck } from 'lucide-react-native';
 import { supabase } from '../../lib/supabaseClient';
 import { useTheme } from '../../theme/ThemeProvider';
 import { getDepartmentEntry } from '../../navigation/departmentRegistry';
 import Screen from '../../components/ui/Screen';
+import Card from '../../components/ui/Card';
 import MetricCard from '../../components/ui/MetricCard';
 import Button from '../../components/ui/Button';
 import PendingApprovalsAlertCard from '../../components/shared/PendingApprovalsAlertCard';
@@ -83,24 +84,43 @@ export default function RiskOverviewScreen() {
       <View style={{ gap: t.spacing.xl }}>
         <PendingApprovalsAlertCard department="RISK" onNavigate={(tab) => navigation.navigate(tab)} />
 
+        <Card tone="hero">
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.meta10.size, letterSpacing: 0.4, textTransform: 'uppercase', color: 'rgba(255,255,255,0.85)' }}>
+                Total Pending Review
+              </Text>
+              <Text style={{ fontFamily: t.font.extrabold, fontSize: t.type.kpi28.size, color: t.colors.onAccent, marginTop: t.spacing.xs }}>
+                {loading ? '—' : customersPendingCount + cargoCount + ordersCount + finalReleaseCount + podCount}
+              </Text>
+              <Text style={{ fontFamily: t.font.medium, fontSize: t.type.body12.size, color: 'rgba(255,255,255,0.85)', marginTop: 2 }}>
+                {loading ? '' : `${approvedToday} approved, ${rejectedToday} rejected today`}
+              </Text>
+            </View>
+            <View style={{ width: 52, height: 52, borderRadius: t.radius.lg, backgroundColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center' }}>
+              <ClipboardCheck size={26} color={t.colors.onAccent} />
+            </View>
+          </View>
+        </Card>
+
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.md }}>
           <View style={{ width: '47%' }}>
-            <MetricCard label="Customer Verification" value={loading ? '—' : customersPendingCount} tone="warning" icon={<UserCheck size={16} color={t.colors.status.warning.text} />} onPress={() => navigation.navigate('RiskApprovals')} />
+            <MetricCard label="Customer Verification" value={loading ? '—' : customersPendingCount} icon={<UserCheck size={16} color={t.colors.action.amber} />} tone="neutral" onPress={() => navigation.navigate('RiskApprovals')} />
           </View>
           <View style={{ width: '47%' }}>
-            <MetricCard label="Cargo Awaiting Review" value={loading ? '—' : cargoCount} tone="warning" icon={<Package size={16} color={t.colors.status.warning.text} />} onPress={() => navigation.navigate('RiskApprovals')} />
+            <MetricCard label="Cargo Awaiting Review" value={loading ? '—' : cargoCount} icon={<Package size={16} color={t.colors.action.sky} />} tone="neutral" onPress={() => navigation.navigate('RiskApprovals')} />
           </View>
           <View style={{ width: '47%' }}>
-            <MetricCard label="Orders — Initial Review" value={loading ? '—' : ordersCount} tone="warning" icon={<CreditCard size={16} color={t.colors.status.warning.text} />} onPress={() => navigation.navigate('RiskApprovals')} />
+            <MetricCard label="Initial Review Orders" value={loading ? '—' : ordersCount} icon={<CreditCard size={16} color={t.colors.action.violet} />} tone="neutral" onPress={() => navigation.navigate('RiskApprovals')} />
           </View>
           <View style={{ width: '47%' }}>
-            <MetricCard label="Orders — Final Release" value={loading ? '—' : finalReleaseCount} tone="danger" icon={<ShieldCheck size={16} color={t.colors.status.danger.text} />} onPress={() => navigation.navigate('RiskApprovals')} />
+            <MetricCard label="Final Release Orders" value={loading ? '—' : finalReleaseCount} icon={<ShieldCheck size={16} color={t.colors.action.rose} />} tone="neutral" onPress={() => navigation.navigate('RiskApprovals')} />
           </View>
           <View style={{ width: '47%' }}>
-            <MetricCard label="POD to Review" value={loading ? '—' : podCount} tone="warning" icon={<Camera size={16} color={t.colors.status.warning.text} />} onPress={() => navigation.navigate('RiskApprovals')} />
+            <MetricCard label="POD to Review" value={loading ? '—' : podCount} icon={<Camera size={16} color={t.colors.action.teal} />} tone="neutral" onPress={() => navigation.navigate('RiskApprovals')} />
           </View>
-          <View style={{ width: '100%' }}>
-            <MetricCard label="Credit Watch" value={loading ? '—' : creditWatchCount} tone="danger" icon={<ShieldAlert size={16} color={t.colors.status.danger.text} />} onPress={() => navigation.navigate('CustomerCredit')} />
+          <View style={{ width: '47%' }}>
+            <MetricCard label="Credit Watch" value={loading ? '—' : creditWatchCount} icon={<ShieldAlert size={16} color={t.colors.status.danger.text} />} tone="neutral" onPress={() => navigation.navigate('CustomerCredit')} />
           </View>
         </View>
 

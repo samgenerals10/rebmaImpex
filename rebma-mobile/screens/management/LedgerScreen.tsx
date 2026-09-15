@@ -102,7 +102,7 @@ export default function LedgerScreen() {
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm }}>
           <Activity size={16} color={t.colors.accent} />
           <View style={{ flex: 1 }}>
-            <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary }}>Live Audit Log — All Departments</Text>
+            <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary }}>Live Audit Log, All Departments</Text>
             <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted }}>{filtered.length} entries</Text>
           </View>
         </View>

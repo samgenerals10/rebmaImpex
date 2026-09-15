@@ -540,7 +540,7 @@ export default function StaffScreen() {
             <Button label="Add" variant="ghost" size="sm" onPress={addDepartmentRole} disabled={!newRoleName.trim()} />
           </View>
         </Field>
-        <Field label="Profile Picture — optional">
+        <Field label="Profile Picture (optional)">
           {photoDataUrl ? (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm }}>
               <Avatar name={form.fullName || '?'} photo={photoDataUrl} size={36} />
@@ -562,7 +562,7 @@ export default function StaffScreen() {
           <Field label="Guarantor ID Number"><Input value={form.guarantorIdNumber} onChangeText={(v) => setForm((f) => ({ ...f, guarantorIdNumber: v }))} /></Field>
           <Field label="Guarantor Address"><Input value={form.guarantorAddress} onChangeText={(v) => setForm((f) => ({ ...f, guarantorAddress: v }))} /></Field>
         </SheetSection>
-        <Field label="Résumé / CV — optional">
+        <Field label="Résumé / CV (optional)">
           <Button label={resumeUri ? resumeUri.uri.split('/').pop() || 'Selected' : resumeUrl ? 'Replace File' : 'Attach File'} variant="ghost" onPress={captureResume} />
         </Field>
       </Sheet>
@@ -596,7 +596,7 @@ export default function StaffScreen() {
               <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textMuted }}>Saved. Choose how to send the link to {createdInvite.fullName}.</Text>
 
               <Card tone="inset">
-                <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.body12.size, color: t.colors.textPrimary, marginBottom: t.spacing.xs }}>Email — {createdInvite.email}</Text>
+                <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.body12.size, color: t.colors.textPrimary, marginBottom: t.spacing.xs }}>Email: {createdInvite.email}</Text>
                 <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textSecondary, marginBottom: t.spacing.sm }}>{message}</Text>
                 <Button label={sendingEmail ? 'Sending…' : 'Send Email'} onPress={sendEmail} loading={sendingEmail} disabled={sendingEmail} fullWidth />
               </Card>
@@ -609,7 +609,7 @@ export default function StaffScreen() {
               </Card>
 
               <Card tone="inset">
-                <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.body12.size, color: t.colors.textMuted }}>SMS — not configured yet</Text>
+                <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.body12.size, color: t.colors.textMuted }}>SMS not configured yet</Text>
                 <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted, marginTop: 4 }}>Needs an SMS gateway account connected.</Text>
               </Card>
             </View>

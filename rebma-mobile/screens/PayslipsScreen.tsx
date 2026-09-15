@@ -89,7 +89,7 @@ export default function PayslipsScreen() {
               <Card key={item.id}>
                 <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary }}>{batch?.name || 'Payroll Batch'}</Text>
                 {batch ? (
-                  <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta11.size, color: t.colors.textMuted, marginTop: 2 }}>{batch.period_start} — {batch.period_end}</Text>
+                  <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta11.size, color: t.colors.textMuted, marginTop: 2 }}>{batch.period_start} to {batch.period_end}</Text>
                 ) : null}
                 <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted, marginTop: t.spacing.sm }}>Net pay</Text>
                 <Text style={{ fontFamily: t.font.extrabold, fontSize: t.type.kpi28.size, color: t.colors.accent }}>GHS {Number(item.net_amount || 0).toLocaleString()}</Text>

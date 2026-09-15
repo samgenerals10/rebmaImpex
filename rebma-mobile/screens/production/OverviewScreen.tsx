@@ -9,13 +9,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import { View, Text } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { Boxes, Package, CheckCircle2, ClipboardList } from 'lucide-react-native';
+import { Boxes, ClipboardList } from 'lucide-react-native';
 import { supabase } from '../../lib/supabaseClient';
 import { useTheme } from '../../theme/ThemeProvider';
 import { getDepartmentEntry } from '../../navigation/departmentRegistry';
 import Screen from '../../components/ui/Screen';
 import Card from '../../components/ui/Card';
 import MetricCard from '../../components/ui/MetricCard';
+import ProgressRing from '../../components/ui/ProgressRing';
 import Badge from '../../components/ui/Badge';
 import ApprovalHistoryPanel from '../../components/shared/ApprovalHistoryPanel';
 import ModuleLauncher from '../../components/chrome/ModuleLauncher';
@@ -62,11 +63,26 @@ export default function OverviewScreen() {
   return (
     <Screen refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }}>
       <View style={{ gap: t.spacing.xl }}>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.md }}>
-          <View style={{ width: '47%' }}><MetricCard label="Boxes Produced Today" value={loading ? '—' : todayBoxes} icon={<Package size={16} color={t.colors.accent} />} /></View>
-          <View style={{ width: '47%' }}><MetricCard label="Sachets Today" value={loading ? '—' : todaySachets.toLocaleString()} icon={<Boxes size={16} color={t.colors.accent} />} /></View>
-          <View style={{ width: '47%' }}><MetricCard label="Quality Pass Rate" value={loading ? '—' : `${passRate}%`} tone={passRate >= 90 ? 'accent' : 'warning'} icon={<CheckCircle2 size={16} color={t.colors.status.success.text} />} /></View>
-          <View style={{ width: '47%' }}><MetricCard label="WIP Items" value={loading ? '—' : wipCount} icon={<ClipboardList size={16} color={t.colors.textSecondary} />} onPress={() => navigation.navigate('WIPStock')} /></View>
+        <Card tone="hero">
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.meta10.size, letterSpacing: 0.4, textTransform: 'uppercase', color: 'rgba(255,255,255,0.85)' }}>
+                Boxes Produced Today
+              </Text>
+              <Text style={{ fontFamily: t.font.extrabold, fontSize: t.type.kpi28.size, color: t.colors.onAccent, marginTop: t.spacing.xs }}>
+                {loading ? '—' : todayBoxes}
+              </Text>
+              <Text style={{ fontFamily: t.font.medium, fontSize: t.type.body12.size, color: 'rgba(255,255,255,0.85)', marginTop: 2 }}>
+                {loading ? '' : `${todaySachets.toLocaleString()} sachets`}
+              </Text>
+            </View>
+            <ProgressRing value={passRate} size={64} strokeWidth={6} sublabel="quality" onDark />
+          </View>
+        </Card>
+
+        <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
+          <MetricCard label="Sachets" value={loading ? '—' : todaySachets.toLocaleString()} icon={<Boxes size={16} color={t.colors.action.blue} />} tone="neutral" />
+          <MetricCard label="WIP Items" value={loading ? '—' : wipCount} icon={<ClipboardList size={16} color={t.colors.action.amber} />} tone="neutral" onPress={() => navigation.navigate('WIPStock')} />
         </View>
 
         <View>
@@ -76,21 +92,22 @@ export default function OverviewScreen() {
           ) : (
             <View style={{ gap: t.spacing.sm }}>
               {pending.map((r) => (
-                <Card key={r.id} tone="inset">
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: t.spacing.sm }}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.body12.size, color: t.colors.textPrimary }}>{r.product_name}</Text>
-                      <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted, marginTop: 2 }}>Req #{r.request_number || String(r.id).slice(0, 8)} · Qty {r.quantity} {r.unit}</Text>
-                    </View>
-                    <Badge tone="warning" label="Pending" size="xs" />
+                <View key={r.id} style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm, backgroundColor: t.colors.bgCard, borderRadius: t.radius.lg, padding: t.spacing.md, ...t.shadow('card') }}>
+                  <View style={{ width: 36, height: 36, borderRadius: t.radius.md, backgroundColor: `${t.colors.action.amber}1f`, alignItems: 'center', justifyContent: 'center' }}>
+                    <ClipboardList size={16} color={t.colors.action.amber} />
                   </View>
-                </Card>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.body12.size, color: t.colors.textPrimary }} numberOfLines={1}>{r.product_name}</Text>
+                    <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted, marginTop: 2 }}>Req #{r.request_number || String(r.id).slice(0, 8)} · Qty {r.quantity} {r.unit}</Text>
+                  </View>
+                  <Badge tone="warning" label="Pending" size="xs" />
+                </View>
               ))}
               <Text
                 onPress={() => navigation.navigate('InternalOrders')}
                 style={{ fontFamily: t.font.semibold, fontSize: t.type.body12.size, color: t.colors.accent, textAlign: 'center' }}
               >
-                View all internal orders →
+                View all internal orders
               </Text>
             </View>
           )}

@@ -115,7 +115,7 @@ export default function DailyReportsScreen() {
         <Input value={selectedDate} onChangeText={setSelectedDate} placeholder="YYYY-MM-DD" />
 
         <Card>
-          <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary, marginBottom: t.spacing.md }}>Visitors — {selectedDate}</Text>
+          <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary, marginBottom: t.spacing.md }}>Visitors on {selectedDate}</Text>
           <DataList columns={visitorColumns} data={visitorsToday} rowKey={(v) => v.id} loading={loading} emptyTitle="No visitors on this date" />
         </Card>
 

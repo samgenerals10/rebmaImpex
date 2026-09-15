@@ -12,6 +12,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { useTheme } from '../../theme/ThemeProvider';
 import { getDepartmentEntry } from '../../navigation/departmentRegistry';
 import Screen from '../../components/ui/Screen';
+import Card from '../../components/ui/Card';
 import MetricCard from '../../components/ui/MetricCard';
 import ApprovalHistoryPanel from '../../components/shared/ApprovalHistoryPanel';
 import ModuleLauncher from '../../components/chrome/ModuleLauncher';
@@ -49,13 +50,29 @@ export default function OverviewScreen() {
   return (
     <Screen refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }}>
       <View style={{ gap: t.spacing.xl }}>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.md }}>
-          <View style={{ width: '47%' }}><MetricCard label="Total Staff" value={loading ? '—' : totalStaff} icon={<Users size={16} color={t.colors.accent} />} /></View>
-          <View style={{ width: '47%' }}><MetricCard label="Active Staff" value={loading ? '—' : activeStaff} tone="accent" icon={<UserCheck size={16} color={t.colors.accent} />} /></View>
-          <View style={{ width: '47%' }}>
-            <MetricCard label="Pending Registrations" value={loading ? '—' : pendingRegistrations} tone="warning" icon={<UserPlus size={16} color={t.colors.status.warning.text} />} onPress={() => navigation.navigate('Registrations')} />
+        <Card tone="hero">
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.meta10.size, letterSpacing: 0.4, textTransform: 'uppercase', color: 'rgba(255,255,255,0.85)' }}>
+                Active Staff
+              </Text>
+              <Text style={{ fontFamily: t.font.extrabold, fontSize: t.type.kpi28.size, color: t.colors.onAccent, marginTop: t.spacing.xs }}>
+                {loading ? '—' : activeStaff}
+              </Text>
+              <Text style={{ fontFamily: t.font.medium, fontSize: t.type.body12.size, color: 'rgba(255,255,255,0.85)', marginTop: 2 }}>
+                {loading ? '' : `of ${totalStaff} total staff`}
+              </Text>
+            </View>
+            <View style={{ width: 52, height: 52, borderRadius: t.radius.lg, backgroundColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center' }}>
+              <UserCheck size={26} color={t.colors.onAccent} />
+            </View>
           </View>
-          <View style={{ width: '47%' }}><MetricCard label="On Leave Today" value={loading ? '—' : onLeaveToday} icon={<Calendar size={16} color={t.colors.textSecondary} />} /></View>
+        </Card>
+
+        <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
+          <MetricCard label="Pending" value={loading ? '—' : pendingRegistrations} icon={<UserPlus size={16} color={t.colors.action.amber} />} tone="neutral" onPress={() => navigation.navigate('Registrations')} />
+          <MetricCard label="On Leave" value={loading ? '—' : onLeaveToday} icon={<Calendar size={16} color={t.colors.action.sky} />} tone="neutral" />
+          <MetricCard label="Total" value={loading ? '—' : totalStaff} icon={<Users size={16} color={t.colors.action.violet} />} tone="neutral" onPress={() => navigation.navigate('Staff')} />
         </View>
 
         {pendingRegistrations > 0 && (
@@ -63,7 +80,7 @@ export default function OverviewScreen() {
             onPress={() => navigation.navigate('Registrations')}
             style={{ fontFamily: t.font.semibold, fontSize: t.type.body12.size, color: t.colors.accent, textAlign: 'center' }}
           >
-            {pendingRegistrations} registration{pendingRegistrations !== 1 ? 's' : ''} awaiting review →
+            {pendingRegistrations} registration{pendingRegistrations !== 1 ? 's' : ''} awaiting review
           </Text>
         )}
 
