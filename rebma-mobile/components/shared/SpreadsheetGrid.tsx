@@ -40,6 +40,7 @@ import { useAuthStore } from '../../store/authStore';
 import { useTheme } from '../../theme/ThemeProvider';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
+import Tabs from '../ui/Tabs';
 import DataList, { type DataColumn } from '../ui/DataList';
 import Sheet, { SheetSection } from '../ui/Sheet';
 import Input, { Field } from '../ui/Input';
@@ -130,21 +131,23 @@ export default function SpreadsheetGrid({ department }: Props) {
 
   return (
     <View style={{ gap: t.spacing.lg }}>
-      <View style={{ flexDirection: 'row', gap: t.spacing.xs }}>
-        <Button label="Data Sheets" size="sm" variant={tab === 'data' ? 'primary' : 'ghost'} onPress={() => setTab('data')} />
-        <Button label="Free Sheets" size="sm" variant={tab === 'free' ? 'primary' : 'ghost'} onPress={() => setTab('free')} />
-      </View>
+      <Tabs
+        variant="segmented"
+        value={tab}
+        onChange={(v) => setTab(v as 'data' | 'free')}
+        options={[{ value: 'data', label: 'Data Sheets' }, { value: 'free', label: 'Free Sheets' }]}
+      />
 
       {tab === 'data' ? (
-        <View style={{ gap: 12 }}>
-          {tables.length === 0 ? (
-            <Card>
-              <Text>No data tables are configured for this department.</Text>
-            </Card>
-          ) : (
-            tables.map((tbl) => <TablePickerRow key={tbl.id} table={tbl} onPress={() => setActiveTable(tbl)} />)
-          )}
-        </View>
+        tables.length === 0 ? (
+          <Card>
+            <Text>No data tables are configured for this department.</Text>
+          </Card>
+        ) : (
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.md }}>
+            {tables.map((tbl, i) => <TablePickerCard key={tbl.id} table={tbl} index={i} onPress={() => setActiveTable(tbl)} />)}
+          </View>
+        )
       ) : (
         <FreeSheetPicker department={department} refreshKey={freeListVersion} onOpen={setActiveFreeSheet} />
       )}
@@ -152,19 +155,25 @@ export default function SpreadsheetGrid({ department }: Props) {
   );
 }
 
-function TablePickerRow({ table, onPress }: { table: { id: string; label: string }; onPress: () => void }) {
+const TABLE_TILE_COLORS = ['blue', 'emerald', 'violet', 'amber', 'rose', 'teal', 'sky', 'indigo'] as const;
+
+function TablePickerCard({ table, index, onPress }: { table: { id: string; label: string }; index: number; onPress: () => void }) {
   const t = useTheme();
+  const tileColor = t.colors.action[TABLE_TILE_COLORS[index % TABLE_TILE_COLORS.length]];
   return (
-    <Card padded={false} style={{ overflow: 'hidden' }}>
-      <Button
-        variant="ghost"
-        onPress={onPress}
-        fullWidth
-        style={{ borderWidth: 0, borderRadius: 0, justifyContent: 'space-between', paddingVertical: t.spacing.lg, paddingHorizontal: t.spacing.xl }}
-        icon={<Table size={16} color={t.colors.accent} />}
-        label={table.label}
-      />
-    </Card>
+    <Pressable
+      onPress={onPress}
+      style={{
+        width: '47%', minWidth: 140, flexGrow: 1, gap: t.spacing.sm,
+        padding: t.spacing.lg, backgroundColor: t.colors.bgCard, borderRadius: t.radius.card,
+        ...t.shadow('card'),
+      }}
+    >
+      <View style={{ width: 44, height: 44, borderRadius: t.radius.lg, backgroundColor: `${tileColor}1f`, alignItems: 'center', justifyContent: 'center' }}>
+        <Table size={20} color={tileColor} />
+      </View>
+      <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body12.size, color: t.colors.textPrimary }} numberOfLines={2}>{table.label}</Text>
+    </Pressable>
   );
 }
 
