@@ -22,32 +22,51 @@
 // registerForPushNotifications() below degrades safely when any of these
 // aren't cleared yet: it returns null rather than throwing, and logs a
 // clear reason so a future run can tell what's still blocking it.
-import * as Notifications from 'expo-notifications';
+//
+// Real regression found running this on Expo Go under SDK 57, not a D130
+// blocker: `expo-notifications` runs an unconditional, un-catchable
+// module-load side effect on Android (DevicePushTokenAutoRegistration.fx.ts
+// calls addPushTokenListener() at import time, which throws when it
+// detects Expo Go — SDK 53+ removed remote-push support there). A
+// try/catch around this module's OWN code can't help, since the throw
+// happens during `import * as Notifications from 'expo-notifications'`
+// itself, before any of this file's own code runs at all. Fixed by never
+// statically importing the package — it's dynamically imported only
+// inside functions that need it, and only after confirming we're not
+// running inside Expo Go.
 import * as Device from 'expo-device';
-import Constants from 'expo-constants';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { Platform } from 'react-native';
 import { supabase } from './supabaseClient';
 
-// Wrapped in try/catch: this runs at module import time, before any
-// screen has rendered, so nothing in the app can catch an error here if
-// it throws (a React error boundary only catches errors during
-// render/effects, never during module evaluation). If the native
-// expo-notifications module isn't available for any reason (an installed
-// build made before this module was linked, a build environment where it
-// wasn't included, etc.), this must not take down the entire app on
-// launch. Every other call in this file already degrades safely instead
-// of throwing; this is the one spot that didn't.
-try {
-  Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowBanner: true,
-      shouldShowList: true,
-      shouldPlaySound: false,
-      shouldSetBadge: false,
-    }),
-  });
-} catch (e) {
-  console.log('[push] setNotificationHandler failed, push notifications will be unavailable this session:', e);
+function isExpoGo(): boolean {
+  return Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+}
+
+// Lazily loaded and cached — never touched at all when running in Expo
+// Go, which is what avoids the crash (a dynamic import still evaluates
+// the module's own top-level side effects the first time it resolves,
+// same as a static one would).
+let notificationsModule: typeof import('expo-notifications') | null = null;
+async function loadNotifications() {
+  if (isExpoGo()) return null;
+  if (!notificationsModule) {
+    try {
+      notificationsModule = await import('expo-notifications');
+      notificationsModule.setNotificationHandler({
+        handleNotification: async () => ({
+          shouldShowBanner: true,
+          shouldShowList: true,
+          shouldPlaySound: false,
+          shouldSetBadge: false,
+        }),
+      });
+    } catch (e) {
+      console.log('[push] expo-notifications failed to load, push notifications will be unavailable this session:', e);
+      return null;
+    }
+  }
+  return notificationsModule;
 }
 
 export interface PushRegistrationResult {
@@ -62,6 +81,10 @@ export interface PushRegistrationResult {
  * ordinary state until the user clears them, not an error condition.
  */
 export async function registerForPushNotifications(userId: string): Promise<PushRegistrationResult> {
+  if (isExpoGo()) {
+    return { token: null, reason: 'Push notifications are not available in Expo Go on SDK 53+ — this needs a real installed build (eas build), not the Expo Go app.' };
+  }
+
   if (!Device.isDevice) {
     return { token: null, reason: 'Push notifications require a physical device (or a real push-capable simulator), not this environment.' };
   }
@@ -69,6 +92,11 @@ export async function registerForPushNotifications(userId: string): Promise<Push
   const projectId = (Constants.expoConfig?.extra as any)?.eas?.projectId;
   if (!projectId) {
     return { token: null, reason: 'No EAS projectId configured yet — run `eas init` under a logged-in Expo account, then add extra.eas.projectId to app.json (D130 blocker #1).' };
+  }
+
+  const Notifications = await loadNotifications();
+  if (!Notifications) {
+    return { token: null, reason: 'expo-notifications could not be loaded.' };
   }
 
   const { status: existingStatus } = await Notifications.getPermissionsAsync();
