@@ -4,11 +4,16 @@
 // and none is needed). This is the single most-reused primitive across the
 // ~90 web screens this app will eventually port, so getting this row right
 // is most of the visual-parity work for every future department sub-phase.
-import type { ReactNode } from 'react';
+import type { ComponentType, ReactNode } from 'react';
 import { View, Text, Pressable, FlatList } from 'react-native';
 import { useTheme } from '../../theme/ThemeProvider';
 import { SkeletonList } from './Skeleton';
 import EmptyState from './EmptyState';
+
+export interface RowIcon {
+  Icon: ComponentType<any>;
+  color: string;
+}
 
 export interface DataColumn<T> {
   key: string;
@@ -30,6 +35,8 @@ interface Props<T> {
   onRowPress?: (row: T) => void;
   renderCard?: (row: T) => ReactNode;
   renderActions?: (row: T) => ReactNode;
+  /** Optional colored icon tile shown at the row's leading edge (mobile-ui-fluidity: every typed-entity row gets one). Omit for rows with no natural per-item icon. */
+  rowIcon?: (row: T) => RowIcon;
   loading?: boolean;
   skeletonRows?: number;
   emptyTitle?: string;
@@ -44,7 +51,7 @@ function cellValue<T>(col: DataColumn<T>, row: T): ReactNode {
 }
 
 export default function DataList<T>({
-  columns, data, rowKey, onRowPress, renderCard, renderActions,
+  columns, data, rowKey, onRowPress, renderCard, renderActions, rowIcon,
   loading, skeletonRows = 5, emptyTitle = 'Nothing here yet', emptyDescription, emptyIcon,
 }: Props<T>) {
   const t = useTheme();
@@ -66,21 +73,26 @@ export default function DataList<T>({
         if (renderCard) return <>{renderCard(item)}</>;
 
         const RowWrapper = onRowPress ? Pressable : View;
+        const icon = rowIcon?.(item);
         return (
           <RowWrapper
             onPress={onRowPress ? () => onRowPress(item) : undefined}
             style={({ pressed }: any) => [
               {
                 backgroundColor: pressed ? t.colors.accentSoft : t.colors.bgCard,
-                borderWidth: 1,
-                borderColor: t.colors.border,
-                borderRadius: t.radius.md,
+                borderRadius: t.radius.lg,
                 padding: t.spacing.md,
               },
+              !pressed && t.shadow('card'),
             ]}
           >
-            {(primaryCol || statusCol) && (
-              <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: t.spacing.sm, marginBottom: gridCols.length ? t.spacing.sm : 0 }}>
+            {(primaryCol || statusCol || icon) && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm, marginBottom: gridCols.length ? t.spacing.sm : 0 }}>
+                {icon ? (
+                  <View style={{ width: 40, height: 40, borderRadius: t.radius.lg, alignItems: 'center', justifyContent: 'center', backgroundColor: `${icon.color}1f` }}>
+                    <icon.Icon size={18} color={icon.color} />
+                  </View>
+                ) : null}
                 {primaryCol ? (
                   <Text style={{ flex: 1, fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary }} numberOfLines={1}>
                     {cellValue(primaryCol, item)}

@@ -78,9 +78,11 @@ Rebma mobile currently has one general tab pattern. Going forward, choose delibe
 
 Any screen with more than one logical section (a dashboard, an overview screen) should pair each section's bold title with a right-aligned "View all" (or equivalent) link in `colors.accent`, wherever more content genuinely exists behind it. Don't add a dead link where there's nothing further to show.
 
-### Bottom nav — already correct, don't change
+### Bottom nav — correction: the center FAB must go
 
-`AppTabBar` already matches this direction: flat bar, subtle top shadow (`shadow('tabBar')`), outline vs. filled icon states. No changes needed here; this pattern was confirmed already right when the reference images were studied.
+An earlier pass on this skill claimed the bottom nav "already matches this direction, don't change." That was wrong, confirmed directly by the user against a live build: the nav bar has a raised, elevated green circular button in the center slot, floating above the bar. The reference never does this anywhere across all nine screens — every one of its bottom bars is a plain flat row of equally-sized icon+label items, five across, no item raised or visually distinct from the others beyond the active-state color.
+
+Fix: flatten the center slot back to a normal tab item (its own icon and label, same size and baseline as the other four, no elevation, no larger circle). The "+" quick-add action moves out of the nav bar entirely and becomes a contextual floating action button on the individual screens that actually need a fast add action (e.g. a bottom-right FAB on Port Ingestion, matching the reference's own My Notes screen, which puts its "+" bottom-right over the content, not in the nav bar). Not every screen needs one; only add it where there's a real, single, obvious "create new" action for that screen.
 
 ## What this skill does not cover
 

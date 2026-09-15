@@ -15,9 +15,16 @@ interface Props {
   disabled?: boolean;
   fullWidth?: boolean;
   style?: StyleProp<ViewStyle>;
+  /**
+   * A small white circular badge at the pill's trailing edge, carrying an
+   * arrow/chevron/play icon (mobile-ui-fluidity: reserved for "move
+   * forward" actions — submit, continue, start — not every button).
+   * Only rendered for variant="primary".
+   */
+  trailingBadgeIcon?: ReactNode;
 }
 
-export default function Button({ label, onPress, variant = 'primary', size = 'md', icon, loading, disabled, fullWidth, style }: Props) {
+export default function Button({ label, onPress, variant = 'primary', size = 'md', icon, loading, disabled, fullWidth, style, trailingBadgeIcon }: Props) {
   const t = useTheme();
   const isDisabled = disabled || loading;
 
@@ -57,6 +64,15 @@ export default function Button({ label, onPress, variant = 'primary', size = 'md
         <>
           {icon ? <View>{icon}</View> : null}
           <Text style={{ fontFamily: t.font.medium, fontSize: t.type.body14.size, color: textColor }}>{label}</Text>
+          {trailingBadgeIcon && variant === 'primary' ? (
+            <View style={{
+              width: 26, height: 26, borderRadius: 13, marginLeft: t.spacing.xs,
+              backgroundColor: 'rgba(255,255,255,0.22)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)',
+              alignItems: 'center', justifyContent: 'center',
+            }}>
+              {trailingBadgeIcon}
+            </View>
+          ) : null}
         </>
       )}
     </Pressable>

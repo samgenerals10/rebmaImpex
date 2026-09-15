@@ -1,10 +1,17 @@
 // rebma-mobile/navigation/AppTabBar.tsx
-// Ports: rebma-web/src/components/layout/MobileNav.tsx — custom tabBar (not
-// screenOptions) because the centre FAB overhangs the bar and can't be a
-// normal tab button.
+// Ports: rebma-web/src/components/layout/MobileNav.tsx.
+//
+// Correction (mobile-ui-fluidity skill, bottom-nav section): this used to
+// raise the Quick Actions button into an elevated center FAB, floating
+// above the bar. Confirmed directly against the reference images and the
+// user's own live build that this reads as wrong — the reference never
+// raises or resizes any single item across all nine of its screens; every
+// bottom bar is a plain flat row, same size, same baseline, all four items.
+// Quick Actions is now a normal flat tab item like the other three, just
+// with its own icon/label — same real functionality, no special elevation.
 import { View, Text, Pressable } from 'react-native';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import { Home, Plus, Bell, User } from 'lucide-react-native';
+import { Home, Zap, Bell, User } from 'lucide-react-native';
 import { useTheme } from '../theme/ThemeProvider';
 import { useUIStore } from '../store/uiStore';
 import { useAuthStore } from '../store/authStore';
@@ -35,7 +42,7 @@ export default function AppTabBar({ state, navigation }: BottomTabBarProps) {
       }}
     >
       {renderTab('HomeTab')}
-      {renderFab()}
+      {renderActionTab()}
       {renderTab('AlertsTab')}
       {renderTab('ProfileTab')}
     </View>
@@ -60,7 +67,7 @@ export default function AppTabBar({ state, navigation }: BottomTabBarProps) {
         style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 2 }}
       >
         <View>
-          <Icon size={20} color={color} />
+          <Icon size={20} color={color} strokeWidth={isActive ? 2.4 : 2} />
           {routeName === 'AlertsTab' && unreadCount > 0 && (
             <View style={{ position: 'absolute', top: -2, right: -4, width: 8, height: 8, borderRadius: 4, backgroundColor: t.colors.status.danger.text }} />
           )}
@@ -72,31 +79,18 @@ export default function AppTabBar({ state, navigation }: BottomTabBarProps) {
     );
   }
 
-  function renderFab() {
+  function renderActionTab() {
     return (
-      <View style={{ flex: 1, alignItems: 'center' }}>
-        <Pressable
-          onPress={openQuickActions}
-          disabled={!profile}
-          style={({ pressed }) => [
-            {
-              width: 48,
-              height: 48,
-              borderRadius: 24,
-              marginTop: -24,
-              backgroundColor: t.colors.accent,
-              alignItems: 'center',
-              justifyContent: 'center',
-              borderWidth: 2,
-              borderColor: 'rgba(255,255,255,0.2)',
-              transform: [{ scale: pressed ? 0.95 : 1 }],
-              ...t.shadow('fab'),
-            },
-          ]}
-        >
-          <Plus size={24} color={t.colors.onAccent} />
-        </Pressable>
-      </View>
+      <Pressable
+        onPress={openQuickActions}
+        disabled={!profile}
+        style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 2 }}
+      >
+        <Zap size={20} color={t.colors.textMuted} />
+        <Text style={{ fontFamily: t.font.regular, fontSize: t.type.label9.size, color: t.colors.textMuted }}>
+          Actions
+        </Text>
+      </Pressable>
     );
   }
 }

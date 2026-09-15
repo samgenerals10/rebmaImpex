@@ -24,10 +24,14 @@ export function SkeletonCard() {
   const t = useTheme();
   const opacity = usePulse();
   return (
-    <Animated.View style={{ opacity, backgroundColor: t.colors.bgCard, borderRadius: t.radius.md, borderWidth: 1, borderColor: t.colors.border, padding: t.spacing.md, gap: t.spacing.sm }}>
-      <View style={{ height: 14, width: '50%', borderRadius: 4, backgroundColor: t.colors.bgInput }} />
-      <View style={{ height: 10, width: '80%', borderRadius: 4, backgroundColor: t.colors.bgInput }} />
-      <View style={{ height: 10, width: '65%', borderRadius: 4, backgroundColor: t.colors.bgInput }} />
+    <Animated.View style={[{ opacity, backgroundColor: t.colors.bgCard, borderRadius: t.radius.lg, padding: t.spacing.md, gap: t.spacing.sm }, t.shadow('card')]}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm }}>
+        <View style={{ width: 40, height: 40, borderRadius: t.radius.lg, backgroundColor: t.colors.bgInput }} />
+        <View style={{ flex: 1, gap: t.spacing.xs }}>
+          <View style={{ height: 14, width: '60%', borderRadius: 4, backgroundColor: t.colors.bgInput }} />
+          <View style={{ height: 10, width: '85%', borderRadius: 4, backgroundColor: t.colors.bgInput }} />
+        </View>
+      </View>
     </Animated.View>
   );
 }

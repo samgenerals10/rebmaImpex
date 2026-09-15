@@ -17,3 +17,6 @@ export { default as Input, Field } from './Input';
 export { default as PageTitle } from './PageTitle';
 export { default as BarChart, type BarChartDatum } from './BarChart';
 export { default as RatingBadge } from './RatingBadge';
+export { default as ProgressRing } from './ProgressRing';
+export { default as ProgressBar } from './ProgressBar';
+export { default as Tabs, type TabOption } from './Tabs';

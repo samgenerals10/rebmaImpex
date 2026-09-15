@@ -39,11 +39,11 @@ export default function Input(props: TextInputProps) {
       style={[
         {
           backgroundColor: t.colors.bgInput,
-          borderWidth: 1,
+          borderWidth: focused ? 1.5 : 1,
           borderColor: focused ? t.colors.borderFocus : t.colors.border,
-          borderRadius: t.radius.sm,
+          borderRadius: t.radius.md,
           paddingHorizontal: t.spacing.lg,
-          paddingVertical: t.spacing.smd,
+          paddingVertical: t.spacing.md,
           fontFamily: t.font.regular,
           fontSize: t.type.body14.size,
           color: t.colors.textPrimary,
