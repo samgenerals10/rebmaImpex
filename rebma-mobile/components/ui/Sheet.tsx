@@ -4,7 +4,7 @@
 // full-width below the `sm` breakpoint anyway, so on a phone 'right' and
 // 'full' converge. 'left' doubles as the department-switcher drawer (D5).
 import { useEffect, useRef, type ReactNode } from 'react';
-import { Modal, View, Text, Pressable, Animated, Dimensions, BackHandler, StyleSheet, ScrollView } from 'react-native';
+import { Modal, View, Text, Pressable, Animated, Dimensions, BackHandler, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { X } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeProvider';
@@ -104,19 +104,25 @@ export default function Sheet({ open, onClose, title, subtitle, badge, children,
                 </Pressable>
               </View>
             )}
-            <ScrollView
+            <KeyboardAvoidingView
+              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
               style={{ flexShrink: 1 }}
-              contentContainerStyle={{ paddingHorizontal: t.spacing.xl, paddingVertical: t.spacing.lg }}
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={false}
+              keyboardVerticalOffset={isBottom ? 0 : undefined}
             >
-              {children}
-            </ScrollView>
-            {footer ? (
-              <View style={{ borderTopWidth: 1, borderTopColor: t.colors.border, paddingHorizontal: t.spacing.xl, paddingVertical: t.spacing.lg, flexDirection: 'row', justifyContent: 'flex-end' }}>
-                {footer}
-              </View>
-            ) : null}
+              <ScrollView
+                style={{ flexShrink: 1 }}
+                contentContainerStyle={{ paddingHorizontal: t.spacing.xl, paddingVertical: t.spacing.lg }}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+              >
+                {children}
+              </ScrollView>
+              {footer ? (
+                <View style={{ borderTopWidth: 1, borderTopColor: t.colors.border, paddingHorizontal: t.spacing.xl, paddingVertical: t.spacing.lg, flexDirection: 'row', justifyContent: 'flex-end' }}>
+                  {footer}
+                </View>
+              ) : null}
+            </KeyboardAvoidingView>
           </SafeAreaView>
         </Animated.View>
       </View>

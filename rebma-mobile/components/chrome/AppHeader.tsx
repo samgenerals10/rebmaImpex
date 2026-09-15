@@ -4,6 +4,7 @@
 // toggle are deferred (7.10 / 7.12), left out rather than stubbed.
 import { useEffect, useState } from 'react';
 import { View, Text, Pressable } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Bell, MessageSquare, MoreVertical, Search } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeProvider';
 import { useAuthStore } from '../../store/authStore';
@@ -29,6 +30,7 @@ interface Props {
 
 export default function AppHeader({ onNavigateProfile, onNavigateAlerts }: Props) {
   const t = useTheme();
+  const insets = useSafeAreaInsets();
   const profile = useAuthStore((s) => s.profile);
   const signOut = useAuthStore((s) => s.signOut);
   const openDepartmentSwitcher = useUIStore((s) => s.openDepartmentSwitcher);
@@ -58,7 +60,7 @@ export default function AppHeader({ onNavigateProfile, onNavigateAlerts }: Props
   const firstName = profile.fullName?.split(' ')[0] || 'there';
 
   return (
-    <View style={{ backgroundColor: t.colors.bgHeader, borderBottomWidth: 1, borderBottomColor: t.colors.border }}>
+    <View style={{ backgroundColor: t.colors.bgHeader, borderBottomWidth: 1, borderBottomColor: t.colors.border, paddingTop: insets.top + t.spacing.sm }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: t.spacing.lg, paddingVertical: t.spacing.md }}>
         <Pressable onPress={openDepartmentSwitcher}>
           <Avatar name={profile.fullName} photo={profile.photo} size={40} />

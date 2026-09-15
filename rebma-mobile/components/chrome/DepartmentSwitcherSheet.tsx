@@ -29,6 +29,7 @@ export default function DepartmentSwitcherSheet({ onSelectDepartment, onOpenSett
 
   if (!profile) return null;
   const depts = availableDepartments(profile.department, profile.isAdmin);
+  const ACTION_COLORS = Object.values(t.colors.action);
 
   return (
     <Sheet open={open} onClose={close} side="left">
@@ -41,26 +42,35 @@ export default function DepartmentSwitcherSheet({ onSelectDepartment, onOpenSett
       </View>
 
       <Text style={{ fontFamily: t.font.bold, fontSize: t.type.label9.size, letterSpacing: t.type.label9.letterSpacing, textTransform: 'uppercase', color: t.colors.textMuted, marginBottom: t.spacing.sm }}>
-        Channels
+        Departments
       </Text>
-      <View style={{ gap: 2 }}>
-        {depts.map((d) => {
+      <View style={{ gap: t.spacing.xs }}>
+        {depts.map((d, i) => {
           const isSelected = d.code === activeDepartment;
+          const tileColor = ACTION_COLORS[i % ACTION_COLORS.length];
+          const Icon = d.icon;
           return (
             <Pressable
               key={d.code}
               onPress={() => { onSelectDepartment(d.code); close(); }}
               style={{
                 flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm,
-                paddingHorizontal: t.spacing.md, paddingVertical: t.spacing.smd,
-                borderRadius: t.radius.md,
-                backgroundColor: isSelected ? t.colors.accent : 'transparent',
+                paddingHorizontal: t.spacing.sm, paddingVertical: t.spacing.sm,
+                borderRadius: t.radius.lg,
+                backgroundColor: isSelected ? t.colors.accent : t.colors.bgCard,
+                borderWidth: 1,
+                borderColor: isSelected ? t.colors.accent : t.colors.border,
+                ...(isSelected ? {} : t.shadow('card')),
               }}
             >
-              <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.body14.size, color: isSelected ? t.colors.onAccent : t.colors.textSecondary }}>
-                #
-              </Text>
-              <Text style={{ flex: 1, fontFamily: isSelected ? t.font.bold : t.font.medium, fontSize: t.type.body14.size, color: isSelected ? t.colors.onAccent : t.colors.textSecondary }} numberOfLines={1}>
+              <View style={{
+                width: 36, height: 36, borderRadius: t.radius.md,
+                alignItems: 'center', justifyContent: 'center',
+                backgroundColor: isSelected ? 'rgba(255,255,255,0.22)' : `${tileColor}1f`,
+              }}>
+                <Icon size={18} color={isSelected ? t.colors.onAccent : tileColor} />
+              </View>
+              <Text style={{ flex: 1, fontFamily: isSelected ? t.font.bold : t.font.medium, fontSize: t.type.body14.size, color: isSelected ? t.colors.onAccent : t.colors.textPrimary }} numberOfLines={1}>
                 {d.label}
               </Text>
             </Pressable>
