@@ -849,9 +849,9 @@ export default function StaffView({ staffList: propStaff, addNotification, curre
             );
           })()}
         </div>
-        {showAdd && <FormModal title="Add Staff" onClose={() => setShowAdd(false)} onSave={handleSaveAdd} />}
-        <SendInvitePanel />
-        {editTarget && <FormModal title="Edit Staff" onClose={() => setEditTarget(null)} onSave={handleSaveEdit} />}
+        {showAdd && FormModal({ title: "Add Staff", onClose: () => setShowAdd(false), onSave: handleSaveAdd })}
+        {SendInvitePanel()}
+        {editTarget && FormModal({ title: "Edit Staff", onClose: () => setEditTarget(null), onSave: handleSaveEdit })}
 
         <SidePanel
           open={remarksModalOpen}
@@ -1081,9 +1081,9 @@ export default function StaffView({ staffList: propStaff, addNotification, curre
         )}
       </div>
 
-      {showAdd && <FormModal title="Add Staff" onClose={() => setShowAdd(false)} onSave={handleSaveAdd} />}
-        <SendInvitePanel />
-      {editTarget && <FormModal title="Edit Staff" onClose={() => setEditTarget(null)} onSave={handleSaveEdit} />}
+      {showAdd && FormModal({ title: "Add Staff", onClose: () => setShowAdd(false), onSave: handleSaveAdd })}
+        {SendInvitePanel()}
+      {editTarget && FormModal({ title: "Edit Staff", onClose: () => setEditTarget(null), onSave: handleSaveEdit })}
       {menuOpen && <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={() => setMenuOpen(null)} />}
     </div>
   );
