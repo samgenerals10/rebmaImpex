@@ -68,28 +68,47 @@ export default function OverviewScreen() {
       <View style={{ gap: t.spacing.xl }}>
         <PendingApprovalsAlertCard department="CEO" onNavigate={(tab) => navigation.navigate(tab)} />
 
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.md }}>
-          <View style={{ width: '47%' }}><MetricCard label="Today's Orders" value={loading ? '—' : todayOrders} icon={<ShoppingCart size={16} color={t.colors.accent} />} /></View>
-          <View style={{ width: '47%' }}><MetricCard label="Today's Revenue" value={loading ? '—' : `GHS ${todayRevenue.toLocaleString()}`} tone="accent" icon={<DollarSign size={16} color={t.colors.accent} />} /></View>
-          <View style={{ width: '47%' }}><MetricCard label="Active Supplier Orders" value={loading ? '—' : activeSupplierOrders} icon={<ShoppingBag size={16} color={t.colors.textSecondary} />} onPress={() => navigation.navigate('SupplierOrders')} /></View>
-          <View style={{ width: '47%' }}><MetricCard label="Deliveries In Transit" value={loading ? '—' : inTransit} icon={<Truck size={16} color={t.colors.textSecondary} />} onPress={() => navigation.navigate('Tracking')} /></View>
+        <Card tone="hero">
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.meta10.size, letterSpacing: 0.4, textTransform: 'uppercase', color: 'rgba(255,255,255,0.85)' }}>
+                Today's Revenue
+              </Text>
+              <Text style={{ fontFamily: t.font.extrabold, fontSize: t.type.kpi28.size, color: t.colors.onAccent, marginTop: t.spacing.xs }}>
+                {loading ? '—' : `GHS ${todayRevenue.toLocaleString()}`}
+              </Text>
+              <Text style={{ fontFamily: t.font.medium, fontSize: t.type.body12.size, color: 'rgba(255,255,255,0.85)', marginTop: 2 }}>
+                {loading ? '' : `${todayOrders} order${todayOrders === 1 ? '' : 's'} today`}
+              </Text>
+            </View>
+            <View style={{ width: 52, height: 52, borderRadius: t.radius.lg, backgroundColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center' }}>
+              <DollarSign size={26} color={t.colors.onAccent} />
+            </View>
+          </View>
+        </Card>
+
+        <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
+          <MetricCard label="Orders" value={loading ? '—' : todayOrders} icon={<ShoppingCart size={16} color={t.colors.action.blue} />} tone="neutral" />
+          <MetricCard label="Supplier" value={loading ? '—' : activeSupplierOrders} icon={<ShoppingBag size={16} color={t.colors.action.amber} />} tone="neutral" onPress={() => navigation.navigate('SupplierOrders')} />
+          <MetricCard label="In Transit" value={loading ? '—' : inTransit} icon={<Truck size={16} color={t.colors.action.sky} />} tone="neutral" onPress={() => navigation.navigate('Tracking')} />
         </View>
 
         <View>
           <SectionHeader title="Recent Orders" />
           <View style={{ gap: t.spacing.sm }}>
             {recentOrders.map((o) => (
-              <Card key={o.id} tone="inset">
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: t.spacing.sm }}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.body12.size, color: t.colors.textPrimary }}>{o.client_name || o.ticket_number || 'Order'}</Text>
-                    <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted, marginTop: 2 }}>
-                      {o.ticket_number || o.id.slice(0, 8)} · GHS {Number(o.total_amount || 0).toLocaleString()}
-                    </Text>
-                  </View>
-                  <Badge tone="muted" label={(o.status || '').replace(/_/g, ' ')} size="xs" />
+              <View key={o.id} style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm, backgroundColor: t.colors.bgCard, borderRadius: t.radius.lg, padding: t.spacing.md, ...t.shadow('card') }}>
+                <View style={{ width: 40, height: 40, borderRadius: t.radius.lg, backgroundColor: `${t.colors.action.emerald}1f`, alignItems: 'center', justifyContent: 'center' }}>
+                  <ShoppingCart size={18} color={t.colors.action.emerald} />
                 </View>
-              </Card>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.body12.size, color: t.colors.textPrimary }} numberOfLines={1}>{o.client_name || o.ticket_number || 'Order'}</Text>
+                  <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted, marginTop: 2 }} numberOfLines={1}>
+                    {o.ticket_number || o.id.slice(0, 8)} · GHS {Number(o.total_amount || 0).toLocaleString()}
+                  </Text>
+                </View>
+                <Badge tone="muted" label={(o.status || '').replace(/_/g, ' ')} size="xs" />
+              </View>
             ))}
             {recentOrders.length === 0 && !loading && (
               <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textMuted, textAlign: 'center', paddingVertical: t.spacing.md }}>No orders yet.</Text>

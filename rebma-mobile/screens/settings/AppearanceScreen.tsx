@@ -12,18 +12,23 @@
 // mode: it is localStorage-only and never mirrored to profiles.metadata
 // (unlike fontSize, which does mirror) — so this control deliberately
 // does NOT touch Supabase, unlike the Font Size control right above it.
-// Every other web Appearance control (template, font family, accent,
-// motion, density, notification sound…) is still deferred.
+// mobile-ui-fluidity redesign pass: Accent Color is also real now — a
+// curated 6-swatch picker (ThemeProvider's ACCENT_PALETTE), AsyncStorage-
+// only like Dark Mode above it, not a port of web's five alternate theme
+// shells (those swap far more than a hue and stay explicitly out of
+// scope). Template switching, font family, motion, density, and
+// notification sound are still not built.
 //
 // Also the SETTINGS department's own "home" screen — includes the
 // ModuleLauncher into the other 5 sub-tabs, with ControlCenter hidden for
 // non-admins (matching web's own nav-level admin gate).
 import { useState } from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, Pressable } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { Check } from 'lucide-react-native';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuthStore } from '../../store/authStore';
-import { useTheme, FONT_SCALES, type FontSizePreference } from '../../theme/ThemeProvider';
+import { useTheme, FONT_SCALES, ACCENT_PALETTE, type FontSizePreference, type AccentKey } from '../../theme/ThemeProvider';
 import { getDepartmentEntry } from '../../navigation/departmentRegistry';
 import Screen from '../../components/ui/Screen';
 import Card from '../../components/ui/Card';
@@ -90,9 +95,33 @@ export default function AppearanceScreen() {
           </View>
         </Card>
 
+        <Card>
+          <SectionHeader title="Accent Color" subtitle="Changes the app's highlight color everywhere, on this device only." />
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.md }}>
+            {(Object.keys(ACCENT_PALETTE) as AccentKey[]).map((key) => {
+              const swatch = ACCENT_PALETTE[key];
+              const selected = t.accentKey === key;
+              return (
+                <Pressable key={key} onPress={() => t.setAccentKey(key)} style={{ alignItems: 'center', gap: t.spacing.xxs }}>
+                  <View style={{
+                    width: 44, height: 44, borderRadius: t.radius.lg, backgroundColor: swatch.accent,
+                    alignItems: 'center', justifyContent: 'center',
+                    borderWidth: selected ? 2 : 0, borderColor: t.colors.textPrimary,
+                  }}>
+                    {selected ? <Check size={18} color="#ffffff" /> : null}
+                  </View>
+                  <Text style={{ fontFamily: selected ? t.font.bold : t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textSecondary }}>
+                    {swatch.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </Card>
+
         <Card tone="inset">
           <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta11.size, color: t.colors.textMuted }}>
-            More display customization (themes, accent colors, motion) is coming in a future update.
+            Template switching and motion presets are not built yet. Font Size, Dark Mode, and Accent Color above are all real and apply across the whole app right now.
           </Text>
         </Card>
 

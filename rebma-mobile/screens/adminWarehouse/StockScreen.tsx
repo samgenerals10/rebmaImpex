@@ -12,8 +12,9 @@
 // current quantities per row instead of derived IN/OUT figures. The
 // adjust-and-record-a-ledger-entry capability itself is fully preserved.
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, Text, Pressable, Alert } from 'react-native';
+import { View, Text, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { Package, ArrowUpCircle, ArrowDownCircle, ShoppingBag } from 'lucide-react-native';
 import { supabase } from '../../lib/supabaseClient';
 import { getCeoSetting } from '../../lib/ceoSetting';
 import { useTheme } from '../../theme/ThemeProvider';
@@ -25,6 +26,7 @@ import Sheet from '../../components/ui/Sheet';
 import Button from '../../components/ui/Button';
 import Input, { Field } from '../../components/ui/Input';
 import SearchablePicker from '../../components/ui/SearchablePicker';
+import Tabs from '../../components/ui/Tabs';
 
 type Tab = 'CARGO' | 'PRODUCTS' | 'GP';
 
@@ -171,20 +173,17 @@ export default function StockScreen() {
 
   return (
     <Screen refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }}>
-      <View style={{ flexDirection: 'row', backgroundColor: t.colors.bgCard, borderRadius: t.radius.md, borderWidth: 1, borderColor: t.colors.border, padding: 3, marginBottom: t.spacing.lg }}>
-        {([
-          ['CARGO', `Port Goods (${cargo.length})`],
-          ['PRODUCTS', `Products (${products.length})`],
-          ['GP', `Purchases (${purchases.length})`],
-        ] as [Tab, string][]).map(([key, label]) => (
-          <Pressable
-            key={key}
-            onPress={() => setTab(key)}
-            style={{ flex: 1, paddingVertical: t.spacing.sm, borderRadius: t.radius.sm, backgroundColor: tab === key ? t.colors.accent : 'transparent', alignItems: 'center' }}
-          >
-            <Text style={{ fontFamily: t.font.bold, fontSize: t.type.meta10.size, color: tab === key ? t.colors.onAccent : t.colors.textSecondary }} numberOfLines={1}>{label}</Text>
-          </Pressable>
-        ))}
+      <View style={{ marginBottom: t.spacing.lg }}>
+        <Tabs
+          variant="segmented"
+          value={tab}
+          onChange={(v) => setTab(v as Tab)}
+          options={[
+            { value: 'CARGO', label: `Port Goods (${cargo.length})` },
+            { value: 'PRODUCTS', label: `Products (${products.length})` },
+            { value: 'GP', label: `Purchases (${purchases.length})` },
+          ]}
+        />
       </View>
 
       <View style={{ gap: t.spacing.sm, marginBottom: t.spacing.md }}>
@@ -199,8 +198,8 @@ export default function StockScreen() {
         )}
       </View>
 
-      {tab === 'CARGO' && <DataList columns={cargoCols} data={filteredCargo} rowKey={(r) => r.id} loading={loading} emptyTitle="No approved port cargo" />}
-      {tab === 'PRODUCTS' && <DataList columns={productCols} data={filteredProducts} rowKey={(r) => r.id} loading={loading} emptyTitle="No finished goods on file" />}
+      {tab === 'CARGO' && <DataList columns={cargoCols} data={filteredCargo} rowKey={(r) => r.id} loading={loading} emptyTitle="No approved port cargo" rowIcon={() => ({ Icon: Package, color: t.colors.action.sky })} />}
+      {tab === 'PRODUCTS' && <DataList columns={productCols} data={filteredProducts} rowKey={(r) => r.id} loading={loading} emptyTitle="No finished goods on file" rowIcon={() => ({ Icon: Package, color: t.colors.action.indigo })} />}
       {tab === 'GP' && (
         <DataList
           columns={gpCols}
@@ -208,6 +207,7 @@ export default function StockScreen() {
           rowKey={(r) => r.id}
           loading={loading}
           emptyTitle="No approved purchases"
+          rowIcon={() => ({ Icon: ShoppingBag, color: t.colors.action.amber })}
           renderActions={(r) => <Button label="Adjust" size="sm" onPress={() => { setAdjustTarget(r); setAdjustType('Add'); setAdjustQty(''); setAdjustReason(''); setAdjustNotes(''); }} />}
         />
       )}
@@ -215,7 +215,15 @@ export default function StockScreen() {
       {recentMovements.length > 0 && (
         <Card style={{ marginTop: t.spacing.xl }}>
           <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary, marginBottom: t.spacing.md }}>Recent Stock Movements</Text>
-          <DataList columns={movementCols} data={recentMovements} rowKey={(r) => r.id} emptyTitle="No stock movements logged" />
+          <DataList
+            columns={movementCols}
+            data={recentMovements}
+            rowKey={(r) => r.id}
+            emptyTitle="No stock movements logged"
+            rowIcon={(r) => r.movement_type === 'ADD'
+              ? { Icon: ArrowUpCircle, color: t.colors.status.success.text }
+              : { Icon: ArrowDownCircle, color: t.colors.status.danger.text }}
+          />
         </Card>
       )}
 
