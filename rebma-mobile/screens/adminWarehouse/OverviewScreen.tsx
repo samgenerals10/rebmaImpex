@@ -14,7 +14,7 @@
 // folded into OpsHistoryScreen, so "View All" here targets the real
 // `OpsHistory` registry sub-tab instead — one richer screen, not two.
 import { useCallback, useEffect, useState } from 'react';
-import { View, Text, Alert } from 'react-native';
+import { View, Text, Alert, Pressable } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Layers, Truck, TriangleAlert, Package, ClipboardCheck } from 'lucide-react-native';
 import { supabase } from '../../lib/supabaseClient';
@@ -102,27 +102,33 @@ export default function OverviewScreen() {
       <View style={{ gap: t.spacing.xl }}>
         <PendingApprovalsAlertCard department="ADMIN_WAREHOUSE" onNavigate={(tab) => navigation.navigate(tab)} />
 
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.md }}>
-          <View style={{ width: '47%' }}>
-            <MetricCard label="Cargo Weight" value={loading ? '—' : totalTons.toFixed(1)} sublabel="Tons accumulated" icon={<Layers size={16} color={t.colors.accent} />} />
+        <Card tone="hero">
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.meta10.size, letterSpacing: 0.4, textTransform: 'uppercase', color: 'rgba(255,255,255,0.85)' }}>
+                Total Stock Items
+              </Text>
+              <Text style={{ fontFamily: t.font.extrabold, fontSize: t.type.kpi28.size, color: t.colors.onAccent, marginTop: t.spacing.xs }}>
+                {loading ? '—' : stockQty.toLocaleString()}
+              </Text>
+              <Text style={{ fontFamily: t.font.medium, fontSize: t.type.body12.size, color: 'rgba(255,255,255,0.85)', marginTop: 2 }}>
+                Port + Products + Purchases
+              </Text>
+            </View>
+            <Pressable onPress={() => navigation.navigate('Stock')} style={{ width: 52, height: 52, borderRadius: t.radius.lg, backgroundColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center' }}>
+              <Package size={26} color={t.colors.onAccent} />
+            </Pressable>
           </View>
-          <View style={{ width: '47%' }}>
-            <MetricCard label="Awaiting Release" value={loading ? '—' : pendingReleaseOrders.length} sublabel="Ready to load" icon={<Truck size={16} color={t.colors.accent} />} />
+        </Card>
+
+        <View style={{ gap: t.spacing.sm }}>
+          <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
+            <MetricCard label="Cargo Weight" value={loading ? '—' : totalTons.toFixed(1)} sublabel="Tons" icon={<Layers size={16} color={t.colors.action.blue} />} tone="neutral" />
+            <MetricCard label="Awaiting Release" value={loading ? '—' : pendingReleaseOrders.length} sublabel="Ready to load" icon={<Truck size={16} color={t.colors.action.emerald} />} tone="neutral" onPress={() => navigation.navigate('Releases')} />
           </View>
-          <View style={{ width: '47%' }}>
-            <MetricCard label="Pending Approval" value={loading ? '—' : pendingApprovalCount} sublabel="Batches at Risk review" icon={<ClipboardCheck size={16} color={t.colors.accent} />} />
-          </View>
-          <View style={{ width: '47%' }}>
-            <MetricCard label="Discrepancies" value={loading ? '—' : discrepancyCount} sublabel="Flagged batches" icon={<TriangleAlert size={16} color={t.colors.accent} />} tone="warning" />
-          </View>
-          <View style={{ width: '100%' }}>
-            <MetricCard
-              label="Total Stock Items"
-              value={loading ? '—' : stockQty}
-              sublabel="Port + Products + Purchases"
-              icon={<Package size={16} color={t.colors.accent} />}
-              onPress={() => navigation.navigate('Stock')}
-            />
+          <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
+            <MetricCard label="Pending Approval" value={loading ? '—' : pendingApprovalCount} sublabel="At Risk review" icon={<ClipboardCheck size={16} color={t.colors.action.amber} />} tone="neutral" />
+            <MetricCard label="Discrepancies" value={loading ? '—' : discrepancyCount} sublabel="Flagged batches" icon={<TriangleAlert size={16} color={t.colors.action.rose} />} tone="neutral" onPress={() => navigation.navigate('OpsHistory')} />
           </View>
         </View>
 
@@ -133,11 +139,11 @@ export default function OverviewScreen() {
             </Text>
             <BarChart
               data={[
-                { label: 'Cargo Weight (T)', value: totalTons, color: '#3b82f6' },
-                { label: 'Awaiting Release', value: pendingReleaseOrders.length, color: '#10b981' },
-                { label: 'Pending Approval', value: pendingApprovalCount, color: '#f59e0b' },
-                { label: 'Discrepancy Notes', value: discrepancyCount, color: '#f43f5e' },
-                { label: 'Total Stock Qty', value: stockQty, color: '#8b5cf6' },
+                { label: 'Cargo Weight (T)', value: totalTons, color: t.colors.action.blue },
+                { label: 'Awaiting Release', value: pendingReleaseOrders.length, color: t.colors.action.emerald },
+                { label: 'Pending Approval', value: pendingApprovalCount, color: t.colors.action.amber },
+                { label: 'Discrepancy Notes', value: discrepancyCount, color: t.colors.action.rose },
+                { label: 'Total Stock Qty', value: stockQty, color: t.colors.action.violet },
               ]}
             />
           </Card>
@@ -162,8 +168,11 @@ export default function OverviewScreen() {
           ) : (
             <View style={{ gap: t.spacing.sm }}>
               {cargo.slice(0, 3).map((item) => (
-                <View key={item.id} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: t.spacing.md, backgroundColor: t.colors.bgPage, borderRadius: t.radius.md, borderWidth: 1, borderColor: t.colors.border }}>
-                  <View style={{ flex: 1, marginRight: t.spacing.sm }}>
+                <View key={item.id} style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm, padding: t.spacing.md, backgroundColor: t.colors.bgPage, borderRadius: t.radius.lg }}>
+                  <View style={{ width: 36, height: 36, borderRadius: t.radius.md, backgroundColor: `${t.colors.action.blue}1f`, alignItems: 'center', justifyContent: 'center' }}>
+                    <Layers size={16} color={t.colors.action.blue} />
+                  </View>
+                  <View style={{ flex: 1 }}>
                     <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body12.size, color: t.colors.textPrimary }} numberOfLines={1}>{item.product_name || 'Unnamed Cargo'}</Text>
                     <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted }}>CARGO-{item.id.slice(-6).toUpperCase()} · {item.company || '—'}</Text>
                   </View>
@@ -193,8 +202,11 @@ export default function OverviewScreen() {
           ) : (
             <View style={{ gap: t.spacing.sm }}>
               {pendingReleaseOrders.slice(0, 3).map((order) => (
-                <View key={order.id} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: t.spacing.md, backgroundColor: t.colors.bgPage, borderRadius: t.radius.md, borderWidth: 1, borderColor: t.colors.border }}>
-                  <View style={{ flex: 1, marginRight: t.spacing.sm }}>
+                <View key={order.id} style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm, padding: t.spacing.md, backgroundColor: t.colors.bgPage, borderRadius: t.radius.lg }}>
+                  <View style={{ width: 36, height: 36, borderRadius: t.radius.md, backgroundColor: `${t.colors.action.emerald}1f`, alignItems: 'center', justifyContent: 'center' }}>
+                    <Truck size={16} color={t.colors.action.emerald} />
+                  </View>
+                  <View style={{ flex: 1 }}>
                     <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body12.size, color: t.colors.textPrimary }} numberOfLines={1}>{order.client_name}</Text>
                     <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted }}>GHS {order.total_amount.toLocaleString()}</Text>
                   </View>

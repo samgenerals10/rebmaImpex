@@ -40,12 +40,12 @@ export default function BarChart({ data, maxValue }: Props) {
                 {d.formattedValue ?? d.value}
               </Text>
             </View>
-            <View style={{ height: 8, borderRadius: 4, backgroundColor: t.colors.bgPage, overflow: 'hidden' }}>
+            <View style={{ height: 8, borderRadius: t.radius.pill, backgroundColor: t.colors.bgInput, overflow: 'hidden' }}>
               <View
                 style={{
                   width: `${pct * 100}%`,
                   height: '100%',
-                  borderRadius: 4,
+                  borderRadius: t.radius.pill,
                   backgroundColor: d.color || t.colors.accent,
                 }}
               />
