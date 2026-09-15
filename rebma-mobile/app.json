@@ -43,7 +43,7 @@
       "favicon": "./assets/favicon.png"
     },
     "runtimeVersion": {
-      "policy": "fingerprint"
+      "policy": "appVersion"
     },
     "updates": {
       "url": "https://u.expo.dev/0f64cfbb-7d49-42f3-99ce-b399d5091b9a"
