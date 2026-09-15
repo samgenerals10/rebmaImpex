@@ -213,8 +213,8 @@ export default function PortIngestionScreen() {
   return (
     <Screen>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.md }}>
-        <LauncherCard icon={<Ship size={26} color={t.colors.accent} />} title="Log Port Cargo" description="Record incoming goods from the port or external suppliers" onPress={() => setMode('port')} />
-        <LauncherCard icon={<Package size={26} color={t.colors.accent} />} title="Log Stock Intake" description="Log internal production output or general purchased items" onPress={() => setMode('inhouse')} />
+        <LauncherCard icon={<Ship size={26} color={t.colors.action.sky} />} tileColor={t.colors.action.sky} title="Log Port Cargo" description="Record incoming goods from the port or external suppliers" onPress={() => setMode('port')} />
+        <LauncherCard icon={<Package size={26} color={t.colors.action.amber} />} tileColor={t.colors.action.amber} title="Log Stock Intake" description="Log internal production output or general purchased items" onPress={() => setMode('inhouse')} />
       </View>
 
       <Sheet open={mode === 'port'} onClose={() => setMode(null)} title="Log Incoming Port Cargo" side="bottom" maxHeight={640}
@@ -281,18 +281,19 @@ export default function PortIngestionScreen() {
   );
 }
 
-function LauncherCard({ icon, title, description, onPress }: { icon: React.ReactNode; title: string; description: string; onPress: () => void }) {
+function LauncherCard({ icon, tileColor, title, description, onPress }: { icon: React.ReactNode; tileColor: string; title: string; description: string; onPress: () => void }) {
   const t = useTheme();
   return (
     <Pressable
       onPress={onPress}
       style={{
         width: '47%', minWidth: 150, flexGrow: 1, alignItems: 'center', gap: t.spacing.sm,
-        padding: t.spacing.xl, backgroundColor: t.colors.bgCard, borderWidth: 1.5, borderColor: t.colors.border,
+        padding: t.spacing.xl, backgroundColor: t.colors.bgCard,
         borderRadius: t.radius.card,
+        ...t.shadow('card'),
       }}
     >
-      <View style={{ width: 56, height: 56, borderRadius: t.radius.lg, backgroundColor: t.colors.accentSoft, alignItems: 'center', justifyContent: 'center' }}>
+      <View style={{ width: 56, height: 56, borderRadius: t.radius.lg, backgroundColor: `${tileColor}1f`, alignItems: 'center', justifyContent: 'center' }}>
         {icon}
       </View>
       <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary, textAlign: 'center' }}>{title}</Text>

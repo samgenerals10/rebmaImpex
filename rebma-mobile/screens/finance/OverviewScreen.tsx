@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { View, Text } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { DollarSign, Clock, Receipt, Wallet } from 'lucide-react-native';
 import { supabase } from '../../lib/supabaseClient';
 import { useTheme } from '../../theme/ThemeProvider';
 import { useUIStore } from '../../store/uiStore';
@@ -61,11 +62,29 @@ export default function OverviewScreen() {
   return (
     <Screen refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }}>
       <View style={{ gap: t.spacing.xl }}>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.md }}>
-          <View style={{ width: '47%' }}><MetricCard label="Total Revenue" value={loading ? '—' : `GHS ${totalRevenue.toLocaleString()}`} tone="accent" /></View>
-          <View style={{ width: '47%' }}><MetricCard label="Pending Orders" value={loading ? '—' : pending.length} tone="warning" onPress={() => navigation.navigate('OrdersQueue')} /></View>
-          <View style={{ width: '47%' }}><MetricCard label="Payments Recorded" value={loading ? '—' : paymentCount} /></View>
-          <View style={{ width: '47%' }}><MetricCard label="Collections" value={loading ? '—' : `GHS ${creditOutstanding.toLocaleString()}`} /></View>
+        <Card tone="hero">
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.meta10.size, letterSpacing: 0.4, textTransform: 'uppercase', color: 'rgba(255,255,255,0.85)' }}>
+                Total Revenue
+              </Text>
+              <Text style={{ fontFamily: t.font.extrabold, fontSize: t.type.kpi28.size, color: t.colors.onAccent, marginTop: t.spacing.xs }}>
+                {loading ? '—' : `GHS ${totalRevenue.toLocaleString()}`}
+              </Text>
+              <Text style={{ fontFamily: t.font.medium, fontSize: t.type.body12.size, color: 'rgba(255,255,255,0.85)', marginTop: 2 }}>
+                {loading ? '' : `${paymentCount} payment${paymentCount === 1 ? '' : 's'} recorded`}
+              </Text>
+            </View>
+            <View style={{ width: 52, height: 52, borderRadius: t.radius.lg, backgroundColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center' }}>
+              <DollarSign size={26} color={t.colors.onAccent} />
+            </View>
+          </View>
+        </Card>
+
+        <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
+          <MetricCard label="Pending" value={loading ? '—' : pending.length} icon={<Clock size={16} color={t.colors.action.amber} />} tone="neutral" onPress={() => navigation.navigate('OrdersQueue')} />
+          <MetricCard label="Payments" value={loading ? '—' : paymentCount} icon={<Receipt size={16} color={t.colors.action.blue} />} tone="neutral" />
+          <MetricCard label="Collections" value={loading ? '—' : `GHS ${(creditOutstanding / 1000).toFixed(1)}k`} icon={<Wallet size={16} color={t.colors.action.teal} />} tone="neutral" />
         </View>
 
         <Card>
@@ -75,13 +94,16 @@ export default function OverviewScreen() {
           ) : (
             <View style={{ gap: t.spacing.sm }}>
               {pending.slice(0, 5).map((o) => (
-                <View key={o.id} style={{ flexDirection: 'row', justifyContent: 'space-between', padding: t.spacing.md, backgroundColor: t.colors.bgPage, borderRadius: t.radius.md, borderWidth: 1, borderColor: t.colors.border }}>
-                  <Text style={{ fontFamily: t.font.medium, fontSize: t.type.body12.size, color: t.colors.textPrimary }}>{o.client_name}</Text>
+                <View key={o.id} style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm, padding: t.spacing.md, backgroundColor: t.colors.bgPage, borderRadius: t.radius.lg }}>
+                  <View style={{ width: 36, height: 36, borderRadius: t.radius.md, backgroundColor: `${t.colors.action.amber}1f`, alignItems: 'center', justifyContent: 'center' }}>
+                    <Clock size={16} color={t.colors.action.amber} />
+                  </View>
+                  <Text style={{ flex: 1, fontFamily: t.font.medium, fontSize: t.type.body12.size, color: t.colors.textPrimary }} numberOfLines={1}>{o.client_name}</Text>
                   <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body12.size, color: t.colors.textPrimary }}>GHS {Number(o.total_amount || 0).toLocaleString()}</Text>
                 </View>
               ))}
               <Text onPress={() => navigation.navigate('OrdersQueue')} style={{ fontFamily: t.font.bold, fontSize: t.type.meta11.size, color: t.colors.accent, textAlign: 'center', marginTop: t.spacing.sm }}>
-                Review All →
+                Review All
               </Text>
             </View>
           )}

@@ -12,7 +12,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { View, Text } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { ShoppingCart, Users, TrendingUp, CreditCard } from 'lucide-react-native';
+import { ShoppingCart, Users, TrendingUp, CreditCard, Clock, Package } from 'lucide-react-native';
 import { supabase } from '../../lib/supabaseClient';
 import { outstandingCreditFor, type OrderLike, type CustomerLike } from '../../utils/customerRating';
 import { useTheme } from '../../theme/ThemeProvider';
@@ -76,11 +76,29 @@ export default function OverviewScreen() {
   return (
     <Screen refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }}>
       <View style={{ gap: t.spacing.xl }}>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.md }}>
-          <View style={{ width: '47%' }}><MetricCard label="Pending Orders" value={loading ? '—' : pendingCount} tone="warning" /></View>
-          <View style={{ width: '47%' }}><MetricCard label="Active Orders" value={loading ? '—' : activeCount} tone="accent" /></View>
-          <View style={{ width: '47%' }}><MetricCard label="Total Customers" value={loading ? '—' : customers.length} /></View>
-          <View style={{ width: '47%' }}><MetricCard label="Credit Outstanding" value={loading ? '—' : `GHS ${totalCredit.toLocaleString()}`} tone="danger" /></View>
+        <Card tone="hero">
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.meta10.size, letterSpacing: 0.4, textTransform: 'uppercase', color: 'rgba(255,255,255,0.85)' }}>
+                Active Orders
+              </Text>
+              <Text style={{ fontFamily: t.font.extrabold, fontSize: t.type.kpi28.size, color: t.colors.onAccent, marginTop: t.spacing.xs }}>
+                {loading ? '—' : activeCount}
+              </Text>
+              <Text style={{ fontFamily: t.font.medium, fontSize: t.type.body12.size, color: 'rgba(255,255,255,0.85)', marginTop: 2 }}>
+                {loading ? '' : `${customers.length} customer${customers.length === 1 ? '' : 's'} on file`}
+              </Text>
+            </View>
+            <View style={{ width: 52, height: 52, borderRadius: t.radius.lg, backgroundColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center' }}>
+              <TrendingUp size={26} color={t.colors.onAccent} />
+            </View>
+          </View>
+        </Card>
+
+        <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
+          <MetricCard label="Pending" value={loading ? '—' : pendingCount} icon={<Clock size={16} color={t.colors.action.amber} />} tone="neutral" />
+          <MetricCard label="Customers" value={loading ? '—' : customers.length} icon={<Users size={16} color={t.colors.action.blue} />} tone="neutral" onPress={() => navigation.navigate('RegisterCustomer')} />
+          <MetricCard label="Credit" value={loading ? '—' : `GHS ${(totalCredit / 1000).toFixed(1)}k`} icon={<CreditCard size={16} color={t.colors.action.rose} />} tone="neutral" onPress={() => navigation.navigate('CreditRequests')} />
         </View>
 
         <Card>
@@ -102,8 +120,11 @@ export default function OverviewScreen() {
             <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary, marginBottom: t.spacing.md }}>Products Available to Sell</Text>
             <View style={{ gap: t.spacing.sm }}>
               {products.map((p) => (
-                <View key={p.product_name} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: t.spacing.xs, borderBottomWidth: 1, borderBottomColor: t.colors.border }}>
-                  <Text style={{ fontFamily: t.font.medium, fontSize: t.type.body12.size, color: t.colors.textSecondary }}>{p.product_name}</Text>
+                <View key={p.product_name} style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm }}>
+                  <View style={{ width: 32, height: 32, borderRadius: t.radius.md, backgroundColor: `${t.colors.action.violet}1f`, alignItems: 'center', justifyContent: 'center' }}>
+                    <Package size={14} color={t.colors.action.violet} />
+                  </View>
+                  <Text style={{ flex: 1, fontFamily: t.font.medium, fontSize: t.type.body12.size, color: t.colors.textSecondary }} numberOfLines={1}>{p.product_name}</Text>
                   <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body12.size, color: t.colors.textPrimary }}>GHS {Number(p.unit_price || 0).toLocaleString()}</Text>
                 </View>
               ))}
