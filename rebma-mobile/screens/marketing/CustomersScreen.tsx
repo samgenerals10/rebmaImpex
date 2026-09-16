@@ -25,6 +25,7 @@ import Button from '../../components/ui/Button';
 import Input, { Field } from '../../components/ui/Input';
 import SearchablePicker from '../../components/ui/SearchablePicker';
 import LocationPicker, { type LocationValue } from '../../components/shared/LocationPicker';
+import { useAuthStore } from '../../store/authStore';
 
 interface CustomerRow {
   id: string;
@@ -62,6 +63,7 @@ const emptyForm = {
 
 export default function CustomersScreen() {
   const t = useTheme();
+  const { profile } = useAuthStore();
   const [customers, setCustomers] = useState<CustomerRow[]>([]);
   const [orders, setOrders] = useState<OrderLike[]>([]);
   const [loading, setLoading] = useState(true);
@@ -189,7 +191,12 @@ export default function CustomersScreen() {
         return;
       }
     } else {
-      const { error } = await supabase.from('customers').insert([{ ...basePayload, status: 'PENDING', registered_at: new Date().toISOString() }]);
+      // So Risk's later verify/reject decision can notify the actual
+      // person who registered this customer, not just Marketing as a whole.
+      const { error } = await supabase.from('customers').insert([{
+        ...basePayload, status: 'PENDING', registered_at: new Date().toISOString(),
+        registered_by_id: profile?.id || null, registered_by_name: profile?.fullName || null,
+      }]);
       setSubmitting(false);
       if (error) {
         Alert.alert('Add Failed', error.message);

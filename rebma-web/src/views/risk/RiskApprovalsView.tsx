@@ -11,6 +11,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { management } from '../../services/apiClient';
+import { sendNotification } from '../../utils/sendNotification';
 import {
   CheckCircle, XCircle, RotateCcw, Clock, Search,
   MoreVertical, ArrowLeft, Package, CreditCard, Camera,
@@ -89,13 +90,8 @@ export default function RiskApprovalsView({ addNotification, currentUser }: Prop
   const [selected, setSelected] = useState<string | null>(null);
   const [showModal, setShowModal] = useState<'approve' | 'reject' | 'return' | null>(null);
   const [modalNote, setModalNote] = useState('');
-  const [sellingPrice, setSellingPrice] = useState('');
-  const [notifyOps, setNotifyOps] = useState(true);
-  const [notifyCeo, setNotifyCeo] = useState(true);
   const [todayApproved, setTodayApproved] = useState(0);
   const [todayRejected, setTodayRejected] = useState(0);
-  const [confirmedDamages, setConfirmedDamages] = useState(0);
-  const [costPerUnit, setCostPerUnit] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   // Every customer (not just PENDING-verification ones) + their live credit
   // orders, so the Sales Order lane's Customer Credit Position card can show
@@ -104,10 +100,6 @@ export default function RiskApprovalsView({ addNotification, currentUser }: Prop
   const [allCustomers, setAllCustomers] = useState<any[]>([]);
   const [creditOrders, setCreditOrders] = useState<any[]>([]);
   const [showTimeline, setShowTimeline] = useState(false);
-  // Sales Order line items — editable quantity AND unit price per product,
-  // indexed by position in the order's metadata.items array. Same pattern
-  // as Management's version.
-  const [orderEdits, setOrderEdits] = useState<{ quantity: string; unitPrice: string }[]>([]);
   const tableFullscreen = useFullscreenToggle();
 
   useEffect(() => {
@@ -195,7 +187,7 @@ export default function RiskApprovalsView({ addNotification, currentUser }: Prop
         supabase.from('orders').select('*').eq('status', 'PENDING_RISK').order('created_at', { ascending: false }).limit(50),
         // Risk Final Release Check — the new second gate, after Accounts.
         supabase.from('orders').select('*').eq('status', 'PENDING_RISK_RELEASE').order('created_at', { ascending: false }).limit(50),
-        supabase.from('delivery_logs').select('*, orders:order_id(client_name, destination, total_amount)').eq('status', 'PENDING_RISK_REVIEW').order('created_at', { ascending: false }).limit(50).then(r => r, () => ({ data: [] })),
+        supabase.from('delivery_logs').select('*, orders:order_id(client_name, destination, total_amount), drivers:driver_id(user_id, name)').eq('status', 'PENDING_RISK_REVIEW').order('created_at', { ascending: false }).limit(50).then(r => r, () => ({ data: [] })),
         // Customer Credit Position card (Sales Order lane) needs every
         // customer's terms, not just the ones pending verification.
         supabase.from('customers').select('id, name, credit_limit, credit_status').then(r => r, () => ({ data: [] })),
@@ -309,39 +301,30 @@ export default function RiskApprovalsView({ addNotification, currentUser }: Prop
 
   const selectedItem = allItems.find(i => i.id === selected);
 
-  useEffect(() => {
-    if (selectedItem?.type === 'Sales Order' && selectedItem.raw) {
-      const orderItems = Array.isArray((selectedItem.raw as any)?.metadata?.items) ? (selectedItem.raw as any).metadata.items : [];
-      setOrderEdits(orderItems.map((it: any) => ({ quantity: String(it.quantity ?? ''), unitPrice: String(it.unitPrice ?? '') })));
-    } else {
-      setOrderEdits([]);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected]);
-
   function handleAction(id: string, action: 'approve' | 'reject' | 'return') {
     setSelected(id);
     setShowModal(action);
     setModalNote('');
-    setSellingPrice('');
+  }
 
-    const item = items.find(i => i.id === id);
-    if (item && item.type === 'Cargo Intake') {
-      let defaultDamages = 0;
-      const discText = String(item.raw?.discrepancies || '');
-      if (discText && discText.trim() !== '') {
-        const matches = discText.match(/\d+/g);
-        if (matches) {
-          defaultDamages = matches.reduce((sum, val) => sum + parseInt(val, 10), 0);
-        }
-      }
-      setConfirmedDamages(defaultDamages);
-      setCostPerUnit(Number(item.raw?.unit_price || 0));
-    }
+  // Every Risk decision — approve, reject, or return — tells three
+  // audiences: Management (always), the department that submitted the
+  // item (when there is one distinct from Management), and the specific
+  // person who submitted it (when the record has one on file). Confirmed
+  // requirement, 2026-09-16 — replaces the old scattered, inconsistent
+  // per-type notification lists.
+  async function notifyDecision(opts: { title: string; message: string; department?: string; personId?: string | null }) {
+    const depts = new Set<string>(['MANAGEMENT']);
+    if (opts.department) depts.add(opts.department);
+    await Promise.all([
+      ...Array.from(depts).map(dept => sendNotification({ recipientDepartment: dept, title: opts.title, message: opts.message })),
+      opts.personId ? sendNotification({ recipientId: opts.personId, title: opts.title, message: opts.message }) : Promise.resolve(),
+    ]);
   }
 
   async function confirmAction() {
     if (!selectedItem || !showModal || submitting) return;
+    if (!modalNote.trim()) return;
     setSubmitting(true);
     const action = showModal;
     // ACTION -> audit verb, shared across all three types below.
@@ -349,38 +332,18 @@ export default function RiskApprovalsView({ addNotification, currentUser }: Prop
 
     try {
       if (selectedItem.type === 'Cargo Intake' && selectedItem.raw) {
+        // Risk no longer edits anything here — no damage count, no cost
+        // per unit, no selling price. Those are Management's job.
+        // Approving adds the cargo exactly as submitted; nothing about the
+        // record itself changes except its status. Confirmed 2026-09-16.
         const newDbStatus = action === 'approve' ? 'APPROVED' : action === 'return' ? 'RETURNED_FOR_CORRECTION' : 'REJECTED';
         const rawId = String(selectedItem.raw.id);
         const cargoRow = selectedItem.raw as Record<string, any>;
         const incomingQty = Number(cargoRow.quantity || cargoRow.qty_received || 0);
-        // Clamped so a reviewer can't report more damaged units than the
-        // shipment actually received — security/gap audit fix.
-        const clampedDamages = Math.max(0, Math.min(confirmedDamages, incomingQty));
-        const finalQtyToAdd = Math.max(0, incomingQty - clampedDamages);
-        const discrepancyCost = clampedDamages * costPerUnit;
-        const sellingPriceVal = sellingPrice ? parseFloat(sellingPrice) : 0;
-        const rawDiscrepancies = String(cargoRow.discrepancies || '');
-
-        let finalDiscrepancyNotes = rawDiscrepancies;
-        if (action === 'approve' && clampedDamages > 0) {
-          const discrepancyJson = {
-            originalQty: incomingQty,
-            damagedCount: clampedDamages,
-            unitCost: costPerUnit,
-            costLoss: discrepancyCost,
-            sellingPrice: sellingPriceVal,
-            notes: rawDiscrepancies && rawDiscrepancies !== 'None' ? rawDiscrepancies : 'Damaged goods write-off'
-          };
-          finalDiscrepancyNotes = JSON.stringify(discrepancyJson);
-        }
 
         await supabase.from('cargo_intake').update({
           status: newDbStatus,
-          quantity: action === 'approve' ? finalQtyToAdd : incomingQty,
-          discrepancies: finalDiscrepancyNotes,
-          unit_price: costPerUnit,
-          is_fault_or_damaged: action === 'approve' ? clampedDamages > 0 : cargoRow.is_fault_or_damaged,
-          rejection_reason: action === 'approve' ? null : (modalNote || null),
+          rejection_reason: action === 'approve' ? null : modalNote,
         }).eq('id', rawId);
 
         if (action === 'approve') {
@@ -391,55 +354,29 @@ export default function RiskApprovalsView({ addNotification, currentUser }: Prop
 
           const { data: existingStock } = await supabase.from('stock').select('id, quantity').eq('product_name', productName).maybeSingle().then(r => r, () => ({ data: null, error: null }));
           if (existingStock) {
-            await supabase.from('stock').update({ quantity: (Number(existingStock.quantity) || 0) + finalQtyToAdd, last_updated: now }).eq('id', existingStock.id);
+            await supabase.from('stock').update({ quantity: (Number(existingStock.quantity) || 0) + incomingQty, last_updated: now }).eq('id', existingStock.id);
           } else {
-            const { error: stockErr } = await supabase.from('stock').upsert([{ product_name: productName, product_code: productCode, category: 'INCOMING_GOODS', quantity: finalQtyToAdd, maximum_level: finalQtyToAdd * 2 || 1000, minimum_level: Math.round(finalQtyToAdd * 0.1) || 50, unit, last_updated: now }], { onConflict: 'product_name' });
+            const { error: stockErr } = await supabase.from('stock').upsert([{ product_name: productName, product_code: productCode, category: 'INCOMING_GOODS', quantity: incomingQty, maximum_level: incomingQty * 2 || 1000, minimum_level: Math.round(incomingQty * 0.1) || 50, unit, last_updated: now }], { onConflict: 'product_name' });
             if (stockErr) addNotification?.(`Stock table update failed: ${stockErr.message}.`);
           }
 
           await supabase.from('stock_ledger').insert({
             product_name: productName,
             movement_type: 'ADD',
-            quantity: finalQtyToAdd,
+            quantity: incomingQty,
             reference: `Cargo approved: ${selectedItem.requestId}`,
-            notes: `${selectedItem.description}${clampedDamages > 0 ? ` (${clampedDamages} units damaged/lost)` : ''}`,
+            notes: selectedItem.description,
             created_at: now
           });
-
-          if (discrepancyCost > 0) {
-            // Posted as Pending, not auto-Approved — a single Risk
-            // reviewer should not be able to single-handedly book an
-            // arbitrary-size approved expense with no Finance sign-off.
-            // Security/gap audit fix.
-            await supabase.from('finance_expenses').insert([{
-              category: 'Damaged Goods',
-              description: `Loss from damaged goods in Cargo Intake ${selectedItem.requestId} (${productName}: ${clampedDamages} units)`,
-              amount: discrepancyCost,
-              date: now.slice(0, 10),
-              status: 'Pending',
-              submitted_by: 'Risk (Auto-generated)',
-              notes: `Auto-generated from Cargo Intake approval. Discrepancy details: ${selectedItem.description}`
-            }]);
-          }
-
-          if (notifyOps) {
-            await supabase.from('supplier_order_notifications').insert([{ message: `Cargo intake APPROVED by Risk: ${selectedItem.description}`, notified_department: 'OPERATIONS', read: false }]);
-          }
-          if (notifyCeo) {
-            await supabase.from('supplier_order_notifications').insert([{ message: `Cargo intake APPROVED by Risk: ${selectedItem.description}`, notified_department: 'CEO', read: false }]);
-          }
-          if (sellingPrice) {
-            await supabase.from('goods_prices').upsert([{ product_name: productName, unit_price: parseFloat(sellingPrice) }], { onConflict: 'product_name' });
-          }
-          await supabase.from('supplier_order_notifications').insert([{ message: `Cargo intake APPROVED by Risk: ${selectedItem.description}`, notified_department: 'FINANCE', read: false }]);
-          await supabase.from('supplier_order_notifications').insert([{ message: `New stock approved: ${selectedItem.description}. Update pricing in Marketing.`, notified_department: 'MARKETING', read: false }]);
-        } else if (action === 'return') {
-          await supabase.from('supplier_order_notifications').insert([{ message: `Cargo intake RETURNED FOR CORRECTION by Risk: ${selectedItem.description}${modalNote ? ` (${modalNote})` : ''}`, notified_department: 'OPERATIONS', read: false }]);
-        } else {
-          // Straight reject previously sent no notification at all — Admin &
-          // Warehouse had no way to learn a cargo intake was rejected outright.
-          await supabase.from('supplier_order_notifications').insert([{ message: `Cargo intake REJECTED by Risk: ${selectedItem.description}${modalNote ? ` (${modalNote})` : ''}`, notified_department: 'OPERATIONS', read: false }]);
         }
+
+        const verbLabel = action === 'approve' ? 'APPROVED' : action === 'return' ? 'RETURNED FOR CORRECTION' : 'REJECTED';
+        await notifyDecision({
+          title: `Cargo Intake ${verbLabel}`,
+          message: `Cargo intake ${verbLabel} by Risk: ${selectedItem.description} — ${modalNote}`,
+          department: 'ADMIN_WAREHOUSE',
+          personId: cargoRow.logged_by_id || null,
+        });
       }
 
       if (selectedItem.type === 'Sales Order' && selectedItem.raw) {
@@ -448,38 +385,27 @@ export default function RiskApprovalsView({ addNotification, currentUser }: Prop
         // itself goes through risk_initial_review(), which is the only
         // place PENDING_RISK -> PENDING_MANAGEMENT/REJECTED/
         // RETURNED_FOR_CORRECTION is legal, enforced by a database
-        // trigger, not just this screen's own convention.
+        // trigger, not just this screen's own convention. Risk no longer
+        // edits quantity/price here — passes the order through exactly as
+        // Marketing submitted it. Confirmed 2026-09-16.
         const orderRow = selectedItem.raw as Record<string, any>;
-        const originalItems: any[] = Array.isArray(orderRow?.metadata?.items) ? orderRow.metadata.items : [];
-        let p_metadata: any = null;
-        let p_total_amount: number | null = null;
-        if (action === 'approve' && originalItems.length > 0) {
-          const adjustedItems = originalItems.map((it: any, idx: number) => {
-            const draft = orderEdits[idx];
-            const qty = draft?.quantity !== undefined && draft.quantity !== '' ? Math.max(0, Number(draft.quantity) || 0) : Number(it.quantity) || 0;
-            const unitPrice = draft?.unitPrice !== undefined && draft.unitPrice !== '' ? Math.max(0, Number(draft.unitPrice) || 0) : Number(it.unitPrice) || 0;
-            return { ...it, quantity: qty, unitPrice, lineTotal: unitPrice * qty };
-          });
-          p_total_amount = adjustedItems.reduce((s, it) => s + (Number(it.lineTotal) || 0), 0);
-          p_metadata = { ...(orderRow.metadata || {}), items: adjustedItems };
-        }
 
         const { error: rpcError } = await supabase.rpc('risk_initial_review', {
           p_order_id: selectedItem.id,
           p_action: action,
-          p_note: modalNote || null,
-          p_metadata,
-          p_total_amount,
+          p_note: modalNote,
+          p_metadata: null,
+          p_total_amount: null,
         });
         if (rpcError) throw rpcError;
 
-        if (action === 'approve') {
-          await supabase.from('supplier_order_notifications').insert([{ message: `Order cleared Risk's initial review, awaiting your approval: ${selectedItem.description}`, notified_department: 'MANAGEMENT', read: false }]);
-          await supabase.from('supplier_order_notifications').insert([{ message: `Your order passed Risk's initial review and is now with Management: ${selectedItem.description}`, notified_department: 'MARKETING', read: false }]);
-        } else {
-          const verbLabel = action === 'return' ? 'RETURNED FOR CORRECTION' : 'REJECTED';
-          await supabase.from('supplier_order_notifications').insert([{ message: `Order ${verbLabel} by Risk: ${selectedItem.description}${modalNote ? ` (${modalNote})` : ''}`, notified_department: 'MARKETING', read: false }]);
-        }
+        const verbLabel = action === 'approve' ? 'APPROVED (forwarded to Management)' : action === 'return' ? 'RETURNED FOR CORRECTION' : 'REJECTED';
+        await notifyDecision({
+          title: `Sales Order ${verbLabel}`,
+          message: `Order ${verbLabel} by Risk: ${selectedItem.description} — ${modalNote}`,
+          department: 'MARKETING',
+          personId: orderRow.created_by || null,
+        });
       }
 
       if (selectedItem.type === 'Risk Final Release' && selectedItem.raw) {
@@ -493,26 +419,37 @@ export default function RiskApprovalsView({ addNotification, currentUser }: Prop
         const { error: rpcError } = await supabase.rpc('risk_final_release', {
           p_order_id: selectedItem.id,
           p_action: action,
-          p_note: modalNote || null,
+          p_note: modalNote,
         });
         if (rpcError) throw rpcError;
 
         if (action === 'approve') {
-          await supabase.from('supplier_order_notifications').insert([{ message: `Order cleared Risk's final release check, ready for warehouse: ${selectedItem.description}`, notified_department: 'ADMIN_WAREHOUSE', read: false }]);
-          await supabase.from('supplier_order_notifications').insert([{ message: `Your order has been fully cleared by Risk and is being prepared for dispatch: ${selectedItem.description}`, notified_department: 'MARKETING', read: false }]);
-        } else {
-          const verbLabel = action === 'return' ? 'RETURNED FOR CORRECTION' : 'REJECTED';
-          await supabase.from('supplier_order_notifications').insert([{ message: `Order ${verbLabel} by Risk at final release: ${selectedItem.description}${modalNote ? ` (${modalNote})` : ''}`, notified_department: 'MARKETING', read: false }]);
+          // Operationally necessary on top of the standard notify list —
+          // Admin & Warehouse has to know it's cleared to load, and they
+          // aren't the order's submitter or its department.
+          await sendNotification({ recipientDepartment: 'ADMIN_WAREHOUSE', title: 'Order Cleared for Warehouse', message: `Order cleared Risk's final release check, ready for warehouse: ${selectedItem.description}` });
         }
+        const verbLabel = action === 'approve' ? 'RELEASED to warehouse' : action === 'return' ? 'RETURNED FOR CORRECTION' : 'REJECTED';
+        await notifyDecision({
+          title: `Order Final Release ${verbLabel}`,
+          message: `Order ${verbLabel} by Risk at final release: ${selectedItem.description} — ${modalNote}`,
+          department: 'MARKETING',
+          personId: (selectedItem.raw as any).created_by || null,
+        });
       }
 
       if (selectedItem.type === 'Customer Verification' && selectedItem.raw) {
         const custStatus = action === 'approve' ? 'APPROVED' : action === 'return' ? 'RETURNED_FOR_CORRECTION' : 'REJECTED';
         await management.setCustomerVerification(selectedItem.id, custStatus as 'APPROVED' | 'REJECTED' | 'RETURNED_FOR_CORRECTION', {
-          rejectionReason: modalNote || undefined,
+          rejectionReason: modalNote,
         });
         const verbLabel = action === 'approve' ? 'APPROVED' : action === 'return' ? 'RETURNED FOR CORRECTION' : 'REJECTED';
-        await supabase.from('supplier_order_notifications').insert([{ message: `Customer ${verbLabel} by Risk: ${selectedItem.description}${modalNote ? ` (${modalNote})` : ''}`, notified_department: 'MARKETING', read: false }]);
+        await notifyDecision({
+          title: `Customer Verification ${verbLabel}`,
+          message: `Customer ${verbLabel} by Risk: ${selectedItem.description} — ${modalNote}`,
+          department: 'MARKETING',
+          personId: (selectedItem.raw as any).registered_by_id || null,
+        });
       }
 
       if (selectedItem.type === 'Proof of Delivery' && selectedItem.raw) {
@@ -523,15 +460,21 @@ export default function RiskApprovalsView({ addNotification, currentUser }: Prop
         const { error: rpcError } = await supabase.rpc('risk_review_pod', {
           p_delivery_log_id: selectedItem.id,
           p_action: action === 'approve' ? 'approve' : 'reject',
-          p_note: modalNote || null,
+          p_note: modalNote,
         });
         if (rpcError) throw rpcError;
 
-        if (action === 'approve') {
-          await supabase.from('supplier_order_notifications').insert([{ message: `Proof of delivery APPROVED by Risk, delivery closed out: ${selectedItem.description}`, notified_department: 'DISPATCH', read: false }]);
-        } else {
-          await supabase.from('supplier_order_notifications').insert([{ message: `Proof of delivery REJECTED by Risk: ${selectedItem.description}${modalNote ? ` (${modalNote})` : ''}`, notified_department: 'DISPATCH', read: false }]);
-        }
+        // No separate "submitting department" here — Dispatch's own
+        // delivery-facing screens live under Risk since Phase 9, so the
+        // only distinct audience beyond Management is the driver
+        // themselves, not a department.
+        const verbLabel = action === 'approve' ? 'APPROVED, delivery closed out' : 'REJECTED';
+        const driverUserId = (selectedItem.raw as any).drivers?.user_id || null;
+        await notifyDecision({
+          title: `Proof of Delivery ${verbLabel}`,
+          message: `Proof of delivery ${verbLabel} by Risk: ${selectedItem.description} — ${modalNote}`,
+          personId: driverUserId,
+        });
       }
 
       await supabase.from('global_audit_history').insert([{
@@ -676,87 +619,9 @@ export default function RiskApprovalsView({ addNotification, currentUser }: Prop
             <div className="space-y-2">
               <div className="flex items-center justify-between flex-wrap gap-1">
                 <p className="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider">Order Items breakdown</p>
-                {selectedItem.type === 'Sales Order' && selectedItem.status === 'Pending' && (
-                  <span className="text-[10px] text-[var(--text-muted)]">Editable, adjust qty/price before approving</span>
-                )}
-                {selectedItem.type === 'Risk Final Release' && (
-                  <span className="text-[10px] text-[var(--text-muted)]">Read-only, already verified by Accounts</span>
-                )}
+                <span className="text-[10px] text-[var(--text-muted)]">Read-only, as submitted</span>
               </div>
-              {selectedItem.type === 'Sales Order' && selectedItem.status === 'Pending' && Array.isArray((selectedItem.raw as any)?.metadata?.items) && (selectedItem.raw as any).metadata.items.length > 0 ? (() => {
-                const originalItems: any[] = (selectedItem.raw as any).metadata.items;
-                const orderTotal = originalItems.reduce((s, it, idx) => {
-                  const draft = orderEdits[idx];
-                  const qty = draft?.quantity !== undefined && draft.quantity !== '' ? Math.max(0, Number(draft.quantity) || 0) : Number(it.quantity) || 0;
-                  const unitPrice = draft?.unitPrice !== undefined && draft.unitPrice !== '' ? Math.max(0, Number(draft.unitPrice) || 0) : Number(it.unitPrice) || 0;
-                  return s + qty * unitPrice;
-                }, 0);
-                return (
-                  <div className="rounded-xl border border-[var(--border)] overflow-hidden">
-                    <div className="p-3">
-                      <ResponsiveDataView<any>
-                        columns={[
-                          { key: 'productName', label: 'Product', primary: true },
-                          {
-                            key: 'quantity', label: 'Qty', align: 'center', render: (it) => {
-                              const idx = originalItems.indexOf(it);
-                              const draft = orderEdits[idx] || { quantity: String(it.quantity ?? ''), unitPrice: String(it.unitPrice ?? '') };
-                              const qtyChanged = draft.quantity !== '' && Number(draft.quantity) !== Number(it.quantity);
-                              return (
-                                <>
-                                  <input
-                                    type="number" min={0}
-                                    value={draft.quantity}
-                                    onChange={e => setOrderEdits(prev => { const next = [...prev]; next[idx] = { ...(next[idx] || draft), quantity: e.target.value }; return next; })}
-                                    className="w-16 px-2 py-1 rounded-lg bg-[var(--bg-input)] border border-[var(--border)] text-xs font-mono text-center text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
-                                  />
-                                  {qtyChanged && <span className="block text-[9px] text-amber-600 mt-0.5">was {it.quantity}</span>}
-                                </>
-                              );
-                            }
-                          },
-                          {
-                            key: 'unitPrice', label: 'Unit Price', align: 'right', render: (it) => {
-                              const idx = originalItems.indexOf(it);
-                              const draft = orderEdits[idx] || { quantity: String(it.quantity ?? ''), unitPrice: String(it.unitPrice ?? '') };
-                              const priceChanged = draft.unitPrice !== '' && Number(draft.unitPrice) !== Number(it.unitPrice);
-                              return (
-                                <>
-                                  <input
-                                    type="number" min={0}
-                                    value={draft.unitPrice}
-                                    onChange={e => setOrderEdits(prev => { const next = [...prev]; next[idx] = { ...(next[idx] || draft), unitPrice: e.target.value }; return next; })}
-                                    className="w-24 px-2 py-1 rounded-lg bg-[var(--bg-input)] border border-[var(--border)] text-xs font-mono text-right text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
-                                  />
-                                  {priceChanged && <span className="block text-[9px] text-amber-600 mt-0.5">was GHS {Number(it.unitPrice).toLocaleString()}</span>}
-                                </>
-                              );
-                            }
-                          },
-                          {
-                            key: 'subtotal', label: 'Subtotal', align: 'right', render: (it) => {
-                              const idx = originalItems.indexOf(it);
-                              const draft = orderEdits[idx] || { quantity: String(it.quantity ?? ''), unitPrice: String(it.unitPrice ?? '') };
-                              const qty = draft.quantity !== '' ? Math.max(0, Number(draft.quantity) || 0) : 0;
-                              const unitPrice = draft.unitPrice !== '' ? Math.max(0, Number(draft.unitPrice) || 0) : 0;
-                              const subtotal = qty * unitPrice;
-                              return <span className="font-semibold text-emerald-600">{subtotal > 0 ? `GHS ${subtotal.toLocaleString()}` : '—'}</span>;
-                            }
-                          },
-                        ]}
-                        data={originalItems}
-                        rowKey={(it) => String(originalItems.indexOf(it))}
-                      />
-                    </div>
-                    <div className="flex items-center justify-between px-3 py-2.5 bg-[var(--accent-light)] border-t border-[var(--border)]">
-                      <span className="font-bold text-[var(--text-primary)] text-xs">Order Total</span>
-                      <span className="font-bold text-[var(--accent)] text-xs">GHS {orderTotal.toLocaleString()}</span>
-                    </div>
-                  </div>
-                );
-              })() : (
-                <InvoiceLineItems order={selectedItem.raw as any} />
-              )}
+              <InvoiceLineItems order={selectedItem.raw as any} />
             </div>
           )}
 
@@ -981,7 +846,7 @@ export default function RiskApprovalsView({ addNotification, currentUser }: Prop
           <>
             <button disabled={submitting} onClick={() => setShowModal(null)} className="erp-btn erp-btn-ghost disabled:opacity-50">Cancel</button>
             <button
-              disabled={submitting}
+              disabled={submitting || !modalNote.trim()}
               onClick={confirmAction}
               className={`erp-btn text-white disabled:opacity-50 ${showModal === 'approve' ? 'bg-green-500 hover:bg-green-600' : showModal === 'reject' ? 'bg-red-500 hover:bg-red-600' : showModal === 'return' ? 'bg-orange-500 hover:bg-orange-600' : 'bg-indigo-500 hover:bg-indigo-600'}`}
             >
@@ -1011,128 +876,16 @@ export default function RiskApprovalsView({ addNotification, currentUser }: Prop
                     )}
                   </div>
 
-                  <div className="mt-2 border-t border-[var(--border)] pt-3 space-y-3">
-                    <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Quantity Verification</p>
-
-                    <div className="grid grid-cols-3 gap-2">
-                      <div className="bg-[var(--bg-input)] rounded-xl p-2.5 text-center">
-                        <span className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider block mb-1">Total Received</span>
-                        <span className="text-xs font-bold text-[var(--text-primary)] font-mono">
-                          {Number((selectedItem.raw as any)?.quantity || (selectedItem.raw as any)?.qty_received || 0).toLocaleString()}
-                        </span>
-                        <span className="text-[8px] text-[var(--text-muted)] block mt-0.5">units</span>
-                      </div>
-                      <div className="bg-rose-500/5 border border-rose-500/10 rounded-xl p-2.5 text-center">
-                        <span className="text-[9px] font-bold text-rose-700 uppercase tracking-wider block mb-1">Confirmed Damaged</span>
-                        <span className="text-xs font-bold text-rose-700 font-mono">
-                          {confirmedDamages.toLocaleString()}
-                        </span>
-                        <span className="text-[8px] text-rose-600 block mt-0.5">excluded</span>
-                      </div>
-                      <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-xl p-2.5 text-center">
-                        <span className="text-[9px] font-bold text-emerald-700 uppercase tracking-wider block mb-1">Net to Stock</span>
-                        <span className="text-xs font-bold text-emerald-700 font-mono">
-                          {Math.max(0, Number((selectedItem.raw as any)?.quantity || (selectedItem.raw as any)?.qty_received || 0) - confirmedDamages).toLocaleString()}
-                        </span>
-                        <span className="text-[8px] text-emerald-600 block mt-0.5">approved qty</span>
-                      </div>
+                  {(selectedItem.raw as any)?.discrepancies && String((selectedItem.raw as any).discrepancies).trim() && (
+                    <div className="p-3 bg-amber-500/15 border border-amber-500/25 text-amber-700 rounded-xl text-xs flex items-center gap-2">
+                      <span className="shrink-0">⚠️</span>
+                      <span>Discrepancy reported: <strong>{String((selectedItem.raw as any).discrepancies)}</strong></span>
                     </div>
+                  )}
 
-                    {(selectedItem.raw as any)?.discrepancies && String((selectedItem.raw as any).discrepancies).trim() && (
-                      <div className="p-3 bg-amber-500/15 border border-amber-500/25 text-amber-700 rounded-xl text-xs flex items-center gap-2">
-                        <span className="shrink-0">⚠️</span>
-                        <span>Discrepancy reported: <strong>{String((selectedItem.raw as any).discrepancies)}</strong></span>
-                      </div>
-                    )}
-
-                    <div className="grid grid-cols-2 gap-3 pt-2">
-                      <div>
-                        <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider mb-1 block">Confirmed Damaged Units</label>
-                        <input
-                          type="number"
-                          value={confirmedDamages}
-                          onChange={e => setConfirmedDamages(Math.max(0, parseInt(e.target.value) || 0))}
-                          placeholder="0"
-                          min={0}
-                          max={Number((selectedItem.raw as any)?.quantity || (selectedItem.raw as any)?.qty_received || 0)}
-                          className="w-full px-3 py-1.5 bg-[var(--bg-input)] border border-[var(--border)] rounded-xl text-xs font-mono text-[var(--text-primary)] focus:outline-none focus:border-rose-500"
-                        />
-                        <p className="text-[9px] text-[var(--text-muted)] mt-1">These units are excluded from stock</p>
-                      </div>
-                      <div>
-                        <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider mb-1 block">Damage Cost (per unit)</label>
-                        <input
-                          type="number"
-                          value={costPerUnit}
-                          onChange={e => setCostPerUnit(Number(e.target.value))}
-                          placeholder="Unit cost"
-                          className="w-full px-3 py-1.5 bg-[var(--bg-input)] border border-[var(--border)] rounded-xl text-xs font-mono text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
-                        />
-                        <p className="text-[9px] text-[var(--text-muted)] mt-1">Used to log the financial loss</p>
-                      </div>
-                    </div>
-
-                    {confirmedDamages > 0 && (
-                      <div className="text-[10px] text-[var(--text-muted)] leading-normal bg-rose-500/5 border border-rose-500/10 rounded-xl px-3 py-2">
-                        The <strong className="text-rose-600 font-mono">{confirmedDamages.toLocaleString()}</strong> damaged units will be recorded as a system loss of{' '}
-                        <strong className="text-rose-600 font-mono">GHS {(confirmedDamages * costPerUnit).toLocaleString()}</strong>{' '}
-                        and will <strong>NOT</strong> be added to inventory.
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="mt-2 border-t border-[var(--border)] pt-2">
-                    <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Selling Price (GHS), optional</label>
-                    <input
-                      type="number"
-                      value={sellingPrice}
-                      onChange={e => setSellingPrice(e.target.value)}
-                      placeholder="Enter selling price per unit"
-                      className="w-full px-3 py-2 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
-                    />
-                  </div>
-
-                  <div className="space-y-2 border-t border-[var(--border)] pt-2">
-                    <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider block">Notify departments:</label>
-                    <div className="flex gap-4">
-                      <label className="flex items-center gap-2 text-xs text-[var(--text-primary)] cursor-pointer">
-                        <input type="checkbox" checked={notifyOps} onChange={e => setNotifyOps(e.target.checked)} className="rounded" />
-                        Operations
-                      </label>
-                      <label className="flex items-center gap-2 text-xs text-[var(--text-primary)] cursor-pointer">
-                        <input type="checkbox" checked={notifyCeo} onChange={e => setNotifyCeo(e.target.checked)} className="rounded" />
-                        CEO
-                      </label>
-                    </div>
-                  </div>
+                  <p className="text-[10px] text-[var(--text-muted)]">Approving adds the full quantity above to stock exactly as submitted. Quantity, price, and damage assessment are Management's, not reviewed here.</p>
                 </div>
               )}
-
-              {showModal === 'approve' && selectedItem.type === 'Sales Order' && (() => {
-                const orderItems: any[] = Array.isArray((selectedItem.raw as any)?.metadata?.items) ? (selectedItem.raw as any).metadata.items : [];
-                if (orderItems.length === 0) {
-                  return (
-                    <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-700">
-                      Approving will move this order to <strong>Finance</strong> for payment processing.
-                    </div>
-                  );
-                }
-                const adjustedTotal = orderItems.reduce((s, it, idx) => {
-                  const draft = orderEdits[idx];
-                  const qty = draft?.quantity !== undefined && draft.quantity !== '' ? Math.max(0, Number(draft.quantity) || 0) : Number(it.quantity) || 0;
-                  const unitPrice = draft?.unitPrice !== undefined && draft.unitPrice !== '' ? Math.max(0, Number(draft.unitPrice) || 0) : Number(it.unitPrice) || 0;
-                  return s + qty * unitPrice;
-                }, 0);
-                return (
-                  <div className="space-y-2 p-4 rounded-2xl border border-[var(--border)] bg-[var(--bg)]">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Order Total (as adjusted)</span>
-                      <span className="text-sm font-bold" style={{ color: 'var(--accent)' }}>GHS {adjustedTotal.toLocaleString()}</span>
-                    </div>
-                    <p className="text-[9px] text-[var(--text-muted)]">Approving forwards this to Finance for payment processing at the quantities/prices shown on the order breakdown.</p>
-                  </div>
-                );
-              })()}
 
               {showModal === 'approve' && selectedItem.type === 'Sales Order' && (
                 <div className="p-3 bg-indigo-50 border border-indigo-200 rounded-xl text-xs text-indigo-700">
@@ -1160,15 +913,16 @@ export default function RiskApprovalsView({ addNotification, currentUser }: Prop
 
               <div>
                 <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">
-                  {showModal === 'approve' ? 'Additional notes (optional)' : showModal === 'return' ? 'Reason for return *' : 'Reason for rejection *'}
+                  {showModal === 'approve' ? 'Note for this approval *' : showModal === 'return' ? 'Reason for return *' : 'Reason for rejection *'}
                 </label>
                 <textarea
                   value={modalNote}
                   onChange={e => setModalNote(e.target.value)}
                   rows={3}
-                  placeholder={showModal === 'approve' ? 'Any notes for this approval...' : showModal === 'return' ? 'Explain what needs to be corrected...' : 'Explain why this is being rejected...'}
+                  placeholder={showModal === 'approve' ? 'Explain why this is being approved...' : showModal === 'return' ? 'Explain what needs to be corrected...' : 'Explain why this is being rejected...'}
                   className="w-full px-3 py-2 rounded-xl bg-[var(--bg-input)] border border-[var(--border)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent)] resize-none"
                 />
+                {!modalNote.trim() && <p className="text-[10px] text-rose-500 mt-1">A note is required to submit this decision.</p>}
               </div>
           </div>
         )}

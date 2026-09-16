@@ -116,6 +116,10 @@ export default function PortIngestionScreen() {
       status: 'PENDING_RISK_APPROVAL',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
+      // So Risk's later approve/reject decision can notify the actual
+      // person who logged this, not just Admin & Warehouse as a whole.
+      logged_by_id: profile?.id || null,
+      logged_by_name: profile?.fullName || null,
     };
     const { error } = await supabase.from('cargo_intake').insert(payload);
     setSubmitting(false);
@@ -163,6 +167,8 @@ export default function PortIngestionScreen() {
         status: 'PENDING_RISK_APPROVAL',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
+        logged_by_id: profile?.id || null,
+        logged_by_name: profile?.fullName || null,
       };
       const { error } = await supabase.from('cargo_intake').insert(payload);
       setSubmitting(false);
@@ -212,13 +218,27 @@ export default function PortIngestionScreen() {
 
   return (
     <Screen>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.md }}>
-        <LauncherCard icon={<Ship size={26} color={t.colors.action.sky} />} tileColor={t.colors.action.sky} title="Log Port Cargo" description="Record incoming goods from the port or external suppliers" onPress={() => setMode('port')} />
-        <LauncherCard icon={<Package size={26} color={t.colors.action.amber} />} tileColor={t.colors.action.amber} title="Log Stock Intake" description="Log internal production output or general purchased items" onPress={() => setMode('inhouse')} />
+      <View style={{ gap: t.spacing.lg }}>
+        <View style={{ flexDirection: 'row', gap: t.spacing.md }}>
+          <LauncherCard
+            icon={<Ship size={28} color={t.colors.action.sky} />}
+            tileColor={t.colors.action.sky}
+            title="Log Port Cargo"
+            description="Record incoming goods from the port or external suppliers"
+            onPress={() => setMode('port')}
+          />
+          <LauncherCard
+            icon={<Package size={28} color={t.colors.action.emerald} />}
+            tileColor={t.colors.action.emerald}
+            title="Log Stock Intake"
+            description="Log internal production output or general purchased items"
+            onPress={() => setMode('inhouse')}
+          />
+        </View>
       </View>
 
       <Sheet open={mode === 'port'} onClose={() => setMode(null)} title="Log Incoming Port Cargo" side="bottom" maxHeight={640}
-        footer={<Button label={submitting ? 'Submitting…' : 'Submit Cargo Log'} onPress={submitPortCargo} loading={submitting} disabled={submitting} fullWidth />}
+        footer={<Button label={submitting ? 'Submitting…' : 'Submit Cargo Log'} onPress={submitPortCargo} loading={submitting} disabled={submitting} fullWidth size="lg" />}
       >
         <Field label="Product / Goods Name *"><Input value={productName} onChangeText={setProductName} placeholder="E.g., Palm Oil Barrels" /></Field>
         <Field label="Goods Code" hint="Auto-generated if left empty"><Input value={goodsCode} onChangeText={setGoodsCode} placeholder={autoGoodsCode()} /></Field>
@@ -232,15 +252,15 @@ export default function PortIngestionScreen() {
         <Field label="Cargo Photo" hint="Optional">
           <Button
             variant="ghost"
-            icon={<CameraIcon size={14} color={t.colors.textSecondary} />}
-            label={photo ? 'Change Photo' : 'Add Photo'}
+            icon={<CameraIcon size={16} color={t.colors.accent} />}
+            label={photo ? 'Change Photo' : 'Add Cargo Photo'}
             onPress={async () => setPhoto(await pickOrCaptureImage())}
           />
         </Field>
       </Sheet>
 
       <Sheet open={mode === 'inhouse'} onClose={() => setMode(null)} title="Warehouse Stock Intake" side="bottom" maxHeight={640}
-        footer={<Button label={submitting ? 'Submitting…' : 'Submit'} onPress={submitInHouse} loading={submitting} disabled={submitting} fullWidth />}
+        footer={<Button label={submitting ? 'Submitting…' : 'Submit Stock Intake'} onPress={submitInHouse} loading={submitting} disabled={submitting} fullWidth size="lg" />}
       >
         <Field label="Classification">
           <SearchablePicker
@@ -271,7 +291,7 @@ export default function PortIngestionScreen() {
         <Field label="Photo" hint="Optional">
           <Button
             variant="ghost"
-            icon={<CameraIcon size={14} color={t.colors.textSecondary} />}
+            icon={<CameraIcon size={16} color={t.colors.accent} />}
             label={photo ? 'Change Photo' : 'Add Photo'}
             onPress={async () => setPhoto(await pickOrCaptureImage())}
           />
@@ -286,18 +306,27 @@ function LauncherCard({ icon, tileColor, title, description, onPress }: { icon: 
   return (
     <Pressable
       onPress={onPress}
-      style={{
-        width: '47%', minWidth: 150, flexGrow: 1, alignItems: 'center', gap: t.spacing.sm,
-        padding: t.spacing.xl, backgroundColor: t.colors.bgCard,
-        borderRadius: t.radius.card,
-        ...t.shadow('card'),
-      }}
+      style={({ pressed }: any) => [
+        {
+          flex: 1,
+          alignItems: 'center',
+          gap: t.spacing.md,
+          padding: t.spacing.xl,
+          backgroundColor: pressed ? (t.darkMode ? '#2D3748' : '#F8F7FF') : t.colors.bgCard,
+          borderRadius: 22,
+          borderWidth: 1,
+          borderColor: t.colors.border,
+          minHeight: 180,
+          justifyContent: 'center',
+        },
+        !pressed && t.shadow('card'),
+      ]}
     >
-      <View style={{ width: 56, height: 56, borderRadius: t.radius.lg, backgroundColor: `${tileColor}1f`, alignItems: 'center', justifyContent: 'center' }}>
+      <View style={{ width: 60, height: 60, borderRadius: 18, backgroundColor: `${tileColor}18`, alignItems: 'center', justifyContent: 'center' }}>
         {icon}
       </View>
-      <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary, textAlign: 'center' }}>{title}</Text>
-      <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted, textAlign: 'center' }}>{description}</Text>
+      <Text style={{ fontFamily: t.font.bold, fontSize: t.type.base16.size, color: t.colors.textPrimary, textAlign: 'center' }}>{title}</Text>
+      <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta11.size, color: t.colors.textMuted, textAlign: 'center', lineHeight: 16 }}>{description}</Text>
     </Pressable>
   );
 }

@@ -582,7 +582,11 @@ export const operations = {
         status: 'PENDING_RISK_APPROVAL',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-        metadata: data.metadata || null
+        metadata: data.metadata || null,
+        // So Risk's later approve/reject decision can notify the actual
+        // person who logged this, not just Admin & Warehouse as a whole.
+        logged_by_id: performerId,
+        logged_by_name: performedBy,
       }).select();
 
     if (error) throw new Error(error.message);
@@ -1280,6 +1284,11 @@ export const marketing = {
     houseAddress?: string; companyAddress?: string; gpsLat?: number; gpsLng?: number;
     ghanaCard2?: string; partnerName?: string; businessCertificateUrl?: string; notes?: string;
   }) => {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const performerId = sessionData.session?.user?.id || null;
+    const { data: performers } = await supabase.from('profiles').select('full_name').eq('id', performerId).limit(1);
+    const performedBy = performers?.[0]?.full_name || 'Marketing';
+
     const basePayload = {
       name: data.name,
       phone: data.phone,
@@ -1299,16 +1308,21 @@ export const marketing = {
       business_certificate_url: data.businessCertificateUrl || null,
       notes: data.notes || null,
       registered_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
+      // So Risk's later verify/reject decision can notify the actual
+      // person who registered this customer, not just Marketing as a whole.
+      registered_by_id: performerId,
+      registered_by_name: performedBy,
     };
     let { data: customer, error } = await supabase
       .from('customers')
       .insert({ ...basePayload, is_special_customer: data.isSpecialCustomer || false })
       .select();
-    if (error?.message?.includes('is_special_customer')) {
+    if (error?.message?.includes('is_special_customer') || error?.message?.includes('registered_by')) {
       // Column not migrated onto the live DB yet — registration itself
       // shouldn't be blocked by a field that can't be saved yet.
-      ({ data: customer, error } = await supabase.from('customers').insert(basePayload).select());
+      const { registered_by_id, registered_by_name, ...withoutRegisteredBy } = basePayload;
+      ({ data: customer, error } = await supabase.from('customers').insert(withoutRegisteredBy).select());
     }
     if (error) throw new Error(error.message);
 

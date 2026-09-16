@@ -287,6 +287,23 @@ export default function OrdersView({ ordersList, onCreateOrder, addNotification 
       });
 
       if (error) { addNotification(`Failed to create order: ${error.message}`); return; }
+
+      // So Risk's later approve/reject decision can notify the actual
+      // person who submitted this order, not just Marketing as a whole.
+      // A plain follow-up update, not part of the RPC itself, to avoid
+      // touching create_order_with_stock_check()'s own audited logic.
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const performerId = sessionData.session?.user?.id || null;
+        if (performerId && inserted?.id) {
+          const { data: performers } = await supabase.from('profiles').select('full_name').eq('id', performerId).limit(1);
+          await supabase.from('orders').update({
+            created_by: performerId,
+            created_by_name: performers?.[0]?.full_name || null,
+          }).eq('id', inserted.id);
+        }
+      } catch { /* non-critical, order already created successfully */ }
+
       const newOrder = mapOrder(inserted || {
         id: `ord-${Date.now()}`, ticket_number: ticketNumber,
         client_name: form.clientName, product_name: productDisplay,
