@@ -5,7 +5,7 @@
 // ~90 web screens this app will eventually port, so getting this row right
 // is most of the visual-parity work for every future department sub-phase.
 import type { ComponentType, ReactNode } from 'react';
-import { View, Text, Pressable, FlatList } from 'react-native';
+import { View, Text, Pressable } from 'react-native';
 import { useTheme } from '../../theme/ThemeProvider';
 import { SkeletonList } from './Skeleton';
 import EmptyState from './EmptyState';
@@ -63,19 +63,21 @@ export default function DataList<T>({
   const statusCol = columns.find(c => c.status);
   const gridCols = columns.filter(c => !c.primary && !c.status && !c.mobileHidden);
 
+  // Rendered as a plain View + map, not a FlatList: this component is always
+  // embedded inside Screen's own vertical ScrollView, so scrollEnabled was
+  // already false here and virtualization was never doing anything — using
+  // FlatList only tripped RN's nested-VirtualizedList warning for free.
   return (
-    <FlatList
-      data={data}
-      keyExtractor={rowKey}
-      scrollEnabled={false}
-      ItemSeparatorComponent={() => <View style={{ height: t.spacing.sm }} />}
-      renderItem={({ item }) => {
-        if (renderCard) return <>{renderCard(item)}</>;
+    <View>
+      {data.map((item, index) => {
+        const key = rowKey(item);
+        const row = (() => {
+          if (renderCard) return <>{renderCard(item)}</>;
 
-        const RowWrapper = onRowPress ? Pressable : View;
-        const icon = rowIcon?.(item);
-        return (
-          <RowWrapper
+          const RowWrapper = onRowPress ? Pressable : View;
+          const icon = rowIcon?.(item);
+          return (
+            <RowWrapper
             onPress={onRowPress ? () => onRowPress(item) : undefined}
             style={({ pressed }: any) => [
               {
@@ -122,9 +124,17 @@ export default function DataList<T>({
                 {renderActions(item)}
               </View>
             ) : null}
-          </RowWrapper>
+            </RowWrapper>
+          );
+        })();
+
+        return (
+          <View key={key}>
+            {index > 0 ? <View style={{ height: t.spacing.sm }} /> : null}
+            {row}
+          </View>
         );
-      }}
-    />
+      })}
+    </View>
   );
 }
