@@ -102,33 +102,64 @@ export default function OverviewScreen() {
       <View style={{ gap: t.spacing.xl }}>
         <PendingApprovalsAlertCard department="ADMIN_WAREHOUSE" onNavigate={(tab) => navigation.navigate(tab)} />
 
+        {/* Aczone Warehouse Stock Hero Banner */}
         <Card tone="hero">
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.meta10.size, letterSpacing: 0.4, textTransform: 'uppercase', color: 'rgba(255,255,255,0.85)' }}>
-                Total Stock Items
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#34D399' }} />
+                <Text style={{ fontFamily: t.font.bold, fontSize: t.type.meta10.size, letterSpacing: 0.8, textTransform: 'uppercase', color: 'rgba(255,255,255,0.9)' }}>
+                  Active Inventory Snapshot
+                </Text>
+              </View>
+              <Text style={{ fontFamily: t.font.extrabold, fontSize: t.type.kpi28.size, color: '#FFFFFF', marginTop: 2 }}>
+                {loading ? '—' : stockQty.toLocaleString()} Units
               </Text>
-              <Text style={{ fontFamily: t.font.extrabold, fontSize: t.type.kpi28.size, color: t.colors.onAccent, marginTop: t.spacing.xs }}>
-                {loading ? '—' : stockQty.toLocaleString()}
-              </Text>
-              <Text style={{ fontFamily: t.font.medium, fontSize: t.type.body12.size, color: 'rgba(255,255,255,0.85)', marginTop: 2 }}>
-                Port + Products + Purchases
+              <Text style={{ fontFamily: t.font.medium, fontSize: t.type.body12.size, color: 'rgba(255,255,255,0.85)', marginTop: 4 }}>
+                Port Cargo + Internal Production + Purchases
               </Text>
             </View>
-            <Pressable onPress={() => navigation.navigate('Stock')} style={{ width: 52, height: 52, borderRadius: t.radius.lg, backgroundColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center' }}>
-              <Package size={26} color={t.colors.onAccent} />
+            <Pressable onPress={() => navigation.navigate('Stock')} style={{ width: 56, height: 56, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.22)', alignItems: 'center', justifyContent: 'center' }}>
+              <Package size={28} color="#FFFFFF" strokeWidth={2.5} />
             </Pressable>
           </View>
         </Card>
 
+        {/* Aczone 2x2 Metrics Grid */}
         <View style={{ gap: t.spacing.sm }}>
           <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
-            <MetricCard label="Cargo Weight" value={loading ? '—' : totalTons.toFixed(1)} sublabel="Tons" icon={<Layers size={16} color={t.colors.action.blue} />} tone="neutral" />
-            <MetricCard label="Awaiting Release" value={loading ? '—' : pendingReleaseOrders.length} sublabel="Ready to load" icon={<Truck size={16} color={t.colors.action.emerald} />} tone="neutral" onPress={() => navigation.navigate('Releases')} />
+            <MetricCard
+              label="Cargo Weight"
+              value={loading ? '—' : `${totalTons.toFixed(1)} T`}
+              sublabel="Tons accumulated"
+              icon={<Layers size={20} color={t.colors.action.blue} />}
+              tone="info"
+            />
+            <MetricCard
+              label="Awaiting Release"
+              value={loading ? '—' : pendingReleaseOrders.length}
+              sublabel="Ready to load"
+              icon={<Truck size={20} color={t.colors.action.emerald} />}
+              tone="success"
+              onPress={() => navigation.navigate('Releases')}
+            />
           </View>
           <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
-            <MetricCard label="Pending Approval" value={loading ? '—' : pendingApprovalCount} sublabel="At Risk review" icon={<ClipboardCheck size={16} color={t.colors.action.amber} />} tone="neutral" />
-            <MetricCard label="Discrepancies" value={loading ? '—' : discrepancyCount} sublabel="Flagged batches" icon={<TriangleAlert size={16} color={t.colors.action.rose} />} tone="neutral" onPress={() => navigation.navigate('OpsHistory')} />
+            <MetricCard
+              label="Pending Approval"
+              value={loading ? '—' : pendingApprovalCount}
+              sublabel="At Risk review"
+              icon={<ClipboardCheck size={20} color={t.colors.action.amber} />}
+              tone="warning"
+            />
+            <MetricCard
+              label="Discrepancies"
+              value={loading ? '—' : discrepancyCount}
+              sublabel="Flagged batches"
+              icon={<TriangleAlert size={20} color={t.colors.action.rose} />}
+              tone="danger"
+              onPress={() => navigation.navigate('OpsHistory')}
+            />
           </View>
         </View>
 
@@ -149,9 +180,11 @@ export default function OverviewScreen() {
           </Card>
         )}
 
+        {/* Recent Cargo Intakes Card */}
         <Card>
           <SectionHeader
             title="Recent Cargo Intakes"
+            subtitle="Inbound port shipments and goods receipts"
             action={
               <Text
                 onPress={() => navigation.navigate('OpsHistory')}
@@ -166,26 +199,46 @@ export default function OverviewScreen() {
               No cargo intakes logged.
             </Text>
           ) : (
-            <View style={{ gap: t.spacing.sm }}>
+            <View style={{ gap: t.spacing.sm, marginTop: t.spacing.xs }}>
               {cargo.slice(0, 3).map((item) => (
-                <View key={item.id} style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm, padding: t.spacing.md, backgroundColor: t.colors.bgPage, borderRadius: t.radius.lg }}>
-                  <View style={{ width: 36, height: 36, borderRadius: t.radius.md, backgroundColor: `${t.colors.action.blue}1f`, alignItems: 'center', justifyContent: 'center' }}>
-                    <Layers size={16} color={t.colors.action.blue} />
+                <View
+                  key={item.id}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: t.spacing.md,
+                    padding: t.spacing.md,
+                    backgroundColor: t.darkMode ? '#1E293B' : '#F8F7FD',
+                    borderRadius: 16,
+                    borderWidth: 1,
+                    borderColor: t.colors.border,
+                  }}
+                >
+                  <View style={{ width: 42, height: 42, borderRadius: 12, backgroundColor: `${t.colors.action.blue}18`, alignItems: 'center', justifyContent: 'center' }}>
+                    <Layers size={18} color={t.colors.action.blue} />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body12.size, color: t.colors.textPrimary }} numberOfLines={1}>{item.product_name || 'Unnamed Cargo'}</Text>
-                    <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted }}>CARGO-{item.id.slice(-6).toUpperCase()} · {item.company || '—'}</Text>
+                    <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary }} numberOfLines={1}>
+                      {item.product_name || 'Unnamed Cargo'}
+                    </Text>
+                    <Text style={{ fontFamily: t.font.medium, fontSize: t.type.meta10.size, color: t.colors.textMuted, marginTop: 2 }}>
+                      CARGO-{item.id.slice(-6).toUpperCase()} · {item.company || '—'}
+                    </Text>
                   </View>
-                  <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body12.size, color: t.colors.textPrimary }}>{Number(item.weight || 0).toFixed(1)}T</Text>
+                  <Text style={{ fontFamily: t.font.extrabold, fontSize: t.type.body14.size, color: t.colors.textPrimary }}>
+                    {Number(item.weight || 0).toFixed(1)}T
+                  </Text>
                 </View>
               ))}
             </View>
           )}
         </Card>
 
+        {/* Fulfillment Release Queue */}
         <Card>
           <SectionHeader
             title="Fulfillment Release Queue"
+            subtitle="Orders cleared and awaiting carrier dispatch"
             action={
               <Text
                 onPress={() => navigation.navigate('Releases')}
@@ -200,15 +253,31 @@ export default function OverviewScreen() {
               No orders waiting release.
             </Text>
           ) : (
-            <View style={{ gap: t.spacing.sm }}>
+            <View style={{ gap: t.spacing.sm, marginTop: t.spacing.xs }}>
               {pendingReleaseOrders.slice(0, 3).map((order) => (
-                <View key={order.id} style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm, padding: t.spacing.md, backgroundColor: t.colors.bgPage, borderRadius: t.radius.lg }}>
-                  <View style={{ width: 36, height: 36, borderRadius: t.radius.md, backgroundColor: `${t.colors.action.emerald}1f`, alignItems: 'center', justifyContent: 'center' }}>
-                    <Truck size={16} color={t.colors.action.emerald} />
+                <View
+                  key={order.id}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: t.spacing.md,
+                    padding: t.spacing.md,
+                    backgroundColor: t.darkMode ? '#1E293B' : '#F8F7FD',
+                    borderRadius: 16,
+                    borderWidth: 1,
+                    borderColor: t.colors.border,
+                  }}
+                >
+                  <View style={{ width: 42, height: 42, borderRadius: 12, backgroundColor: `${t.colors.action.emerald}18`, alignItems: 'center', justifyContent: 'center' }}>
+                    <Truck size={18} color={t.colors.action.emerald} />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body12.size, color: t.colors.textPrimary }} numberOfLines={1}>{order.client_name}</Text>
-                    <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted }}>GHS {order.total_amount.toLocaleString()}</Text>
+                    <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary }} numberOfLines={1}>
+                      {order.client_name}
+                    </Text>
+                    <Text style={{ fontFamily: t.font.medium, fontSize: t.type.meta10.size, color: t.colors.textMuted, marginTop: 2 }}>
+                      GHS {Number(order.total_amount || 0).toLocaleString()}
+                    </Text>
                   </View>
                   <Button label="Release" size="sm" onPress={() => handleRelease(order)} loading={releasingId === order.id} disabled={releasingId === order.id} />
                 </View>

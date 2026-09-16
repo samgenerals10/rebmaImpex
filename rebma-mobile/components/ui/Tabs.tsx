@@ -33,7 +33,7 @@ export default function Tabs({ options, value, onChange, variant = 'segmented' }
 
   if (variant === 'segmented') {
     return (
-      <View style={{ flexDirection: 'row', backgroundColor: t.colors.bgInput, borderRadius: t.radius.pill, padding: 3, gap: 2 }}>
+      <View style={{ flexDirection: 'row', backgroundColor: t.darkMode ? '#1E293B' : '#F1F0FB', borderRadius: t.radius.pill, padding: 4, gap: 4 }}>
         {options.map((opt) => {
           const active = opt.value === value;
           return (
@@ -43,10 +43,11 @@ export default function Tabs({ options, value, onChange, variant = 'segmented' }
               style={{
                 flex: 1, alignItems: 'center', justifyContent: 'center',
                 paddingVertical: t.spacing.sm, borderRadius: t.radius.pill,
-                backgroundColor: active ? t.colors.accent : 'transparent',
+                backgroundColor: active ? (t.darkMode ? t.colors.accent : '#FFFFFF') : 'transparent',
+                ...(active && !t.darkMode ? t.shadow('card') : {}),
               }}
             >
-              <Text style={{ fontFamily: active ? t.font.bold : t.font.medium, fontSize: t.type.body12.size, color: active ? t.colors.onAccent : t.colors.textSecondary }} numberOfLines={1}>
+              <Text style={{ fontFamily: active ? t.font.bold : t.font.medium, fontSize: t.type.body12.size, color: active ? (t.darkMode ? '#FFFFFF' : t.colors.accent) : t.colors.textSecondary }} numberOfLines={1}>
                 {opt.label}
               </Text>
             </Pressable>
@@ -66,11 +67,12 @@ export default function Tabs({ options, value, onChange, variant = 'segmented' }
               key={opt.value}
               onPress={() => onChange(opt.value)}
               style={{
-                paddingVertical: t.spacing.xs, paddingHorizontal: t.spacing.md,
+                paddingVertical: 8, paddingHorizontal: 16,
                 borderRadius: t.radius.pill,
-                backgroundColor: active ? t.colors.accent : 'transparent',
+                backgroundColor: active ? t.colors.accent : (t.darkMode ? '#1E293B' : '#FFFFFF'),
                 borderWidth: active ? 0 : 1,
                 borderColor: t.colors.border,
+                ...(active ? t.shadow('fab') : t.shadow('card')),
               }}
             >
               <Text style={{ fontFamily: active ? t.font.bold : t.font.medium, fontSize: t.type.body12.size, color: active ? t.colors.onAccent : t.colors.textSecondary }}>

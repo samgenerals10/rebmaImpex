@@ -1,15 +1,6 @@
 // rebma-mobile/components/chrome/ModuleLauncher.tsx
-//
-// Phase 7.1, D13 — the module-launcher grid Phase 7.0's plan deferred:
-// "DepartmentHome renders... then a module launcher: a 2-column grid of
-// subTabs from the registry, each an icon tile + label, pushing onto
-// DepartmentStack." Every future department's Overview/home screen renders
-// this once, at the bottom of its own dashboard content, so this file is
-// built once here and never touched again by 7.2-7.9.
-//
-// Sectioned (via dept.sections) for departments with many sub-tabs — today
-// that's ADMIN_WAREHOUSE and FINANCE — flat otherwise.
 import { View, Text, Pressable } from 'react-native';
+import { ChevronRight } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeProvider';
 import type { DepartmentEntry, SubTab } from '../../navigation/departmentRegistry';
 import SectionHeader from '../ui/SectionHeader';
@@ -28,9 +19,9 @@ export default function ModuleLauncher({ dept, onSelect, exclude = [] }: Props) 
 
   if (!dept.sections || dept.sections.length === 0) {
     return (
-      <View style={{ gap: t.spacing.md }}>
-        <SectionHeader title="More" />
-        <Grid tabs={visible} onSelect={onSelect} />
+      <View style={{ gap: t.spacing.sm }}>
+        <SectionHeader title="Department Modules & Actions" subtitle="Select a module to view records and manage operations" />
+        <ActionListGroup tabs={visible} onSelect={onSelect} />
       </View>
     );
   }
@@ -43,9 +34,9 @@ export default function ModuleLauncher({ dept, onSelect, exclude = [] }: Props) 
         const tabs = section.tabIds.map((id) => byId.get(id)).filter((s): s is SubTab => !!s);
         if (tabs.length === 0) return null;
         return (
-          <View key={section.title} style={{ gap: t.spacing.md }}>
+          <View key={section.title} style={{ gap: t.spacing.sm }}>
             <SectionHeader title={section.title} />
-            <Grid tabs={tabs} onSelect={onSelect} />
+            <ActionListGroup tabs={tabs} onSelect={onSelect} />
           </View>
         );
       })}
@@ -53,46 +44,87 @@ export default function ModuleLauncher({ dept, onSelect, exclude = [] }: Props) 
   );
 }
 
-function Grid({ tabs, onSelect }: { tabs: SubTab[]; onSelect: (id: string) => void }) {
+const ACTION_TINTS = [
+  '#3B82F6', '#10B981', '#6366F1', '#F59E0B', '#F43F5E', '#14B8A6', '#8B5CF6', '#0EA5E9',
+];
+
+function ActionListGroup({ tabs, onSelect }: { tabs: SubTab[]; onSelect: (id: string) => void }) {
   const t = useTheme();
+
   return (
-    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.md }}>
-      {tabs.map((tab) => {
+    <View
+      style={[
+        {
+          backgroundColor: t.colors.bgCard,
+          borderRadius: 20,
+          borderWidth: 1,
+          borderColor: t.colors.border,
+          overflow: 'hidden',
+        },
+        t.shadow('card'),
+      ]}
+    >
+      {tabs.map((tab, idx) => {
         const Icon = tab.icon;
+        const tint = ACTION_TINTS[idx % ACTION_TINTS.length];
+        const isLast = idx === tabs.length - 1;
+
         return (
           <Pressable
             key={tab.id}
             onPress={() => onSelect(tab.id)}
-            style={{
-              width: '47%',
-              alignItems: 'center',
-              gap: t.spacing.sm,
-              paddingVertical: t.spacing.lg,
-              paddingHorizontal: t.spacing.sm,
-              borderRadius: t.radius.lg,
-              borderWidth: 1,
-              borderColor: t.colors.border,
-              backgroundColor: t.colors.bgCard,
-            }}
+            style={({ pressed }) => [
+              {
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: t.spacing.md,
+                paddingVertical: 14,
+                paddingHorizontal: t.spacing.lg,
+                backgroundColor: pressed ? (t.darkMode ? '#2D3748' : '#F8F7FF') : 'transparent',
+                borderBottomWidth: isLast ? 0 : 1,
+                borderBottomColor: t.colors.border,
+              },
+            ]}
           >
             <View
               style={{
                 width: 40,
                 height: 40,
-                borderRadius: 20,
-                backgroundColor: t.colors.accentSoft,
+                borderRadius: 12,
+                backgroundColor: `${tint}18`,
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
             >
-              <Icon size={18} color={t.colors.accentPressed} />
+              <Icon size={20} color={tint} strokeWidth={2.2} />
             </View>
-            <Text
-              style={{ fontFamily: t.font.semibold, fontSize: t.type.meta11.size, color: t.colors.textPrimary, textAlign: 'center' }}
-              numberOfLines={2}
-            >
-              {tab.label}
-            </Text>
+
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text
+                style={{
+                  fontFamily: t.font.bold,
+                  fontSize: t.type.body14.size,
+                  color: t.colors.textPrimary,
+                }}
+                numberOfLines={1}
+              >
+                {tab.label}
+              </Text>
+              <Text
+                style={{
+                  fontFamily: t.font.regular,
+                  fontSize: t.type.meta10.size,
+                  color: t.colors.textMuted,
+                  letterSpacing: 0.2,
+                }}
+              >
+                Tap to manage & view data
+              </Text>
+            </View>
+
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <ChevronRight size={18} color={t.colors.textMuted} strokeWidth={2} />
+            </View>
           </Pressable>
         );
       })}

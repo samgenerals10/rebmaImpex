@@ -78,47 +78,54 @@ export default function Sheet({ open, onClose, title, subtitle, badge, children,
         <Pressable style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.5)' }]} onPress={onClose} />
         <Animated.View
           style={[
-            { backgroundColor: t.colors.bgCard },
+            { backgroundColor: t.colors.bgCard, overflow: 'hidden' },
             panelStyle,
             translateStyle,
             isFull ? {} : t.shadow(isBottom ? 'sheet' : 'dropdown'),
           ]}
         >
-          <SafeAreaView edges={isBottom ? ['bottom'] : ['top', 'bottom']} style={{ flex: isFull || isLeft ? 1 : undefined }}>
+          <SafeAreaView edges={isBottom ? ['bottom'] : ['top', 'bottom']} style={{ maxHeight: maxHeight ?? SCREEN_H * 0.88, flexShrink: 1, flexDirection: 'column' }}>
             {isBottom && (
-              <View style={{ alignItems: 'center', paddingTop: t.spacing.sm }}>
-                <View style={{ width: 36, height: 4, borderRadius: t.radius.pill, backgroundColor: t.colors.border }} />
+              <View style={{ alignItems: 'center', paddingTop: t.spacing.sm, paddingBottom: 4 }}>
+                <View style={{ width: 40, height: 5, borderRadius: t.radius.pill, backgroundColor: t.darkMode ? '#334155' : '#E2E8F0' }} />
               </View>
             )}
             {(title || subtitle) && (
-              <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: t.spacing.md, paddingHorizontal: t.spacing.xl, paddingVertical: t.spacing.lg, borderBottomWidth: 1, borderBottomColor: t.colors.border }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: t.spacing.md, paddingHorizontal: t.spacing.xl, paddingVertical: t.spacing.md, borderBottomWidth: 1, borderBottomColor: t.colors.border }}>
                 <View style={{ flex: 1 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm, flexWrap: 'wrap' }}>
                     {title ? <Text style={{ fontFamily: t.font.bold, fontSize: t.type.title18.size, color: t.colors.textPrimary }}>{title}</Text> : null}
                     {badge}
                   </View>
-                  {subtitle ? <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body14.size, color: t.colors.textMuted, marginTop: 2 }}>{subtitle}</Text> : null}
+                  {subtitle ? <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textMuted, marginTop: 2 }}>{subtitle}</Text> : null}
                 </View>
-                <Pressable onPress={onClose} hitSlop={10} style={{ padding: t.spacing.xs, borderRadius: t.radius.pill, backgroundColor: t.colors.bgInput }}>
-                  <X size={18} color={t.colors.textMuted} />
+                <Pressable onPress={onClose} hitSlop={10} style={{ width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: t.darkMode ? '#334155' : '#F1F5F9' }}>
+                  <X size={16} color={t.colors.textSecondary} />
                 </Pressable>
               </View>
             )}
             <KeyboardAvoidingView
               behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-              style={{ flexShrink: 1 }}
+              style={{ flexShrink: 1, flexGrow: 1, flexDirection: 'column' }}
               keyboardVerticalOffset={isBottom ? 0 : undefined}
             >
               <ScrollView
                 style={{ flexShrink: 1 }}
-                contentContainerStyle={{ paddingHorizontal: t.spacing.xl, paddingVertical: t.spacing.lg }}
+                contentContainerStyle={{ paddingHorizontal: t.spacing.xl, paddingVertical: t.spacing.lg, paddingBottom: t.spacing.xxl }}
                 keyboardShouldPersistTaps="handled"
-                showsVerticalScrollIndicator={false}
+                showsVerticalScrollIndicator={true}
               >
                 {children}
               </ScrollView>
               {footer ? (
-                <View style={{ borderTopWidth: 1, borderTopColor: t.colors.border, paddingHorizontal: t.spacing.xl, paddingVertical: t.spacing.lg, flexDirection: 'row', justifyContent: 'flex-end' }}>
+                <View style={{
+                  borderTopWidth: 1,
+                  borderTopColor: t.colors.border,
+                  paddingHorizontal: t.spacing.xl,
+                  paddingVertical: t.spacing.md,
+                  backgroundColor: t.colors.bgCard,
+                  ...t.shadow('raised'),
+                }}>
                   {footer}
                 </View>
               ) : null}

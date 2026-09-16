@@ -68,46 +68,93 @@ export default function OverviewScreen() {
       <View style={{ gap: t.spacing.xl }}>
         <PendingApprovalsAlertCard department="CEO" onNavigate={(tab) => navigation.navigate(tab)} />
 
+        {/* Aczone Executive Revenue Hero Card */}
         <Card tone="hero">
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.meta10.size, letterSpacing: 0.4, textTransform: 'uppercase', color: 'rgba(255,255,255,0.85)' }}>
-                Today's Revenue
-              </Text>
-              <Text style={{ fontFamily: t.font.extrabold, fontSize: t.type.kpi28.size, color: t.colors.onAccent, marginTop: t.spacing.xs }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#34D399' }} />
+                <Text style={{ fontFamily: t.font.bold, fontSize: t.type.meta10.size, letterSpacing: 0.8, textTransform: 'uppercase', color: 'rgba(255,255,255,0.9)' }}>
+                  Executive Financial Snapshot
+                </Text>
+              </View>
+              <Text style={{ fontFamily: t.font.extrabold, fontSize: t.type.kpi28.size, color: '#FFFFFF', marginTop: 2 }}>
                 {loading ? '—' : `GHS ${todayRevenue.toLocaleString()}`}
               </Text>
-              <Text style={{ fontFamily: t.font.medium, fontSize: t.type.body12.size, color: 'rgba(255,255,255,0.85)', marginTop: 2 }}>
-                {loading ? '' : `${todayOrders} order${todayOrders === 1 ? '' : 's'} today`}
+              <Text style={{ fontFamily: t.font.medium, fontSize: t.type.body12.size, color: 'rgba(255,255,255,0.85)', marginTop: 4 }}>
+                {loading ? 'Synchronizing live...' : `${todayOrders} commercial order${todayOrders === 1 ? '' : 's'} recorded today`}
               </Text>
             </View>
-            <View style={{ width: 52, height: 52, borderRadius: t.radius.lg, backgroundColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center' }}>
-              <DollarSign size={26} color={t.colors.onAccent} />
+            <View style={{ width: 56, height: 56, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.22)', alignItems: 'center', justifyContent: 'center' }}>
+              <DollarSign size={28} color="#FFFFFF" strokeWidth={2.5} />
             </View>
           </View>
         </Card>
 
-        <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
-          <MetricCard label="Orders" value={loading ? '—' : todayOrders} icon={<ShoppingCart size={16} color={t.colors.action.blue} />} tone="neutral" />
-          <MetricCard label="Supplier" value={loading ? '—' : activeSupplierOrders} icon={<ShoppingBag size={16} color={t.colors.action.amber} />} tone="neutral" onPress={() => navigation.navigate('SupplierOrders')} />
-          <MetricCard label="In Transit" value={loading ? '—' : inTransit} icon={<Truck size={16} color={t.colors.action.sky} />} tone="neutral" onPress={() => navigation.navigate('Tracking')} />
+        {/* Aczone 2x2 Metric Grid */}
+        <View style={{ gap: t.spacing.sm }}>
+          <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
+            <MetricCard
+              label="Today's Orders"
+              value={loading ? '—' : todayOrders}
+              sublabel="Active commercial demand"
+              icon={<ShoppingCart size={20} color={t.colors.action.blue} />}
+              tone="info"
+            />
+            <MetricCard
+              label="Supplier Orders"
+              value={loading ? '—' : activeSupplierOrders}
+              sublabel="Inbound vessel cargo"
+              icon={<ShoppingBag size={20} color={t.colors.action.amber} />}
+              tone="warning"
+              onPress={() => navigation.navigate('SupplierOrders')}
+            />
+          </View>
+          <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
+            <MetricCard
+              label="Fleet In Transit"
+              value={loading ? '—' : inTransit}
+              sublabel="Active road dispatches"
+              icon={<Truck size={20} color={t.colors.action.sky} />}
+              tone="info"
+              onPress={() => navigation.navigate('Tracking')}
+            />
+          </View>
         </View>
 
+        {/* Aczone Recent Orders Card Stream */}
         <View>
-          <SectionHeader title="Recent Orders" />
-          <View style={{ gap: t.spacing.sm }}>
+          <SectionHeader title="Recent Orders" subtitle="Live commercial sales activity stream" />
+          <View style={{ gap: t.spacing.sm, marginTop: t.spacing.xs }}>
             {recentOrders.map((o) => (
-              <View key={o.id} style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm, backgroundColor: t.colors.bgCard, borderRadius: t.radius.lg, padding: t.spacing.md, ...t.shadow('card') }}>
-                <View style={{ width: 40, height: 40, borderRadius: t.radius.lg, backgroundColor: `${t.colors.action.emerald}1f`, alignItems: 'center', justifyContent: 'center' }}>
-                  <ShoppingCart size={18} color={t.colors.action.emerald} />
+              <View
+                key={o.id}
+                style={[
+                  {
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: t.spacing.md,
+                    backgroundColor: t.colors.bgCard,
+                    borderRadius: 20,
+                    padding: t.spacing.lg,
+                    borderWidth: 1,
+                    borderColor: t.colors.border,
+                  },
+                  t.shadow('card'),
+                ]}
+              >
+                <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: t.colors.accentSoft, alignItems: 'center', justifyContent: 'center' }}>
+                  <ShoppingCart size={20} color={t.colors.accent} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.body12.size, color: t.colors.textPrimary }} numberOfLines={1}>{o.client_name || o.ticket_number || 'Order'}</Text>
-                  <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted, marginTop: 2 }} numberOfLines={1}>
+                  <Text style={{ fontFamily: t.font.bold, fontSize: t.type.base16.size, color: t.colors.textPrimary }} numberOfLines={1}>
+                    {o.client_name || o.ticket_number || 'Commercial Order'}
+                  </Text>
+                  <Text style={{ fontFamily: t.font.medium, fontSize: t.type.meta10.size, color: t.colors.textMuted, marginTop: 2 }} numberOfLines={1}>
                     {o.ticket_number || o.id.slice(0, 8)} · GHS {Number(o.total_amount || 0).toLocaleString()}
                   </Text>
                 </View>
-                <Badge tone="muted" label={(o.status || '').replace(/_/g, ' ')} size="xs" />
+                <Badge tone="purple" label={(o.status || 'ACTIVE').replace(/_/g, ' ')} size="sm" />
               </View>
             ))}
             {recentOrders.length === 0 && !loading && (

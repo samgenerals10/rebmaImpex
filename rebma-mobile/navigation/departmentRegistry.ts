@@ -211,11 +211,15 @@ export const DEPARTMENT_REGISTRY: Record<string, DepartmentEntry> = {
     defaultSubTab: 'VisitorLog',
     subTabs: [
       { id: 'VisitorLog', label: 'Dashboard', icon: LayoutDashboard },
-      { id: 'Visitors', label: 'Visitors', icon: UserPlus },
-      { id: 'EmployeeCheckin', label: 'Attendance', icon: UserCheck },
+      { id: 'Visitors', label: 'Visitors Log', icon: UserPlus },
+      { id: 'EmployeeCheckin', label: 'Staff Attendance', icon: UserCheck },
       { id: 'DailyReports', label: 'Daily Reports', icon: FileChartColumn },
       { id: 'Analytics', label: 'Analytics', icon: ChartColumn },
       { id: 'Spreadsheets', label: 'Spreadsheets', icon: FileSpreadsheet },
+    ],
+    sections: [
+      { title: 'Front Desk Operations', tabIds: ['VisitorLog', 'Visitors', 'EmployeeCheckin'] },
+      { title: 'Reports & Data Logs', tabIds: ['DailyReports', 'Analytics', 'Spreadsheets'] },
     ],
     quickActions: [
       { label: 'Check In Visitor', actionColor: 'emerald', icon: UserPlus, subTab: 'VisitorLog' },
@@ -232,30 +236,27 @@ export const DEPARTMENT_REGISTRY: Record<string, DepartmentEntry> = {
     },
   },
 
-  // Sales History and Invoices (invoice generation) moved to Finance —
-  // both now live under the FINANCE entry below, reusing the exact same
-  // screen components (screens/finance/SalesHistoryScreen.tsx and
-  // screens/finance/InvoicesScreen.tsx both just re-export Marketing's
-  // originals). Marketing keeps everything else.
   MARKETING: {
     code: 'MARKETING',
-    label: 'Marketing',
+    label: 'Marketing & Sales',
     icon: TrendingUp,
     defaultSubTab: 'CreateOrder',
     subTabs: [
       { id: 'Overview', label: 'Dashboard', icon: LayoutDashboard },
-      { id: 'CreateOrder', label: 'Orders', icon: ShoppingCart },
+      { id: 'CreateOrder', label: 'Create Order', icon: ShoppingCart },
       { id: 'RegisterCustomer', label: 'Customers', icon: Users },
       { id: 'PriceCatalog', label: 'Price Catalog', icon: Tag },
       { id: 'CreditRequests', label: 'Credit Requests', icon: CreditCard },
       { id: 'MktAnalytics', label: 'Analytics', icon: ChartColumn },
       { id: 'Spreadsheets', label: 'Spreadsheets', icon: FileSpreadsheet },
     ],
+    sections: [
+      { title: 'Sales & Customer Management', tabIds: ['Overview', 'CreateOrder', 'RegisterCustomer', 'PriceCatalog', 'CreditRequests'] },
+      { title: 'Market Intelligence & Reports', tabIds: ['MktAnalytics', 'Spreadsheets'] },
+    ],
     quickActions: [
       { label: 'Create Order', actionColor: 'emerald', icon: ShoppingCart, subTab: 'CreateOrder' },
       { label: 'Register Customer', actionColor: 'blue', icon: UserPlus, subTab: 'RegisterCustomer' },
-      // Sales History (where this used to land) moved to Finance —
-      // Marketing's closest remaining equivalent is its own Analytics tab.
       { label: 'View Analytics', actionColor: 'indigo', icon: TrendingUp, subTab: 'MktAnalytics' },
     ],
     screens: {
@@ -271,7 +272,7 @@ export const DEPARTMENT_REGISTRY: Record<string, DepartmentEntry> = {
 
   FINANCE: {
     code: 'FINANCE',
-    label: 'Finance',
+    label: 'Accounts Department',
     icon: DollarSign,
     defaultSubTab: 'Evaluation',
     subTabs: [
@@ -297,9 +298,9 @@ export const DEPARTMENT_REGISTRY: Record<string, DepartmentEntry> = {
       { id: 'Spreadsheets', label: 'Spreadsheets', icon: FileSpreadsheet },
     ],
     sections: [
-      { title: 'E-Commerce Core', tabIds: ['Evaluation', 'OrdersQueue', 'RecordPayment', 'Receipts', 'Invoices', 'SalesHistory', 'PriceCatalog'] },
+      { title: 'Billing & Order Ingestion', tabIds: ['Evaluation', 'OrdersQueue', 'RecordPayment', 'Receipts', 'Invoices', 'SalesHistory', 'PriceCatalog'] },
       { title: 'Treasury & Accounts', tabIds: ['Wallets', 'Transactions', 'CreditMgmt', 'Cheques', 'MobileMoney', 'PettyCash'] },
-      { title: 'Expenses & Liabilities', tabIds: ['Expenses', 'Payroll', 'RecurringPayments'] },
+      { title: 'Expenses & Payroll', tabIds: ['Expenses', 'Payroll', 'RecurringPayments'] },
       { title: 'Reports & Auditing', tabIds: ['Statement', 'TaxVAT', 'FinReports', 'Spreadsheets'] },
     ],
     quickActions: [
@@ -342,9 +343,6 @@ export const DEPARTMENT_REGISTRY: Record<string, DepartmentEntry> = {
       { id: 'RiskApprovals', label: 'Approvals', icon: ClipboardCheck },
       { id: 'CustomerCredit', label: 'Customer Credit', icon: CreditCard },
       { id: 'Recruitment', label: 'Recruitment', icon: UserPlus },
-      // Dispatch's delivery-facing screens (Phase 9) — moved here from
-      // Admin & Warehouse. Same components; Risk now assigns the vehicle
-      // and driver and owns the delivery lifecycle through to POD review.
       { id: 'Deliveries', label: 'Dispatch Board', icon: Truck },
       { id: 'ActiveDeliveries', label: 'Deliveries', icon: Truck },
       { id: 'Drivers', label: 'Drivers', icon: UserCheck },
@@ -353,6 +351,11 @@ export const DEPARTMENT_REGISTRY: Record<string, DepartmentEntry> = {
       { id: 'Scanner', label: 'Scanner', icon: QrCode },
       { id: 'DeptActivity', label: 'Dept Activity', icon: Activity },
       { id: 'Spreadsheets', label: 'Spreadsheets', icon: FileSpreadsheet },
+    ],
+    sections: [
+      { title: 'Risk Verification & Approvals', tabIds: ['RiskOverview', 'RiskApprovals', 'CustomerCredit', 'Recruitment'] },
+      { title: 'Dispatch & Fleet Tracking', tabIds: ['Deliveries', 'ActiveDeliveries', 'Drivers', 'Tracking', 'ProofOfDelivery', 'Scanner'] },
+      { title: 'Audit & Reports', tabIds: ['DeptActivity', 'Spreadsheets'] },
     ],
     quickActions: [
       { label: 'Review Cargo', actionColor: 'sky', icon: Ship, subTab: 'RiskApprovals' },
@@ -401,6 +404,11 @@ export const DEPARTMENT_REGISTRY: Record<string, DepartmentEntry> = {
       { id: 'PerformanceAlerts', label: 'Performance Alerts', icon: TriangleAlert },
       { id: 'Spreadsheets', label: 'Spreadsheets', icon: FileSpreadsheet },
     ],
+    sections: [
+      { title: 'Executive Approvals', tabIds: ['CargoApproval', 'CreditApproval', 'SetPrices', 'StockManagement'] },
+      { title: 'Treasury & Audit History', tabIds: ['Transactions', 'Invoices', 'Receipts', 'Ledger', 'Payroll'] },
+      { title: 'Executive Analytics & Performance', tabIds: ['MgmtAnalytics', 'DeptActivity', 'PerformanceAlerts', 'Spreadsheets'] },
+    ],
     quickActions: [
       { label: 'Approve Intake', actionColor: 'emerald', icon: CircleCheckBig, subTab: 'CargoApproval' },
       { label: 'Set Price', actionColor: 'amber', icon: Tag, subTab: 'SetPrices' },
@@ -431,7 +439,7 @@ export const DEPARTMENT_REGISTRY: Record<string, DepartmentEntry> = {
     defaultSubTab: 'Employees',
     subTabs: [
       { id: 'Employees', label: 'Dashboard', icon: LayoutDashboard },
-      { id: 'Staff', label: 'Staff', icon: Users },
+      { id: 'Staff', label: 'Staff Directory', icon: Users },
       { id: 'Attendance', label: 'Attendance', icon: UserCheck },
       { id: 'Registrations', label: 'Registrations', icon: UserPlus },
       { id: 'LeaveManagement', label: 'Leave Management', icon: Calendar },
@@ -440,6 +448,10 @@ export const DEPARTMENT_REGISTRY: Record<string, DepartmentEntry> = {
       { id: 'PerformanceAlerts', label: 'Performance Alerts', icon: TriangleAlert },
       { id: 'HrQueries', label: 'HR Queries', icon: MessagesSquare },
       { id: 'Spreadsheets', label: 'Spreadsheets', icon: FileSpreadsheet },
+    ],
+    sections: [
+      { title: 'Workforce & Talent', tabIds: ['Employees', 'Staff', 'Attendance', 'Registrations', 'LeaveManagement'] },
+      { title: 'Payroll & Operations', tabIds: ['Payroll', 'DepartmentManager', 'PerformanceAlerts', 'HrQueries', 'Spreadsheets'] },
     ],
     quickActions: [
       { label: 'Add New Staff', actionColor: 'emerald', icon: UserPlus, subTab: 'Staff' },
@@ -464,7 +476,7 @@ export const DEPARTMENT_REGISTRY: Record<string, DepartmentEntry> = {
 
   PRODUCTION: {
     code: 'PRODUCTION',
-    label: 'Production',
+    label: 'Production & Manufacturing',
     icon: Activity,
     defaultSubTab: 'Requisition',
     subTabs: [
@@ -474,6 +486,10 @@ export const DEPARTMENT_REGISTRY: Record<string, DepartmentEntry> = {
       { id: 'OutputRecording', label: 'Output Recording', icon: Factory },
       { id: 'ProdAnalytics', label: 'Analytics', icon: ChartColumn },
       { id: 'Spreadsheets', label: 'Spreadsheets', icon: FileSpreadsheet },
+    ],
+    sections: [
+      { title: 'Manufacturing Operations', tabIds: ['Requisition', 'InternalOrders', 'WIPStock', 'OutputRecording'] },
+      { title: 'Metrics & Data Logs', tabIds: ['ProdAnalytics', 'Spreadsheets'] },
     ],
     quickActions: [
       { label: 'Request Materials', actionColor: 'indigo', icon: Layers, subTab: 'Requisition' },
@@ -512,6 +528,11 @@ export const DEPARTMENT_REGISTRY: Record<string, DepartmentEntry> = {
       { id: 'DeptActivity', label: 'Dept Activity', icon: Activity },
       { id: 'Spreadsheets', label: 'Spreadsheets', icon: FileSpreadsheet },
     ],
+    sections: [
+      { title: 'Executive Command', tabIds: ['Overview', 'SupplierOrders', 'Approvals', 'PriceApprovals', 'LiveUsers'] },
+      { title: 'Treasury & Accounts', tabIds: ['Transactions', 'Invoices', 'Receipts', 'PriceCatalog', 'Wallets', 'Accounts'] },
+      { title: 'Fleet Tracking & Intelligence', tabIds: ['Tracking', 'DeptActivity', 'Spreadsheets'] },
+    ],
     quickActions: [
       { label: 'View Reports', actionColor: 'indigo', icon: ChartColumn, subTab: 'Overview' },
       { label: 'Schedule Boardroom', actionColor: 'violet', icon: Video, subTab: 'Overview' },
@@ -547,6 +568,9 @@ export const DEPARTMENT_REGISTRY: Record<string, DepartmentEntry> = {
       { id: 'DirectMessages', label: 'Direct Messages', icon: MessagesSquare },
       { id: 'Meetings', label: 'Meetings Organizer', icon: Clipboard },
     ],
+    sections: [
+      { title: 'Communication Hub', tabIds: ['VideoConf', 'Announcements', 'DirectMessages', 'Meetings'] },
+    ],
     quickActions: [
       { label: 'Start Video Call', actionColor: 'indigo', icon: Video, subTab: 'VideoConf' },
       { label: 'Post Announcement', actionColor: 'blue', icon: Send, subTab: 'Announcements' },
@@ -573,6 +597,9 @@ export const DEPARTMENT_REGISTRY: Record<string, DepartmentEntry> = {
       { id: 'TwoFactor', label: 'Two-Factor Authentication', icon: ShieldCheck },
       { id: 'ControlCenter', label: 'Control Center', icon: Settings },
       { id: 'DeleteAccount', label: 'Delete Account', icon: UserCheck },
+    ],
+    sections: [
+      { title: 'Preferences & System', tabIds: ['Appearance', 'Profile', 'ChangePassword', 'TwoFactor', 'ControlCenter', 'DeleteAccount'] },
     ],
     quickActions: [],
     screens: {

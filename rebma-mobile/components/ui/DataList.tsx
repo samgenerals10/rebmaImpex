@@ -78,52 +78,54 @@ export default function DataList<T>({
           const icon = rowIcon?.(item);
           return (
             <RowWrapper
-            onPress={onRowPress ? () => onRowPress(item) : undefined}
-            style={({ pressed }: any) => [
-              {
-                backgroundColor: pressed ? t.colors.accentSoft : t.colors.bgCard,
-                borderRadius: t.radius.lg,
-                padding: t.spacing.md,
-              },
-              !pressed && t.shadow('card'),
-            ]}
-          >
-            {(primaryCol || statusCol || icon) && (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm, marginBottom: gridCols.length ? t.spacing.sm : 0 }}>
-                {icon ? (
-                  <View style={{ width: 40, height: 40, borderRadius: t.radius.lg, alignItems: 'center', justifyContent: 'center', backgroundColor: `${icon.color}1f` }}>
-                    <icon.Icon size={18} color={icon.color} />
-                  </View>
-                ) : null}
-                {primaryCol ? (
-                  <Text style={{ flex: 1, fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary }} numberOfLines={1}>
-                    {cellValue(primaryCol, item)}
-                  </Text>
-                ) : <View style={{ flex: 1 }} />}
-                {statusCol ? <View>{cellValue(statusCol, item)}</View> : null}
-              </View>
-            )}
-
-            {gridCols.length > 0 && (
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.sm }}>
-                {gridCols.map(col => (
-                  <View key={col.key} style={{ width: '47%' }}>
-                    <Text style={{ fontFamily: t.font.bold, fontSize: t.type.label9.size, letterSpacing: t.type.label9.letterSpacing, textTransform: 'uppercase', color: t.colors.textMuted }}>
-                      {col.label}
+              onPress={onRowPress ? () => onRowPress(item) : undefined}
+              style={({ pressed }: any) => [
+                {
+                  backgroundColor: pressed ? (t.darkMode ? '#2D3748' : '#F8F7FF') : t.colors.bgCard,
+                  borderRadius: 20,
+                  borderWidth: 1,
+                  borderColor: t.colors.border,
+                  padding: t.spacing.lg,
+                },
+                !pressed && t.shadow('card'),
+              ]}
+            >
+              {(primaryCol || statusCol || icon) && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.md, marginBottom: gridCols.length ? t.spacing.md : 0 }}>
+                  {icon ? (
+                    <View style={{ width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: `${icon.color}18` }}>
+                      <icon.Icon size={20} color={icon.color} />
+                    </View>
+                  ) : null}
+                  {primaryCol ? (
+                    <Text style={{ flex: 1, fontFamily: t.font.bold, fontSize: t.type.base16.size, color: t.colors.textPrimary }} numberOfLines={1}>
+                      {cellValue(primaryCol, item)}
                     </Text>
-                    <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textSecondary, marginTop: 2 }} numberOfLines={1}>
-                      {cellValue(col, item)}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            )}
+                  ) : <View style={{ flex: 1 }} />}
+                  {statusCol ? <View>{cellValue(statusCol, item)}</View> : null}
+                </View>
+              )}
 
-            {renderActions ? (
-              <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: t.spacing.sm, marginTop: t.spacing.sm, paddingTop: t.spacing.sm, borderTopWidth: 1, borderTopColor: t.colors.border }}>
-                {renderActions(item)}
-              </View>
-            ) : null}
+              {gridCols.length > 0 && (
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.sm, paddingTop: (primaryCol || statusCol || icon) ? t.spacing.xs : 0 }}>
+                  {gridCols.map(col => (
+                    <View key={col.key} style={{ width: '47%', paddingVertical: 2 }}>
+                      <Text style={{ fontFamily: t.font.bold, fontSize: t.type.label9.size, letterSpacing: 0.5, textTransform: 'uppercase', color: t.colors.textMuted }}>
+                        {col.label}
+                      </Text>
+                      <Text style={{ fontFamily: t.font.medium, fontSize: t.type.body12.size, color: t.colors.textSecondary, marginTop: 3 }} numberOfLines={1}>
+                        {cellValue(col, item)}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              {renderActions ? (
+                <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: t.spacing.sm, marginTop: t.spacing.md, paddingTop: t.spacing.sm, borderTopWidth: 1, borderTopColor: t.colors.border }}>
+                  {renderActions(item)}
+                </View>
+              ) : null}
             </RowWrapper>
           );
         })();

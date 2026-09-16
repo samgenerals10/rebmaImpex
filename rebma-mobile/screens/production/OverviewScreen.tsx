@@ -1,15 +1,10 @@
 // rebma-mobile/screens/production/OverviewScreen.tsx
-// Ports: rebma-web/src/views/production/OverviewView.tsx (554 lines) —
-// condensed (D62) per the established Overview precedent (Finance/Risk/
-// Management/HR's own Overview screens): real KPI tiles (today's boxes/
-// sachets produced, quality pass rate, orders submitted today, WIP item
-// count) + a needs-attention list (pending production_requests, linking
-// to InternalOrders) + ApprovalHistoryPanel + the module launcher. Not a
-// port of the day-of-week output bar chart or the KPI dropdown menus.
+// Ports: rebma-web/src/views/production/OverviewView.tsx
+// Redesigned with Aczone Design System: Hero Card with ProgressRing, 2x2 Metric Grid, Grouped Action Launcher.
 import { useCallback, useEffect, useState } from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, Pressable } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { Boxes, ClipboardList } from 'lucide-react-native';
+import { Boxes, ClipboardList, Factory, Layers, CheckCircle2, ArrowRight } from 'lucide-react-native';
 import { supabase } from '../../lib/supabaseClient';
 import { useTheme } from '../../theme/ThemeProvider';
 import { getDepartmentEntry } from '../../navigation/departmentRegistry';
@@ -63,58 +58,150 @@ export default function OverviewScreen() {
   return (
     <Screen refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }}>
       <View style={{ gap: t.spacing.xl }}>
+        {/* Aczone Production Hero Card */}
         <Card tone="hero">
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.meta10.size, letterSpacing: 0.4, textTransform: 'uppercase', color: 'rgba(255,255,255,0.85)' }}>
-                Boxes Produced Today
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#34D399' }} />
+                <Text style={{ fontFamily: t.font.bold, fontSize: t.type.meta10.size, letterSpacing: 0.8, textTransform: 'uppercase', color: 'rgba(255,255,255,0.9)' }}>
+                  Manufacturing & Output
+                </Text>
+              </View>
+              <Text style={{ fontFamily: t.font.extrabold, fontSize: t.type.kpi28.size, color: '#FFFFFF', marginTop: 2 }}>
+                {loading ? '—' : `${todayBoxes.toLocaleString()} Boxes`}
               </Text>
-              <Text style={{ fontFamily: t.font.extrabold, fontSize: t.type.kpi28.size, color: t.colors.onAccent, marginTop: t.spacing.xs }}>
-                {loading ? '—' : todayBoxes}
-              </Text>
-              <Text style={{ fontFamily: t.font.medium, fontSize: t.type.body12.size, color: 'rgba(255,255,255,0.85)', marginTop: 2 }}>
-                {loading ? '' : `${todaySachets.toLocaleString()} sachets`}
+              <Text style={{ fontFamily: t.font.medium, fontSize: t.type.body12.size, color: 'rgba(255,255,255,0.85)', marginTop: 4 }}>
+                {loading ? '' : `${todaySachets.toLocaleString()} sachets produced today`}
               </Text>
             </View>
             <ProgressRing value={passRate} size={64} strokeWidth={6} sublabel="quality" onDark />
           </View>
         </Card>
 
-        <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
-          <MetricCard label="Sachets" value={loading ? '—' : todaySachets.toLocaleString()} icon={<Boxes size={16} color={t.colors.action.blue} />} tone="neutral" />
-          <MetricCard label="WIP Items" value={loading ? '—' : wipCount} icon={<ClipboardList size={16} color={t.colors.action.amber} />} tone="neutral" onPress={() => navigation.navigate('WIPStock')} />
+        {/* Aczone 2x2 Metric Grid */}
+        <View style={{ gap: t.spacing.sm }}>
+          <SectionHeader title="Plant Metrics" subtitle="Real-time output and inventory levels" />
+          <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
+            <MetricCard
+              label="Sachets Output"
+              value={loading ? '—' : todaySachets.toLocaleString()}
+              sublabel="Daily volume"
+              icon={<Boxes size={20} color={t.colors.action.blue} />}
+              tone="info"
+              onPress={() => navigation.navigate('OutputRecording')}
+            />
+            <MetricCard
+              label="WIP Inventory"
+              value={loading ? '—' : wipCount}
+              sublabel="Work-in-progress"
+              icon={<Layers size={20} color={t.colors.action.amber} />}
+              tone="warning"
+              onPress={() => navigation.navigate('WIPStock')}
+            />
+          </View>
+          <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
+            <MetricCard
+              label="Production Runs"
+              value={loading ? '—' : ordersToday}
+              sublabel="Batches today"
+              icon={<Factory size={20} color={t.colors.action.teal} />}
+              tone="success"
+              onPress={() => navigation.navigate('InternalOrders')}
+            />
+            <MetricCard
+              label="Quality Pass Rate"
+              value={loading ? '—' : `${passRate}%`}
+              sublabel="QA verification"
+              icon={<CheckCircle2 size={20} color={t.colors.action.emerald} />}
+              tone="success"
+              onPress={() => navigation.navigate('ProdAnalytics')}
+            />
+          </View>
         </View>
 
-        <View>
-          <SectionHeader title="Needs Attention" subtitle="Production requests awaiting Management approval" />
+        {/* Needs Attention Queue */}
+        <View style={{ gap: t.spacing.sm }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <SectionHeader title="Raw Material Requisitions" subtitle="Internal requests pending Management approval" />
+            <Pressable onPress={() => navigation.navigate('InternalOrders')} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body12.size, color: t.colors.accent }}>View all</Text>
+              <ArrowRight size={14} color={t.colors.accent} />
+            </Pressable>
+          </View>
           {pending.length === 0 && !loading ? (
-            <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textMuted, textAlign: 'center', paddingVertical: t.spacing.md }}>Nothing pending. All clear.</Text>
-          ) : (
-            <View style={{ gap: t.spacing.sm }}>
-              {pending.map((r) => (
-                <View key={r.id} style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm, backgroundColor: t.colors.bgCard, borderRadius: t.radius.lg, padding: t.spacing.md, ...t.shadow('card') }}>
-                  <View style={{ width: 36, height: 36, borderRadius: t.radius.md, backgroundColor: `${t.colors.action.amber}1f`, alignItems: 'center', justifyContent: 'center' }}>
-                    <ClipboardList size={16} color={t.colors.action.amber} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.body12.size, color: t.colors.textPrimary }} numberOfLines={1}>{r.product_name}</Text>
-                    <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted, marginTop: 2 }}>Req #{r.request_number || String(r.id).slice(0, 8)} · Qty {r.quantity} {r.unit}</Text>
-                  </View>
-                  <Badge tone="warning" label="Pending" size="xs" />
-                </View>
-              ))}
-              <Text
-                onPress={() => navigation.navigate('InternalOrders')}
-                style={{ fontFamily: t.font.semibold, fontSize: t.type.body12.size, color: t.colors.accent, textAlign: 'center' }}
-              >
-                View all internal orders
+            <View
+              style={[
+                {
+                  backgroundColor: t.colors.bgCard,
+                  borderRadius: 18,
+                  padding: t.spacing.lg,
+                  alignItems: 'center',
+                  borderWidth: 1,
+                  borderColor: t.colors.border,
+                },
+                t.shadow('card'),
+              ]}
+            >
+              <Text style={{ fontFamily: t.font.medium, fontSize: t.type.body12.size, color: t.colors.textMuted }}>
+                No pending requisitions. All clear!
               </Text>
+            </View>
+          ) : (
+            <View
+              style={[
+                {
+                  backgroundColor: t.colors.bgCard,
+                  borderRadius: 20,
+                  borderWidth: 1,
+                  borderColor: t.colors.border,
+                  overflow: 'hidden',
+                },
+                t.shadow('card'),
+              ]}
+            >
+              {pending.map((r, idx) => {
+                const isLast = idx === pending.length - 1;
+                return (
+                  <Pressable
+                    key={r.id}
+                    onPress={() => navigation.navigate('InternalOrders')}
+                    style={({ pressed }) => [
+                      {
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: t.spacing.md,
+                        paddingVertical: 14,
+                        paddingHorizontal: t.spacing.lg,
+                        borderBottomWidth: isLast ? 0 : 1,
+                        borderBottomColor: t.colors.border,
+                        backgroundColor: pressed ? (t.darkMode ? '#2D3748' : '#F8F7FF') : 'transparent',
+                      },
+                    ]}
+                  >
+                    <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: `${t.colors.action.amber}18`, alignItems: 'center', justifyContent: 'center' }}>
+                      <ClipboardList size={20} color={t.colors.action.amber} strokeWidth={2.2} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary }} numberOfLines={1}>
+                        {r.product_name}
+                      </Text>
+                      <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta11.size, color: t.colors.textMuted, marginTop: 2 }}>
+                        Req #{r.request_number || String(r.id).slice(0, 8)} · Qty {r.quantity} {r.unit}
+                      </Text>
+                    </View>
+                    <Badge tone="warning" label="Pending" size="xs" />
+                  </Pressable>
+                );
+              })}
             </View>
           )}
         </View>
 
+        {/* Audit Panel */}
         <ApprovalHistoryPanel department="PRODUCTION" title="Recent Production Activity" />
 
+        {/* Grouped Action Hub */}
         <ModuleLauncher dept={dept} exclude={['Requisition']} onSelect={(id) => navigation.navigate(id)} />
       </View>
     </Screen>

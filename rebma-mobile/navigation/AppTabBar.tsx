@@ -11,14 +11,14 @@
 // with its own icon/label — same real functionality, no special elevation.
 import { View, Text, Pressable } from 'react-native';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import { Home, Zap, Bell, User } from 'lucide-react-native';
+import { Home, Plus, Bell, User, Layers } from 'lucide-react-native';
 import { useTheme } from '../theme/ThemeProvider';
 import { useUIStore } from '../store/uiStore';
 import { useAuthStore } from '../store/authStore';
 import { useNotificationsStore } from '../store/notificationsStore';
 
-const ICONS: Record<string, any> = { HomeTab: Home, AlertsTab: Bell, ProfileTab: User };
-const LABELS: Record<string, string> = { HomeTab: 'Home', AlertsTab: 'Alerts', ProfileTab: 'Profile' };
+const ICONS: Record<string, any> = { HomeTab: Home, StockTab: Layers, AlertsTab: Bell, ProfileTab: User };
+const LABELS: Record<string, string> = { HomeTab: 'Home', StockTab: 'Operations', AlertsTab: 'Alerts', ProfileTab: 'Profile' };
 
 export default function AppTabBar({ state, navigation }: BottomTabBarProps) {
   const t = useTheme();
@@ -33,11 +33,12 @@ export default function AppTabBar({ state, navigation }: BottomTabBarProps) {
       style={{
         flexDirection: 'row',
         alignItems: 'center',
-        height: 64,
+        height: 68,
         backgroundColor: t.colors.bgCard,
         borderTopWidth: 1,
         borderTopColor: t.colors.border,
-        paddingBottom: 4,
+        paddingBottom: 6,
+        paddingHorizontal: 8,
         ...t.shadow('tabBar'),
       }}
     >
@@ -49,7 +50,7 @@ export default function AppTabBar({ state, navigation }: BottomTabBarProps) {
   );
 
   function renderTab(routeName: string) {
-    const Icon = ICONS[routeName];
+    const Icon = ICONS[routeName] || Home;
     const isActive = activeRouteName === routeName;
     const color = isActive ? t.colors.accent : t.colors.textMuted;
 
@@ -58,21 +59,20 @@ export default function AppTabBar({ state, navigation }: BottomTabBarProps) {
         key={routeName}
         onPress={() => {
           if (routeName === 'HomeTab' && isActive) {
-            // Matches MobileNav.tsx's "Home resets to your own department" behaviour.
             navigation.navigate('HomeTab', { screen: 'DepartmentHome' });
           } else {
             navigation.navigate(routeName);
           }
         }}
-        style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 2 }}
+        style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 3 }}
       >
-        <View>
-          <Icon size={20} color={color} strokeWidth={isActive ? 2.4 : 2} />
+        <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+          <Icon size={22} color={color} strokeWidth={isActive ? 2.5 : 2} />
           {routeName === 'AlertsTab' && unreadCount > 0 && (
             <View style={{ position: 'absolute', top: -2, right: -4, width: 8, height: 8, borderRadius: 4, backgroundColor: t.colors.status.danger.text }} />
           )}
         </View>
-        <Text style={{ fontFamily: isActive ? t.font.bold : t.font.regular, fontSize: t.type.label9.size, color }}>
+        <Text style={{ fontFamily: isActive ? t.font.bold : t.font.medium, fontSize: t.type.label9.size, color }}>
           {LABELS[routeName]}
         </Text>
       </Pressable>
@@ -81,16 +81,28 @@ export default function AppTabBar({ state, navigation }: BottomTabBarProps) {
 
   function renderActionTab() {
     return (
-      <Pressable
-        onPress={openQuickActions}
-        disabled={!profile}
-        style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 2 }}
-      >
-        <Zap size={20} color={t.colors.textMuted} />
-        <Text style={{ fontFamily: t.font.regular, fontSize: t.type.label9.size, color: t.colors.textMuted }}>
-          Actions
-        </Text>
-      </Pressable>
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+        <Pressable
+          onPress={openQuickActions}
+          disabled={!profile}
+          style={({ pressed }) => [
+            {
+              top: -14,
+              width: 52,
+              height: 52,
+              borderRadius: 26,
+              backgroundColor: pressed ? t.colors.accentPressed : t.colors.accent,
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderWidth: 4,
+              borderColor: t.colors.bgCard,
+            },
+            t.shadow('fab'),
+          ]}
+        >
+          <Plus size={24} color="#ffffff" strokeWidth={3} />
+        </Pressable>
+      </View>
     );
   }
 }

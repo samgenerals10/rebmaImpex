@@ -1,58 +1,36 @@
 // rebma-mobile/theme/ThemeProvider.tsx
-//
-// Components consume useTheme(), never `tokens.ts` directly — that seam is
-// what makes a future dark-mode/alternate-theme addition (Phase 7.12) a
-// second token object swapped in here, not a refactor of every screen.
-//
-// Phase 7.11, D86: `type` is exposed pre-scaled by a `fontScale` multiplier
-// (Small/Medium/Large). The preference is seeded once from the signed-in
-// profile's `metadata.appearance.fontSize` (via authStore's `raw` escape
-// hatch — no AsyncStorage dependency needed, the profile row is already
-// loaded) and only changes when AppearanceScreen calls
-// `setFontSizePreference`; persisting that choice to Supabase is
-// AppearanceScreen's job, not this provider's.
-//
-// Dark Mode (Phase 7.12) and Accent Color (mobile-ui-fluidity redesign
-// pass) are both real now too, both AsyncStorage-only. Template, font
-// family, motion, and density remain the only Appearance controls not
-// built — not a port of web's five alternate theme shells, which stay
-// explicitly out of scope for this whole rollout.
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { colors, darkColors, radius, spacing, type as baseType, font, shadow, darkShadow } from './tokens';
+import { colors, darkColors, radius, spacing, type as baseType, font, shadow, darkShadow, type ColorTokens } from './tokens';
 import { useAuthStore } from '../store/authStore';
 
-// Phase 7.12, D118: persistence is AsyncStorage-only, matching a real,
-// confirmed fact about web's own dark mode — it is localStorage-only
-// (key 'erp-dark-mode', App.tsx:230-232,258) and is NEVER mirrored to
-// profiles.metadata anywhere (deliberately excluded from the `appearance`
-// object that DOES sync — confirmed by reading that literal object).
-// Replicating web's real local-only behavior here is more faithful than
-// inventing a cloud sync web itself doesn't have.
 const DARK_MODE_KEY = 'rebma-dark-mode';
 const ACCENT_KEY = 'rebma-accent-color';
+const BG_KEY = 'rebma-bg-color';
 
 export const FONT_SCALES = { small: 0.9, medium: 1, large: 1.15 } as const;
 export type FontSizePreference = keyof typeof FONT_SCALES;
 
-// A real accent-color picker, not a port of web's five alternate theme
-// shells (Aczone/Finova/Foodie/LiamFinance/FinloFlash) — those swap far
-// more than an accent hue and stay out of scope, same call every phase of
-// this rollout made. This is a smaller, genuinely shippable capability
-// using the exact token seam Phase 7.0/7.12 built for it: every screen
-// already reads accent color through useTheme(), so overriding it here
-// cascades app-wide with zero screen-level changes. Local-only
-// persistence, matching Dark Mode's own real, confirmed-local behavior.
 export const ACCENT_PALETTE = {
-  green: { label: 'Green', accent: '#22c55e', accentPressed: '#16a34a', accentSoft: 'rgba(34,197,94,0.10)' },
-  blue: { label: 'Blue', accent: '#3b82f6', accentPressed: '#2563eb', accentSoft: 'rgba(59,130,246,0.10)' },
-  violet: { label: 'Violet', accent: '#8b5cf6', accentPressed: '#7c3aed', accentSoft: 'rgba(139,92,246,0.10)' },
-  rose: { label: 'Rose', accent: '#f43f5e', accentPressed: '#e11d48', accentSoft: 'rgba(244,63,94,0.10)' },
-  amber: { label: 'Amber', accent: '#f59e0b', accentPressed: '#d97706', accentSoft: 'rgba(245,158,11,0.10)' },
-  teal: { label: 'Teal', accent: '#14b8a6', accentPressed: '#0d9488', accentSoft: 'rgba(20,184,166,0.10)' },
+  violet: { label: 'Royal Violet (Aczone)', accent: '#5B4DFF', accentPressed: '#4F46E5', accentSoft: 'rgba(91,77,255,0.12)' },
+  emerald: { label: 'Emerald Green', accent: '#10b981', accentPressed: '#059669', accentSoft: 'rgba(16,185,129,0.12)' },
+  blue: { label: 'Ocean Blue', accent: '#3b82f6', accentPressed: '#2563eb', accentSoft: 'rgba(59,130,246,0.12)' },
+  indigo: { label: 'Midnight Indigo', accent: '#6366f1', accentPressed: '#4f46e5', accentSoft: 'rgba(99,102,241,0.12)' },
+  amber: { label: 'Sunset Amber', accent: '#f59e0b', accentPressed: '#d97706', accentSoft: 'rgba(245,158,11,0.12)' },
+  rose: { label: 'Rose Berry', accent: '#f43f5e', accentPressed: '#e11d48', accentSoft: 'rgba(244,63,94,0.12)' },
+  teal: { label: 'Teal Cyan', accent: '#14b8a6', accentPressed: '#0d9488', accentSoft: 'rgba(20,184,166,0.12)' },
 } as const;
 export type AccentKey = keyof typeof ACCENT_PALETTE;
+
+export const BACKGROUND_PALETTE = {
+  lavender: { label: 'Lavender (Aczone)', bgPage: '#F8F7FD', bgCard: '#FFFFFF', bgInput: '#F4F3FA', border: '#EDE9FE', textPrimary: '#1E1B4B' },
+  slate: { label: 'Clean Slate', bgPage: '#F1F5F9', bgCard: '#FFFFFF', bgInput: '#F8FAFC', border: '#E2E8F0', textPrimary: '#0F172A' },
+  linen: { label: 'Warm Linen', bgPage: '#FAF9F6', bgCard: '#FFFFFF', bgInput: '#F5F4F0', border: '#EFECE6', textPrimary: '#292524' },
+  white: { label: 'Pure White', bgPage: '#FFFFFF', bgCard: '#F8F9FA', bgInput: '#F1F3F5', border: '#E9ECEF', textPrimary: '#111827' },
+  onyx: { label: 'Dark Velvet', bgPage: '#0F172A', bgCard: '#1E293B', bgInput: '#0F172A', border: '#334155', textPrimary: '#F1F5F9' },
+} as const;
+export type BgKey = keyof typeof BACKGROUND_PALETTE;
 
 type ScaledType = typeof baseType;
 
@@ -66,12 +44,11 @@ function scaleType(scale: number): ScaledType {
 }
 
 export interface Theme {
-  colors: typeof colors;
+  colors: ColorTokens;
   radius: typeof radius;
   spacing: typeof spacing;
   type: ScaledType;
   font: typeof font;
-  /** Resolves a shadow token to the current platform's style object, spread directly onto a View's style. */
   shadow: (token: keyof typeof shadow) => Record<string, unknown>;
   fontSizePreference: FontSizePreference;
   setFontSizePreference: (pref: FontSizePreference) => void;
@@ -79,6 +56,8 @@ export interface Theme {
   toggleDarkMode: () => void;
   accentKey: AccentKey;
   setAccentKey: (key: AccentKey) => void;
+  bgKey: BgKey;
+  setBgKey: (key: BgKey) => void;
 }
 
 function resolveShadow(darkMode: boolean) {
@@ -93,19 +72,44 @@ const ThemeContext = createContext<Theme>({
   colors, radius, spacing, type: baseType, font, shadow: resolveShadow(false),
   fontSizePreference: 'medium', setFontSizePreference: () => {},
   darkMode: false, toggleDarkMode: () => {},
-  accentKey: 'green', setAccentKey: () => {},
+  accentKey: 'violet', setAccentKey: () => {},
+  bgKey: 'lavender', setBgKey: () => {},
 });
 
-function withAccent(base: typeof colors, key: AccentKey): typeof colors {
-  const a = ACCENT_PALETTE[key];
-  return { ...base, accent: a.accent, accentPressed: a.accentPressed, accentSoft: a.accentSoft, borderFocus: a.accent };
+function applyCustomColors(base: ColorTokens, accent: AccentKey, bg: BgKey, isDark: boolean): ColorTokens {
+  const a = ACCENT_PALETTE[accent] || ACCENT_PALETTE.violet;
+  const b = BACKGROUND_PALETTE[bg] || BACKGROUND_PALETTE.lavender;
+
+  if (isDark) {
+    return {
+      ...darkColors,
+      accent: a.accent,
+      accentPressed: a.accentPressed,
+      accentSoft: a.accentSoft,
+      borderFocus: a.accent,
+    };
+  }
+
+  return {
+    ...base,
+    accent: a.accent,
+    accentPressed: a.accentPressed,
+    accentSoft: a.accentSoft,
+    borderFocus: a.accent,
+    bgPage: b.bgPage,
+    bgCard: b.bgCard,
+    bgInput: b.bgInput,
+    border: b.border,
+    textPrimary: b.textPrimary,
+  };
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const profile = useAuthStore((s) => s.profile);
   const [fontSizePreference, setFontSizePreference] = useState<FontSizePreference>('medium');
   const [darkMode, setDarkMode] = useState(false);
-  const [accentKey, setAccentKeyState] = useState<AccentKey>('green');
+  const [accentKey, setAccentKeyState] = useState<AccentKey>('violet');
+  const [bgKey, setBgKeyState] = useState<BgKey>('lavender');
 
   useEffect(() => {
     const saved = (profile?.raw as any)?.metadata?.appearance?.fontSize;
@@ -118,6 +122,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     });
     AsyncStorage.getItem(ACCENT_KEY).then((v) => {
       if (v && v in ACCENT_PALETTE) setAccentKeyState(v as AccentKey);
+    });
+    AsyncStorage.getItem(BG_KEY).then((v) => {
+      if (v && v in BACKGROUND_PALETTE) setBgKeyState(v as BgKey);
     });
   }, []);
 
@@ -134,16 +141,19 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     AsyncStorage.setItem(ACCENT_KEY, key);
   };
 
-  // D4 (Phase 7.0): only one theme's tokens exist as a single object; the
-  // seam this provider was built around is exactly this ternary, added in
-  // Phase 7.12 — no refactor of any consuming screen was needed.
+  const setBgKey = (key: BgKey) => {
+    setBgKeyState(key);
+    AsyncStorage.setItem(BG_KEY, key);
+  };
+
   const value: Theme = {
-    colors: withAccent(darkMode ? darkColors : colors, accentKey),
+    colors: applyCustomColors(colors, accentKey, bgKey, darkMode),
     radius, spacing, font, shadow: resolveShadow(darkMode),
     type: scaleType(FONT_SCALES[fontSizePreference]),
     fontSizePreference, setFontSizePreference,
     darkMode, toggleDarkMode,
     accentKey, setAccentKey,
+    bgKey, setBgKey,
   };
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;

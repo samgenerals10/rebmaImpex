@@ -1,24 +1,10 @@
 // rebma-mobile/screens/reception/VisitorLogScreen.tsx
-//
-// Renamed+extended from screens/reception/ReceptionHomeScreen.tsx (Phase
-// 7.2, D18) — load()/handleCheckIn()/handleCheckOut() are byte-identical
-// to that file; only the JSX gained a KPI tile strip + a ModuleLauncher
-// (Phase 7.1's D13 pattern every department's home screen follows).
-//
-// Ports rebma-web/src/views/reception/OverviewView.tsx: its KPI tiles and
-// "currently inside" list are real (kept); its sparkline/traffic-area/
-// purpose-pie/peak-hours charts are seeded from hardcoded mock arrays in
-// the component, not live queries (verified by reading the file) — not
-// ported, per D16, since there is no real data behind them to port.
-//
-// Phase 7.12, D123: the gate/entrance check-in is a real candidate for
-// poor connectivity, so a failed insert is queued via lib/offlineQueue.ts
-// instead of shown as a plain error — see AttendanceScreen.tsx for the
-// same pattern applied to its own check-in form.
+// Ports: rebma-web/src/views/reception/OverviewView.tsx
+// Redesigned with Aczone Design System: Hero Card, 2x2 Metric Grid, Smooth Quick Check-in, Grouped Action Launcher.
 import { useCallback, useEffect, useState } from 'react';
-import { View, Text, Alert } from 'react-native';
+import { View, Text, Alert, Pressable } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { UserCheck } from 'lucide-react-native';
+import { UserCheck, UserPlus, Users, LogOut, Clock, Building2, ShieldCheck } from 'lucide-react-native';
 import { supabase } from '../../lib/supabaseClient';
 import { enqueue, QUEUE_KEYS } from '../../lib/offlineQueue';
 import { useAuthStore } from '../../store/authStore';
@@ -30,7 +16,9 @@ import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import MetricCard from '../../components/ui/MetricCard';
+import Badge from '../../components/ui/Badge';
 import ModuleLauncher from '../../components/chrome/ModuleLauncher';
+import SectionHeader from '../../components/ui/SectionHeader';
 
 interface VisitorRow {
   id: string;
@@ -104,7 +92,7 @@ export default function VisitorLogScreen() {
     setSubmitting(false);
     if (error) {
       await enqueue(QUEUE_KEYS.receptionVisitors, 'visitors', payload);
-      Alert.alert('Saved Offline', 'No connection right now, so this visitor will sync automatically once you\'re back online.');
+      Alert.alert('Saved Offline', "No connection right now, so this visitor will sync automatically once you're back online.");
     }
     setFullName('');
     setPurpose('');
@@ -126,43 +114,149 @@ export default function VisitorLogScreen() {
     load();
   };
 
-  const stillIn = visitors.filter(v => !v.check_out_time);
-  const checkedOut = visitors.filter(v => v.check_out_time);
+  const stillIn = visitors.filter((v) => !v.check_out_time);
+  const checkedOut = visitors.filter((v) => v.check_out_time);
 
   return (
     <Screen refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }}>
       <View style={{ gap: t.spacing.xl }}>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.md }}>
-          <View style={{ width: '47%' }}><MetricCard label="Visitors Today" value={loading ? '—' : visitors.length} /></View>
-          <View style={{ width: '47%' }}><MetricCard label="Currently Inside" value={loading ? '—' : stillIn.length} tone="accent" /></View>
-          <View style={{ width: '47%' }}><MetricCard label="Checked Out" value={loading ? '—' : checkedOut.length} /></View>
-          <View style={{ width: '47%' }}><MetricCard label="Attendance Today" value={loading ? '—' : attendanceToday} tone="accent" onPress={() => navigation.navigate('EmployeeCheckin')} /></View>
-        </View>
-
-        <Card>
-          <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary, marginBottom: t.spacing.md }}>Visitor Check-In</Text>
-          <View style={{ gap: t.spacing.md }}>
-            <Input value={fullName} onChangeText={setFullName} placeholder="Visitor full name" />
-            <Input value={purpose} onChangeText={setPurpose} placeholder="Purpose of visit" />
-            <Input value={hostName} onChangeText={setHostName} placeholder="Who are they visiting?" />
-            <Button label={submitting ? 'Checking In…' : 'Register Visitor'} onPress={handleCheckIn} disabled={submitting} loading={submitting} fullWidth />
+        {/* Aczone Reception Hero Card */}
+        <Card tone="hero">
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <View style={{ flex: 1 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#34D399' }} />
+                <Text style={{ fontFamily: t.font.bold, fontSize: t.type.meta10.size, letterSpacing: 0.8, textTransform: 'uppercase', color: 'rgba(255,255,255,0.9)' }}>
+                  Front Desk & Access Control
+                </Text>
+              </View>
+              <Text style={{ fontFamily: t.font.extrabold, fontSize: t.type.kpi28.size, color: '#FFFFFF', marginTop: 2 }}>
+                {loading ? '—' : `${stillIn.length} On Site`}
+              </Text>
+              <Text style={{ fontFamily: t.font.medium, fontSize: t.type.body12.size, color: 'rgba(255,255,255,0.85)', marginTop: 4 }}>
+                {loading ? '' : `${visitors.length} visitor${visitors.length === 1 ? '' : 's'} registered · ${attendanceToday} staff check-in${attendanceToday === 1 ? '' : 's'}`}
+              </Text>
+            </View>
+            <View style={{ width: 56, height: 56, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.22)', alignItems: 'center', justifyContent: 'center' }}>
+              <Users size={28} color="#FFFFFF" strokeWidth={2.5} />
+            </View>
           </View>
         </Card>
 
+        {/* Aczone 2x2 Metric Grid */}
+        <View style={{ gap: t.spacing.sm }}>
+          <SectionHeader title="Traffic & Attendance" subtitle="Daily facility access activity" />
+          <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
+            <MetricCard
+              label="Visitors Today"
+              value={loading ? '—' : visitors.length}
+              sublabel="Total arrivals"
+              icon={<UserPlus size={20} color={t.colors.action.sky} />}
+              tone="info"
+              onPress={() => navigation.navigate('Visitors')}
+            />
+            <MetricCard
+              label="Currently Inside"
+              value={loading ? '—' : stillIn.length}
+              sublabel="Active badges"
+              icon={<UserCheck size={20} color={t.colors.action.emerald} />}
+              tone={stillIn.length > 0 ? 'accent' : 'neutral'}
+            />
+          </View>
+          <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
+            <MetricCard
+              label="Checked Out"
+              value={loading ? '—' : checkedOut.length}
+              sublabel="Departed visitors"
+              icon={<LogOut size={20} color={t.colors.action.amber} />}
+              tone="neutral"
+            />
+            <MetricCard
+              label="Staff Checked In"
+              value={loading ? '—' : attendanceToday}
+              sublabel="Attendance log"
+              icon={<Building2 size={20} color={t.colors.action.violet} />}
+              tone="accent"
+              onPress={() => navigation.navigate('EmployeeCheckin')}
+            />
+          </View>
+        </View>
+
+        {/* Visitor Quick Registration */}
         <Card>
-          <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary, marginBottom: t.spacing.md }}>Currently On Site ({stillIn.length})</Text>
+          <SectionHeader title="Visitor Fast Check-In" subtitle="Record guest arrival and issue access clearance" />
+          <View style={{ gap: t.spacing.md, marginTop: t.spacing.sm }}>
+            <Input value={fullName} onChangeText={setFullName} placeholder="Visitor full name *" />
+            <Input value={purpose} onChangeText={setPurpose} placeholder="Purpose of visit (e.g. Sales, Interview, Delivery)" />
+            <Input value={hostName} onChangeText={setHostName} placeholder="Host / Person to visit *" />
+            <Button
+              label={submitting ? 'Registering Guest…' : 'Check In Visitor →'}
+              onPress={handleCheckIn}
+              disabled={submitting}
+              loading={submitting}
+              fullWidth
+            />
+          </View>
+        </Card>
+
+        {/* Currently On Site */}
+        <View style={{ gap: t.spacing.sm }}>
+          <SectionHeader title={`Currently On Site (${stillIn.length})`} subtitle="Visitors with open check-in badges" />
           {loading ? (
             <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textMuted }}>Loading…</Text>
           ) : stillIn.length === 0 ? (
-            <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textMuted }}>No visitors currently checked in.</Text>
+            <View
+              style={[
+                {
+                  backgroundColor: t.colors.bgCard,
+                  borderRadius: 18,
+                  padding: t.spacing.lg,
+                  alignItems: 'center',
+                  borderWidth: 1,
+                  borderColor: t.colors.border,
+                },
+                t.shadow('card'),
+              ]}
+            >
+              <Text style={{ fontFamily: t.font.medium, fontSize: t.type.body12.size, color: t.colors.textMuted }}>
+                No visitors currently checked in.
+              </Text>
+            </View>
           ) : (
             <View style={{ gap: t.spacing.sm }}>
-              {stillIn.map(v => (
-                <View key={v.id} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: t.colors.bgPage, borderRadius: t.radius.md, padding: t.spacing.md, borderWidth: 1, borderColor: t.colors.border }}>
-                  <View style={{ flex: 1, paddingRight: t.spacing.sm }}>
-                    <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body12.size, color: t.colors.textPrimary }}>{v.full_name}</Text>
-                    <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted, marginTop: 2 }}>{v.purpose} · Visiting {v.host_name}</Text>
-                    <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted, marginTop: 4 }}>In at {fmtTime(v.check_in_time)}</Text>
+              {stillIn.map((v) => (
+                <View
+                  key={v.id}
+                  style={[
+                    {
+                      flexDirection: 'row',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      backgroundColor: t.colors.bgCard,
+                      borderRadius: 18,
+                      padding: t.spacing.md,
+                      borderWidth: 1,
+                      borderColor: t.colors.border,
+                      gap: t.spacing.md,
+                    },
+                    t.shadow('card'),
+                  ]}
+                >
+                  <View style={{ width: 42, height: 42, borderRadius: 14, backgroundColor: `${t.colors.accent}18`, alignItems: 'center', justifyContent: 'center' }}>
+                    <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.accent }}>
+                      {v.full_name.charAt(0).toUpperCase()}
+                    </Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary }}>
+                      {v.full_name}
+                    </Text>
+                    <Text style={{ fontFamily: t.font.medium, fontSize: t.type.meta11.size, color: t.colors.textSecondary, marginTop: 2 }}>
+                      {v.purpose} · Visiting <Text style={{ fontFamily: t.font.bold }}>{v.host_name}</Text>
+                    </Text>
+                    <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted, marginTop: 2 }}>
+                      Checked in at {fmtTime(v.check_in_time)}
+                    </Text>
                   </View>
                   <Button
                     label="Check Out"
@@ -170,28 +264,16 @@ export default function VisitorLogScreen() {
                     disabled={busyId === v.id}
                     loading={busyId === v.id}
                     size="sm"
-                    icon={<UserCheck size={13} color="#fff" />}
+                    variant="ghost"
+                    icon={<LogOut size={14} color={t.colors.textSecondary} />}
                   />
                 </View>
               ))}
             </View>
           )}
-        </Card>
+        </View>
 
-        {checkedOut.length > 0 && (
-          <Card>
-            <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary, marginBottom: t.spacing.md }}>Checked Out Today ({checkedOut.length})</Text>
-            <View>
-              {checkedOut.map(v => (
-                <View key={v.id} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: t.spacing.sm, borderBottomWidth: 1, borderBottomColor: t.colors.border }}>
-                  <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textMuted }}>{v.full_name}</Text>
-                  <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted }}>{fmtTime(v.check_in_time)} – {fmtTime(v.check_out_time!)}</Text>
-                </View>
-              ))}
-            </View>
-          </Card>
-        )}
-
+        {/* Grouped Action Hub */}
         <ModuleLauncher dept={dept} exclude={['VisitorLog']} onSelect={(id) => navigation.navigate(id)} />
       </View>
     </Screen>

@@ -7,8 +7,16 @@
 // the Screen primitive). The three overlays (department switcher, quick
 // actions, search) are siblings driven by useUIStore rather than navigator
 // routes (see store/uiStore.ts for why).
-import { useEffect } from 'react';
-import { View } from 'react-native';
+//
+// headerCollapseAnim (0=expanded, 1=collapsed) is created here and
+// distributed via HeaderAnimContext so any department ScrollView can
+// drive the collapsible header without prop drilling.
+import { useEffect, useRef, createContext, useContext } from 'react';
+import { View, Animated } from 'react-native';
+
+/** Shared animated value: 0 = header fully expanded, 1 = header collapsed */
+export const HeaderAnimContext = createContext<Animated.Value | null>(null);
+export const useHeaderAnim = () => useContext(HeaderAnimContext);
 import { joinLiveUsersChannel, leaveLiveUsersChannel } from '../lib/presence';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -104,10 +112,10 @@ export default function AppShell() {
   const searchOpen = useUIStore((s) => s.searchOpen);
   const closeSearch = useUIStore((s) => s.closeSearch);
   const { profile } = useAuthStore();
+  // Collapsible header anim: 0 = expanded, 1 = collapsed
+  const headerCollapseAnim = useRef(new Animated.Value(0)).current;
 
-  // Phase 10.3 — Live Users. AppShell only ever mounts for a signed-in,
-  // non-driver session, so this tracks exactly once per login and
-  // untracks on sign-out/unmount — same shape as web's App.tsx effect.
+  // Phase 10.3 — Live Users.
   useEffect(() => {
     if (!profile) return;
     joinLiveUsersChannel({
@@ -126,20 +134,22 @@ export default function AppShell() {
   }
 
   return (
-    <View style={{ flex: 1 }}>
-      <ConnectivityBanner />
-      <Tab.Navigator tabBar={(props) => <AppTabBar {...props} />} screenOptions={{ headerShown: false }}>
-        <Tab.Screen name="HomeTab">
-          {({ navigation }) => (
-            <View style={{ flex: 1 }}>
-              <AppHeader
-                onNavigateProfile={() => navigation.getParent()?.navigate('ProfileTab')}
-                onNavigateAlerts={() => navigation.getParent()?.navigate('AlertsTab')}
-              />
-              <DepartmentStackScreen />
-            </View>
-          )}
-        </Tab.Screen>
+    <HeaderAnimContext.Provider value={headerCollapseAnim}>
+      <View style={{ flex: 1 }}>
+        <ConnectivityBanner />
+        <Tab.Navigator tabBar={(props) => <AppTabBar {...props} />} screenOptions={{ headerShown: false }}>
+          <Tab.Screen name="HomeTab">
+            {({ navigation }) => (
+              <View style={{ flex: 1 }}>
+                <AppHeader
+                  onNavigateProfile={() => navigation.navigate('ProfileTab')}
+                  onNavigateAlerts={() => navigation.navigate('AlertsTab')}
+                  collapseAnim={headerCollapseAnim}
+                />
+                <DepartmentStackScreen />
+              </View>
+            )}
+          </Tab.Screen>
         <Tab.Screen
           name="ActionTab"
           component={ActionPlaceholder}
@@ -152,13 +162,14 @@ export default function AppShell() {
         />
         <Tab.Screen name="AlertsTab" component={NotificationsScreen} />
         <Tab.Screen name="ProfileTab" component={ProfileStackScreen} />
-      </Tab.Navigator>
+        </Tab.Navigator>
 
-      <DepartmentSwitcherSheet
-        onSelectDepartment={(code) => useUIStore.getState().setActiveDepartment(code)}
-        onOpenSettings={() => useUIStore.getState().setActiveDepartment('SETTINGS')}
-      />
-      <QuickActionsSheet onNavigateSubTab={navigateToSubTab} />
-    </View>
+        <DepartmentSwitcherSheet
+          onSelectDepartment={(code) => useUIStore.getState().setActiveDepartment(code)}
+          onOpenSettings={() => useUIStore.getState().setActiveDepartment('SETTINGS')}
+        />
+        <QuickActionsSheet onNavigateSubTab={navigateToSubTab} />
+      </View>
+    </HeaderAnimContext.Provider>
   );
 }

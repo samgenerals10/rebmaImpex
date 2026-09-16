@@ -33,39 +33,35 @@ export interface ColorTokens {
 }
 
 export const colors: ColorTokens = {
-  accent: '#22c55e',
-  accentPressed: '#16a34a',
-  accentSoft: 'rgba(34,197,94,0.10)',
+  accent: '#5B4DFF',
+  accentPressed: '#4F46E5',
+  accentSoft: 'rgba(91, 77, 255, 0.12)',
   onAccent: '#ffffff',
 
-  bgPage: '#f0fdf4',
+  bgPage: '#F8F7FD',
   bgCard: '#ffffff',
   bgHeader: '#ffffff',
-  bgInput: '#f9fafb',
+  bgInput: '#F4F3FA',
 
-  textPrimary: '#0f172a',
+  textPrimary: '#1E1B4B',
   textSecondary: '#475569',
   textMuted: '#94a3b8',
   textOnAccent: '#ffffff',
 
-  border: '#e2e8f0',
-  borderFocus: '#22c55e',
+  border: '#EDE9FE',
+  borderFocus: '#5B4DFF',
 
-  // Semantic status set — the app's own NAMED design system
-  // (.erp-badge-success/-warning/-danger/-info/-muted/-purple in index.css),
-  // not the ad-hoc inline Tailwind pairs used at individual call sites.
+  // Semantic status set — Aczone vibrant pastel design system
   status: {
-    success: { bg: '#dcfce7', text: '#16a34a' },
-    warning: { bg: '#fef9c3', text: '#ca8a04' },
-    danger: { bg: '#fee2e2', text: '#dc2626' },
-    info: { bg: '#dbeafe', text: '#2563eb' },
-    muted: { bg: '#f1f5f9', text: '#64748b' },
-    purple: { bg: '#ede9fe', text: '#7c3aed' },
+    success: { bg: '#DCFCE7', text: '#10B981' },
+    warning: { bg: '#FEF3C7', text: '#D97706' },
+    danger: { bg: '#FFE4E6', text: '#E11D48' },
+    info: { bg: '#E0F2FE', text: '#0284C7' },
+    muted: { bg: '#F1F5F9', text: '#64748B' },
+    purple: { bg: '#EDE9FE', text: '#6C5CE7' },
   },
 
-  // QuickActions.tsx's icon circles are deliberately NOT accent-driven —
-  // fixed per-action colors that must never be swapped when a theme
-  // changes. Keep this a separate namespace from `accent`.
+  // Aczone Action Icon Circles
   action: {
     emerald: '#10b981',
     blue: '#3b82f6',
@@ -74,7 +70,7 @@ export const colors: ColorTokens = {
     teal: '#14b8a6',
     sky: '#0ea5e9',
     rose: '#f43f5e',
-    violet: '#8b5cf6',
+    violet: '#5b4dff',
   },
 } as const;
 
@@ -114,7 +110,7 @@ export const radius = {
   sm: 8,
   md: 12,
   lg: 16,
-  card: 24,
+  card: 22,
   pill: 9999,
 } as const;
 
@@ -144,10 +140,6 @@ export const type = {
   kpi28: { size: 28, lineHeight: 32, letterSpacing: 0 },
 } as const;
 
-// @expo-google-fonts/inter family names — never use RN's `fontWeight` on
-// top of these. Android does not synthesize sibling weights the way iOS
-// does; fontWeight either fakes it or is silently ignored. Every primitive
-// must set `fontFamily` to one of these, never `fontWeight`.
 export const font = {
   light: 'Inter_300Light',
   regular: 'Inter_400Regular',
@@ -157,37 +149,30 @@ export const font = {
   extrabold: 'Inter_800ExtraBold',
 } as const;
 
-// CSS box-shadow has no RN equivalent — iOS reads shadowColor/Offset/
-// Opacity/Radius, Android reads elevation only (no color, can't cast
-// upward). Android also requires an opaque backgroundColor on the same
-// view for elevation to render at all — remember that at every call site.
 export const shadow = {
   card: {
-    ios: { shadowColor: '#0f172a', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 2 },
-    android: { elevation: 1 },
+    ios: { shadowColor: '#4338CA', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.05, shadowRadius: 8 },
+    android: { elevation: 2 },
   },
   raised: {
-    ios: { shadowColor: '#0f172a', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.10, shadowRadius: 8 },
-    android: { elevation: 3 },
+    ios: { shadowColor: '#4338CA', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.08, shadowRadius: 14 },
+    android: { elevation: 4 },
   },
   dropdown: {
-    ios: { shadowColor: '#0f172a', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.10, shadowRadius: 12 },
+    ios: { shadowColor: '#1E1B4B', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.12, shadowRadius: 16 },
     android: { elevation: 12 },
   },
   sheet: {
-    ios: { shadowColor: '#0f172a', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.10, shadowRadius: 12 },
-    android: { elevation: 12 },
+    ios: { shadowColor: '#1E1B4B', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.12, shadowRadius: 16 },
+    android: { elevation: 14 },
   },
-  // Android can't cast a shadow upward from a bottom-anchored bar — the
-  // 1px top border (already part of MobileNav.tsx's own design) is the
-  // faithful Android fallback, not a compromise.
   tabBar: {
-    ios: { shadowColor: '#0f172a', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.12, shadowRadius: 6 },
-    android: { elevation: 12 },
+    ios: { shadowColor: '#1E1B4B', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.08, shadowRadius: 10 },
+    android: { elevation: 10 },
   },
   fab: {
-    ios: { shadowColor: '#16a34a', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.30, shadowRadius: 8 },
-    android: { elevation: 6 },
+    ios: { shadowColor: '#5B4DFF', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.35, shadowRadius: 12 },
+    android: { elevation: 8 },
   },
 } as const;
 
