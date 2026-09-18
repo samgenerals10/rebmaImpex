@@ -1,26 +1,16 @@
 // rebma-mobile/navigation/AppShell.tsx
 //
 // The persistent chrome around the whole signed-in, non-driver app. The
-// dashboard header (AppHeader.tsx's DashboardHeaderBackground +
-// DashboardIconRow) is rendered inside DepartmentHomeScreen.tsx itself,
-// not here — that's what keeps it from double-stacking above a pushed
-// sub-tab screen's own SubScreenHeader (native-stack shows one full,
-// opaque screen at a time, so a header that lives inside the
-// DepartmentHome route naturally disappears once something is pushed on
-// top of it). The three overlays (department switcher, quick actions,
-// search) are siblings driven by useUIStore rather than navigator
-// routes (see store/uiStore.ts for why).
-//
-// headerScrollAnim carries the department dashboard's raw scroll offset
-// (see hooks/useCollapsibleHeader.ts) from whichever Screen is mounted
-// down to DashboardIconRow, purely to fade the Chat/Bell icons on
-// scroll — the header itself never resizes or moves; see AppHeader.tsx's
-// own header comment for the full scroll-behavior explanation.
-import { useEffect, useRef, createContext, useContext } from 'react';
-import { View, Animated } from 'react-native';
-
-export const HeaderAnimContext = createContext<Animated.Value | null>(null);
-export const useHeaderAnim = () => useContext(HeaderAnimContext);
+// department dashboard header (AppHeader.tsx's DashboardHeader) is
+// rendered by each department's own Overview screen, as normal
+// scrolling content (via Screen.tsx's dashboard mode) — not owned by
+// AppShell at all, since it scrolls away with the page like everything
+// else rather than needing any shared fixed-layer/animation state. The
+// three overlays (department switcher, quick actions, search) are
+// siblings driven by useUIStore rather than navigator routes (see
+// store/uiStore.ts for why).
+import { useEffect } from 'react';
+import { View } from 'react-native';
 import { joinLiveUsersChannel, leaveLiveUsersChannel } from '../lib/presence';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -125,9 +115,6 @@ export default function AppShell() {
   const searchOpen = useUIStore((s) => s.searchOpen);
   const closeSearch = useUIStore((s) => s.closeSearch);
   const { profile } = useAuthStore();
-  // Raw scroll-offset value, tracked live by useCollapsibleHeader() on
-  // whichever department dashboard is mounted — see the file header.
-  const headerScrollAnim = useRef(new Animated.Value(0)).current;
 
   // Phase 10.3 — Live Users.
   useEffect(() => {
@@ -148,7 +135,6 @@ export default function AppShell() {
   }
 
   return (
-    <HeaderAnimContext.Provider value={headerScrollAnim}>
       <View style={{ flex: 1 }}>
         <ConnectivityBanner />
         <Tab.Navigator tabBar={(props) => <AppTabBar {...props} />} screenOptions={{ headerShown: false }}>
@@ -182,6 +168,5 @@ export default function AppShell() {
         />
         <QuickActionsSheet onNavigateSubTab={navigateToSubTab} />
       </View>
-    </HeaderAnimContext.Provider>
   );
 }

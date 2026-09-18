@@ -1,47 +1,30 @@
 // rebma-mobile/components/chrome/AppHeader.tsx
 //
-// The accepted Top Nav Bar design, per DESIGN_DECISIONS.md's "ACCEPTED —
-// Top Nav Bar (Header)" section — built to that spec exactly, not to an
-// earlier or different implementation:
-//   - Solid purple gradient (#5B4DFF → #4F46E5, 160deg), full-bleed,
-//     rounded bottom corners (28px).
+// The department dashboard header. Renders as normal, non-fixed
+// scrollable content — the very first thing inside the dashboard's
+// ScrollView (see Screen.tsx's dashboard mode) — so it scrolls away
+// naturally with the rest of the page: the top of the content sheet
+// meets the bottom of the header, and scrolling pushes the whole thing
+// up and off-screen together, like any other content. No fixed/absolute
+// layers, no z-index trick, no scroll-driven animation on the icons —
+// all of that was tried and explicitly rejected after seeing it live:
+// icons shifting/disappearing on scroll and content sliding up behind
+// the header read as poor UX in practice, not a good tradeoff for the
+// "always-visible chrome" it bought.
+//
+// Structure (still matches the original accepted spec's static look):
+//   - Solid purple gradient (#5B4DFF → #4F46E5), full-bleed, rounded
+//     bottom corners.
 //   - Left: real logo (assets/logo.png) in a white circular chip +
-//     chevron-down, opens the department switcher.
-//   - Right, in exact order: Chat → Bell → Avatar → vertical ⋮ overflow,
-//     bare icons (no circle backdrop), white.
-//   - Greeting block: bold white greeting, green dot + "Active Session",
-//     department pill.
-//   - Search bar: one white pill — magnifying glass, placeholder, a
+//     chevron-down, opens the Department Switcher.
+//   - Right, exact order: Chat → Bell → Avatar → vertical ⋮ overflow,
+//     bare white icons, no circle backdrop, always all visible.
+//   - Greeting block: bold white greeting, green dot + "Active
+//     Session", a separate department pill.
+//   - Search bar: white pill — magnifying glass, placeholder, a
 //     divider, then a filter/sliders icon inside the same input.
-//   - No day/night toggle (Settings → Appearance already has the real one).
-//
-// Scroll behavior (the piece that took several correction rounds
-// originally, so it's rebuilt exactly as specified, not simplified):
-// the header never shrinks, resizes, or moves. It's two fixed,
-// independently z-indexed layers — the purple background+greeting+search
-// (behind everything, DashboardHeaderBackground) and the icon row (in
-// front of everything, always reachable, DashboardIconRow) — with the
-// actual screen content rendered between them as normal scrollable
-// content (Screen.tsx's dashboard mode). Because that content starts
-// with a transparent spacer exactly HEADER_H tall, then an opaque
-// rounded-top white sheet, scrolling the page is what makes the sheet
-// rise and cover the header — no transform/animation needed for that
-// part, it's just where the content naturally sits. The one thing that
-// IS scroll-driven is the icon row's Chat/Bell fade (mid-scroll onward,
-// both tuck away — reachable via the ⋮ menu instead). The content
-// sheet's own top-corner radius (20) is deliberately smaller than the
-// header's bottom-corner radius (28), so a sliver of purple always
-// peeks out at the very edges once the sheet has scrolled up to cover
-// the header's rounded corners.
-//
-// Both pieces are rendered once, inside DepartmentHomeScreen.tsx (not
-// as a permanent AppShell-level sibling) — so they're naturally only
-// visible while the department's own Home/dashboard screen is the
-// active route. Once a sub-tab screen is pushed on top (native-stack),
-// it's a genuinely separate, opaque, full-screen native view, so this
-// header can't double up behind that screen's own SubScreenHeader.
 import { useState } from 'react';
-import { View, Text, Pressable, Animated, Image } from 'react-native';
+import { View, Text, Pressable, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Bell, MessageSquare, Search, ChevronDown, MoreVertical, SlidersHorizontal } from 'lucide-react-native';
@@ -55,11 +38,8 @@ import { navigationRef } from '../../navigation/navigationRef';
 import Avatar from '../ui/Avatar';
 import Sheet from '../ui/Sheet';
 
-export const DASHBOARD_ICON_ROW_H = 52;
-export const DASHBOARD_HEADER_CONTENT_H = 176;
 export const HEADER_RADIUS = 28;
 export const CONTENT_SHEET_RADIUS = 20;
-const ICON_FADE_END = 40; // px scrolled before Chat/Bell are fully faded
 
 function getGreeting(): string {
   const h = new Date().getHours();
@@ -68,31 +48,77 @@ function getGreeting(): string {
   return 'Good evening';
 }
 
-/** Layer 0 (back): the fixed purple gradient + greeting + search. Never moves, never resizes — the scrolling content sheet (Screen.tsx dashboard mode) rises to cover it from the front. */
-export function DashboardHeaderBackground() {
+export default function DashboardHeader() {
   const t = useTheme();
   const insets = useSafeAreaInsets();
   const profile = useAuthStore((s) => s.profile);
+  const signOut = useAuthStore((s) => s.signOut);
   const openSearch = useUIStore((s) => s.openSearch);
   const openDepartmentSwitcher = useUIStore((s) => s.openDepartmentSwitcher);
+  const unreadCount = useNotificationsStore((s) => s.unreadCount);
+  const chatUnreadCount = useMessengerUnreadStore((s) => s.unreadCount);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   if (!profile) return null;
   const dept = getDepartmentEntry(profile.department);
   const firstName = profile.fullName?.split(' ')[0] || 'there';
 
   return (
-    <View style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 0 }}>
+    <>
       <LinearGradient
         colors={['#5B4DFF', '#4F46E5']}
         start={{ x: 0.1, y: 0 }}
         end={{ x: 0.7, y: 1 }}
         style={{
-          height: insets.top + DASHBOARD_ICON_ROW_H + DASHBOARD_HEADER_CONTENT_H,
           borderBottomLeftRadius: HEADER_RADIUS,
           borderBottomRightRadius: HEADER_RADIUS,
-          paddingTop: insets.top + DASHBOARD_ICON_ROW_H,
+          paddingTop: insets.top,
         }}
       >
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            paddingHorizontal: t.spacing.lg,
+            height: 52,
+          }}
+        >
+          <Pressable onPress={openDepartmentSwitcher} hitSlop={8} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <View
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 16,
+                backgroundColor: '#FFFFFF',
+                alignItems: 'center',
+                justifyContent: 'center',
+                overflow: 'hidden',
+              }}
+            >
+              <Image source={require('../../assets/logo.png')} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+            </View>
+            <ChevronDown size={16} color="#FFFFFF" />
+          </Pressable>
+
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+            <Pressable hitSlop={8} onPress={() => navigationRef.isReady() && navigationRef.navigate('Messenger' as never)}>
+              <MessageSquare size={20} color="#FFFFFF" />
+              {chatUnreadCount > 0 && <View style={dotStyle} />}
+            </Pressable>
+            <Pressable hitSlop={8} onPress={() => navigationRef.isReady() && navigationRef.navigate('AlertsTab' as never)}>
+              <Bell size={20} color="#FFFFFF" />
+              {unreadCount > 0 && <View style={dotStyle} />}
+            </Pressable>
+            <Pressable hitSlop={8} onPress={() => setMenuOpen(true)}>
+              <Avatar name={profile.fullName} photo={profile.photo} size={32} />
+            </Pressable>
+            <Pressable hitSlop={8} onPress={() => setMenuOpen(true)}>
+              <MoreVertical size={20} color="#FFFFFF" />
+            </Pressable>
+          </View>
+        </View>
+
         <View style={{ paddingHorizontal: t.spacing.lg }}>
           <Text style={{ fontFamily: t.font.extrabold, fontSize: t.type.page24.size, color: '#FFFFFF' }}>
             {getGreeting()}, {firstName} 👋
@@ -133,7 +159,7 @@ export function DashboardHeaderBackground() {
           </Pressable>
         </View>
 
-        <View style={{ paddingHorizontal: t.spacing.lg, marginTop: 16 }}>
+        <View style={{ paddingHorizontal: t.spacing.lg, marginTop: 16, paddingBottom: 20 }}>
           <Pressable
             onPress={openSearch}
             style={{
@@ -159,107 +185,12 @@ export function DashboardHeaderBackground() {
               Search subjects, topics, records…
             </Text>
             <View style={{ width: 1, height: 18, backgroundColor: t.colors.border, marginHorizontal: 10 }} />
-            <SlidersHorizontal size={16} color={t.colors.accent} />
+            <Pressable onPress={openSearch} hitSlop={8}>
+              <SlidersHorizontal size={16} color={t.colors.accent} />
+            </Pressable>
           </Pressable>
         </View>
       </LinearGradient>
-    </View>
-  );
-}
-
-interface IconRowProps {
-  /** 0 at rest, increases with scroll offset — used only to fade Chat/Bell. */
-  scrollAnim?: Animated.Value;
-}
-
-/** Layer 2 (front): logo+chevron left, Chat/Bell (fade on scroll)/Avatar/⋮ right. Always on top, bare icons, no scroll-driven size change. */
-export function DashboardIconRow({ scrollAnim }: IconRowProps) {
-  const t = useTheme();
-  const insets = useSafeAreaInsets();
-  const profile = useAuthStore((s) => s.profile);
-  const signOut = useAuthStore((s) => s.signOut);
-  const openDepartmentSwitcher = useUIStore((s) => s.openDepartmentSwitcher);
-  const unreadCount = useNotificationsStore((s) => s.unreadCount);
-  const chatUnreadCount = useMessengerUnreadStore((s) => s.unreadCount);
-  const [menuOpen, setMenuOpen] = useState(false);
-
-  if (!profile) return null;
-  const dept = getDepartmentEntry(profile.department);
-
-  const fadeOpacity = scrollAnim
-    ? scrollAnim.interpolate({ inputRange: [0, ICON_FADE_END], outputRange: [1, 0], extrapolate: 'clamp' })
-    : 1;
-  const fadeWidth = scrollAnim
-    ? scrollAnim.interpolate({ inputRange: [0, ICON_FADE_END], outputRange: [64, 0], extrapolate: 'clamp' })
-    : 64;
-
-  return (
-    <>
-      <View
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          zIndex: 2,
-          // Opaque, matching the gradient's own color at y=0 — without
-          // this, scrolled content (which has nothing stopping it from
-          // scrolling up underneath this row) shows through and visually
-          // collides with the icons instead of disappearing cleanly
-          // behind a solid bar.
-          backgroundColor: '#5B4DFF',
-          paddingTop: insets.top,
-          height: insets.top + DASHBOARD_ICON_ROW_H,
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          paddingHorizontal: t.spacing.lg,
-        }}
-      >
-        <Pressable onPress={openDepartmentSwitcher} hitSlop={8} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <View
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: 16,
-              backgroundColor: '#FFFFFF',
-              alignItems: 'center',
-              justifyContent: 'center',
-              overflow: 'hidden',
-            }}
-          >
-            <Image source={require('../../assets/logo.png')} style={{ width: 24, height: 24 }} resizeMode="contain" />
-          </View>
-          <ChevronDown size={16} color="#FFFFFF" />
-        </Pressable>
-
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-          <Animated.View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, opacity: fadeOpacity, width: fadeWidth, overflow: 'hidden' }}>
-            <Pressable
-              hitSlop={8}
-              onPress={() => navigationRef.isReady() && navigationRef.navigate('Messenger' as never)}
-            >
-              <MessageSquare size={20} color="#FFFFFF" />
-              {chatUnreadCount > 0 && <View style={dotStyle} />}
-            </Pressable>
-            <Pressable
-              hitSlop={8}
-              onPress={() => navigationRef.isReady() && navigationRef.navigate('AlertsTab' as never)}
-            >
-              <Bell size={20} color="#FFFFFF" />
-              {unreadCount > 0 && <View style={dotStyle} />}
-            </Pressable>
-          </Animated.View>
-
-          <Pressable hitSlop={8} onPress={() => setMenuOpen(true)}>
-            <Avatar name={profile.fullName} photo={profile.photo} size={32} />
-          </Pressable>
-
-          <Pressable hitSlop={8} onPress={() => setMenuOpen(true)}>
-            <MoreVertical size={20} color="#FFFFFF" />
-          </Pressable>
-        </View>
-      </View>
 
       <Sheet open={menuOpen} onClose={() => setMenuOpen(false)} title="Account" side="bottom">
         <View style={{ paddingBottom: 8 }}>

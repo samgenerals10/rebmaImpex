@@ -10,20 +10,20 @@
 // the CEO/admin department switcher can actually change what's displayed —
 // it's seeded from the signed-in profile's own department on login/session
 // restore and only diverges when an admin explicitly switches channels.
+//
+// The department's own DashboardHeader is rendered by that department's
+// Overview screen itself (via Screen.tsx's dashboard mode) — this router
+// just picks which one, nothing header-related happens here.
 import { useEffect } from 'react';
-import { View } from 'react-native';
 import { useAuthStore } from '../store/authStore';
 import { useUIStore } from '../store/uiStore';
 import { getDepartmentEntry } from './departmentRegistry';
 import DepartmentPlaceholderScreen from '../screens/DepartmentPlaceholderScreen';
-import { DashboardHeaderBackground, DashboardIconRow } from '../components/chrome/AppHeader';
-import { useHeaderAnim } from './AppShell';
 
 export default function DepartmentHomeScreen() {
   const { profile } = useAuthStore();
   const activeDepartment = useUIStore((s) => s.activeDepartment);
   const setActiveDepartment = useUIStore((s) => s.setActiveDepartment);
-  const headerAnim = useHeaderAnim();
 
   useEffect(() => {
     if (profile && !activeDepartment) setActiveDepartment(profile.department);
@@ -35,13 +35,7 @@ export default function DepartmentHomeScreen() {
   const dept = getDepartmentEntry(effectiveDepartment);
   const HomeScreen = dept.screens.home;
 
-  return (
-    <View style={{ flex: 1 }}>
-      <DashboardHeaderBackground />
-      <View style={{ flex: 1, zIndex: 1 }}>
-        {HomeScreen ? <HomeScreen /> : <DepartmentPlaceholderScreen department={effectiveDepartment} />}
-      </View>
-      <DashboardIconRow scrollAnim={headerAnim ?? undefined} />
-    </View>
-  );
+  if (HomeScreen) return <HomeScreen />;
+
+  return <DepartmentPlaceholderScreen department={effectiveDepartment} />;
 }

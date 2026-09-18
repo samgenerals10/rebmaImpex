@@ -49,25 +49,14 @@ export default function DepartmentSwitcherSheet({ onSelectDepartment, onOpenSett
             width: 36,
             height: 36,
             borderRadius: 18,
-            backgroundColor: t.colors.accentSoft,
-            alignItems: 'center',
-            justifyContent: 'center',
             overflow: 'hidden',
           }}
         >
-          <Image source={require('../../assets/logo.png')} style={{ width: 26, height: 26 }} resizeMode="contain" />
+          <Image source={require('../../assets/logo.png')} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
         </View>
         <Text style={{ fontFamily: t.font.extrabold, fontSize: t.type.body14.size, letterSpacing: 0.3, color: t.colors.textPrimary }}>
           REBMA IMPEX
         </Text>
-      </View>
-
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.md, marginBottom: t.spacing.xl }}>
-        <Avatar name={profile.fullName} photo={profile.photo} size={40} />
-        <View style={{ flex: 1 }}>
-          <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary }} numberOfLines={1}>{profile.fullName}</Text>
-          <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted }} numberOfLines={1}>{profile.email}</Text>
-        </View>
       </View>
 
       <Text style={{ fontFamily: t.font.bold, fontSize: t.type.label9.size, letterSpacing: t.type.label9.letterSpacing, textTransform: 'uppercase', color: t.colors.textMuted, marginBottom: t.spacing.sm }}>
@@ -107,7 +96,15 @@ export default function DepartmentSwitcherSheet({ onSelectDepartment, onOpenSett
         })}
       </View>
 
-      <View style={{ marginTop: t.spacing.xl, paddingTop: t.spacing.lg, borderTopWidth: 1, borderTopColor: t.colors.border, gap: t.spacing.xs }}>
+      <View style={{ marginTop: t.spacing.xl, paddingTop: t.spacing.lg, borderTopWidth: 1, borderTopColor: t.colors.border }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.md, marginBottom: t.spacing.lg }}>
+          <Avatar name={profile.fullName} photo={profile.photo} size={40} />
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary }} numberOfLines={1}>{profile.fullName}</Text>
+            <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted }} numberOfLines={1}>{profile.email}</Text>
+          </View>
+        </View>
+        <View style={{ gap: t.spacing.xs }}>
         <Pressable onPress={() => { close(); onOpenSettings(); }} style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm, paddingVertical: t.spacing.sm }}>
           <Settings size={16} color={t.colors.textSecondary} />
           <Text style={{ fontFamily: t.font.medium, fontSize: t.type.body14.size, color: t.colors.textSecondary }}>Settings</Text>
@@ -116,6 +113,7 @@ export default function DepartmentSwitcherSheet({ onSelectDepartment, onOpenSett
           <LogOut size={16} color={t.colors.status.danger.text} />
           <Text style={{ fontFamily: t.font.medium, fontSize: t.type.body14.size, color: t.colors.status.danger.text }}>Sign Out</Text>
         </Pressable>
+        </View>
       </View>
     </Sheet>
   );
