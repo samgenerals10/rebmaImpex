@@ -155,20 +155,22 @@ Carried over from the prior spec — matches the accent/status tokens confirmed 
 
 Every entry below reflects the piece's **actual, current implementation** as read from source — not the intended/planned version. New entries are appended here, in build order, as each piece gets styled.
 
-### 1. Header — `components/chrome/AppHeader.tsx` — ✅ rebuilt to match `DESIGN_DECISIONS.md`'s accepted spec
+### 1. Header — `components/chrome/AppHeader.tsx` — ✅ current, corrected after live testing
 
-**Correction, 2026-09-18:** the previous version of this entry described "Aczone Header v2," an implementation that had drifted from the actually-accepted spec (real logo dropped for styled text, the ⋮ overflow icon missing, icons given accentSoft circle backdrops, and — the biggest miss — the header shrinking/fading on scroll, which is the exact behavior `DESIGN_DECISIONS.md` records as tried and explicitly rejected). That was a mistake: the current implementation was documented as if it were the agreed design without checking it against the real agreed spec first. Rebuilt from scratch against `rebma-mobile/DESIGN_DECISIONS.md`'s "ACCEPTED — Top Nav Bar" section, point for point:
+**Correction, 2026-09-18 (first pass):** an earlier version of this entry described "Aczone Header v2," an implementation that had drifted from the agreed spec (real logo dropped for styled text, the ⋮ overflow icon missing, icons given accentSoft circle backdrops, header shrinking/fading on scroll). Rebuilt against `rebma-mobile/DESIGN_DECISIONS.md`'s "ACCEPTED — Top Nav Bar" section.
 
-- **Background:** solid purple gradient (`#5B4DFF` → `#4F46E5`, via `expo-linear-gradient`), full-bleed, rounded bottom corners (28px). Never a hard-edged rectangle.
-- **Left:** the real company logo (`assets/logo.png`) in a small white circular chip, followed by a chevron-down — opens the Department Switcher.
-- **Right, exact order:** Chat → Bell → Avatar → vertical ⋮ overflow, at the very far right, after the avatar. Bare icons, white, no circle backdrop.
-- **Greeting block:** bold white "{greeting}, {first name} 👋", a green dot + "Active Session" label, then a separate department pill ("{Department} ▾").
-- **Search bar:** one white pill — magnifying-glass icon, placeholder text, a thin vertical divider, then a filter/sliders icon inside the same input (not a separate button outside it).
+**Correction, 2026-09-18 (second pass — live testing via the Browser pane):** the first rebuild followed the spec's fixed-header/content-rises-over-it/icon-thinning design literally, but once actually running (not just read from a doc), it read as poor UX: Chat/Bell shrinking and disappearing on scroll, and page content sliding up to visually collide with/hide behind the icon row, both felt wrong in practice. The user asked for a simpler, more standard pattern instead — **the header now scrolls away with the page like any other content**, not a fixed layer. This is a deliberate, live-tested reversal of the original spec's scroll-behavior section, not a bug.
+
+- **Background:** solid purple gradient (`#5B4DFF` → `#4F46E5`, via `expo-linear-gradient`), full-bleed, rounded bottom corners (28px).
+- **Left:** the real company logo (`assets/logo.png`) in a white circular chip (fills it edge-to-edge, `resizeMode="cover"`), followed by a chevron-down — opens the Department Switcher.
+- **Right, exact order:** Chat → Bell → Avatar → vertical ⋮ overflow. Bare icons, white, no circle backdrop, always all visible (no fade).
+- **Greeting block:** bold white "{greeting}, {first name} 👋", a green dot + "Active Session" label, then a separate department pill.
+- **Search bar:** one white pill — magnifying-glass icon, placeholder, a divider, then a filter/sliders icon inside the same input. Both the field and the filter icon are real, working `Pressable`s that open the Search screen.
 - **No day/night toggle** — Settings → Appearance already has the real one.
-- **Scroll behavior — rebuilt to the accepted 3-state design, not the shrink/fade version:** the header (purple background + greeting + search) is one fixed layer that never resizes or moves. A separate fixed icon-row layer sits in front of it, always reachable, with only Chat/Bell fading out past a small scroll threshold (reachable via the ⋮ menu). The actual screen content — rendered between those two fixed layers — starts with a transparent spacer exactly matching the header's real height, then an opaque, rounded-top white content sheet (`components/ui/Screen.tsx`'s new dashboard mode, auto-enabled whenever a screen passes `onScroll` from `useCollapsibleHeader()`). Because that spacer-then-sheet is just normal scrollable content sitting behind the header at rest, scrolling the page is what makes the sheet rise and cover the header — no transform/animation needed for the covering effect itself. The sheet's own top-corner radius (20px) is deliberately smaller than the header's bottom-corner radius (28px), producing the corner-peek effect described in the spec.
-- **Where each piece lives now:** `AppHeader.tsx` exports two components — `DashboardHeaderBackground` (the fixed purple layer) and `DashboardIconRow` (the fixed icon layer) — both rendered once inside `navigation/DepartmentHomeScreen.tsx`, not as a permanent `AppShell`-level sibling. That's what stops it from double-stacking above a pushed sub-tab screen's own `SubScreenHeader`: native-stack shows one full, opaque screen at a time, so a header living inside the `DepartmentHome` route naturally disappears the moment something is pushed on top of it.
+- **Scroll behavior — simple, not fixed:** `DashboardHeader` renders as the first item inside the dashboard `ScrollView` (`components/ui/Screen.tsx`'s dashboard mode, auto-enabled whenever a screen passes `onScroll` from `useCollapsibleHeader()`), immediately followed by a rounded-top white content sheet. As the user scrolls, the whole header moves up and off-screen together with the page — the tip of the content sheet and the bottom of the header just meet and scroll as one unit, same as any normal page.
+- **A real bug this fix also closed:** the earlier fixed-layer version had an invisible scroll spacer sitting in front of (higher z-index than) the header, which silently intercepted taps meant for the search bar and filter icon — neither was clickable. The new normal-flow layout has no overlapping layers, so this class of bug can't recur here.
 
-**Verified:** `tsc --noEmit` clean, `expo export --platform ios` bundles clean (logo asset confirmed bundled), `store/deliveryStore.ts` zero diff. **Not yet verified:** actual on-device rendering — this machine has no full Xcode install, so the iOS Simulator tool isn't available here, and this was pushed for the user to check on their own phone via their already-running Expo Go session rather than claimed as visually confirmed.
+**Verified live**, not just compiled: ran the app for real via a new `react-native-web` setup (see entry 3) in the Browser pane, confirmed the header renders correctly at rest, scrolls away cleanly in both directions, and the search bar + filter icon are clickable. `tsc --noEmit` clean, `expo export --platform ios` bundles clean, `store/deliveryStore.ts` zero diff.
 
 ### 2. Sub-screen headers (every pushed screen app-wide) — `components/chrome/SubScreenHeader.tsx` — ✅ current
 
@@ -184,5 +186,18 @@ Built one shared `SubScreenHeader` component matching `AppHeader.tsx`'s own visu
 Wired into: `AppShell.tsx`'s `DepartmentStackScreen` (every department sub-tab — ~100 screens) and `ProfileStackScreen` (Design System / Feedback / Payslips), `MessengerStack.tsx` (Messenger thread), `ViberStack.tsx` (Boardroom + its 4 screens, Messenger thread reached from Chats), and `DriverProfileStack.tsx` (the driver's own Design System / Feedback / Payslips). Department **home/dashboard** screens are unaffected — those still render the full `AppHeader` (greeting, search, department switcher), which is a deliberately different, dashboard-only header, not a sub-page one.
 
 Verified: `npx tsc --noEmit` clean, `npx expo export --platform ios` bundles clean (3407 modules), `store/deliveryStore.ts` shows zero diff (driver GPS flow untouched).
+
+### 3. Department Switcher sidebar — `components/chrome/DepartmentSwitcherSheet.tsx` — ✅ current
+
+This file's own header comment always documented the intended layout as "logo header / user row / department list / footer," but the logo header was never actually built — the sheet opened straight into the user identity row with no Rebma branding anywhere. Fixed, plus a reorder requested after seeing it live:
+
+- **Added the missing branding header:** real logo (`assets/logo.png`, fills its circular chip edge-to-edge) + "REBMA IMPEX" text, at the very top, above everything else, with a divider beneath it.
+- **Reordered the identity row:** the user's avatar/name/email used to sit directly under the branding header. Moved down to sit directly above Settings/Sign Out at the bottom instead — so the sheet now reads Branding → Departments → (divider) → Identity → Settings → Sign Out.
+
+**Verified live** in the Browser pane: logo renders full and clean (no visible padding gap), departments list right after branding, identity row now sits just above Settings/Sign Out at the bottom. `tsc --noEmit` clean, `store/deliveryStore.ts` zero diff.
+
+### 4. Live preview infrastructure — `react-native-web` + Browser pane — ✅ new capability
+
+Added `react-native-web`, `react-dom`, and `@expo/metro-runtime`, plus a "rebma-mobile (Expo Web)" entry in `.claude/launch.json`, so this same Expo app can run inside the Browser pane instead of only being checkable on a physical phone via Expo Go. This is what made entries 1 and 3 above possible to verify live rather than shipped on faith — real bugs (the invisible tap-blocking spacer, the opaque-background-hiding-the-header bug, the icon-row content collision) were found and fixed by actually running the app, not by re-reading the code. Going forward, UI changes get checked this way before being called done.
 
 *(Next entries get appended here as each further piece is confirmed and styled.)*
