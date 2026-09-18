@@ -1,56 +1,32 @@
 // rebma-mobile/hooks/useCollapsibleHeader.ts
 //
-// Drop this into any department overview ScrollView to get the
-// collapsible floating header behaviour for free:
+// Drop this into any department dashboard's ScrollView:
 //
-//   const { scrollHandler, scrollY } = useCollapsibleHeader();
-//   <Animated.ScrollView onScroll={scrollHandler} scrollEventThrottle={16} ...>
+//   const { scrollHandler } = useCollapsibleHeader();
+//   <Screen onScroll={scrollHandler} scrollEventThrottle={16} ...>
 //
-// The hook reads HeaderAnimContext from AppShell and drives it with a
-// smooth spring so the header collapses when the user scrolls down 60px
-// and re-expands immediately when they scroll back up.
-import { useRef, useCallback } from 'react';
-import { Animated, NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
+// Screen.tsx auto-detects the `onScroll` prop and switches into its
+// dashboard layout (transparent spacer + rounded-top content sheet —
+// see Screen.tsx and AppHeader.tsx's own header comments for why that
+// alone is what makes the sheet visually rise and cover the header,
+// with no animation needed for that part).
+//
+// This hook's only job is forwarding the raw scroll offset into
+// HeaderAnimContext (1:1, no spring/threshold), which DashboardIconRow
+// reads purely to fade the Chat/Bell icons out as the user scrolls.
+import { useCallback } from 'react';
+import type { NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
 import { useHeaderAnim } from '../navigation/AppShell';
-
-const COLLAPSE_THRESHOLD = 60; // px scrolled before header starts collapsing
 
 export function useCollapsibleHeader() {
   const headerAnim = useHeaderAnim();
-  const scrollY = useRef(new Animated.Value(0)).current;
-  const lastScrollY = useRef(0);
-  const collapsed = useRef(false);
 
   const scrollHandler = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-      const y = e.nativeEvent.contentOffset.y;
-      const delta = y - lastScrollY.current;
-      lastScrollY.current = y;
-
-      if (!headerAnim) return;
-
-      if (y > COLLAPSE_THRESHOLD && delta > 0 && !collapsed.current) {
-        // Scrolling DOWN past threshold → collapse
-        collapsed.current = true;
-        Animated.spring(headerAnim, {
-          toValue: 1,
-          useNativeDriver: false,
-          tension: 80,
-          friction: 12,
-        }).start();
-      } else if ((y < COLLAPSE_THRESHOLD || delta < -8) && collapsed.current) {
-        // Scrolling UP or near top → expand
-        collapsed.current = false;
-        Animated.spring(headerAnim, {
-          toValue: 0,
-          useNativeDriver: false,
-          tension: 80,
-          friction: 12,
-        }).start();
-      }
+      headerAnim?.setValue(Math.max(0, e.nativeEvent.contentOffset.y));
     },
     [headerAnim],
   );
 
-  return { scrollHandler, scrollY };
+  return { scrollHandler };
 }

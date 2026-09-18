@@ -1,20 +1,24 @@
 // rebma-mobile/navigation/AppShell.tsx
 //
-// The persistent chrome around the whole signed-in, non-driver app —
-// AppHeader is shown on the Home tab (matching rebma-web's Header.tsx,
-// which is global on web's SPA but is scoped to the dashboard entry point
-// here since Alerts/Profile already carry their own PageTitle headers via
-// the Screen primitive). The three overlays (department switcher, quick
-// actions, search) are siblings driven by useUIStore rather than navigator
+// The persistent chrome around the whole signed-in, non-driver app. The
+// dashboard header (AppHeader.tsx's DashboardHeaderBackground +
+// DashboardIconRow) is rendered inside DepartmentHomeScreen.tsx itself,
+// not here — that's what keeps it from double-stacking above a pushed
+// sub-tab screen's own SubScreenHeader (native-stack shows one full,
+// opaque screen at a time, so a header that lives inside the
+// DepartmentHome route naturally disappears once something is pushed on
+// top of it). The three overlays (department switcher, quick actions,
+// search) are siblings driven by useUIStore rather than navigator
 // routes (see store/uiStore.ts for why).
 //
-// headerCollapseAnim (0=expanded, 1=collapsed) is created here and
-// distributed via HeaderAnimContext so any department ScrollView can
-// drive the collapsible header without prop drilling.
+// headerScrollAnim carries the department dashboard's raw scroll offset
+// (see hooks/useCollapsibleHeader.ts) from whichever Screen is mounted
+// down to DashboardIconRow, purely to fade the Chat/Bell icons on
+// scroll — the header itself never resizes or moves; see AppHeader.tsx's
+// own header comment for the full scroll-behavior explanation.
 import { useEffect, useRef, createContext, useContext } from 'react';
 import { View, Animated } from 'react-native';
 
-/** Shared animated value: 0 = header fully expanded, 1 = header collapsed */
 export const HeaderAnimContext = createContext<Animated.Value | null>(null);
 export const useHeaderAnim = () => useContext(HeaderAnimContext);
 import { joinLiveUsersChannel, leaveLiveUsersChannel } from '../lib/presence';
@@ -32,7 +36,6 @@ import DesignSystemScreen from '../screens/DesignSystemScreen';
 import SearchScreen from '../screens/SearchScreen';
 import FeedbackScreen from '../screens/FeedbackScreen';
 import PayslipsScreen from '../screens/PayslipsScreen';
-import AppHeader from '../components/chrome/AppHeader';
 import SubScreenHeader from '../components/chrome/SubScreenHeader';
 import DepartmentSwitcherSheet from '../components/chrome/DepartmentSwitcherSheet';
 import QuickActionsSheet from '../components/chrome/QuickActionsSheet';
@@ -122,8 +125,9 @@ export default function AppShell() {
   const searchOpen = useUIStore((s) => s.searchOpen);
   const closeSearch = useUIStore((s) => s.closeSearch);
   const { profile } = useAuthStore();
-  // Collapsible header anim: 0 = expanded, 1 = collapsed
-  const headerCollapseAnim = useRef(new Animated.Value(0)).current;
+  // Raw scroll-offset value, tracked live by useCollapsibleHeader() on
+  // whichever department dashboard is mounted — see the file header.
+  const headerScrollAnim = useRef(new Animated.Value(0)).current;
 
   // Phase 10.3 — Live Users.
   useEffect(() => {
@@ -144,22 +148,11 @@ export default function AppShell() {
   }
 
   return (
-    <HeaderAnimContext.Provider value={headerCollapseAnim}>
+    <HeaderAnimContext.Provider value={headerScrollAnim}>
       <View style={{ flex: 1 }}>
         <ConnectivityBanner />
         <Tab.Navigator tabBar={(props) => <AppTabBar {...props} />} screenOptions={{ headerShown: false }}>
-          <Tab.Screen name="HomeTab">
-            {({ navigation }) => (
-              <View style={{ flex: 1 }}>
-                <AppHeader
-                  onNavigateProfile={() => navigation.navigate('ProfileTab')}
-                  onNavigateAlerts={() => navigation.navigate('AlertsTab')}
-                  collapseAnim={headerCollapseAnim}
-                />
-                <DepartmentStackScreen />
-              </View>
-            )}
-          </Tab.Screen>
+          <Tab.Screen name="HomeTab" component={DepartmentStackScreen} />
         <Tab.Screen name="ViberTab" component={ViberStack} />
         <Tab.Screen
           name="ActionTab"

@@ -11,15 +11,19 @@
 // it's seeded from the signed-in profile's own department on login/session
 // restore and only diverges when an admin explicitly switches channels.
 import { useEffect } from 'react';
+import { View } from 'react-native';
 import { useAuthStore } from '../store/authStore';
 import { useUIStore } from '../store/uiStore';
 import { getDepartmentEntry } from './departmentRegistry';
 import DepartmentPlaceholderScreen from '../screens/DepartmentPlaceholderScreen';
+import { DashboardHeaderBackground, DashboardIconRow } from '../components/chrome/AppHeader';
+import { useHeaderAnim } from './AppShell';
 
 export default function DepartmentHomeScreen() {
   const { profile } = useAuthStore();
   const activeDepartment = useUIStore((s) => s.activeDepartment);
   const setActiveDepartment = useUIStore((s) => s.setActiveDepartment);
+  const headerAnim = useHeaderAnim();
 
   useEffect(() => {
     if (profile && !activeDepartment) setActiveDepartment(profile.department);
@@ -31,7 +35,13 @@ export default function DepartmentHomeScreen() {
   const dept = getDepartmentEntry(effectiveDepartment);
   const HomeScreen = dept.screens.home;
 
-  if (HomeScreen) return <HomeScreen />;
-
-  return <DepartmentPlaceholderScreen department={effectiveDepartment} />;
+  return (
+    <View style={{ flex: 1 }}>
+      <DashboardHeaderBackground />
+      <View style={{ flex: 1, zIndex: 1 }}>
+        {HomeScreen ? <HomeScreen /> : <DepartmentPlaceholderScreen department={effectiveDepartment} />}
+      </View>
+      <DashboardIconRow scrollAnim={headerAnim ?? undefined} />
+    </View>
+  );
 }
