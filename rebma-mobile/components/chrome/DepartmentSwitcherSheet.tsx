@@ -5,7 +5,7 @@
 // drawer navigator (Design Decision D5: avoids react-native-reanimated +
 // react-native-gesture-handler for a list that's one channel + Settings for
 // every non-CEO user anyway).
-import { View, Text, Pressable } from 'react-native';
+import { View, Text, Pressable, Image } from 'react-native';
 import { Settings, LogOut } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeProvider';
 import { useAuthStore } from '../../store/authStore';
@@ -33,6 +33,35 @@ export default function DepartmentSwitcherSheet({ onSelectDepartment, onOpenSett
 
   return (
     <Sheet open={open} onClose={close} side="left">
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: t.spacing.sm,
+          paddingBottom: t.spacing.lg,
+          marginBottom: t.spacing.lg,
+          borderBottomWidth: 1,
+          borderBottomColor: t.colors.border,
+        }}
+      >
+        <View
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: 18,
+            backgroundColor: t.colors.accentSoft,
+            alignItems: 'center',
+            justifyContent: 'center',
+            overflow: 'hidden',
+          }}
+        >
+          <Image source={require('../../assets/logo.png')} style={{ width: 26, height: 26 }} resizeMode="contain" />
+        </View>
+        <Text style={{ fontFamily: t.font.extrabold, fontSize: t.type.body14.size, letterSpacing: 0.3, color: t.colors.textPrimary }}>
+          REBMA IMPEX
+        </Text>
+      </View>
+
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.md, marginBottom: t.spacing.xl }}>
         <Avatar name={profile.fullName} photo={profile.photo} size={40} />
         <View style={{ flex: 1 }}>

@@ -42,7 +42,15 @@ export default function Screen({ children, scroll = true, refreshing, onRefresh,
   if (isDashboard) {
     const headerH = insets.top + DASHBOARD_ICON_ROW_H + DASHBOARD_HEADER_CONTENT_H;
     return (
-      <View style={{ flex: 1, backgroundColor: t.colors.bgPage }}>
+      // Deliberately no backgroundColor here — this View sits at the same
+      // stacking level as the fixed purple header (DashboardHeaderBackground,
+      // a sibling rendered by DepartmentHomeScreen.tsx, behind this one).
+      // An opaque background on this wrapper would paint over the entire
+      // screen regardless of the transparent spacer below, hiding the
+      // purple header completely — the spacer only works if this stays
+      // transparent; the opaque bgCard sheet further down is what's
+      // actually supposed to provide the "cover" effect.
+      <View style={{ flex: 1 }}>
         <StatusBar barStyle="light-content" />
         <Animated.ScrollView
           style={{ flex: 1 }}

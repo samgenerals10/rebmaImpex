@@ -202,6 +202,12 @@ export function DashboardIconRow({ scrollAnim }: IconRowProps) {
           left: 0,
           right: 0,
           zIndex: 2,
+          // Opaque, matching the gradient's own color at y=0 — without
+          // this, scrolled content (which has nothing stopping it from
+          // scrolling up underneath this row) shows through and visually
+          // collides with the icons instead of disappearing cleanly
+          // behind a solid bar.
+          backgroundColor: '#5B4DFF',
           paddingTop: insets.top,
           height: insets.top + DASHBOARD_ICON_ROW_H,
           flexDirection: 'row',
