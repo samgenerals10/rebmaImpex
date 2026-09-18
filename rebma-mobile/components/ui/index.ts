@@ -20,3 +20,5 @@ export { default as RatingBadge } from './RatingBadge';
 export { default as ProgressRing } from './ProgressRing';
 export { default as ProgressBar } from './ProgressBar';
 export { default as Tabs, type TabOption } from './Tabs';
+export { default as Toggle } from './Toggle';
+export { default as StatusCapsule } from './StatusCapsule';

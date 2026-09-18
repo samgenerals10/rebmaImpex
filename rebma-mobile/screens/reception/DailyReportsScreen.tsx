@@ -14,6 +14,7 @@ import Screen from '../../components/ui/Screen';
 import Card from '../../components/ui/Card';
 import Input from '../../components/ui/Input';
 import DataList, { type DataColumn } from '../../components/ui/DataList';
+import ProgressBar from '../../components/ui/ProgressBar';
 
 interface DeptRow {
   name: string;
@@ -130,9 +131,7 @@ export default function DailyReportsScreen() {
                     <Text style={{ fontFamily: t.font.medium, fontSize: t.type.body12.size, color: t.colors.textSecondary }}>{d.name}</Text>
                     <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body12.size, color: t.colors.textPrimary }}>{d.present}/{d.total}</Text>
                   </View>
-                  <View style={{ height: 8, borderRadius: 4, backgroundColor: t.colors.bgPage, overflow: 'hidden' }}>
-                    <View style={{ width: `${pct * 100}%`, height: '100%', borderRadius: 4, backgroundColor: t.colors.accent }} />
-                  </View>
+                  <ProgressBar value={pct * 100} showPercent={false} height={8} trackColor={t.colors.bgPage} />
                 </View>
               );
             })}

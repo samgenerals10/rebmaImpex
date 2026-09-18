@@ -1,14 +1,14 @@
 // rebma-mobile/screens/adminWarehouse/TrackingScreen.tsx
-// Ports: rebma-web/src/views/dispatch/TrackingView.tsx +
-// components/dispatch/DispatchMap.tsx's live Leaflet map — as a
-// driver-position LIST, not an embedded native map (D8). react-native-maps
-// and expo-maps both require a custom dev client on Expo SDK 56, and
-// Phase 7.0's plan already deferred all EAS/native-folder work to a later
-// "platform hardening" phase — pulling either in now would silently break
-// that boundary for one sub-tab. "Open in Maps" reuses the exact
-// Linking-based external-maps pattern DispatchHomeScreen.handleNavigate
-// already uses, just with coordinates (driver_locations has no address
-// field) instead of an address string.
+//
+// Real, live fleet position map (components/shared/FleetMap.tsx) — every
+// driver on one screen at once, for Risk/CEO/Management to actually
+// answer "where is every vehicle right now" — plus the original list
+// view kept alongside it (real value of its own: last-ping time, a
+// per-driver "Open in Maps" hand-off). Confirmed directly with the user
+// this is the real company-side need; the driver's own in-app navigation
+// was explicitly scoped back to a plain Maps hand-off
+// (DriverTripsScreen.tsx / DriverQuickActionsSheet.tsx) since that's all
+// drivers themselves need.
 import { useCallback, useEffect, useState } from 'react';
 import { View, Text, Linking, Alert } from 'react-native';
 import { MapPin } from 'lucide-react-native';
@@ -18,6 +18,8 @@ import Screen from '../../components/ui/Screen';
 import DataList, { type DataColumn } from '../../components/ui/DataList';
 import Badge from '../../components/ui/Badge';
 import Button from '../../components/ui/Button';
+import Tabs from '../../components/ui/Tabs';
+import FleetMap from '../../components/shared/FleetMap';
 
 interface DriverRow {
   id: string;
@@ -49,6 +51,7 @@ function timeAgo(iso: string | null) {
 
 export default function TrackingScreen() {
   const t = useTheme();
+  const [view, setView] = useState<'map' | 'list'>('map');
   const [drivers, setDrivers] = useState<Combined[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -113,17 +116,30 @@ export default function TrackingScreen() {
   ];
 
   return (
-    <Screen refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }}>
-      <DataList
-        columns={columns}
-        data={drivers}
-        rowKey={(d) => d.id}
-        loading={loading}
-        emptyTitle="No drivers on file"
-        renderActions={(d) => (
-          <Button label="Open in Maps" size="sm" icon={<MapPin size={12} color="#fff" />} onPress={() => openInMaps(d)} disabled={d.latitude == null} />
-        )}
-      />
+    <Screen refreshing={view === 'list' ? refreshing : false} onRefresh={view === 'list' ? () => { setRefreshing(true); load(); } : undefined} scroll={view === 'list'}>
+      <View style={{ marginBottom: t.spacing.lg }}>
+        <Tabs
+          variant="segmented"
+          value={view}
+          onChange={(v) => setView(v as 'map' | 'list')}
+          options={[{ value: 'map', label: 'Live Map' }, { value: 'list', label: 'Driver List' }]}
+        />
+      </View>
+
+      {view === 'map' ? (
+        <FleetMap />
+      ) : (
+        <DataList
+          columns={columns}
+          data={drivers}
+          rowKey={(d) => d.id}
+          loading={loading}
+          emptyTitle="No drivers on file"
+          renderActions={(d) => (
+            <Button label="Open in Maps" size="sm" icon={<MapPin size={12} color="#fff" />} onPress={() => openInMaps(d)} disabled={d.latitude == null} />
+          )}
+        />
+      )}
     </Screen>
   );
 }

@@ -32,6 +32,8 @@ import Button from '../../components/ui/Button';
 import SearchablePicker from '../../components/ui/SearchablePicker';
 import DataList, { type DataColumn } from '../../components/ui/DataList';
 import Sheet, { SheetSection } from '../../components/ui/Sheet';
+import ProgressBar from '../../components/ui/ProgressBar';
+import Tabs from '../../components/ui/Tabs';
 import { useAuthStore } from '../../store/authStore';
 
 const DEPARTMENTS = ['Admin & Warehouse', 'Finance', 'HR', 'Marketing', 'Reception', 'Production', 'Management', 'Risk'];
@@ -447,13 +449,15 @@ export default function StaffScreen() {
               </View>
             </SheetSection>
 
-            <View style={{ flexDirection: 'row', gap: t.spacing.xs }}>
-              {(['attendance', 'leave', 'performance'] as const).map((tab) => (
-                <Pressable key={tab} onPress={() => setProfileTab(tab)} style={{ paddingVertical: 6, paddingHorizontal: 12, borderRadius: t.radius.pill, backgroundColor: profileTab === tab ? t.colors.accent : t.colors.bgCard, borderWidth: 1, borderColor: profileTab === tab ? t.colors.accent : t.colors.border }}>
-                  <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.meta11.size, color: profileTab === tab ? t.colors.onAccent : t.colors.textSecondary, textTransform: 'capitalize' }}>{tab}</Text>
-                </Pressable>
-              ))}
-            </View>
+            <Tabs
+              variant="chips"
+              value={profileTab}
+              onChange={(v) => setProfileTab(v as 'attendance' | 'leave' | 'performance')}
+              options={(['attendance', 'leave', 'performance'] as const).map((tab) => ({
+                value: tab,
+                label: tab.charAt(0).toUpperCase() + tab.slice(1),
+              }))}
+            />
 
             {profileTab === 'attendance' && (
               <DataList
@@ -494,9 +498,7 @@ export default function StaffScreen() {
                         <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta11.size, color: t.colors.textSecondary }}>{m.label}{m.real ? ' (from attendance)' : ''}</Text>
                         <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.meta11.size, color: t.colors.textPrimary }}>{m.score !== null ? `${m.score}%` : 'Not yet reviewed'}</Text>
                       </View>
-                      <View style={{ height: 5, borderRadius: 3, backgroundColor: t.colors.bgPage, overflow: 'hidden' }}>
-                        <View style={{ height: '100%', width: `${m.score ?? 0}%`, backgroundColor: t.colors.accent, borderRadius: 3 }} />
-                      </View>
+                      <ProgressBar value={m.score ?? 0} showPercent={false} height={5} trackColor={t.colors.bgPage} />
                     </View>
                   ))}
                 </Card>

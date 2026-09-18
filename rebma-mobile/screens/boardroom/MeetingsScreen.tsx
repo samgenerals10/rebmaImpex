@@ -1,18 +1,26 @@
 // rebma-mobile/screens/boardroom/MeetingsScreen.tsx
-// Ports: rebma-web/src/views/BoardroomView.tsx's Meetings branch (lines
-// 528-661) — D81, the heaviest screen this phase. Mirrors meetingsApi's
-// exact write shapes (apiClient.ts:2434-2506), not a re-derivation:
+// Ports: rebma-web/src/views/BoardroomView.tsx's Meetings branch — D81.
+// Mirrors meetingsApi's exact write shapes (apiClient.ts:2434-2506):
 // scheduleMeeting (meetings insert, meeting_attendees bulk insert with
-// organizer auto-ACCEPTED, a notifications row per invitee matching
-// messenger.notifyUsers' shape exactly), updateRsvp, markJoined (joined_at
-// + meetings.status -> IN_PROGRESS). Join opens the meeting's own dynamic
-// Jitsi room via JitsiCallSheet (D76/D82). The separate meetingsList mock
-// (App.tsx:758) is not ported (D78/D81) — reads live meetings/
-// meeting_attendees exclusively, matching the real desktop Meetings tab.
-// No realtime (D80) — polls every 8s while mounted.
+// organizer auto-ACCEPTED, a notifications row per invitee), updateRsvp,
+// markJoined (joined_at + meetings.status -> IN_PROGRESS).
+//
+// Restyled to the reference the user gave (a "New meeting" / "Join
+// meeting" action-card pair, a Today/Scheduled list of meeting cards
+// each with a time range and a pill Join/Start button) — the layout and
+// component shapes match that reference; the actual visual design
+// (colors, type, radius) stays this app's own theme, not the
+// reference's own branding, matching what was asked: use it to
+// understand the shape, not to copy its skin.
+//
+// Join opens GroupCallSheet — real device-camera/mic mesh calling, no
+// Jitsi. "New Meeting" is a genuine instant meeting (Meet Now): creates
+// the meeting record and opens the call immediately, no scheduling step.
+// "Join Meeting" looks a meeting up by its id/room code and joins it
+// directly, without needing it in your own list first.
 import { useCallback, useEffect, useState } from 'react';
-import { View, Text, Alert } from 'react-native';
-import { Calendar, Clock, Check, X as XIcon, Phone, Plus } from 'lucide-react-native';
+import { View, Text, Alert, Pressable } from 'react-native';
+import { Calendar, Clock, Check, X as XIcon, Video, Plus, LogIn } from 'lucide-react-native';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuthStore } from '../../store/authStore';
 import { useTheme } from '../../theme/ThemeProvider';
@@ -24,7 +32,8 @@ import Button from '../../components/ui/Button';
 import Input, { Field } from '../../components/ui/Input';
 import Sheet, { SheetSection } from '../../components/ui/Sheet';
 import EmptyState from '../../components/ui/EmptyState';
-import JitsiCallSheet from '../../components/shared/JitsiCallSheet';
+import Tabs from '../../components/ui/Tabs';
+import GroupCallSheet from '../../components/shared/GroupCallSheet';
 
 function slugRoom(prefix: string) {
   return `Rebma-${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
@@ -41,6 +50,12 @@ const STATUS_TONE: Record<string, StatusTone> = {
   SCHEDULED: 'info', IN_PROGRESS: 'success', COMPLETED: 'muted', CANCELLED: 'danger',
 };
 
+function isToday(iso: string) {
+  const d = new Date(iso);
+  const now = new Date();
+  return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+}
+
 export default function MeetingsScreen() {
   const t = useTheme();
   const { profile } = useAuthStore();
@@ -49,7 +64,8 @@ export default function MeetingsScreen() {
   const [attendeeProfiles, setAttendeeProfiles] = useState<AttendeeProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [activeCall, setActiveCall] = useState<{ room: string; title: string } | null>(null);
+  const [activeCall, setActiveCall] = useState<{ room: string; title: string; meetingId: string } | null>(null);
+  const [tab, setTab] = useState<'today' | 'scheduled'>('today');
 
   const [showForm, setShowForm] = useState(false);
   const [title, setTitle] = useState('');
@@ -58,6 +74,10 @@ export default function MeetingsScreen() {
   const [duration, setDuration] = useState('30');
   const [selectedAttendeeIds, setSelectedAttendeeIds] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
+
+  const [showJoinByCode, setShowJoinByCode] = useState(false);
+  const [joinCode, setJoinCode] = useState('');
+  const [joiningByCode, setJoiningByCode] = useState(false);
 
   const loadMeetings = useCallback(async () => {
     if (!myId) return;
@@ -88,6 +108,17 @@ export default function MeetingsScreen() {
 
   const toggleAttendee = (id: string) => setSelectedAttendeeIds((prev) => (prev.includes(id) ? prev.filter((a) => a !== id) : [...prev, id]));
 
+  const notifyInvitees = async (meetingId: string, meetingTitle: string, scheduledAt: string, invitees: string[]) => {
+    if (invitees.length === 0) return;
+    const { data: { user } } = await supabase.auth.getUser();
+    await supabase.from('notifications').insert(invitees.map((uid) => ({
+      recipient_id: uid, sender_id: user?.id ?? null, sender_name: user?.email ?? null,
+      title: `${profile?.fullName || 'Organizer'} invited you to "${meetingTitle}"`,
+      message: `Scheduled ${new Date(scheduledAt).toLocaleString()}`,
+      type: 'meeting_invite', action_url: meetingId, read: false, created_at: new Date().toISOString(),
+    })));
+  };
+
   const scheduleMeeting = async () => {
     if (!title.trim() || !date || !time) { Alert.alert('Please fill out all meeting details.'); return; }
     if (submitting) return;
@@ -105,16 +136,7 @@ export default function MeetingsScreen() {
       await supabase.from('meeting_attendees').insert(allAttendees.map((uid) => ({
         meeting_id: meeting.id, user_id: uid, rsvp_status: uid === myId ? 'ACCEPTED' : 'INVITED',
       })));
-      const invitees = selectedAttendeeIds.filter((id) => id !== myId);
-      if (invitees.length > 0) {
-        const { data: { user } } = await supabase.auth.getUser();
-        await supabase.from('notifications').insert(invitees.map((uid) => ({
-          recipient_id: uid, sender_id: user?.id ?? null, sender_name: user?.email ?? null,
-          title: `${profile?.fullName || 'Organizer'} invited you to "${title.trim()}"`,
-          message: `Scheduled ${new Date(scheduledAt).toLocaleString()}`,
-          type: 'meeting_invite', action_url: meeting.id, read: false, created_at: new Date().toISOString(),
-        })));
-      }
+      await notifyInvitees(meeting.id, title.trim(), scheduledAt, selectedAttendeeIds.filter((id) => id !== myId));
       setShowForm(false);
       setTitle(''); setDate(''); setTime(''); setDuration('30'); setSelectedAttendeeIds([]);
       await loadMeetings();
@@ -122,6 +144,48 @@ export default function MeetingsScreen() {
       Alert.alert('Failed', e.message || 'Could not schedule meeting.');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  // "New meeting" (Meet Now) — the reference's primary action card:
+  // starts a real meeting immediately, no scheduling step, no attendee
+  // picker. Room + a live meetings row are still created for real (so
+  // Join History / attendance / in-call chat all work the same as a
+  // scheduled meeting) — it just skips straight to IN_PROGRESS.
+  const startInstantMeeting = async () => {
+    const room = slugRoom('Now');
+    const { data: created, error } = await supabase.from('meetings').insert({
+      title: 'Quick Meeting', description: '', scheduled_at: new Date().toISOString(), duration_minutes: 30,
+      organizer_id: myId, jitsi_room: room, status: 'IN_PROGRESS',
+    }).select();
+    if (error || !created) { Alert.alert('Failed', error?.message || 'Could not start the meeting.'); return; }
+    const meeting = created[0];
+    await supabase.from('meeting_attendees').insert({ meeting_id: meeting.id, user_id: myId, rsvp_status: 'ACCEPTED', joined_at: new Date().toISOString() });
+    setActiveCall({ room, title: meeting.title, meetingId: meeting.id });
+    loadMeetings();
+  };
+
+  // "Join meeting" (the reference's second action card) — join a
+  // meeting by its id or room code directly, without it needing to
+  // already be in your own attendee list (mirrors how a Teams meeting
+  // link/code works — the code itself is the invite).
+  const joinByCode = async () => {
+    const code = joinCode.trim();
+    if (!code) return;
+    setJoiningByCode(true);
+    try {
+      const { data } = await supabase.from('meetings').select('*').or(`id.eq.${code},jitsi_room.eq.${code}`).maybeSingle();
+      if (!data) { Alert.alert('Not found', "No meeting matches that code — check it and try again."); return; }
+      const { data: existing } = await supabase.from('meeting_attendees').select('user_id').eq('meeting_id', data.id).eq('user_id', myId).maybeSingle();
+      if (!existing) await supabase.from('meeting_attendees').insert({ meeting_id: data.id, user_id: myId, rsvp_status: 'ACCEPTED', joined_at: new Date().toISOString() });
+      else await supabase.from('meeting_attendees').update({ joined_at: new Date().toISOString() }).eq('meeting_id', data.id).eq('user_id', myId);
+      await supabase.from('meetings').update({ status: 'IN_PROGRESS' }).eq('id', data.id).eq('status', 'SCHEDULED');
+      setShowJoinByCode(false);
+      setJoinCode('');
+      setActiveCall({ room: data.jitsi_room, title: data.title, meetingId: data.id });
+      loadMeetings();
+    } finally {
+      setJoiningByCode(false);
     }
   };
 
@@ -133,58 +197,95 @@ export default function MeetingsScreen() {
   const handleJoin = async (mtg: Meeting) => {
     await supabase.from('meeting_attendees').update({ joined_at: new Date().toISOString() }).eq('meeting_id', mtg.id).eq('user_id', myId);
     await supabase.from('meetings').update({ status: 'IN_PROGRESS' }).eq('id', mtg.id).eq('status', 'SCHEDULED');
-    setActiveCall({ room: mtg.jitsi_room, title: mtg.title });
+    setActiveCall({ room: mtg.jitsi_room, title: mtg.title, meetingId: mtg.id });
     await loadMeetings();
   };
+
+  const visibleMeetings = meetings.filter((m) => (tab === 'today' ? isToday(m.scheduled_at) : !isToday(m.scheduled_at)));
 
   return (
     <Screen refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }}>
       <View style={{ gap: t.spacing.xl }}>
-        <Button label="Organize Meeting" icon={<Plus size={14} color="#fff" />} onPress={() => setShowForm(true)} />
+        <View style={{ flexDirection: 'row', gap: t.spacing.md }}>
+          <Pressable
+            onPress={startInstantMeeting}
+            style={{ flex: 1, backgroundColor: t.colors.accent, borderRadius: t.radius.lg, padding: t.spacing.lg, gap: t.spacing.sm, alignItems: 'flex-start', ...t.shadow('card') }}
+          >
+            <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.22)', alignItems: 'center', justifyContent: 'center' }}>
+              <Video size={17} color="#fff" />
+            </View>
+            <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: '#fff' }}>New Meeting</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => setShowJoinByCode(true)}
+            style={{ flex: 1, backgroundColor: t.colors.bgCard, borderRadius: t.radius.lg, padding: t.spacing.lg, gap: t.spacing.sm, alignItems: 'flex-start', borderWidth: 1, borderColor: t.colors.border }}
+          >
+            <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: t.colors.accentSoft, alignItems: 'center', justifyContent: 'center' }}>
+              <Plus size={17} color={t.colors.accent} />
+            </View>
+            <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary }}>Join Meeting</Text>
+          </Pressable>
+        </View>
+
+        <Button label="Schedule a Meeting" variant="ghost" icon={<Calendar size={14} color={t.colors.accent} />} onPress={() => setShowForm(true)} />
+
+        <Tabs
+          variant="segmented"
+          value={tab}
+          onChange={(v) => setTab(v as 'today' | 'scheduled')}
+          options={[{ value: 'today', label: 'Today' }, { value: 'scheduled', label: 'Scheduled' }]}
+        />
 
         <View>
-          <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary, marginBottom: t.spacing.md }}>My Meetings</Text>
-          {!loading && meetings.length === 0 ? (
-            <EmptyState icon={<Calendar size={20} color={t.colors.textMuted} />} title="No meetings scheduled" description="Nothing on the board calendar yet." />
+          {!loading && visibleMeetings.length === 0 ? (
+            <EmptyState icon={<Calendar size={20} color={t.colors.textMuted} />} title={tab === 'today' ? 'Nothing today' : 'No meetings scheduled'} description="Nothing on the board calendar yet." />
           ) : (
             <View style={{ gap: t.spacing.sm }}>
-              {meetings.map((mtg) => (
+              {visibleMeetings.map((mtg) => (
                 <Card key={mtg.id}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm, marginBottom: t.spacing.xs }}>
-                    <Badge tone={STATUS_TONE[mtg.status] || 'muted'} label={mtg.status.replace(/_/g, ' ')} size="xs" />
-                    <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body12.size, color: t.colors.textPrimary, flex: 1 }} numberOfLines={1}>{mtg.title}</Text>
-                  </View>
-                  <View style={{ flexDirection: 'row', gap: t.spacing.md, marginBottom: t.spacing.sm }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                      <Calendar size={12} color={t.colors.textMuted} />
-                      <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted }}>{new Date(mtg.scheduled_at).toLocaleDateString()}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+                    <View style={{ flex: 1 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm, marginBottom: 4 }}>
+                        <Badge tone={STATUS_TONE[mtg.status] || 'muted'} label={mtg.status.replace(/_/g, ' ')} size="xs" />
+                      </View>
+                      <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary }} numberOfLines={1}>{mtg.title}</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 }}>
+                        <Clock size={12} color={t.colors.textMuted} />
+                        <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta11.size, color: t.colors.textMuted }}>
+                          {new Date(mtg.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · {mtg.duration_minutes} min
+                        </Text>
+                      </View>
+                      {mtg.myRsvp && mtg.myRsvp !== 'ACCEPTED' && (
+                        <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted, marginTop: 4 }}>
+                          Your RSVP: <Text style={{ fontFamily: t.font.bold, color: t.colors.textPrimary }}>{mtg.myRsvp}</Text>
+                        </Text>
+                      )}
                     </View>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                      <Clock size={12} color={t.colors.textMuted} />
-                      <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted }}>
-                        {new Date(mtg.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · {mtg.duration_minutes}min
-                      </Text>
+                    <View style={{ gap: t.spacing.xs, alignItems: 'flex-end' }}>
+                      {mtg.myRsvp === 'INVITED' ? (
+                        <View style={{ flexDirection: 'row', gap: 6 }}>
+                          <Pressable onPress={() => handleRsvp(mtg.id, 'ACCEPTED')} style={{ padding: 6, borderRadius: t.radius.pill, backgroundColor: t.colors.accentSoft }}>
+                            <Check size={14} color={t.colors.accent} />
+                          </Pressable>
+                          <Pressable onPress={() => handleRsvp(mtg.id, 'DECLINED')} style={{ padding: 6, borderRadius: t.radius.pill, backgroundColor: t.colors.bgInput }}>
+                            <XIcon size={14} color={t.colors.textMuted} />
+                          </Pressable>
+                        </View>
+                      ) : mtg.status !== 'CANCELLED' && mtg.status !== 'COMPLETED' ? (
+                        <Pressable
+                          onPress={() => handleJoin(mtg)}
+                          style={{ paddingHorizontal: t.spacing.lg, paddingVertical: t.spacing.sm, borderRadius: t.radius.pill, backgroundColor: mtg.status === 'IN_PROGRESS' ? t.colors.accentSoft : t.colors.accent }}
+                        >
+                          <Text style={{ fontFamily: t.font.bold, fontSize: t.type.meta11.size, color: mtg.status === 'IN_PROGRESS' ? t.colors.accent : t.colors.onAccent }}>
+                            {mtg.status === 'IN_PROGRESS' ? 'Join' : 'Start'}
+                          </Text>
+                        </Pressable>
+                      ) : null}
                     </View>
                   </View>
-                  {mtg.myRsvp && (
-                    <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted, marginBottom: t.spacing.sm }}>
-                      Your RSVP: <Text style={{ fontFamily: t.font.bold, color: t.colors.textPrimary }}>{mtg.myRsvp}</Text>
-                    </Text>
-                  )}
                   {mtg.recap_notes && (
-                    <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta11.size, color: t.colors.textSecondary, marginBottom: t.spacing.sm }} numberOfLines={2}>Recap: {mtg.recap_notes}</Text>
+                    <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta11.size, color: t.colors.textSecondary, marginTop: t.spacing.sm }} numberOfLines={2}>Recap: {mtg.recap_notes}</Text>
                   )}
-                  <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
-                    {mtg.myRsvp === 'INVITED' && (
-                      <>
-                        <Button label="Accept" size="sm" icon={<Check size={12} color="#fff" />} onPress={() => handleRsvp(mtg.id, 'ACCEPTED')} />
-                        <Button label="Decline" size="sm" variant="danger" icon={<XIcon size={12} color="#fff" />} onPress={() => handleRsvp(mtg.id, 'DECLINED')} />
-                      </>
-                    )}
-                    {mtg.status !== 'CANCELLED' && mtg.status !== 'COMPLETED' && (
-                      <Button label="Join" size="sm" icon={<Phone size={12} color="#fff" />} onPress={() => handleJoin(mtg)} />
-                    )}
-                  </View>
                 </Card>
               ))}
             </View>
@@ -192,10 +293,16 @@ export default function MeetingsScreen() {
         </View>
       </View>
 
+      <Sheet open={showJoinByCode} onClose={() => setShowJoinByCode(false)} title="Join Meeting" side="bottom"
+        footer={<Button label={joiningByCode ? 'Joining…' : 'Join'} icon={<LogIn size={14} color="#fff" />} onPress={joinByCode} loading={joiningByCode} disabled={joiningByCode || !joinCode.trim()} fullWidth />}
+      >
+        <Field label="Meeting ID or Code"><Input value={joinCode} onChangeText={setJoinCode} placeholder="Paste or type the meeting code" autoCapitalize="none" /></Field>
+      </Sheet>
+
       <Sheet
         open={showForm}
         onClose={() => setShowForm(false)}
-        title="Organize Meeting"
+        title="Schedule a Meeting"
         side="bottom"
         maxHeight={720}
         footer={<Button label={submitting ? 'Scheduling…' : 'Schedule Meeting & Notify Attendees'} onPress={scheduleMeeting} loading={submitting} disabled={submitting} fullWidth />}
@@ -223,7 +330,15 @@ export default function MeetingsScreen() {
         </SheetSection>
       </Sheet>
 
-      {activeCall && <JitsiCallSheet room={activeCall.room} title={activeCall.title} kind="video" onClose={() => setActiveCall(null)} />}
+      {activeCall && (
+        <GroupCallSheet
+          room={activeCall.room}
+          title={activeCall.title}
+          meetingId={activeCall.meetingId}
+          isHost={meetings.find((m) => m.id === activeCall.meetingId)?.organizer_id === myId}
+          onClose={() => setActiveCall(null)}
+        />
+      )}
     </Screen>
   );
 }

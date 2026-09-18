@@ -87,6 +87,7 @@ import StockManagementScreen from '../screens/management/StockManagementScreen';
 import MgmtDeptActivityScreen from '../screens/management/DeptActivityScreen';
 import MgmtPerformanceAlertsScreen from '../screens/management/PerformanceAlertsScreen';
 import MgmtSpreadsheetsScreen from '../screens/management/SpreadsheetsScreen';
+import MgmtTrackingScreen from '../screens/management/TrackingScreen';
 import HrOverviewScreen from '../screens/hr/OverviewScreen';
 import HrStaffScreen from '../screens/hr/StaffScreen';
 import HrAttendanceScreen from '../screens/hr/AttendanceScreen';
@@ -400,6 +401,7 @@ export const DEPARTMENT_REGISTRY: Record<string, DepartmentEntry> = {
       { id: 'Payroll', label: 'Payroll Overview', icon: Banknote },
       { id: 'MgmtAnalytics', label: 'Analytics', icon: ChartColumn },
       { id: 'StockManagement', label: 'Stock Management', icon: Layers },
+      { id: 'Tracking', label: 'GPS Tracking', icon: MapPin },
       { id: 'DeptActivity', label: 'Dept Activity', icon: Activity },
       { id: 'PerformanceAlerts', label: 'Performance Alerts', icon: TriangleAlert },
       { id: 'Spreadsheets', label: 'Spreadsheets', icon: FileSpreadsheet },
@@ -407,6 +409,7 @@ export const DEPARTMENT_REGISTRY: Record<string, DepartmentEntry> = {
     sections: [
       { title: 'Executive Approvals', tabIds: ['CargoApproval', 'CreditApproval', 'SetPrices', 'StockManagement'] },
       { title: 'Treasury & Audit History', tabIds: ['Transactions', 'Invoices', 'Receipts', 'Ledger', 'Payroll'] },
+      { title: 'Fleet & Delivery Tracking', tabIds: ['Tracking'] },
       { title: 'Executive Analytics & Performance', tabIds: ['MgmtAnalytics', 'DeptActivity', 'PerformanceAlerts', 'Spreadsheets'] },
     ],
     quickActions: [
@@ -426,6 +429,7 @@ export const DEPARTMENT_REGISTRY: Record<string, DepartmentEntry> = {
       Payroll: MgmtPayrollScreen,
       MgmtAnalytics: MgmtAnalyticsScreen,
       StockManagement: StockManagementScreen,
+      Tracking: MgmtTrackingScreen,
       DeptActivity: MgmtDeptActivityScreen,
       PerformanceAlerts: MgmtPerformanceAlertsScreen,
       Spreadsheets: MgmtSpreadsheetsScreen,
@@ -627,7 +631,11 @@ export function getDepartmentEntry(code: string): DepartmentEntry {
 
 /** Departments a given user can switch into — CEO/admin see all; everyone else sees only their own. Mirrors Sidebar.tsx's availableDepts filter. */
 export function availableDepartments(userDepartment: string, isAdmin: boolean): DepartmentEntry[] {
-  const all = Object.values(DEPARTMENT_REGISTRY).filter(d => d.code !== 'SETTINGS');
+  // BOARDROOM is folded into the Viber tab (not a switchable department
+  // any more, same treatment SETTINGS already had) — its registry entry
+  // stays as-is so ModuleLauncher/getDepartmentEntry can still render its
+  // 4 screens from inside ViberHomeScreen's "Boardroom" view.
+  const all = Object.values(DEPARTMENT_REGISTRY).filter(d => d.code !== 'SETTINGS' && d.code !== 'BOARDROOM');
   if (isAdmin) return all;
   return all.filter(d => d.code === userDepartment);
 }

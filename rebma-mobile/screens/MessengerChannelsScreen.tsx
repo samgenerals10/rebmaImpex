@@ -6,11 +6,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, Text, Pressable, FlatList, Alert } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { MessageSquare, Plus, Search, Users, X, Check, BellOff, Bell, MoreVertical, Pin, Archive, EyeOff, Trash2 } from 'lucide-react-native';
+import { MessageSquare, Plus, Search, Users, X, Check, BellOff, Bell, MoreVertical, Pin, Archive, EyeOff, Trash2, Video } from 'lucide-react-native';
 import { supabase } from '../lib/supabaseClient';
 import { messenger, type Channel } from '../lib/messenger';
 import { subscribeToLiveUsers, type PresencePayload } from '../lib/presence';
 import { getCeoSetting } from '../lib/ceoSetting';
+import { checkChatGate, sendChatInvite, fetchPendingInvitesToMe, respondToInvite, type IncomingInvite } from '../lib/chatAccess';
+import { UserPlus } from 'lucide-react-native';
 import { useAuthStore } from '../store/authStore';
 import { useTheme } from '../theme/ThemeProvider';
 import { usePresets } from '../theme/presets';
@@ -27,7 +29,7 @@ function initials(name: string) {
   return (name || '').split(' ').slice(0, 2).map((n) => n[0]).join('').toUpperCase();
 }
 
-export default function MessengerChannelsScreen({ navigation }: any) {
+export default function MessengerChannelsScreen({ navigation, onOpenBoardroom }: any) {
   const t = useTheme();
   const p = usePresets();
   const me = useAuthStore((s) => s.profile);
@@ -43,6 +45,9 @@ export default function MessengerChannelsScreen({ navigation }: any) {
   const [mutedChannelIds, setMutedChannelIds] = useState<Set<string>>(new Set());
   const [onlineIds, setOnlineIds] = useState<Set<string>>(new Set());
   const [groupPhotoUrls, setGroupPhotoUrls] = useState<Record<string, string>>({});
+  const [inviteGateFor, setInviteGateFor] = useState<{ contact: Profile; status?: 'pending' | 'denied' } | null>(null);
+  const [pendingInvites, setPendingInvites] = useState<IncomingInvite[]>([]);
+  const [invitesSheetOpen, setInvitesSheetOpen] = useState(false);
   // Phase 11.6 — pin/archive/filter/global search.
   const [pinnedChannelIds, setPinnedChannelIds] = useState<Set<string>>(new Set());
   const [archivedChannelIds, setArchivedChannelIds] = useState<Set<string>>(new Set());
@@ -212,14 +217,65 @@ export default function MessengerChannelsScreen({ navigation }: any) {
     navigation.navigate('MessengerThread', { channelId: channel.id, channelType: channel.type, title, subtitle });
   };
 
+  // Cross-department DMs need an accepted invite first (lib/chatAccess.ts)
+  // — same-department chat and CEO/HR/Management/Risk stay free. Already
+  // has a channel? Skip the check, an accepted invite (or same-dept/
+  // free-tier status) is what got that channel created in the first place.
   const openDm = async (contact: Profile) => {
-    let ch = dmChannelByUser[contact.id];
-    if (!ch) {
-      ch = await messenger.getOrCreateDmChannel(myId, contact.id);
-      setDmChannelByUser((prev) => ({ ...prev, [contact.id]: ch }));
-      setChannels((prev) => (prev.some((c) => c.id === ch.id) ? prev : [...prev, ch]));
+    const existing = dmChannelByUser[contact.id];
+    if (existing) { openThread(existing, contact.fullName, contact.department); return; }
+    if (!me) return;
+
+    const gate = await checkChatGate(myId, me.department, contact.id);
+    if (!gate.allowed) {
+      if (gate.reason === 'blocked_by_them') { Alert.alert("Can't message this person", 'This person has blocked messages from you.'); return; }
+      if (gate.reason === 'blocked_by_me') { Alert.alert("You've blocked this person", 'Unblock them from Chat Settings to message them again.'); return; }
+      setInviteGateFor({ contact, status: gate.existingInviteStatus });
+      return;
     }
+
+    const ch = await messenger.getOrCreateDmChannel(myId, contact.id);
+    setDmChannelByUser((prev) => ({ ...prev, [contact.id]: ch }));
+    setChannels((prev) => (prev.some((c) => c.id === ch.id) ? prev : [...prev, ch]));
     openThread(ch, contact.fullName, contact.department);
+  };
+
+  const sendInvite = async () => {
+    if (!inviteGateFor || !me) return;
+    try {
+      await sendChatInvite(myId, inviteGateFor.contact.id);
+      await supabase.from('notifications').insert({
+        recipient_id: inviteGateFor.contact.id, title: 'New chat invite',
+        message: `${me.fullName} wants to start a chat with you.`, type: 'chat_invite', read: false, created_at: new Date().toISOString(),
+      });
+      Alert.alert('Invite sent', `${inviteGateFor.contact.fullName} needs to accept before you can chat.`);
+    } catch (e: any) {
+      Alert.alert('Could not send invite', e.message);
+    } finally {
+      setInviteGateFor(null);
+    }
+  };
+
+  const loadPendingInvites = useCallback(() => {
+    if (!myId) return;
+    fetchPendingInvitesToMe(myId).then(setPendingInvites);
+  }, [myId]);
+
+  useEffect(() => { loadPendingInvites(); }, [loadPendingInvites]);
+  useFocusEffect(useCallback(() => { loadPendingInvites(); }, [loadPendingInvites]));
+
+  const respondInvite = async (invite: IncomingInvite, accept: boolean) => {
+    try {
+      await respondToInvite(invite.id, accept);
+      setPendingInvites((prev) => prev.filter((i) => i.id !== invite.id));
+      if (accept) {
+        const ch = await messenger.getOrCreateDmChannel(myId, invite.from_user_id);
+        setDmChannelByUser((prev) => ({ ...prev, [invite.from_user_id]: ch }));
+        setChannels((prev) => (prev.some((c) => c.id === ch.id) ? prev : [...prev, ch]));
+      }
+    } catch (e: any) {
+      Alert.alert('Failed', e.message);
+    }
   };
 
   const toggleGroupMember = (id: string) => {
@@ -272,22 +328,45 @@ export default function MessengerChannelsScreen({ navigation }: any) {
           <MessageSquare size={20} color={t.colors.textPrimary} />
           <Text style={p.pageTitle}>Messenger</Text>
         </View>
-        <Pressable onPress={() => setShowNewGroup(true)} hitSlop={8} style={{ padding: 6 }}>
-          <Plus size={22} color={t.colors.accent} />
-        </Pressable>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+          <Pressable onPress={() => setInvitesSheetOpen(true)} hitSlop={8} style={{ padding: 6, position: 'relative' }}>
+            <UserPlus size={20} color={pendingInvites.length > 0 ? t.colors.accent : t.colors.textMuted} />
+            {pendingInvites.length > 0 && (
+              <View style={{ position: 'absolute', top: 2, right: 2, minWidth: 14, height: 14, borderRadius: 7, backgroundColor: t.colors.status.danger.text, alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ fontSize: 9, fontFamily: t.font.bold, color: '#fff' }}>{pendingInvites.length}</Text>
+              </View>
+            )}
+          </Pressable>
+          <Pressable onPress={() => setShowNewGroup(true)} hitSlop={8} style={{ padding: 6 }}>
+            <Plus size={22} color={t.colors.accent} />
+          </Pressable>
+        </View>
       </View>
 
       <View style={{ paddingHorizontal: t.spacing.lg, paddingVertical: t.spacing.md }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm }}>
-          <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm, backgroundColor: t.colors.bgInput, borderRadius: t.radius.pill, paddingHorizontal: t.spacing.lg, paddingVertical: t.spacing.smd }}>
-            <Search size={16} color={t.colors.textMuted} />
+          <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: t.spacing.xs, backgroundColor: t.colors.bgInput, borderRadius: t.radius.pill, paddingHorizontal: t.spacing.md, paddingVertical: t.spacing.smd }}>
+            <Search size={15} color={t.colors.textMuted} />
             <Input
               value={search}
               onChangeText={setSearch}
-              placeholder="Search people, department, email…"
-              style={{ flex: 1, backgroundColor: 'transparent', borderWidth: 0, paddingHorizontal: 0, paddingVertical: 0 }}
+              placeholder="Search…"
+              style={{ flex: 1, backgroundColor: 'transparent', borderWidth: 0, paddingHorizontal: 0, paddingVertical: 0, fontSize: t.type.meta11.size }}
             />
           </View>
+          {onOpenBoardroom && (
+            <Pressable
+              onPress={onOpenBoardroom}
+              style={{
+                flexDirection: 'row', alignItems: 'center', gap: 5,
+                paddingHorizontal: t.spacing.md, paddingVertical: t.spacing.smd, borderRadius: t.radius.pill,
+                backgroundColor: t.colors.accentSoft, borderWidth: 1, borderColor: t.colors.accentSoft,
+              }}
+            >
+              <Video size={14} color={t.colors.accent} />
+              <Text style={{ fontFamily: t.font.bold, fontSize: t.type.meta11.size, color: t.colors.accent }}>Boardroom</Text>
+            </Pressable>
+          )}
           <Pressable onPress={() => setShowGlobalSearch(true)} hitSlop={8} style={{ padding: 6 }} accessibilityLabel="Search all messages">
             <MessageSquare size={18} color={t.colors.textMuted} />
           </Pressable>
@@ -305,10 +384,13 @@ export default function MessengerChannelsScreen({ navigation }: any) {
         </View>
       </View>
 
-      <FlatList
-        data={[{ kind: 'spacer' as const }]}
-        keyExtractor={() => 'root'}
-        renderItem={() => (
+      {/* Was a FlatList with one fake "spacer" item whose renderItem drew
+          the whole list by hand (Everyone / Groups / People) — real rows
+          were never actually virtualized, it was only ever standing in
+          for a plain scrollable View, and having it inside <Screen>'s own
+          ScrollView triggered React Native's "VirtualizedLists should
+          never be nested inside plain ScrollViews" warning. A plain View
+          does exactly what this was already doing, with no warning. */}
           <View style={{ paddingHorizontal: t.spacing.lg, paddingBottom: t.spacing.xl }}>
             {globalChatEnabled && everyoneChannel && channelVisible(everyoneChannel.id) && (
               <Row
@@ -363,8 +445,6 @@ export default function MessengerChannelsScreen({ navigation }: any) {
               );
             })}
           </View>
-        )}
-      />
 
       <Sheet open={showNewGroup} onClose={() => setShowNewGroup(false)} title="New Group" side="bottom">
         <Input value={newGroupName} onChangeText={setNewGroupName} placeholder="Group name" style={{ marginBottom: t.spacing.md }} />
@@ -389,6 +469,58 @@ export default function MessengerChannelsScreen({ navigation }: any) {
           />
         </View>
         <Button label="Create Group" onPress={createGroup} loading={creatingGroup} disabled={!newGroupName.trim() || newGroupMembers.length === 0} fullWidth style={{ marginTop: t.spacing.md }} />
+      </Sheet>
+
+      {/* Crossing departments — a DM here needs an accepted invite first
+          (see lib/chatAccess.ts). Shown instead of opening the chat. */}
+      <Sheet open={!!inviteGateFor} onClose={() => setInviteGateFor(null)} title="Invite Needed" side="bottom">
+        {inviteGateFor && (
+          <View style={{ gap: t.spacing.md }}>
+            <View style={{ alignItems: 'center', gap: t.spacing.sm, paddingVertical: t.spacing.md }}>
+              <Avatar name={inviteGateFor.contact.fullName} size={56} />
+              <Text style={{ fontFamily: t.font.bold, fontSize: t.type.title18.size, color: t.colors.textPrimary }}>{inviteGateFor.contact.fullName}</Text>
+              <Text style={{ fontFamily: t.font.medium, fontSize: t.type.body14.size, color: t.colors.textMuted }}>{inviteGateFor.contact.department}</Text>
+            </View>
+            <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body14.size, color: t.colors.textSecondary, textAlign: 'center' }}>
+              {inviteGateFor.status === 'pending'
+                ? 'You already sent an invite — waiting for them to accept.'
+                : inviteGateFor.status === 'denied'
+                ? 'Your last invite was declined. You can send another one.'
+                : "This person is in a different department. You'll need to send a chat invite, and they'll need to accept it before you can message them."}
+            </Text>
+            {inviteGateFor.status !== 'pending' && (
+              <Button label="Send Invite" onPress={sendInvite} fullWidth />
+            )}
+          </View>
+        )}
+      </Sheet>
+
+      {/* Invites sent to me — nothing from a new cross-department sender
+          reaches me until I Accept here. */}
+      <Sheet open={invitesSheetOpen} onClose={() => setInvitesSheetOpen(false)} title="Chat Invites" side="bottom">
+        {pendingInvites.length === 0 ? (
+          <Text style={{ textAlign: 'center', fontFamily: t.font.regular, fontSize: t.type.body14.size, color: t.colors.textMuted, paddingVertical: t.spacing.xl }}>
+            No pending invites.
+          </Text>
+        ) : (
+          <View style={{ gap: t.spacing.md }}>
+            {pendingInvites.map((invite) => (
+              <View key={invite.id} style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm }}>
+                <Avatar name={invite.fromName} size={36} />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.body14.size, color: t.colors.textPrimary }}>{invite.fromName}</Text>
+                  <Text style={p.meta}>{invite.fromDepartment} · wants to chat</Text>
+                </View>
+                <Pressable onPress={() => respondInvite(invite, true)} style={{ padding: 6, borderRadius: t.radius.pill, backgroundColor: t.colors.accentSoft }}>
+                  <Check size={16} color={t.colors.accent} />
+                </Pressable>
+                <Pressable onPress={() => respondInvite(invite, false)} style={{ padding: 6, borderRadius: t.radius.pill, backgroundColor: t.colors.bgInput }}>
+                  <X size={16} color={t.colors.textMuted} />
+                </Pressable>
+              </View>
+            ))}
+          </View>
+        )}
       </Sheet>
 
       <Sheet open={!!rowMenuFor} onClose={() => setRowMenuFor(null)} title={rowMenuFor?.name || 'Everyone'} side="bottom">

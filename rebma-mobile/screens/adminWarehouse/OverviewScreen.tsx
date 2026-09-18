@@ -23,6 +23,7 @@ import { useTheme } from '../../theme/ThemeProvider';
 import { useUIStore } from '../../store/uiStore';
 import { getDepartmentEntry } from '../../navigation/departmentRegistry';
 import Screen from '../../components/ui/Screen';
+import { useCollapsibleHeader } from '../../hooks/useCollapsibleHeader';
 import Card from '../../components/ui/Card';
 import MetricCard from '../../components/ui/MetricCard';
 import BarChart from '../../components/ui/BarChart';
@@ -51,6 +52,7 @@ interface OrderRow {
 
 export default function OverviewScreen() {
   const t = useTheme();
+  const { scrollHandler } = useCollapsibleHeader();
   const navigation = useNavigation<any>();
   const activeDepartment = useUIStore((s) => s.activeDepartment);
   const dept = getDepartmentEntry(activeDepartment || 'ADMIN_WAREHOUSE');
@@ -98,7 +100,7 @@ export default function OverviewScreen() {
   };
 
   return (
-    <Screen refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }}>
+    <Screen refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} onScroll={scrollHandler} scrollEventThrottle={16}>
       <View style={{ gap: t.spacing.xl }}>
         <PendingApprovalsAlertCard department="ADMIN_WAREHOUSE" onNavigate={(tab) => navigation.navigate(tab)} />
 

@@ -19,6 +19,8 @@ import { useTheme } from '../../theme/ThemeProvider';
 export interface TabOption {
   value: string;
   label: string;
+  /** Shown as a small pill count on 'chips' only — the one capability SegmentedPillTabs had that this didn't, absorbed here so that component could retire. */
+  badge?: number;
 }
 
 interface Props {
@@ -67,6 +69,7 @@ export default function Tabs({ options, value, onChange, variant = 'segmented' }
               key={opt.value}
               onPress={() => onChange(opt.value)}
               style={{
+                flexDirection: 'row', alignItems: 'center', gap: 5,
                 paddingVertical: 8, paddingHorizontal: 16,
                 borderRadius: t.radius.pill,
                 backgroundColor: active ? t.colors.accent : (t.darkMode ? '#1E293B' : '#FFFFFF'),
@@ -78,6 +81,13 @@ export default function Tabs({ options, value, onChange, variant = 'segmented' }
               <Text style={{ fontFamily: active ? t.font.bold : t.font.medium, fontSize: t.type.body12.size, color: active ? t.colors.onAccent : t.colors.textSecondary }}>
                 {opt.label}
               </Text>
+              {opt.badge !== undefined && opt.badge > 0 && (
+                <View style={{ minWidth: 18, height: 18, borderRadius: 9, backgroundColor: active ? 'rgba(255,255,255,0.3)' : t.colors.accentSoft, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 }}>
+                  <Text style={{ fontFamily: t.font.bold, fontSize: 10, color: active ? t.colors.onAccent : t.colors.accent }}>
+                    {opt.badge > 99 ? '99+' : opt.badge}
+                  </Text>
+                </View>
+              )}
             </Pressable>
           );
         })}

@@ -5,7 +5,7 @@
 //   - Horizontal Segmented Pill Tabs for hub section filtering
 //   - Hero Card, 2x2 Metric Grid, Aczone Compact Data Cards
 import { useCallback, useEffect, useState } from 'react';
-import { View, Text, Pressable, Animated, RefreshControl } from 'react-native';
+import { View, Text, Pressable } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { ShoppingCart, Users, TrendingUp, CreditCard, Clock, Package, Tag, ArrowRight } from 'lucide-react-native';
 import { supabase } from '../../lib/supabaseClient';
@@ -13,11 +13,12 @@ import { outstandingCreditFor, type OrderLike, type CustomerLike } from '../../u
 import { useTheme } from '../../theme/ThemeProvider';
 import { useUIStore } from '../../store/uiStore';
 import { getDepartmentEntry } from '../../navigation/departmentRegistry';
+import Screen from '../../components/ui/Screen';
 import Card from '../../components/ui/Card';
 import MetricCard from '../../components/ui/MetricCard';
 import ModuleLauncher from '../../components/chrome/ModuleLauncher';
 import SectionHeader from '../../components/ui/SectionHeader';
-import SegmentedPillTabs from '../../components/ui/SegmentedPillTabs';
+import Tabs from '../../components/ui/Tabs';
 import { useCollapsibleHeader } from '../../hooks/useCollapsibleHeader';
 
 interface OrderRow extends OrderLike {
@@ -30,11 +31,11 @@ interface ProductRow {
 }
 
 const HUB_TABS = [
-  { id: 'overview', label: 'Overview' },
-  { id: 'orders', label: 'Orders' },
-  { id: 'clients', label: 'Clients' },
-  { id: 'pricing', label: 'Pricing' },
-  { id: 'tools', label: 'All Tools' },
+  { value: 'overview', label: 'Overview' },
+  { value: 'orders', label: 'Orders' },
+  { value: 'clients', label: 'Clients' },
+  { value: 'pricing', label: 'Pricing' },
+  { value: 'tools', label: 'All Tools' },
 ];
 
 export default function OverviewScreen() {
@@ -73,19 +74,12 @@ export default function OverviewScreen() {
   const totalCredit = customers.reduce((s, c) => s + outstandingCreditFor(orders, c), 0);
 
   return (
-    <Animated.ScrollView
-      style={{ flex: 1, backgroundColor: t.colors.bgPage }}
-      contentContainerStyle={{ paddingBottom: 40 }}
+    <Screen
+      padded={false}
+      refreshing={refreshing}
+      onRefresh={() => { setRefreshing(true); load(); }}
       onScroll={scrollHandler}
       scrollEventThrottle={16}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={() => { setRefreshing(true); load(); }}
-          tintColor={t.colors.accent}
-          colors={[t.colors.accent]}
-        />
-      }
     >
       {/* ── Pill Tab Filter Bar ── */}
       <View
@@ -93,11 +87,14 @@ export default function OverviewScreen() {
           backgroundColor: t.colors.bgHeader,
           borderBottomWidth: 1,
           borderBottomColor: t.colors.border,
+          paddingHorizontal: t.spacing.lg,
+          paddingVertical: t.spacing.sm,
         }}
       >
-        <SegmentedPillTabs
-          tabs={HUB_TABS}
-          active={activeTab}
+        <Tabs
+          variant="chips"
+          options={HUB_TABS}
+          value={activeTab}
           onChange={setActiveTab}
         />
       </View>
@@ -268,6 +265,6 @@ export default function OverviewScreen() {
         {/* ── Grouped Action Hub ── */}
         <ModuleLauncher dept={dept} exclude={['Overview']} onSelect={(id) => navigation.navigate(id)} />
       </View>
-    </Animated.ScrollView>
+    </Screen>
   );
 }

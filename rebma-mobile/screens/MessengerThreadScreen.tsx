@@ -4,20 +4,22 @@
 // (attachments, reactions, threaded replies, read receipts, typing
 // indicator, realtime, edit/delete/pin/forward/star/copy/search-within-
 // conversation) for the channel the caller navigated in with.
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { View, Text, TextInput, Pressable, ScrollView, Alert, Image, Linking, Modal, Dimensions } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { useAudioRecorder, useAudioRecorderState, useAudioPlayer, useAudioPlayerStatus, AudioModule, RecordingPresets, setAudioModeAsync } from 'expo-audio';
+import { useVideoPlayer, VideoView } from 'expo-video';
 import {
-  Send, Paperclip, Smile, Reply, X, Check, CheckCheck, FileText,
+  Send, Paperclip, Smile, Reply, X, Check, CheckCheck, FileText, Camera,
   Pin, Star, Pencil, Trash2, Forward, Copy, MoreVertical, Search, Users, Bell, BellOff,
   Images, Mic, Square, Play, Pause, Download, Plus, Phone as PhoneIcon, Video, Clock,
 } from 'lucide-react-native';
 import { supabase } from '../lib/supabaseClient';
 import { messenger, type ChatMessage, type Channel } from '../lib/messenger';
-import { pickOrCaptureImageAsset, pickDocument, pickMultipleImageAssets, validateAttachment } from '../lib/media';
+import { pickOrCaptureImageAsset, pickOrCaptureMedia, pickDocument, pickMultipleImageAssets, validateAttachment } from '../lib/media';
 import { subscribeToLiveUsers, type PresencePayload } from '../lib/presence';
 import { getCeoSetting } from '../lib/ceoSetting';
+import { isBlockedEitherWay, blockUser, unblockUser, suspensionAllowed, isSuspendedByMe, suspendChannel, unsuspendChannel } from '../lib/chatAccess';
 import { useAuthStore } from '../store/authStore';
 import { useTheme } from '../theme/ThemeProvider';
 import { usePresets } from '../theme/presets';
@@ -26,7 +28,7 @@ import Sheet from '../components/ui/Sheet';
 import Avatar from '../components/ui/Avatar';
 import Button from '../components/ui/Button';
 import StickyActionBar from '../components/ui/StickyActionBar';
-import JitsiCallSheet from '../components/shared/JitsiCallSheet';
+import NativeCallSheet from '../components/shared/NativeCallSheet';
 
 const REACTION_EMOJIS = ['👍', '❤️', '😂', '🎉', '😮', '👏'];
 
@@ -52,6 +54,15 @@ export default function MessengerThreadScreen({ route, navigation }: any) {
   const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
   const [reactionPickerFor, setReactionPickerFor] = useState<string | null>(null);
   const [actionMenuFor, setActionMenuFor] = useState<ChatMessage | null>(null);
+  const [attachSheetOpen, setAttachSheetOpen] = useState(false);
+  const [threadMenuOpen, setThreadMenuOpen] = useState(false);
+  const [contactPhoto, setContactPhoto] = useState<string | undefined>(undefined);
+  const [contactDept, setContactDept] = useState('');
+  const [contactInfoOpen, setContactInfoOpen] = useState(false);
+  const [otherUserId, setOtherUserId] = useState('');
+  const [isBlocked, setIsBlocked] = useState(false);
+  const [isSuspended, setIsSuspended] = useState(false);
+  const [suspensionEnabled, setSuspensionEnabled] = useState(true);
   const [editingMessage, setEditingMessage] = useState<ChatMessage | null>(null);
   const [editText, setEditText] = useState('');
   const [forwardTarget, setForwardTarget] = useState<ChatMessage | null>(null);
@@ -83,7 +94,7 @@ export default function MessengerThreadScreen({ route, navigation }: any) {
   const [addingGroupMembers, setAddingGroupMembers] = useState(false);
   const [newGroupMemberIds, setNewGroupMemberIds] = useState<string[]>([]);
   // Phase 11.5 — ad-hoc calls (previously Meetings-only on mobile).
-  const [activeCall, setActiveCall] = useState<{ room: string; title: string; kind: 'voice' | 'video'; callMessageId?: string; memberIds: string[] } | null>(null);
+  const [activeCall, setActiveCall] = useState<{ room: string; title: string; kind: 'voice' | 'video'; callMessageId?: string; memberIds: string[]; otherUserId: string } | null>(null);
   const [showCallHistory, setShowCallHistory] = useState(false);
 
   // Security/gap audit fix — these five CEO Communication Controls toggles
@@ -138,8 +149,22 @@ export default function MessengerThreadScreen({ route, navigation }: any) {
   useEffect(() => {
     supabase.from('channel_members').select('user_id').eq('channel_id', channelId).then(({ data }) => {
       memberIds.current = (data || []).map((m: any) => m.user_id);
+      // The header's clickable avatar/name needs the other party's real
+      // photo — profiles.photo is already a ready-to-use URL/data URI
+      // (same as every other Avatar in this app, e.g.
+      // DepartmentSwitcherSheet's `photo={profile.photo}`), no signed-URL
+      // step needed the way private-bucket attachments require.
+      if (channelType === 'dm') {
+        const otherId = memberIds.current.find((id) => id !== myId);
+        if (otherId) {
+          setOtherUserId(otherId);
+          supabase.from('profiles').select('photo, department').eq('id', otherId).maybeSingle().then(({ data: p }) => {
+            if (p) { setContactPhoto(p.photo || undefined); setContactDept(p.department || ''); }
+          });
+        }
+      }
     });
-  }, [channelId]);
+  }, [channelId, channelType, myId]);
 
   // For @mention autocomplete + "read by" names — the full active
   // directory, same source MessengerChannelsScreen uses.
@@ -165,6 +190,38 @@ export default function MessengerThreadScreen({ route, navigation }: any) {
     setMuted((v) => !v);
   };
 
+  // Block/suspend — every user's own chat settings, not a department or
+  // CEO-only feature. Suspension additionally respects the CEO's
+  // app-wide chat_suspension_allowed toggle (default on).
+  useEffect(() => {
+    if (channelType !== 'dm' || !otherUserId || !myId) return;
+    isBlockedEitherWay(myId, otherUserId).then(setIsBlocked);
+    isSuspendedByMe(channelId, myId).then(setIsSuspended);
+    suspensionAllowed().then(setSuspensionEnabled);
+  }, [channelType, otherUserId, myId, channelId]);
+
+  const toggleBlock = async () => {
+    try {
+      if (isBlocked) { await unblockUser(myId, otherUserId); setIsBlocked(false); }
+      else {
+        await blockUser(myId, otherUserId);
+        setIsBlocked(true);
+        Alert.alert('Blocked', `${title} can no longer message you.`);
+      }
+    } catch (e: any) {
+      Alert.alert('Failed', e.message);
+    }
+  };
+
+  const toggleSuspend = async () => {
+    try {
+      if (isSuspended) { await unsuspendChannel(channelId, myId); setIsSuspended(false); }
+      else { await suspendChannel(channelId, myId); setIsSuspended(true); }
+    } catch (e: any) {
+      Alert.alert('Failed', e.message);
+    }
+  };
+
   // Phase 11.4 — group management. Any current member may rename,
   // re-photo, or add/remove another member — no admin/member-role
   // distinction exists anywhere in this schema (mirrors web exactly).
@@ -174,6 +231,32 @@ export default function MessengerThreadScreen({ route, navigation }: any) {
       if (data) { setGroupName(data.name || title); setGroupPhotoPath(data.photo_url || null); }
     });
   }, [channelId, channelType]);
+
+  // Moved up from further down in this component — the header
+  // useLayoutEffect below needs it in its dependency array, which is
+  // evaluated at render time, not deferred like a closure.
+  const otherOnline = channelType === 'dm' && memberIds.current.some((id) => id !== myId && onlineIds.has(id));
+
+  // A clickable header: the contact's (or group's) real photo next to the
+  // name, tapping either opens Contact Info (DM) or Group Info (group) —
+  // was a plain text title with no photo and nothing to tap.
+  const headerPhoto = channelType === 'group' ? (groupPhotoPath ? attachmentUrls[groupPhotoPath] : undefined) : contactPhoto;
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerTitle: () => (
+        <Pressable
+          onPress={() => (channelType === 'group' ? openGroupInfo() : setContactInfoOpen(true))}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm }}
+        >
+          <Avatar name={title} photo={headerPhoto} size={32} />
+          <View>
+            <Text style={{ fontFamily: t.font.bold, fontSize: t.type.base16.size, color: t.colors.textPrimary }} numberOfLines={1}>{title}</Text>
+            {otherOnline && <Text style={{ fontFamily: t.font.medium, fontSize: t.type.meta10.size, color: t.colors.status.success.text }}>Online</Text>}
+          </View>
+        </Pressable>
+      ),
+    });
+  }, [navigation, title, headerPhoto, otherOnline, channelType]);
 
   const openGroupInfo = async () => {
     setGroupNameEdit(groupName);
@@ -228,14 +311,17 @@ export default function MessengerThreadScreen({ route, navigation }: any) {
     navigation.goBack();
   };
 
-  // Phase 11.5 — ad-hoc calls, ported from web's Messenger.tsx equally to
-  // every conversation type (previously mobile only reached Jitsi through
-  // scheduled Meetings). Reuses the existing JitsiCallSheet as-is.
+  // Real device-camera/mic calling (NativeCallSheet) — no Jitsi. The
+  // `meetings` row + call-announcement chat message are unchanged (still
+  // the async "post a call, others tap to join" model this app already
+  // used); only the actual media connection changed, from a Jitsi
+  // WebView to a direct WebRTC peer connection.
   const startCall = async (kind: 'voice' | 'video') => {
     const members = memberIds.current.length > 0 ? memberIds.current : [myId];
     try {
       const meeting = await messenger.startCall(channelId, members, myId, myName, kind);
-      setActiveCall({ room: meeting.jitsi_room, title: meeting.title, kind, callMessageId: meeting.callMessageId, memberIds: members });
+      const otherUserId = members.find((id) => id !== myId) || members[0];
+      setActiveCall({ room: meeting.jitsi_room, title: meeting.title, kind, callMessageId: meeting.callMessageId, memberIds: members, otherUserId });
     } catch (e: any) {
       Alert.alert('Failed to start call', e.message);
     }
@@ -254,7 +340,8 @@ export default function MessengerThreadScreen({ route, navigation }: any) {
   // moment, so no missed-call check fires on close (no callMessageId).
   const rejoinCall = async (msg: ChatMessage) => {
     const { data } = await supabase.from('meetings').select('*').eq('id', msg.attachment_url).maybeSingle();
-    if (data) setActiveCall({ room: data.jitsi_room, title: data.title, kind: data.title.toLowerCase().includes('video') ? 'video' : 'voice', memberIds: [] });
+    const otherUserId = memberIds.current.find((id) => id !== myId) || '';
+    if (data) setActiveCall({ room: data.jitsi_room, title: data.title, kind: data.title.toLowerCase().includes('video') ? 'video' : 'voice', memberIds: [], otherUserId });
   };
 
   // Realtime — scoped to this one screen instance, which mounts/unmounts
@@ -368,6 +455,7 @@ export default function MessengerThreadScreen({ route, navigation }: any) {
     if (channelType === 'everyone' && !globalChatEnabled) return;
     if (channelType === 'group' && !departmentChatEnabled) return;
     if (channelType === 'dm' && !directMessagesEnabled) return;
+    if (channelType === 'dm' && (isBlocked || isSuspended)) return;
     const text = composer;
     setComposer('');
     setMentionQuery(null);
@@ -385,24 +473,30 @@ export default function MessengerThreadScreen({ route, navigation }: any) {
     }
   };
 
-  const handleAttach = () => {
-    Alert.alert('Attach', undefined, [
-      { text: 'Photo', onPress: attachPhoto },
-      { text: 'Multiple Photos', onPress: attachMultiplePhotos },
-      { text: 'Document', onPress: attachDocument },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
-  };
+  // Was a bare OS Alert.alert (system default styling, all-caps right-
+  // aligned text links) — replaced with a real Sheet matching the app's
+  // own design everywhere else this kind of menu appears (see the
+  // Message action Sheet below, same ActionRow pattern).
+  const handleAttach = () => setAttachSheetOpen(true);
 
+  // Real Capture (photo or video) — see lib/media.ts's pickOrCaptureMedia()
+  // for why this is the one place in the app it's wired in: an actual
+  // video attachment can be shown here (VideoBubble, below), unlike the
+  // still-image-only fields elsewhere.
   const attachPhoto = async () => {
-    const asset = await pickOrCaptureImageAsset();
+    const asset = await pickOrCaptureMedia();
     if (!asset) return;
     const err = validateAttachment(asset.mimeType, asset.size);
     if (err) { Alert.alert('Can\'t attach that', err); return; }
     try {
       const path = await messenger.uploadChatAttachment(asset.uri, asset.mimeType, channelId);
-      await messenger.sendMessage(channelId, myId, myName, '📷 Photo', { attachmentUrl: path, attachmentType: 'image', attachmentName: 'photo' });
-      notifyOthersOfMessage('📷 Photo');
+      if (asset.kind === 'video') {
+        await messenger.sendMessage(channelId, myId, myName, '🎥 Video', { attachmentUrl: path, attachmentType: 'video', attachmentName: 'video' });
+        notifyOthersOfMessage('🎥 Video');
+      } else {
+        await messenger.sendMessage(channelId, myId, myName, '📷 Photo', { attachmentUrl: path, attachmentType: 'image', attachmentName: 'photo' });
+        notifyOthersOfMessage('📷 Photo');
+      }
     } catch (e: any) {
       Alert.alert('Upload failed', e.message);
     }
@@ -594,8 +688,6 @@ export default function MessengerThreadScreen({ route, navigation }: any) {
   });
   const pinnedMessages = messages.filter((m) => pinnedIds.has(m.id));
 
-  const otherOnline = channelType === 'dm' && memberIds.current.some((id) => id !== myId && onlineIds.has(id));
-
   return (
     <Screen>
       {otherOnline && (
@@ -604,49 +696,42 @@ export default function MessengerThreadScreen({ route, navigation }: any) {
           <Text style={p.meta}>Online</Text>
         </View>
       )}
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm, paddingHorizontal: t.spacing.lg, paddingTop: t.spacing.sm }}>
-        {pinnedMessages.length > 0 && (
-          <Pressable onPress={() => setShowPinned(true)} hitSlop={8} style={{ padding: 4, position: 'relative' }}>
-            <Pin size={17} color={t.colors.accent} />
-            <View style={{ position: 'absolute', top: 0, right: 0, minWidth: 13, height: 13, borderRadius: 7, backgroundColor: t.colors.accent, alignItems: 'center', justifyContent: 'center' }}>
-              <Text style={{ fontSize: 8, fontFamily: t.font.bold, color: t.colors.onAccent }}>{pinnedMessages.length}</Text>
-            </View>
-          </Pressable>
-        )}
-        <Pressable onPress={() => setStarredOnly((v) => !v)} hitSlop={8} style={{ padding: 4 }}>
-          <Star size={17} color={starredOnly ? '#f59e0b' : t.colors.textMuted} fill={starredOnly ? '#f59e0b' : 'none'} />
-        </Pressable>
+      {channelType === 'dm' && isBlocked && (
+        <View style={{ marginHorizontal: t.spacing.lg, marginTop: t.spacing.sm, padding: t.spacing.sm, borderRadius: t.radius.md, backgroundColor: t.colors.status.danger.bg }}>
+          <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.meta11.size, color: t.colors.status.danger.text, textAlign: 'center' }}>
+            You've blocked {title}. Unblock from the menu to message again.
+          </Text>
+        </View>
+      )}
+      {channelType === 'dm' && !isBlocked && isSuspended && (
+        <View style={{ marginHorizontal: t.spacing.lg, marginTop: t.spacing.sm, padding: t.spacing.sm, borderRadius: t.radius.md, backgroundColor: t.colors.status.warning.bg }}>
+          <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.meta11.size, color: t.colors.status.warning.text, textAlign: 'center' }}>
+            This chat is suspended. Resume it from the menu to keep messaging.
+          </Text>
+        </View>
+      )}
+      {/* Was 7-8 bare icons in one row (Pin count, Star filter, Search,
+          Mute, Media, Group Info, Call History, Voice, Video) with no
+          visual hierarchy. Down to 4: Search stays inline (used often),
+          Voice/Video stay inline (primary actions), everything else
+          moved into the "More" Sheet above. */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: t.spacing.sm, paddingHorizontal: t.spacing.lg, paddingTop: t.spacing.sm }}>
         <Pressable onPress={() => setShowSearch((v) => !v)} hitSlop={8} style={{ padding: 4 }}>
-          <Search size={17} color={showSearch ? t.colors.accent : t.colors.textMuted} />
+          <Search size={18} color={showSearch ? t.colors.accent : t.colors.textMuted} />
         </Pressable>
-        <Pressable onPress={toggleMute} hitSlop={8} style={{ padding: 4 }}>
-          {muted ? <BellOff size={17} color={t.colors.textMuted} /> : <Bell size={17} color={t.colors.textMuted} />}
-        </Pressable>
-        {messages.some((m) => m.attachment_type === 'image') && (
-          <Pressable onPress={() => setShowGallery(true)} hitSlop={8} style={{ padding: 4 }}>
-            <Images size={17} color={t.colors.textMuted} />
-          </Pressable>
-        )}
-        {channelType === 'group' && (
-          <Pressable onPress={openGroupInfo} hitSlop={8} style={{ padding: 4 }}>
-            <Users size={17} color={t.colors.textMuted} />
-          </Pressable>
-        )}
-        {messages.some((m) => m.attachment_type === 'call') && (
-          <Pressable onPress={() => setShowCallHistory(true)} hitSlop={8} style={{ padding: 4 }}>
-            <Clock size={17} color={t.colors.textMuted} />
-          </Pressable>
-        )}
         {callsEnabled && (
           <Pressable onPress={() => startCall('voice')} hitSlop={8} style={{ padding: 4 }}>
-            <PhoneIcon size={17} color={t.colors.accent} />
+            <PhoneIcon size={18} color={t.colors.accent} />
           </Pressable>
         )}
         {callsEnabled && (
           <Pressable onPress={() => startCall('video')} hitSlop={8} style={{ padding: 4 }}>
-            <Video size={17} color={t.colors.accent} />
+            <Video size={18} color={t.colors.accent} />
           </Pressable>
         )}
+        <Pressable onPress={() => setThreadMenuOpen(true)} hitSlop={8} style={{ padding: 4 }}>
+          <MoreVertical size={18} color={t.colors.textMuted} />
+        </Pressable>
       </View>
 
       {showSearch && (
@@ -716,10 +801,16 @@ export default function MessengerThreadScreen({ route, navigation }: any) {
                         </Pressable>
                       ) : msg.attachment_type === 'audio' && msg.attachment_url && attachmentUrls[msg.attachment_url] ? (
                         <VoiceNoteBubble uri={attachmentUrls[msg.attachment_url]} mine={mine} />
+                      ) : msg.attachment_type === 'video' && msg.attachment_url && attachmentUrls[msg.attachment_url] ? (
+                        <VideoBubble uri={attachmentUrls[msg.attachment_url]} />
                       ) : isCall ? (
+                        // msg.content already carries a leading 📞/🎥 emoji
+                        // (messenger.startCall's own message text) — was
+                        // rendering that AND a separate lucide icon next to
+                        // it, a real duplicate. One clean icon now.
                         <Pressable onPress={() => rejoinCall(msg)} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                           {msg.content.toLowerCase().includes('video') ? <Video size={14} color={mine ? t.colors.onAccent : t.colors.accent} /> : <PhoneIcon size={14} color={mine ? t.colors.onAccent : t.colors.accent} />}
-                          <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.body14.size, color: mine ? t.colors.onAccent : t.colors.accent, textDecorationLine: 'underline' }}>{msg.content}</Text>
+                          <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.body14.size, color: mine ? t.colors.onAccent : t.colors.accent, textDecorationLine: 'underline' }}>{msg.content.replace(/^[^\w]+/, '').trim()}</Text>
                         </Pressable>
                       ) : isFile ? (
                         <View style={{ marginBottom: 4 }}>
@@ -831,13 +922,18 @@ export default function MessengerThreadScreen({ route, navigation }: any) {
                 <TextInput
                   value={composer}
                   onChangeText={handleComposerChange}
-                  placeholder="Type a message…"
+                  placeholder={channelType === 'dm' && (isBlocked || isSuspended) ? (isBlocked ? "You've blocked this chat" : 'This chat is suspended') : 'Type a message…'}
                   placeholderTextColor={t.colors.textMuted}
+                  editable={!(channelType === 'dm' && (isBlocked || isSuspended))}
                   style={{ backgroundColor: t.colors.bgInput, borderWidth: 1, borderColor: t.colors.border, borderRadius: t.radius.pill, paddingHorizontal: t.spacing.lg, paddingVertical: t.spacing.smd, fontFamily: t.font.regular, fontSize: t.type.body14.size, color: t.colors.textPrimary }}
                   onSubmitEditing={handleSend}
                 />
               </View>
-              <Pressable onPress={handleSend} disabled={sending || !composer.trim()} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: t.colors.accent, alignItems: 'center', justifyContent: 'center', opacity: sending || !composer.trim() ? 0.5 : 1 }}>
+              <Pressable
+                onPress={handleSend}
+                disabled={sending || !composer.trim() || (channelType === 'dm' && (isBlocked || isSuspended))}
+                style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: t.colors.accent, alignItems: 'center', justifyContent: 'center', opacity: sending || !composer.trim() || (channelType === 'dm' && (isBlocked || isSuspended)) ? 0.5 : 1 }}
+              >
                 <Send size={15} color={t.colors.onAccent} />
               </Pressable>
             </>
@@ -873,6 +969,54 @@ export default function MessengerThreadScreen({ route, navigation }: any) {
             )}
           </View>
         )}
+      </Sheet>
+
+      <Sheet open={attachSheetOpen} onClose={() => setAttachSheetOpen(false)} title="Attach" side="bottom">
+        <View style={{ paddingBottom: t.spacing.sm }}>
+          <ActionRow icon={<Camera size={16} color={t.colors.textPrimary} />} label="Photo / Video" onPress={() => { setAttachSheetOpen(false); attachPhoto(); }} />
+          <ActionRow icon={<Images size={16} color={t.colors.textPrimary} />} label="Multiple Photos" onPress={() => { setAttachSheetOpen(false); attachMultiplePhotos(); }} />
+          <ActionRow icon={<FileText size={16} color={t.colors.textPrimary} />} label="Document" onPress={() => { setAttachSheetOpen(false); attachDocument(); }} />
+        </View>
+      </Sheet>
+
+      {/* Was 6-7 bare icons in one row above the message list — decluttered
+          down to Search + the two call buttons inline, everything else
+          (starred filter, pins, mute, media gallery, group info, call
+          history) moved in here. */}
+      <Sheet open={threadMenuOpen} onClose={() => setThreadMenuOpen(false)} title="Conversation" side="bottom">
+        <View style={{ paddingBottom: t.spacing.sm }}>
+          <ActionRow icon={<Pin size={16} color={t.colors.textPrimary} />} label={pinnedMessages.length > 0 ? `Pinned Messages (${pinnedMessages.length})` : 'Pinned Messages'} onPress={() => { setThreadMenuOpen(false); setShowPinned(true); }} />
+          <ActionRow icon={<Star size={16} color={starredOnly ? '#f59e0b' : t.colors.textPrimary} />} label={starredOnly ? 'Showing Starred Only' : 'Show Starred Only'} onPress={() => { setThreadMenuOpen(false); setStarredOnly((v) => !v); }} />
+          {muted ? (
+            <ActionRow icon={<Bell size={16} color={t.colors.textPrimary} />} label="Unmute" onPress={() => { setThreadMenuOpen(false); toggleMute(); }} />
+          ) : (
+            <ActionRow icon={<BellOff size={16} color={t.colors.textPrimary} />} label="Mute" onPress={() => { setThreadMenuOpen(false); toggleMute(); }} />
+          )}
+          {messages.some((m) => m.attachment_type === 'image') && (
+            <ActionRow icon={<Images size={16} color={t.colors.textPrimary} />} label="Media" onPress={() => { setThreadMenuOpen(false); setShowGallery(true); }} />
+          )}
+          {channelType === 'group' && (
+            <ActionRow icon={<Users size={16} color={t.colors.textPrimary} />} label="Group Info" onPress={() => { setThreadMenuOpen(false); openGroupInfo(); }} />
+          )}
+          {messages.some((m) => m.attachment_type === 'call') && (
+            <ActionRow icon={<Clock size={16} color={t.colors.textPrimary} />} label="Call History" onPress={() => { setThreadMenuOpen(false); setShowCallHistory(true); }} />
+          )}
+          {channelType === 'dm' && suspensionEnabled && (
+            <ActionRow
+              icon={<BellOff size={16} color={t.colors.textPrimary} />}
+              label={isSuspended ? 'Resume Chat' : 'Suspend Chat'}
+              onPress={() => { setThreadMenuOpen(false); toggleSuspend(); }}
+            />
+          )}
+          {channelType === 'dm' && (
+            <ActionRow
+              icon={<X size={16} color={t.colors.status.danger.text} />}
+              label={isBlocked ? 'Unblock' : 'Block'}
+              danger={!isBlocked}
+              onPress={() => { setThreadMenuOpen(false); toggleBlock(); }}
+            />
+          )}
+        </View>
       </Sheet>
 
       <Sheet open={!!forwardTarget} onClose={() => setForwardTarget(null)} title="Forward to…" side="bottom">
@@ -951,6 +1095,21 @@ export default function MessengerThreadScreen({ route, navigation }: any) {
               </View>
             </Pressable>
           ))}
+        </View>
+      </Sheet>
+
+      {/* Contact info — tapping the header avatar/name on a DM, the
+          equivalent of Group Info but for a single person. Read-only:
+          nothing to rename or manage about another person's own profile. */}
+      <Sheet open={contactInfoOpen} onClose={() => setContactInfoOpen(false)} title="Contact Info" side="bottom">
+        <View style={{ alignItems: 'center', gap: t.spacing.sm, paddingVertical: t.spacing.md }}>
+          <Avatar name={title} photo={contactPhoto} size={72} />
+          <Text style={{ fontFamily: t.font.bold, fontSize: t.type.title18.size, color: t.colors.textPrimary }}>{title}</Text>
+          {!!contactDept && <Text style={{ fontFamily: t.font.medium, fontSize: t.type.body14.size, color: t.colors.textMuted }}>{contactDept}</Text>}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
+            <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: otherOnline ? t.colors.status.success.text : t.colors.textMuted }} />
+            <Text style={{ fontFamily: t.font.medium, fontSize: t.type.meta11.size, color: t.colors.textMuted }}>{otherOnline ? 'Online now' : 'Offline'}</Text>
+          </View>
         </View>
       </Sheet>
 
@@ -1052,7 +1211,7 @@ export default function MessengerThreadScreen({ route, navigation }: any) {
       </Modal>
 
       {activeCall && (
-        <JitsiCallSheet room={activeCall.room} title={activeCall.title} kind={activeCall.kind} onClose={endActiveCall} />
+        <NativeCallSheet room={activeCall.room} title={activeCall.title} kind={activeCall.kind} otherUserId={activeCall.otherUserId} onClose={endActiveCall} />
       )}
     </Screen>
   );
@@ -1079,6 +1238,20 @@ function VoiceNoteBubble({ uri, mine }: { uri: string; mine: boolean }) {
         <View style={{ width: `${status.duration ? Math.min(100, (status.currentTime / status.duration) * 100) : 0}%`, height: 3, borderRadius: 2, backgroundColor: mine ? t.colors.onAccent : t.colors.accent }} />
       </View>
     </Pressable>
+  );
+}
+
+// Real video playback for a video message — one useVideoPlayer instance
+// per bubble, same "each plays independently" reasoning as VoiceNoteBubble.
+function VideoBubble({ uri }: { uri: string }) {
+  const player = useVideoPlayer(uri, (p) => { p.loop = false; });
+  return (
+    <VideoView
+      player={player}
+      style={{ width: 220, height: 180, borderRadius: 10, marginBottom: 4, backgroundColor: '#000' }}
+      allowsPictureInPicture
+      nativeControls
+    />
   );
 }
 

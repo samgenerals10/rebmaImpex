@@ -48,14 +48,36 @@ async function requestLibraryPerm(): Promise<boolean> {
   return true;
 }
 
+// Step 6 of the tab-bar rebuild plan — the user's exact terminology,
+// applied here since every one of the 8 screens that offer "add an
+// image" routes through this one function: "Photo" means picking an
+// existing picture file from the device; "Capture" means using the
+// live camera. Renamed from the old "Take Photo"/"Choose from Library"
+// labels to match, both here and in every call site's own button label
+// (grep confirmed none hardcode the old wording independently).
+//
+// What did NOT change: the user's definition also says Capture should
+// work for either a photo or a video. Checked every one of the 8 real
+// destinations this function feeds — a profile photo, a staff/customer
+// photo, a cargo product image, a company logo, a delivery-proof photo,
+// a group-chat avatar — every one of them is a genuine single-still-image
+// field (several literally build a `data:image/jpeg;base64,...` string
+// for a column that expects exactly that). None of them can hold a
+// video without breaking, and no video-attachment capability exists
+// anywhere in this app yet (validateAttachment's own allow-list has no
+// video mime type). So Capture stays photo-only here — adding video
+// would corrupt real data, not fix anything. Flagged, not silently
+// dropped: if a genuine video-capture need comes up somewhere (a video
+// proof-of-delivery, a video chat attachment), that's new capability to
+// build deliberately, not something this rename should silently imply.
 function offerCameraOrLibrary<T>(onCamera: () => Promise<T | null>, onLibrary: () => Promise<T | null>): Promise<T | null> {
   return new Promise((resolve) => {
     Alert.alert(
-      'Add Photo',
+      'Add Image',
       undefined,
       [
-        { text: 'Take Photo', onPress: () => onCamera().then(resolve) },
-        { text: 'Choose from Library', onPress: () => onLibrary().then(resolve) },
+        { text: 'Capture', onPress: () => onCamera().then(resolve) },
+        { text: 'Photo', onPress: () => onLibrary().then(resolve) },
         { text: 'Cancel', style: 'cancel', onPress: () => resolve(null) },
       ],
       { cancelable: true, onDismiss: () => resolve(null) }
@@ -96,6 +118,58 @@ export function pickOrCaptureImageAsset(): Promise<PickedAsset | null> {
   );
 }
 
+// The real Capture piece — a device camera that can take either a still
+// photo or record a video, same native toggle every phone's own camera
+// app already has (passing both mediaTypes is what turns that toggle on;
+// nothing custom to build for the toggle itself). "Photo" stays a
+// still-image-only library pick, matching the user's own definition —
+// only "Capture" gets the photo/video choice.
+//
+// Built for, and only wired into, destinations that can actually hold
+// and show a video result — right now that's Viber's chat attachments
+// (MessengerThreadScreen's attachPhoto). It is NOT used for the 7 other
+// still-image fields elsewhere in the app (profile/staff/customer photo,
+// cargo/product image, company logo, delivery-proof photo, group-chat
+// avatar) — every one of those is rendered as a fixed-size still image
+// (an Avatar circle, a document logo, a base64 column that structurally
+// cannot hold anything but a JPEG string) with no video player anywhere
+// near it, so offering "record a video" there would capture something
+// the app then shows as a broken image. That's not a video vs photo
+// question, it's simply the wrong field for it. If a specific one of
+// those should genuinely become video-capable later (e.g. a video
+// proof-of-delivery), that's real new display work at that one screen,
+// not a change to this shared picker.
+export interface PickedMedia extends PickedAsset {
+  kind: 'image' | 'video';
+  durationMs?: number;
+}
+
+export function pickOrCaptureMedia(): Promise<PickedMedia | null> {
+  return offerCameraOrLibrary<PickedMedia>(
+    async () => {
+      if (!(await requestCameraPerm())) return null;
+      const r = await ImagePicker.launchCameraAsync({ mediaTypes: ['images', 'videos'], quality: 0.6, videoMaxDuration: 60 });
+      if (r.canceled || !r.assets?.[0]) return null;
+      const a = r.assets[0];
+      const isVideo = a.type === 'video' || (a.mimeType || '').startsWith('video/');
+      return {
+        uri: a.uri,
+        mimeType: a.mimeType || (isVideo ? 'video/mp4' : 'image/jpeg'),
+        size: a.fileSize,
+        kind: isVideo ? 'video' : 'image',
+        durationMs: (a as any).duration ?? undefined,
+      };
+    },
+    async () => {
+      if (!(await requestLibraryPerm())) return null;
+      const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.6 });
+      if (r.canceled || !r.assets?.[0]) return null;
+      const a = r.assets[0];
+      return { uri: a.uri, mimeType: a.mimeType || 'image/jpeg', size: a.fileSize, kind: 'image' };
+    }
+  );
+}
+
 // Phase 7.7, D52: résumé/CV upload — a document, not a photo, so this uses
 // expo-document-picker (new dependency) rather than the camera/library
 // pickers above. Returns the same PickedAsset shape as
@@ -122,16 +196,26 @@ export async function pickMultipleImageAssets(limit = 10): Promise<PickedAsset[]
 
 // Phase 11.3 — same cap/allowlist as web's validateAttachment(), so a
 // rejected file gets the same "too big"/"unsupported type" reasoning on
-// both platforms.
-const MAX_ATTACHMENT_BYTES = 15 * 1024 * 1024;
+// both platforms. Video mime types added alongside pickOrCaptureMedia()
+// (step 6 follow-up) — real video attachments now exist in Viber, so
+// this allow-list has to admit them; a larger cap applies to video since
+// 15MB is unrealistic for even a short clip.
+const MAX_IMAGE_BYTES = 15 * 1024 * 1024;
+const MAX_VIDEO_BYTES = 60 * 1024 * 1024;
 const ALLOWED_ATTACHMENT_TYPES = [
   'image/jpeg', 'image/png', 'image/webp', 'image/gif',
   'application/pdf', 'application/msword',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   'text/plain', 'text/csv',
 ];
+const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/quicktime', 'video/x-m4v'];
 export function validateAttachment(mimeType: string, sizeBytes?: number): string | null {
-  if (sizeBytes && sizeBytes > MAX_ATTACHMENT_BYTES) return 'That file is larger than 15MB.';
+  const isVideo = ALLOWED_VIDEO_TYPES.includes(mimeType);
+  if (isVideo) {
+    if (sizeBytes && sizeBytes > MAX_VIDEO_BYTES) return 'That video is larger than 60MB.';
+    return null;
+  }
+  if (sizeBytes && sizeBytes > MAX_IMAGE_BYTES) return 'That file is larger than 15MB.';
   if (!ALLOWED_ATTACHMENT_TYPES.includes(mimeType)) return "That file type isn't supported here.";
   return null;
 }

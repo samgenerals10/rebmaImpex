@@ -7,6 +7,22 @@
 // same reasoning as lib/media.ts.
 import { Linking } from 'react-native';
 import { supabase } from './supabaseClient';
+import { useAuthStore } from '../store/authStore';
+
+// Small, local helper — every write in this file logs the same way, and
+// none of these functions are React components, so useAuthStore's own
+// hook form doesn't apply; .getState() is Zustand's documented way to
+// read current state from plain (non-component) code.
+async function logDeliveryEvent(deliveryId: string, action: string) {
+  const performedBy = useAuthStore.getState().profile?.fullName || 'System';
+  await supabase.from('global_audit_history').insert([{
+    department: 'ADMIN_WAREHOUSE',
+    action,
+    reference_id: deliveryId,
+    performed_by: performedBy,
+    timestamp: new Date().toISOString(),
+  }]);
+}
 
 // Ports rebma-web/src/App.tsx's handleReleaseToDispatch + apiClient.ts's
 // operations.releaseToDispatch: auto-assign the least-busy ACTIVE driver
@@ -64,6 +80,7 @@ export async function releaseOrderToDispatch(orderId: string): Promise<{ driverN
     if (!existing || existing.length === 0) {
       await supabase.from('waybills').insert({ order_id: orderId, delivery_log_id: deliveryId }).select();
     }
+    await logDeliveryEvent(deliveryId, `DISPATCHED: assigned to ${driver.full_name}${driver.vehicle_id ? ` (${driver.vehicle_id})` : ''}`);
   }
 
   return { driverName: driver.full_name, vehicleId: driver.vehicle_id || 'Unassigned' };
@@ -98,6 +115,7 @@ export async function assignDriverToDelivery(
     updated_at: new Date().toISOString(),
   }).eq('id', deliveryId);
   if (error) throw new Error(error.message);
+  await logDeliveryEvent(deliveryId, `DISPATCHED: assigned to ${driverName}${vehicleId ? ` (${vehicleId})` : ''}`);
   return { pending: false };
 }
 

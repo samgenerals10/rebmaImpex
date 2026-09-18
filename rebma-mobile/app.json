@@ -36,7 +36,9 @@
         "android.permission.CAMERA",
         "android.permission.MODIFY_AUDIO_SETTINGS",
         "android.permission.FOREGROUND_SERVICE",
-        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION"
       ]
     },
     "web": {
@@ -95,7 +97,10 @@
         }
       ],
       "expo-asset",
-      "expo-status-bar"
+      "expo-status-bar",
+      "@react-native-community/datetimepicker",
+      "expo-video",
+      "@config-plugins/react-native-webrtc"
     ],
     "extra": {
       "eas": {

@@ -15,6 +15,7 @@ import { useTheme } from '../../theme/ThemeProvider';
 import { useUIStore } from '../../store/uiStore';
 import { getDepartmentEntry } from '../../navigation/departmentRegistry';
 import Screen from '../../components/ui/Screen';
+import { useCollapsibleHeader } from '../../hooks/useCollapsibleHeader';
 import Card from '../../components/ui/Card';
 import MetricCard from '../../components/ui/MetricCard';
 import ModuleLauncher from '../../components/chrome/ModuleLauncher';
@@ -28,6 +29,7 @@ interface OrderRow {
 
 export default function OverviewScreen() {
   const t = useTheme();
+  const { scrollHandler } = useCollapsibleHeader();
   const navigation = useNavigation<any>();
   const activeDepartment = useUIStore((s) => s.activeDepartment);
   const dept = getDepartmentEntry(activeDepartment || 'FINANCE');
@@ -60,7 +62,7 @@ export default function OverviewScreen() {
   const pending = orders.filter((o) => o.status === 'PENDING_FINANCE');
 
   return (
-    <Screen refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }}>
+    <Screen refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} onScroll={scrollHandler} scrollEventThrottle={16}>
       <View style={{ gap: t.spacing.xl }}>
         {/* Aczone Total Revenue Hero Card */}
         <Card tone="hero">

@@ -221,9 +221,7 @@ function makeStyles(t: ReturnType<typeof useTheme>) {
       borderWidth: 1,
       borderColor: t.colors.border,
       padding: t.spacing.xl,
-      ...(Platform.OS === 'ios'
-        ? { shadowColor: '#0f172a', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.08, shadowRadius: 16 }
-        : { elevation: 4 }),
+      ...t.shadow('dropdown'),
     },
     cardHeader: { alignItems: 'center', marginBottom: t.spacing.lg },
     cardTitle: { fontFamily: t.font.extrabold, fontSize: t.type.title18.size, color: t.colors.textPrimary },

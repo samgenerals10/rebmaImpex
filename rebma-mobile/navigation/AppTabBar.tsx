@@ -1,30 +1,50 @@
 // rebma-mobile/navigation/AppTabBar.tsx
 // Ports: rebma-web/src/components/layout/MobileNav.tsx.
 //
-// Correction (mobile-ui-fluidity skill, bottom-nav section): this used to
-// raise the Quick Actions button into an elevated center FAB, floating
-// above the bar. Confirmed directly against the reference images and the
-// user's own live build that this reads as wrong — the reference never
-// raises or resizes any single item across all nine of its screens; every
-// bottom bar is a plain flat row, same size, same baseline, all four items.
-// Quick Actions is now a normal flat tab item like the other three, just
-// with its own icon/label — same real functionality, no special elevation.
+// Final confirmed 5-slot layout: Home / Viber / raised center FAB /
+// Analytics / Profile, violet FAB — restyled to the user's own reference
+// image, then walked through slot-by-slot with the user before anything
+// was built (see conversation record, not just this file).
+//
+// 'ViberTab' opens ViberStack (chats, with Boardroom reachable from
+// inside it — see ViberHomeScreen.tsx). Its unread dot comes from
+// useMessengerUnreadStore, the same store AppHeader's chat icon reads.
+//
+// 'AnalyticsTab' opens AnalyticsTabScreen, which routes to whichever
+// department's real Analytics screen already exists (5 of 11 today —
+// the rest are a documented next step, not silently missing).
+//
+// 'AlertsTab' (Notifications) lost its bottom-tab button in this
+// restyle — the 5 slots didn't have room for it — but it's still fully
+// reachable via the header bell (AppHeader's onNavigateAlerts), so
+// nothing was actually removed, only its position in the bar.
+//
+// The center Quick Actions button IS a raised, bordered, elevated circle
+// (see renderActionTab below) — confirmed against the user's own live
+// build as the correct, current design. Its fill color is the
+// reference's violet (#7C5CFC), not the app's green accent — a
+// deliberate, scoped exception: the user gave this one component an
+// explicit literal reference to match, this doesn't touch the shared
+// `colors.accent` token or repaint anything else in the app.
 import { View, Text, Pressable } from 'react-native';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import { Home, Plus, Bell, User, Layers } from 'lucide-react-native';
+import { Home, MessageCircle, Plus, ChartColumn, User } from 'lucide-react-native';
 import { useTheme } from '../theme/ThemeProvider';
 import { useUIStore } from '../store/uiStore';
 import { useAuthStore } from '../store/authStore';
-import { useNotificationsStore } from '../store/notificationsStore';
+import { useMessengerUnreadStore } from '../store/messengerUnreadStore';
 
-const ICONS: Record<string, any> = { HomeTab: Home, StockTab: Layers, AlertsTab: Bell, ProfileTab: User };
-const LABELS: Record<string, string> = { HomeTab: 'Home', StockTab: 'Operations', AlertsTab: 'Alerts', ProfileTab: 'Profile' };
+const FAB_COLOR = '#7C5CFC';
+const FAB_COLOR_PRESSED = '#6A47E8';
+
+const ICONS: Record<string, any> = { HomeTab: Home, ViberTab: MessageCircle, AnalyticsTab: ChartColumn, ProfileTab: User };
+const LABELS: Record<string, string> = { HomeTab: 'Home', ViberTab: 'Viber', AnalyticsTab: 'Analytics', ProfileTab: 'Profile' };
 
 export default function AppTabBar({ state, navigation }: BottomTabBarProps) {
   const t = useTheme();
   const openQuickActions = useUIStore((s) => s.openQuickActions);
   const profile = useAuthStore((s) => s.profile);
-  const unreadCount = useNotificationsStore((s) => s.unreadCount);
+  const viberUnreadCount = useMessengerUnreadStore((s) => s.unreadCount);
 
   const activeRouteName = state.routes[state.index].name;
 
@@ -38,13 +58,14 @@ export default function AppTabBar({ state, navigation }: BottomTabBarProps) {
         borderTopWidth: 1,
         borderTopColor: t.colors.border,
         paddingBottom: 6,
-        paddingHorizontal: 8,
+        paddingHorizontal: 4,
         ...t.shadow('tabBar'),
       }}
     >
       {renderTab('HomeTab')}
+      {renderTab('ViberTab')}
       {renderActionTab()}
-      {renderTab('AlertsTab')}
+      {renderTab('AnalyticsTab')}
       {renderTab('ProfileTab')}
     </View>
   );
@@ -68,7 +89,7 @@ export default function AppTabBar({ state, navigation }: BottomTabBarProps) {
       >
         <View style={{ alignItems: 'center', justifyContent: 'center' }}>
           <Icon size={22} color={color} strokeWidth={isActive ? 2.5 : 2} />
-          {routeName === 'AlertsTab' && unreadCount > 0 && (
+          {routeName === 'ViberTab' && viberUnreadCount > 0 && (
             <View style={{ position: 'absolute', top: -2, right: -4, width: 8, height: 8, borderRadius: 4, backgroundColor: t.colors.status.danger.text }} />
           )}
         </View>
@@ -91,7 +112,7 @@ export default function AppTabBar({ state, navigation }: BottomTabBarProps) {
               width: 52,
               height: 52,
               borderRadius: 26,
-              backgroundColor: pressed ? t.colors.accentPressed : t.colors.accent,
+              backgroundColor: pressed ? FAB_COLOR_PRESSED : FAB_COLOR,
               alignItems: 'center',
               justifyContent: 'center',
               borderWidth: 4,

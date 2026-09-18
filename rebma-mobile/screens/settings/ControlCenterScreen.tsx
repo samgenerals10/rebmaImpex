@@ -54,6 +54,7 @@ import Input, { Field } from '../../components/ui/Input';
 import SearchablePicker from '../../components/ui/SearchablePicker';
 import EmptyState from '../../components/ui/EmptyState';
 import Sheet, { SheetSection } from '../../components/ui/Sheet';
+import Toggle from '../../components/ui/Toggle';
 import DocumentTemplatesEditor from '../../components/shared/DocumentTemplatesEditor';
 import ExportSheet from '../../components/shared/ExportSheet';
 
@@ -130,6 +131,8 @@ const SECTIONS: Section[] = [
       { key: 'messaging_access_allowed', label: 'Messaging Access Allowed', description: 'Per-user email exceptions to this are set on web only, not from mobile.', kind: 'bool' },
       { key: 'messenger_calls_enabled', label: 'Voice/Video Calls Enabled', kind: 'bool' },
       { key: 'messenger_attachments_enabled', label: 'Attachments Enabled', kind: 'bool' },
+      { key: 'meeting_recording_allowed', label: 'Meeting Recording Allowed', description: 'When off, hosts cannot start a local recording in Boardroom or Meetings.', kind: 'bool' },
+      { key: 'chat_suspension_allowed', label: 'Chat Suspension Allowed', description: 'When off, no one (including yourself) can suspend an open DM.', kind: 'bool' },
       { key: 'message_retention_days', label: 'Message Retention (days, 0 = off)', kind: 'number' },
       { key: 'external_email_enabled', label: 'External Email Enabled', kind: 'bool' },
       { key: 'whatsapp_enabled', label: 'WhatsApp Enabled', kind: 'bool' },
@@ -254,7 +257,7 @@ function AdminSetting({ field, value, onChange }: { field: SettingField; value: 
           {field.description ? <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted, marginTop: 2 }}>{field.description}</Text> : null}
         </View>
         {field.kind === 'bool' && (
-          <Button label={value ? 'On' : 'Off'} size="sm" variant={value ? 'primary' : 'ghost'} onPress={() => onChange(!value)} />
+          <Toggle value={!!value} onChange={onChange} />
         )}
       </View>
       {field.kind === 'number' && (
@@ -736,7 +739,10 @@ export default function ControlCenterScreen() {
               <Field label="Role"><SearchablePicker value={inviteForm.role} onChange={(v) => setInviteForm((p) => ({ ...p, role: v }))} options={INVITE_ROLE_OPTIONS} /></Field>
               <Field label="Link Expiry"><SearchablePicker value={inviteForm.expiry} onChange={(v) => setInviteForm((p) => ({ ...p, expiry: v }))} options={INVITE_EXPIRY_OPTIONS} /></Field>
               <View style={{ marginBottom: t.spacing.md }}>
-                <Button label={inviteForm.autoApprove ? 'Auto-Approve On Register: ON' : 'Auto-Approve On Register: OFF'} size="sm" variant={inviteForm.autoApprove ? 'primary' : 'ghost'} onPress={() => setInviteForm((p) => ({ ...p, autoApprove: !p.autoApprove }))} />
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.body12.size, color: t.colors.textPrimary }}>Auto-Approve On Register</Text>
+                  <Toggle value={inviteForm.autoApprove} onChange={(v) => setInviteForm((p) => ({ ...p, autoApprove: v }))} />
+                </View>
                 <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted, marginTop: t.spacing.xs }}>
                   {inviteForm.autoApprove ? 'Staff will be automatically approved on registration without HR review.' : 'Staff will require HR review after registering.'}
                 </Text>

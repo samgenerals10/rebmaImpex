@@ -6,6 +6,7 @@
 // is most of the visual-parity work for every future department sub-phase.
 import type { ComponentType, ReactNode } from 'react';
 import { View, Text, Pressable } from 'react-native';
+import { ChevronRight } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeProvider';
 import { SkeletonList } from './Skeleton';
 import EmptyState from './EmptyState';
@@ -103,6 +104,7 @@ export default function DataList<T>({
                     </Text>
                   ) : <View style={{ flex: 1 }} />}
                   {statusCol ? <View>{cellValue(statusCol, item)}</View> : null}
+                  {onRowPress && !renderActions ? <ChevronRight size={16} color={t.colors.textMuted} /> : null}
                 </View>
               )}
 

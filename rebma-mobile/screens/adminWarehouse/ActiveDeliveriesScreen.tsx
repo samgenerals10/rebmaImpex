@@ -11,7 +11,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { View, Text, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { Camera as CameraIcon, MessageCircle, Trash2, MapPin } from 'lucide-react-native';
+import { Camera as CameraIcon, MessageCircle, Trash2, MapPin, History } from 'lucide-react-native';
 import { supabase } from '../../lib/supabaseClient';
 import { assignDriverToDelivery, sendWhatsAppDirections } from '../../lib/dispatchActions';
 import { pickOrCaptureImageAsset } from '../../lib/media';
@@ -24,6 +24,7 @@ import Badge, { statusTone } from '../../components/ui/Badge';
 import Sheet, { SheetSection } from '../../components/ui/Sheet';
 import Button from '../../components/ui/Button';
 import SearchablePicker from '../../components/ui/SearchablePicker';
+import RequestTimelineSheet from '../../components/shared/RequestTimelineSheet';
 
 interface DeliveryRow {
   id: string;
@@ -57,6 +58,7 @@ export default function ActiveDeliveriesScreen() {
   const [detail, setDetail] = useState<DeliveryRow | null>(null);
   const [reassignDriverId, setReassignDriverId] = useState('');
   const [busy, setBusy] = useState(false);
+  const [timelineOpen, setTimelineOpen] = useState(false);
 
   const load = useCallback(async () => {
     const [dRes, drRes] = await Promise.all([
@@ -138,6 +140,13 @@ export default function ActiveDeliveriesScreen() {
     try {
       await supabase.from('supplier_order_notifications').insert([{ message: `Proof of delivery submitted for Risk review: Delivery ${detail.id}`, notified_department: 'RISK', read: false }]);
     } catch {}
+    await supabase.from('global_audit_history').insert([{
+      department: 'ADMIN_WAREHOUSE',
+      action: 'SUBMITTED FOR REVIEW: proof of delivery sent to Risk',
+      reference_id: detail.id,
+      performed_by: profile?.fullName || 'System',
+      timestamp: new Date().toISOString(),
+    }]);
     refreshDetail({ status: 'PENDING_RISK_REVIEW' });
   };
 
@@ -150,6 +159,13 @@ export default function ActiveDeliveriesScreen() {
       Alert.alert('Failed', error.message);
       return;
     }
+    await supabase.from('global_audit_history').insert([{
+      department: 'ADMIN_WAREHOUSE',
+      action: 'DELIVERY FAILED',
+      reference_id: detail.id,
+      performed_by: profile?.fullName || 'System',
+      timestamp: new Date().toISOString(),
+    }]);
     refreshDetail({ status: 'FAILED' });
   };
 
@@ -214,6 +230,7 @@ export default function ActiveDeliveriesScreen() {
                 )}
                 <Button variant="ghost" size="sm" icon={<CameraIcon size={13} color={t.colors.textSecondary} />} label={detail.proof_photo ? 'Change Proof Photo' : 'Add Proof Photo'} onPress={doProof} />
                 <Button variant="ghost" size="sm" icon={<MapPin size={13} color={t.colors.textSecondary} />} label="Track on GPS Map" onPress={() => { setDetail(null); navigation.navigate('Tracking'); }} />
+                <Button variant="ghost" size="sm" icon={<History size={13} color={t.colors.textSecondary} />} label="View Timeline" onPress={() => setTimelineOpen(true)} />
               </View>
             </SheetSection>
 
@@ -234,6 +251,15 @@ export default function ActiveDeliveriesScreen() {
           </>
         )}
       </Sheet>
+
+      {detail && (
+        <RequestTimelineSheet
+          open={timelineOpen}
+          onClose={() => setTimelineOpen(false)}
+          referenceId={detail.id}
+          displayId={detail.order_id || detail.id}
+        />
+      )}
     </Screen>
   );
 }

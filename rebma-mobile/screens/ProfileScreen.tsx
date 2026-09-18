@@ -63,7 +63,7 @@ export default function ProfileScreen({ onOpenDesignSystem, onOpenSettings, onOp
       <View style={{ marginTop: t.spacing.xl, gap: t.spacing.sm }}>
         <Pressable
           onPress={onOpenSettings}
-          style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm, padding: t.spacing.md, borderRadius: t.radius.md, borderWidth: 1, borderColor: t.colors.border, backgroundColor: t.colors.bgCard }}
+          style={[{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm, padding: t.spacing.md, borderRadius: 20, borderWidth: 1, borderColor: t.colors.border, backgroundColor: t.colors.bgCard }, t.shadow('card')]}
         >
           <Settings size={16} color={t.colors.textSecondary} />
           <Text style={{ flex: 1, fontFamily: t.font.medium, fontSize: t.type.body14.size, color: t.colors.textPrimary }}>Settings</Text>
@@ -71,7 +71,7 @@ export default function ProfileScreen({ onOpenDesignSystem, onOpenSettings, onOp
         </Pressable>
         <Pressable
           onPress={onOpenFeedback}
-          style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm, padding: t.spacing.md, borderRadius: t.radius.md, borderWidth: 1, borderColor: t.colors.border, backgroundColor: t.colors.bgCard }}
+          style={[{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm, padding: t.spacing.md, borderRadius: 20, borderWidth: 1, borderColor: t.colors.border, backgroundColor: t.colors.bgCard }, t.shadow('card')]}
         >
           <MessageSquarePlus size={16} color={t.colors.textSecondary} />
           <Text style={{ flex: 1, fontFamily: t.font.medium, fontSize: t.type.body14.size, color: t.colors.textPrimary }}>Feedback</Text>
@@ -79,7 +79,7 @@ export default function ProfileScreen({ onOpenDesignSystem, onOpenSettings, onOp
         </Pressable>
         <Pressable
           onPress={onOpenPayslips}
-          style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm, padding: t.spacing.md, borderRadius: t.radius.md, borderWidth: 1, borderColor: t.colors.border, backgroundColor: t.colors.bgCard }}
+          style={[{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm, padding: t.spacing.md, borderRadius: 20, borderWidth: 1, borderColor: t.colors.border, backgroundColor: t.colors.bgCard }, t.shadow('card')]}
         >
           <Banknote size={16} color={t.colors.textSecondary} />
           <Text style={{ flex: 1, fontFamily: t.font.medium, fontSize: t.type.body14.size, color: t.colors.textPrimary }}>My Payslips</Text>

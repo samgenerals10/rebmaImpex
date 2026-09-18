@@ -25,6 +25,7 @@ import Button from '../../components/ui/Button';
 import SearchablePicker from '../../components/ui/SearchablePicker';
 import DataList, { type DataColumn } from '../../components/ui/DataList';
 import Sheet, { SheetSection } from '../../components/ui/Sheet';
+import RatingBadge from '../../components/ui/RatingBadge';
 import { computeCustomerRating, ordersForCustomer, SUGGESTED_DISCOUNT, type OrderLike } from '../../utils/customerRating';
 
 interface PriceEntry {
@@ -256,7 +257,7 @@ export default function SetPricesScreen() {
       key: 'rating', label: 'Rating', status: true,
       render: (c) => {
         const rating = computeCustomerRating(ordersForCustomer(orders, c.name));
-        return <Text style={{ fontFamily: t.font.bold, fontSize: t.type.meta11.size, color: rating.color }}>{rating.grade}</Text>;
+        return <RatingBadge rating={rating} size="xs" />;
       },
     },
     {

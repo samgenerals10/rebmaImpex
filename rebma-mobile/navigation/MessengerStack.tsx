@@ -6,18 +6,14 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import MessengerChannelsScreen from '../screens/MessengerChannelsScreen';
 import MessengerThreadScreen from '../screens/MessengerThreadScreen';
-import { useTheme } from '../theme/ThemeProvider';
+import SubScreenHeader from '../components/chrome/SubScreenHeader';
 
 const Stack = createNativeStackNavigator();
 
 export default function MessengerStack() {
-  const t = useTheme();
   const headerOptions = {
     headerShown: true,
-    headerStyle: { backgroundColor: t.colors.bgHeader },
-    headerTitleStyle: { fontFamily: t.font.bold, color: t.colors.textPrimary, fontSize: t.type.base16.size },
-    headerTintColor: t.colors.accent,
-    headerShadowVisible: false,
+    header: (props: any) => <SubScreenHeader {...props} />,
   };
   return (
     <Stack.Navigator>

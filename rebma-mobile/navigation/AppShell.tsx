@@ -25,18 +25,20 @@ import DepartmentHomeScreen from './DepartmentHomeScreen';
 import { getDepartmentEntry } from './departmentRegistry';
 import { navigateToSubTab } from './navigationRef';
 import NotificationsScreen from '../screens/NotificationsScreen';
+import ViberStack from './ViberStack';
+import AnalyticsTabScreen from '../screens/AnalyticsTabScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import DesignSystemScreen from '../screens/DesignSystemScreen';
 import SearchScreen from '../screens/SearchScreen';
 import FeedbackScreen from '../screens/FeedbackScreen';
 import PayslipsScreen from '../screens/PayslipsScreen';
 import AppHeader from '../components/chrome/AppHeader';
+import SubScreenHeader from '../components/chrome/SubScreenHeader';
 import DepartmentSwitcherSheet from '../components/chrome/DepartmentSwitcherSheet';
 import QuickActionsSheet from '../components/chrome/QuickActionsSheet';
 import ConnectivityBanner from '../components/chrome/ConnectivityBanner';
 import { useUIStore } from '../store/uiStore';
 import { useAuthStore } from '../store/authStore';
-import { useTheme } from '../theme/ThemeProvider';
 
 const Tab = createBottomTabNavigator();
 const DepartmentStack = createNativeStackNavigator();
@@ -49,7 +51,6 @@ const ProfileStackNav = createNativeStackNavigator();
 // the active department changes, so switching departments always resets
 // back to DepartmentHome with no stale routes left over from the last one.
 function DepartmentStackScreen() {
-  const t = useTheme();
   const { profile } = useAuthStore();
   const activeDepartment = useUIStore((s) => s.activeDepartment);
   const effectiveDepartment = activeDepartment || profile?.department || '';
@@ -70,10 +71,7 @@ function DepartmentStackScreen() {
             options={{
               headerShown: true,
               headerTitle: subTab?.label || id,
-              headerStyle: { backgroundColor: t.colors.bgHeader },
-              headerTitleStyle: { fontFamily: t.font.bold, color: t.colors.textPrimary, fontSize: t.type.base16.size },
-              headerTintColor: t.colors.accent,
-              headerShadowVisible: false,
+              header: (props) => <SubScreenHeader {...props} />,
             }}
           />
         );
@@ -95,9 +93,21 @@ function ProfileStackScreen() {
           />
         )}
       </ProfileStackNav.Screen>
-      <ProfileStackNav.Screen name="DesignSystem" component={DesignSystemScreen} options={{ headerShown: true, headerTitle: 'Design System' }} />
-      <ProfileStackNav.Screen name="Feedback" component={FeedbackScreen} options={{ headerShown: true, headerTitle: 'Feedback' }} />
-      <ProfileStackNav.Screen name="Payslips" component={PayslipsScreen} options={{ headerShown: true, headerTitle: 'My Payslips' }} />
+      <ProfileStackNav.Screen
+        name="DesignSystem"
+        component={DesignSystemScreen}
+        options={{ headerShown: true, headerTitle: 'Design System', header: (props) => <SubScreenHeader {...props} /> }}
+      />
+      <ProfileStackNav.Screen
+        name="Feedback"
+        component={FeedbackScreen}
+        options={{ headerShown: true, headerTitle: 'Feedback', header: (props) => <SubScreenHeader {...props} /> }}
+      />
+      <ProfileStackNav.Screen
+        name="Payslips"
+        component={PayslipsScreen}
+        options={{ headerShown: true, headerTitle: 'My Payslips', header: (props) => <SubScreenHeader {...props} /> }}
+      />
     </ProfileStackNav.Navigator>
   );
 }
@@ -150,6 +160,7 @@ export default function AppShell() {
               </View>
             )}
           </Tab.Screen>
+        <Tab.Screen name="ViberTab" component={ViberStack} />
         <Tab.Screen
           name="ActionTab"
           component={ActionPlaceholder}
@@ -160,6 +171,14 @@ export default function AppShell() {
             },
           }}
         />
+        <Tab.Screen name="AnalyticsTab" component={AnalyticsTabScreen} />
+        {/* AlertsTab stays registered (reachable via the header bell /
+            onNavigateAlerts) even though AppTabBar no longer renders a
+            button for it — Notifications didn't get its own slot in the
+            new 5-tab layout (Home / Viber / + / Analytics / Profile), so
+            it moved to header-only access, same as it already was for
+            Search before this change. Nothing was removed, only its
+            bottom-tab button. */}
         <Tab.Screen name="AlertsTab" component={NotificationsScreen} />
         <Tab.Screen name="ProfileTab" component={ProfileStackScreen} />
         </Tab.Navigator>

@@ -131,10 +131,13 @@ export default function NotificationsScreen() {
             <Pressable
               key={n.id}
               onPress={() => markRead(n)}
-              style={{
-                flexDirection: 'row', gap: t.spacing.sm, borderWidth: 1, borderColor: t.colors.border,
-                borderRadius: t.radius.md, padding: t.spacing.md, backgroundColor: t.colors.bgCard, opacity: n.read ? 0.6 : 1,
-              }}
+              style={[
+                {
+                  flexDirection: 'row', gap: t.spacing.sm, borderWidth: 1, borderColor: t.colors.border,
+                  borderRadius: 20, padding: t.spacing.md, backgroundColor: t.colors.bgCard, opacity: n.read ? 0.6 : 1,
+                },
+                t.shadow('card'),
+              ]}
             >
               <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: TYPE_BG[n.type] || t.colors.accentSoft, alignItems: 'center', justifyContent: 'center' }}>
                 <Bell size={14} color={t.colors.accent} />

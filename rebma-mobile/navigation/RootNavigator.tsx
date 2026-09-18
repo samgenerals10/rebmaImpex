@@ -3,9 +3,13 @@
 // Root stack (Phase 7.0). Driver identity outranks department (D6),
 // mirroring rebma-web's App.tsx exactly: an unconditional `drivers` lookup
 // runs on every profile load (store/authStore.ts loadProfileAndDriver),
-// and a driver session never sees the tab shell — it goes straight to the
-// restyled DispatchHomeScreen with no chrome, whatever its `role` string
-// says. This is a plain decision tree, not a switch on department.
+// and a driver session never sees the department tab shell (AppShell) —
+// it goes straight to DriverShell, its own separate tab shell (Home /
+// Viber / + / Trips / Profile), whatever its `role` string says. This is
+// a plain decision tree, not a switch on department. DriverShell's Home
+// tab is DispatchHomeScreen, unmodified from before this pass — it used
+// to be the entire screen with no chrome at all; it's now wrapped in a
+// tab bar, nothing about its own GPS/offline logic changed.
 import { useEffect } from 'react';
 import { View, ActivityIndicator, StatusBar } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
@@ -15,7 +19,7 @@ import { useTheme } from '../theme/ThemeProvider';
 import WelcomeScreen from '../screens/WelcomeScreen';
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
-import DispatchHomeScreen from '../screens/dispatch/DispatchHomeScreen';
+import DriverShell from './DriverShell';
 import AppShell from './AppShell';
 import MessengerStack from './MessengerStack';
 import { navigationRef } from './navigationRef';
@@ -67,7 +71,7 @@ export default function RootNavigator() {
             <Stack.Screen name="Register" component={RegisterScreen} />
           </>
         ) : driver ? (
-          <Stack.Screen name="DriverTracking" component={DispatchHomeScreen} />
+          <Stack.Screen name="DriverTracking" component={DriverShell} />
         ) : (
           <>
             <Stack.Screen name="App" component={AppShell} />

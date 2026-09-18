@@ -12,6 +12,7 @@ import { useUIStore } from '../../store/uiStore';
 import { useTheme } from '../../theme/ThemeProvider';
 import { getDepartmentEntry } from '../../navigation/departmentRegistry';
 import Screen from '../../components/ui/Screen';
+import { useCollapsibleHeader } from '../../hooks/useCollapsibleHeader';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
@@ -35,6 +36,7 @@ function fmtTime(iso: string) {
 
 export default function VisitorLogScreen() {
   const t = useTheme();
+  const { scrollHandler } = useCollapsibleHeader();
   const navigation = useNavigation<any>();
   const { profile } = useAuthStore();
   const activeDepartment = useUIStore((s) => s.activeDepartment);
@@ -118,7 +120,7 @@ export default function VisitorLogScreen() {
   const checkedOut = visitors.filter((v) => v.check_out_time);
 
   return (
-    <Screen refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }}>
+    <Screen refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} onScroll={scrollHandler} scrollEventThrottle={16}>
       <View style={{ gap: t.spacing.xl }}>
         {/* Aczone Reception Hero Card */}
         <Card tone="hero">

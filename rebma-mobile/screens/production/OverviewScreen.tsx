@@ -9,6 +9,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { useTheme } from '../../theme/ThemeProvider';
 import { getDepartmentEntry } from '../../navigation/departmentRegistry';
 import Screen from '../../components/ui/Screen';
+import { useCollapsibleHeader } from '../../hooks/useCollapsibleHeader';
 import Card from '../../components/ui/Card';
 import MetricCard from '../../components/ui/MetricCard';
 import ProgressRing from '../../components/ui/ProgressRing';
@@ -19,6 +20,7 @@ import SectionHeader from '../../components/ui/SectionHeader';
 
 export default function OverviewScreen() {
   const t = useTheme();
+  const { scrollHandler } = useCollapsibleHeader();
   const navigation = useNavigation<any>();
   const dept = getDepartmentEntry('PRODUCTION');
 
@@ -56,7 +58,7 @@ export default function OverviewScreen() {
   }, [load]);
 
   return (
-    <Screen refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }}>
+    <Screen refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} onScroll={scrollHandler} scrollEventThrottle={16}>
       <View style={{ gap: t.spacing.xl }}>
         {/* Aczone Production Hero Card */}
         <Card tone="hero">

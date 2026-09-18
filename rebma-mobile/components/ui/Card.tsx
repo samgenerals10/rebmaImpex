@@ -6,7 +6,7 @@ import { useTheme } from '../../theme/ThemeProvider';
 interface Props {
   children: ReactNode;
   padded?: boolean;
-  tone?: 'default' | 'inset' | 'hero' | 'soft' | 'gradient';
+  tone?: 'default' | 'inset' | 'hero' | 'soft';
   style?: StyleProp<ViewStyle>;
 }
 

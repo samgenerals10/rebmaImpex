@@ -32,6 +32,7 @@ import Input, { Field } from '../../components/ui/Input';
 import Button from '../../components/ui/Button';
 import DataList, { type DataColumn } from '../../components/ui/DataList';
 import Sheet, { SheetSection } from '../../components/ui/Sheet';
+import Tabs from '../../components/ui/Tabs';
 import RequestTimelineSheet from '../../components/shared/RequestTimelineSheet';
 
 type ItemType = 'Cargo Intake' | 'Sales Order' | 'Risk Final Release' | 'Proof of Delivery' | 'Customer Verification';
@@ -344,28 +345,15 @@ export default function RiskApprovalsScreen() {
       <View style={{ gap: t.spacing.lg }}>
         <Input value={search} onChangeText={setSearch} placeholder="Search by ID or description..." />
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          <View style={{ flexDirection: 'row', gap: t.spacing.xs }}>
-            {TABS.map((tab) => {
-              const count = tab === 'All' ? items.length : items.filter((i) => i.type === tab).length;
-              return (
-                <Pressable
-                  key={tab}
-                  onPress={() => setActiveTab(tab)}
-                  style={{
-                    paddingVertical: 6, paddingHorizontal: 12, borderRadius: t.radius.pill,
-                    backgroundColor: activeTab === tab ? t.colors.accent : t.colors.bgCard,
-                    borderWidth: 1, borderColor: activeTab === tab ? t.colors.accent : t.colors.border,
-                  }}
-                >
-                  <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.meta11.size, color: activeTab === tab ? t.colors.onAccent : t.colors.textSecondary }}>
-                    {tab}{tab !== 'All' ? ` (${count})` : ''}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        </ScrollView>
+        <Tabs
+          variant="chips"
+          value={activeTab}
+          onChange={(v) => setActiveTab(v as 'All' | ItemType)}
+          options={TABS.map((tab) => ({
+            value: tab,
+            label: `${tab}${tab !== 'All' ? ` (${items.filter((i) => i.type === tab).length})` : ''}`,
+          }))}
+        />
 
         <DataList
           columns={columns}

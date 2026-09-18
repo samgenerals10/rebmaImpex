@@ -19,7 +19,8 @@
 // (date/type/period/generated_by/created_at) web's own unconditional
 // insert does — including for the 4 mock types (ReportsView.tsx:256-270).
 import { useCallback, useState } from 'react';
-import { View, Text, Alert } from 'react-native';
+import { View, Text, Alert, Pressable, Platform } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import {
   DollarSign, TrendingUp, CreditCard, ShoppingCart, ChartPie, Calendar,
   Receipt, Users, TriangleAlert, Wallet, FileMinus, Landmark, Download,
@@ -34,6 +35,7 @@ import Badge, { statusTone } from '../../components/ui/Badge';
 import Sheet, { SheetSection } from '../../components/ui/Sheet';
 import Button from '../../components/ui/Button';
 import SearchablePicker from '../../components/ui/SearchablePicker';
+import Tabs from '../../components/ui/Tabs';
 import ExportSheet from '../../components/shared/ExportSheet';
 import type { ExportColumn } from '../../lib/exportEngine';
 
@@ -65,12 +67,44 @@ function periodStartDate(period: string): string | null {
   return null;
 }
 
+function fmtDate(d: Date): string {
+  return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+// End-of-day for a "To" date, so the range's own last day is included —
+// a raw midnight `lte` would silently drop everything on that day.
+function endOfDay(d: Date): Date {
+  const e = new Date(d);
+  e.setHours(23, 59, 59, 999);
+  return e;
+}
+
 export default function FinReportsScreen() {
   const t = useTheme();
   const { profile } = useAuthStore();
   const [period, setPeriod] = useState('This Month');
+  const [rangeMode, setRangeMode] = useState<'preset' | 'custom'>('preset');
+  const [customFrom, setCustomFrom] = useState<Date>(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1));
+  const [customTo, setCustomTo] = useState<Date>(() => new Date());
+  const [pickerFor, setPickerFor] = useState<'from' | 'to' | null>(null);
   const [running, setRunning] = useState<string | null>(null);
   const [resultReport, setResultReport] = useState<string | null>(null);
+
+  // The one real ask this fix is for: a genuine date range (From + To),
+  // not just a named preset — the 6 presets stay for quick access, but
+  // now sit alongside an actual calendar. `lte` is new too — none of the
+  // preset periods ever had an upper bound before this (a raw
+  // `gte(start)` with nothing capping the end), which only worked
+  // because they all implicitly meant "since X, until now." A real
+  // range needs both ends.
+  const activeDateFilter = useCallback((): { gte: string | null; lte: string | null } => {
+    if (rangeMode === 'custom') {
+      return { gte: customFrom.toISOString(), lte: endOfDay(customTo).toISOString() };
+    }
+    return { gte: periodStartDate(period), lte: null };
+  }, [rangeMode, customFrom, customTo, period]);
+
+  const periodLabel = rangeMode === 'custom' ? `${fmtDate(customFrom)} – ${fmtDate(customTo)}` : period;
   const [resultRows, setResultRows] = useState<any[]>([]);
   const [resultColumns, setResultColumns] = useState<DataColumn<any>[]>([]);
   const [exportColumns, setExportColumns] = useState<ExportColumn[]>([]);
@@ -79,15 +113,16 @@ export default function FinReportsScreen() {
   const logHistory = async (reportName: string) => {
     try {
       await supabase.from('finance_report_history').insert([{
-        date: new Date().toISOString().slice(0, 10), type: reportName, period, generated_by: profile?.fullName || 'Finance', created_at: new Date().toISOString(),
+        date: new Date().toISOString().slice(0, 10), type: reportName, period: periodLabel, generated_by: profile?.fullName || 'Finance', created_at: new Date().toISOString(),
       }]);
     } catch {}
   };
 
   const runDailyCash = useCallback(async () => {
-    const gte = periodStartDate(period);
+    const { gte, lte } = activeDateFilter();
     let query = supabase.from('finance_payments').select('id, client_name, amount, payment_mode, payment_type, recorded_by, created_at').eq('payment_mode', 'Cash');
     if (gte) query = query.gte('created_at', gte);
+    if (lte) query = query.lte('created_at', lte);
     const { data } = await query;
     setResultColumns([
       { key: 'client_name', label: 'Client', primary: true, render: (p) => p.client_name || '—' },
@@ -105,14 +140,15 @@ export default function FinReportsScreen() {
       { key: 'created_at', label: 'Date', render: (p) => new Date(p.created_at).toLocaleDateString() },
     ]);
     setResultRows(data || []);
-  }, [period, t]);
+  }, [activeDateFilter, t]);
 
   // Verbatim from ReportsView.tsx:129-142 — despite the "weekly" name,
   // web uses whatever period is selected, not a hardcoded 7-day window.
   const runWeeklySales = useCallback(async () => {
-    const gte = periodStartDate(period);
+    const { gte, lte } = activeDateFilter();
     let query = supabase.from('orders').select('id, client_name, product_name, quantity, total_amount, payment_mode, status, created_at');
     if (gte) query = query.gte('created_at', gte);
+    if (lte) query = query.lte('created_at', lte);
     const { data } = await query;
     setResultColumns([
       { key: 'client_name', label: 'Client', primary: true, render: (o) => o.client_name || '—' },
@@ -131,13 +167,14 @@ export default function FinReportsScreen() {
       { key: 'created_at', label: 'Date', render: (o) => new Date(o.created_at).toLocaleDateString() },
     ]);
     setResultRows(data || []);
-  }, [period]);
+  }, [activeDateFilter]);
 
   const runMonthlyPL = useCallback(async () => {
-    const gte = periodStartDate(period);
+    const { gte, lte } = activeDateFilter();
     let pQuery = supabase.from('finance_payments').select('amount, created_at');
     let eQuery = supabase.from('general_purchases').select('cost, created_at').eq('status', 'APPROVED');
     if (gte) { pQuery = pQuery.gte('created_at', gte); eQuery = eQuery.gte('created_at', gte); }
+    if (lte) { pQuery = pQuery.lte('created_at', lte); eQuery = eQuery.lte('created_at', lte); }
     const [{ data: pData }, { data: eData }] = await Promise.all([pQuery, eQuery]);
     const rev = (pData || []).reduce((s: number, p: any) => s + Number(p.amount || 0), 0);
     const exp = (eData || []).reduce((s: number, e: any) => s + Number(e.cost || 0), 0);
@@ -158,7 +195,7 @@ export default function FinReportsScreen() {
       { metric: 'Total Approved Expenses', amount: exp, description: 'Operations & general purchases approved' },
       { metric: 'Net Operating Income', amount: net, description: 'Net profit/loss before tax' },
     ]);
-  }, [period, t]);
+  }, [activeDateFilter, t]);
 
   // Verbatim from ReportsView.tsx:169-179 — a staff roster, no pay
   // figures at all, matching web's real (not the card's described)
@@ -251,9 +288,10 @@ export default function FinReportsScreen() {
   // Verbatim from ReportsView.tsx:229-242 — no status filter, matching
   // web's real (not the card's described) behavior.
   const runExpense = useCallback(async () => {
-    const gte = periodStartDate(period);
+    const { gte, lte } = activeDateFilter();
     let query = supabase.from('general_purchases').select('id, item_name, category, cost, status, department, date_received, created_at');
     if (gte) query = query.gte('created_at', gte);
+    if (lte) query = query.lte('created_at', lte);
     const { data } = await query;
     setResultColumns([
       { key: 'item_name', label: 'Item', primary: true, render: (e) => e.item_name || '—' },
@@ -271,13 +309,13 @@ export default function FinReportsScreen() {
       { key: 'date_received', label: 'Date Received', render: (e) => e.date_received || '—' },
     ]);
     setResultRows(data || []);
-  }, [period]);
+  }, [activeDateFilter]);
 
   // Confirmed mock on web itself (ReportsView.tsx:244-248) — a single
   // placeholder row, no Supabase call. Ported as the same honest
   // placeholder, not invented (D106).
   const runMockPlaceholder = useCallback((reportName: string) => {
-    const row = { Report: reportName, Period: period, 'Generated By': profile?.fullName || 'Finance', Date: new Date().toLocaleDateString() };
+    const row = { Report: reportName, Period: periodLabel, 'Generated By': profile?.fullName || 'Finance', Date: new Date().toLocaleDateString() };
     setResultColumns([
       { key: 'Report', label: 'Report', primary: true },
       { key: 'Period', label: 'Period' },
@@ -291,7 +329,7 @@ export default function FinReportsScreen() {
       { key: 'Date', label: 'Date' },
     ]);
     setResultRows([row]);
-  }, [period, profile?.fullName]);
+  }, [periodLabel, profile?.fullName]);
 
   const runReport = async (reportId: string, reportName: string) => {
     setRunning(reportId);
@@ -317,7 +355,64 @@ export default function FinReportsScreen() {
   return (
     <Screen>
       <View style={{ gap: t.spacing.xl }}>
-        <SearchablePicker label="Period" value={period} onChange={setPeriod} options={PERIODS.map((p) => ({ value: p, label: p }))} />
+        <View style={{ gap: t.spacing.sm }}>
+          <Tabs
+            variant="segmented"
+            value={rangeMode}
+            onChange={(v) => setRangeMode(v as 'preset' | 'custom')}
+            options={[{ value: 'preset', label: 'Quick Period' }, { value: 'custom', label: 'Custom Range' }]}
+          />
+          {rangeMode === 'preset' ? (
+            <SearchablePicker label="Period" value={period} onChange={setPeriod} options={PERIODS.map((p) => ({ value: p, label: p }))} />
+          ) : (
+            <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
+              <Pressable
+                onPress={() => setPickerFor('from')}
+                style={{ flex: 1, padding: t.spacing.md, borderRadius: t.radius.md, borderWidth: 1, borderColor: t.colors.border, backgroundColor: t.colors.bgInput, flexDirection: 'row', alignItems: 'center', gap: t.spacing.xs }}
+              >
+                <Calendar size={14} color={t.colors.textMuted} />
+                <View>
+                  <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.meta10.size, color: t.colors.textMuted }}>From</Text>
+                  <Text style={{ fontFamily: t.font.medium, fontSize: t.type.body12.size, color: t.colors.textPrimary }}>{fmtDate(customFrom)}</Text>
+                </View>
+              </Pressable>
+              <Pressable
+                onPress={() => setPickerFor('to')}
+                style={{ flex: 1, padding: t.spacing.md, borderRadius: t.radius.md, borderWidth: 1, borderColor: t.colors.border, backgroundColor: t.colors.bgInput, flexDirection: 'row', alignItems: 'center', gap: t.spacing.xs }}
+              >
+                <Calendar size={14} color={t.colors.textMuted} />
+                <View>
+                  <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.meta10.size, color: t.colors.textMuted }}>To</Text>
+                  <Text style={{ fontFamily: t.font.medium, fontSize: t.type.body12.size, color: t.colors.textPrimary }}>{fmtDate(customTo)}</Text>
+                </View>
+              </Pressable>
+            </View>
+          )}
+          {pickerFor && (
+            <View>
+              <DateTimePicker
+                value={pickerFor === 'from' ? customFrom : customTo}
+                mode="date"
+                display={Platform.OS === 'ios' ? 'inline' : 'default'}
+                maximumDate={new Date()}
+                onChange={(event, selected) => {
+                  // Android's picker is a one-shot native dialog — it fires
+                  // 'set'/'dismissed' once, so close it here regardless of
+                  // outcome. iOS's inline calendar stays open and fires on
+                  // every date tap, so a separate "Done" button below
+                  // closes it instead.
+                  if (Platform.OS === 'android') setPickerFor(null);
+                  if (event.type === 'dismissed' || !selected) return;
+                  if (pickerFor === 'from') setCustomFrom(selected);
+                  else setCustomTo(selected);
+                }}
+              />
+              {Platform.OS === 'ios' && (
+                <Button label="Done" size="sm" variant="ghost" onPress={() => setPickerFor(null)} />
+              )}
+            </View>
+          )}
+        </View>
 
         <View style={{ gap: t.spacing.md }}>
           {REPORTS.map((r) => {
@@ -344,7 +439,7 @@ export default function FinReportsScreen() {
         open={!!resultReport}
         onClose={() => setResultReport(null)}
         title={resultReport || undefined}
-        subtitle={period}
+        subtitle={periodLabel}
         side="bottom"
         maxHeight={640}
         footer={<Button label="Export" icon={<Download size={14} color="#fff" />} onPress={() => setExportOpen(true)} fullWidth />}
@@ -357,7 +452,7 @@ export default function FinReportsScreen() {
       <ExportSheet
         open={exportOpen}
         onClose={() => setExportOpen(false)}
-        title={resultReport ? `${resultReport} — ${period}` : 'Report'}
+        title={resultReport ? `${resultReport} — ${periodLabel}` : 'Report'}
         data={resultRows}
         columns={exportColumns}
         formats={['csv', 'pdf']}
