@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 import { View, Animated, RefreshControl, StatusBar, StyleSheet, type NativeSyntheticEvent, type NativeScrollEvent } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeProvider';
-import DashboardHeader, { CONTENT_SHEET_RADIUS } from '../chrome/AppHeader';
+import { DashboardHeaderPinned, DashboardHeaderScrollable, CONTENT_SHEET_RADIUS } from '../chrome/AppHeader';
 
 interface Props {
   children: ReactNode;
@@ -15,15 +15,15 @@ interface Props {
   footer?: ReactNode;
   /** Auto-detected from `onScroll` being passed (every department
    * home/dashboard screen wires this in via `useCollapsibleHeader()`,
-   * nothing else does) — renders the purple DashboardHeader as the
-   * first item in the scroll content, followed by a rounded-top
-   * content sheet. The header is normal, non-fixed content — it
-   * scrolls away with the rest of the page like everything else, it
-   * doesn't stay pinned while content rises over it (that was tried
-   * and rejected after seeing it live: icons shifting/hiding and
-   * content sliding up behind the header read as poor UX in practice).
-   * Every other screen should omit `onScroll` and gets the plain
-   * layout below. */
+   * nothing else does) — renders the collapsing-then-pinned dashboard
+   * header: DashboardHeaderPinned (icon row + department name) stays
+   * fixed at the top always; DashboardHeaderScrollable (greeting +
+   * search) is normal scroll content that starts right below it and
+   * disappears underneath it as the page scrolls — the rest of the
+   * page then keeps scrolling under the now-permanently-visible pinned
+   * strip. See AppHeader.tsx's own header comment for the two earlier,
+   * rejected designs this replaced. Every other screen should omit
+   * `onScroll` and gets the plain layout below. */
   onScroll?: (event: NativeSyntheticEvent<NativeScrollEvent>) => void;
   scrollEventThrottle?: number;
 }
@@ -41,6 +41,7 @@ export default function Screen({ children, scroll = true, refreshing, onRefresh,
     return (
       <View style={{ flex: 1, backgroundColor: t.colors.bgPage }}>
         <StatusBar barStyle="light-content" />
+        <DashboardHeaderPinned />
         <Animated.ScrollView
           style={{ flex: 1 }}
           contentContainerStyle={{ paddingBottom: t.spacing.xxxl }}
@@ -53,14 +54,13 @@ export default function Screen({ children, scroll = true, refreshing, onRefresh,
           onScroll={onScroll}
           scrollEventThrottle={scrollEventThrottle}
         >
-          <DashboardHeader />
+          <View style={{ borderBottomLeftRadius: CONTENT_SHEET_RADIUS, borderBottomRightRadius: CONTENT_SHEET_RADIUS, overflow: 'hidden' }}>
+            <DashboardHeaderScrollable />
+          </View>
           <View
             style={{
               backgroundColor: t.colors.bgCard,
-              borderTopLeftRadius: CONTENT_SHEET_RADIUS,
-              borderTopRightRadius: CONTENT_SHEET_RADIUS,
-              marginTop: -CONTENT_SHEET_RADIUS,
-              ...(padded ? { padding: t.spacing.lg, paddingTop: t.spacing.lg + CONTENT_SHEET_RADIUS } : {}),
+              ...(padded ? { padding: t.spacing.lg } : {}),
             }}
           >
             {children}
