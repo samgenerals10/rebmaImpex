@@ -83,14 +83,7 @@ import { Modal, View, Text, Pressable, ScrollView, TextInput, Alert } from 'reac
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Clipboard from 'expo-clipboard';
 import Svg, { Polyline } from 'react-native-svg';
-import {
-  RTCPeerConnection,
-  RTCIceCandidate,
-  RTCSessionDescription,
-  mediaDevices,
-  RTCView,
-  type MediaStream,
-} from 'react-native-webrtc';
+import type { MediaStream } from 'react-native-webrtc';
 import {
   X, Mic, MicOff, SwitchCamera, VideoOff, Video, Users, Hand, Smile,
   Pin, PinOff, LayoutGrid, MessageSquare, Send, Copy, Lock, LockOpen,
@@ -104,6 +97,36 @@ import { supabase } from '../../lib/supabaseClient';
 import { getCeoSetting } from '../../lib/ceoSetting';
 import { startLocalRecording, stopLocalRecording, uploadRecording } from '../../lib/meetingRecording';
 import { openRoomChannel, ICE_SERVERS, shouldOfferTo, type SignalMessage, type RoomChannel, type RoomPresenceEntry } from '../../lib/webrtcSignaling';
+
+// react-native-webrtc is a native module — its binding isn't present in
+// Expo Go. A plain top-level `import` still gets compiled to a `require()`
+// that Metro evaluates the instant this file loads, which happens at app
+// boot (this file is wired into the Boardroom/Meetings stack, not lazily
+// mounted) — so an unguarded import here crashes the whole app in Expo
+// Go, not just calling. Guarding it with try/catch means the rest of the
+// app (including every other screen) still boots and runs normally; the
+// values below just stay undefined until a real dev build provides the
+// native module, and any attempt to actually place a call while running
+// in Expo Go fails at that point instead of at startup — see
+// NativeCallSheet.tsx for the same pattern on the 1:1 call side.
+let webrtc: typeof import('react-native-webrtc') | null = null;
+try {
+  webrtc = require('react-native-webrtc');
+} catch {
+  webrtc = null;
+}
+const RTCPeerConnection = webrtc?.RTCPeerConnection as typeof import('react-native-webrtc').RTCPeerConnection;
+const RTCIceCandidate = webrtc?.RTCIceCandidate as typeof import('react-native-webrtc').RTCIceCandidate;
+const RTCSessionDescription = webrtc?.RTCSessionDescription as typeof import('react-native-webrtc').RTCSessionDescription;
+const mediaDevices = webrtc?.mediaDevices as typeof import('react-native-webrtc').mediaDevices;
+const RTCView = webrtc?.RTCView as typeof import('react-native-webrtc').RTCView;
+// A `const` only binds the value namespace — unlike the class import it
+// replaces, it doesn't also give `RTCPeerConnection` a meaning as a TYPE,
+// so `Peer.pc: RTCPeerConnection` below would silently fall back to the
+// ambient browser DOM lib's (structurally different) RTCPeerConnection
+// interface without this. This is what actually keeps every peer's `pc`
+// typed as react-native-webrtc's own instance type.
+type RTCPeerConnection = InstanceType<typeof import('react-native-webrtc').RTCPeerConnection>;
 
 interface WhiteboardStroke { id: string; from: string; points: { x: number; y: number }[]; color: string; width: number }
 const WHITEBOARD_COLORS = ['#f8fafc', '#ef4444', '#22c55e', '#3b82f6', '#f59e0b'];

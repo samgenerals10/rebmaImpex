@@ -25,18 +25,40 @@
 import { useEffect, useRef, useState } from 'react';
 import { Modal, View, Text, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import {
-  RTCPeerConnection,
-  RTCIceCandidate,
-  RTCSessionDescription,
-  mediaDevices,
-  RTCView,
-  type MediaStream,
-} from 'react-native-webrtc';
+import type { MediaStream } from 'react-native-webrtc';
 import { X, Phone, Video, Mic, MicOff, SwitchCamera, VideoOff } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeProvider';
 import { useAuthStore } from '../../store/authStore';
 import { openRoomChannel, ICE_SERVERS, shouldOfferTo, type SignalMessage, type RoomChannel } from '../../lib/webrtcSignaling';
+
+// react-native-webrtc is a native module — its binding isn't present in
+// Expo Go. A plain top-level `import` still gets compiled to a `require()`
+// that Metro evaluates the instant this file loads, which happens at app
+// boot (this file is wired into the Viber/Messenger stack, not lazily
+// mounted) — so an unguarded import here crashes the whole app in Expo
+// Go, not just calling. Guarding it with try/catch means the rest of the
+// app (including every other screen) still boots and runs normally; the
+// values below just stay undefined until a real dev build provides the
+// native module, and any attempt to actually place a call while running
+// in Expo Go fails at that point instead of at startup.
+let webrtc: typeof import('react-native-webrtc') | null = null;
+try {
+  webrtc = require('react-native-webrtc');
+} catch {
+  webrtc = null;
+}
+const RTCPeerConnection = webrtc?.RTCPeerConnection as typeof import('react-native-webrtc').RTCPeerConnection;
+const RTCIceCandidate = webrtc?.RTCIceCandidate as typeof import('react-native-webrtc').RTCIceCandidate;
+const RTCSessionDescription = webrtc?.RTCSessionDescription as typeof import('react-native-webrtc').RTCSessionDescription;
+const mediaDevices = webrtc?.mediaDevices as typeof import('react-native-webrtc').mediaDevices;
+const RTCView = webrtc?.RTCView as typeof import('react-native-webrtc').RTCView;
+// A `const` only binds the value namespace — unlike the class import it
+// replaces, it doesn't also give `RTCPeerConnection` a meaning as a TYPE,
+// so `useRef<RTCPeerConnection | null>` below would silently fall back to
+// the ambient browser DOM lib's (structurally different) RTCPeerConnection
+// interface without this. This is what actually keeps `pc`'s type as
+// react-native-webrtc's own, everywhere it's used.
+type RTCPeerConnection = InstanceType<typeof import('react-native-webrtc').RTCPeerConnection>;
 
 interface Props {
   room: string;
