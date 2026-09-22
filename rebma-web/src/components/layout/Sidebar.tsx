@@ -9,7 +9,7 @@ import {
   CreditCard, ClipboardCheck, MapPin, MessageCircle, RefreshCw, Banknote, ShoppingCart,
   Package, AlertTriangle, UserCheck, Camera, UserPlus, Calendar, Building2, AlertCircle,
   FileBarChart, ClipboardList, Factory, Wrench, BarChart3, Gauge, Plus, ShoppingBag,
-  Smartphone, Receipt, Calculator, PiggyBank, Shield, FileSpreadsheet, ShieldAlert, QrCode
+  Smartphone, Receipt, Calculator, PiggyBank, Shield, FileSpreadsheet, ShieldAlert, QrCode, Bot
 } from 'lucide-react';
 import type { CurrentUser } from '../../types/erp';
 import MiniCalendar from './MiniCalendar';
@@ -102,6 +102,10 @@ export default function Sidebar({
       { id: 'LiveUsers',       label: 'Live Users',             icon: Radio },
       { id: 'DeptActivity',    label: 'Dept Activity',          icon: Activity },
       { id: 'Spreadsheets',    label: 'Spreadsheets',           icon: FileSpreadsheet },
+      // Direct instruction: lives ONLY in the CEO's department, nowhere
+      // else — added here and only here, not to any other department's
+      // tab list below.
+      { id: 'HelpAssistant',   label: 'Help Assistant',         icon: Bot },
     ],
     FINANCE: [
       { id: 'Evaluation',        label: 'Dashboard',              icon: LayoutDashboard },

@@ -14,6 +14,7 @@ import SidePanel from '../../components/ui/SidePanel';
 import SearchableDropdown from '../../components/ui/SearchableDropdown';
 import ResponsiveDataView, { type DataColumn } from '../../components/mobile/ResponsiveDataView';
 import { exportToCSV } from '../../utils/export';
+import { CEO_SETTINGS_SCHEMA, getSchemaSection, type SettingFieldSpec } from '../../utils/ceoSettingsSchema';
 
 interface Props {
   currentUser: { id?: string; fullName: string; department: string; isAdmin?: boolean } | null;
@@ -250,6 +251,28 @@ function SettingSelect({ label, description, settingKey, options }: {
       />
     </div>
   );
+}
+
+// ── Generic field renderer, driven by utils/ceoSettingsSchema.ts ──────────────
+// The 4 components above (SettingToggle/SettingToggleWithException/
+// SettingNumber/SettingSelect) are completely untouched — this only
+// dispatches to whichever one a schema entry's `kind` calls for, so the
+// 9 plain sections below can be rendered from data instead of one
+// hand-written JSX element per setting. Same schema is imported by
+// utils/helpKnowledgeBase.ts for the Help Assistant's search — one
+// source of truth, edit a field here and it's simultaneously live in
+// both places.
+function SettingField({ field }: { field: SettingFieldSpec }) {
+  switch (field.kind) {
+    case 'toggle':
+      return <SettingToggle settingKey={field.key} label={field.label} description={field.description} warning={field.warning} />;
+    case 'toggleWithException':
+      return <SettingToggleWithException settingKey={field.key} label={field.label} description={field.description} />;
+    case 'number':
+      return <SettingNumber settingKey={field.key} label={field.label} description={field.description} min={field.min} max={field.max} unit={field.unit} />;
+    case 'select':
+      return <SettingSelect settingKey={field.key} label={field.label} description={field.description} options={field.options} />;
+  }
 }
 
 // ── Section Wrapper ───────────────────────────────────────────────────────────
@@ -1027,32 +1050,7 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
 
       {/* ── SECTION 1: ACCESS CONTROL ──────────────────────────────────── */}
       <Section title="Section 1 — Access Control" icon={Shield}>
-        <SettingToggle
-          settingKey="app_master_switch"
-          label="App Access (Master Switch)"
-          description="Master switch for entire app. When turned OFF all users except CEO will see a maintenance page and cannot access any features."
-          warning="⚠️ This will immediately lock out all users and shut down app access. Only you can turn it back on. Are you sure?"
-        />
-        <SettingToggle
-          settingKey="registrations_allowed"
-          label="Allow New Registrations"
-          description="When OFF the registration page shows 'Registration is currently closed' and no new accounts can be created."
-        />
-        <SettingToggle
-          settingKey="invitation_only"
-          label="Show CEO Invite Panel"
-          description="Registration is always invite-only for everyone except CEO. This toggle only shows or hides your own Invite Staff panel below, for quickly inviting someone yourself (e.g. a new HR hire)."
-        />
-        <SettingToggle
-          settingKey="hr_can_invite_staff"
-          label="HR Can Invite Staff"
-          description="When OFF, HR's Add Staff screen is disabled app-wide, and HR cannot generate or send new staff invites until this is turned back on."
-        />
-        <SettingToggleWithException
-          settingKey="mobile_app_access_allowed"
-          label="Mobile App Access"
-          description="Master switch for who can sign in to the mobile app. Use the email exceptions below to allow or block specific people regardless of this switch."
-        />
+        {getSchemaSection('access')!.fields.slice(0, 5).map(f => <SettingField key={f.key} field={f} />)}
 
         {/* Invite Staff (visible when invitation_only = true) */}
         {invitationOnly && (
@@ -1163,21 +1161,7 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
           </div>
         )}
 
-        <SettingToggle
-          settingKey="hr_can_approve_registrations"
-          label="HR Can Approve Registrations"
-          description="When OFF HR cannot approve new staff registrations. All approvals require CEO sign-off."
-        />
-        <SettingToggle
-          settingKey="management_can_approve_registrations"
-          label="Management Can Approve Registrations"
-          description="Allow Management to approve staff registrations independently."
-        />
-        <SettingToggle
-          settingKey="ceo_must_approve_registrations"
-          label="CEO Must Approve Registrations"
-          description="All new staff registrations go directly to CEO first before HR review. Highest level of staff access control."
-        />
+        {getSchemaSection('access')!.fields.slice(5).map(f => <SettingField key={f.key} field={f} />)}
 
         {/* User Management */}
         <div className="mt-4 space-y-3">
@@ -1257,130 +1241,35 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
 
       {/* ── SECTION 2: FINANCIAL CONTROLS ─────────────────────────────── */}
       <Section title="Section 2 — Financial Controls" icon={DollarSign}>
-        <SettingToggle settingKey="credit_sales_enabled" label="Credit Sales Enabled"
-          description="Allow credit payment type for customer orders. When OFF Marketing cannot select Credit as payment mode." />
-        <SettingNumber settingKey="max_credit_amount" label="Maximum Credit Amount" unit="GHS"
-          description="Maximum credit amount allowed per customer. Orders requesting credit above this amount are automatically blocked." min={0} max={10000000} />
-        <SettingToggle settingKey="cash_payments_enabled" label="Cash Payments Enabled"
-          description="Allow Cash as payment type in Finance order processing." />
-        <SettingToggle settingKey="cheque_payments_enabled" label="Cheque Payments Enabled"
-          description="Allow Cheque as payment type. When OFF Finance cannot record cheque payments." />
-        <SettingToggle settingKey="momo_payments_enabled" label="Mobile Money Enabled"
-          description="Allow Mobile Money (MTN, Vodafone, AirtelTigo) as payment type." />
-        <SettingToggle settingKey="invoice_generation_enabled" label="Auto Invoice Generation"
-          description="Automatically generate invoice when Finance approves an order. When OFF invoices must be created manually." />
-        <SettingToggle settingKey="finance_needs_ceo_cosign" label="Finance Needs CEO Co-sign"
-          description="When ON all Finance payment approvals require CEO electronic co-signature before they are processed." />
-        <SettingToggle settingKey="payroll_processing_enabled" label="Payroll Processing Enabled"
-          description="Allow Finance to process payroll batches. When OFF payroll submissions from HR are frozen." />
-        <SettingNumber settingKey="ceo_approval_threshold" label="CEO Approval Threshold" unit="GHS"
-          description="Orders above this amount require CEO approval before Finance can process payment." min={0} max={100000000} />
-        <SettingToggle settingKey="management_price_setting" label="Management Can Set Prices"
-          description="Allow Management to set product selling prices. When OFF only CEO can set and broadcast prices." />
-        <SettingToggle settingKey="ceo_must_approve_prices" label="CEO Must Approve Price Changes"
-          description="When ON Management can draft prices but CEO must review and approve before they broadcast to Finance and Marketing." />
-        <SettingToggle settingKey="forms_control" label="All Forms Enabled (Master)"
-          description="Master switch for all forms across all departments. When OFF no user can submit any form in any department." />
-        <SettingToggle settingKey="orders_enabled" label="Orders Enabled"
-          description="Allow new orders to be created. When OFF Marketing cannot submit new customer orders or internal production orders." />
+        {getSchemaSection('financial')!.fields.map(f => <SettingField key={f.key} field={f} />)}
       </Section>
 
       {/* ── SECTION 3: OPERATIONS CONTROLS ───────────────────────────── */}
       <Section title="Section 3 — Operations Controls" icon={Package}>
-        <SettingToggle settingKey="cargo_intake_enabled" label="Cargo Intake Enabled"
-          description="Allow Operations to log new cargo receipts from the port. When OFF the Log Intake button is disabled." />
-        <SettingToggle settingKey="stock_adjustments_allowed" label="Stock Adjustments Allowed"
-          description="Allow manual stock level adjustments in Operations. When OFF only system-generated stock movements are allowed." />
-        <SettingToggle settingKey="management_can_delete_stock" label="Management Can Delete Stock"
-          description="Allow Management to permanently remove stock items from the Manage Stock section on their dashboard. When OFF the delete controls there are hidden." />
-        <SettingToggle settingKey="quality_check_needs_cosign" label="Require Co-sign on Quality Check"
-          description="When ON quality check results require CEO or Management approval before stock is updated. Operations cannot pass goods independently." />
-        <SettingToggle settingKey="discrepancy_auto_alert_ceo" label="CEO Discrepancy Alerts"
-          description="CEO receives instant notification for every discrepancy report filed by Operations." />
+        {getSchemaSection('operations')!.fields.map(f => <SettingField key={f.key} field={f} />)}
       </Section>
 
       {/* ── SECTION 4: DISPATCH CONTROLS ──────────────────────────────── */}
       <Section title="Section 4 — Dispatch Controls" icon={Truck}>
-        <SettingToggle settingKey="deliveries_enabled" label="Deliveries Enabled"
-          description="Allow Dispatch to create and process deliveries. When OFF no deliveries can be assigned or dispatched." />
-        <SettingToggle settingKey="gps_tracking_enabled" label="GPS Tracking Enabled"
-          description="Enable real-time GPS tracking for all delivery vehicles." />
-        <SettingSelect settingKey="gps_ping_interval" label="GPS Ping Interval"
-          description="How frequently GPS location updates. Lower = more accurate but uses more data."
-          options={[{ value: '10', label: '10 seconds' }, { value: '30', label: '30 seconds' }, { value: '60', label: '60 seconds' }]} />
-        <SettingToggle settingKey="proof_of_delivery_required" label="Proof of Delivery Required"
-          description="Dispatch cannot mark a delivery as complete without uploading a photo proof. Enforced on all deliveries." />
-        <SettingToggle settingKey="dispatch_needs_management" label="Management Must Approve Driver"
-          description="When ON driver assignments require Management approval before dispatch." />
+        {getSchemaSection('dispatch')!.fields.map(f => <SettingField key={f.key} field={f} />)}
       </Section>
 
       {/* ── SECTION 5: DATA CONTROLS ──────────────────────────────────── */}
       <Section title="Section 5 — Data Controls" icon={Database}>
-        <SettingToggle settingKey="data_export_enabled" label="Data Export Enabled"
-          description="Allow CSV and PDF exports across all departments. When OFF all export buttons are hidden and disabled." />
-        <SettingToggle settingKey="data_import_enabled" label="Data Import Enabled"
-          description="Master switch for all file imports. Management still controls which departments can import and what types." />
-        <SettingSelect settingKey="audit_log_access" label="Audit Log Access"
-          description="Controls which roles can access the audit log viewer."
-          options={[{ value: 'ceo_only', label: 'CEO Only' }, { value: 'management_and_above', label: 'Management and Above' }, { value: 'all_staff', label: 'All Staff' }]} />
-        <SettingToggle settingKey="print_enabled" label="Printing Enabled"
-          description="Allow printing across all departments. When OFF print buttons are hidden and disabled." />
-        <SettingToggle settingKey="report_generation_enabled" label="Reports Enabled"
-          description="Allow financial report generation in Finance department." />
-        <SettingToggle settingKey="ceo_activity_visible_to_others" label="CEO Activity Visible to Others"
-          description="When ON, other departments can see CEO-authored entries in the Department Activity feed and the CEO department card. When OFF (default), only the CEO can see their own activity entries." />
+        {getSchemaSection('data')!.fields.map(f => <SettingField key={f.key} field={f} />)}
       </Section>
 
       {/* ── SECTION 6: COMMUNICATION CONTROLS ────────────────────────── */}
       <Section title="Section 6 — Communication Controls" icon={MessageCircle}>
-        <SettingToggle settingKey="global_chat_enabled" label="Global Chat Enabled"
-          description="Enable company-wide chat in the Boardroom. When OFF the Global Chat tab is hidden for all users." />
-        <SettingToggle settingKey="department_chat_enabled" label="Department Chat Enabled"
-          description="Enable department-specific chat channels." />
-        <SettingToggle settingKey="direct_messages_enabled" label="Direct Messages Enabled"
-          description="Allow private messaging between individual staff members." />
-        <SettingToggleWithException
-          settingKey="messaging_access_allowed"
-          label="Messaging Access"
-          description="Master switch for whether an account can use chat at all (web and mobile), on top of the three toggles above. Add an email exception below to block or allow one specific person regardless of the master switch." />
-        <SettingToggle settingKey="messenger_calls_enabled" label="Voice/Video Calls Enabled"
-          description="Allow starting an ad-hoc voice or video call from any conversation in Messenger. When OFF the call buttons are hidden." />
-        <SettingToggle settingKey="messenger_attachments_enabled" label="Attachments Enabled"
-          description="Allow sending photos, files, and voice notes in Messenger. When OFF only plain text messages can be sent." />
-        <SettingNumber settingKey="message_retention_days" label="Message Retention"
-          description="Hide messages older than this many days from every conversation view. 0 disables retention (messages are kept indefinitely). This only hides old messages from view; it does not delete them from the database." unit="days" min={0} max={3650} />
+        {getSchemaSection('communication')!.fields.slice(0, 7).map(f => <SettingField key={f.key} field={f} />)}
         <MessageExportSection currentUser={currentUser} addNotification={addNotification} />
-        <SettingToggle settingKey="external_email_enabled" label="External Email Enabled"
-          description="Allow sending emails to suppliers and customers from within the app." />
-        <SettingToggle settingKey="whatsapp_enabled" label="WhatsApp Enabled"
-          description="Allow sending WhatsApp messages to suppliers and customers." />
-        <SettingToggle settingKey="payment_reminders_enabled" label="Payment Reminders Enabled"
-          description="Allow Finance to send payment reminder messages to customers with outstanding credit." />
-        <SettingToggle settingKey="announcements_ceo_only" label="CEO Only Announcements"
-          description="When ON only CEO can post company-wide announcements. When OFF Management can also post announcements." />
+        {getSchemaSection('communication')!.fields.slice(7).map(f => <SettingField key={f.key} field={f} />)}
       </Section>
 
       {/* ── SECTION 7: SYSTEM CONTROLS ───────────────────────────────── */}
       <Section title="Section 7 — System Controls" icon={Settings}>
-        <SettingToggle
-          settingKey="maintenance_mode"
-          label="Maintenance Mode"
-          description="When ON all users except CEO see a maintenance page and cannot access any features. Use when performing system updates or critical maintenance."
-          warning="⚠️ All non-CEO users will immediately see the maintenance page and lose access. Are you sure?"
-        />
-        <SettingNumber settingKey="session_timeout_minutes" label="Session Timeout" unit="min"
-          description="Automatically log out inactive users after this many minutes. Minimum 5, maximum 480 (8 hours)." min={5} max={480} />
-        <SettingToggle settingKey="force_2fa_management" label="Force 2FA for Management"
-          description="Require two-factor authentication for all Management users." />
-        <SettingToggle settingKey="force_2fa_finance" label="Force 2FA for Finance"
-          description="Require two-factor authentication for all Finance users." />
-        <SettingSelect settingKey="password_reset_authority" label="Password Reset Authority"
-          description="Control who has authority to reset staff passwords."
-          options={[{ value: 'ceo_only', label: 'CEO Only' }, { value: 'hr_and_ceo', label: 'HR and CEO' }, { value: 'specific_user', label: 'Specific User' }]} />
-        <SettingSelect settingKey="account_deletion_authority" label="Account Deletion Authority"
-          description="Control who can permanently delete staff accounts. This action cannot be undone."
-          options={[{ value: 'ceo_only', label: 'CEO Only' }, { value: 'specific_user', label: 'Specific User' }]} />
-        
+        {getSchemaSection('system')!.fields.map(f => <SettingField key={f.key} field={f} />)}
+
         {/* Pending department approvals */}
         {dbDepartments.some(d => d.status === 'pending') && (
           <div className="mt-6 border-t border-[var(--border)] pt-6">
@@ -1459,27 +1348,12 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
 
       {/* ── SECTION 8: APPROVAL CONTROLS ─────────────────────────────── */}
       <Section title="Section 8 — Approval Controls" icon={CheckSquare}>
-        <SettingNumber settingKey="ceo_cosign_credit_threshold" label="Credit Co-sign Threshold" unit="GHS"
-          description="Credit orders above this amount require CEO electronic approval before Finance can process." min={0} max={10000000} />
-        <SettingNumber settingKey="ceo_cosign_order_threshold" label="Order Co-sign Threshold" unit="GHS"
-          description="Customer orders above this amount require CEO approval before Finance can process payment." min={0} max={10000000} />
-        <SettingToggle settingKey="ceo_must_approve_prices" label="CEO Price Approval Required"
-          description="Management can draft and set prices but CEO must review and approve before they broadcast to Finance and Marketing." />
-        <SettingToggle settingKey="ceo_must_approve_payroll" label="CEO Payroll Approval"
-          description="Payroll flow becomes: HR submits → Finance processes → CEO approves → Payment made. Extra layer of financial security." />
-        <SettingToggle settingKey="ceo_must_approve_departments" label="CEO Department Approval"
-          description="When ON HR cannot activate new departments without CEO approval. Department is created but stays inactive until CEO approves." />
-        <SettingToggle settingKey="ceo_must_approve_registrations" label="CEO Registration Approval"
-          description="All new staff registrations go directly to CEO first before HR review. Highest level of staff access control." />
+        {getSchemaSection('approval')!.fields.map(f => <SettingField key={f.key} field={f} />)}
       </Section>
 
       {/* ── SECTION 9: SPREADSHEETS CONTROL ──────────────────────────── */}
       <Section title="Section 9 — Spreadsheets Control" icon={FileSpreadsheet}>
-        <SettingToggleWithException
-          settingKey="spreadsheets_enabled"
-          label="Spreadsheets Enabled (Master)"
-          description="Master switch for the Spreadsheets feature across all departments. When OFF no user can access Free Sheets or Data Sheets unless they have a specific email exception that overrides this toggle."
-        />
+        {getSchemaSection('spreadsheets')!.fields.map(f => <SettingField key={f.key} field={f} />)}
       </Section>
 
       {/* ── SECTION 10: RISK CONTROLS ────────────────────────────────────
@@ -1494,16 +1368,7 @@ export default function CeoControlCenter({ currentUser, addNotification }: Props
           discrepancy_auto_alert_ceo (Section 3) already give CEO control
           over Risk-adjacent behavior and are not duplicated here. */}
       <Section title="Section 10 — Risk Controls" icon={AlertTriangle}>
-        <SettingToggle
-          settingKey="risk_customer_verification_required"
-          label="Customer Verification Required"
-          description="Customer verification is non-blocking by design, so a pending customer can still be ordered for. This only controls whether Risk treats verification as mandatory, not any order transition."
-        />
-        <SettingToggle
-          settingKey="risk_credit_hold_notify_marketing"
-          label="Notify Marketing on Credit Hold"
-          description="When ON, Marketing is notified whenever Risk puts a customer on credit hold."
-        />
+        {getSchemaSection('risk')!.fields.map(f => <SettingField key={f.key} field={f} />)}
       </Section>
 
       {/* ── SECTION 11: DATA RESET CENTER ────────────────────────────── */}

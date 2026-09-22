@@ -88,6 +88,8 @@ import RiskApprovalsView from './views/risk/RiskApprovalsView';
 import RiskCustomerCreditView from './views/risk/CustomerCreditView';
 import RiskRecruitmentView from './views/risk/RecruitmentView';
 import LiveUsersView from './views/ceo/LiveUsersView';
+import HelpAssistantView from './views/ceo/HelpAssistantView';
+import FloatingHelpButton from './components/global/FloatingHelpButton';
 
 // Marketing dedicated pages
 import MarketingOrdersView from './views/marketing/OrdersView';
@@ -3135,6 +3137,7 @@ export default function App() {
       if (activeSubTab === 'SupplierOrders')  return <CeoSupplierOrdersView currentUser={currentUser} addNotification={addNotification} />;
       if (activeSubTab === 'DeptActivity')    return <DeptActivityView currentUser={currentUser} addNotification={addNotification} />;
       if (activeSubTab === 'LiveUsers')       return <LiveUsersView currentUser={currentUser} addNotification={addNotification} onMessageUser={(userId: string) => { setMessengerTargetUserId(userId); setIsChatOpen(true); }} />;
+      if (activeSubTab === 'HelpAssistant')   return <HelpAssistantView setActiveDepartment={setActiveDepartment} setActiveSubTab={setActiveSubTab} />;
       if (activeSubTab === 'FleetOverview')  return <LogisticsFleetOverviewView addNotification={addNotification} />;
       if (activeSubTab === 'FuelManagement') return <LogisticsFuelManagementView addNotification={addNotification} />;
       if (activeSubTab === 'Maintenance')    return <LogisticsMaintenanceView addNotification={addNotification} />;
@@ -4338,6 +4341,10 @@ function AppInner({
         {renderAlertModal()}
         {renderPromptModal()}
         {renderConfirmModal()}
+        <FloatingHelpButton
+          isAdmin={!!currentUser?.isAdmin}
+          onOpen={() => { setActiveDepartment('CEO'); setActiveSubTab('HelpAssistant'); }}
+        />
       </div>
     </MotionConfig>
   );
