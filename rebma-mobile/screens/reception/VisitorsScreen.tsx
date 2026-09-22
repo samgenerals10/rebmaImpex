@@ -8,7 +8,8 @@
 // (verified by reading `handleAdd`'s insert payload) — matched exactly,
 // not the form's superset.
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, Text, Alert } from 'react-native';
+import { View, Text } from 'react-native';
+import { Alert } from '../../lib/appAlert';
 import { supabase } from '../../lib/supabaseClient';
 import { useTheme } from '../../theme/ThemeProvider';
 import Screen from '../../components/ui/Screen';

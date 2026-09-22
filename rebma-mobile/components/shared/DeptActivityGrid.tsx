@@ -31,7 +31,8 @@
 // exactly as on web today. Per the standing full-literal-parity mandate
 // this is an inherited gap, not one this port introduces (D33).
 import { useCallback, useEffect, useState } from 'react';
-import { View, Text, Pressable, ScrollView, Alert } from 'react-native';
+import { View, Text, Pressable, ScrollView } from 'react-native';
+import { Alert } from '../../lib/appAlert';
 import {
   Activity, RefreshCw, Building2, Package, DollarSign,
   Truck, Users, ShoppingCart, Factory, UserCheck, Trash2, Download,

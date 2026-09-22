@@ -5,6 +5,7 @@ import { useTheme } from '../../theme/ThemeProvider';
 import { useAuthStore } from '../../store/authStore';
 import { useUIStore } from '../../store/uiStore';
 import { getDepartmentEntry } from '../../navigation/departmentRegistry';
+import { OPEN_DEPARTMENT_SWITCHER } from '../../navigation/quickActionSentinels';
 import Sheet from '../ui/Sheet';
 import { colors } from '../../theme/tokens';
 
@@ -18,8 +19,15 @@ export default function QuickActionsSheet({ onNavigateSubTab }: Props) {
   const close = useUIStore((s) => s.closeQuickActions);
   const profile = useAuthStore((s) => s.profile);
 
+  const activeDepartment = useUIStore((s) => s.activeDepartment);
+
   if (!profile) return null;
-  const dept = getDepartmentEntry(profile.department);
+  // The currently viewed department, not always the user's own — a
+  // CEO/admin who's switched into another department (via the header's
+  // department switcher) should see THAT department's quick actions, not
+  // their own profile department's, same "effective department" pattern
+  // every screen in this app already follows.
+  const dept = getDepartmentEntry(activeDepartment || profile.department);
 
   return (
     <Sheet open={open} onClose={close} title={`Quick Actions (${dept.label})`} side="bottom">
@@ -35,7 +43,14 @@ export default function QuickActionsSheet({ onNavigateSubTab }: Props) {
             return (
               <Pressable
                 key={a.label}
-                onPress={() => { close(); onNavigateSubTab(a.subTab); }}
+                onPress={() => {
+                  close();
+                  if (a.subTab === OPEN_DEPARTMENT_SWITCHER) {
+                    useUIStore.getState().openDepartmentSwitcher();
+                  } else {
+                    onNavigateSubTab(a.subTab);
+                  }
+                }}
                 style={{
                   width: '47%',
                   alignItems: 'center',

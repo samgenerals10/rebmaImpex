@@ -18,7 +18,8 @@
 // (watching every driver's live position + delivery status) is a
 // separate, Risk/CEO/Management-facing build, not this screen's job.
 import { useCallback, useEffect, useState } from 'react';
-import { View, Text, Linking, Alert } from 'react-native';
+import { View, Text, Linking } from 'react-native';
+import { Alert } from '../../lib/appAlert';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuthStore } from '../../store/authStore';
 import { useTheme } from '../../theme/ThemeProvider';
@@ -102,6 +103,7 @@ export default function DriverTripsScreen() {
         <PageTitle title="My Trips" subtitle="Your own delivery history" />
         <Card padded={false}>
           <DataList
+            collapsible
             columns={columns}
             data={trips}
             rowKey={(r) => r.id}

@@ -8,7 +8,8 @@
 // Export (Gap-Closure Backlog, Item 1): one of the 6 UniversalExportModal
 // screens — CSV+PDF+DOC, branded, columns verbatim from ExpensesView.tsx:66-74.
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, Alert } from 'react-native';
+import { View } from 'react-native';
+import { Alert } from '../../lib/appAlert';
 import { Download } from 'lucide-react-native';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuthStore } from '../../store/authStore';
@@ -104,7 +105,7 @@ export default function ExpensesScreen() {
     }).eq('id', editTarget.id);
     setSavingEdit(false);
     if (error) { Alert.alert('Update Failed', error.message); return; }
-    await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Expense ${editTarget.id} updated`, performed_by: profile?.fullName || 'Finance', timestamp: new Date().toISOString() }]);
+    await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Expense ${editTarget.id} updated`, performed_by: profile?.fullName || 'Accounts Department', timestamp: new Date().toISOString() }]);
     setEditTarget(null);
     load();
   };
@@ -117,7 +118,7 @@ export default function ExpensesScreen() {
     setSubmitting(true);
     const { error } = await supabase.from('finance_expenses').insert([{
       category: form.category, description: form.description.trim(), amount: parseFloat(form.amount) || 0,
-      date: form.date, notes: form.notes.trim() || null, submitted_by: profile?.fullName || 'Finance', status: 'Pending',
+      date: form.date, notes: form.notes.trim() || null, submitted_by: profile?.fullName || 'Accounts Department', status: 'Pending',
     }]);
     setSubmitting(false);
     if (error) {
@@ -134,7 +135,7 @@ export default function ExpensesScreen() {
       Alert.alert('Update Failed', error.message);
       return;
     }
-    await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Expense ${e.id} ${status}`, performed_by: profile?.fullName || 'Finance', timestamp: new Date().toISOString() }]);
+    await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Expense ${e.id} ${status}`, performed_by: profile?.fullName || 'Accounts Department', timestamp: new Date().toISOString() }]);
     load();
   };
 
@@ -148,7 +149,7 @@ export default function ExpensesScreen() {
             Alert.alert('Delete Failed', error.message);
             return;
           }
-          await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Expense ${e.id} deleted`, performed_by: profile?.fullName || 'Finance', timestamp: new Date().toISOString() }]);
+          await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Expense ${e.id} deleted`, performed_by: profile?.fullName || 'Accounts Department', timestamp: new Date().toISOString() }]);
           load();
         },
       },
@@ -181,11 +182,8 @@ export default function ExpensesScreen() {
         <Button label="Export" size="sm" variant="ghost" icon={<Download size={13} color={t.colors.textSecondary} />} onPress={() => setExportOpen(true)} />
       </View>
 
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.sm, marginBottom: t.spacing.lg }}>
-        <View style={{ width: '47%' }}><MetricCard label="Total This Month" value={loading ? '—' : `GHS ${totalThisMonth.toLocaleString()}`} tone="accent" /></View>
-        <View style={{ width: '47%' }}><MetricCard label="Approved" value={loading ? '—' : `GHS ${approvedTotal.toLocaleString()}`} /></View>
-        <View style={{ width: '47%' }}><MetricCard label="Pending Approval" value={loading ? '—' : pendingCount} tone="warning" /></View>
-        <View style={{ width: '47%' }}><MetricCard label="Budget Remaining" value={loading ? '—' : `GHS ${budgetRemaining.toLocaleString()}`} tone={budgetRemaining < 5000 ? 'danger' : undefined} /></View>
+      <View style={{ gap: t.spacing.sm }}>
+        <View style={{ flexDirection: 'row', gap: t.spacing.sm }}><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Total This Month" value={loading ? '—' : `GHS ${totalThisMonth.toLocaleString()}`} tone="accent" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Approved" value={loading ? '—' : `GHS ${approvedTotal.toLocaleString()}`} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Pending Approval" value={loading ? '—' : pendingCount} tone="warning" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Budget Remaining" value={loading ? '—' : `GHS ${budgetRemaining.toLocaleString()}`} tone={budgetRemaining < 5000 ? 'danger' : undefined} /></View></View>
       </View>
 
       <View style={{ gap: t.spacing.sm, marginBottom: t.spacing.md }}>
@@ -195,6 +193,7 @@ export default function ExpensesScreen() {
       </View>
 
       <DataList
+        collapsible
         columns={columns}
         data={filtered}
         rowKey={(e) => e.id}

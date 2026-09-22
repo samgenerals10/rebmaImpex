@@ -110,11 +110,8 @@ export default function AccountsScreen() {
   return (
     <Screen refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }}>
       <View style={{ gap: t.spacing.xl }}>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.md }}>
-          <View style={{ width: '47%' }}><MetricCard label="Total Received" value={loading ? '—' : `GHS ${totalIn.toLocaleString()}`} tone="accent" /></View>
-          <View style={{ width: '47%' }}><MetricCard label="Total Expenses" value={loading ? '—' : `GHS ${(totalOut + totalPurchases).toLocaleString()}`} tone="danger" /></View>
-          <View style={{ width: '47%' }}><MetricCard label="Net Balance" value={loading ? '—' : `GHS ${Math.abs(net).toLocaleString()}`} tone={net >= 0 ? 'accent' : 'danger'} sublabel={net >= 0 ? 'Surplus' : 'Deficit'} /></View>
-          <View style={{ width: '47%' }}><MetricCard label="Order Revenue" value={loading ? '—' : `GHS ${totalRevenue.toLocaleString()}`} sublabel={`${pendingOrders} pending review`} /></View>
+        <View style={{ gap: t.spacing.sm }}>
+          <View style={{ flexDirection: 'row', gap: t.spacing.sm }}><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Total Received" value={loading ? '—' : `GHS ${totalIn.toLocaleString()}`} tone="accent" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Total Expenses" value={loading ? '—' : `GHS ${(totalOut + totalPurchases).toLocaleString()}`} tone="danger" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Net Balance" value={loading ? '—' : `GHS ${Math.abs(net).toLocaleString()}`} tone={net >= 0 ? 'accent' : 'danger'} sublabel={net >= 0 ? 'Surplus' : 'Deficit'} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Order Revenue" value={loading ? '—' : `GHS ${totalRevenue.toLocaleString()}`} sublabel={`${pendingOrders} pending review`} /></View></View>
         </View>
 
         {creditOutstanding > 0 && (

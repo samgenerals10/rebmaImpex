@@ -21,7 +21,8 @@
 // (list-level, different column sets per format) PLUS a separate per-order
 // PDF of that order's own line items. Both ported now, verbatim columns.
 import { useMemo, useState } from 'react';
-import { View, Text, Alert, Linking } from 'react-native';
+import { View, Text, Linking } from 'react-native';
+import { Alert } from '../../lib/appAlert';
 import { Plus, Trash2, MessageCircle, Download } from 'lucide-react-native';
 import { supabase } from '../../lib/supabaseClient';
 import { usePaginatedQuery } from '../../hooks/usePaginatedQuery';
@@ -298,11 +299,8 @@ export default function SupplierOrdersScreen() {
           <Button label="Export" size="md" variant="ghost" icon={<Download size={14} color={t.colors.textSecondary} />} onPress={() => setExportOpen(true)} />
         </View>
 
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.md }}>
-          <View style={{ width: '47%' }}><MetricCard label="Total Orders" value={totalOrders} emphasis="secondary" /></View>
-          <View style={{ width: '47%' }}><MetricCard label="Pending Payment" value={pendingPayment} tone="warning" emphasis="secondary" /></View>
-          <View style={{ width: '47%' }}><MetricCard label="In Transit" value={inTransit} emphasis="secondary" /></View>
-          <View style={{ width: '47%' }}><MetricCard label="This Month (GHS)" value={thisMonthGhs.toLocaleString()} tone="accent" emphasis="secondary" /></View>
+        <View style={{ gap: t.spacing.sm }}>
+          <View style={{ flexDirection: 'row', gap: t.spacing.sm }}><View style={{ flex: 1 }}><MetricCard label="Total Orders" value={totalOrders} emphasis="compact" /></View><View style={{ flex: 1 }}><MetricCard label="Pending Payment" value={pendingPayment} tone="warning" emphasis="compact" /></View><View style={{ flex: 1 }}><MetricCard label="In Transit" value={inTransit} emphasis="compact" /></View><View style={{ flex: 1 }}><MetricCard label="This Month (GHS)" value={thisMonthGhs.toLocaleString()} tone="accent" emphasis="compact" /></View></View>
         </View>
 
         <Input value={search} onChangeText={setSearch} placeholder="Search by order #, supplier, product..." />

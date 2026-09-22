@@ -33,7 +33,8 @@
 // already established for is_special_customer. Whichever column is real,
 // this makes future payslips actually linkable.
 import { useCallback, useEffect, useState } from 'react';
-import { View, Text, Alert } from 'react-native';
+import { View, Text } from 'react-native';
+import { Alert } from '../../lib/appAlert';
 import { Plus, Banknote } from 'lucide-react-native';
 import { supabase } from '../../lib/supabaseClient';
 import { useTheme } from '../../theme/ThemeProvider';
@@ -221,6 +222,7 @@ export default function PayrollScreen() {
             </View>
 
             <DataList
+              collapsible
               columns={[
                 { key: 'employee_name', label: 'Name', primary: true },
                 { key: 'department', label: 'Dept', status: true, render: (i: PayrollItem) => <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta11.size, color: t.colors.textMuted }}>{i.department}</Text> },

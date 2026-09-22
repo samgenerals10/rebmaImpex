@@ -9,8 +9,9 @@
 // parsing of global_audit_history rows is ported as-is (best-effort, same
 // as web — not every historical row is guaranteed to parse cleanly).
 import { useCallback, useEffect, useState } from 'react';
-import { View, Text, Alert } from 'react-native';
-import { Tag, History as HistoryIcon, Trash2, Edit2 } from 'lucide-react-native';
+import { View, Text } from 'react-native';
+import { Alert } from '../../lib/appAlert';
+import { Tag, History as HistoryIcon, Trash2, Edit2, Package, TrendingUp } from 'lucide-react-native';
 import { supabase } from '../../lib/supabaseClient';
 import { getCeoSetting } from '../../lib/ceoSetting';
 import { setCustomerDiscount, setCustomerSpecial } from '../../lib/managementActions';
@@ -23,6 +24,7 @@ import MetricCard from '../../components/ui/MetricCard';
 import Input, { Field } from '../../components/ui/Input';
 import Button from '../../components/ui/Button';
 import SearchablePicker from '../../components/ui/SearchablePicker';
+import SearchSortBar from '../../components/ui/SearchSortBar';
 import DataList, { type DataColumn } from '../../components/ui/DataList';
 import Sheet, { SheetSection } from '../../components/ui/Sheet';
 import RatingBadge from '../../components/ui/RatingBadge';
@@ -61,6 +63,8 @@ export default function SetPricesScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
+  const [priceSort, setPriceSort] = useState('recent');
+  const [categoryFilter, setCategoryFilter] = useState('All');
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<PriceEntry | null>(null);
   const [form, setForm] = useState(emptyForm);
@@ -78,6 +82,7 @@ export default function SetPricesScreen() {
   const [customers, setCustomers] = useState<CustomerDiscountRow[]>([]);
   const [orders, setOrders] = useState<OrderLike[]>([]);
   const [customerSearch, setCustomerSearch] = useState('');
+  const [customerSort, setCustomerSort] = useState('rating');
   const [discountDraft, setDiscountDraft] = useState<Record<string, string>>({});
   const [savingCustomerId, setSavingCustomerId] = useState<string | null>(null);
   const [togglingSpecialId, setTogglingSpecialId] = useState<string | null>(null);
@@ -238,11 +243,41 @@ export default function SetPricesScreen() {
     }
   };
 
-  const filteredPrices = prices.filter((p) => !search || p.productName.toLowerCase().includes(search.toLowerCase()) || p.category.toLowerCase().includes(search.toLowerCase()));
+  const PRICE_SORT_OPTIONS = [
+    { value: 'recent', label: 'Recently Updated' },
+    { value: 'name', label: 'Product Name' },
+    { value: 'price_high', label: 'Price High to Low' },
+    { value: 'price_low', label: 'Price Low to High' },
+    { value: 'margin', label: 'Margin' },
+  ];
+  const CATEGORY_FILTER_OPTIONS = [{ value: 'All', label: 'All Categories' }, ...CATEGORIES.map((c) => ({ value: c, label: c }))];
+
+  const filteredPrices = prices
+    .filter((p) => !search || p.productName.toLowerCase().includes(search.toLowerCase()) || p.category.toLowerCase().includes(search.toLowerCase()))
+    .filter((p) => categoryFilter === 'All' || p.category === categoryFilter)
+    .sort((a, b) => {
+      if (priceSort === 'name') return a.productName.localeCompare(b.productName);
+      if (priceSort === 'price_high') return b.unitPrice - a.unitPrice;
+      if (priceSort === 'price_low') return a.unitPrice - b.unitPrice;
+      if (priceSort === 'margin') return (b.margin ?? -1) - (a.margin ?? -1);
+      return b.lastUpdated.localeCompare(a.lastUpdated);
+    });
   const pricedProducts = prices.filter((p): p is PriceEntry & { margin: number } => p.margin !== null);
   const avgMargin = pricedProducts.length > 0 ? pricedProducts.reduce((s, p) => s + p.margin, 0) / pricedProducts.length : 0;
 
-  const filteredCustomers = customers.filter((c) => !customerSearch || c.name.toLowerCase().includes(customerSearch.toLowerCase()) || c.companyName.toLowerCase().includes(customerSearch.toLowerCase()));
+  const CUSTOMER_SORT_OPTIONS = [
+    { value: 'rating', label: 'Rating' },
+    { value: 'name', label: 'Name' },
+    { value: 'discount', label: 'Discount %' },
+  ];
+
+  const filteredCustomers = customers
+    .filter((c) => !customerSearch || c.name.toLowerCase().includes(customerSearch.toLowerCase()) || c.companyName.toLowerCase().includes(customerSearch.toLowerCase()))
+    .sort((a, b) => {
+      if (customerSort === 'name') return a.name.localeCompare(b.name);
+      if (customerSort === 'discount') return b.discountPercent - a.discountPercent;
+      return computeCustomerRating(ordersForCustomer(orders, b.name)).score - computeCustomerRating(ordersForCustomer(orders, a.name)).score;
+    });
 
   const priceColumns: DataColumn<PriceEntry>[] = [
     { key: 'productName', label: 'Product', primary: true },
@@ -297,9 +332,13 @@ export default function SetPricesScreen() {
           <Button label="Add Price" size="sm" onPress={() => openAdd()} />
         </View>
 
-        <View style={{ flexDirection: 'row', gap: t.spacing.md }}>
-          <View style={{ flex: 1 }}><MetricCard label="Total Products" value={prices.length} /></View>
-          <View style={{ flex: 1 }}><MetricCard label="Avg Margin" value={`${avgMargin.toFixed(0)}%`} tone="accent" /></View>
+        <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
+          <View style={{ flex: 1 }}>
+            <MetricCard emphasis="compact" label="Total Products" value={prices.length} sublabel="In catalog" icon={<Package size={14} color={t.colors.action.blue} />} tone="info" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <MetricCard emphasis="compact" label="Avg Margin" value={`${avgMargin.toFixed(0)}%`} sublabel={`${pricedProducts.length} priced`} icon={<TrendingUp size={14} color={t.colors.action.emerald} />} tone="success" />
+          </View>
         </View>
 
         {unpricedGoods.length > 0 && (
@@ -312,8 +351,20 @@ export default function SetPricesScreen() {
           </Card>
         )}
 
-        <Input value={search} onChangeText={setSearch} placeholder="Search products..." />
+        <SearchSortBar
+          value={search}
+          onChangeText={setSearch}
+          placeholder="Search products..."
+          sortOptions={PRICE_SORT_OPTIONS}
+          sortValue={priceSort}
+          onSortChange={setPriceSort}
+          filterOptions={CATEGORY_FILTER_OPTIONS}
+          filterValue={categoryFilter}
+          onFilterChange={setCategoryFilter}
+          filterLabel="Category"
+        />
         <DataList
+          collapsible
           columns={priceColumns}
           data={filteredPrices}
           rowKey={(p) => p.id}
@@ -331,9 +382,17 @@ export default function SetPricesScreen() {
         <View>
           <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary, marginBottom: t.spacing.xs }}>Customer Discounts</Text>
           <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta11.size, color: t.colors.textMuted, marginBottom: t.spacing.sm }}>Based on performance, loyalty, and volume, not limited to customers Marketing flagged special.</Text>
-          <Input value={customerSearch} onChangeText={setCustomerSearch} placeholder="Search customers..." />
+          <SearchSortBar
+            value={customerSearch}
+            onChangeText={setCustomerSearch}
+            placeholder="Search customers..."
+            sortOptions={CUSTOMER_SORT_OPTIONS}
+            sortValue={customerSort}
+            onSortChange={setCustomerSort}
+          />
         </View>
         <DataList
+          collapsible
           columns={customerColumns}
           data={filteredCustomers}
           rowKey={(c) => c.id}
@@ -373,7 +432,7 @@ export default function SetPricesScreen() {
         </Field>
         <SheetSection label="Broadcast Notification">
           <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
-            {[['Finance', broadcastFinance, setBroadcastFinance], ['Marketing', broadcastMarketing, setBroadcastMarketing], ['CEO', broadcastCeo, setBroadcastCeo]].map(([label, val, setter]: any) => (
+            {[['Accounts', broadcastFinance, setBroadcastFinance], ['Marketing', broadcastMarketing, setBroadcastMarketing], ['CEO', broadcastCeo, setBroadcastCeo]].map(([label, val, setter]: any) => (
               <Text
                 key={label}
                 onPress={() => setter((v: boolean) => !v)}

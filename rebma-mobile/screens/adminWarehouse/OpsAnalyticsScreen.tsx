@@ -127,11 +127,8 @@ export default function OpsAnalyticsScreen() {
   return (
     <Screen>
       <View style={{ gap: t.spacing.xl }}>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.md }}>
-          <View style={{ width: '47%' }}><MetricCard label="Total Cargo Intakes" value={loading ? '—' : totalCargo} /></View>
-          <View style={{ width: '47%' }}><MetricCard label="Approved" value={loading ? '—' : approvedCargo} tone="accent" /></View>
-          <View style={{ width: '47%' }}><MetricCard label="Discrepancies" value={loading ? '—' : discrepancyCargo} tone="danger" /></View>
-          <View style={{ width: '47%' }}><MetricCard label="Low / Out of Stock" value={loading ? '—' : stockCounts.lowStock + stockCounts.outOfStock} tone="warning" /></View>
+        <View style={{ gap: t.spacing.sm }}>
+          <View style={{ flexDirection: 'row', gap: t.spacing.sm }}><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Total Cargo Intakes" value={loading ? '—' : totalCargo} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Approved" value={loading ? '—' : approvedCargo} tone="accent" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Discrepancies" value={loading ? '—' : discrepancyCargo} tone="danger" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Low / Out of Stock" value={loading ? '—' : stockCounts.lowStock + stockCounts.outOfStock} tone="warning" /></View></View>
         </View>
 
         {!loading && (
@@ -165,7 +162,7 @@ export default function OpsAnalyticsScreen() {
           <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary, marginBottom: t.spacing.md }}>Top Products by Volume</Text>
           {topProducts.length === 0 ? (
             <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textMuted, textAlign: 'center', paddingVertical: t.spacing.lg }}>No cargo intake data yet.</Text>
-          ) : <DataList columns={topProductCols} data={topProducts} rowKey={(r) => r.name} />}
+          ) : <DataList collapsible columns={topProductCols} data={topProducts} rowKey={(r) => r.name} />}
         </Card>
       </View>
     </Screen>

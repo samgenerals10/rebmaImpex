@@ -21,9 +21,13 @@ interface Props {
   footer?: ReactNode;
   side?: 'bottom' | 'right' | 'left' | 'full';
   maxHeight?: number;
+  /** side='left' only — overrides the default 68%/280px width, e.g. for
+   * a collapsed icon-only rail. Animates smoothly between values as long
+   * as the caller wraps the state change in its own LayoutAnimation. */
+  width?: number;
 }
 
-export default function Sheet({ open, onClose, title, subtitle, badge, children, footer, side = 'bottom', maxHeight }: Props) {
+export default function Sheet({ open, onClose, title, subtitle, badge, children, footer, side = 'bottom', maxHeight, width }: Props) {
   const t = useTheme();
   const translate = useRef(new Animated.Value(1)).current; // 1 = offscreen, 0 = onscreen
 
@@ -59,7 +63,7 @@ export default function Sheet({ open, onClose, title, subtitle, badge, children,
     : isLeft
     ? {
         position: 'absolute' as const, top: 0, bottom: 0, left: 0,
-        width: Math.min(SCREEN_W * 0.8, 320),
+        width: width ?? Math.min(SCREEN_W * 0.68, 280),
         borderTopRightRadius: t.radius.card, borderBottomRightRadius: t.radius.card,
       }
     : {
@@ -105,7 +109,13 @@ export default function Sheet({ open, onClose, title, subtitle, badge, children,
               </View>
             )}
             <KeyboardAvoidingView
-              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+              // 'height' on Android, not undefined — leaving it undefined
+              // opted Android out of any keyboard compensation at all,
+              // which is the real cause of an input getting hidden behind
+              // the keyboard the moment it's focused (per direct
+              // correction). iOS keeps 'padding', the correct behavior
+              // for a view that isn't already pinned to the screen edges.
+              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
               style={{ flexShrink: 1, flexGrow: 1, flexDirection: 'column' }}
               keyboardVerticalOffset={isBottom ? 0 : undefined}
             >

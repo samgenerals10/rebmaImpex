@@ -9,7 +9,8 @@
 // status filter (LoggedCargo's contribution) plus the rejection-reason
 // column (OpsHistory's contribution, Phase 6).
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, Text, Alert } from 'react-native';
+import { View, Text } from 'react-native';
+import { Alert } from '../../lib/appAlert';
 import * as Clipboard from 'expo-clipboard';
 import { History, Copy, Share2, Trash2 } from 'lucide-react-native';
 import { supabase } from '../../lib/supabaseClient';
@@ -201,6 +202,7 @@ export default function OpsHistoryScreen() {
         <Input value={search} onChangeText={setSearch} placeholder="Search cargo…" />
         <SearchablePicker value={statusFilter} onChange={setStatusFilter} options={STATUS_OPTIONS} label="Filter by Status" />
         <DataList
+          collapsible
           columns={columns}
           data={filtered}
           rowKey={(r) => r.id}
@@ -223,7 +225,7 @@ export default function OpsHistoryScreen() {
               </View>
               <Badge tone="danger" label={`${totalDamaged} units`} />
             </View>
-            <DataList columns={discrepancyColumns} data={discrepancies} rowKey={(d) => d.id} emptyTitle="No approved cargo discrepancies or damages logged" />
+            <DataList collapsible columns={discrepancyColumns} data={discrepancies} rowKey={(d) => d.id} emptyTitle="No approved cargo discrepancies or damages logged" />
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: t.spacing.md, paddingVertical: t.spacing.sm, backgroundColor: t.colors.status.danger.bg, borderRadius: t.radius.sm }}>
               <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body12.size, color: t.colors.textPrimary }}>Total Loss (At Cost)</Text>
               <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body12.size, color: t.colors.status.danger.text }}>GHS {totalLoss.toLocaleString()}</Text>

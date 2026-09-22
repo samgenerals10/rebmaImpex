@@ -26,7 +26,8 @@
 // bespoke cell editor per screen. Flagged as a scoping choice, not
 // silently assumed to be the only possible reading of "edit."
 import { useEffect, useState } from 'react';
-import { View, Text, Pressable, Alert } from 'react-native';
+import { View, Text, Pressable } from 'react-native';
+import { Alert } from '../../lib/appAlert';
 import { Download, FileText, FileSpreadsheet, FileType, Check, Square, CheckSquare } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeProvider';
 import Sheet from '../ui/Sheet';

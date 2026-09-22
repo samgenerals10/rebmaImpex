@@ -2,7 +2,8 @@
 // Ports: rebma-web/src/views/finance/RecurringView.tsx — plain CRUD on
 // `recurring_payments` + a pause/resume toggle.
 import { useCallback, useEffect, useState } from 'react';
-import { View, Text, Alert } from 'react-native';
+import { View, Text } from 'react-native';
+import { Alert } from '../../lib/appAlert';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuthStore } from '../../store/authStore';
 import { useTheme } from '../../theme/ThemeProvider';
@@ -125,6 +126,7 @@ export default function RecurringPaymentsScreen() {
       footer={<View style={{ padding: t.spacing.lg }}><Button label="Add Recurring Bill" onPress={() => setShowAdd(true)} fullWidth /></View>}
     >
       <DataList
+        collapsible
         columns={columns}
         data={rows}
         rowKey={(r) => r.id}

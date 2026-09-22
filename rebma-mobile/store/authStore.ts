@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { supabase, type DriverRow } from '../lib/supabaseClient';
 import { normalizeDeptCode } from '../utils/departments';
+import { getKeepLoggedIn, setKeepLoggedIn } from '../lib/rememberMe';
 
 // CurrentUser's fields (rebma-web/src/types/erp.ts) are non-negotiable — every
 // screen this app will eventually port consumes them, including isAdmin/
@@ -43,7 +44,7 @@ interface AuthState {
   profile: MobileUser | null;
   driver: DriverRow | null;
   initialize: () => Promise<void>;
-  signIn: (email: string, password: string) => Promise<void>;
+  signIn: (email: string, password: string, keepLoggedIn?: boolean) => Promise<void>;
   signOut: () => Promise<void>;
   clearError: () => void;
 }
@@ -153,6 +154,15 @@ export const useAuthStore = create<AuthState>((set) => ({
   driver: null,
 
   initialize: async () => {
+    // Real "Keep me logged in" enforcement — off means the next cold
+    // start signs out before ever restoring or showing the previous
+    // session, not just hiding a preference nobody reads.
+    const keepLoggedIn = await getKeepLoggedIn();
+    if (!keepLoggedIn) {
+      await supabase.auth.signOut();
+      set({ initializing: false, profile: null, driver: null });
+      return;
+    }
     const { data } = await supabase.auth.getSession();
     const userId = data.session?.user?.id;
     if (!userId) {
@@ -171,7 +181,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ initializing: false, profile, driver });
   },
 
-  signIn: async (email: string, password: string) => {
+  signIn: async (email: string, password: string, keepLoggedIn = true) => {
     set({ loading: true, error: '' });
     try {
       const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
@@ -185,6 +195,10 @@ export const useAuthStore = create<AuthState>((set) => ({
         set({ loading: false, error: loadErr || 'Sign in failed.' });
         return;
       }
+      // Recorded on every successful sign-in so the NEXT cold start
+      // knows whether to keep this session or drop it — see
+      // initialize() above and lib/rememberMe.ts.
+      await setKeepLoggedIn(keepLoggedIn);
       set({ loading: false, profile, driver });
     } catch (e: any) {
       set({ loading: false, error: e.message || 'Sign in failed.' });

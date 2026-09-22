@@ -7,7 +7,8 @@
 // `{ waybillNumber, orderId, containerNumber }` JSON (Phase 4,
 // ApprovedGoodsView.tsx's printWaybill()) — parsed here the same way.
 import { useCallback, useRef, useState } from 'react';
-import { View, Text, Alert } from 'react-native';
+import { View, Text } from 'react-native';
+import { Alert } from '../../lib/appAlert';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { QrCode, CircleCheckBig, CircleX } from 'lucide-react-native';
 import { supabase } from '../../lib/supabaseClient';

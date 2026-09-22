@@ -9,7 +9,8 @@
 // and must approve" claim — omitting a fabricated claim isn't a
 // capability reduction.
 import { useState } from 'react';
-import { View, Text, Alert } from 'react-native';
+import { View, Text } from 'react-native';
+import { Alert } from '../../lib/appAlert';
 import { TriangleAlert } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeProvider';
 import Screen from '../../components/ui/Screen';

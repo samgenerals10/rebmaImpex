@@ -14,7 +14,8 @@
 // convenience is dropped (no expo-clipboard dependency exists yet) — the
 // password stays fully visible/selectable on-screen either way.
 import { useCallback, useEffect, useState } from 'react';
-import { View, Text, Alert } from 'react-native';
+import { View, Text } from 'react-native';
+import { Alert } from '../../lib/appAlert';
 import { CheckCircle, XCircle, History } from 'lucide-react-native';
 import { supabase } from '../../lib/supabaseClient';
 import { callPrivilegedApi, ApiNotConfiguredError } from '../../lib/apiBase';

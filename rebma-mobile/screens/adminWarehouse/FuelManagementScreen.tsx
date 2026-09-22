@@ -4,7 +4,8 @@
 // hardcoded chart-seed demo data, not read from the DB — not ported;
 // FleetAnalyticsScreen aggregates real fuel_logs rows instead.
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, Alert } from 'react-native';
+import { View } from 'react-native';
+import { Alert } from '../../lib/appAlert';
 import { Fuel, Calendar, Truck as TruckIcon, Droplet } from 'lucide-react-native';
 import { supabase } from '../../lib/supabaseClient';
 import { useTheme } from '../../theme/ThemeProvider';
@@ -131,11 +132,8 @@ export default function FuelManagementScreen() {
     <Screen refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }}
       footer={<View style={{ padding: t.spacing.lg }}><Button label="Log Fuel Purchase" onPress={() => setShowAdd(true)} fullWidth /></View>}
     >
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.sm, marginBottom: t.spacing.lg }}>
-        <View style={{ width: '47%' }}><MetricCard label="Total Cost" value={loading ? '—' : `GHS ${totalCost.toLocaleString()}`} icon={<Fuel size={16} color={t.colors.accent} />} /></View>
-        <View style={{ width: '47%' }}><MetricCard label="This Month" value={loading ? '—' : `GHS ${monthCost.toLocaleString()}`} icon={<Calendar size={16} color={t.colors.status.warning.text} />} /></View>
-        <View style={{ width: '47%' }}><MetricCard label="Avg per Vehicle" value={loading ? '—' : `GHS ${avgCost.toLocaleString()}`} icon={<TruckIcon size={16} color={t.colors.status.info.text} />} /></View>
-        <View style={{ width: '47%' }}><MetricCard label="Total Liters" value={loading ? '—' : `${totalLiters.toLocaleString()}L`} icon={<Droplet size={16} color={t.colors.status.success.text} />} /></View>
+      <View style={{ gap: t.spacing.sm }}>
+        <View style={{ flexDirection: 'row', gap: t.spacing.sm }}><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Total Cost" value={loading ? '—' : `GHS ${totalCost.toLocaleString()}`} icon={<Fuel size={16} color={t.colors.accent} />} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="This Month" value={loading ? '—' : `GHS ${monthCost.toLocaleString()}`} icon={<Calendar size={16} color={t.colors.status.warning.text} />} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Avg per Vehicle" value={loading ? '—' : `GHS ${avgCost.toLocaleString()}`} icon={<TruckIcon size={16} color={t.colors.status.info.text} />} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Total Liters" value={loading ? '—' : `${totalLiters.toLocaleString()}L`} icon={<Droplet size={16} color={t.colors.status.success.text} />} /></View></View>
       </View>
 
       <View style={{ gap: t.spacing.sm, marginBottom: t.spacing.md }}>
@@ -148,6 +146,7 @@ export default function FuelManagementScreen() {
       </View>
 
       <DataList
+        collapsible
         columns={columns}
         data={filteredLogs}
         rowKey={(l) => l.id}

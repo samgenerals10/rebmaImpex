@@ -194,14 +194,15 @@ export default function CustomerCreditScreen() {
           </Text>
         </View>
 
-        <View style={{ flexDirection: 'row', gap: t.spacing.md }}>
-          <View style={{ flex: 1 }}><MetricCard label="On Credit Hold" value={onHoldCount} tone="danger" icon={<ShieldAlert size={16} color={t.colors.status.danger.text} />} /></View>
-          <View style={{ flex: 1 }}><MetricCard label="At/Over Limit" value={overLimitCount} tone="warning" /></View>
+        <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
+          <View style={{ flex: 1 }}><MetricCard emphasis="compact" label="On Credit Hold" value={onHoldCount} tone="danger" icon={<ShieldAlert size={16} color={t.colors.status.danger.text} />} /></View>
+          <View style={{ flex: 1 }}><MetricCard emphasis="compact" label="At/Over Limit" value={overLimitCount} tone="warning" /></View>
         </View>
 
         <Input value={search} onChangeText={setSearch} placeholder="Search customers..." />
 
         <DataList
+          collapsible
           columns={columns}
           data={filtered}
           rowKey={(c) => c.id}

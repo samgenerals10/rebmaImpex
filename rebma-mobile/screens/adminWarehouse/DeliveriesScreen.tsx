@@ -6,7 +6,8 @@
 // and the Overview KPI snapshot elsewhere, so this screen keeps to the
 // board's own distinct job: see driver availability and assign deliveries.
 import { useCallback, useEffect, useState } from 'react';
-import { View, Text, Alert } from 'react-native';
+import { View, Text } from 'react-native';
+import { Alert } from '../../lib/appAlert';
 import { supabase } from '../../lib/supabaseClient';
 import { assignDriverToDelivery, sendWhatsAppDirections } from '../../lib/dispatchActions';
 import { useAuthStore } from '../../store/authStore';
@@ -109,12 +110,9 @@ export default function DeliveriesScreen() {
   return (
     <Screen refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }}>
       <View style={{ gap: t.spacing.xl }}>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.md }}>
-          <View style={{ width: '30%' }}><MetricCard label="Pending" value={counts.PENDING_ASSIGNMENT || 0} tone="neutral" /></View>
-          <View style={{ width: '30%' }}><MetricCard label="Assigned" value={counts.ASSIGNED || 0} tone="warning" /></View>
-          <View style={{ width: '30%' }}><MetricCard label="In Transit" value={counts.IN_TRANSIT || 0} /></View>
-          <View style={{ width: '30%' }}><MetricCard label="Delivered" value={counts.DELIVERED || 0} /></View>
-          <View style={{ width: '30%' }}><MetricCard label="Failed" value={counts.FAILED || 0} tone="danger" /></View>
+        <View style={{ gap: t.spacing.sm }}>
+          <View style={{ flexDirection: 'row', gap: t.spacing.sm }}><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Pending" value={counts.PENDING_ASSIGNMENT || 0} tone="neutral" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Assigned" value={counts.ASSIGNED || 0} tone="warning" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="In Transit" value={counts.IN_TRANSIT || 0} /></View></View>
+          <View style={{ flexDirection: 'row', gap: t.spacing.sm }}><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Delivered" value={counts.DELIVERED || 0} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Failed" value={counts.FAILED || 0} tone="danger" /></View><View style={{ flex: 1 }} /></View>
         </View>
 
         <Card>

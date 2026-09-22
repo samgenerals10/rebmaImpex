@@ -1,11 +1,20 @@
 // rebma-mobile/screens/reception/AttendanceScreen.tsx
 // Ports: rebma-web/src/views/reception/AttendanceView.tsx — GPS-gated
 // check-in against a hardcoded workplace location + haversine distance,
-// a Physical/Virtual toggle, late-arrival flagging, mark-absent, delete.
-// Reuses expo-location (already installed, Phase 7.0 — see
-// DispatchHomeScreen.tsx for the same permission-request pattern), just a
-// single getCurrentPositionAsync() call rather than that screen's
-// continuous watchPositionAsync() stream.
+// late-arrival flagging, mark-absent, delete. Reuses expo-location
+// (already installed, Phase 7.0 — see DispatchHomeScreen.tsx for the
+// same permission-request pattern), just a single
+// getCurrentPositionAsync() call rather than that screen's continuous
+// watchPositionAsync() stream.
+//
+// Direct correction: the "Virtual Check-In (GPS skipped)" toggle is
+// cancelled — every check-in is now GPS-verified, no bypass. Clock-in/
+// clock-out/late-after times are no longer hardcoded either; they're
+// set by HR (screens/hr/AttendanceScreen.tsx's new Attendance Rules
+// card, lib/attendanceRules.ts) and read here. A check-in that lands
+// after the HR-set late-after time requires a mandatory reason before
+// it can be submitted — the GPS step runs first, and only once it
+// succeeds does the screen know whether to ask for one.
 //
 // Writes directly to `attendance.staff_name` (not a `user_id` FK) — this
 // is web's own AttendanceView.tsx behavior, confirmed by reading it
@@ -20,11 +29,13 @@
 // (App.tsx's NetInfo listener) or a manual "Sync Now" tap
 // (ConnectivityBanner).
 import { useCallback, useEffect, useState } from 'react';
-import { View, Text, Alert } from 'react-native';
+import { View, Text } from 'react-native';
+import { Alert } from '../../lib/appAlert';
 import * as Location from 'expo-location';
-import { MapPin, Wifi } from 'lucide-react-native';
+import { MapPin, Search, Check, X as XIcon } from 'lucide-react-native';
 import { supabase } from '../../lib/supabaseClient';
 import { enqueue, QUEUE_KEYS } from '../../lib/offlineQueue';
+import { getAttendanceRules, isPastTime, DEFAULT_ATTENDANCE_RULES, type AttendanceRules } from '../../lib/attendanceRules';
 import { useTheme } from '../../theme/ThemeProvider';
 import Screen from '../../components/ui/Screen';
 import DataList, { type DataColumn } from '../../components/ui/DataList';
@@ -53,6 +64,7 @@ interface AttendanceRow {
   attendance_type: string;
   gps_verified: boolean;
   department: string;
+  late_reason?: string | null;
 }
 
 export default function AttendanceScreen() {
@@ -64,13 +76,38 @@ export default function AttendanceScreen() {
   const [showCheckIn, setShowCheckIn] = useState(false);
   const [fullName, setFullName] = useState('');
   const [department, setDepartment] = useState('Reception');
-  const [virtual, setVirtual] = useState(false);
   const [gpsStatus, setGpsStatus] = useState<'idle' | 'locating' | 'ok' | 'fail'>('idle');
   const [gpsError, setGpsError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [rules, setRules] = useState<AttendanceRules>(DEFAULT_ATTENDANCE_RULES);
+  const [pendingLate, setPendingLate] = useState(false);
+  const [lateReason, setLateReason] = useState('');
+
+  // Direct instruction: an alternate, optional way to identify who's
+  // checking in — type an employee number instead of the name. Looked
+  // up on demand (not on every keystroke) against profiles.employee_number;
+  // a match auto-fills the name field, exactly as if they'd typed it.
+  const [employeeNumber, setEmployeeNumber] = useState('');
+  const [lookingUp, setLookingUp] = useState(false);
+  const [lookupResult, setLookupResult] = useState<'idle' | 'found' | 'not_found'>('idle');
+
+  const lookupByEmployeeNumber = async () => {
+    const num = employeeNumber.trim();
+    if (!num) return;
+    setLookingUp(true);
+    setLookupResult('idle');
+    const { data } = await supabase.from('profiles').select('full_name').eq('employee_number', num).maybeSingle();
+    setLookingUp(false);
+    if (data?.full_name) {
+      setFullName(data.full_name);
+      setLookupResult('found');
+    } else {
+      setLookupResult('not_found');
+    }
+  };
 
   const load = useCallback(async () => {
-    const { data, error } = await supabase.from('attendance').select('id, staff_name, check_in_time, status, date, attendance_type, gps_verified, department').eq('date', today).order('check_in_time', { ascending: false });
+    const { data, error } = await supabase.from('attendance').select('id, staff_name, check_in_time, status, date, attendance_type, gps_verified, department, late_reason').eq('date', today).order('check_in_time', { ascending: false });
     if (!error && data) setRows(data as any);
     setLoading(false);
     setRefreshing(false);
@@ -78,21 +115,34 @@ export default function AttendanceScreen() {
 
   useEffect(() => {
     load();
+    getAttendanceRules().then(setRules);
   }, [load]);
 
-  const doCheckIn = async (type: string, gpsVerified: boolean) => {
+  const resetCheckInForm = () => {
+    setFullName('');
+    setGpsStatus('idle');
+    setGpsError('');
+    setPendingLate(false);
+    setLateReason('');
+    setEmployeeNumber('');
+    setLookupResult('idle');
+    setShowCheckIn(false);
+  };
+
+  const doCheckIn = async (isLate: boolean, reason?: string) => {
     if (submitting) return;
     setSubmitting(true);
     const now = new Date();
-    const isLate = now.getHours() > 9 || (now.getHours() === 9 && now.getMinutes() > 0);
     const payload = {
       staff_name: fullName.trim(),
       check_in_time: now.toISOString(),
       status: isLate ? 'LATE' : 'PRESENT',
       date: today,
-      attendance_type: type,
-      gps_verified: gpsVerified,
+      attendance_type: 'Physical',
+      gps_verified: true,
       department,
+      late_reason: isLate ? (reason || '').trim() : null,
+      employee_number: employeeNumber.trim() || null,
     };
     const { error } = await supabase.from('attendance').insert(payload);
     setSubmitting(false);
@@ -100,21 +150,16 @@ export default function AttendanceScreen() {
       await enqueue(QUEUE_KEYS.receptionAttendance, 'attendance', payload);
       Alert.alert('Saved Offline', 'No connection right now, so this check-in will sync automatically once you\'re back online.');
     }
-    setFullName('');
-    setVirtual(false);
-    setGpsStatus('idle');
-    setGpsError('');
-    setShowCheckIn(false);
+    resetCheckInForm();
     load();
   };
 
-  const handleCheckIn = async () => {
+  // Runs the real GPS check first — only once it succeeds do we know
+  // the check-in's actual time, so lateness (and whether a reason is
+  // required) can only be decided after this, not before.
+  const runGpsCheck = async () => {
     if (!fullName.trim()) {
       Alert.alert('Missing Info', 'Enter the staff member\'s name.');
-      return;
-    }
-    if (virtual) {
-      doCheckIn('Virtual', false);
       return;
     }
     setGpsStatus('locating');
@@ -122,7 +167,7 @@ export default function AttendanceScreen() {
     const { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== 'granted') {
       setGpsStatus('fail');
-      setGpsError('Location permission denied. Enable virtual mode to proceed.');
+      setGpsError('Location permission denied. Enable location access in your device settings to check in.');
       return;
     }
     try {
@@ -130,15 +175,28 @@ export default function AttendanceScreen() {
       const dist = haversineDistance(pos.coords.latitude, pos.coords.longitude, WORKPLACE.lat, WORKPLACE.lng);
       if (dist <= WORKPLACE.radiusMeters) {
         setGpsStatus('ok');
-        doCheckIn('Physical', true);
+        const isLate = isPastTime(new Date(), rules.lateAfterTime);
+        if (isLate) {
+          setPendingLate(true);
+        } else {
+          doCheckIn(false);
+        }
       } else {
         setGpsStatus('fail');
-        setGpsError(`You are ${Math.round(dist)}m from the office (max ${WORKPLACE.radiusMeters}m). Enable virtual mode or check in from the office.`);
+        setGpsError(`You are ${Math.round(dist)}m from the office (max ${WORKPLACE.radiusMeters}m). Check in from the office.`);
       }
     } catch (e: any) {
       setGpsStatus('fail');
-      setGpsError(`GPS error: ${e.message || 'unknown'}. Enable virtual mode to proceed.`);
+      setGpsError(`GPS error: ${e.message || 'unknown'}.`);
     }
+  };
+
+  const submitLateCheckIn = () => {
+    if (!lateReason.trim()) {
+      Alert.alert('Reason Required', 'Since you\'re checking in after the expected time, please give a short reason.');
+      return;
+    }
+    doCheckIn(true, lateReason);
   };
 
   const markAbsent = async (r: AttendanceRow) => {
@@ -179,6 +237,7 @@ export default function AttendanceScreen() {
       footer={<View style={{ padding: t.spacing.lg }}><Button label="Check In Staff" onPress={() => setShowCheckIn(true)} fullWidth /></View>}
     >
       <DataList
+        collapsible
         columns={columns}
         data={rows}
         rowKey={(r) => r.id}
@@ -194,26 +253,60 @@ export default function AttendanceScreen() {
 
       <Sheet
         open={showCheckIn}
-        onClose={() => setShowCheckIn(false)}
+        onClose={resetCheckInForm}
         title="Staff Check-In"
         subtitle={`${WORKPLACE.name} · GPS radius ${WORKPLACE.radiusMeters}m`}
         side="bottom"
-        footer={<Button label={submitting || gpsStatus === 'locating' ? 'Checking In…' : 'Check In'} onPress={handleCheckIn} loading={submitting || gpsStatus === 'locating'} disabled={submitting || gpsStatus === 'locating'} fullWidth />}
+        footer={
+          pendingLate ? (
+            <Button label={submitting ? 'Submitting…' : 'Submit Check-In'} onPress={submitLateCheckIn} loading={submitting} disabled={submitting || !lateReason.trim()} fullWidth />
+          ) : (
+            <Button label={submitting || gpsStatus === 'locating' ? 'Checking In…' : 'Check In'} onPress={runGpsCheck} loading={submitting || gpsStatus === 'locating'} disabled={submitting || gpsStatus === 'locating'} fullWidth />
+          )
+        }
       >
-        <Field label="Staff Name *"><Input value={fullName} onChangeText={setFullName} placeholder="Full name" /></Field>
-        <Field label="Department"><Input value={department} onChangeText={setDepartment} placeholder="Department" /></Field>
-        <Button
-          variant={virtual ? 'primary' : 'ghost'}
-          icon={<Wifi size={13} color={virtual ? t.colors.onAccent : t.colors.textSecondary} />}
-          label={virtual ? 'Virtual Check-In (GPS skipped)' : 'Enable Virtual Check-In'}
-          onPress={() => setVirtual((v) => !v)}
-          fullWidth
-        />
-        {!virtual && (
+        <Field label="Employee Number" hint="Optional — auto-fills the name below if it matches">
+          <View style={{ flexDirection: 'row', gap: t.spacing.sm, alignItems: 'center' }}>
+            <View style={{ flex: 1 }}>
+              <Input
+                value={employeeNumber}
+                onChangeText={(v) => { setEmployeeNumber(v); setLookupResult('idle'); }}
+                placeholder="EMP-00001"
+                autoCapitalize="characters"
+                editable={!pendingLate}
+              />
+            </View>
+            <Button label={lookingUp ? '…' : 'Look Up'} size="sm" variant="ghost" icon={<Search size={13} color={t.colors.textSecondary} />} onPress={lookupByEmployeeNumber} disabled={!employeeNumber.trim() || lookingUp || pendingLate} />
+          </View>
+          {lookupResult === 'found' ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 }}>
+              <Check size={13} color={t.colors.status.success.text} />
+              <Text style={{ fontFamily: t.font.medium, fontSize: t.type.meta10.size, color: t.colors.status.success.text }}>Name filled in below</Text>
+            </View>
+          ) : lookupResult === 'not_found' ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 }}>
+              <XIcon size={13} color={t.colors.status.danger.text} />
+              <Text style={{ fontFamily: t.font.medium, fontSize: t.type.meta10.size, color: t.colors.status.danger.text }}>No match — type the name directly</Text>
+            </View>
+          ) : null}
+        </Field>
+        <Field label="Staff Name *"><Input value={fullName} onChangeText={setFullName} placeholder="Full name" editable={!pendingLate} /></Field>
+        <Field label="Department"><Input value={department} onChangeText={setDepartment} placeholder="Department" editable={!pendingLate} /></Field>
+
+        {pendingLate ? (
+          <View style={{ backgroundColor: t.colors.status.warning.bg, borderRadius: t.radius.md, padding: t.spacing.md, marginTop: t.spacing.sm }}>
+            <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body12.size, color: t.colors.status.warning.text, marginBottom: t.spacing.xs }}>
+              Location verified — but it's after {rules.lateAfterTime}
+            </Text>
+            <Field label="Reason for Lateness *">
+              <Input value={lateReason} onChangeText={setLateReason} placeholder="e.g. Traffic on the highway" multiline numberOfLines={3} style={{ minHeight: 70, textAlignVertical: 'top' }} />
+            </Field>
+          </View>
+        ) : (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm, marginTop: t.spacing.md }}>
             <MapPin size={13} color={t.colors.textMuted} />
             <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted, flex: 1 }}>
-              GPS will verify your location against {WORKPLACE.name} ({WORKPLACE.radiusMeters}m radius)
+              GPS will verify your location against {WORKPLACE.name} ({WORKPLACE.radiusMeters}m radius). Checking in after {rules.lateAfterTime} will ask for a reason.
             </Text>
           </View>
         )}

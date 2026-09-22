@@ -43,7 +43,7 @@ interface DocumentTemplate {
 }
 
 const FALLBACKS: Record<DocType, DocumentTemplate> = {
-  RECEIPT: { docType: 'RECEIPT', logoUrl: '', companyName: 'REBMA IMPEX', subtitle: 'Official Payment Receipt', companyAddress: 'Accra Business District, Accra, Ghana', companyLat: null, companyLng: null, companyPhone: '', companyEmail: '', website: 'rebmaimpex.com', footerNote: 'This receipt is issued by REBMA IMPEX Ghana Limited Finance. It confirms payment has been received and recorded against the order referenced above.' },
+  RECEIPT: { docType: 'RECEIPT', logoUrl: '', companyName: 'REBMA IMPEX', subtitle: 'Official Payment Receipt', companyAddress: 'Accra Business District, Accra, Ghana', companyLat: null, companyLng: null, companyPhone: '', companyEmail: '', website: 'rebmaimpex.com', footerNote: 'This receipt is issued by REBMA IMPEX Ghana Limited Accounts Department. It confirms payment has been received and recorded against the order referenced above.' },
   TICKET: { docType: 'TICKET', logoUrl: '', companyName: 'REBMA IMPEX', subtitle: 'Operations Dispatch Ticket', companyAddress: 'Accra Business District, Accra, Ghana', companyLat: null, companyLng: null, companyPhone: '', companyEmail: '', website: 'rebmaimpex.com', footerNote: 'This ticket is issued by REBMA IMPEX Ghana Limited Operations. It authorises the loading and dispatch of the above goods to the stated destination.' },
   INVOICE: { docType: 'INVOICE', logoUrl: '', companyName: 'REBMA IMPEX', subtitle: 'Proforma Invoice, Quote Only', companyAddress: 'Accra Business District, Accra, Ghana', companyLat: null, companyLng: null, companyPhone: '', companyEmail: '', website: 'rebmaimpex.com', footerNote: 'This is a proforma invoice. It is a quotation only, not a demand for payment or a tax invoice.' },
 };
@@ -218,7 +218,7 @@ export default function DocumentTemplatesEditor({ updatedBy }: { updatedBy: stri
           <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted, marginBottom: t.spacing.sm }}>
             The document number, QR code, and who issued it are always added automatically below this note.
           </Text>
-          <Input value={draft.footerNote} onChangeText={(v) => setField('footerNote', v)} placeholder="e.g. This receipt is issued by REBMA IMPEX Ghana Limited Finance..." multiline numberOfLines={4} style={{ minHeight: 88, textAlignVertical: 'top' }} />
+          <Input value={draft.footerNote} onChangeText={(v) => setField('footerNote', v)} placeholder="e.g. This receipt is issued by REBMA IMPEX Ghana Limited Accounts Department..." multiline numberOfLines={4} style={{ minHeight: 88, textAlignVertical: 'top' }} />
         </View>
 
         <View style={{ marginTop: t.spacing.lg }}>

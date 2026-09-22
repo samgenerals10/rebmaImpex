@@ -10,7 +10,8 @@
 // functional gap (a disabled mode should be unselectable), not a
 // harmless superset.
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, Text, Alert } from 'react-native';
+import { View, Text } from 'react-native';
+import { Alert } from '../../lib/appAlert';
 import { supabase } from '../../lib/supabaseClient';
 import { approveAccountsReview } from '../../lib/financeActions';
 import { getCeoSetting } from '../../lib/ceoSetting';
@@ -117,7 +118,7 @@ export default function RecordPaymentScreen() {
       // check, accounts_review_order RPC, stock deduction, Risk/Marketing
       // notifications, audit log) instead of a bare status write, so
       // settling a credit order from here can't silently skip any of that.
-      const performedBy = profile?.fullName || 'Finance';
+      const performedBy = profile?.fullName || 'Accounts Department';
       const approved = await approveAccountsReview(order, performedBy);
       setSubmitting(false);
       if (!approved) return;

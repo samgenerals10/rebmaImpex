@@ -54,7 +54,12 @@ export default function Button({ label, onPress, variant = 'primary', size = 'md
           opacity: isDisabled ? 0.5 : 1,
           alignSelf: fullWidth ? 'stretch' : 'flex-start',
         },
-        variant === 'primary' && !isDisabled && t.shadow('fab'),
+        // 'raised', not 'fab' — per direct correction, an ordinary primary
+        // button (e.g. "Open in Maps" inside a DataList row) had picked up
+        // the bottom-nav FAB's own deep shadow and looked like it had
+        // dropped/detached from its row. Buttons get the lighter, standard
+        // elevation; only the actual nav FAB uses 'fab'.
+        variant === 'primary' && !isDisabled && t.shadow('raised'),
         style,
       ]}
     >
@@ -63,7 +68,10 @@ export default function Button({ label, onPress, variant = 'primary', size = 'md
       ) : (
         <>
           {icon ? <View>{icon}</View> : null}
-          <Text style={{ fontFamily: t.font.bold, fontSize: size === 'sm' ? t.type.body12.size : t.type.body14.size, color: textColor }}>
+          <Text
+            numberOfLines={1}
+            style={{ fontFamily: t.font.bold, fontSize: size === 'sm' ? t.type.body12.size : t.type.body14.size, color: textColor }}
+          >
             {label}
           </Text>
           {trailingBadgeIcon && variant === 'primary' ? (

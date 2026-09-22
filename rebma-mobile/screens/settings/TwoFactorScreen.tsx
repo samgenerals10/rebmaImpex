@@ -7,7 +7,8 @@
 // wire (confirmed by source: web renders it via a plain <img>), so this
 // renders it via a plain RN <Image> — no QR-generation dependency needed.
 import { useEffect, useState } from 'react';
-import { View, Text, Image, Alert } from 'react-native';
+import { View, Text, Image } from 'react-native';
+import { Alert } from '../../lib/appAlert';
 import { ShieldCheck, ShieldOff, Smartphone } from 'lucide-react-native';
 import { supabase } from '../../lib/supabaseClient';
 import { useTheme } from '../../theme/ThemeProvider';

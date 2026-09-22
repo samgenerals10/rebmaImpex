@@ -25,7 +25,8 @@
 // the same coordinates reception/AttendanceScreen.tsx's WORKPLACE
 // constant already uses for GPS-gated check-in, duplicated here rather
 // than importing across an unrelated department for one constant.
-import { Linking, View, Text, Pressable, Alert } from 'react-native';
+import { Linking, View, Text, Pressable } from 'react-native';
+import { Alert } from '../../lib/appAlert';
 import { CircleCheckBig, Radio, TriangleAlert, Navigation, Building2 } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeProvider';
 import { useUIStore } from '../../store/uiStore';

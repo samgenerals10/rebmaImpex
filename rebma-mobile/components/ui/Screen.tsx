@@ -1,10 +1,13 @@
 // rebma-mobile/components/ui/Screen.tsx
 // Ports: rebma-web/src/index.css .erp-page (24px padding, 12px <768px)
-import type { ReactNode } from 'react';
-import { View, Animated, RefreshControl, StatusBar, StyleSheet, type NativeSyntheticEvent, type NativeScrollEvent } from 'react-native';
+import { useRef, type ReactNode } from 'react';
+import { View, Animated, RefreshControl, StyleSheet, Dimensions, Platform, KeyboardAvoidingView, type NativeSyntheticEvent, type NativeScrollEvent } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeProvider';
-import { DashboardHeaderPinned, DashboardHeaderScrollable, CONTENT_SHEET_RADIUS } from '../chrome/AppHeader';
+import DashboardHeader, { usePinnedHeaderHeight, CONTENT_SHEET_RADIUS } from '../chrome/AppHeader';
+import { useScrollSections } from '../../hooks/useScrollSections';
+import { ScrollSectionsContext } from '../../context/ScrollSectionsContext';
+import SectionQuickNavRail from '../chrome/SectionQuickNavRail';
 
 interface Props {
   children: ReactNode;
@@ -15,15 +18,15 @@ interface Props {
   footer?: ReactNode;
   /** Auto-detected from `onScroll` being passed (every department
    * home/dashboard screen wires this in via `useCollapsibleHeader()`,
-   * nothing else does) — renders the collapsing-then-pinned dashboard
-   * header: DashboardHeaderPinned (icon row + department name) stays
-   * fixed at the top always; DashboardHeaderScrollable (greeting +
-   * search) is normal scroll content that starts right below it and
-   * disappears underneath it as the page scrolls — the rest of the
-   * page then keeps scrolling under the now-permanently-visible pinned
-   * strip. See AppHeader.tsx's own header comment for the two earlier,
-   * rejected designs this replaced. Every other screen should omit
-   * `onScroll` and gets the plain layout below. */
+   * nothing else does) — renders DashboardHeader as a fixed sibling,
+   * always on top (see AppHeader.tsx's own header comment for why —
+   * it's what makes the header's own buttons reliably clickable,
+   * unlike two earlier attempts where content could end up in front of
+   * it). The scroll content starts with a transparent spacer matching
+   * the header's real height, then an opaque content sheet — content
+   * scrolls normally, disappearing behind the fixed header as it
+   * passes underneath it. Every other screen should omit `onScroll`
+   * and gets the plain layout below. */
   onScroll?: (event: NativeSyntheticEvent<NativeScrollEvent>) => void;
   scrollEventThrottle?: number;
 }
@@ -31,6 +34,14 @@ interface Props {
 export default function Screen({ children, scroll = true, refreshing, onRefresh, padded = true, footer, onScroll, scrollEventThrottle }: Props) {
   const t = useTheme();
   const isDashboard = !!onScroll;
+  const pinnedHeaderH = usePinnedHeaderHeight();
+  const scrollRef = useRef<any>(null);
+  // Dashboard mode: content starts below the fixed gradient header (via a
+  // spacer) plus padding. Plain mode: no fixed header lives inside this
+  // ScrollView at all (SubScreenHeader is react-navigation's own chrome,
+  // rendered above/outside it), so content starts at just the padding.
+  const contentTopOffset = (isDashboard ? pinnedHeaderH : 0) + (padded ? t.spacing.lg : 0);
+  const sections = useScrollSections(contentTopOffset);
 
   const styles = StyleSheet.create({
     root: { flex: 1, backgroundColor: t.colors.bgPage },
@@ -38,57 +49,102 @@ export default function Screen({ children, scroll = true, refreshing, onRefresh,
   });
 
   if (isDashboard) {
+    const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      onScroll?.(e);
+      sections.onScroll(e.nativeEvent.contentOffset.y);
+    };
+
+    const jumpTo = (id: string) => {
+      const target = sections.scrollTargetFor(id);
+      if (target != null) scrollRef.current?.scrollTo({ y: target, animated: true });
+    };
+
     return (
       <View style={{ flex: 1, backgroundColor: t.colors.bgPage }}>
-        <StatusBar barStyle="light-content" />
-        <DashboardHeaderPinned />
+        {/* Without this, a focused input anywhere on a dashboard screen
+            (Create Order's form, a search box, etc.) had no compensation
+            at all when the keyboard opened — nothing scrolled it back
+            into view, so it just sat hidden behind the keyboard. Same
+            fix as Sheet.tsx's own KeyboardAvoidingView, per direct
+            correction. */}
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <Animated.ScrollView
+          ref={scrollRef}
           style={{ flex: 1 }}
           contentContainerStyle={{ paddingBottom: t.spacing.xxxl }}
           refreshControl={
             onRefresh ? (
-              <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} tintColor={t.colors.accent} colors={[t.colors.accent]} />
+              <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} tintColor={t.colors.accent} colors={[t.colors.accent]} progressViewOffset={pinnedHeaderH} />
             ) : undefined
           }
           keyboardShouldPersistTaps="handled"
-          onScroll={onScroll}
-          scrollEventThrottle={scrollEventThrottle}
+          onScroll={handleScroll}
+          scrollEventThrottle={scrollEventThrottle || 16}
         >
-          <View style={{ borderBottomLeftRadius: CONTENT_SHEET_RADIUS, borderBottomRightRadius: CONTENT_SHEET_RADIUS, overflow: 'hidden' }}>
-            <DashboardHeaderScrollable />
-          </View>
+          <View style={{ height: pinnedHeaderH }} />
           <View
             style={{
               backgroundColor: t.colors.bgCard,
+              borderTopLeftRadius: CONTENT_SHEET_RADIUS,
+              borderTopRightRadius: CONTENT_SHEET_RADIUS,
+              // Per direct correction — a short-content page (e.g. Quick
+              // Links with nothing pending) used to leave the pale page
+              // background showing through below a small white card. The
+              // white content sheet should always cover at least the full
+              // visible screen, not just wrap tightly around its content.
+              minHeight: Dimensions.get('window').height - pinnedHeaderH,
               ...(padded ? { padding: t.spacing.lg } : {}),
             }}
           >
-            {children}
+            <ScrollSectionsContext.Provider value={{ registerSection: sections.registerSection, unregisterSection: sections.unregisterSection, scheduleRemeasure: sections.scheduleRemeasure }}>
+              {children}
+            </ScrollSectionsContext.Provider>
           </View>
         </Animated.ScrollView>
+        </KeyboardAvoidingView>
+        <SectionQuickNavRail sections={sections.pastSections} onJump={jumpTo} />
+        <DashboardHeader />
         {footer}
       </View>
     );
   }
 
+  const onScrollProp = onScroll as ((event: NativeSyntheticEvent<NativeScrollEvent>) => void) | undefined;
+  const handlePlainScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    if (onScrollProp) onScrollProp(e);
+    sections.onScroll(e.nativeEvent.contentOffset.y);
+  };
+
+  const jumpToPlain = (id: string) => {
+    const target = sections.scrollTargetFor(id);
+    if (target != null) scrollRef.current?.scrollTo({ y: target, animated: true });
+  };
+
   return (
     <SafeAreaView style={styles.root} edges={['top', 'left', 'right']}>
-      <StatusBar barStyle="dark-content" backgroundColor={t.colors.bgPage} />
       {scroll ? (
-        <Animated.ScrollView
-          style={{ flex: 1 }}
-          contentContainerStyle={styles.content}
-          refreshControl={
-            onRefresh ? (
-              <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} tintColor={t.colors.accent} colors={[t.colors.accent]} />
-            ) : undefined
-          }
-          keyboardShouldPersistTaps="handled"
-          onScroll={onScroll}
-          scrollEventThrottle={scrollEventThrottle}
-        >
-          {children}
-        </Animated.ScrollView>
+        <>
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+          <Animated.ScrollView
+            ref={scrollRef}
+            style={{ flex: 1 }}
+            contentContainerStyle={styles.content}
+            refreshControl={
+              onRefresh ? (
+                <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} tintColor={t.colors.accent} colors={[t.colors.accent]} />
+              ) : undefined
+            }
+            keyboardShouldPersistTaps="handled"
+            onScroll={handlePlainScroll}
+            scrollEventThrottle={scrollEventThrottle || 16}
+          >
+            <ScrollSectionsContext.Provider value={{ registerSection: sections.registerSection, unregisterSection: sections.unregisterSection, scheduleRemeasure: sections.scheduleRemeasure }}>
+              {children}
+            </ScrollSectionsContext.Provider>
+          </Animated.ScrollView>
+          </KeyboardAvoidingView>
+          <SectionQuickNavRail sections={sections.pastSections} onJump={jumpToPlain} />
+        </>
       ) : (
         <View style={[{ flex: 1 }, styles.content]}>{children}</View>
       )}

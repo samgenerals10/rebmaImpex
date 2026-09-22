@@ -18,9 +18,9 @@ import { useTheme } from '../../theme/ThemeProvider';
 import MetricCard from '../ui/MetricCard';
 import DataList, { type DataColumn } from '../ui/DataList';
 import Badge from '../ui/Badge';
-import Input from '../ui/Input';
 import Button from '../ui/Button';
 import SearchablePicker from '../ui/SearchablePicker';
+import SearchSortBar from '../ui/SearchSortBar';
 import ExportSheet from './ExportSheet';
 import type { ExportColumn } from '../../lib/exportEngine';
 
@@ -132,20 +132,28 @@ export default function TransactionsGrid() {
       </View>
       <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted }}>{filtered.length} transactions</Text>
 
-      <Input value={search} onChangeText={setSearch} placeholder="Search transactions…" />
-      <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
-        <View style={{ flex: 1 }}><Input value={fromDate} onChangeText={setFromDate} placeholder="From (YYYY-MM-DD)" /></View>
-        <View style={{ flex: 1 }}><Input value={toDate} onChangeText={setToDate} placeholder="To (YYYY-MM-DD)" /></View>
-      </View>
-      <View style={{ flexDirection: 'row', gap: t.spacing.md }}>
-        <View style={{ flex: 1 }}>
-          <SearchablePicker label="Type" value={typeFilter} onChange={setTypeFilter} options={[{ value: 'ALL', label: 'All Types' }, { value: 'in', label: 'Money In' }, { value: 'out', label: 'Money Out' }]} />
+      <SearchSortBar
+        value={search}
+        onChangeText={setSearch}
+        placeholder="Search transactions…"
+        filterOptions={[{ value: 'ALL', label: 'All Types' }, { value: 'in', label: 'Money In' }, { value: 'out', label: 'Money Out' }]}
+        filterValue={typeFilter}
+        onFilterChange={setTypeFilter}
+        filterLabel="Type"
+        dateFrom={fromDate}
+        dateTo={toDate}
+        onDateFromChange={setFromDate}
+        onDateToChange={setToDate}
+      >
+        <View>
+          <Text style={{ fontFamily: t.font.bold, fontSize: t.type.label9.size, letterSpacing: 0.5, textTransform: 'uppercase', color: t.colors.textMuted, marginBottom: t.spacing.sm }}>Source</Text>
+          <SearchablePicker value={sourceFilter} onChange={setSourceFilter} options={[{ value: 'ALL', label: 'All Sources' }, { value: 'Payments', label: 'Payments' }, { value: 'Orders', label: 'Orders' }, { value: 'Expenses', label: 'Expenses' }, { value: 'Purchases', label: 'Purchases' }]} />
         </View>
-        <View style={{ flex: 1 }}>
-          <SearchablePicker label="Source" value={sourceFilter} onChange={setSourceFilter} options={[{ value: 'ALL', label: 'All Sources' }, { value: 'Payments', label: 'Payments' }, { value: 'Orders', label: 'Orders' }, { value: 'Expenses', label: 'Expenses' }, { value: 'Purchases', label: 'Purchases' }]} />
+        <View>
+          <Text style={{ fontFamily: t.font.bold, fontSize: t.type.label9.size, letterSpacing: 0.5, textTransform: 'uppercase', color: t.colors.textMuted, marginBottom: t.spacing.sm }}>Department</Text>
+          <SearchablePicker value={deptFilter} onChange={setDeptFilter} options={[{ value: 'ALL', label: 'All Departments' }, ...departments.map((d) => ({ value: d, label: d }))]} />
         </View>
-      </View>
-      <SearchablePicker label="Department" value={deptFilter} onChange={setDeptFilter} options={[{ value: 'ALL', label: 'All Departments' }, ...departments.map((d) => ({ value: d, label: d }))]} />
+      </SearchSortBar>
       <DataList columns={columns} data={filtered} rowKey={(tx) => tx.id} loading={loading} emptyTitle="No transactions found" />
 
       <ExportSheet

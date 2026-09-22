@@ -38,8 +38,9 @@
 // narrow, rarely-used admin surface, genuinely out of scope for a quick
 // pass; revisit if a real need for it on mobile comes up.
 import { useCallback, useEffect, useState } from 'react';
-import { View, Text, ScrollView, Alert } from 'react-native';
-import { ShieldAlert, Copy, Check, X, Key, Plus } from 'lucide-react-native';
+import { View, Text, ScrollView } from 'react-native';
+import { Alert } from '../../lib/appAlert';
+import { ShieldAlert, Copy, Check, X, Key, Plus, Pause, Play, KeyRound, UserX } from 'lucide-react-native';
 import * as Clipboard from 'expo-clipboard';
 import { supabase } from '../../lib/supabaseClient';
 import { getCeoSetting, setCeoSetting } from '../../lib/ceoSetting';
@@ -55,17 +56,22 @@ import SearchablePicker from '../../components/ui/SearchablePicker';
 import EmptyState from '../../components/ui/EmptyState';
 import Sheet, { SheetSection } from '../../components/ui/Sheet';
 import Toggle from '../../components/ui/Toggle';
+import IconActionButton from '../../components/ui/IconActionButton';
 import DocumentTemplatesEditor from '../../components/shared/DocumentTemplatesEditor';
 import ExportSheet from '../../components/shared/ExportSheet';
 
-type SettingField =
+export type SettingField =
   | { key: string; label: string; description?: string; kind: 'bool' }
   | { key: string; label: string; description?: string; kind: 'number' }
   | { key: string; label: string; description?: string; kind: 'select'; options: { value: string; label: string }[] };
 
-interface Section { id: string; title: string; fields: SettingField[] }
+export interface Section { id: string; title: string; fields: SettingField[] }
 
-const SECTIONS: Section[] = [
+// Exported so the CEO-only Help Assistant (lib/helpKnowledgeBase.ts) can
+// build its Control Center answers directly from this real list — one
+// source of truth, no hand-copied duplicate that could drift out of sync
+// with the actual settings as they change.
+export const SECTIONS: Section[] = [
   {
     id: 'access', title: 'Access Control', fields: [
       { key: 'app_master_switch', label: 'App Master Switch', kind: 'bool' },
@@ -86,7 +92,7 @@ const SECTIONS: Section[] = [
       { key: 'cheque_payments_enabled', label: 'Cheque Payments Enabled', kind: 'bool' },
       { key: 'momo_payments_enabled', label: 'Mobile Money Payments Enabled', kind: 'bool' },
       { key: 'invoice_generation_enabled', label: 'Invoice Generation Enabled', kind: 'bool' },
-      { key: 'finance_needs_ceo_cosign', label: 'Finance Needs CEO Co-Sign', kind: 'bool' },
+      { key: 'finance_needs_ceo_cosign', label: 'Accounts Department Needs CEO Co-Sign', kind: 'bool' },
       { key: 'payroll_processing_enabled', label: 'Payroll Processing Enabled', kind: 'bool' },
       { key: 'ceo_approval_threshold', label: 'CEO Approval Threshold (GHS)', kind: 'number' },
       { key: 'management_price_setting', label: 'Management Price Setting', kind: 'bool' },
@@ -145,7 +151,7 @@ const SECTIONS: Section[] = [
       { key: 'maintenance_mode', label: 'Maintenance Mode', description: 'Confirm before enabling. It blocks normal app use.', kind: 'bool' },
       { key: 'session_timeout_minutes', label: 'Session Timeout (minutes)', kind: 'number' },
       { key: 'force_2fa_management', label: 'Force 2FA for Management', kind: 'bool' },
-      { key: 'force_2fa_finance', label: 'Force 2FA for Finance', kind: 'bool' },
+      { key: 'force_2fa_finance', label: 'Force 2FA for Accounts Department', kind: 'bool' },
       { key: 'password_reset_authority', label: 'Password Reset Authority', kind: 'select', options: [{ value: 'ceo_only', label: 'CEO Only' }, { value: 'hr_and_ceo', label: 'HR and CEO' }, { value: 'specific_user', label: 'Specific User' }] },
       { key: 'account_deletion_authority', label: 'Account Deletion Authority', kind: 'select', options: [{ value: 'ceo_only', label: 'CEO Only' }, { value: 'specific_user', label: 'Specific User' }] },
     ],
@@ -156,6 +162,16 @@ const SECTIONS: Section[] = [
       { key: 'ceo_cosign_order_threshold', label: 'CEO Co-Sign Order Threshold (GHS)', kind: 'number' },
       { key: 'ceo_must_approve_payroll', label: 'CEO Must Approve Payroll', kind: 'bool' },
       { key: 'ceo_must_approve_departments', label: 'CEO Must Approve Departments', kind: 'bool' },
+    ],
+  },
+  // Ported from rebma-web's CeoControlCenter.tsx "Section 10 — Risk
+  // Controls" — was missing from this array entirely (confirmed by
+  // grep before writing the plan for this fix). Both fields transcribed
+  // verbatim from web's own <SettingToggle> descriptions.
+  {
+    id: 'risk', title: 'Risk Controls', fields: [
+      { key: 'risk_customer_verification_required', label: 'Customer Verification Required', description: 'Customer verification is non-blocking by design, so a pending customer can still be ordered for. This only controls whether Risk treats verification as mandatory, not any order transition.', kind: 'bool' },
+      { key: 'risk_credit_hold_notify_marketing', label: 'Notify Marketing on Credit Hold', description: 'When ON, Marketing is notified whenever Risk puts a customer on credit hold.', kind: 'bool' },
     ],
   },
   {
@@ -179,11 +195,11 @@ interface DelegateRow { id: string; delegated_to_email: string; delegated_to_nam
 const AUDIT_ENTRY = { name: 'global_audit_history', label: 'Department Audit Trail' };
 const DEPT_TABLES: Record<string, { label: string; tables: { name: string; label: string }[] }> = {
   MARKETING: { label: 'Marketing', tables: [{ name: 'orders', label: 'Sales Orders' }, { name: 'customers', label: 'Customer Directory' }, AUDIT_ENTRY] },
-  FINANCE: { label: 'Finance', tables: [
-    { name: 'finance_payments', label: 'Finance Payments (Receipts)' },
-    { name: 'finance_expenses', label: 'Finance Expenses' },
-    { name: 'finance_cheques', label: 'Finance Cheques' },
-    { name: 'finance_petty_cash', label: 'Finance Petty Cash' },
+  FINANCE: { label: 'Accounts Department', tables: [
+    { name: 'finance_payments', label: 'Accounts Payments (Receipts)' },
+    { name: 'finance_expenses', label: 'Accounts Expenses' },
+    { name: 'finance_cheques', label: 'Accounts Cheques' },
+    { name: 'finance_petty_cash', label: 'Accounts Petty Cash' },
     { name: 'recurring_payments', label: 'Recurring Payments' },
     { name: 'finance_report_history', label: 'Financial Statements & Reports History' },
     AUDIT_ENTRY,
@@ -217,7 +233,7 @@ const DEPT_TABLES: Record<string, { label: string; tables: { name: string; label
   LOGISTICS: { label: 'Logistics', tables: [AUDIT_ENTRY] },
   ALL: { label: 'ALL Departments', tables: [
     { name: 'orders', label: 'Sales Orders' }, { name: 'customers', label: 'Customer Directory' },
-    { name: 'finance_payments', label: 'Finance Payments (Receipts)' }, { name: 'finance_expenses', label: 'Finance Expenses' }, { name: 'finance_cheques', label: 'Finance Cheques' }, { name: 'finance_petty_cash', label: 'Finance Petty Cash' }, { name: 'recurring_payments', label: 'Recurring Payments' }, { name: 'finance_report_history', label: 'Financial Statements & Reports History' },
+    { name: 'finance_payments', label: 'Accounts Payments (Receipts)' }, { name: 'finance_expenses', label: 'Accounts Expenses' }, { name: 'finance_cheques', label: 'Accounts Cheques' }, { name: 'finance_petty_cash', label: 'Accounts Petty Cash' }, { name: 'recurring_payments', label: 'Recurring Payments' }, { name: 'finance_report_history', label: 'Financial Statements & Reports History' },
     { name: 'cargo_intake', label: 'Cargo Intake Log' }, { name: 'stock_ledger', label: 'Recent Stock Movements' }, { name: 'general_purchases', label: 'General Purchases' }, { name: 'stock', label: 'Stock Levels' }, { name: 'wip_stock', label: 'WIP Stock' },
     { name: 'production_logs', label: 'Production Logs' }, { name: 'production_requests', label: 'Production Requests' },
     { name: 'goods_prices', label: 'Goods Prices Catalog' }, { name: 'supplier_orders', label: 'Supplier Orders' }, { name: 'suppliers', label: 'Suppliers Directory' }, { name: 'departments', label: 'Departments Directory' },
@@ -243,7 +259,11 @@ const PERMISSION_SECTIONS: { key: string; label: string }[] = [
   { key: 'approval_controls', label: 'Approval Controls' },
 ];
 
-const INVITE_DEPT_OPTIONS = [...['MARKETING', 'FINANCE', 'HR', 'PRODUCTION', 'RECEPTION', 'MANAGEMENT'].map((d) => ({ value: d, label: d })), { value: 'admin_warehouse', label: 'ADMIN & WAREHOUSE' }];
+const INVITE_DEPT_OPTIONS = [
+  ...['MARKETING', 'HR', 'PRODUCTION', 'RECEPTION', 'MANAGEMENT', 'RISK'].map((d) => ({ value: d, label: d })),
+  { value: 'FINANCE', label: 'ACCOUNTS DEPARTMENT' },
+  { value: 'admin_warehouse', label: 'ADMIN & WAREHOUSE' },
+];
 const INVITE_ROLE_OPTIONS = ['staff', 'supervisor', 'manager'].map((r) => ({ value: r, label: r }));
 const INVITE_EXPIRY_OPTIONS = [{ value: '24h', label: '24 hours' }, { value: '48h', label: '48 hours' }, { value: '7d', label: '7 days' }];
 
@@ -696,14 +716,14 @@ export default function ControlCenterScreen() {
                 </View>
                 <Badge tone={row.status === 'ACTIVE' ? 'success' : row.status === 'SUSPENDED' ? 'danger' : 'muted'} label={row.status} size="xs" />
               </View>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.xs }}>
+              <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
                 {row.status === 'ACTIVE' ? (
-                  <Button label="Suspend" size="sm" variant="ghost" onPress={() => suspendUser(row)} disabled={busyUserId === row.id} />
+                  <IconActionButton icon={Pause} tone="warning" accessibilityLabel="Suspend" onPress={() => suspendUser(row)} disabled={busyUserId === row.id} />
                 ) : row.status === 'SUSPENDED' ? (
-                  <Button label="Reactivate" size="sm" onPress={() => reactivateUser(row)} disabled={busyUserId === row.id} />
+                  <IconActionButton icon={Play} tone="success" accessibilityLabel="Reactivate" onPress={() => reactivateUser(row)} disabled={busyUserId === row.id} />
                 ) : null}
-                <Button label="Reset Password" size="sm" variant="ghost" onPress={() => resetPassword(row)} disabled={busyUserId === row.id} />
-                <Button label="Terminate" size="sm" variant="danger" onPress={() => terminateUser(row)} disabled={busyUserId === row.id} />
+                <IconActionButton icon={KeyRound} tone="info" accessibilityLabel="Reset Password" onPress={() => resetPassword(row)} disabled={busyUserId === row.id} />
+                <IconActionButton icon={UserX} tone="danger" accessibilityLabel="Terminate" onPress={() => terminateUser(row)} disabled={busyUserId === row.id} />
               </View>
             </Card>
           ))}

@@ -9,7 +9,8 @@
 // status); material_requisitions submit-only, exact write shape from
 // apiClient.ts's production.requestMaterials().
 import { useCallback, useEffect, useState } from 'react';
-import { View, Text, Alert } from 'react-native';
+import { View, Text } from 'react-native';
+import { Alert } from '../../lib/appAlert';
 import { Plus, Boxes, Copy, Trash2, Edit3 } from 'lucide-react-native';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuthStore } from '../../store/authStore';
@@ -64,7 +65,7 @@ const getDisplayStatus = (order: any, wipList: any[]) => {
 
 const REQ_STATUS_LABELS: Record<string, string> = {
   PENDING_MANAGEMENT: 'Awaiting Management',
-  PENDING_FINANCE: 'Awaiting Finance',
+  PENDING_FINANCE: 'Awaiting Accounts Department',
   APPROVED: 'Approved, Awaiting Pickup',
   FULFILLED: 'Materials Released',
   REJECTED: 'Rejected',
@@ -290,7 +291,7 @@ export default function InternalOrdersScreen() {
         </View>
 
         <Card>
-          <SectionHeader title="Raw Material Requisitions" subtitle="Goes to Management, then Finance, then Operations releases the stock." />
+          <SectionHeader title="Raw Material Requisitions" subtitle="Goes to Management, then Accounts Department, then Operations releases the stock." />
           <View style={{ gap: t.spacing.sm }}>
             {requisitions.slice(0, 8).map((r) => {
               const items = Array.isArray(r.items) ? r.items : [];
@@ -329,11 +330,8 @@ export default function InternalOrdersScreen() {
           </View>
         </Card>
 
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.md }}>
-          <View style={{ width: '47%' }}><MetricCard label="Total Orders" value={counts.total} emphasis="secondary" /></View>
-          <View style={{ width: '47%' }}><MetricCard label="Pending" value={counts.pending} tone="warning" emphasis="secondary" /></View>
-          <View style={{ width: '47%' }}><MetricCard label="Approved" value={counts.approved} tone="accent" emphasis="secondary" /></View>
-          <View style={{ width: '47%' }}><MetricCard label="Completed" value={counts.completed} tone="accent" emphasis="secondary" /></View>
+        <View style={{ gap: t.spacing.sm }}>
+          <View style={{ flexDirection: 'row', gap: t.spacing.sm }}><View style={{ flex: 1 }}><MetricCard label="Total Orders" value={counts.total} emphasis="compact" /></View><View style={{ flex: 1 }}><MetricCard label="Pending" value={counts.pending} tone="warning" emphasis="compact" /></View><View style={{ flex: 1 }}><MetricCard label="Approved" value={counts.approved} tone="accent" emphasis="compact" /></View><View style={{ flex: 1 }}><MetricCard label="Completed" value={counts.completed} tone="accent" emphasis="compact" /></View></View>
         </View>
 
         <Input value={search} onChangeText={setSearch} placeholder="Search orders or materials..." />
@@ -502,7 +500,7 @@ export default function InternalOrdersScreen() {
         open={showMaterialModal}
         onClose={() => setShowMaterialModal(false)}
         title="Request Raw Materials"
-        subtitle="Goes to Management, then Finance, then Operations releases the materials to you."
+        subtitle="Goes to Management, then Accounts Department, then Operations releases the materials to you."
         side="bottom"
         maxHeight={600}
         footer={<Button label={submittingMaterial ? 'Submitting…' : 'Submit Request'} onPress={handleSubmitMaterialRequest} loading={submittingMaterial} disabled={submittingMaterial} fullWidth />}

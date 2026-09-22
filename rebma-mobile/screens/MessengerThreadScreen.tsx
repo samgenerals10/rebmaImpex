@@ -5,7 +5,8 @@
 // indicator, realtime, edit/delete/pin/forward/star/copy/search-within-
 // conversation) for the channel the caller navigated in with.
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { View, Text, TextInput, Pressable, ScrollView, Alert, Image, Linking, Modal, Dimensions } from 'react-native';
+import { View, Text, TextInput, Pressable, ScrollView, Image, Linking, Modal, Dimensions } from 'react-native';
+import { Alert } from '../lib/appAlert';
 import * as Clipboard from 'expo-clipboard';
 import { useAudioRecorder, useAudioRecorderState, useAudioPlayer, useAudioPlayerStatus, AudioModule, RecordingPresets, setAudioModeAsync } from 'expo-audio';
 import { useVideoPlayer, VideoView } from 'expo-video';

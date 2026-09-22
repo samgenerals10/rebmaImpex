@@ -13,7 +13,8 @@
 // implementation (not even exportToCSV) with no PDF path at all, so no
 // PDF option is added here (D101 — don't invent a format web never had).
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, Text, Alert } from 'react-native';
+import { View, Text } from 'react-native';
+import { Alert } from '../../lib/appAlert';
 import { Download } from 'lucide-react-native';
 import { supabase } from '../../lib/supabaseClient';
 import { useTheme } from '../../theme/ThemeProvider';
@@ -150,11 +151,8 @@ export default function SalesHistoryScreen() {
 
         {tab === 'sales' ? (
           <>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.md }}>
-              <View style={{ width: '47%' }}><MetricCard label="Total Revenue" value={loading ? '—' : `GHS ${totalRevenue.toLocaleString()}`} tone="accent" /></View>
-              <View style={{ width: '47%' }}><MetricCard label="Completed Orders" value={loading ? '—' : deliveredCount} /></View>
-              <View style={{ width: '47%' }}><MetricCard label="Avg Order Value" value={loading ? '—' : `GHS ${avgOrderValue.toFixed(0)}`} /></View>
-              <View style={{ width: '47%' }}><MetricCard label="Best Month" value={loading ? '—' : bestMonth.month} sublabel={loading ? undefined : `GHS ${bestMonth.revenue.toLocaleString()}`} /></View>
+            <View style={{ gap: t.spacing.sm }}>
+              <View style={{ flexDirection: 'row', gap: t.spacing.sm }}><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Total Revenue" value={loading ? '—' : `GHS ${totalRevenue.toLocaleString()}`} tone="accent" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Completed Orders" value={loading ? '—' : deliveredCount} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Avg Order Value" value={loading ? '—' : `GHS ${avgOrderValue.toFixed(0)}`} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Best Month" value={loading ? '—' : bestMonth.month} sublabel={loading ? undefined : `GHS ${bestMonth.revenue.toLocaleString()}`} /></View></View>
             </View>
 
             {!loading && topCustomers.length > 0 && (
@@ -170,11 +168,8 @@ export default function SalesHistoryScreen() {
           </>
         ) : (
           <>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.md }}>
-              <View style={{ width: '47%' }}><MetricCard label="Total Credit Requests" value={loading ? '—' : creditOrders.length} /></View>
-              <View style={{ width: '47%' }}><MetricCard label="Pending" value={loading ? '—' : creditPending} tone="warning" /></View>
-              <View style={{ width: '47%' }}><MetricCard label="Approved" value={loading ? '—' : creditApproved} tone="accent" /></View>
-              <View style={{ width: '47%' }}><MetricCard label="Rejected" value={loading ? '—' : creditRejected} tone="danger" /></View>
+            <View style={{ gap: t.spacing.sm }}>
+              <View style={{ flexDirection: 'row', gap: t.spacing.sm }}><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Total Credit Requests" value={loading ? '—' : creditOrders.length} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Pending" value={loading ? '—' : creditPending} tone="warning" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Approved" value={loading ? '—' : creditApproved} tone="accent" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Rejected" value={loading ? '—' : creditRejected} tone="danger" /></View></View>
             </View>
 
             {creditValue > 0 && (

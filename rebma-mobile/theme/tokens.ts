@@ -66,7 +66,11 @@ export const colors: ColorTokens = {
     emerald: '#10b981',
     blue: '#3b82f6',
     indigo: '#6366f1',
-    amber: '#f59e0b',
+    // Aligned to the real logo droplet amber (was the generic #f59e0b)
+    // per direct correction — amber should read as the actual Rebma
+    // brand color everywhere it already appears app-wide (metric card
+    // icon tiles, quick-action circles, badges), not a generic shade.
+    amber: '#f2a72e',
     teal: '#14b8a6',
     sky: '#0ea5e9',
     rose: '#f43f5e',
@@ -170,8 +174,12 @@ export const shadow = {
     ios: { shadowColor: '#1E1B4B', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.08, shadowRadius: 10 },
     android: { elevation: 10 },
   },
+  // Dialed back one round after "projected too deep" — this token is now
+  // ALSO scoped to only the actual bottom-nav FAB (Button.tsx's own
+  // primary-variant shadow was split off to 'raised' so ordinary buttons
+  // never inherit this).
   fab: {
-    ios: { shadowColor: '#5B4DFF', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.35, shadowRadius: 12 },
+    ios: { shadowColor: '#000000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.22, shadowRadius: 10 },
     android: { elevation: 8 },
   },
 } as const;

@@ -150,13 +150,9 @@ export default function FleetAnalyticsScreen() {
           ))}
         </View>
 
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.md }}>
-          <View style={{ width: '47%' }}><MetricCard label="Fleet Size" value={loading ? '—' : totalVehicles} sublabel={`${operationalCount} operational`} /></View>
-          <View style={{ width: '47%' }}><MetricCard label="Fleet Utilization" value={loading ? '—' : `${utilizationRate}%`} tone="accent" /></View>
-          <View style={{ width: '47%' }}><MetricCard label="Cost per Delivery" value={loading ? '—' : (costPerDelivery > 0 ? `GHS ${costPerDelivery}` : '—')} tone="warning" /></View>
-          <View style={{ width: '47%' }}><MetricCard label="Avg Fuel Efficiency" value={loading ? '—' : (avgFuelEfficiency ? `${avgFuelEfficiency} km/L` : '—')} /></View>
-          <View style={{ width: '47%' }}><MetricCard label="Deliveries Completed" value={loading ? '—' : deliveredByVehicleTotal(deliveredByVehicle)} tone="accent" /></View>
-          <View style={{ width: '47%' }}><MetricCard label="Fuel Spend (period)" value={loading ? '—' : `GHS ${totalFuelCostPeriod.toLocaleString()}`} tone="warning" /></View>
+        <View style={{ gap: t.spacing.sm }}>
+          <View style={{ flexDirection: 'row', gap: t.spacing.sm }}><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Fleet Size" value={loading ? '—' : totalVehicles} sublabel={`${operationalCount} operational`} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Fleet Utilization" value={loading ? '—' : `${utilizationRate}%`} tone="accent" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Cost per Delivery" value={loading ? '—' : (costPerDelivery > 0 ? `GHS ${costPerDelivery}` : '—')} tone="warning" /></View></View>
+          <View style={{ flexDirection: 'row', gap: t.spacing.sm }}><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Avg Fuel Efficiency" value={loading ? '—' : (avgFuelEfficiency ? `${avgFuelEfficiency} km/L` : '—')} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Deliveries Completed" value={loading ? '—' : deliveredByVehicleTotal(deliveredByVehicle)} tone="accent" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Fuel Spend (period)" value={loading ? '—' : `GHS ${totalFuelCostPeriod.toLocaleString()}`} tone="warning" /></View></View>
         </View>
 
         {!loading && driverData.length > 0 && (
@@ -191,7 +187,7 @@ export default function FleetAnalyticsScreen() {
           <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary, marginBottom: t.spacing.md }}>Fuel Efficiency by Vehicle</Text>
           {efficiencyTable.length === 0 ? (
             <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textMuted, textAlign: 'center', paddingVertical: t.spacing.lg }}>Not enough fuel log data yet.</Text>
-          ) : <DataList columns={efficiencyCols} data={efficiencyTable} rowKey={(r) => r.vehicleId} />}
+          ) : <DataList collapsible columns={efficiencyCols} data={efficiencyTable} rowKey={(r) => r.vehicleId} />}
         </Card>
       </View>
     </Screen>

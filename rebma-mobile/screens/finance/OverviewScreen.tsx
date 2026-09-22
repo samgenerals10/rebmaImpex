@@ -9,7 +9,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { View, Text } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { DollarSign, Clock, Receipt, Wallet } from 'lucide-react-native';
+import { DollarSign, Clock, Receipt, Wallet, ClipboardList } from 'lucide-react-native';
 import { supabase } from '../../lib/supabaseClient';
 import { useTheme } from '../../theme/ThemeProvider';
 import { useUIStore } from '../../store/uiStore';
@@ -19,6 +19,7 @@ import { useCollapsibleHeader } from '../../hooks/useCollapsibleHeader';
 import Card from '../../components/ui/Card';
 import MetricCard from '../../components/ui/MetricCard';
 import ModuleLauncher from '../../components/chrome/ModuleLauncher';
+import TrackedSection from '../../components/ui/TrackedSection';
 
 interface OrderRow {
   id: string;
@@ -64,61 +65,78 @@ export default function OverviewScreen() {
   return (
     <Screen refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} onScroll={scrollHandler} scrollEventThrottle={16}>
       <View style={{ gap: t.spacing.xl }}>
-        {/* Aczone Total Revenue Hero Card */}
-        <Card tone="hero">
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <View style={{ flex: 1 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#34D399' }} />
-                <Text style={{ fontFamily: t.font.bold, fontSize: t.type.meta10.size, letterSpacing: 0.8, textTransform: 'uppercase', color: 'rgba(255,255,255,0.9)' }}>
-                  Accounts Department Snapshot
-                </Text>
-              </View>
-              <Text style={{ fontFamily: t.font.extrabold, fontSize: t.type.kpi28.size, color: '#FFFFFF', marginTop: 2 }}>
-                {loading ? '—' : `GHS ${totalRevenue.toLocaleString()}`}
-              </Text>
-              <Text style={{ fontFamily: t.font.medium, fontSize: t.type.body12.size, color: 'rgba(255,255,255,0.85)', marginTop: 4 }}>
-                {loading ? '' : `${paymentCount} commercial payment${paymentCount === 1 ? '' : 's'} recorded`}
-              </Text>
-            </View>
-            <View style={{ width: 56, height: 56, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.22)', alignItems: 'center', justifyContent: 'center' }}>
-              <DollarSign size={28} color="#FFFFFF" strokeWidth={2.5} />
-            </View>
-          </View>
-        </Card>
-
-        {/* Aczone Metric Grid */}
-        <View style={{ gap: t.spacing.sm }}>
-          <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
+        {/* Accounts Snapshot — two clickable tiles, not one oversized
+            banner (per direct correction: a full-bleed color block that
+            does nothing on tap doesn't belong in a mobile app). */}
+        <TrackedSection id="hero" title="Accounts Snapshot" icon={DollarSign}>
+        <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
+          <View style={{ flex: 1 }}>
             <MetricCard
-              label="Pending Orders"
-              value={loading ? '—' : pending.length}
-              sublabel="Orders Queue"
-              icon={<Clock size={20} color={t.colors.action.amber} />}
-              tone="warning"
-              onPress={() => navigation.navigate('OrdersQueue')}
-            />
-            <MetricCard
-              label="Recorded Payments"
-              value={loading ? '—' : paymentCount}
-              sublabel="Receipts register"
-              icon={<Receipt size={20} color={t.colors.action.blue} />}
-              tone="info"
-              onPress={() => navigation.navigate('Receipts')}
-            />
-          </View>
-          <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
-            <MetricCard
-              label="Collections Total"
-              value={loading ? '—' : `GHS ${(creditOutstanding / 1000).toFixed(1)}k`}
-              sublabel="Active ledger inflow"
-              icon={<Wallet size={20} color={t.colors.action.teal} />}
-              tone="success"
+              emphasis="primary"
+              tone="accent"
+              label="Total Revenue"
+              value={loading ? '—' : `GHS ${totalRevenue.toLocaleString()}`}
+              sublabel="All approved orders"
+              icon={<DollarSign size={18} color={t.colors.accent} />}
               onPress={() => navigation.navigate('Transactions')}
             />
           </View>
+          <View style={{ flex: 1 }}>
+            <MetricCard
+              emphasis="primary"
+              tone="warning"
+              label="Pending Orders"
+              value={loading ? '—' : pending.length}
+              sublabel="Awaiting review"
+              icon={<Clock size={18} color={t.colors.status.warning.text} />}
+              onPress={() => navigation.navigate('OrdersQueue')}
+            />
+          </View>
         </View>
+        </TrackedSection>
 
+        {/* Key Metrics */}
+        <TrackedSection id="metrics" title="Key Metrics" icon={ClipboardList}>
+        <View style={{ gap: t.spacing.sm }}>
+          <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
+            <View style={{ flex: 1 }}>
+            <MetricCard
+              emphasis="compact"
+              label="Total Orders"
+              value={loading ? '—' : orders.length}
+              sublabel="All statuses"
+              icon={<ClipboardList size={14} color={t.colors.action.violet} />}
+              tone="neutral"
+              onPress={() => navigation.navigate('OrdersQueue')}
+            />
+            </View>
+            <View style={{ flex: 1 }}>
+            <MetricCard
+              emphasis="compact"
+              label="Payments"
+              value={loading ? '—' : paymentCount}
+              sublabel="Receipts register"
+              icon={<Receipt size={14} color={t.colors.action.blue} />}
+              tone="info"
+              onPress={() => navigation.navigate('Receipts')}
+            />
+            </View>
+            <View style={{ flex: 1 }}>
+            <MetricCard
+              emphasis="compact"
+              label="Collections"
+              value={loading ? '—' : `GHS ${(creditOutstanding / 1000).toFixed(1)}k`}
+              sublabel="Ledger inflow"
+              icon={<Wallet size={14} color={t.colors.action.teal} />}
+              tone="success"
+              onPress={() => navigation.navigate('Transactions')}
+            />
+            </View>
+          </View>
+        </View>
+        </TrackedSection>
+
+        <TrackedSection id="pending-review" title="Orders Awaiting Review" icon={Clock}>
         <Card>
           <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary, marginBottom: t.spacing.md }}>
             Orders Awaiting Review
@@ -160,6 +178,7 @@ export default function OverviewScreen() {
             </View>
           )}
         </Card>
+        </TrackedSection>
 
         <ModuleLauncher dept={dept} exclude={['Evaluation']} onSelect={(id) => navigation.navigate(id)} />
       </View>

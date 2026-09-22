@@ -25,9 +25,10 @@
 import { useState } from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { Check } from 'lucide-react-native';
+import { Check, ChevronLeft, Palette } from 'lucide-react-native';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuthStore } from '../../store/authStore';
+import { useUIStore } from '../../store/uiStore';
 import { useTheme, FONT_SCALES, ACCENT_PALETTE, BACKGROUND_PALETTE, type FontSizePreference, type AccentKey, type BgKey } from '../../theme/ThemeProvider';
 import { getDepartmentEntry } from '../../navigation/departmentRegistry';
 import Screen from '../../components/ui/Screen';
@@ -35,10 +36,13 @@ import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import SectionHeader from '../../components/ui/SectionHeader';
 import ModuleLauncher from '../../components/chrome/ModuleLauncher';
+import Sheet from '../../components/ui/Sheet';
+import ColorPicker from '../../components/ui/ColorPicker';
+import NotificationSoundPicker from '../../components/settings/NotificationSoundPicker';
 
 const OPTIONS: { value: FontSizePreference; label: string }[] = [
   { value: 'small', label: 'Small' },
-  { value: 'medium', label: 'Medium (Default)' },
+  { value: 'medium', label: 'Medium' },
   { value: 'large', label: 'Large' },
 ];
 
@@ -48,6 +52,20 @@ export default function AppearanceScreen() {
   const profile = useAuthStore((s) => s.profile);
   const dept = getDepartmentEntry('SETTINGS');
   const [saving, setSaving] = useState(false);
+  const [accentPickerOpen, setAccentPickerOpen] = useState(false);
+  const [bgPickerOpen, setBgPickerOpen] = useState(false);
+  const [draftAccent, setDraftAccent] = useState(t.colors.accent);
+  const [draftBg, setDraftBg] = useState(t.colors.bgPage);
+
+  // Settings is reached by a one-way `setActiveDepartment('SETTINGS')` call
+  // (the department switcher's Settings row, or the header menu) — that
+  // remounts the whole DepartmentStack with no native "back" of its own,
+  // which is exactly the "can't come back" bug reported live. This is the
+  // fix: jump straight back to whatever department was active before.
+  const previousDepartment = useUIStore((s) => s.previousDepartment);
+  const setActiveDepartment = useUIStore((s) => s.setActiveDepartment);
+  const canGoBack = !!previousDepartment && previousDepartment !== 'SETTINGS';
+  const previousDept = canGoBack ? getDepartmentEntry(previousDepartment) : null;
 
   const choose = async (pref: FontSizePreference) => {
     t.setFontSizePreference(pref);
@@ -66,6 +84,28 @@ export default function AppearanceScreen() {
   return (
     <Screen>
       <View style={{ gap: t.spacing.xl }}>
+        {canGoBack && previousDept && (
+          <Pressable
+            onPress={() => setActiveDepartment(previousDepartment)}
+            style={({ pressed }) => ({
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 6,
+              alignSelf: 'flex-start',
+              paddingVertical: 8,
+              paddingHorizontal: 12,
+              borderRadius: t.radius.pill,
+              backgroundColor: t.colors.accentSoft,
+              opacity: pressed ? 0.7 : 1,
+            })}
+          >
+            <ChevronLeft size={16} color={t.colors.accent} strokeWidth={2.4} />
+            <Text style={{ fontFamily: t.font.bold, fontSize: t.type.meta10.size, color: t.colors.accent }}>
+              Back to {previousDept.label}
+            </Text>
+          </Pressable>
+        )}
+
         {/* Background Theme Selector */}
         <Card>
           <SectionHeader
@@ -75,7 +115,7 @@ export default function AppearanceScreen() {
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.md }}>
             {(Object.keys(BACKGROUND_PALETTE) as BgKey[]).map((key) => {
               const item = BACKGROUND_PALETTE[key];
-              const selected = t.bgKey === key;
+              const selected = t.bgKey === key && !t.customBgHex;
               return (
                 <Pressable
                   key={key}
@@ -93,8 +133,8 @@ export default function AppearanceScreen() {
                     justifyContent: 'space-between',
                   }}
                 >
-                  <View style={{ gap: 2 }}>
-                    <Text style={{ fontFamily: selected ? t.font.bold : t.font.medium, fontSize: t.type.body12.size, color: item.textPrimary }}>
+                  <View style={{ gap: 2, flex: 1 }}>
+                    <Text numberOfLines={1} style={{ fontFamily: selected ? t.font.bold : t.font.medium, fontSize: t.type.body12.size, color: item.textPrimary }}>
                       {item.label}
                     </Text>
                   </View>
@@ -106,6 +146,36 @@ export default function AppearanceScreen() {
                 </Pressable>
               );
             })}
+            {/* Custom Color tile — opens the real HSL color picker (direct
+                correction: the app only offered fixed preset swatches). */}
+            <Pressable
+              onPress={() => { setDraftBg(t.customBgHex || t.colors.bgPage); setBgPickerOpen(true); }}
+              style={{
+                flexBasis: '47%',
+                flexGrow: 1,
+                padding: t.spacing.md,
+                borderRadius: t.radius.lg,
+                backgroundColor: t.customBgHex || t.colors.bgCard,
+                borderWidth: t.customBgHex ? 2 : 1,
+                borderColor: t.customBgHex ? t.colors.accent : t.colors.border,
+                borderStyle: t.customBgHex ? 'solid' : 'dashed',
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.xs, flex: 1 }}>
+                <Palette size={16} color={t.customBgHex ? t.colors.textPrimary : t.colors.textSecondary} />
+                <Text numberOfLines={1} style={{ fontFamily: t.customBgHex ? t.font.bold : t.font.medium, fontSize: t.type.body12.size, color: t.customBgHex ? t.colors.textPrimary : t.colors.textSecondary }}>
+                  Custom
+                </Text>
+              </View>
+              {t.customBgHex && (
+                <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: t.colors.accent, alignItems: 'center', justifyContent: 'center' }}>
+                  <Check size={14} color="#ffffff" strokeWidth={2.5} />
+                </View>
+              )}
+            </Pressable>
           </View>
         </Card>
 
@@ -118,7 +188,7 @@ export default function AppearanceScreen() {
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.md }}>
             {(Object.keys(ACCENT_PALETTE) as AccentKey[]).map((key) => {
               const swatch = ACCENT_PALETTE[key];
-              const selected = t.accentKey === key;
+              const selected = t.accentKey === key && !t.customAccentHex;
               return (
                 <Pressable
                   key={key}
@@ -141,6 +211,7 @@ export default function AppearanceScreen() {
                     {selected ? <Check size={20} color="#ffffff" strokeWidth={3} /> : null}
                   </View>
                   <Text
+                    numberOfLines={1}
                     style={{
                       fontFamily: selected ? t.font.bold : t.font.regular,
                       fontSize: t.type.meta10.size,
@@ -153,8 +224,68 @@ export default function AppearanceScreen() {
                 </Pressable>
               );
             })}
+            <Pressable
+              onPress={() => { setDraftAccent(t.customAccentHex || t.colors.accent); setAccentPickerOpen(true); }}
+              style={{ alignItems: 'center', gap: t.spacing.xxs, minWidth: 64 }}
+            >
+              <View
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: t.radius.lg,
+                  backgroundColor: t.customAccentHex || t.colors.bgInput,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderWidth: t.customAccentHex ? 3 : 1,
+                  borderColor: t.customAccentHex ? '#ffffff' : t.colors.border,
+                  borderStyle: t.customAccentHex ? 'solid' : 'dashed',
+                  ...t.shadow('raised'),
+                }}
+              >
+                {t.customAccentHex ? <Check size={20} color="#ffffff" strokeWidth={3} /> : <Palette size={18} color={t.colors.textMuted} />}
+              </View>
+              <Text
+                numberOfLines={1}
+                style={{
+                  fontFamily: t.customAccentHex ? t.font.bold : t.font.regular,
+                  fontSize: t.type.meta10.size,
+                  color: t.colors.textSecondary,
+                  textAlign: 'center',
+                }}
+              >
+                Custom
+              </Text>
+            </Pressable>
           </View>
         </Card>
+
+        <Sheet open={accentPickerOpen} onClose={() => setAccentPickerOpen(false)} title="Custom Accent Color" subtitle="Pick any color for buttons and highlights." side="bottom">
+          <View style={{ paddingHorizontal: t.spacing.lg, paddingBottom: t.spacing.lg }}>
+            <ColorPicker initialHex={t.customAccentHex || t.colors.accent} onChange={setDraftAccent} />
+            <View style={{ flexDirection: 'row', gap: t.spacing.sm, marginTop: t.spacing.xl }}>
+              <View style={{ flex: 1 }}>
+                <Button label="Cancel" variant="ghost" onPress={() => setAccentPickerOpen(false)} fullWidth />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Button label="Apply" onPress={() => { t.setCustomAccent(draftAccent); setAccentPickerOpen(false); }} fullWidth />
+              </View>
+            </View>
+          </View>
+        </Sheet>
+
+        <Sheet open={bgPickerOpen} onClose={() => setBgPickerOpen(false)} title="Custom Background" subtitle="Pick any base color for page background and surfaces." side="bottom">
+          <View style={{ paddingHorizontal: t.spacing.lg, paddingBottom: t.spacing.lg }}>
+            <ColorPicker initialHex={t.customBgHex || t.colors.bgPage} onChange={setDraftBg} />
+            <View style={{ flexDirection: 'row', gap: t.spacing.sm, marginTop: t.spacing.xl }}>
+              <View style={{ flex: 1 }}>
+                <Button label="Cancel" variant="ghost" onPress={() => setBgPickerOpen(false)} fullWidth />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Button label="Apply" onPress={() => { t.setCustomBg(draftBg); setBgPickerOpen(false); }} fullWidth />
+              </View>
+            </View>
+          </View>
+        </Sheet>
 
         {/* Font Size Selector */}
         <Card>
@@ -185,6 +316,12 @@ export default function AppearanceScreen() {
               <Button label="Dark Mode" size="sm" variant={t.darkMode ? 'primary' : 'ghost'} onPress={() => !t.darkMode && t.toggleDarkMode()} />
             </View>
           </View>
+        </Card>
+
+        {/* Notification Sound Picker */}
+        <Card>
+          <SectionHeader title="Notification Sound" subtitle="Choose the tone that plays for new alerts and messages." />
+          <NotificationSoundPicker />
         </Card>
 
         <ModuleLauncher

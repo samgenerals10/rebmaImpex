@@ -6,7 +6,8 @@
 // mock array — both confirmed non-real and dropped, matching the
 // established D16 "don't port mock/seed UI" precedent.
 import { useCallback, useEffect, useState } from 'react';
-import { View, Alert } from 'react-native';
+import { View } from 'react-native';
+import { Alert } from '../../lib/appAlert';
 import { CheckCircle, XCircle, Trash2, Edit2 } from 'lucide-react-native';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuthStore } from '../../store/authStore';

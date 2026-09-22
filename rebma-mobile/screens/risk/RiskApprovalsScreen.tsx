@@ -14,7 +14,8 @@
 // orders.status can ever reach DELIVERED — enforced by a database
 // trigger, not just this screen's own convention.
 import { useCallback, useEffect, useState } from 'react';
-import { View, Text, Pressable, ScrollView, Alert, Linking } from 'react-native';
+import { View, Text, Pressable, ScrollView, Linking } from 'react-native';
+import { Alert } from '../../lib/appAlert';
 import {
   CheckCircle, XCircle, RotateCcw, History, ShieldCheck,
   Package, CreditCard, Camera, UserCheck, FileText, ExternalLink,
@@ -26,6 +27,7 @@ import { useAuthStore } from '../../store/authStore';
 import { useTheme } from '../../theme/ThemeProvider';
 import Screen from '../../components/ui/Screen';
 import Card from '../../components/ui/Card';
+import ProductImage from '../../components/ui/ProductImage';
 import Badge from '../../components/ui/Badge';
 import type { StatusTone } from '../../theme/tokens';
 import Input, { Field } from '../../components/ui/Input';
@@ -292,11 +294,22 @@ export default function RiskApprovalsScreen() {
         });
       }
 
+      // Direct correction: for Proof of Delivery specifically, `selected.id`
+      // is the delivery_logs row's own id, not the order's — anchoring
+      // the final "delivered" event to it would put THE END of the
+      // workflow on a timeline nothing else in the order's own history
+      // ever reads. This is the literal "workflow should end at the
+      // customer's destination" moment, so it has to land on the same
+      // reference_id as everything before it (order creation, Risk's own
+      // earlier order approval, Finance's payment) — the order's id,
+      // already selected via the `orders:order_id(...)` join.
+      const referenceId = selected.type === 'Proof of Delivery' ? (selected.raw.order_id || selected.id) : selected.id;
+
       await supabase.from('global_audit_history').insert([{
         department: 'RISK',
         action: `${verb}: ${selected.requestId} — ${selected.description}${modalNote ? ` | Note: ${modalNote}` : ''}`,
         performed_by: profile?.fullName || 'Risk',
-        reference_id: selected.id,
+        reference_id: referenceId,
         details: modalNote || null,
         timestamp: new Date().toISOString(),
       }]);
@@ -385,6 +398,12 @@ export default function RiskApprovalsScreen() {
               </Card>
             )}
 
+            {selected.type === 'Cargo Intake' && selected.raw?.product_image && (
+              <SheetSection label="Product Photo">
+                <ProductImage uri={selected.raw.product_image} label={selected.raw.product_name || 'Cargo photo'} size={72} />
+              </SheetSection>
+            )}
+
             {creditPosition && (
               <SheetSection label="Customer Credit Position">
                 <View style={{ gap: t.spacing.sm }}>
@@ -393,23 +412,27 @@ export default function RiskApprovalsScreen() {
                       <Text style={{ fontFamily: t.font.bold, fontSize: t.type.meta11.size, color: t.colors.status.warning.text }}>⚠ CREDIT ON HOLD: new credit orders are blocked for this customer.</Text>
                     </View>
                   )}
-                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.md }}>
-                    <View style={{ width: '47%' }}>
+                  <View style={{ gap: t.spacing.sm }}>
+                    <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
+                      <View style={{ flex: 1 }}>
                       <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted }}>Credit Limit</Text>
                       <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.body12.size, color: t.colors.textPrimary }}>{creditPosition.limit !== null ? `GHS ${creditPosition.limit.toLocaleString()}` : 'No limit, global cap applies'}</Text>
-                    </View>
-                    <View style={{ width: '47%' }}>
+                      </View>
+                      <View style={{ flex: 1 }}>
                       <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted }}>Currently Outstanding</Text>
                       <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.body12.size, color: t.colors.textPrimary }}>GHS {creditPosition.outstanding.toLocaleString()}</Text>
+                      </View>
                     </View>
-                    <View style={{ width: '47%' }}>
+                    <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
+                      <View style={{ flex: 1 }}>
                       <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted }}>This Order</Text>
                       <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.body12.size, color: t.colors.textPrimary }}>GHS {creditPosition.thisOrder.toLocaleString()}</Text>
-                    </View>
-                    <View style={{ width: '47%' }}>
+                      </View>
+                      <View style={{ flex: 1 }}>
                       <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted }}>Would Total</Text>
                       <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body12.size, color: creditPosition.overLimit ? t.colors.status.danger.text : t.colors.textPrimary }}>GHS {creditPosition.wouldTotal.toLocaleString()}</Text>
                       {creditPosition.overLimit && <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.status.danger.text }}>Exceeds limit by GHS {(creditPosition.wouldTotal - (creditPosition.limit ?? 0)).toLocaleString()}</Text>}
+                      </View>
                     </View>
                   </View>
                 </View>
@@ -420,9 +443,12 @@ export default function RiskApprovalsScreen() {
               <SheetSection label="Order Items (read-only, as submitted)">
                 <View style={{ gap: t.spacing.sm }}>
                   {selected.raw.metadata.items.map((it: any, idx: number) => (
-                    <View key={idx} style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                      <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.body12.size, color: t.colors.textPrimary }}>{it.productName}</Text>
-                      <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textSecondary }}>{it.quantity} × GHS {Number(it.unitPrice || 0).toLocaleString()}</Text>
+                    <View key={idx} style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm }}>
+                      <ProductImage uri={it.productImage} label={it.productName} size={32} />
+                      <View style={{ flex: 1, flexDirection: 'row', justifyContent: 'space-between' }}>
+                        <Text style={{ fontFamily: t.font.semibold, fontSize: t.type.body12.size, color: t.colors.textPrimary }}>{it.productName}</Text>
+                        <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textSecondary }}>{it.quantity} × GHS {Number(it.unitPrice || 0).toLocaleString()}</Text>
+                      </View>
                     </View>
                   ))}
                 </View>
@@ -501,7 +527,12 @@ export default function RiskApprovalsScreen() {
         </View>
       </Sheet>
 
-      <RequestTimelineSheet open={showTimeline} onClose={() => setShowTimeline(false)} referenceId={selected?.id || ''} displayId={selected?.requestId} />
+      <RequestTimelineSheet
+        open={showTimeline}
+        onClose={() => setShowTimeline(false)}
+        referenceId={(selected?.type === 'Proof of Delivery' ? selected?.raw?.order_id : null) || selected?.id || ''}
+        displayId={selected?.requestId}
+      />
     </Screen>
   );
 }

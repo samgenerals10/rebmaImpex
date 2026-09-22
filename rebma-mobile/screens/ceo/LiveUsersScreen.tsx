@@ -13,7 +13,8 @@
 //    into a DM with that person — the same channels/chat_messages tables
 //    web's Messenger.tsx uses, not a one-off composer anymore.
 import { useEffect, useState } from 'react';
-import { View, Text, Image, Pressable, Alert } from 'react-native';
+import { View, Text, Image, Pressable } from 'react-native';
+import { Alert } from '../../lib/appAlert';
 import { Radio, MessageSquare, LogOut, Ban, ShieldOff, ShieldCheck, UserCheck } from 'lucide-react-native';
 import { subscribeToLiveUsers, kickUserOffline, type PresencePayload } from '../../lib/presence';
 import { supabase } from '../../lib/supabaseClient';

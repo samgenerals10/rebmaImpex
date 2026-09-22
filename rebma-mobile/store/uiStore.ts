@@ -13,6 +13,12 @@ interface UIState {
   searchOpen: boolean;
   quickActionsOpen: boolean;
   activeDepartment: string;
+  /** Whatever department was active right before the current one — lets
+   * Settings (and anywhere else reached via a one-way `setActiveDepartment`
+   * call, e.g. the header's "Switch Department" shortcut) offer a real way
+   * back instead of stranding the user. Not a full history stack, just the
+   * one hop back — that's all Settings' own back button needs. */
+  previousDepartment: string;
   openDepartmentSwitcher: () => void;
   closeDepartmentSwitcher: () => void;
   openSearch: () => void;
@@ -27,11 +33,13 @@ export const useUIStore = create<UIState>((set) => ({
   searchOpen: false,
   quickActionsOpen: false,
   activeDepartment: '',
+  previousDepartment: '',
   openDepartmentSwitcher: () => set({ departmentSwitcherOpen: true }),
   closeDepartmentSwitcher: () => set({ departmentSwitcherOpen: false }),
   openSearch: () => set({ searchOpen: true }),
   closeSearch: () => set({ searchOpen: false }),
   openQuickActions: () => set({ quickActionsOpen: true }),
   closeQuickActions: () => set({ quickActionsOpen: false }),
-  setActiveDepartment: (dept) => set({ activeDepartment: dept }),
+  setActiveDepartment: (dept) =>
+    set((state) => (dept === state.activeDepartment ? state : { activeDepartment: dept, previousDepartment: state.activeDepartment })),
 }));

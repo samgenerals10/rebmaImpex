@@ -2,9 +2,10 @@
 // Ports: rebma-web/src/views/reception/OverviewView.tsx
 // Redesigned with Aczone Design System: Hero Card, 2x2 Metric Grid, Smooth Quick Check-in, Grouped Action Launcher.
 import { useCallback, useEffect, useState } from 'react';
-import { View, Text, Alert, Pressable } from 'react-native';
+import { View, Text, Pressable } from 'react-native';
+import { Alert } from '../../lib/appAlert';
 import { useNavigation } from '@react-navigation/native';
-import { UserCheck, UserPlus, Users, LogOut, Clock, Building2, ShieldCheck } from 'lucide-react-native';
+import { UserCheck, UserPlus, LogOut, Clock, Building2, ShieldCheck } from 'lucide-react-native';
 import { supabase } from '../../lib/supabaseClient';
 import { enqueue, QUEUE_KEYS } from '../../lib/offlineQueue';
 import { useAuthStore } from '../../store/authStore';
@@ -122,65 +123,62 @@ export default function VisitorLogScreen() {
   return (
     <Screen refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} onScroll={scrollHandler} scrollEventThrottle={16}>
       <View style={{ gap: t.spacing.xl }}>
-        {/* Aczone Reception Hero Card */}
-        <Card tone="hero">
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <View style={{ flex: 1 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#34D399' }} />
-                <Text style={{ fontFamily: t.font.bold, fontSize: t.type.meta10.size, letterSpacing: 0.8, textTransform: 'uppercase', color: 'rgba(255,255,255,0.9)' }}>
-                  Front Desk & Access Control
-                </Text>
-              </View>
-              <Text style={{ fontFamily: t.font.extrabold, fontSize: t.type.kpi28.size, color: '#FFFFFF', marginTop: 2 }}>
-                {loading ? '—' : `${stillIn.length} On Site`}
-              </Text>
-              <Text style={{ fontFamily: t.font.medium, fontSize: t.type.body12.size, color: 'rgba(255,255,255,0.85)', marginTop: 4 }}>
-                {loading ? '' : `${visitors.length} visitor${visitors.length === 1 ? '' : 's'} registered · ${attendanceToday} staff check-in${attendanceToday === 1 ? '' : 's'}`}
-              </Text>
-            </View>
-            <View style={{ width: 56, height: 56, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.22)', alignItems: 'center', justifyContent: 'center' }}>
-              <Users size={28} color="#FFFFFF" strokeWidth={2.5} />
-            </View>
-          </View>
-        </Card>
-
-        {/* Aczone 2x2 Metric Grid */}
-        <View style={{ gap: t.spacing.sm }}>
-          <SectionHeader title="Traffic & Attendance" subtitle="Daily facility access activity" />
-          <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
+        {/* Front Desk snapshot — two clickable tiles, not one oversized
+            banner (per direct correction: a full-bleed color block that
+            does nothing on tap doesn't belong in a mobile app). */}
+        <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
+          <View style={{ flex: 1 }}>
             <MetricCard
-              label="Visitors Today"
-              value={loading ? '—' : visitors.length}
-              sublabel="Total arrivals"
-              icon={<UserPlus size={20} color={t.colors.action.sky} />}
-              tone="info"
-              onPress={() => navigation.navigate('Visitors')}
-            />
-            <MetricCard
-              label="Currently Inside"
+              emphasis="primary"
+              tone={stillIn.length > 0 ? 'accent' : 'neutral'}
+              label="On Site"
               value={loading ? '—' : stillIn.length}
               sublabel="Active badges"
-              icon={<UserCheck size={20} color={t.colors.action.emerald} />}
-              tone={stillIn.length > 0 ? 'accent' : 'neutral'}
+              icon={<UserCheck size={18} color={t.colors.accent} />}
+              onPress={() => navigation.navigate('Visitors')}
             />
           </View>
-          <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
+          <View style={{ flex: 1 }}>
             <MetricCard
-              label="Checked Out"
-              value={loading ? '—' : checkedOut.length}
-              sublabel="Departed visitors"
-              icon={<LogOut size={20} color={t.colors.action.amber} />}
-              tone="neutral"
-            />
-            <MetricCard
-              label="Staff Checked In"
+              emphasis="primary"
+              tone="info"
+              label="Staff Check-ins"
               value={loading ? '—' : attendanceToday}
-              sublabel="Attendance log"
-              icon={<Building2 size={20} color={t.colors.action.violet} />}
-              tone="accent"
+              sublabel="Today's attendance"
+              icon={<Building2 size={18} color={t.colors.status.info.text} />}
               onPress={() => navigation.navigate('EmployeeCheckin')}
             />
+          </View>
+        </View>
+
+        {/* Key Metrics */}
+        <View style={{ gap: t.spacing.sm }}>
+          <SectionHeader title="Traffic & Attendance" subtitle="Daily facility access activity" />
+          <View style={{ gap: t.spacing.sm }}>
+            <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
+              <View style={{ flex: 1 }}>
+              <MetricCard
+                emphasis="compact"
+                label="Visitors"
+                value={loading ? '—' : visitors.length}
+                sublabel="Arrivals"
+                icon={<UserPlus size={14} color={t.colors.action.sky} />}
+                tone="info"
+                onPress={() => navigation.navigate('Visitors')}
+              />
+              </View>
+              <View style={{ flex: 1 }}>
+              <MetricCard
+                emphasis="compact"
+                label="Checked Out"
+                value={loading ? '—' : checkedOut.length}
+                sublabel="Departed"
+                icon={<LogOut size={14} color={t.colors.action.amber} />}
+                tone="neutral"
+                onPress={() => navigation.navigate('Visitors')}
+              />
+              </View>
+            </View>
           </View>
         </View>
 

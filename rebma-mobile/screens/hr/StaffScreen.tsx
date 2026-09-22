@@ -13,7 +13,8 @@
 // downloadRowPDF call, reusing this screen's own already-computed
 // attendanceScore/overall values (no new aggregation logic).
 import { useCallback, useEffect, useState } from 'react';
-import { View, Text, Pressable, Alert, Linking } from 'react-native';
+import { View, Text, Pressable, Linking } from 'react-native';
+import { Alert } from '../../lib/appAlert';
 import { UserPlus, FileText, ExternalLink, Edit2, UserX, UserCheck as UserCheckIcon, Download } from 'lucide-react-native';
 import { supabase } from '../../lib/supabaseClient';
 import { usePaginatedQuery } from '../../hooks/usePaginatedQuery';
@@ -36,9 +37,9 @@ import ProgressBar from '../../components/ui/ProgressBar';
 import Tabs from '../../components/ui/Tabs';
 import { useAuthStore } from '../../store/authStore';
 
-const DEPARTMENTS = ['Admin & Warehouse', 'Finance', 'HR', 'Marketing', 'Reception', 'Production', 'Management', 'Risk'];
+const DEPARTMENTS = ['Admin & Warehouse', 'Accounts Department', 'HR', 'Marketing', 'Reception', 'Production', 'Management', 'Risk'];
 const DEPT_TO_ROLE: Record<string, string> = {
-  'Admin & Warehouse': 'admin_warehouse', Finance: 'finance', HR: 'HR',
+  'Admin & Warehouse': 'admin_warehouse', 'Accounts Department': 'finance', HR: 'HR',
   Marketing: 'marketing', Reception: 'receptionist', Production: 'production', Management: 'management',
   Risk: 'risk',
 };
@@ -51,7 +52,7 @@ const STAFF_CATEGORIES = ['Senior Staff', 'Junior Staff', 'Management', 'Contrac
 
 interface StaffMember {
   id: string; fullName: string; email: string; department: string; role: string; phone: string; ghanaCard: string;
-  joinedAt: string; status: string; employeeNumber?: string; resumeUrl?: string; photo?: string; address?: string; hrRemarks?: string;
+  joinedAt: string; status: string; employeeNumber?: string; resumeUrl?: string; photo?: string; address?: string; hrRemarks?: string; dateOfBirth?: string;
   guarantorName?: string; guarantorPhone?: string; guarantorRelationship?: string; guarantorIdNumber?: string; guarantorAddress?: string;
   staffCategory?: string; performanceTaskScore?: number; performanceTeamScore?: number; performanceQualityScore?: number;
   performanceNotes?: string; performanceReviewedBy?: string; performanceReviewedAt?: string;
@@ -63,6 +64,7 @@ function mapStaffRow(p: any): StaffMember {
     role: p.is_admin ? 'CEO' : (p.metadata?.role || 'Staff'), phone: p.phone || '', ghanaCard: p.ghana_card_id || '',
     joinedAt: p.created_at ? p.created_at.split('T')[0] : '', status: p.status || 'ACTIVE',
     employeeNumber: p.employee_number || undefined, resumeUrl: p.resume_url || undefined, photo: p.photo || undefined, address: p.address || undefined,
+    dateOfBirth: p.date_of_birth || undefined,
     hrRemarks: p.hr_remarks || undefined, guarantorName: p.guarantor_name || undefined, guarantorPhone: p.guarantor_phone || undefined,
     guarantorRelationship: p.guarantor_relationship || undefined, guarantorIdNumber: p.guarantor_id_number || undefined,
     guarantorAddress: p.guarantor_address || undefined, staffCategory: p.staff_category || undefined,
@@ -74,7 +76,7 @@ function mapStaffRow(p: any): StaffMember {
 
 const blankForm = {
   fullName: '', email: '', department: 'Admin & Warehouse', role: '', phone: '', ghanaCard: '', address: '', staffCategory: '',
-  guarantorName: '', guarantorPhone: '', guarantorRelationship: '', guarantorIdNumber: '', guarantorAddress: '',
+  guarantorName: '', guarantorPhone: '', guarantorRelationship: '', guarantorIdNumber: '', guarantorAddress: '', dateOfBirth: '',
 };
 
 export default function StaffScreen() {
@@ -163,7 +165,7 @@ export default function StaffScreen() {
       fullName: s.fullName, email: s.email, department: s.department, role: s.role || '', phone: s.phone, ghanaCard: s.ghanaCard,
       address: s.address || '', staffCategory: s.staffCategory || '', guarantorName: s.guarantorName || '',
       guarantorPhone: s.guarantorPhone || '', guarantorRelationship: s.guarantorRelationship || '',
-      guarantorIdNumber: s.guarantorIdNumber || '', guarantorAddress: s.guarantorAddress || '',
+      guarantorIdNumber: s.guarantorIdNumber || '', guarantorAddress: s.guarantorAddress || '', dateOfBirth: s.dateOfBirth || '',
     });
     setResumeUrl(s.resumeUrl || null);
     setResumeUri(null);
@@ -225,7 +227,7 @@ export default function StaffScreen() {
         phone: form.phone || null, photo: photoDataUrl, resume_url: finalResumeUrl, address: form.address || null,
         staff_category: form.staffCategory || null, guarantor_name: form.guarantorName || null, guarantor_phone: form.guarantorPhone || null,
         guarantor_relationship: form.guarantorRelationship || null, guarantor_id_number: form.guarantorIdNumber || null,
-        guarantor_address: form.guarantorAddress || null, status: 'pending',
+        guarantor_address: form.guarantorAddress || null, date_of_birth: form.dateOfBirth || null, status: 'pending',
         expires_at: new Date(Date.now() + 7 * 24 * 3600000).toISOString(), created_by: profile?.fullName || null,
       }).select().single();
       if (inviteError) throw inviteError;
@@ -260,7 +262,7 @@ export default function StaffScreen() {
         photo: photoDataUrl || null,
         staff_category: form.staffCategory || null, guarantor_name: form.guarantorName || null, guarantor_phone: form.guarantorPhone || null,
         guarantor_relationship: form.guarantorRelationship || null, guarantor_id_number: form.guarantorIdNumber || null,
-        guarantor_address: form.guarantorAddress || null,
+        guarantor_address: form.guarantorAddress || null, date_of_birth: form.dateOfBirth || null,
       }).eq('id', selected.id);
       if (error) throw error;
       const updated: StaffMember = { ...selected, ...form, resumeUrl: finalResumeUrl || undefined, photo: photoDataUrl || undefined };
@@ -461,6 +463,7 @@ export default function StaffScreen() {
 
             {profileTab === 'attendance' && (
               <DataList
+                collapsible
                 columns={[
                   { key: 'date', label: 'Date', primary: true },
                   { key: 'status', label: 'Status', status: true, render: (a: any) => <Badge tone={a.status === 'PRESENT' ? 'success' : 'warning'} label={a.status} size="xs" /> },
@@ -473,6 +476,7 @@ export default function StaffScreen() {
             )}
             {profileTab === 'leave' && (
               <DataList
+                collapsible
                 columns={[
                   { key: 'leave_type', label: 'Type', primary: true },
                   { key: 'status', label: 'Status', status: true, render: (l: any) => <Badge tone={l.status === 'Approved' ? 'success' : l.status === 'Rejected' ? 'danger' : 'warning'} label={l.status} size="xs" /> },
@@ -555,6 +559,7 @@ export default function StaffScreen() {
         </Field>
         <Field label="Phone"><Input value={form.phone} onChangeText={(v) => setForm((f) => ({ ...f, phone: v }))} keyboardType="phone-pad" /></Field>
         <Field label="Ghana Card"><Input value={form.ghanaCard} onChangeText={(v) => setForm((f) => ({ ...f, ghanaCard: v }))} /></Field>
+        <Field label="Date of Birth" hint="YYYY-MM-DD"><Input value={form.dateOfBirth} onChangeText={(v) => setForm((f) => ({ ...f, dateOfBirth: v }))} placeholder="1990-05-21" /></Field>
         <Field label="Address"><Input value={form.address} onChangeText={(v) => setForm((f) => ({ ...f, address: v }))} /></Field>
         <Field label="Staff Category"><SearchablePicker value={form.staffCategory} onChange={(v) => setForm((f) => ({ ...f, staffCategory: v }))} options={STAFF_CATEGORIES.map((c) => ({ value: c, label: c }))} placeholder="Select category" /></Field>
         <SheetSection label="Guarantee Information">

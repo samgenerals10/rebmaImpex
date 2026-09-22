@@ -10,7 +10,8 @@
 // touches auth. Client-side strength validation only (8+ chars, one
 // uppercase, one special char), matching source.
 import { useState } from 'react';
-import { View, Text, Alert } from 'react-native';
+import { View, Text } from 'react-native';
+import { Alert } from '../../lib/appAlert';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuthStore } from '../../store/authStore';
 import { useTheme } from '../../theme/ThemeProvider';

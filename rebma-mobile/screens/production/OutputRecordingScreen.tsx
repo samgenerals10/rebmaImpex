@@ -6,7 +6,8 @@
 // row id is left for Postgres's gen_random_uuid() default rather than
 // fabricated client-side.
 import { useEffect, useState } from 'react';
-import { View, Text, Alert } from 'react-native';
+import { View, Text } from 'react-native';
+import { Alert } from '../../lib/appAlert';
 import { Package, Edit, Trash2 } from 'lucide-react-native';
 import { supabase } from '../../lib/supabaseClient';
 import { useTheme } from '../../theme/ThemeProvider';
@@ -172,11 +173,8 @@ export default function OutputRecordingScreen() {
   return (
     <Screen refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }}>
       <View style={{ gap: t.spacing.xl }}>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.md }}>
-          <View style={{ width: '47%' }}><MetricCard label="Boxes Today" value={todayBoxes} tone="accent" emphasis="secondary" /></View>
-          <View style={{ width: '47%' }}><MetricCard label="Sachets Today" value={todaySachets.toLocaleString()} emphasis="secondary" /></View>
-          <View style={{ width: '47%' }}><MetricCard label="Quality Pass Rate" value={`${passRate}%`} tone={passRate >= 90 ? 'accent' : 'warning'} emphasis="secondary" /></View>
-          <View style={{ width: '47%' }}><MetricCard label="Total Records" value={records.length} emphasis="secondary" /></View>
+        <View style={{ gap: t.spacing.sm }}>
+          <View style={{ flexDirection: 'row', gap: t.spacing.sm }}><View style={{ flex: 1 }}><MetricCard label="Boxes Today" value={todayBoxes} tone="accent" emphasis="compact" /></View><View style={{ flex: 1 }}><MetricCard label="Sachets Today" value={todaySachets.toLocaleString()} emphasis="compact" /></View><View style={{ flex: 1 }}><MetricCard label="Quality Pass Rate" value={`${passRate}%`} tone={passRate >= 90 ? 'accent' : 'warning'} emphasis="compact" /></View><View style={{ flex: 1 }}><MetricCard label="Total Records" value={records.length} emphasis="compact" /></View></View>
         </View>
 
         <Card>
@@ -207,6 +205,7 @@ export default function OutputRecordingScreen() {
         <View>
           <SectionHeader title="Output History" />
           <DataList
+            collapsible
             columns={columns}
             data={records}
             rowKey={(r) => r.id}
@@ -223,9 +222,8 @@ export default function OutputRecordingScreen() {
           />
         </View>
 
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.md }}>
-          <View style={{ width: '47%' }}><MetricCard label="Total Boxes" value={totalBoxes.toLocaleString()} emphasis="secondary" /></View>
-          <View style={{ width: '47%' }}><MetricCard label="Total Sachets" value={totalSachets.toLocaleString()} emphasis="secondary" /></View>
+        <View style={{ gap: t.spacing.sm }}>
+          <View style={{ flexDirection: 'row', gap: t.spacing.sm }}><View style={{ flex: 1 }}><MetricCard label="Total Boxes" value={totalBoxes.toLocaleString()} emphasis="compact" /></View><View style={{ flex: 1 }}><MetricCard label="Total Sachets" value={totalSachets.toLocaleString()} emphasis="compact" /></View></View>
         </View>
       </View>
 

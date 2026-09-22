@@ -1,6 +1,6 @@
 // rebma-mobile/screens/production/OverviewScreen.tsx
 // Ports: rebma-web/src/views/production/OverviewView.tsx
-// Redesigned with Aczone Design System: Hero Card with ProgressRing, 2x2 Metric Grid, Grouped Action Launcher.
+// Redesigned with Aczone Design System: two clickable snapshot tiles, 2x2 Metric Grid, Grouped Action Launcher.
 import { useCallback, useEffect, useState } from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
@@ -10,9 +10,7 @@ import { useTheme } from '../../theme/ThemeProvider';
 import { getDepartmentEntry } from '../../navigation/departmentRegistry';
 import Screen from '../../components/ui/Screen';
 import { useCollapsibleHeader } from '../../hooks/useCollapsibleHeader';
-import Card from '../../components/ui/Card';
 import MetricCard from '../../components/ui/MetricCard';
-import ProgressRing from '../../components/ui/ProgressRing';
 import Badge from '../../components/ui/Badge';
 import ApprovalHistoryPanel from '../../components/shared/ApprovalHistoryPanel';
 import ModuleLauncher from '../../components/chrome/ModuleLauncher';
@@ -60,65 +58,84 @@ export default function OverviewScreen() {
   return (
     <Screen refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} onScroll={scrollHandler} scrollEventThrottle={16}>
       <View style={{ gap: t.spacing.xl }}>
-        {/* Aczone Production Hero Card */}
-        <Card tone="hero">
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <View style={{ flex: 1 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#34D399' }} />
-                <Text style={{ fontFamily: t.font.bold, fontSize: t.type.meta10.size, letterSpacing: 0.8, textTransform: 'uppercase', color: 'rgba(255,255,255,0.9)' }}>
-                  Manufacturing & Output
-                </Text>
-              </View>
-              <Text style={{ fontFamily: t.font.extrabold, fontSize: t.type.kpi28.size, color: '#FFFFFF', marginTop: 2 }}>
-                {loading ? '—' : `${todayBoxes.toLocaleString()} Boxes`}
-              </Text>
-              <Text style={{ fontFamily: t.font.medium, fontSize: t.type.body12.size, color: 'rgba(255,255,255,0.85)', marginTop: 4 }}>
-                {loading ? '' : `${todaySachets.toLocaleString()} sachets produced today`}
-              </Text>
-            </View>
-            <ProgressRing value={passRate} size={64} strokeWidth={6} sublabel="quality" onDark />
-          </View>
-        </Card>
-
-        {/* Aczone 2x2 Metric Grid */}
-        <View style={{ gap: t.spacing.sm }}>
-          <SectionHeader title="Plant Metrics" subtitle="Real-time output and inventory levels" />
-          <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
+        {/* Manufacturing & Output snapshot — two clickable tiles, not one
+            oversized banner (per direct correction: a full-bleed color
+            block that does nothing on tap doesn't belong in a mobile app). */}
+        <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
+          <View style={{ flex: 1 }}>
             <MetricCard
-              label="Sachets Output"
-              value={loading ? '—' : todaySachets.toLocaleString()}
-              sublabel="Daily volume"
-              icon={<Boxes size={20} color={t.colors.action.blue} />}
-              tone="info"
+              emphasis="primary"
+              tone="accent"
+              label="Boxes Today"
+              value={loading ? '—' : todayBoxes.toLocaleString()}
+              sublabel={`${todaySachets.toLocaleString()} sachets`}
+              icon={<Boxes size={18} color={t.colors.accent} />}
               onPress={() => navigation.navigate('OutputRecording')}
             />
-            <MetricCard
-              label="WIP Inventory"
-              value={loading ? '—' : wipCount}
-              sublabel="Work-in-progress"
-              icon={<Layers size={20} color={t.colors.action.amber} />}
-              tone="warning"
-              onPress={() => navigation.navigate('WIPStock')}
-            />
           </View>
-          <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
+          <View style={{ flex: 1 }}>
             <MetricCard
-              label="Production Runs"
-              value={loading ? '—' : ordersToday}
-              sublabel="Batches today"
-              icon={<Factory size={20} color={t.colors.action.teal} />}
+              emphasis="primary"
               tone="success"
-              onPress={() => navigation.navigate('InternalOrders')}
-            />
-            <MetricCard
               label="Quality Pass Rate"
               value={loading ? '—' : `${passRate}%`}
-              sublabel="QA verification"
-              icon={<CheckCircle2 size={20} color={t.colors.action.emerald} />}
-              tone="success"
-              onPress={() => navigation.navigate('ProdAnalytics')}
+              sublabel="Today's output"
+              icon={<CheckCircle2 size={18} color={t.colors.status.success.text} />}
+              onPress={() => navigation.navigate('OutputRecording')}
             />
+          </View>
+        </View>
+
+        {/* Key Metrics — 4 across, per direct correction */}
+        <View style={{ gap: t.spacing.sm }}>
+          <SectionHeader title="Plant Metrics" subtitle="Real-time output and inventory levels" />
+          <View style={{ gap: t.spacing.sm }}>
+            <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
+              <View style={{ flex: 1 }}>
+              <MetricCard
+                emphasis="compact"
+                label="Sachets"
+                value={loading ? '—' : todaySachets.toLocaleString()}
+                sublabel="Daily volume"
+                icon={<Boxes size={14} color={t.colors.action.blue} />}
+                tone="info"
+                onPress={() => navigation.navigate('OutputRecording')}
+              />
+              </View>
+              <View style={{ flex: 1 }}>
+              <MetricCard
+                emphasis="compact"
+                label="WIP"
+                value={loading ? '—' : wipCount}
+                sublabel="In progress"
+                icon={<Layers size={14} color={t.colors.action.amber} />}
+                tone="warning"
+                onPress={() => navigation.navigate('WIPStock')}
+              />
+              </View>
+              <View style={{ flex: 1 }}>
+              <MetricCard
+                emphasis="compact"
+                label="Runs"
+                value={loading ? '—' : ordersToday}
+                sublabel="Batches today"
+                icon={<Factory size={14} color={t.colors.action.teal} />}
+                tone="success"
+                onPress={() => navigation.navigate('InternalOrders')}
+              />
+              </View>
+              <View style={{ flex: 1 }}>
+              <MetricCard
+                emphasis="compact"
+                label="QA Pass"
+                value={loading ? '—' : `${passRate}%`}
+                sublabel="Verification"
+                icon={<CheckCircle2 size={14} color={t.colors.action.emerald} />}
+                tone="success"
+                onPress={() => navigation.navigate('ProdAnalytics')}
+              />
+              </View>
+            </View>
           </View>
         </View>
 

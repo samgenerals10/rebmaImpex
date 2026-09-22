@@ -14,7 +14,8 @@
 // Shared between CreateOrderScreen (order destination) and the customer
 // form (GPS location) — built once here.
 import { useState } from 'react';
-import { View, Text, Alert } from 'react-native';
+import { View, Text } from 'react-native';
+import { Alert } from '../../lib/appAlert';
 import * as Location from 'expo-location';
 import { Search, MapPin, LocateFixed } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeProvider';

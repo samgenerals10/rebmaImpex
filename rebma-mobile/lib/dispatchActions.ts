@@ -8,20 +8,18 @@
 import { Linking } from 'react-native';
 import { supabase } from './supabaseClient';
 import { useAuthStore } from '../store/authStore';
+import { logDeliveryWorkflowEvent } from './auditLog';
 
 // Small, local helper — every write in this file logs the same way, and
 // none of these functions are React components, so useAuthStore's own
 // hook form doesn't apply; .getState() is Zustand's documented way to
-// read current state from plain (non-component) code.
-async function logDeliveryEvent(deliveryId: string, action: string) {
+// read current state from plain (non-component) code. Resolves to the
+// ORDER's own id (lib/auditLog.ts) so dispatch events land on that
+// order's timeline, not a disconnected delivery-only one — direct
+// correction, this used to anchor to the delivery_logs row's own id.
+async function logDeliveryEvent(deliveryId: string, action: string, knownOrderId?: string | null) {
   const performedBy = useAuthStore.getState().profile?.fullName || 'System';
-  await supabase.from('global_audit_history').insert([{
-    department: 'ADMIN_WAREHOUSE',
-    action,
-    reference_id: deliveryId,
-    performed_by: performedBy,
-    timestamp: new Date().toISOString(),
-  }]);
+  await logDeliveryWorkflowEvent(deliveryId, action, performedBy, knownOrderId);
 }
 
 // Ports rebma-web/src/App.tsx's handleReleaseToDispatch + apiClient.ts's
@@ -80,7 +78,7 @@ export async function releaseOrderToDispatch(orderId: string): Promise<{ driverN
     if (!existing || existing.length === 0) {
       await supabase.from('waybills').insert({ order_id: orderId, delivery_log_id: deliveryId }).select();
     }
-    await logDeliveryEvent(deliveryId, `DISPATCHED: assigned to ${driver.full_name}${driver.vehicle_id ? ` (${driver.vehicle_id})` : ''}`);
+    await logDeliveryEvent(deliveryId, `DISPATCHED: assigned to ${driver.full_name}${driver.vehicle_id ? ` (${driver.vehicle_id})` : ''}`, orderId);
   }
 
   return { driverName: driver.full_name, vehicleId: driver.vehicle_id || 'Unassigned' };

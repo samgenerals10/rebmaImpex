@@ -9,16 +9,19 @@
 // create_order_with_stock_check() RPC's own server-side enforcement, and
 // submission via that exact RPC (not a plain insert).
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, Text, Alert, Pressable } from 'react-native';
+import { View, Text, Pressable } from 'react-native';
+import { Alert } from '../../lib/appAlert';
 import { Plus, Trash2 } from 'lucide-react-native';
 import { supabase } from '../../lib/supabaseClient';
 import { outstandingCreditFor, type OrderLike } from '../../utils/customerRating';
+import { logWorkflowEvent } from '../../lib/auditLog';
 import { useTheme } from '../../theme/ThemeProvider';
 import Screen from '../../components/ui/Screen';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Input, { Field } from '../../components/ui/Input';
 import SearchablePicker from '../../components/ui/SearchablePicker';
+import ProductImage from '../../components/ui/ProductImage';
 import LocationPicker, { type LocationValue } from '../../components/shared/LocationPicker';
 
 interface CustomerRow {
@@ -49,6 +52,14 @@ function ticketNumber() {
 export default function CreateOrderScreen() {
   const t = useTheme();
   const [productPrices, setProductPrices] = useState<Record<string, number>>({});
+  // Cargo-photo lifecycle: the photo captured at Port Ingestion survives
+  // as far as goods_prices.product_image (Risk/Management already copy
+  // it there when a price is set), but orders themselves never carried
+  // it forward — copying it into each line item's own metadata here is
+  // the one missing hop; everything downstream that already reads
+  // orders.metadata (Risk, Finance, Admin & Warehouse, Delivery) gets it
+  // for free once it's here, no new columns needed anywhere else.
+  const [productImages, setProductImages] = useState<Record<string, string>>({});
   const [stockLevels, setStockLevels] = useState<Record<string, number>>({});
   const [customers, setCustomers] = useState<CustomerRow[]>([]);
   const [orders, setOrders] = useState<OrderLike[]>([]);
@@ -66,15 +77,20 @@ export default function CreateOrderScreen() {
   const load = useCallback(async () => {
     setLoading(true);
     const [pricesRes, stockRes, customersRes, ordersRes, settingRes] = await Promise.all([
-      supabase.from('goods_prices_catalog').select('product_name, unit_price').order('product_name'),
+      supabase.from('goods_prices_catalog').select('product_name, unit_price, product_image').order('product_name'),
       supabase.from('stock').select('product_name, quantity'),
       supabase.from('customers').select('id, name, phone, discount_percent, credit_limit, credit_status').order('name'),
       supabase.from('orders').select('id, customer_id, client_name, total_amount, amount_paid, payment_mode, status'),
       supabase.from('ceo_settings').select('setting_value').eq('setting_key', 'max_credit_amount').maybeSingle(),
     ]);
     const priceMap: Record<string, number> = {};
-    for (const r of pricesRes.data || []) priceMap[r.product_name] = Number(r.unit_price) || 0;
+    const imageMap: Record<string, string> = {};
+    for (const r of pricesRes.data || []) {
+      priceMap[r.product_name] = Number(r.unit_price) || 0;
+      if (r.product_image) imageMap[r.product_name] = r.product_image;
+    }
     setProductPrices(priceMap);
+    setProductImages(imageMap);
     const stockMap: Record<string, number> = {};
     for (const r of stockRes.data || []) stockMap[r.product_name.trim().toLowerCase()] = Number(r.quantity) || 0;
     setStockLevels(stockMap);
@@ -110,7 +126,7 @@ export default function CreateOrderScreen() {
       const base = productPrices[i.productName] ?? 0;
       const unitPrice = base * (1 - discountPct / 100);
       const qty = Math.max(1, parseInt(i.quantity, 10) || 1);
-      return { productName: i.productName, quantity: qty, unitPrice, lineTotal: unitPrice * qty };
+      return { productName: i.productName, quantity: qty, unitPrice, lineTotal: unitPrice * qty, productImage: productImages[i.productName] ?? null };
     });
   const orderTotal = itemsWithPricing.reduce((s, i) => s + i.lineTotal, 0);
 
@@ -178,17 +194,35 @@ export default function CreateOrderScreen() {
     // person who submitted this order, not just Marketing as a whole. A
     // plain follow-up update, not part of the RPC itself, to avoid
     // touching create_order_with_stock_check()'s own audited logic.
+    let performedByName = 'Marketing';
     try {
       const { data: sessionData } = await supabase.auth.getSession();
       const performerId = sessionData.session?.user?.id || null;
       if (performerId && inserted?.id) {
         const { data: performers } = await supabase.from('profiles').select('full_name').eq('id', performerId).limit(1);
+        performedByName = performers?.[0]?.full_name || performedByName;
         await supabase.from('orders').update({
           created_by: performerId,
-          created_by_name: performers?.[0]?.full_name || null,
+          created_by_name: performedByName,
         }).eq('id', inserted.id);
       }
     } catch { /* non-critical, order already created successfully */ }
+
+    // Direct correction: order creation itself wrote nothing to the
+    // audit trail — the workflow's timeline used to only begin at
+    // Risk's first decision, with no record of the order actually being
+    // created. This is the true first step of the whole chain.
+    if (inserted?.id) {
+      try {
+        await logWorkflowEvent({
+          referenceId: inserted.id,
+          department: 'MARKETING',
+          action: `ORDER CREATED: ${inserted.ticket_number || inserted.id} for ${clientName.trim()}`,
+          performedBy: performedByName,
+          details: `${paymentMode} order, GHS ${orderTotal.toLocaleString()} — ${productDisplay}`,
+        });
+      } catch { /* non-critical, order already created successfully */ }
+    }
 
     try {
       await supabase.from('supplier_order_notifications').insert([{
@@ -241,6 +275,9 @@ export default function CreateOrderScreen() {
           <View style={{ gap: t.spacing.md }}>
             {lineItems.map((item, idx) => (
               <View key={idx} style={{ flexDirection: 'row', gap: t.spacing.sm, alignItems: 'flex-end' }}>
+                {item.productName ? (
+                  <ProductImage uri={productImages[item.productName]} label={item.productName} size={40} />
+                ) : null}
                 <View style={{ flex: 2 }}>
                   <SearchablePicker
                     label="Product"

@@ -8,7 +8,7 @@
 // a recent web fix, so stock silently never moved on approval before
 // that). Used by both OrdersQueueScreen and RecordPaymentScreen, which
 // both approve orders.
-import { Alert } from 'react-native';
+import { Alert } from './appAlert';
 import { supabase } from './supabaseClient';
 
 export interface StockShortage {

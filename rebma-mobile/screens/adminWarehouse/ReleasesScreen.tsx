@@ -20,7 +20,8 @@
 // inventory-accuracy bug had it shipped as Admin & Warehouse's home
 // screen's drill-through.
 import { useCallback, useEffect, useState } from 'react';
-import { View, Text, Alert } from 'react-native';
+import { View, Text } from 'react-native';
+import { Alert } from '../../lib/appAlert';
 import { supabase } from '../../lib/supabaseClient';
 import { releaseOrderToDispatch } from '../../lib/dispatchActions';
 import { useTheme } from '../../theme/ThemeProvider';
@@ -196,7 +197,7 @@ export default function ReleasesScreen() {
                   <View key={tk.id} style={rowStyle(t)}>
                     <View style={{ flex: 1, marginRight: t.spacing.sm }}>
                       <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body12.size, color: t.colors.textPrimary }} numberOfLines={2}>{summary}</Text>
-                      <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted }}>{tk.details?.notes || 'Recorded by Finance, ready for Production pickup'}</Text>
+                      <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted }}>{tk.details?.notes || 'Recorded by Accounts Department, ready for Production pickup'}</Text>
                     </View>
                     <Button label="Release" size="sm" onPress={() => releaseRawMaterials(tk)} loading={busyId === tk.id} disabled={busyId === tk.id} />
                   </View>

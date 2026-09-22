@@ -25,8 +25,17 @@ import Input from '../ui/Input';
 import MetricCard from '../ui/MetricCard';
 import Button from '../ui/Button';
 import DataList, { type DataColumn } from '../ui/DataList';
+import ProductImage from '../ui/ProductImage';
 import ExportSheet from './ExportSheet';
 import type { ExportColumn } from '../../lib/exportEngine';
+
+// Per direct correction: the photo captured at intake is often
+// impromptu, "just for the delivery sake" — Management is the one role
+// allowed to replace it with a more professional shot once it's here in
+// the price catalog, and that edit is what every order created after it
+// picks up automatically (CreateOrderScreen copies product_image from
+// this exact table at order-creation time).
+const CAN_EDIT_PHOTO = ['MANAGEMENT'];
 
 const CAN_SEE_COST = ['MANAGEMENT', 'FINANCE', 'CEO'];
 
@@ -40,6 +49,7 @@ interface PriceRow {
   currency: string;
   lastUpdated: string;
   updatedBy: string;
+  productImage: string | null;
 }
 
 interface Props {
@@ -91,6 +101,7 @@ export default function PriceCatalogGrid({ department }: Props) {
           currency: row.currency || 'GHS',
           lastUpdated: row.updated_at || '',
           updatedBy: row.updated_by || '',
+          productImage: row.product_image || null,
         };
       }));
     }
@@ -101,6 +112,18 @@ export default function PriceCatalogGrid({ department }: Props) {
     load();
   }, [load]);
 
+  const canEditPhoto = CAN_EDIT_PHOTO.includes((department || '').toUpperCase());
+
+  const replacePhoto = async (productName: string, dataUri: string) => {
+    // Writes to the real base table regardless of which one this screen
+    // reads from — goods_prices_catalog (the masked view non-cost roles
+    // read) has no product_image write path of its own, and Management
+    // is always in CAN_SEE_COST so it's already reading from the base
+    // table directly here anyway.
+    await supabase.from('goods_prices').update({ product_image: dataUri, updated_at: new Date().toISOString() }).eq('product_name', productName);
+    setPrices((prev) => prev.map((p) => (p.productName === productName ? { ...p, productImage: dataUri } : p)));
+  };
+
   const filtered = prices.filter((p) => !search.trim() || p.productName.toLowerCase().includes(search.trim().toLowerCase()));
 
   const avgMargin = canSeeCost && prices.length > 0
@@ -108,8 +131,28 @@ export default function PriceCatalogGrid({ department }: Props) {
     : null;
 
   const columns: DataColumn<PriceRow>[] = [
+    {
+      // status: true, not a plain grid column — DataList wraps grid-
+      // column values in <Text>, which breaks for a real component like
+      // ProductImage (RN's <Text> can only contain text/<Text>). The
+      // status slot is rendered inside a plain <View> instead, the same
+      // reason every existing status-pill column already works.
+      key: 'photo', label: 'Photo', status: true,
+      render: (p) => (
+        <ProductImage
+          uri={p.productImage}
+          label={p.productName}
+          size={36}
+          editable={canEditPhoto}
+          onReplace={(dataUri) => replacePhoto(p.productName, dataUri)}
+        />
+      ),
+    },
     { key: 'productName', label: 'Product', primary: true },
-    { key: 'unitPrice', label: 'Price', status: true, render: (p) => <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body12.size, color: t.colors.textPrimary }}>{p.currency} {p.unitPrice.toLocaleString()}</Text> },
+    // status: true moved to the new photo column above — only one status
+    // slot exists per row, and photo needs it (a real component, not
+    // text). Price now renders as a normal labeled grid value instead.
+    { key: 'unitPrice', label: 'Price', render: (p) => `${p.currency} ${p.unitPrice.toLocaleString()}` },
     { key: 'category', label: 'Category' },
     ...(canSeeCost ? [
       { key: 'costPrice', label: 'Cost', render: (p: PriceRow) => (p.costPrice != null ? `${p.currency} ${p.costPrice.toLocaleString()}` : '—') },

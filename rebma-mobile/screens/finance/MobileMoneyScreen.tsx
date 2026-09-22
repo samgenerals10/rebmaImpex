@@ -9,7 +9,8 @@
 // Export (Gap-Closure Backlog, Item 1): one of the 6 UniversalExportModal
 // screens — CSV+PDF+DOC, branded, columns verbatim from MobileMoneyView.tsx:50-59.
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, Text, Alert } from 'react-native';
+import { View, Text } from 'react-native';
+import { Alert } from '../../lib/appAlert';
 import { Download } from 'lucide-react-native';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuthStore } from '../../store/authStore';
@@ -95,7 +96,7 @@ export default function MobileMoneyScreen() {
     }).eq('id', editTarget.id);
     setSavingEdit(false);
     if (error) { Alert.alert('Update Failed', error.message); return; }
-    await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `MoMo transaction ${editTarget.id} updated`, performed_by: profile?.fullName || 'Finance', timestamp: new Date().toISOString() }]);
+    await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `MoMo transaction ${editTarget.id} updated`, performed_by: profile?.fullName || 'Accounts Department', timestamp: new Date().toISOString() }]);
     setEditTarget(null);
     load();
   };
@@ -106,7 +107,7 @@ export default function MobileMoneyScreen() {
       Alert.alert('Verify Failed', error.message);
       return;
     }
-    await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `MoMo transaction ${tx.id} verified — ${tx.transaction_id}`, performed_by: profile?.fullName || 'Finance', timestamp: new Date().toISOString() }]);
+    await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `MoMo transaction ${tx.id} verified — ${tx.transaction_id}`, performed_by: profile?.fullName || 'Accounts Department', timestamp: new Date().toISOString() }]);
     setDetail(null);
     load();
   };
@@ -121,7 +122,7 @@ export default function MobileMoneyScreen() {
             Alert.alert('Delete Failed', error.message);
             return;
           }
-          await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `MoMo transaction ${tx.id} deleted`, performed_by: profile?.fullName || 'Finance', timestamp: new Date().toISOString() }]);
+          await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `MoMo transaction ${tx.id} deleted`, performed_by: profile?.fullName || 'Accounts Department', timestamp: new Date().toISOString() }]);
           setDetail(null);
           load();
         },
@@ -154,11 +155,8 @@ export default function MobileMoneyScreen() {
         <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
           <Button label="Export" size="sm" variant="ghost" icon={<Download size={13} color={t.colors.textSecondary} />} onPress={() => setExportOpen(true)} />
         </View>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.sm }}>
-          <View style={{ width: '47%' }}><MetricCard label="Total MoMo" value={loading ? '—' : `GHS ${totalAmount.toLocaleString()}`} tone="accent" /></View>
-          <View style={{ width: '47%' }}><MetricCard label="MTN" value={loading ? '—' : `GHS ${byNetwork[0].value.toLocaleString()}`} /></View>
-          <View style={{ width: '47%' }}><MetricCard label="Vodafone" value={loading ? '—' : `GHS ${byNetwork[1].value.toLocaleString()}`} /></View>
-          <View style={{ width: '47%' }}><MetricCard label="AirtelTigo" value={loading ? '—' : `GHS ${byNetwork[2].value.toLocaleString()}`} /></View>
+        <View style={{ gap: t.spacing.sm }}>
+          <View style={{ flexDirection: 'row', gap: t.spacing.sm }}><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Total MoMo" value={loading ? '—' : `GHS ${totalAmount.toLocaleString()}`} tone="accent" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="MTN" value={loading ? '—' : `GHS ${byNetwork[0].value.toLocaleString()}`} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Vodafone" value={loading ? '—' : `GHS ${byNetwork[1].value.toLocaleString()}`} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="AirtelTigo" value={loading ? '—' : `GHS ${byNetwork[2].value.toLocaleString()}`} /></View></View>
         </View>
         {!loading && byNetwork.some((n) => n.value > 0) && (
           <Card>

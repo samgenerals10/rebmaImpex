@@ -10,7 +10,8 @@
 // (DriverTripsScreen.tsx / DriverQuickActionsSheet.tsx) since that's all
 // drivers themselves need.
 import { useCallback, useEffect, useState } from 'react';
-import { View, Text, Linking, Alert } from 'react-native';
+import { View, Text, Linking } from 'react-native';
+import { Alert } from '../../lib/appAlert';
 import { MapPin } from 'lucide-react-native';
 import { supabase } from '../../lib/supabaseClient';
 import { useTheme } from '../../theme/ThemeProvider';
@@ -130,13 +131,17 @@ export default function TrackingScreen() {
         <FleetMap />
       ) : (
         <DataList
+          collapsible
           columns={columns}
           data={drivers}
           rowKey={(d) => d.id}
           loading={loading}
           emptyTitle="No drivers on file"
           renderActions={(d) => (
-            <Button label="Open in Maps" size="sm" icon={<MapPin size={12} color="#fff" />} onPress={() => openInMaps(d)} disabled={d.latitude == null} />
+            // Not disabled when there's no GPS fix yet — openInMaps()
+            // already handles that gracefully with a clear alert, per
+            // direct correction the button itself shouldn't look dead.
+            <Button label="Open in Maps" size="sm" icon={<MapPin size={12} color="#fff" />} onPress={() => openInMaps(d)} />
           )}
         />
       )}

@@ -18,7 +18,8 @@
 // photographed doesn't get stuck re-prompting for a retake just because
 // the last, simplest step failed to round-trip.
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, Alert, Image } from 'react-native';
+import { View, Text, Image } from 'react-native';
+import { Alert } from '../../lib/appAlert';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Camera as CameraIcon, RefreshCw } from 'lucide-react-native';
 import { supabase } from '../../lib/supabaseClient';

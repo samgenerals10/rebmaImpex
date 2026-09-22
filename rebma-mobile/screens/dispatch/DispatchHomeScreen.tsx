@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Text, View, Pressable, ScrollView, Switch, Alert, StatusBar, Linking } from 'react-native';
+import { Text, View, Pressable, ScrollView, Switch, StatusBar, Linking } from 'react-native';
+import { Alert } from '../../lib/appAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import { Wifi, WifiOff, LogOut, RefreshCw, Navigation } from 'lucide-react-native';
@@ -119,9 +120,15 @@ export default function DispatchHomeScreen() {
         { accuracy: Location.Accuracy.Balanced, timeInterval: 15000, distanceInterval: 25 },
         async (loc) => {
           if (cancelled) return;
-          const { latitude, longitude, accuracy } = loc.coords;
+          const { latitude, longitude, accuracy, speed, heading } = loc.coords;
           setLastLat(latitude);
           setLastLng(longitude);
+
+          // Real device values only — expo-location reports a negative
+          // speed/heading (or null) when the GPS can't determine them
+          // (e.g. stationary, low accuracy fix), never fabricated here.
+          const realSpeed = speed != null && speed >= 0 ? speed : null;
+          const realHeading = heading != null && heading >= 0 ? heading : null;
 
           if (networkOnline) {
             const { error } = await supabase.from('driver_locations').insert({
@@ -130,12 +137,14 @@ export default function DispatchHomeScreen() {
               latitude,
               longitude,
               accuracy: accuracy ?? null,
+              speed: realSpeed,
+              heading: realHeading,
             });
             if (error) {
-              bufferCoordinate({ latitude, longitude, timestamp: Date.now() });
+              bufferCoordinate({ latitude, longitude, timestamp: Date.now(), speed: realSpeed, heading: realHeading });
             }
           } else {
-            bufferCoordinate({ latitude, longitude, timestamp: Date.now() });
+            bufferCoordinate({ latitude, longitude, timestamp: Date.now(), speed: realSpeed, heading: realHeading });
           }
         }
       );
@@ -171,6 +180,8 @@ export default function DispatchHomeScreen() {
               delivery_id: activeOrderId,
               latitude: p.latitude,
               longitude: p.longitude,
+              speed: p.speed ?? null,
+              heading: p.heading ?? null,
               recorded_at: new Date(p.timestamp).toISOString(),
             }));
             const { error } = await supabase.from('driver_locations').insert(rows);

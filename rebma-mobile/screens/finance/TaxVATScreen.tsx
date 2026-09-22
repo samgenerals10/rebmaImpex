@@ -13,7 +13,8 @@
 // consolidated into this one ExportSheet — one less UI entry point, not
 // a content change (D102).
 import { useCallback, useEffect, useState } from 'react';
-import { View, Text, Alert } from 'react-native';
+import { View, Text } from 'react-native';
+import { Alert } from '../../lib/appAlert';
 import { Download } from 'lucide-react-native';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuthStore } from '../../store/authStore';
@@ -78,7 +79,7 @@ export default function TaxVATScreen() {
     const { error } = await supabase.from('finance_settings').upsert([{
       key: 'tax_rates',
       value: JSON.stringify({ vat: parseFloat(rates.vat), nhil: parseFloat(rates.nhil), getfund: parseFloat(rates.getfund), covid: parseFloat(rates.covid) }),
-      updated_by: profile?.fullName || 'Finance', updated_at: new Date().toISOString(),
+      updated_by: profile?.fullName || 'Accounts Department', updated_at: new Date().toISOString(),
     }]);
     setSavingRates(false);
     if (error) {
@@ -117,10 +118,8 @@ export default function TaxVATScreen() {
         <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
           <Button label="Export" size="sm" variant="ghost" icon={<Download size={13} color={t.colors.textSecondary} />} onPress={() => setExportOpen(true)} />
         </View>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.md }}>
-          <View style={{ width: '47%' }}><MetricCard label="VAT Collected (MTD)" value={loading ? '—' : `GHS ${(current?.vatAmount || 0).toLocaleString()}`} tone="accent" /></View>
-          <View style={{ width: '47%' }}><MetricCard label="Total VAT Filed" value={loading ? '—' : `GHS ${totalVatCollected.toLocaleString()}`} /></View>
-          <View style={{ width: '100%' }}><MetricCard label="Est. Total Tax Liability" value={loading ? '—' : `GHS ${totalTaxLiability.toLocaleString()}`} tone="warning" /></View>
+        <View style={{ gap: t.spacing.sm }}>
+          <View style={{ flexDirection: 'row', gap: t.spacing.sm }}><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="VAT Collected (MTD)" value={loading ? '—' : `GHS ${(current?.vatAmount || 0).toLocaleString()}`} tone="accent" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Total VAT Filed" value={loading ? '—' : `GHS ${totalVatCollected.toLocaleString()}`} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Est. Total Tax Liability" value={loading ? '—' : `GHS ${totalTaxLiability.toLocaleString()}`} tone="warning" /></View></View>
         </View>
 
         <Card>
@@ -139,12 +138,12 @@ export default function TaxVATScreen() {
 
         <Card>
           <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary, marginBottom: t.spacing.md }}>VAT Periods</Text>
-          <DataList columns={periodColumns} data={vatData} rowKey={(v) => v.period} loading={loading} emptyTitle="No VAT periods on file" />
+          <DataList collapsible columns={periodColumns} data={vatData} rowKey={(v) => v.period} loading={loading} emptyTitle="No VAT periods on file" />
         </Card>
 
         <Card>
           <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary, marginBottom: t.spacing.md }}>Invoice Aging</Text>
-          <DataList columns={agingColumns} data={agingData} rowKey={(r) => r.label} loading={loading} emptyTitle="No aging data" />
+          <DataList collapsible columns={agingColumns} data={agingData} rowKey={(r) => r.label} loading={loading} emptyTitle="No aging data" />
         </Card>
       </View>
 

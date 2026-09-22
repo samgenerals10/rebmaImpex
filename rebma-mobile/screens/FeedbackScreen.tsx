@@ -9,7 +9,8 @@
 // on ProfileScreen.tsx (mobile has no desktop-style Support sidebar
 // section to nest this under).
 import { useCallback, useEffect, useState } from 'react';
-import { View, Text, Alert } from 'react-native';
+import { View, Text } from 'react-native';
+import { Alert } from '../lib/appAlert';
 import { MessageSquarePlus, Check } from 'lucide-react-native';
 import { supabase } from '../lib/supabaseClient';
 import { useAuthStore } from '../store/authStore';

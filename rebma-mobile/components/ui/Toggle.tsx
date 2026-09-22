@@ -14,6 +14,11 @@ interface Props {
   value: boolean;
   onChange: (next: boolean) => void;
   disabled?: boolean;
+  /** Overrides the "on" track color — every existing call site keeps
+   * the app's own accent unchanged; only Login's brand-green screen
+   * passes this, so the switch doesn't read as a different app's
+   * purple sitting on an otherwise all-green page. */
+  color?: string;
 }
 
 const TRACK_WIDTH = 44;
@@ -21,7 +26,7 @@ const TRACK_HEIGHT = 26;
 const KNOB_SIZE = 22;
 const KNOB_TRAVEL = TRACK_WIDTH - KNOB_SIZE - 4; // 2px inset each side
 
-export default function Toggle({ value, onChange, disabled }: Props) {
+export default function Toggle({ value, onChange, disabled, color }: Props) {
   const t = useTheme();
   const anim = useRef(new Animated.Value(value ? 1 : 0)).current;
 
@@ -38,7 +43,7 @@ export default function Toggle({ value, onChange, disabled }: Props) {
     anim.setValue(value ? 1 : 0);
   }
 
-  const trackColor = anim.interpolate({ inputRange: [0, 1], outputRange: [t.colors.border, t.colors.accent] });
+  const trackColor = anim.interpolate({ inputRange: [0, 1], outputRange: [t.colors.border, color || t.colors.accent] });
   const knobTranslate = anim.interpolate({ inputRange: [0, 1], outputRange: [2, 2 + KNOB_TRAVEL] });
 
   return (

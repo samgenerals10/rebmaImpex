@@ -10,7 +10,8 @@
 // "Send Reminder" only ever wrote an audit-history row on web (no real
 // WhatsApp/email dispatch) — same omission.
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, Text, Alert } from 'react-native';
+import { View, Text } from 'react-native';
+import { Alert } from '../../lib/appAlert';
 import { Download } from 'lucide-react-native';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuthStore } from '../../store/authStore';
@@ -122,7 +123,7 @@ export default function CreditMgmtScreen() {
     }).eq('id', editTarget.id);
     setSavingEdit(false);
     if (error) { Alert.alert('Update Failed', error.message); return; }
-    await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Credit order ${editTarget.id} updated`, performed_by: profile?.fullName || 'Finance', timestamp: new Date().toISOString() }]);
+    await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Credit order ${editTarget.id} updated`, performed_by: profile?.fullName || 'Accounts Department', timestamp: new Date().toISOString() }]);
     setEditTarget(null);
     load();
   };
@@ -134,7 +135,7 @@ export default function CreditMgmtScreen() {
         text: 'Delete', style: 'destructive', onPress: async () => {
           const { error } = await supabase.from('orders').delete().eq('id', e.id);
           if (error) { Alert.alert('Delete Failed', error.message); return; }
-          await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Credit order ${e.id} deleted`, performed_by: profile?.fullName || 'Finance', timestamp: new Date().toISOString() }]);
+          await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Credit order ${e.id} deleted`, performed_by: profile?.fullName || 'Accounts Department', timestamp: new Date().toISOString() }]);
           load();
         },
       },
@@ -169,7 +170,7 @@ export default function CreditMgmtScreen() {
     try {
       await supabase.from('global_audit_history').insert({
         department: 'FINANCE', action: `Payment reminder sent to ${entry.customerName} for order ${entry.orderRef}, GHS ${entry.outstanding.toLocaleString()} outstanding.`,
-        performed_by: profile?.fullName || 'Finance', timestamp: new Date().toISOString(),
+        performed_by: profile?.fullName || 'Accounts Department', timestamp: new Date().toISOString(),
       });
       Alert.alert('Reminder Logged', `Reminder recorded for ${entry.customerName}.`);
     } catch (e: any) {
@@ -203,15 +204,13 @@ export default function CreditMgmtScreen() {
         <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
           <Button label="Export CSV" size="sm" variant="ghost" icon={<Download size={13} color={t.colors.textSecondary} />} onPress={() => setExportOpen(true)} />
         </View>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.sm }}>
-          <View style={{ width: '47%' }}><MetricCard label="Total Extended" value={loading ? '—' : `GHS ${totalExtended.toLocaleString()}`} /></View>
-          <View style={{ width: '47%' }}><MetricCard label="Total Collected" value={loading ? '—' : `GHS ${totalCollected.toLocaleString()}`} tone="accent" /></View>
-          <View style={{ width: '47%' }}><MetricCard label="Total Outstanding" value={loading ? '—' : `GHS ${totalOutstanding.toLocaleString()}`} tone="warning" /></View>
-          <View style={{ width: '47%' }}><MetricCard label="Overdue" value={loading ? '—' : overdueCount} tone="danger" /></View>
+        <View style={{ gap: t.spacing.sm }}>
+          <View style={{ flexDirection: 'row', gap: t.spacing.sm }}><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Total Extended" value={loading ? '—' : `GHS ${totalExtended.toLocaleString()}`} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Total Collected" value={loading ? '—' : `GHS ${totalCollected.toLocaleString()}`} tone="accent" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Total Outstanding" value={loading ? '—' : `GHS ${totalOutstanding.toLocaleString()}`} tone="warning" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Overdue" value={loading ? '—' : overdueCount} tone="danger" /></View></View>
         </View>
         <Input value={search} onChangeText={setSearch} placeholder="Search customers…" />
         <SearchablePicker label="Status" value={statusFilter} onChange={setStatusFilter} options={[{ value: 'ALL', label: 'All' }, { value: 'Current', label: 'Current' }, { value: 'Due Soon', label: 'Due Soon' }, { value: 'Overdue', label: 'Overdue' }, { value: 'Paid', label: 'Paid' }]} />
         <DataList
+          collapsible
           columns={columns}
           data={filtered}
           rowKey={(e) => e.id}

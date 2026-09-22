@@ -12,7 +12,8 @@
 // (mobile has no camelCase mapper layer) — the web `render` for `amount`
 // and `orderRef`'s '—' fallback are both preserved.
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, Alert } from 'react-native';
+import { View } from 'react-native';
+import { Alert } from '../../lib/appAlert';
 import { Download } from 'lucide-react-native';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuthStore } from '../../store/authStore';
@@ -118,7 +119,7 @@ export default function ChequesScreen() {
       }).eq('id', editTarget.id);
       setSubmitting(false);
       if (error) { Alert.alert('Update Failed', error.message); return; }
-      await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Cheque ${editTarget.id} updated`, performed_by: profile?.fullName || 'Finance', timestamp: new Date().toISOString() }]);
+      await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Cheque ${editTarget.id} updated`, performed_by: profile?.fullName || 'Accounts Department', timestamp: new Date().toISOString() }]);
       closeForm();
       load();
       return;
@@ -127,7 +128,7 @@ export default function ChequesScreen() {
       cheque_number: form.chequeNumber.trim(), bank_name: form.bankName.trim(), account_name: form.accountName.trim(),
       account_number: form.accountNumber.trim() || null, amount: parseFloat(form.amount) || 0,
       cheque_date: form.chequeDate || null, expected_clearing: form.expectedClearing || null,
-      order_ref: form.orderRef.trim() || null, status: 'Received', recorded_by: profile?.fullName || 'Finance',
+      order_ref: form.orderRef.trim() || null, status: 'Received', recorded_by: profile?.fullName || 'Accounts Department',
     }]);
     setSubmitting(false);
     if (error) {
@@ -145,7 +146,7 @@ export default function ChequesScreen() {
         text: 'Delete', style: 'destructive', onPress: async () => {
           const { error } = await supabase.from('finance_cheques').delete().eq('id', c.id);
           if (error) { Alert.alert('Delete Failed', error.message); return; }
-          await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Cheque ${c.id} deleted`, performed_by: profile?.fullName || 'Finance', timestamp: new Date().toISOString() }]);
+          await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Cheque ${c.id} deleted`, performed_by: profile?.fullName || 'Accounts Department', timestamp: new Date().toISOString() }]);
           load();
         },
       },
@@ -164,7 +165,7 @@ export default function ChequesScreen() {
       Alert.alert('Update Failed', error.message);
       return;
     }
-    await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Cheque ${c.id} status updated to ${status}`, performed_by: profile?.fullName || 'Finance', timestamp: new Date().toISOString() }]);
+    await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Cheque ${c.id} status updated to ${status}`, performed_by: profile?.fullName || 'Accounts Department', timestamp: new Date().toISOString() }]);
     load();
   };
 
@@ -197,11 +198,8 @@ export default function ChequesScreen() {
           <Button label="Export" size="sm" variant="ghost" icon={<Download size={13} color={t.colors.textSecondary} />} onPress={() => setExportOpen(true)} />
         </View>
 
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.md }}>
-          <View style={{ width: '47%' }}><MetricCard label="Total" value={loading ? '—' : totals.total} /></View>
-          <View style={{ width: '47%' }}><MetricCard label="Cleared" value={loading ? '—' : totals.cleared} tone="accent" /></View>
-          <View style={{ width: '47%' }}><MetricCard label="Pending" value={loading ? '—' : totals.pending} tone="warning" /></View>
-          <View style={{ width: '47%' }}><MetricCard label="Bounced" value={loading ? '—' : totals.bounced} tone="danger" /></View>
+        <View style={{ gap: t.spacing.sm }}>
+          <View style={{ flexDirection: 'row', gap: t.spacing.sm }}><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Total" value={loading ? '—' : totals.total} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Cleared" value={loading ? '—' : totals.cleared} tone="accent" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Pending" value={loading ? '—' : totals.pending} tone="warning" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Bounced" value={loading ? '—' : totals.bounced} tone="danger" /></View></View>
         </View>
 
         <Input value={search} onChangeText={setSearch} placeholder="Search cheque #, account, or bank…" />

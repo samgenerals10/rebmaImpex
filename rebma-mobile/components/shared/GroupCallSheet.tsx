@@ -79,7 +79,8 @@
 // and every realtime feature here needs a real device build to confirm
 // — this machine can't produce one.
 import { useEffect, useRef, useState } from 'react';
-import { Modal, View, Text, Pressable, ScrollView, TextInput, Alert } from 'react-native';
+import { Modal, View, Text, Pressable, ScrollView, TextInput } from 'react-native';
+import { Alert } from '../../lib/appAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Clipboard from 'expo-clipboard';
 import Svg, { Polyline } from 'react-native-svg';

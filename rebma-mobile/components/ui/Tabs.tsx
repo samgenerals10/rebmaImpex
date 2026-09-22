@@ -43,13 +43,23 @@ export default function Tabs({ options, value, onChange, variant = 'segmented' }
               key={opt.value}
               onPress={() => onChange(opt.value)}
               style={{
-                flex: 1, alignItems: 'center', justifyContent: 'center',
-                paddingVertical: t.spacing.sm, borderRadius: t.radius.pill,
+                // minWidth: 0 is load-bearing: without it a flex:1 child
+                // never shrinks below its text's natural width (a
+                // well-known flexbox default), so numberOfLines={1}
+                // never gets the chance to ellipsize — the label just
+                // overflows past its own pill into the next tab instead.
+                flex: 1, minWidth: 0, alignItems: 'center', justifyContent: 'center',
+                paddingVertical: t.spacing.sm, paddingHorizontal: 2, borderRadius: t.radius.pill,
                 backgroundColor: active ? (t.darkMode ? t.colors.accent : '#FFFFFF') : 'transparent',
                 ...(active && !t.darkMode ? t.shadow('card') : {}),
               }}
             >
-              <Text style={{ fontFamily: active ? t.font.bold : t.font.medium, fontSize: t.type.body12.size, color: active ? (t.darkMode ? '#FFFFFF' : t.colors.accent) : t.colors.textSecondary }} numberOfLines={1}>
+              <Text
+                style={{ fontFamily: active ? t.font.bold : t.font.medium, fontSize: t.type.meta11.size, color: active ? (t.darkMode ? '#FFFFFF' : t.colors.accent) : t.colors.textSecondary, textAlign: 'center' }}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.75}
+              >
                 {opt.label}
               </Text>
             </Pressable>

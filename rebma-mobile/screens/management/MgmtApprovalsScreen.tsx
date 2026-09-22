@@ -12,7 +12,8 @@
 // it's a real, live lane querying PENDING_MANAGEMENT_APPROVAL, ported as
 // such.
 import { useCallback, useEffect, useState } from 'react';
-import { View, Text, Pressable, ScrollView, Alert } from 'react-native';
+import { View, Text, Pressable, ScrollView } from 'react-native';
+import { Alert } from '../../lib/appAlert';
 import { CheckCircle, XCircle, RotateCcw, History, Package, CreditCard, Factory, ShoppingCart, Wallet } from 'lucide-react-native';
 import { supabase } from '../../lib/supabaseClient';
 import { getCeoSetting } from '../../lib/ceoSetting';

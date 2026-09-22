@@ -15,7 +15,8 @@
 // fixes by routing that failure through the same offline queue instead of
 // silently discarding it.
 import { useState } from 'react';
-import { View, Text, Pressable, Alert } from 'react-native';
+import { View, Text, Pressable } from 'react-native';
+import { Alert } from '../../lib/appAlert';
 import { Ship, Package, Camera as CameraIcon } from 'lucide-react-native';
 import { supabase } from '../../lib/supabaseClient';
 import { pickOrCaptureImage } from '../../lib/media';
@@ -75,10 +76,17 @@ export default function PortIngestionScreen() {
     setGpItemName(''); setGpItemCode(''); setGpCategory(''); setGpQuantity(''); setGpCost('');
   };
 
-  const logAudit = async (action: string, details: string) => {
+  // Direct correction: this wrote an audit entry on every log (a real,
+  // working call, not a gap in whether it fires) but with no
+  // reference_id at all — meaning "cargo logged" could never show up
+  // on that specific cargo item's own workflow timeline later, right
+  // from the very first step of the whole chain ("right from admin and
+  // warehouse, it should be tracked"). `referenceId` is now the new
+  // row's own id, threaded through from the insert below.
+  const logAudit = async (action: string, details: string, referenceId?: string | null) => {
     const payload = {
       action, department: 'ADMIN_WAREHOUSE', performed_by: profile?.fullName || 'Ops Staff',
-      user_id: profile?.id || null, details, timestamp: new Date().toISOString(),
+      user_id: profile?.id || null, details, reference_id: referenceId || null, timestamp: new Date().toISOString(),
     };
     try {
       const { error } = await supabase.from('global_audit_history').insert(payload);
@@ -121,17 +129,21 @@ export default function PortIngestionScreen() {
       logged_by_id: profile?.id || null,
       logged_by_name: profile?.fullName || null,
     };
-    const { error } = await supabase.from('cargo_intake').insert(payload);
+    const { data: inserted, error } = await supabase.from('cargo_intake').insert(payload).select('id').single();
     setSubmitting(false);
     if (error) {
       await enqueue(QUEUE_KEYS.portIngestion, 'cargo_intake', payload);
+      // No new row id exists yet in the offline-queued case (the insert
+      // never reached the server) — the queued cargo_intake payload
+      // itself is still preserved and will sync later; this audit entry
+      // just can't be pre-linked to an id that doesn't exist yet.
       await logAudit('LOG_CARGO_INTAKE', `Port cargo logged (offline, will sync): ${productName.trim()} (${code})`);
       Alert.alert('Saved Offline', 'No connection right now, so this cargo log will sync automatically once you\'re back online.');
       resetPortForm();
       setMode(null);
       return;
     }
-    await logAudit('LOG_CARGO_INTAKE', `Port cargo logged: ${productName.trim()} (${code})`);
+    await logAudit('LOG_CARGO_INTAKE', `Port cargo logged: ${productName.trim()} (${code})`, inserted?.id);
     Alert.alert('Cargo Logged', 'Sent to Risk for approval.');
     resetPortForm();
     setMode(null);
@@ -170,7 +182,7 @@ export default function PortIngestionScreen() {
         logged_by_id: profile?.id || null,
         logged_by_name: profile?.fullName || null,
       };
-      const { error } = await supabase.from('cargo_intake').insert(payload);
+      const { data: inserted, error } = await supabase.from('cargo_intake').insert(payload).select('id').single();
       setSubmitting(false);
       if (error) {
         await enqueue(QUEUE_KEYS.portIngestion, 'cargo_intake', payload);
@@ -180,7 +192,7 @@ export default function PortIngestionScreen() {
         setMode(null);
         return;
       }
-      await logAudit('LOG_CARGO_INTAKE', `Company product stock intake logged: ${ihProductName.trim()} (${code})`);
+      await logAudit('LOG_CARGO_INTAKE', `Company product stock intake logged: ${ihProductName.trim()} (${code})`, inserted?.id);
     } else {
       if (!gpItemName.trim() || !gpQuantity || !gpCost) {
         setSubmitting(false);
@@ -199,7 +211,7 @@ export default function PortIngestionScreen() {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
-      const { error } = await supabase.from('general_purchases').insert(payload);
+      const { data: inserted, error } = await supabase.from('general_purchases').insert(payload).select('id').single();
       setSubmitting(false);
       if (error) {
         await enqueue(QUEUE_KEYS.portIngestion, 'general_purchases', payload);
@@ -209,7 +221,7 @@ export default function PortIngestionScreen() {
         setMode(null);
         return;
       }
-      await logAudit('LOG_GENERAL_PURCHASE', `General purchase logged: ${gpItemName.trim()} (${gpQuantity} units, GHS ${gpCost}). Code: ${code}`);
+      await logAudit('LOG_GENERAL_PURCHASE', `General purchase logged: ${gpItemName.trim()} (${gpQuantity} units, GHS ${gpCost}). Code: ${code}`, inserted?.id);
     }
     Alert.alert('Logged', classification === 'COMPANY_PRODUCT' ? 'Sent to Risk for approval.' : 'Sent to Management for approval.');
     resetInHouseForm();

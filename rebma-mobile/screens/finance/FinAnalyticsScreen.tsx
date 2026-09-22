@@ -69,11 +69,8 @@ export default function FinAnalyticsScreen() {
   return (
     <Screen refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }}>
       <View style={{ gap: t.spacing.xl }}>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.md }}>
-          <View style={{ width: '47%' }}><MetricCard label="Total Collected" value={loading ? '—' : `GHS ${totalCollected.toLocaleString()}`} tone="accent" /></View>
-          <View style={{ width: '47%' }}><MetricCard label="Approved Expenses" value={loading ? '—' : `GHS ${totalExpenses.toLocaleString()}`} tone="warning" /></View>
-          <View style={{ width: '47%' }}><MetricCard label="Net" value={loading ? '—' : `GHS ${net.toLocaleString()}`} tone={net >= 0 ? 'success' : 'danger'} /></View>
-          <View style={{ width: '47%' }}><MetricCard label="Payment Records" value={loading ? '—' : paymentCount} /></View>
+        <View style={{ gap: t.spacing.sm }}>
+          <View style={{ flexDirection: 'row', gap: t.spacing.sm }}><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Total Collected" value={loading ? '—' : `GHS ${totalCollected.toLocaleString()}`} tone="accent" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Approved Expenses" value={loading ? '—' : `GHS ${totalExpenses.toLocaleString()}`} tone="warning" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Net" value={loading ? '—' : `GHS ${net.toLocaleString()}`} tone={net >= 0 ? 'success' : 'danger'} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Payment Records" value={loading ? '—' : paymentCount} /></View></View>
         </View>
 
         <Card>

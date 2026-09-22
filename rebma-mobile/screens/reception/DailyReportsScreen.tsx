@@ -29,7 +29,7 @@ interface PastReportRow {
   checkins: number;
 }
 
-const FALLBACK_DEPTS = ['Management', 'Finance', 'Marketing', 'Operations', 'HR', 'Dispatch', 'Production', 'Reception'];
+const FALLBACK_DEPTS = ['Management', 'Accounts Department', 'Marketing', 'Operations', 'HR', 'Dispatch', 'Production', 'Reception'];
 
 export default function DailyReportsScreen() {
   const t = useTheme();
@@ -117,7 +117,7 @@ export default function DailyReportsScreen() {
 
         <Card>
           <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary, marginBottom: t.spacing.md }}>Visitors on {selectedDate}</Text>
-          <DataList columns={visitorColumns} data={visitorsToday} rowKey={(v) => v.id} loading={loading} emptyTitle="No visitors on this date" />
+          <DataList collapsible columns={visitorColumns} data={visitorsToday} rowKey={(v) => v.id} loading={loading} emptyTitle="No visitors on this date" />
         </Card>
 
         <Card>
@@ -140,7 +140,7 @@ export default function DailyReportsScreen() {
 
         <Card>
           <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary, marginBottom: t.spacing.md }}>Past 7 Days</Text>
-          <DataList columns={pastColumns} data={pastReports} rowKey={(r) => r.date} loading={loading} emptyTitle="No data" />
+          <DataList collapsible columns={pastColumns} data={pastReports} rowKey={(r) => r.date} loading={loading} emptyTitle="No data" />
         </Card>
       </View>
     </Screen>

@@ -12,7 +12,8 @@
 // unverified concern from the plain-Supabase-table CRUD every other
 // screen in this phase uses — flagged as a gap, not silently dropped.
 import { useCallback, useEffect, useState } from 'react';
-import { View, Text, Alert } from 'react-native';
+import { View, Text } from 'react-native';
+import { Alert } from '../../lib/appAlert';
 import { supabase } from '../../lib/supabaseClient';
 import { useTheme } from '../../theme/ThemeProvider';
 import Screen from '../../components/ui/Screen';
@@ -140,6 +141,7 @@ export default function DriversScreen() {
         </Text>
       </View>
       <DataList
+        collapsible
         columns={columns}
         data={drivers}
         rowKey={(d) => d.id}

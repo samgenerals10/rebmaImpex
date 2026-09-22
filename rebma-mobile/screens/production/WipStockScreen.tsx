@@ -4,7 +4,8 @@
 // (product_name, stage, qty, unit, batch_ref, notes) and the 6-stage
 // pipeline verbatim. Print omitted (D11 precedent).
 import { useCallback, useEffect, useState } from 'react';
-import { View, Text, Alert } from 'react-native';
+import { View, Text } from 'react-native';
+import { Alert } from '../../lib/appAlert';
 import { Plus, Layers, Edit2, Copy, Trash2 } from 'lucide-react-native';
 import { supabase } from '../../lib/supabaseClient';
 import { useTheme } from '../../theme/ThemeProvider';
@@ -191,11 +192,8 @@ export default function WipStockScreen() {
       <View style={{ gap: t.spacing.xl }}>
         <Button label="Add WIP Item" icon={<Plus size={14} color="#fff" />} onPress={() => setAddOpen(true)} />
 
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.md }}>
-          <View style={{ width: '47%' }}><MetricCard label="Total Items" value={items.length} emphasis="secondary" /></View>
-          <View style={{ width: '47%' }}><MetricCard label="Total Qty" value={totalQty.toLocaleString()} emphasis="secondary" /></View>
-          <View style={{ width: '47%' }}><MetricCard label="In Processing" value={inProcessing} tone="warning" emphasis="secondary" /></View>
-          <View style={{ width: '47%' }}><MetricCard label="Ready to Dispatch" value={readyToDispatch} tone="accent" emphasis="secondary" /></View>
+        <View style={{ gap: t.spacing.sm }}>
+          <View style={{ flexDirection: 'row', gap: t.spacing.sm }}><View style={{ flex: 1 }}><MetricCard label="Total Items" value={items.length} emphasis="compact" /></View><View style={{ flex: 1 }}><MetricCard label="Total Qty" value={totalQty.toLocaleString()} emphasis="compact" /></View><View style={{ flex: 1 }}><MetricCard label="In Processing" value={inProcessing} tone="warning" emphasis="compact" /></View><View style={{ flex: 1 }}><MetricCard label="Ready to Dispatch" value={readyToDispatch} tone="accent" emphasis="compact" /></View></View>
         </View>
 
         <Card>

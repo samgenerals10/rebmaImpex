@@ -6,15 +6,24 @@
 //   <Screen onScroll={scrollHandler} scrollEventThrottle={16} ...>
 //
 // Screen.tsx auto-detects the `onScroll` prop and switches into its
-// dashboard layout (DashboardHeader rendered as normal scrolling
-// content, followed by a rounded-top content sheet — see Screen.tsx
-// and AppHeader.tsx's own header comments). The header scrolls away
-// with the page like everything else, so nothing here needs to track
-// scroll position any more — this hook is kept only as the stable,
-// call-site-compatible signal Screen.tsx watches for, so none of the
-// department dashboard screens that already call it need to change.
-const noop = () => {};
+// dashboard layout: a fixed DashboardHeader (always on top, never
+// covered) with content scrolling behind it. This hook forwards the
+// raw scroll offset into HeaderAnimContext, which DashboardHeader
+// reads purely to dim itself slightly once the page has scrolled —
+// a cosmetic cue that content is behind it, not a z-order change.
+import { useCallback } from 'react';
+import type { NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
+import { useHeaderAnim } from '../navigation/AppShell';
 
 export function useCollapsibleHeader() {
-  return { scrollHandler: noop };
+  const headerAnim = useHeaderAnim();
+
+  const scrollHandler = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      headerAnim?.setValue(Math.max(0, e.nativeEvent.contentOffset.y));
+    },
+    [headerAnim],
+  );
+
+  return { scrollHandler };
 }

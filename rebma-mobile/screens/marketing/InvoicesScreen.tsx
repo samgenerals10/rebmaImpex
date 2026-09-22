@@ -8,7 +8,8 @@
 // is fully preserved. Insert shape matches apiClient.ts's
 // createProforma() exactly, including its 15% default tax rate.
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, Text, Alert } from 'react-native';
+import { View, Text } from 'react-native';
+import { Alert } from '../../lib/appAlert';
 import { Plus, Trash2, Download } from 'lucide-react-native';
 import { supabase } from '../../lib/supabaseClient';
 import { useTheme } from '../../theme/ThemeProvider';

@@ -68,10 +68,8 @@ export default function HrAnalyticsScreen() {
   return (
     <Screen refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }}>
       <View style={{ gap: t.spacing.xl }}>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.md }}>
-          <View style={{ width: '47%' }}><MetricCard label="Active Staff" value={loading ? '—' : totalStaff} tone="accent" /></View>
-          <View style={{ width: '47%' }}><MetricCard label="Attendance Today" value={loading ? '—' : `${attendanceRate}%`} tone={attendanceRate >= 80 ? 'success' : 'warning'} /></View>
-          <View style={{ width: '100%' }}><MetricCard label="Pending Leave Requests" value={loading ? '—' : pendingLeave} tone={pendingLeave > 0 ? 'warning' : 'neutral'} emphasis="secondary" /></View>
+        <View style={{ gap: t.spacing.sm }}>
+          <View style={{ flexDirection: 'row', gap: t.spacing.sm }}><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Active Staff" value={loading ? '—' : totalStaff} tone="accent" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Attendance Today" value={loading ? '—' : `${attendanceRate}%`} tone={attendanceRate >= 80 ? 'success' : 'warning'} /></View><View style={{ flex: 1 }}><MetricCard label="Pending Leave Requests" value={loading ? '—' : pendingLeave} tone={pendingLeave > 0 ? 'warning' : 'neutral'} emphasis="compact" /></View></View>
         </View>
 
         <Card>

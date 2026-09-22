@@ -10,8 +10,9 @@
 // customer photo) are not replicated (D26) — nothing real was behind them
 // on web either.
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, Text, Alert } from 'react-native';
-import { XCircle, RotateCcw } from 'lucide-react-native';
+import { View, Text } from 'react-native';
+import { Alert } from '../../lib/appAlert';
+import { XCircle, RotateCcw, History } from 'lucide-react-native';
 import { supabase } from '../../lib/supabaseClient';
 import { approveAccountsReview } from '../../lib/financeActions';
 import { useAuthStore } from '../../store/authStore';
@@ -21,9 +22,12 @@ import MetricCard from '../../components/ui/MetricCard';
 import DataList, { type DataColumn } from '../../components/ui/DataList';
 import Badge, { statusTone } from '../../components/ui/Badge';
 import Sheet, { SheetSection } from '../../components/ui/Sheet';
+import ProductImage from '../../components/ui/ProductImage';
 import Button from '../../components/ui/Button';
 import Input, { Field } from '../../components/ui/Input';
 import SearchablePicker from '../../components/ui/SearchablePicker';
+import IconActionButton from '../../components/ui/IconActionButton';
+import RequestTimelineSheet from '../../components/shared/RequestTimelineSheet';
 
 interface OrderRow {
   id: string;
@@ -60,6 +64,7 @@ export default function OrdersQueueScreen() {
   const [statusFilter, setStatusFilter] = useState('PENDING_FINANCE');
   const [modeFilter, setModeFilter] = useState('All');
   const [selected, setSelected] = useState<OrderRow | null>(null);
+  const [timelineTarget, setTimelineTarget] = useState<OrderRow | null>(null);
   const [payForm, setPayForm] = useState(EMPTY_FORM);
   const [isPartPayment, setIsPartPayment] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
@@ -140,7 +145,7 @@ export default function OrdersQueueScreen() {
     if (!error) {
       const verbLabel = mode === 'return' ? 'RETURNED FOR CORRECTION' : 'REJECTED';
       await supabase.from('supplier_order_notifications').insert([{ message: `Order ${selected.id} ${verbLabel} by Accounts. Reason: ${rejectReason}`, notified_department: 'MARKETING', read: false }]);
-      await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Order ${selected.id} ${verbLabel}. Reason: ${rejectReason}`, performed_by: profile?.fullName || 'Finance', reference_id: selected.id, timestamp: new Date().toISOString() }]);
+      await supabase.from('global_audit_history').insert([{ department: 'FINANCE', action: `Order ${selected.id} ${verbLabel}. Reason: ${rejectReason}`, performed_by: profile?.fullName || 'Accounts Department', reference_id: selected.id, timestamp: new Date().toISOString() }]);
     }
     setSubmitting(false);
     if (error) {
@@ -152,7 +157,7 @@ export default function OrdersQueueScreen() {
   };
 
   const approveOrder = async (order: OrderRow) => {
-    const performedBy = profile?.fullName || 'Finance';
+    const performedBy = profile?.fullName || 'Accounts Department';
     return approveAccountsReview(order, performedBy);
   };
 
@@ -162,7 +167,7 @@ export default function OrdersQueueScreen() {
     const invoiceNumber = selected.ticket_number || `ORD-${String(selected.id).slice(0, 6).toUpperCase()}`;
     const amountPaid = Number(payForm.amountReceived || selected.total_amount);
     const paymentType = isPartPayment ? 'Part Payment' : 'Full Payment';
-    const recordedBy = profile?.fullName || 'Finance';
+    const recordedBy = profile?.fullName || 'Accounts Department';
     const createdAt = new Date().toISOString();
     const receiptNumber = generateReceiptNumber();
 
@@ -218,17 +223,33 @@ export default function OrdersQueueScreen() {
   return (
     <Screen refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }}>
       <View style={{ gap: t.spacing.md }}>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.sm }}>
-          <View style={{ width: '47%' }}><MetricCard label="Pending Review" value={loading ? '—' : pendingOrders.length} sublabel={`GHS ${pendingValue.toLocaleString()}`} tone="warning" /></View>
-          <View style={{ width: '47%' }}><MetricCard label="Approved / Active" value={loading ? '—' : approvedOrders.length} sublabel={`GHS ${approvedValue.toLocaleString()}`} tone="accent" /></View>
-          <View style={{ width: '47%' }}><MetricCard label="Delivered" value={loading ? '—' : deliveredOrders.length} sublabel={`GHS ${deliveredValue.toLocaleString()}`} /></View>
-          <View style={{ width: '47%' }}><MetricCard label="Rejected" value={loading ? '—' : rejectedOrders.length} sublabel="Orders declined" tone="danger" /></View>
+        <View style={{ gap: t.spacing.sm }}>
+          <View style={{ flexDirection: 'row', gap: t.spacing.sm }}><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Pending Review" value={loading ? '—' : pendingOrders.length} sublabel={`GHS ${pendingValue.toLocaleString()}`} tone="warning" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Approved / Active" value={loading ? '—' : approvedOrders.length} sublabel={`GHS ${approvedValue.toLocaleString()}`} tone="accent" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Delivered" value={loading ? '—' : deliveredOrders.length} sublabel={`GHS ${deliveredValue.toLocaleString()}`} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Rejected" value={loading ? '—' : rejectedOrders.length} sublabel="Orders declined" tone="danger" /></View></View>
         </View>
         <Input value={search} onChangeText={setSearch} placeholder="Search orders…" />
         <SearchablePicker label="Payment Mode" value={modeFilter} onChange={setModeFilter} options={['All', 'CASH', 'CHEQUE', 'MOBILE_MONEY', 'CREDIT'].map((m) => ({ value: m, label: m }))} />
         <SearchablePicker label="Status" value={statusFilter} onChange={setStatusFilter} options={STATUS_OPTIONS.map((s) => ({ value: s, label: s === 'ALL' ? 'All Status' : s.replace(/_/g, ' ') }))} />
-        <DataList columns={columns} data={filtered} rowKey={(o) => o.id} loading={loading} emptyTitle="No orders found" onRowPress={openDetail} />
+        <DataList
+          columns={columns}
+          data={filtered}
+          rowKey={(o) => o.id}
+          loading={loading}
+          emptyTitle="No orders found"
+          onRowPress={openDetail}
+          renderActions={(o) => (
+            <View style={{ flexDirection: 'row', gap: t.spacing.sm, alignItems: 'center' }}>
+              <IconActionButton icon={History} tone="info" accessibilityLabel="View Timeline" onPress={() => setTimelineTarget(o)} />
+            </View>
+          )}
+        />
       </View>
+
+      <RequestTimelineSheet
+        open={!!timelineTarget}
+        onClose={() => setTimelineTarget(null)}
+        referenceId={timelineTarget?.id || ''}
+        displayId={timelineTarget?.ticket_number || timelineTarget?.id}
+      />
 
       <Sheet open={!!selected} onClose={() => setSelected(null)} title={selected?.client_name} subtitle={selected?.ticket_number || undefined} side="bottom" maxHeight={720}>
         {selected && (
@@ -242,8 +263,9 @@ export default function OrdersQueueScreen() {
             {items.length > 0 && (
               <SheetSection label="Invoice Items">
                 {items.map((item: any, idx: number) => (
-                  <View key={idx} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 }}>
-                    <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textSecondary }}>{item.productName} × {item.quantity}</Text>
+                  <View key={idx} style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm, paddingVertical: 4 }}>
+                    <ProductImage uri={item.productImage} label={item.productName} size={28} />
+                    <Text style={{ flex: 1, fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textSecondary }}>{item.productName} × {item.quantity}</Text>
                     <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body12.size, color: t.colors.textPrimary }}>GHS {Number(item.lineTotal || 0).toLocaleString()}</Text>
                   </View>
                 ))}

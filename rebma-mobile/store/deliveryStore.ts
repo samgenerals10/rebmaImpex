@@ -6,6 +6,10 @@ export interface CoordinatePoint {
   latitude: number;
   longitude: number;
   timestamp: number;
+  /** Real device values (m/s, degrees), carried through the offline buffer
+   * so a synced ping is exactly as complete as a live one — never invented. */
+  speed?: number | null;
+  heading?: number | null;
 }
 
 interface DeliveryStore {

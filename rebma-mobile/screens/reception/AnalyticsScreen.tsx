@@ -76,10 +76,8 @@ export default function AnalyticsScreen() {
           ))}
         </View>
 
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.md }}>
-          <View style={{ width: '47%' }}><MetricCard label="Total Visitors" value={loading ? '—' : totalVisitors} /></View>
-          <View style={{ width: '47%' }}><MetricCard label="Total Check-Ins" value={loading ? '—' : totalCheckins} tone="accent" /></View>
-          <View style={{ width: '100%' }}><MetricCard label="Avg Visitors / Day" value={loading ? '—' : avgPerDay} /></View>
+        <View style={{ gap: t.spacing.sm }}>
+          <View style={{ flexDirection: 'row', gap: t.spacing.sm }}><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Total Visitors" value={loading ? '—' : totalVisitors} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Total Check-Ins" value={loading ? '—' : totalCheckins} tone="accent" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Avg Visitors / Day" value={loading ? '—' : avgPerDay} /></View></View>
         </View>
 
         {!loading && trendData.length > 0 && (

@@ -4,7 +4,8 @@
 // Reachable from AppHeader's new chat icon (any department) rather than
 // nested under one department — messaging isn't department-scoped.
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, Text, Pressable, FlatList, Alert } from 'react-native';
+import { View, Text, Pressable, FlatList } from 'react-native';
+import { Alert } from '../lib/appAlert';
 import { useFocusEffect } from '@react-navigation/native';
 import { MessageSquare, Plus, Search, Users, X, Check, BellOff, Bell, MoreVertical, Pin, Archive, EyeOff, Trash2, Video } from 'lucide-react-native';
 import { supabase } from '../lib/supabaseClient';

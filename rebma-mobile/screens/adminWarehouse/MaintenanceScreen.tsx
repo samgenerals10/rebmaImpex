@@ -4,7 +4,8 @@
 // Web's COST_TREND/VEHICLES constants are hardcoded chart-seed demo data,
 // not read from the DB — not ported.
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, Text, Alert } from 'react-native';
+import { View, Text } from 'react-native';
+import { Alert } from '../../lib/appAlert';
 import { AlertTriangle, Wrench, Clock, CheckCircle2, Banknote } from 'lucide-react-native';
 import { supabase } from '../../lib/supabaseClient';
 import { useTheme } from '../../theme/ThemeProvider';
@@ -149,11 +150,8 @@ export default function MaintenanceScreen() {
     <Screen refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }}
       footer={<View style={{ padding: t.spacing.lg }}><Button label="Schedule Maintenance" onPress={() => setShowAdd(true)} fullWidth /></View>}
     >
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.sm, marginBottom: t.spacing.lg }}>
-        <View style={{ width: '47%' }}><MetricCard label="Scheduled" value={loading ? '—' : counts.scheduled} icon={<Clock size={16} color={t.colors.status.warning.text} />} /></View>
-        <View style={{ width: '47%' }}><MetricCard label="In Progress" value={loading ? '—' : counts.inProgress} icon={<Wrench size={16} color={t.colors.status.info.text} />} /></View>
-        <View style={{ width: '47%' }}><MetricCard label="Completed" value={loading ? '—' : counts.completed} icon={<CheckCircle2 size={16} color={t.colors.status.success.text} />} /></View>
-        <View style={{ width: '47%' }}><MetricCard label="Total Cost (GHS)" value={loading ? '—' : counts.totalCost.toLocaleString()} icon={<Banknote size={16} color={t.colors.accent} />} /></View>
+      <View style={{ gap: t.spacing.sm }}>
+        <View style={{ flexDirection: 'row', gap: t.spacing.sm }}><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Scheduled" value={loading ? '—' : counts.scheduled} icon={<Clock size={16} color={t.colors.status.warning.text} />} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="In Progress" value={loading ? '—' : counts.inProgress} icon={<Wrench size={16} color={t.colors.status.info.text} />} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Completed" value={loading ? '—' : counts.completed} icon={<CheckCircle2 size={16} color={t.colors.status.success.text} />} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Total Cost (GHS)" value={loading ? '—' : counts.totalCost.toLocaleString()} icon={<Banknote size={16} color={t.colors.accent} />} /></View></View>
       </View>
 
       {upcoming.length > 0 && (
@@ -180,6 +178,7 @@ export default function MaintenanceScreen() {
       </View>
 
       <DataList
+        collapsible
         columns={columns}
         data={filteredRecords}
         rowKey={(r) => r.id}

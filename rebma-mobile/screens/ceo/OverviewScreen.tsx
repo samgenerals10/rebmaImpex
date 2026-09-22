@@ -14,18 +14,17 @@
 import { useCallback, useEffect, useState } from 'react';
 import { View, Text } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { ShoppingCart, DollarSign, ShoppingBag, Truck } from 'lucide-react-native';
+import { ShoppingCart, DollarSign, ShoppingBag, Truck, ClipboardCheck } from 'lucide-react-native';
 import { supabase } from '../../lib/supabaseClient';
 import { useTheme } from '../../theme/ThemeProvider';
 import { getDepartmentEntry } from '../../navigation/departmentRegistry';
 import Screen from '../../components/ui/Screen';
 import { useCollapsibleHeader } from '../../hooks/useCollapsibleHeader';
-import Card from '../../components/ui/Card';
 import MetricCard from '../../components/ui/MetricCard';
 import Badge from '../../components/ui/Badge';
-import PendingApprovalsAlertCard from '../../components/shared/PendingApprovalsAlertCard';
 import ModuleLauncher from '../../components/chrome/ModuleLauncher';
 import SectionHeader from '../../components/ui/SectionHeader';
+import TrackedSection from '../../components/ui/TrackedSection';
 
 interface RecentOrder { id: string; ticket_number: string | null; client_name: string | null; total_amount: number; status: string; created_at: string }
 
@@ -68,63 +67,70 @@ export default function OverviewScreen() {
   return (
     <Screen refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} onScroll={scrollHandler} scrollEventThrottle={16}>
       <View style={{ gap: t.spacing.xl }}>
-        <PendingApprovalsAlertCard department="CEO" onNavigate={(tab) => navigation.navigate(tab)} />
 
-        {/* Aczone Executive Revenue Hero Card */}
-        <Card tone="hero">
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <View style={{ flex: 1 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#34D399' }} />
-                <Text style={{ fontFamily: t.font.bold, fontSize: t.type.meta10.size, letterSpacing: 0.8, textTransform: 'uppercase', color: 'rgba(255,255,255,0.9)' }}>
-                  Executive Financial Snapshot
-                </Text>
-              </View>
-              <Text style={{ fontFamily: t.font.extrabold, fontSize: t.type.kpi28.size, color: '#FFFFFF', marginTop: 2 }}>
-                {loading ? '—' : `GHS ${todayRevenue.toLocaleString()}`}
-              </Text>
-              <Text style={{ fontFamily: t.font.medium, fontSize: t.type.body12.size, color: 'rgba(255,255,255,0.85)', marginTop: 4 }}>
-                {loading ? 'Synchronizing live...' : `${todayOrders} commercial order${todayOrders === 1 ? '' : 's'} recorded today`}
-              </Text>
-            </View>
-            <View style={{ width: 56, height: 56, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.22)', alignItems: 'center', justifyContent: 'center' }}>
-              <DollarSign size={28} color="#FFFFFF" strokeWidth={2.5} />
-            </View>
-          </View>
-        </Card>
-
-        {/* Aczone 2x2 Metric Grid */}
-        <View style={{ gap: t.spacing.sm }}>
-          <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
+        {/* Executive Financial Snapshot — two clickable tiles, not one
+            oversized banner (per direct correction: a full-bleed color
+            block that does nothing on tap doesn't belong in a mobile app). */}
+        <TrackedSection id="hero" title="Financial Snapshot" icon={DollarSign}>
+        <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
+          <View style={{ flex: 1 }}>
             <MetricCard
+              emphasis="primary"
+              tone="accent"
+              label="Today's Revenue"
+              value={loading ? '—' : `GHS ${todayRevenue.toLocaleString()}`}
+              sublabel="Recorded today"
+              icon={<DollarSign size={18} color={t.colors.accent} />}
+              onPress={() => navigation.navigate('Accounts')}
+            />
+          </View>
+          <View style={{ flex: 1 }}>
+            <MetricCard
+              emphasis="primary"
+              tone="info"
               label="Today's Orders"
               value={loading ? '—' : todayOrders}
-              sublabel="Active commercial demand"
-              icon={<ShoppingCart size={20} color={t.colors.action.blue} />}
-              tone="info"
-            />
-            <MetricCard
-              label="Supplier Orders"
-              value={loading ? '—' : activeSupplierOrders}
-              sublabel="Inbound vessel cargo"
-              icon={<ShoppingBag size={20} color={t.colors.action.amber} />}
-              tone="warning"
-              onPress={() => navigation.navigate('SupplierOrders')}
-            />
-          </View>
-          <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
-            <MetricCard
-              label="Fleet In Transit"
-              value={loading ? '—' : inTransit}
-              sublabel="Active road dispatches"
-              icon={<Truck size={20} color={t.colors.action.sky} />}
-              tone="info"
-              onPress={() => navigation.navigate('Tracking')}
+              sublabel="Commercial orders"
+              icon={<ShoppingCart size={18} color={t.colors.status.info.text} />}
+              onPress={() => navigation.navigate('Transactions')}
             />
           </View>
         </View>
+        </TrackedSection>
+
+        {/* Key Metrics — Today's Orders/Revenue already live in the hero
+            above; this row covers the two figures that aren't. */}
+        <TrackedSection id="metrics" title="Key Metrics" icon={ClipboardCheck}>
+        <View style={{ gap: t.spacing.sm }}>
+          <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
+            <View style={{ flex: 1 }}>
+            <MetricCard
+              emphasis="compact"
+              label="Supply"
+              value={loading ? '—' : activeSupplierOrders}
+              sublabel="Inbound cargo"
+              icon={<ShoppingBag size={14} color={t.colors.action.amber} />}
+              tone="warning"
+              onPress={() => navigation.navigate('SupplierOrders')}
+            />
+            </View>
+            <View style={{ flex: 1 }}>
+            <MetricCard
+              emphasis="compact"
+              label="Fleet In Transit"
+              value={loading ? '—' : inTransit}
+              sublabel="Road dispatches"
+              icon={<Truck size={14} color={t.colors.action.sky} />}
+              tone="info"
+              onPress={() => navigation.navigate('Tracking')}
+            />
+            </View>
+          </View>
+        </View>
+        </TrackedSection>
 
         {/* Aczone Recent Orders Card Stream */}
+        <TrackedSection id="recent-orders" title="Recent Orders" icon={ShoppingCart}>
         <View>
           <SectionHeader title="Recent Orders" subtitle="Live commercial sales activity stream" />
           <View style={{ gap: t.spacing.sm, marginTop: t.spacing.xs }}>
@@ -164,6 +170,7 @@ export default function OverviewScreen() {
             )}
           </View>
         </View>
+        </TrackedSection>
 
         <ModuleLauncher dept={dept} exclude={['Overview']} onSelect={(id) => navigation.navigate(id)} />
       </View>

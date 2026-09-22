@@ -31,7 +31,8 @@
 // every department phase can render <SpreadsheetGrid department="X" />
 // unmodified for its own Spreadsheets sub-tab.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, Alert, ScrollView, Pressable } from 'react-native';
+import { View, Text, ScrollView, Pressable } from 'react-native';
+import { Alert } from '../../lib/appAlert';
 import { HyperFormula } from 'hyperformula';
 import { Table, ArrowLeft, FileSpreadsheet, Plus, Trash2, Lock, RefreshCw } from 'lucide-react-native';
 import { supabase } from '../../lib/supabaseClient';
@@ -51,8 +52,8 @@ const NON_EDITABLE_COLS = new Set(['id', 'created_at', 'updated_at', 'last_updat
 
 // Verbatim from rebma-web/src/views/shared/SpreadsheetView.tsx's DEPT_TABLES.
 const DEPT_TABLES: Record<string, Array<{ id: string; label: string }>> = {
-  CEO: [{ id: 'orders', label: 'Customer Orders' }, { id: 'finance_payments', label: 'Finance Payments' }, { id: 'delivery_logs', label: 'Delivery Logs' }, { id: 'global_audit_history', label: 'Audit History' }, { id: 'stock', label: 'Stock Inventory' }, { id: 'cargo_intake', label: 'Cargo Intake' }],
-  FINANCE: [{ id: 'finance_payments', label: 'Finance Payments' }, { id: 'orders', label: 'Customer Orders' }, { id: 'stock', label: 'Stock Inventory' }],
+  CEO: [{ id: 'orders', label: 'Customer Orders' }, { id: 'finance_payments', label: 'Accounts Payments' }, { id: 'delivery_logs', label: 'Delivery Logs' }, { id: 'global_audit_history', label: 'Audit History' }, { id: 'stock', label: 'Stock Inventory' }, { id: 'cargo_intake', label: 'Cargo Intake' }],
+  FINANCE: [{ id: 'finance_payments', label: 'Accounts Payments' }, { id: 'orders', label: 'Customer Orders' }, { id: 'stock', label: 'Stock Inventory' }],
   MANAGEMENT: [{ id: 'cargo_intake', label: 'Cargo Intake' }, { id: 'orders', label: 'Customer Orders' }, { id: 'production_requests', label: 'Production Requests' }, { id: 'general_purchases', label: 'General Purchases' }],
   MARKETING: [{ id: 'orders', label: 'Customer Orders' }],
   ADMIN_WAREHOUSE: [{ id: 'cargo_intake', label: 'Cargo Intake' }, { id: 'stock', label: 'Stock Inventory' }, { id: 'stock_ledger', label: 'Stock Ledger' }, { id: 'delivery_logs', label: 'Delivery Logs' }, { id: 'drivers', label: 'Drivers' }],

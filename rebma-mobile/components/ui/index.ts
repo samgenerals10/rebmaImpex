@@ -22,3 +22,7 @@ export { default as ProgressBar } from './ProgressBar';
 export { default as Tabs, type TabOption } from './Tabs';
 export { default as Toggle } from './Toggle';
 export { default as StatusCapsule } from './StatusCapsule';
+export { default as ProductImage } from './ProductImage';
+export { default as AppAlertHost } from './AppAlertHost';
+export { default as IconActionButton } from './IconActionButton';
+export { default as SearchSortBar, type SortOption } from './SearchSortBar';

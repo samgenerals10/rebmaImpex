@@ -13,7 +13,7 @@
 // tapped, or duplicating that whole routing mechanism blind without a
 // way to test it, this shows an honest "not built yet" message — flagged
 // here and in the build report, not shipped as a quiet dead button.
-import { Alert } from 'react-native';
+import { Alert } from '../lib/appAlert';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import ProfileScreen from '../screens/ProfileScreen';
 import DesignSystemScreen from '../screens/DesignSystemScreen';

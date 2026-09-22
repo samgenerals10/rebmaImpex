@@ -68,11 +68,8 @@ export default function ProdAnalyticsScreen() {
   return (
     <Screen refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }}>
       <View style={{ gap: t.spacing.xl }}>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.md }}>
-          <View style={{ width: '47%' }}><MetricCard label="Boxes Produced" value={loading ? '—' : totalBoxes.toLocaleString()} tone="accent" /></View>
-          <View style={{ width: '47%' }}><MetricCard label="Sachets Produced" value={loading ? '—' : totalSachets.toLocaleString()} /></View>
-          <View style={{ width: '47%' }}><MetricCard label="Quality Pass Rate" value={loading ? '—' : `${passRate}%`} tone={passRate >= 90 ? 'accent' : 'warning'} /></View>
-          <View style={{ width: '47%' }}><MetricCard label="Total Records" value={loading ? '—' : totalRecords} /></View>
+        <View style={{ gap: t.spacing.sm }}>
+          <View style={{ flexDirection: 'row', gap: t.spacing.sm }}><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Boxes Produced" value={loading ? '—' : totalBoxes.toLocaleString()} tone="accent" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Sachets Produced" value={loading ? '—' : totalSachets.toLocaleString()} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Quality Pass Rate" value={loading ? '—' : `${passRate}%`} tone={passRate >= 90 ? 'accent' : 'warning'} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Total Records" value={loading ? '—' : totalRecords} /></View></View>
         </View>
 
         <Card>

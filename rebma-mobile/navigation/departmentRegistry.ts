@@ -15,7 +15,7 @@ import {
   CreditCard, ClipboardCheck, ArrowLeftRight, History, Banknote, RefreshCw, Receipt, Calculator,
   Smartphone, PiggyBank, ClipboardList, UserPlus, Calendar, FileChartColumn, Factory, Video,
   MessagesSquare, Clipboard, Building2, Wallet, Ship, Ticket, Flag, PackagePlus, CircleCheckBig,
-  GitMerge, SquareCheckBig, Send, Palette, Settings, Radio,
+  GitMerge, SquareCheckBig, Send, Palette, Settings, Radio, Bot,
 } from 'lucide-react-native';
 import VisitorLogScreen from '../screens/reception/VisitorLogScreen';
 import VisitorsScreen from '../screens/reception/VisitorsScreen';
@@ -118,12 +118,14 @@ import CeoTrackingScreen from '../screens/ceo/TrackingScreen';
 import CeoDeptActivityScreen from '../screens/ceo/DeptActivityScreen';
 import LiveUsersScreen from '../screens/ceo/LiveUsersScreen';
 import CeoSpreadsheetsScreen from '../screens/ceo/SpreadsheetsScreen';
+import HelpAssistantScreen from '../screens/ceo/HelpAssistantScreen';
 import VideoConfScreen from '../screens/boardroom/VideoConfScreen';
 import AnnouncementsScreen from '../screens/boardroom/AnnouncementsScreen';
 import DirectMessagesScreen from '../screens/boardroom/DirectMessagesScreen';
 import MeetingsScreen from '../screens/boardroom/MeetingsScreen';
 import AppearanceScreen from '../screens/settings/AppearanceScreen';
 import ProfileAccountScreen from '../screens/settings/ProfileAccountScreen';
+import { OPEN_DEPARTMENT_SWITCHER } from './quickActionSentinels';
 import ChangePasswordScreen from '../screens/settings/ChangePasswordScreen';
 import TwoFactorScreen from '../screens/settings/TwoFactorScreen';
 import ControlCenterScreen from '../screens/settings/ControlCenterScreen';
@@ -223,8 +225,8 @@ export const DEPARTMENT_REGISTRY: Record<string, DepartmentEntry> = {
       { title: 'Reports & Data Logs', tabIds: ['DailyReports', 'Analytics', 'Spreadsheets'] },
     ],
     quickActions: [
-      { label: 'Check In Visitor', actionColor: 'emerald', icon: UserPlus, subTab: 'VisitorLog' },
-      { label: 'Check Out Visitor', actionColor: 'rose', icon: UserPlus, subTab: 'VisitorLog' },
+      { label: 'Check In Visitor', actionColor: 'emerald', icon: UserPlus, subTab: 'DepartmentHome' },
+      { label: 'Check Out Visitor', actionColor: 'rose', icon: UserPlus, subTab: 'DepartmentHome' },
       { label: 'Staff Attendance', actionColor: 'blue', icon: ClipboardList, subTab: 'EmployeeCheckin' },
     ],
     screens: {
@@ -257,7 +259,7 @@ export const DEPARTMENT_REGISTRY: Record<string, DepartmentEntry> = {
     ],
     quickActions: [
       { label: 'Create Order', actionColor: 'emerald', icon: ShoppingCart, subTab: 'CreateOrder' },
-      { label: 'Register Customer', actionColor: 'blue', icon: UserPlus, subTab: 'RegisterCustomer' },
+      { label: 'Register Customer', actionColor: 'amber', icon: UserPlus, subTab: 'RegisterCustomer' },
       { label: 'View Analytics', actionColor: 'indigo', icon: TrendingUp, subTab: 'MktAnalytics' },
     ],
     screens: {
@@ -307,7 +309,7 @@ export const DEPARTMENT_REGISTRY: Record<string, DepartmentEntry> = {
     quickActions: [
       { label: 'Record Payment', actionColor: 'emerald', icon: DollarSign, subTab: 'RecordPayment' },
       { label: 'Create Invoice', actionColor: 'blue', icon: FileText, subTab: 'Invoices' },
-      { label: 'Approve Credit', actionColor: 'teal', icon: SquareCheckBig, subTab: 'Evaluation' },
+      { label: 'Approve Credit', actionColor: 'teal', icon: SquareCheckBig, subTab: 'OrdersQueue' },
       { label: 'View Ledger', actionColor: 'indigo', icon: History, subTab: 'Transactions' },
     ],
     screens: {
@@ -363,10 +365,10 @@ export const DEPARTMENT_REGISTRY: Record<string, DepartmentEntry> = {
       { label: 'Review Orders', actionColor: 'indigo', icon: CreditCard, subTab: 'RiskApprovals' },
       { label: 'Review POD', actionColor: 'emerald', icon: SquareCheckBig, subTab: 'RiskApprovals' },
       { label: 'Customer Credit', actionColor: 'rose', icon: ShieldAlert, subTab: 'CustomerCredit' },
-      { label: 'Assign Delivery', actionColor: 'blue', icon: PackagePlus, subTab: 'ActiveDeliveries' },
+      { label: 'Assign Delivery', actionColor: 'amber', icon: PackagePlus, subTab: 'ActiveDeliveries' },
       { label: 'Mark Delivered', actionColor: 'emerald', icon: CircleCheckBig, subTab: 'ActiveDeliveries' },
       { label: 'Update GPS', actionColor: 'rose', icon: MapPin, subTab: 'Tracking' },
-      { label: 'Scan Waybill', actionColor: 'indigo', icon: QrCode, subTab: 'Scanner' },
+      { label: 'Scan Waybill', actionColor: 'amber', icon: QrCode, subTab: 'Scanner' },
       { label: 'Drivers', actionColor: 'sky', icon: UserCheck, subTab: 'Drivers' },
     ],
     screens: {
@@ -413,7 +415,7 @@ export const DEPARTMENT_REGISTRY: Record<string, DepartmentEntry> = {
       { title: 'Executive Analytics & Performance', tabIds: ['MgmtAnalytics', 'DeptActivity', 'PerformanceAlerts', 'Spreadsheets'] },
     ],
     quickActions: [
-      { label: 'Approve Intake', actionColor: 'emerald', icon: CircleCheckBig, subTab: 'CargoApproval' },
+      { label: 'Approve Intake', actionColor: 'emerald', icon: CircleCheckBig, subTab: 'CreditApproval' },
       { label: 'Set Price', actionColor: 'amber', icon: Tag, subTab: 'SetPrices' },
       { label: 'Approve Credit', actionColor: 'indigo', icon: CreditCard, subTab: 'CreditApproval' },
       { label: 'View Audit Log', actionColor: 'rose', icon: ShieldAlert, subTab: 'Ledger' },
@@ -459,7 +461,7 @@ export const DEPARTMENT_REGISTRY: Record<string, DepartmentEntry> = {
     ],
     quickActions: [
       { label: 'Add New Staff', actionColor: 'emerald', icon: UserPlus, subTab: 'Staff' },
-      { label: 'Log Attendance', actionColor: 'blue', icon: ClipboardList, subTab: 'Attendance' },
+      { label: 'Log Attendance', actionColor: 'amber', icon: ClipboardList, subTab: 'Attendance' },
       { label: 'Schedule Meeting', actionColor: 'indigo', icon: Calendar, subTab: 'Registrations' },
       { label: 'Send Announcement', actionColor: 'amber', icon: Send, subTab: 'Registrations' },
       { label: 'Approve Pending', actionColor: 'teal', icon: UserCheck, subTab: 'Registrations' },
@@ -496,10 +498,10 @@ export const DEPARTMENT_REGISTRY: Record<string, DepartmentEntry> = {
       { title: 'Metrics & Data Logs', tabIds: ['ProdAnalytics', 'Spreadsheets'] },
     ],
     quickActions: [
-      { label: 'Request Materials', actionColor: 'indigo', icon: Layers, subTab: 'Requisition' },
+      { label: 'Request Materials', actionColor: 'indigo', icon: Layers, subTab: 'InternalOrders' },
       { label: 'Update WIP Status', actionColor: 'amber', icon: Factory, subTab: 'WIPStock' },
       { label: 'Log Output', actionColor: 'teal', icon: ChartColumn, subTab: 'OutputRecording' },
-      { label: 'View Requisitions', actionColor: 'blue', icon: ClipboardList, subTab: 'InternalOrders' },
+      { label: 'View Requisitions', actionColor: 'amber', icon: ClipboardList, subTab: 'InternalOrders' },
     ],
     screens: {
       home: ProductionOverviewScreen,
@@ -531,17 +533,22 @@ export const DEPARTMENT_REGISTRY: Record<string, DepartmentEntry> = {
       { id: 'LiveUsers', label: 'Live Users', icon: Radio },
       { id: 'DeptActivity', label: 'Dept Activity', icon: Activity },
       { id: 'Spreadsheets', label: 'Spreadsheets', icon: FileSpreadsheet },
+      // Direct instruction: a help assistant that lives ONLY in the CEO's
+      // department, nowhere else — added here and only here, not to any
+      // other department's subTabs/sections/screens below.
+      { id: 'HelpAssistant', label: 'Help Assistant', icon: Bot },
     ],
     sections: [
       { title: 'Executive Command', tabIds: ['Overview', 'SupplierOrders', 'Approvals', 'PriceApprovals', 'LiveUsers'] },
       { title: 'Treasury & Accounts', tabIds: ['Transactions', 'Invoices', 'Receipts', 'PriceCatalog', 'Wallets', 'Accounts'] },
       { title: 'Fleet Tracking & Intelligence', tabIds: ['Tracking', 'DeptActivity', 'Spreadsheets'] },
+      { title: 'Help', tabIds: ['HelpAssistant'] },
     ],
     quickActions: [
-      { label: 'View Reports', actionColor: 'indigo', icon: ChartColumn, subTab: 'Overview' },
-      { label: 'Schedule Boardroom', actionColor: 'violet', icon: Video, subTab: 'Overview' },
-      { label: 'Send Alert', actionColor: 'rose', icon: TriangleAlert, subTab: 'Overview' },
-      { label: 'View All Depts', actionColor: 'sky', icon: Building2, subTab: 'Overview' },
+      { label: 'View Reports', actionColor: 'indigo', icon: ChartColumn, subTab: 'DeptActivity' },
+      { label: 'Schedule Boardroom', actionColor: 'violet', icon: Video, subTab: 'DepartmentHome' },
+      { label: 'Send Alert', actionColor: 'rose', icon: TriangleAlert, subTab: 'DepartmentHome' },
+      { label: 'View All Depts', actionColor: 'sky', icon: Building2, subTab: OPEN_DEPARTMENT_SWITCHER },
     ],
     screens: {
       home: CeoOverviewScreen,
@@ -558,6 +565,7 @@ export const DEPARTMENT_REGISTRY: Record<string, DepartmentEntry> = {
       LiveUsers: LiveUsersScreen,
       DeptActivity: CeoDeptActivityScreen,
       Spreadsheets: CeoSpreadsheetsScreen,
+      HelpAssistant: HelpAssistantScreen,
     },
   },
 
@@ -576,7 +584,7 @@ export const DEPARTMENT_REGISTRY: Record<string, DepartmentEntry> = {
       { title: 'Communication Hub', tabIds: ['VideoConf', 'Announcements', 'DirectMessages', 'Meetings'] },
     ],
     quickActions: [
-      { label: 'Start Video Call', actionColor: 'indigo', icon: Video, subTab: 'VideoConf' },
+      { label: 'Start Video Call', actionColor: 'indigo', icon: Video, subTab: 'DepartmentHome' },
       { label: 'Post Announcement', actionColor: 'blue', icon: Send, subTab: 'Announcements' },
       { label: 'Send Direct Message', actionColor: 'teal', icon: MessagesSquare, subTab: 'DirectMessages' },
       { label: 'Schedule Meeting', actionColor: 'amber', icon: Calendar, subTab: 'Meetings' },

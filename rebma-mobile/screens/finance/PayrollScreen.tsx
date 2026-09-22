@@ -65,6 +65,7 @@ export default function PayrollScreen() {
           {statusTotals.map((s) => (
             <View key={s.status} style={{ flex: 1 }}>
               <MetricCard
+                emphasis="compact"
                 label={s.status.charAt(0).toUpperCase() + s.status.slice(1)}
                 value={loading ? '—' : `GHS ${s.total.toLocaleString()}`}
                 sublabel={loading ? undefined : `${s.count} batch${s.count !== 1 ? 'es' : ''}`}
@@ -73,7 +74,7 @@ export default function PayrollScreen() {
             </View>
           ))}
         </View>
-        <DataList columns={columns} data={batches} rowKey={(b) => b.id} loading={loading} emptyTitle="No payroll batches yet" />
+        <DataList collapsible columns={columns} data={batches} rowKey={(b) => b.id} loading={loading} emptyTitle="No payroll batches yet" />
       </View>
     </Screen>
   );

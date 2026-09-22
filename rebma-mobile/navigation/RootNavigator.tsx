@@ -10,8 +10,6 @@
 // tab is DispatchHomeScreen, unmodified from before this pass — it used
 // to be the entire screen with no chrome at all; it's now wrapped in a
 // tab bar, nothing about its own GPS/offline logic changed.
-import { useEffect } from 'react';
-import { View, ActivityIndicator, StatusBar } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuthStore } from '../store/authStore';
@@ -28,19 +26,16 @@ const Stack = createNativeStackNavigator();
 
 export default function RootNavigator() {
   const t = useTheme();
-  const { initializing, profile, driver, initialize } = useAuthStore();
+  const { initializing, profile, driver } = useAuthStore();
 
-  useEffect(() => {
-    initialize();
-  }, []);
-
+  // App.tsx now owns kicking off auth.initialize() (in parallel with the
+  // animated splash's logo, which is the app's one and only loading
+  // indicator — see AnimatedSplashScreen.tsx) and only mounts this
+  // component once that has already finished, so this branch is a
+  // defensive fallback for an edge-case timing gap, not a real loading
+  // screen of its own — no second spinner here.
   if (initializing) {
-    return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: t.colors.bgPage }}>
-        <StatusBar barStyle="dark-content" backgroundColor={t.colors.bgPage} />
-        <ActivityIndicator color={t.colors.accent} size="large" />
-      </View>
-    );
+    return null;
   }
 
   const navTheme = {

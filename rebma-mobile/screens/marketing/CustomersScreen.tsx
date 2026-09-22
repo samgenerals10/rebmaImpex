@@ -6,7 +6,8 @@
 // customer implicitly flips status back to PENDING on save (no separate
 // resubmit button, matches web).
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, Text, Alert, Linking } from 'react-native';
+import { View, Text, Linking } from 'react-native';
+import { Alert } from '../../lib/appAlert';
 import { Camera as CameraIcon, FileText } from 'lucide-react-native';
 import { supabase } from '../../lib/supabaseClient';
 import { pickOrCaptureImageAsset } from '../../lib/media';
@@ -39,6 +40,7 @@ interface CustomerRow {
   partner_name: string | null;
   house_address: string | null;
   company_address: string | null;
+  date_of_birth: string | null;
   gps_lat: number | null;
   gps_lng: number | null;
   business_certificate_url: string | null;
@@ -58,7 +60,7 @@ const VERIFICATION_TONE: Record<string, 'warning' | 'success' | 'danger' | 'mute
 
 const emptyForm = {
   name: '', phone: '', companyName: '', location: '', email: '', ghanaCard: '', ghanaCard2: '',
-  partnerName: '', houseAddress: '', companyAddress: '', notes: '', isSpecial: false,
+  partnerName: '', houseAddress: '', companyAddress: '', dateOfBirth: '', notes: '', isSpecial: false,
 };
 
 export default function CustomersScreen() {
@@ -134,7 +136,7 @@ export default function CustomersScreen() {
       name: c.name, phone: c.phone || '', companyName: c.company_name || '', location: c.location || '',
       email: c.email || '', ghanaCard: c.ghana_card_id || '', ghanaCard2: c.ghana_card_id_2 || '',
       partnerName: c.partner_name || '', houseAddress: c.house_address || '', companyAddress: c.company_address || '',
-      notes: c.notes || '', isSpecial: !!c.is_special_customer,
+      dateOfBirth: c.date_of_birth || '', notes: c.notes || '', isSpecial: !!c.is_special_customer,
     });
     setGps(c.gps_lat != null && c.gps_lng != null ? { address: `${c.gps_lat}, ${c.gps_lng}`, lat: c.gps_lat, lng: c.gps_lng } : null);
     setCertUrl(c.business_certificate_url);
@@ -178,7 +180,8 @@ export default function CustomersScreen() {
       location: form.location.trim() || null, email: form.email.trim() || null,
       ghana_card_id: form.ghanaCard.trim() || null, ghana_card_id_2: form.ghanaCard2.trim() || null,
       partner_name: form.partnerName.trim() || null, house_address: form.houseAddress.trim() || null,
-      company_address: form.companyAddress.trim() || null, notes: form.notes.trim() || null,
+      company_address: form.companyAddress.trim() || null, date_of_birth: form.dateOfBirth.trim() || null,
+      notes: form.notes.trim() || null,
       is_special_customer: form.isSpecial, gps_lat: gps?.lat ?? null, gps_lng: gps?.lng ?? null,
       business_certificate_url: certUrl,
     };
@@ -253,11 +256,8 @@ export default function CustomersScreen() {
       footer={<View style={{ padding: t.spacing.lg }}><Button label="Register Customer" onPress={openAdd} fullWidth /></View>}
     >
       <View style={{ gap: t.spacing.lg }}>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.md }}>
-          <View style={{ width: '47%' }}><MetricCard label="Total Customers" value={loading ? '—' : customers.length} /></View>
-          <View style={{ width: '47%' }}><MetricCard label="Active (with Orders)" value={loading ? '—' : activeCount} tone="accent" /></View>
-          <View style={{ width: '47%' }}><MetricCard label="New This Month" value={loading ? '—' : newThisMonth} /></View>
-          <View style={{ width: '47%' }}><MetricCard label="Credit Outstanding" value={loading ? '—' : `GHS ${totalCredit.toLocaleString()}`} tone="warning" /></View>
+        <View style={{ gap: t.spacing.sm }}>
+          <View style={{ flexDirection: 'row', gap: t.spacing.sm }}><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Total Customers" value={loading ? '—' : customers.length} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Active (with Orders)" value={loading ? '—' : activeCount} tone="accent" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="New This Month" value={loading ? '—' : newThisMonth} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Credit Outstanding" value={loading ? '—' : `GHS ${totalCredit.toLocaleString()}`} tone="warning" /></View></View>
         </View>
 
         <Input value={search} onChangeText={setSearch} placeholder="Search customers…" />
@@ -294,6 +294,7 @@ export default function CustomersScreen() {
           <Field label="Ghana Card" hint="Optional"><Input value={form.ghanaCard} onChangeText={(v) => setForm((f) => ({ ...f, ghanaCard: v }))} placeholder="GHA-000000000-0" /></Field>
           <Field label="Second Ghana Card" hint="Optional"><Input value={form.ghanaCard2} onChangeText={(v) => setForm((f) => ({ ...f, ghanaCard2: v }))} placeholder="GHA-000000000-0" /></Field>
           <Field label="Partner / Second Customer Name" hint="Optional"><Input value={form.partnerName} onChangeText={(v) => setForm((f) => ({ ...f, partnerName: v }))} placeholder="Partner name" /></Field>
+          <Field label="Date of Birth" hint="For birthday SMS greetings — YYYY-MM-DD"><Input value={form.dateOfBirth} onChangeText={(v) => setForm((f) => ({ ...f, dateOfBirth: v }))} placeholder="1990-05-21" /></Field>
         </SheetSection>
 
         <SheetSection label="Address & Location">
@@ -346,9 +347,8 @@ export default function CustomersScreen() {
               </Card>
             )}
 
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.sm, marginBottom: t.spacing.lg }}>
-              <View style={{ width: '47%' }}><MetricCard label="Total Orders" value={detailRating.orderCount} /></View>
-              <View style={{ width: '47%' }}><MetricCard label="Total Spend" value={`GHS ${detailTotalSpend.toLocaleString()}`} /></View>
+            <View style={{ gap: t.spacing.sm }}>
+              <View style={{ flexDirection: 'row', gap: t.spacing.sm }}><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Total Orders" value={detailRating.orderCount} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Total Spend" value={`GHS ${detailTotalSpend.toLocaleString()}`} /></View></View>
             </View>
 
             <SheetSection label="Contact">
@@ -388,12 +388,12 @@ export default function CustomersScreen() {
             )}
 
             <SheetSection label={`Order History (${detailOrders.length})`}>
-              <DataList columns={orderColumns} data={detailOrders} rowKey={(o) => o.id || Math.random().toString()} emptyTitle="No orders yet" />
+              <DataList collapsible columns={orderColumns} data={detailOrders} rowKey={(o) => o.id || Math.random().toString()} emptyTitle="No orders yet" />
             </SheetSection>
 
             {detailCreditOrders.length > 0 && (
               <SheetSection label="Credit / Payment History">
-                <DataList columns={creditColumns} data={detailCreditOrders} rowKey={(o) => o.id || Math.random().toString()} emptyTitle="No credit orders" />
+                <DataList collapsible columns={creditColumns} data={detailCreditOrders} rowKey={(o) => o.id || Math.random().toString()} emptyTitle="No credit orders" />
               </SheetSection>
             )}
           </>

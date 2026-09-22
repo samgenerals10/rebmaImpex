@@ -9,8 +9,9 @@
 // lib/ceoSetting.ts. No realtime subscription (D34 precedent) — manual
 // pull-to-refresh instead.
 import { useCallback, useEffect, useState } from 'react';
-import { View, Text, Alert } from 'react-native';
-import { AlertTriangle, Edit3, Trash2 } from 'lucide-react-native';
+import { View, Text } from 'react-native';
+import { Alert } from '../../lib/appAlert';
+import { AlertTriangle, Edit3, Trash2, History } from 'lucide-react-native';
 import { supabase } from '../../lib/supabaseClient';
 import { getCeoSetting } from '../../lib/ceoSetting';
 import { useAuthStore } from '../../store/authStore';
@@ -19,9 +20,14 @@ import Screen from '../../components/ui/Screen';
 import Card from '../../components/ui/Card';
 import Input, { Field } from '../../components/ui/Input';
 import Button from '../../components/ui/Button';
+import Badge from '../../components/ui/Badge';
 import DataList, { type DataColumn } from '../../components/ui/DataList';
+import ProductImage from '../../components/ui/ProductImage';
 import Sheet from '../../components/ui/Sheet';
 import SectionHeader from '../../components/ui/SectionHeader';
+import SearchSortBar from '../../components/ui/SearchSortBar';
+import IconActionButton from '../../components/ui/IconActionButton';
+import RequestTimelineSheet from '../../components/shared/RequestTimelineSheet';
 
 const OPEN_ORDER_STATUSES_EXCLUDED = ['DELIVERED', 'REJECTED', 'CANCELLED', 'COMPLETED'];
 
@@ -31,11 +37,11 @@ export default function StockManagementScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [approvedCargo, setApprovedCargo] = useState<any[]>([]);
-  const [stockList, setStockList] = useState<any[]>([]);
   const [cargoSearch, setCargoSearch] = useState('');
-  const [stockSearch, setStockSearch] = useState('');
+  const [cargoSort, setCargoSort] = useState('recent');
 
   const [correctionTarget, setCorrectionTarget] = useState<any | null>(null);
+  const [timelineTarget, setTimelineTarget] = useState<any | null>(null);
   const [correctionForm, setCorrectionForm] = useState({ quantity: '', weight: '', discrepancies: '', unitPrice: '', note: '' });
   const [savingCorrection, setSavingCorrection] = useState(false);
 
@@ -47,24 +53,31 @@ export default function StockManagementScreen() {
   const [loadingDeleteContext, setLoadingDeleteContext] = useState(false);
 
   const fetchData = useCallback(async () => {
-    const [{ data: cargo }, { data: stocks }] = await Promise.all([
-      supabase.from('cargo_intake').select('*').eq('status', 'APPROVED'),
-      supabase.from('stock').select('*'),
-    ]);
+    const { data: cargo } = await supabase.from('cargo_intake').select('*').eq('status', 'APPROVED');
     setApprovedCargo(cargo || []);
-    setStockList(stocks || []);
     setLoading(false);
     setRefreshing(false);
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  const filteredCargo = approvedCargo.filter((c) =>
-    !cargoSearch || String(c.product_name || '').toLowerCase().includes(cargoSearch.toLowerCase()) || String(c.company || '').toLowerCase().includes(cargoSearch.toLowerCase())
-  );
-  const filteredStock = stockList.filter((s) =>
-    !stockSearch || String(s.product_name || '').toLowerCase().includes(stockSearch.toLowerCase()) || String(s.category || '').toLowerCase().includes(stockSearch.toLowerCase())
-  );
+  const CARGO_SORT_OPTIONS = [
+    { value: 'recent', label: 'Most Recent' },
+    { value: 'name', label: 'Product Name' },
+    { value: 'qty', label: 'Quantity' },
+    { value: 'weight', label: 'Weight' },
+  ];
+
+  const filteredCargo = approvedCargo
+    .filter((c) =>
+      !cargoSearch || String(c.product_name || '').toLowerCase().includes(cargoSearch.toLowerCase()) || String(c.company || '').toLowerCase().includes(cargoSearch.toLowerCase())
+    )
+    .sort((a, b) => {
+      if (cargoSort === 'name') return String(a.product_name || '').localeCompare(String(b.product_name || ''));
+      if (cargoSort === 'qty') return (Number(b.quantity) || 0) - (Number(a.quantity) || 0);
+      if (cargoSort === 'weight') return (Number(b.weight) || 0) - (Number(a.weight) || 0);
+      return String(b.updated_at || '').localeCompare(String(a.updated_at || ''));
+    });
 
   const openCorrection = (c: any) => {
     setCorrectionTarget(c);
@@ -107,6 +120,10 @@ export default function StockManagementScreen() {
       await supabase.from('global_audit_history').insert({
         action: `CORRECT_CARGO: ${correctionTarget.goods_code || correctionTarget.id}, ${correctionTarget.product_name}`,
         department: 'MANAGEMENT', performed_by: performedBy,
+        // Direct correction: this write had no reference_id — an edit
+        // to a cargo entry disappeared from that entry's own timeline
+        // ("even with rejections, editing... it should be tracked").
+        reference_id: correctionTarget.id,
         details: `Corrected cargo entry. Qty ${oldQty} → ${newQty}${delta !== 0 ? ` (stock adjusted by ${delta > 0 ? '+' : ''}${delta})` : ''}. Reason: ${correctionForm.note.trim()}`,
         timestamp: new Date().toISOString(),
       });
@@ -122,8 +139,23 @@ export default function StockManagementScreen() {
 
   const deleteConfirmExpected = deleteTargets && deleteTargets.length === 1 ? deleteTargets[0].product_name : 'DELETE';
 
-  const openDeleteStock = async (rows: any[]) => {
+  // Direct correction: "Correct" and "Delete" are two actions on the SAME
+  // row now, not two separate lists — Correct operates on the cargo_intake
+  // batch (a specific approved entry), Delete operates on the live `stock`
+  // row for that product, resolved by product_name right when it's tapped
+  // (the two tables aren't the same row, but the user should never see
+  // that as two lists — it's one product, two things you can do to it).
+  const deleteFromCargoRow = async (c: any) => {
     if (!(await getCeoSetting('management_can_delete_stock', true))) { Alert.alert('Disabled', 'Stock deletion is currently disabled by the CEO.'); return; }
+    const { data: matches } = await supabase.from('stock').select('*').eq('product_name', c.product_name);
+    if (!matches?.length) {
+      Alert.alert('No Stock Record', `No stock record found for "${c.product_name}" to delete.`);
+      return;
+    }
+    openDeleteStock(matches);
+  };
+
+  const openDeleteStock = async (rows: any[]) => {
     setDeleteTargets(rows);
     setDeleteReason('');
     setDeleteConfirmText('');
@@ -166,6 +198,12 @@ export default function StockManagementScreen() {
       await supabase.from('global_audit_history').insert({
         action: deleteTargets.length === 1 ? `DELETE_STOCK: ${deleteTargets[0].product_name}` : `DELETE_STOCK: ${deleteTargets.length} items`,
         department: 'MANAGEMENT', performed_by: performedBy,
+        // Single-item delete anchors to that stock row's own id (so the
+        // deletion itself is the last, traceable entry on what was that
+        // record's timeline); a batch delete has no single record to
+        // anchor to, so it's left unlinked rather than picking one
+        // arbitrarily.
+        reference_id: deleteTargets.length === 1 ? deleteTargets[0].id : null,
         details: `Deleted ${deleteTargets.map((r) => `${r.product_name} (${r.quantity} ${r.unit || 'units'})`).join(', ')}. Reason: ${deleteReason.trim()}.`,
         timestamp: new Date().toISOString(),
       });
@@ -180,24 +218,46 @@ export default function StockManagementScreen() {
     }
   };
 
+  // Same detail level as Admin & Warehouse's own Stock screen shows for
+  // this exact table (cargo_intake, status='APPROVED') — direct
+  // correction, this list was missing several fields the Admin &
+  // Warehouse version of this same list already has. Confirmed against
+  // source: PortIngestionScreen.tsx writes a new row at
+  // 'PENDING_RISK_APPROVAL'; RiskApprovalsScreen.tsx's cargo lane is the
+  // ONLY place that ever flips it to 'APPROVED' (approve/reject/return
+  // are its only three outcomes for this table). So every row on this
+  // screen is, structurally, cargo Admin & Warehouse logged that Risk
+  // has since approved — that's the real flow, not a guess.
   const cargoColumns: DataColumn<any>[] = [
     { key: 'product_name', label: 'Product', primary: true },
     { key: 'company', label: 'Supplier', status: true, render: (c) => <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta11.size, color: t.colors.textMuted }}>{c.company || '—'}</Text> },
     { key: 'quantity', label: 'Qty', render: (c) => String(c.quantity ?? 0) },
+    { key: 'goods_code', label: 'Goods Code', render: (c) => c.goods_code || `CARGO-${String(c.id || '').slice(-6).toUpperCase()}` },
+    { key: 'weight', label: 'Weight', render: (c) => `${Number(c.weight || 0).toFixed(1)}T` },
+    { key: 'country', label: 'Country of Origin', render: (c) => c.country || '—' },
+    { key: 'container_number', label: 'Container #', render: (c) => c.container_number || '—' },
     { key: 'unit_price', label: 'Unit Price', render: (c) => (c.unit_price != null ? `GHS ${c.unit_price}` : '—') },
-  ];
-  const stockColumns: DataColumn<any>[] = [
-    { key: 'product_name', label: 'Product', primary: true },
-    { key: 'category', label: 'Category', status: true, render: (s) => <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta11.size, color: t.colors.textMuted }}>{s.category || '—'}</Text> },
-    { key: 'quantity', label: 'Qty', render: (s) => `${s.quantity ?? 0} ${s.unit || ''}` },
+    {
+      key: 'discrepancies', label: 'Discrepancy',
+      render: (c) => c.is_fault_or_damaged || (c.discrepancies && c.discrepancies !== 'None')
+        ? <Badge tone="warning" label={c.discrepancies || 'Flagged'} size="xs" />
+        : <Text style={{ fontFamily: t.font.regular, fontSize: t.type.body12.size, color: t.colors.textSecondary }}>None</Text>,
+    },
   ];
 
   return (
     <Screen refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchData(); }}>
       <View style={{ gap: t.spacing.xl }}>
         <View>
-          <SectionHeader title="Approved Cargo Corrections" subtitle="Fix a quantity, weight, or discrepancy entry error after approval" />
-          <Input value={cargoSearch} onChangeText={setCargoSearch} placeholder="Search cargo..." />
+          <SectionHeader title="Stock" subtitle="Approved by Risk from Admin & Warehouse's cargo intake — correct an entry error, or delete a stock record" />
+          <SearchSortBar
+            value={cargoSearch}
+            onChangeText={setCargoSearch}
+            placeholder="Search stock..."
+            sortOptions={CARGO_SORT_OPTIONS}
+            sortValue={cargoSort}
+            onSortChange={setCargoSort}
+          />
         </View>
         <DataList
           columns={cargoColumns}
@@ -205,22 +265,27 @@ export default function StockManagementScreen() {
           rowKey={(c) => c.id}
           loading={loading}
           emptyTitle="No approved cargo entries"
-          renderActions={(c) => <Button label="Correct" size="sm" variant="ghost" icon={<Edit3 size={12} color={t.colors.textSecondary} />} onPress={() => openCorrection(c)} />}
-        />
-
-        <View>
-          <SectionHeader title="Stock Deletion" subtitle="Type-to-confirm required; open orders against a product are flagged first" />
-          <Input value={stockSearch} onChangeText={setStockSearch} placeholder="Search stock..." />
-        </View>
-        <DataList
-          columns={stockColumns}
-          data={filteredStock}
-          rowKey={(s) => s.id}
-          loading={loading}
-          emptyTitle="No stock records"
-          renderActions={(s) => <Button label="Delete" size="sm" variant="danger" icon={<Trash2 size={12} color="#fff" />} onPress={() => openDeleteStock([s])} />}
+          collapsible
+          rowThumbnail={(c) => <ProductImage uri={c.product_image} label={c.product_name} size={40} />}
+          renderActions={(c) => (
+            <View style={{ flexDirection: 'row', gap: t.spacing.sm, alignItems: 'center' }}>
+              {/* Direct instruction: tracking should be "horizontal on
+                  every list" — a visible icon right on the row, not
+                  buried behind a menu. */}
+              <IconActionButton icon={History} tone="info" accessibilityLabel="View Timeline" onPress={() => setTimelineTarget(c)} />
+              <Button label="Correct" size="sm" variant="ghost" icon={<Edit3 size={12} color={t.colors.textSecondary} />} onPress={() => openCorrection(c)} />
+              <Button label="Delete" size="sm" variant="danger" icon={<Trash2 size={12} color="#fff" />} onPress={() => deleteFromCargoRow(c)} />
+            </View>
+          )}
         />
       </View>
+
+      <RequestTimelineSheet
+        open={!!timelineTarget}
+        onClose={() => setTimelineTarget(null)}
+        referenceId={timelineTarget?.id || ''}
+        displayId={timelineTarget?.goods_code || timelineTarget?.product_name}
+      />
 
       <Sheet
         open={!!correctionTarget}

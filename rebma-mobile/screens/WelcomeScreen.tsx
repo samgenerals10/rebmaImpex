@@ -4,16 +4,24 @@
 // reference. Shown every time the app has no signed-in session: first
 // launch AND every time after signing out, per the explicit instruction
 // this was built against (not tied to invite registration, not a
-// one-time-only dismissal). Icons only, no custom illustration assets,
-// per the mobile-ui-fluidity skill — Rebma's own green identity and logo,
-// not a copy of the reference app's purple palette.
+// one-time-only dismissal).
+//
+// Restyled per direct correction to be visually consistent with the
+// Login/Register screens right after it: the same real logo-mark.png
+// crop, and the same turquoise (AuthGradientButton's TURQUOISE,
+// sampled from the logo itself) for the icon tiles, active pagination
+// dot, and the Next/Get Started button — not the app's own indigo
+// theme accent, which reads as a different app entirely against the
+// turquoise auth screens that immediately follow it.
 import { useRef, useState } from 'react';
 import { View, Text, ScrollView, Pressable, Dimensions, Image, StatusBar, type NativeSyntheticEvent, type NativeScrollEvent } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LayoutDashboard, MapPinned, ShieldCheck } from 'lucide-react-native';
 import { useTheme } from '../theme/ThemeProvider';
-import Button from '../components/ui/Button';
+import AuthGradientButton, { TURQUOISE } from '../components/auth/AuthGradientButton';
+
+const TURQUOISE_SOFT = 'rgba(2, 175, 217, 0.12)';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
@@ -47,7 +55,9 @@ export default function WelcomeScreen() {
     setPage(next);
   };
 
-  const goToLogin = () => navigation.replace('Login');
+  // `navigate`, not `replace` — Welcome needs to stay in the stack so
+  // Login's new back button (AuthBackButton) has somewhere real to go.
+  const goToLogin = () => navigation.navigate('Login');
 
   const isLast = page === SLIDES.length - 1;
 
@@ -74,14 +84,14 @@ export default function WelcomeScreen() {
           return (
             <View key={i} style={{ width: SCREEN_W, paddingHorizontal: t.spacing.xxxl, alignItems: 'center', justifyContent: 'center' }}>
               <View style={{
-                width: 140, height: 140, borderRadius: t.radius.card, backgroundColor: t.colors.accentSoft,
+                width: 140, height: 140, borderRadius: t.radius.card, backgroundColor: TURQUOISE_SOFT,
                 alignItems: 'center', justifyContent: 'center', marginBottom: t.spacing.xxxl,
               }}>
                 <View style={{
-                  width: 88, height: 88, borderRadius: t.radius.lg, backgroundColor: t.colors.accent,
+                  width: 88, height: 88, borderRadius: t.radius.lg, backgroundColor: TURQUOISE,
                   alignItems: 'center', justifyContent: 'center',
                 }}>
-                  <Icon size={40} color={t.colors.onAccent} />
+                  <Icon size={40} color="#ffffff" />
                 </View>
               </View>
               <Text style={{ fontFamily: t.font.extrabold, fontSize: t.type.page24.size, color: t.colors.textPrimary, textAlign: 'center' }}>
@@ -102,20 +112,18 @@ export default function WelcomeScreen() {
               key={i}
               style={{
                 width: i === page ? 20 : 6, height: 6, borderRadius: t.radius.pill,
-                backgroundColor: i === page ? t.colors.accent : t.colors.border,
+                backgroundColor: i === page ? TURQUOISE : t.colors.border,
               }}
             />
           ))}
         </View>
 
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.md }}>
-          <Image source={require('../assets/logo.png')} style={{ width: 28, height: 28 }} resizeMode="contain" />
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontFamily: t.font.extrabold, fontSize: t.type.body12.size, color: t.colors.textPrimary, letterSpacing: 0.5 }}>REBMA IMPEX</Text>
-          </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: t.spacing.sm, marginBottom: t.spacing.lg }}>
+          <Image source={require('../assets/logo-mark.png')} style={{ width: 24, height: 24 * (237 / 398) }} resizeMode="contain" />
+          <Text style={{ fontFamily: t.font.extrabold, fontSize: t.type.body12.size, color: t.colors.textPrimary, letterSpacing: 0.5 }}>REBMA IMPEX</Text>
         </View>
 
-        <Button
+        <AuthGradientButton
           label={isLast ? 'Get Started' : 'Next'}
           onPress={() => {
             if (isLast) {
@@ -125,8 +133,6 @@ export default function WelcomeScreen() {
               setPage(page + 1);
             }
           }}
-          fullWidth
-          style={{ marginTop: t.spacing.lg }}
         />
       </View>
     </View>

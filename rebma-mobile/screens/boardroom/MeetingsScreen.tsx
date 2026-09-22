@@ -19,7 +19,8 @@
 // "Join Meeting" looks a meeting up by its id/room code and joins it
 // directly, without needing it in your own list first.
 import { useCallback, useEffect, useState } from 'react';
-import { View, Text, Alert, Pressable } from 'react-native';
+import { View, Text, Pressable } from 'react-native';
+import { Alert } from '../../lib/appAlert';
 import { Calendar, Clock, Check, X as XIcon, Video, Plus, LogIn } from 'lucide-react-native';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuthStore } from '../../store/authStore';

@@ -10,13 +10,15 @@
 // "Print Waybill" is intentionally omitted (D11) — the waybill number and
 // container number are still shown, read-only, once a delivery exists.
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, Text, Alert } from 'react-native';
-import { Truck, Package, PackageCheck, TicketCheck, AlertCircle } from 'lucide-react-native';
+import { View, Text } from 'react-native';
+import { Alert } from '../../lib/appAlert';
+import { Truck, Package, PackageCheck, TicketCheck, AlertCircle, History } from 'lucide-react-native';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuthStore } from '../../store/authStore';
 import { useTheme } from '../../theme/ThemeProvider';
 import Screen from '../../components/ui/Screen';
 import Card from '../../components/ui/Card';
+import ProductImage from '../../components/ui/ProductImage';
 import MetricCard from '../../components/ui/MetricCard';
 import DataList, { type DataColumn } from '../../components/ui/DataList';
 import Badge, { statusTone } from '../../components/ui/Badge';
@@ -24,6 +26,8 @@ import Sheet from '../../components/ui/Sheet';
 import Button from '../../components/ui/Button';
 import Input, { Field } from '../../components/ui/Input';
 import SearchablePicker from '../../components/ui/SearchablePicker';
+import IconActionButton from '../../components/ui/IconActionButton';
+import RequestTimelineSheet from '../../components/shared/RequestTimelineSheet';
 
 interface OrderRow {
   id: string;
@@ -57,6 +61,7 @@ export default function ApprovedGoodsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [target, setTarget] = useState<OrderRow | null>(null);
+  const [timelineTarget, setTimelineTarget] = useState<OrderRow | null>(null);
   // vehicleId/driverName removed (Phase 9) — Admin & Warehouse no longer
   // assigns either; Risk does, once the order lands in their Dispatch
   // queue as PENDING_ASSIGNMENT.
@@ -167,6 +172,10 @@ export default function ApprovedGoodsScreen() {
         department: 'ADMIN_WAREHOUSE',
         performed_by: profile?.fullName || 'Ops Staff',
         user_id: profile?.id || null,
+        // Direct correction: this write had no reference_id at all, so
+        // "loaded to dispatch" never showed up on the order's own
+        // workflow timeline no matter where it was opened from.
+        reference_id: target.id,
         details: `Order ${target.ticket_number || target.id} loaded to dispatch. Sent to Risk for vehicle and driver assignment.`,
         timestamp: new Date().toISOString(),
       });
@@ -194,32 +203,22 @@ export default function ApprovedGoodsScreen() {
   return (
     <Screen refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }}>
       <View style={{ gap: t.spacing.md }}>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.sm }}>
-          <View style={{ width: '47%' }}>
-            <MetricCard label="Approved Cargo Batches" value={loading ? '—' : cargoBatches} icon={<Package size={16} color={t.colors.accent} />} />
-          </View>
-          <View style={{ width: '47%' }}>
-            <MetricCard label="Total Port Units" value={loading ? '—' : cargoUnits} icon={<PackageCheck size={16} color={t.colors.accent} />} />
-          </View>
-          <View style={{ width: '47%' }}>
-            <MetricCard label="Awaiting Dispatch" value={loading ? '—' : pendingDispatchCount} icon={<TicketCheck size={16} color={t.colors.status.warning.text} />} tone={pendingDispatchCount > 0 ? 'warning' : undefined} />
-          </View>
-          <View style={{ width: '47%' }}>
-            <MetricCard label="In Transit" value={loading ? '—' : inTransitCount} icon={<Truck size={16} color={t.colors.accent} />} />
-          </View>
-        </View>
-
-        <Card style={{ backgroundColor: t.colors.accentSoft, borderColor: t.colors.accent + '40' }}>
+        <View style={{ gap: t.spacing.sm }}>
           <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
-            <Truck size={14} color={t.colors.accent} />
             <View style={{ flex: 1 }}>
-              <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body12.size, color: t.colors.accent }}>Operations Workflow</Text>
-              <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textSecondary, marginTop: 2 }}>
-                Finance approves payment, the order appears here as APPROVED. Operations verifies quantity and taps Dispatch, the stock ledger updates and Risk assigns a vehicle and driver, the driver delivers, and it becomes DELIVERED.
-              </Text>
+            <MetricCard emphasis="compact" label="Approved Cargo Batches" value={loading ? '—' : cargoBatches} icon={<Package size={16} color={t.colors.accent} />} />
+            </View>
+            <View style={{ flex: 1 }}>
+            <MetricCard emphasis="compact" label="Total Port Units" value={loading ? '—' : cargoUnits} icon={<PackageCheck size={16} color={t.colors.accent} />} />
+            </View>
+            <View style={{ flex: 1 }}>
+            <MetricCard emphasis="compact" label="Awaiting Dispatch" value={loading ? '—' : pendingDispatchCount} icon={<TicketCheck size={16} color={t.colors.status.warning.text} />} tone={pendingDispatchCount > 0 ? 'warning' : undefined} />
+            </View>
+            <View style={{ flex: 1 }}>
+            <MetricCard emphasis="compact" label="In Transit" value={loading ? '—' : inTransitCount} icon={<Truck size={16} color={t.colors.accent} />} />
             </View>
           </View>
-        </Card>
+        </View>
 
         <Input value={search} onChangeText={setSearch} placeholder="Search client, ticket, or product…" />
         <SearchablePicker value={statusFilter} onChange={setStatusFilter} options={STATUS_OPTIONS} label="Filter by Status" />
@@ -230,23 +229,30 @@ export default function ApprovedGoodsScreen() {
           rowKey={(o) => o.id}
           loading={loading}
           emptyTitle="No approved orders found"
+          collapsible
+          rowThumbnail={(o) => <ProductImage uri={o.metadata?.items?.[0]?.productImage} label={o.product_name || 'Order'} size={40} />}
           renderActions={(o) => {
             const isDispatchable = (o.status === 'APPROVED' || o.status === 'PROCESSING') && !dispatchedIds.has(o.id);
             const isDispatched = (o.status === 'APPROVED' || o.status === 'PROCESSING') && dispatchedIds.has(o.id);
-            if (isDispatchable) {
-              return <Button label="Dispatch" size="sm" icon={<Truck size={12} color="#fff" />} onPress={() => openDispatch(o)} />;
-            }
-            if (isDispatched) {
-              return <Text style={{ fontFamily: t.font.bold, fontSize: t.type.meta10.size, color: t.colors.status.info.text }}>Assigned, awaiting pickup</Text>;
-            }
-            if (o.status === 'OUT_FOR_DELIVERY') {
-              return <Text style={{ fontFamily: t.font.bold, fontSize: t.type.meta10.size, color: t.colors.status.warning.text }}>In Transit</Text>;
-            }
-            if (o.status === 'DELIVERED') {
-              return <Text style={{ fontFamily: t.font.bold, fontSize: t.type.meta10.size, color: t.colors.status.success.text }}>✓ Delivered</Text>;
-            }
-            return null;
+            return (
+              <View style={{ flexDirection: 'row', gap: t.spacing.sm, alignItems: 'center' }}>
+                {/* Direct instruction: tracking should be "horizontal on
+                    every list" — a visible icon right on the row. */}
+                <IconActionButton icon={History} tone="info" accessibilityLabel="View Timeline" onPress={() => setTimelineTarget(o)} />
+                {isDispatchable && <Button label="Dispatch" size="sm" icon={<Truck size={12} color="#fff" />} onPress={() => openDispatch(o)} />}
+                {isDispatched && <Text style={{ fontFamily: t.font.bold, fontSize: t.type.meta10.size, color: t.colors.status.info.text }}>Assigned, awaiting pickup</Text>}
+                {o.status === 'OUT_FOR_DELIVERY' && <Text style={{ fontFamily: t.font.bold, fontSize: t.type.meta10.size, color: t.colors.status.warning.text }}>In Transit</Text>}
+                {o.status === 'DELIVERED' && <Text style={{ fontFamily: t.font.bold, fontSize: t.type.meta10.size, color: t.colors.status.success.text }}>✓ Delivered</Text>}
+              </View>
+            );
           }}
+        />
+
+        <RequestTimelineSheet
+          open={!!timelineTarget}
+          onClose={() => setTimelineTarget(null)}
+          referenceId={timelineTarget?.id || ''}
+          displayId={timelineTarget?.ticket_number || timelineTarget?.id}
         />
         <Text style={{ fontFamily: t.font.regular, fontSize: t.type.meta10.size, color: t.colors.textMuted, textAlign: 'right' }}>
           {filtered.length} order{filtered.length !== 1 ? 's' : ''} · {pendingDispatchCount} pending · {inTransitCount} in transit
@@ -261,6 +267,16 @@ export default function ApprovedGoodsScreen() {
         side="bottom"
         footer={<Button label={submitting ? 'Sending…' : 'Confirm & Send to Risk'} onPress={submitDispatch} loading={submitting} disabled={submitting} fullWidth />}
       >
+        {target && Array.isArray(target.metadata?.items) && target.metadata.items.length > 0 && (
+          <View style={{ gap: t.spacing.sm, marginBottom: t.spacing.md }}>
+            {target.metadata.items.map((it: any, idx: number) => (
+              <View key={idx} style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm }}>
+                <ProductImage uri={it.productImage} label={it.productName} size={36} />
+                <Text style={{ flex: 1, fontFamily: t.font.semibold, fontSize: t.type.body12.size, color: t.colors.textPrimary }} numberOfLines={1}>{it.productName}</Text>
+              </View>
+            ))}
+          </View>
+        )}
         {target && (
           <View style={{ backgroundColor: t.colors.bgPage, borderRadius: t.radius.lg, borderWidth: 1, borderColor: t.colors.border, padding: t.spacing.md, marginBottom: t.spacing.md, gap: t.spacing.xs }}>
             {[

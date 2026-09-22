@@ -8,7 +8,8 @@
 // target schema per this phase's convention, same testability caveat as
 // the rest of the unrun migration backlog.
 import { useCallback, useEffect, useState } from 'react';
-import { View, Text, Alert } from 'react-native';
+import { View, Text } from 'react-native';
+import { Alert } from '../../lib/appAlert';
 import { Truck as TruckIcon, Package, Wrench, Settings, ChevronLeft } from 'lucide-react-native';
 import { supabase } from '../../lib/supabaseClient';
 import { useTheme } from '../../theme/ThemeProvider';
@@ -151,11 +152,9 @@ export default function FleetOverviewScreen() {
     <Screen refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }}
       footer={<View style={{ padding: t.spacing.lg }}><Button label="Add Vehicle" onPress={() => setShowAdd(true)} fullWidth /></View>}
     >
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.sm, marginBottom: t.spacing.lg }}>
-        <View style={{ width: '47%' }}><MetricCard label="Total Vehicles" value={loading ? '—' : counts.total} icon={<TruckIcon size={16} color={t.colors.accent} />} /></View>
-        <View style={{ width: '47%' }}><MetricCard label="Operational" value={loading ? '—' : counts.operational} icon={<Package size={16} color={t.colors.status.success.text} />} /></View>
-        <View style={{ width: '47%' }}><MetricCard label="In Maintenance" value={loading ? '—' : counts.maintenance} icon={<Wrench size={16} color={t.colors.status.warning.text} />} /></View>
-        <View style={{ width: '47%' }}><MetricCard label="Total Deliveries" value={loading ? '—' : counts.deliveries} icon={<Settings size={16} color={t.colors.action.violet} />} /></View>
+      {/* Key Metrics — 4 across, per direct correction */}
+      <View style={{ gap: t.spacing.sm }}>
+        <View style={{ flexDirection: 'row', gap: t.spacing.sm }}><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Vehicles" value={loading ? '—' : counts.total} icon={<TruckIcon size={14} color={t.colors.accent} />} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Operational" value={loading ? '—' : counts.operational} icon={<Package size={14} color={t.colors.status.success.text} />} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Maintenance" value={loading ? '—' : counts.maintenance} icon={<Wrench size={14} color={t.colors.status.warning.text} />} /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Deliveries" value={loading ? '—' : counts.deliveries} icon={<Settings size={14} color={t.colors.action.violet} />} /></View></View>
       </View>
 
       <DataList

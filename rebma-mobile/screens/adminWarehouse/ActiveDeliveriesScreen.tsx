@@ -9,11 +9,13 @@
 // sub-tab) and "Export Delivery Note PDF" (no PDF-generation dependency in
 // this app yet — same D11 print-omission precedent as ApprovedGoodsScreen).
 import { useCallback, useEffect, useState } from 'react';
-import { View, Text, Alert } from 'react-native';
+import { View, Text } from 'react-native';
+import { Alert } from '../../lib/appAlert';
 import { useNavigation } from '@react-navigation/native';
 import { Camera as CameraIcon, MessageCircle, Trash2, MapPin, History } from 'lucide-react-native';
 import { supabase } from '../../lib/supabaseClient';
 import { assignDriverToDelivery, sendWhatsAppDirections } from '../../lib/dispatchActions';
+import { logWorkflowEvent } from '../../lib/auditLog';
 import { pickOrCaptureImageAsset } from '../../lib/media';
 import { uploadToBucket } from '../../lib/storage';
 import { useAuthStore } from '../../store/authStore';
@@ -25,6 +27,7 @@ import Sheet, { SheetSection } from '../../components/ui/Sheet';
 import Button from '../../components/ui/Button';
 import SearchablePicker from '../../components/ui/SearchablePicker';
 import RequestTimelineSheet from '../../components/shared/RequestTimelineSheet';
+import ProductImage from '../../components/ui/ProductImage';
 
 interface DeliveryRow {
   id: string;
@@ -52,6 +55,13 @@ export default function ActiveDeliveriesScreen() {
   const isManagementOrAdmin = !!profile?.isAdmin || profile?.department === 'MANAGEMENT';
 
   const [deliveries, setDeliveries] = useState<DeliveryRow[]>([]);
+  // Cargo-photo lifecycle: delivery_logs itself carries no product data at
+  // all (only proof_photo, a different, later photo — see this file's own
+  // header comment). The order's own line items (with the photo already
+  // copied in at order-creation time) are fetched separately, keyed by
+  // order_id, so this screen — the last stop before Proof of Delivery,
+  // which is deliberately excluded — can still show it.
+  const [orderItems, setOrderItems] = useState<Record<string, any[]>>({});
   const [drivers, setDrivers] = useState<DriverRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -67,6 +77,15 @@ export default function ActiveDeliveriesScreen() {
     ]);
     if (dRes.data) setDeliveries(dRes.data as any);
     if (drRes.data) setDrivers(drRes.data as any);
+    const orderIds = Array.from(new Set((dRes.data || []).map((d: any) => d.order_id).filter(Boolean)));
+    if (orderIds.length > 0) {
+      const { data: ordersData } = await supabase.from('orders').select('id, metadata').in('id', orderIds);
+      const map: Record<string, any[]> = {};
+      for (const o of ordersData || []) {
+        if (Array.isArray((o as any).metadata?.items)) map[(o as any).id] = (o as any).metadata.items;
+      }
+      setOrderItems(map);
+    }
     setLoading(false);
     setRefreshing(false);
   }, []);
@@ -140,13 +159,17 @@ export default function ActiveDeliveriesScreen() {
     try {
       await supabase.from('supplier_order_notifications').insert([{ message: `Proof of delivery submitted for Risk review: Delivery ${detail.id}`, notified_department: 'RISK', read: false }]);
     } catch {}
-    await supabase.from('global_audit_history').insert([{
+    // Direct correction: anchored to the ORDER's own id (falling back to
+    // the delivery's own id only when this delivery has no linked
+    // order), not the delivery_logs row's id — so this event lands on
+    // the same timeline as the order's creation/approval/payment
+    // history instead of a disconnected one nothing else ever reads.
+    await logWorkflowEvent({
+      referenceId: detail.order_id || detail.id,
       department: 'ADMIN_WAREHOUSE',
       action: 'SUBMITTED FOR REVIEW: proof of delivery sent to Risk',
-      reference_id: detail.id,
-      performed_by: profile?.fullName || 'System',
-      timestamp: new Date().toISOString(),
-    }]);
+      performedBy: profile?.fullName || 'System',
+    });
     refreshDetail({ status: 'PENDING_RISK_REVIEW' });
   };
 
@@ -159,13 +182,12 @@ export default function ActiveDeliveriesScreen() {
       Alert.alert('Failed', error.message);
       return;
     }
-    await supabase.from('global_audit_history').insert([{
+    await logWorkflowEvent({
+      referenceId: detail.order_id || detail.id,
       department: 'ADMIN_WAREHOUSE',
       action: 'DELIVERY FAILED',
-      reference_id: detail.id,
-      performed_by: profile?.fullName || 'System',
-      timestamp: new Date().toISOString(),
-    }]);
+      performedBy: profile?.fullName || 'System',
+    });
     refreshDetail({ status: 'FAILED' });
   };
 
@@ -212,6 +234,18 @@ export default function ActiveDeliveriesScreen() {
       >
         {detail && (
           <>
+            {detail.order_id && (orderItems[detail.order_id]?.length ?? 0) > 0 && (
+              <SheetSection label="Products">
+                <View style={{ gap: t.spacing.sm }}>
+                  {orderItems[detail.order_id].map((it: any, idx: number) => (
+                    <View key={idx} style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm }}>
+                      <ProductImage uri={it.productImage} label={it.productName} size={36} />
+                      <Text style={{ flex: 1, fontFamily: t.font.semibold, fontSize: t.type.body12.size, color: t.colors.textPrimary }} numberOfLines={1}>{it.productName} × {it.quantity}</Text>
+                    </View>
+                  ))}
+                </View>
+              </SheetSection>
+            )}
             <SheetSection label="Assign Driver">
               <SearchablePicker
                 value={reassignDriverId}
@@ -253,10 +287,16 @@ export default function ActiveDeliveriesScreen() {
       </Sheet>
 
       {detail && (
+        // Direct correction: this was querying the timeline by the
+        // delivery_logs row's own id while DISPLAYING the order's id —
+        // meaning it could never actually show the order's own earlier
+        // history (creation, Risk approval, Finance payment). Query and
+        // display now both use the same order id, so this shows the
+        // complete story, not just the delivery-stage tail end of it.
         <RequestTimelineSheet
           open={timelineOpen}
           onClose={() => setTimelineOpen(false)}
-          referenceId={detail.id}
+          referenceId={detail.order_id || detail.id}
           displayId={detail.order_id || detail.id}
         />
       )}

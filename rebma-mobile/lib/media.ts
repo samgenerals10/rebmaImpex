@@ -20,9 +20,11 @@
 // live in-app camera. (ProofOfDeliveryScreen and ScannerScreen use
 // `expo-camera`'s CameraView directly instead, since those two need a
 // live in-app camera view with a front/back switch.)
-import { Alert } from 'react-native';
+import { Alert } from './appAlert';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
+import { File, Paths } from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 
 export interface PickedAsset {
   uri: string;
@@ -192,6 +194,25 @@ export async function pickMultipleImageAssets(limit = 10): Promise<PickedAsset[]
   const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsMultipleSelection: true, selectionLimit: limit, quality: 0.6 });
   if (r.canceled || !r.assets || r.assets.length === 0) return null;
   return r.assets.map((a) => ({ uri: a.uri, mimeType: a.mimeType || 'image/jpeg', size: a.fileSize }));
+}
+
+// Cargo-photo lifecycle work — saves/shares a base64 data: URI image
+// (the exact shape cargo_intake.product_image / goods_prices.product_image
+// already store) via the OS share sheet, same File+Sharing pattern
+// lib/exportEngine.ts already uses for CSV/DOC. A data: URI can't be
+// "downloaded" directly on native — it has to be written to a real file
+// first, which is all this does.
+function slugFileName(title: string): string {
+  return title.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'image';
+}
+
+export async function saveBase64Image(dataUri: string, label: string): Promise<void> {
+  const match = /^data:image\/(\w+);base64,(.+)$/.exec(dataUri);
+  const ext = match?.[1] === 'jpg' ? 'jpeg' : match?.[1] || 'jpeg';
+  const base64 = match?.[2] ?? dataUri;
+  const file = new File(Paths.cache, `${slugFileName(label)}.${ext}`);
+  file.write(base64, { encoding: 'base64' });
+  await Sharing.shareAsync(file.uri, { mimeType: `image/${ext}`, dialogTitle: label });
 }
 
 // Phase 11.3 — same cap/allowlist as web's validateAttachment(), so a

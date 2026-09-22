@@ -12,7 +12,8 @@
 // current quantities per row instead of derived IN/OUT figures. The
 // adjust-and-record-a-ledger-entry capability itself is fully preserved.
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, Text, Alert } from 'react-native';
+import { View, Text } from 'react-native';
+import { Alert } from '../../lib/appAlert';
 import { useNavigation } from '@react-navigation/native';
 import { Package, ArrowUpCircle, ArrowDownCircle, ShoppingBag } from 'lucide-react-native';
 import { supabase } from '../../lib/supabaseClient';
@@ -21,6 +22,7 @@ import { useTheme } from '../../theme/ThemeProvider';
 import Screen from '../../components/ui/Screen';
 import Card from '../../components/ui/Card';
 import DataList, { type DataColumn } from '../../components/ui/DataList';
+import ProductImage from '../../components/ui/ProductImage';
 import Badge from '../../components/ui/Badge';
 import Sheet from '../../components/ui/Sheet';
 import Button from '../../components/ui/Button';
@@ -30,7 +32,7 @@ import Tabs from '../../components/ui/Tabs';
 
 type Tab = 'CARGO' | 'PRODUCTS' | 'GP';
 
-interface CargoRow { id: string; product_name: string | null; goods_code: string | null; quantity: number; weight: number; unit: string | null; company: string | null; }
+interface CargoRow { id: string; product_name: string | null; goods_code: string | null; quantity: number; weight: number; unit: string | null; company: string | null; product_image: string | null; }
 interface StockRow { id: string; product_name: string; product_code: string | null; category: string | null; quantity: number; unit: string | null; maximum_level: number | null; }
 interface GpRow { id: string; item_name: string; item_code: string | null; category: string | null; quantity: number; cost: number; }
 interface LedgerRow { id: string; product_name: string; movement_type: string; quantity: number; reference: string | null; created_at: string; }
@@ -62,6 +64,7 @@ export default function StockScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
   const [productStatusFilter, setProductStatusFilter] = useState('All');
+  const [productImages, setProductImages] = useState<Record<string, string>>({});
 
   const [adjustTarget, setAdjustTarget] = useState<GpRow | null>(null);
   const [adjustType, setAdjustType] = useState<'Add' | 'Remove'>('Add');
@@ -72,7 +75,7 @@ export default function StockScreen() {
 
   const load = useCallback(async () => {
     const [cargoRes, stockRes, gpRes, ledgerRes] = await Promise.all([
-      supabase.from('cargo_intake').select('id, product_name, goods_code, quantity, weight, unit, company').eq('status', 'APPROVED').order('updated_at', { ascending: false }).limit(300),
+      supabase.from('cargo_intake').select('id, product_name, goods_code, quantity, weight, unit, company, product_image').eq('status', 'APPROVED').order('updated_at', { ascending: false }).limit(300),
       supabase.from('stock').select('id, product_name, product_code, category, quantity, unit, maximum_level').neq('category', 'INCOMING_GOODS').order('last_updated', { ascending: false }),
       supabase.from('general_purchases').select('id, item_name, item_code, category, quantity, cost').eq('status', 'APPROVED').order('updated_at', { ascending: false }),
       supabase.from('stock_ledger').select('id, product_name, movement_type, quantity, reference, created_at').order('created_at', { ascending: false }).limit(20),
@@ -81,6 +84,13 @@ export default function StockScreen() {
     if (cargoRes.data) setCargo(cargoRes.data as any);
     if (stockRes.data) setProducts(stockRes.data as any);
     if (gpRes.data) setPurchases(gpRes.data as any);
+    // stock has no product_image column of its own — goods_prices is the
+    // fallback source, same pattern used everywhere else this photo needs
+    // to reach a table that was never given its own copy of it.
+    const { data: priceImages } = await supabase.from('goods_prices').select('product_name, product_image');
+    const imgMap: Record<string, string> = {};
+    for (const p of priceImages || []) if ((p as any).product_image) imgMap[(p as any).product_name] = (p as any).product_image;
+    setProductImages(imgMap);
     setLoading(false);
     setRefreshing(false);
   }, []);
@@ -179,9 +189,9 @@ export default function StockScreen() {
           value={tab}
           onChange={(v) => setTab(v as Tab)}
           options={[
-            { value: 'CARGO', label: `Port Goods (${cargo.length})` },
+            { value: 'CARGO', label: `Port (${cargo.length})` },
             { value: 'PRODUCTS', label: `Products (${products.length})` },
-            { value: 'GP', label: `Purchases (${purchases.length})` },
+            { value: 'GP', label: `Buys (${purchases.length})` },
           ]}
         />
       </View>
@@ -198,8 +208,8 @@ export default function StockScreen() {
         )}
       </View>
 
-      {tab === 'CARGO' && <DataList columns={cargoCols} data={filteredCargo} rowKey={(r) => r.id} loading={loading} emptyTitle="No approved port cargo" rowIcon={() => ({ Icon: Package, color: t.colors.action.sky })} />}
-      {tab === 'PRODUCTS' && <DataList columns={productCols} data={filteredProducts} rowKey={(r) => r.id} loading={loading} emptyTitle="No finished goods on file" rowIcon={() => ({ Icon: Package, color: t.colors.action.indigo })} />}
+      {tab === 'CARGO' && <DataList columns={cargoCols} data={filteredCargo} rowKey={(r) => r.id} loading={loading} emptyTitle="No approved port cargo" collapsible rowThumbnail={(r) => <ProductImage uri={r.product_image} label={r.product_name || 'Cargo'} size={40} />} />}
+      {tab === 'PRODUCTS' && <DataList columns={productCols} data={filteredProducts} rowKey={(r) => r.id} loading={loading} emptyTitle="No finished goods on file" collapsible rowThumbnail={(r) => <ProductImage uri={productImages[r.product_name]} label={r.product_name} size={40} />} />}
       {tab === 'GP' && (
         <DataList
           columns={gpCols}
@@ -207,6 +217,7 @@ export default function StockScreen() {
           rowKey={(r) => r.id}
           loading={loading}
           emptyTitle="No approved purchases"
+          collapsible
           rowIcon={() => ({ Icon: ShoppingBag, color: t.colors.action.amber })}
           renderActions={(r) => <Button label="Adjust" size="sm" onPress={() => { setAdjustTarget(r); setAdjustType('Add'); setAdjustQty(''); setAdjustReason(''); setAdjustNotes(''); }} />}
         />
@@ -216,6 +227,7 @@ export default function StockScreen() {
         <Card style={{ marginTop: t.spacing.xl }}>
           <Text style={{ fontFamily: t.font.bold, fontSize: t.type.body14.size, color: t.colors.textPrimary, marginBottom: t.spacing.md }}>Recent Stock Movements</Text>
           <DataList
+            collapsible
             columns={movementCols}
             data={recentMovements}
             rowKey={(r) => r.id}

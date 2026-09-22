@@ -66,11 +66,8 @@ export default function CeoAnalyticsScreen() {
   return (
     <Screen refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }}>
       <View style={{ gap: t.spacing.xl }}>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.md }}>
-          <View style={{ width: '47%' }}><MetricCard label="Total Orders" value={loading ? '—' : totalOrders} tone="accent" /></View>
-          <View style={{ width: '47%' }}><MetricCard label="Delivered" value={loading ? '—' : deliveredOrders} tone="success" /></View>
-          <View style={{ width: '47%' }}><MetricCard label="Active Supplier Orders" value={loading ? '—' : activeSupplierOrders} tone="info" /></View>
-          <View style={{ width: '47%' }}><MetricCard label="Total Revenue" value={loading ? '—' : `GHS ${totalRevenue.toLocaleString()}`} /></View>
+        <View style={{ gap: t.spacing.sm }}>
+          <View style={{ flexDirection: 'row', gap: t.spacing.sm }}><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Total Orders" value={loading ? '—' : totalOrders} tone="accent" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Delivered" value={loading ? '—' : deliveredOrders} tone="success" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Active Supplier Orders" value={loading ? '—' : activeSupplierOrders} tone="info" /></View><View style={{ flex: 1 }}><MetricCard emphasis="compact" label="Total Revenue" value={loading ? '—' : `GHS ${totalRevenue.toLocaleString()}`} /></View></View>
         </View>
 
         <Card>

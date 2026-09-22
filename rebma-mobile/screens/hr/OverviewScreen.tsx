@@ -10,12 +10,12 @@ import { useTheme } from '../../theme/ThemeProvider';
 import { getDepartmentEntry } from '../../navigation/departmentRegistry';
 import Screen from '../../components/ui/Screen';
 import { useCollapsibleHeader } from '../../hooks/useCollapsibleHeader';
-import Card from '../../components/ui/Card';
 import MetricCard from '../../components/ui/MetricCard';
 import Button from '../../components/ui/Button';
 import ApprovalHistoryPanel from '../../components/shared/ApprovalHistoryPanel';
 import ModuleLauncher from '../../components/chrome/ModuleLauncher';
 import SectionHeader from '../../components/ui/SectionHeader';
+import TrackedSection from '../../components/ui/TrackedSection';
 
 export default function OverviewScreen() {
   const t = useTheme();
@@ -54,69 +54,79 @@ export default function OverviewScreen() {
   return (
     <Screen refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} onScroll={scrollHandler} scrollEventThrottle={16}>
       <View style={{ gap: t.spacing.xl }}>
-        {/* Aczone HR Hero Card */}
-        <Card tone="hero">
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <View style={{ flex: 1 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#34D399' }} />
-                <Text style={{ fontFamily: t.font.bold, fontSize: t.type.meta10.size, letterSpacing: 0.8, textTransform: 'uppercase', color: 'rgba(255,255,255,0.9)' }}>
-                  Workforce & Human Capital
-                </Text>
-              </View>
-              <Text style={{ fontFamily: t.font.extrabold, fontSize: t.type.kpi28.size, color: '#FFFFFF', marginTop: 2 }}>
-                {loading ? '—' : activeStaff}
-              </Text>
-              <Text style={{ fontFamily: t.font.medium, fontSize: t.type.body12.size, color: 'rgba(255,255,255,0.85)', marginTop: 4 }}>
-                {loading ? '' : `of ${totalStaff} registered staff across ${deptCount || 11} departments`}
-              </Text>
-            </View>
-            <View style={{ width: 56, height: 56, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.22)', alignItems: 'center', justifyContent: 'center' }}>
-              <UserCheck size={28} color="#FFFFFF" strokeWidth={2.5} />
-            </View>
-          </View>
-        </Card>
-
-        {/* Aczone 2x2 Metric Grid */}
-        <View style={{ gap: t.spacing.sm }}>
-          <SectionHeader title="Staffing & Operations" subtitle="Active employee attendance & registration status" />
-          <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
+        {/* Workforce Snapshot — two clickable tiles, not one oversized
+            banner (per direct correction: a full-bleed color block that
+            does nothing on tap doesn't belong in a mobile app). */}
+        <TrackedSection id="hero" title="Workforce Snapshot" icon={UserCheck}>
+        <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
+          <View style={{ flex: 1 }}>
             <MetricCard
-              label="Pending Staff"
-              value={loading ? '—' : pendingRegistrations}
-              sublabel="New account reviews"
-              icon={<UserPlus size={20} color={t.colors.action.amber} />}
-              tone={pendingRegistrations > 0 ? 'warning' : 'neutral'}
-              onPress={() => navigation.navigate('Registrations')}
-            />
-            <MetricCard
-              label="On Leave Today"
-              value={loading ? '—' : onLeaveToday}
-              sublabel="Approved time off"
-              icon={<Calendar size={20} color={t.colors.action.sky} />}
-              tone="info"
-              onPress={() => navigation.navigate('LeaveManagement')}
-            />
-          </View>
-          <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
-            <MetricCard
-              label="Staff Directory"
-              value={loading ? '—' : totalStaff}
-              sublabel="Total employees"
-              icon={<Users size={20} color={t.colors.action.violet} />}
-              tone="neutral"
+              emphasis="primary"
+              tone="accent"
+              label="Active Staff"
+              value={loading ? '—' : activeStaff}
+              sublabel={`of ${totalStaff} registered`}
+              icon={<UserCheck size={18} color={t.colors.accent} />}
               onPress={() => navigation.navigate('Staff')}
             />
+          </View>
+          <View style={{ flex: 1 }}>
             <MetricCard
-              label="Departments"
-              value={loading ? '—' : deptCount || 11}
-              sublabel="Organizational units"
-              icon={<Building2 size={20} color={t.colors.action.emerald} />}
-              tone="success"
-              onPress={() => navigation.navigate('DepartmentManager')}
+              emphasis="primary"
+              tone={pendingRegistrations > 0 ? 'warning' : 'accent'}
+              label="Pending Staff"
+              value={loading ? '—' : pendingRegistrations}
+              sublabel="New reviews"
+              icon={<UserPlus size={18} color={pendingRegistrations > 0 ? t.colors.status.warning.text : t.colors.accent} />}
+              onPress={() => navigation.navigate('Registrations')}
             />
           </View>
         </View>
+        </TrackedSection>
+
+        {/* Key Metrics */}
+        <TrackedSection id="metrics" title="Staffing & Operations" icon={Users}>
+        <View style={{ gap: t.spacing.sm }}>
+          <SectionHeader title="Staffing & Operations" subtitle="Active employee attendance & registration status" />
+          <View style={{ gap: t.spacing.sm }}>
+            <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
+              <View style={{ flex: 1 }}>
+              <MetricCard
+                emphasis="compact"
+                label="On Leave"
+                value={loading ? '—' : onLeaveToday}
+                sublabel="Approved off"
+                icon={<Calendar size={14} color={t.colors.action.sky} />}
+                tone="info"
+                onPress={() => navigation.navigate('LeaveManagement')}
+              />
+              </View>
+              <View style={{ flex: 1 }}>
+              <MetricCard
+                emphasis="compact"
+                label="Staff"
+                value={loading ? '—' : totalStaff}
+                sublabel="Employees"
+                icon={<Users size={14} color={t.colors.action.violet} />}
+                tone="neutral"
+                onPress={() => navigation.navigate('Staff')}
+              />
+              </View>
+              <View style={{ flex: 1 }}>
+              <MetricCard
+                emphasis="compact"
+                label="Departments"
+                value={loading ? '—' : deptCount || 11}
+                sublabel="Org units"
+                icon={<Building2 size={14} color={t.colors.action.emerald} />}
+                tone="success"
+                onPress={() => navigation.navigate('DepartmentManager')}
+              />
+              </View>
+            </View>
+          </View>
+        </View>
+        </TrackedSection>
 
         {pendingRegistrations > 0 && (
           <Button
@@ -127,7 +137,9 @@ export default function OverviewScreen() {
         )}
 
         {/* Recent HR Activity */}
+        <TrackedSection id="recent-activity" title="Recent HR Activity" icon={Clock}>
         <ApprovalHistoryPanel department="HR" title="Recent HR Activity" />
+        </TrackedSection>
 
         {/* Grouped Action Hub */}
         <ModuleLauncher dept={dept} exclude={['Employees']} onSelect={(id) => navigation.navigate(id)} />

@@ -10,11 +10,8 @@ import { useTheme } from '../../theme/ThemeProvider';
 import { getDepartmentEntry } from '../../navigation/departmentRegistry';
 import Screen from '../../components/ui/Screen';
 import { useCollapsibleHeader } from '../../hooks/useCollapsibleHeader';
-import Card from '../../components/ui/Card';
 import MetricCard from '../../components/ui/MetricCard';
 import Button from '../../components/ui/Button';
-import PendingApprovalsAlertCard from '../../components/shared/PendingApprovalsAlertCard';
-import ApprovalHistoryPanel from '../../components/shared/ApprovalHistoryPanel';
 import ModuleLauncher from '../../components/chrome/ModuleLauncher';
 import SectionHeader from '../../components/ui/SectionHeader';
 
@@ -56,78 +53,101 @@ export default function MgmtOverviewScreen() {
   return (
     <Screen refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} onScroll={scrollHandler} scrollEventThrottle={16}>
       <View style={{ gap: t.spacing.xl }}>
-        <PendingApprovalsAlertCard department="MANAGEMENT" onNavigate={(tab) => navigation.navigate(tab)} />
 
-        {/* Aczone Management Hero Card */}
-        <Card tone="hero">
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <View style={{ flex: 1 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: totalApprovals > 0 ? '#FBBF24' : '#34D399' }} />
-                <Text style={{ fontFamily: t.font.bold, fontSize: t.type.meta10.size, letterSpacing: 0.8, textTransform: 'uppercase', color: 'rgba(255,255,255,0.9)' }}>
-                  Management Executive Desk
-                </Text>
-              </View>
-              <Text style={{ fontFamily: t.font.extrabold, fontSize: t.type.kpi28.size, color: '#FFFFFF', marginTop: 2 }}>
-                {loading ? '—' : totalApprovals}
-              </Text>
-              <Text style={{ fontFamily: t.font.medium, fontSize: t.type.body12.size, color: 'rgba(255,255,255,0.85)', marginTop: 4 }}>
-                {loading ? '' : `${totalApprovals === 0 ? 'All 5 approval lanes clear' : `${totalApprovals} action item${totalApprovals === 1 ? '' : 's'} awaiting executive sign-off`}`}
-              </Text>
-            </View>
-            <View style={{ width: 56, height: 56, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.22)', alignItems: 'center', justifyContent: 'center' }}>
-              <Layers size={28} color="#FFFFFF" strokeWidth={2.5} />
-            </View>
-          </View>
-        </Card>
-
-        {/* 5 Approval Lanes Grid */}
-        <View style={{ gap: t.spacing.sm }}>
-          <SectionHeader title="Executive Decision Lanes" subtitle="5 critical operational sign-off queues" />
-          <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
+        {/* Management Executive Desk snapshot — two clickable tiles, not
+            one oversized banner (per direct correction: a full-bleed
+            color block that does nothing on tap doesn't belong in a
+            mobile app). */}
+        <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
+          <View style={{ flex: 1 }}>
             <MetricCard
+              emphasis="primary"
+              tone={totalApprovals > 0 ? 'warning' : 'accent'}
+              label="Action Items"
+              value={loading ? '—' : totalApprovals}
+              sublabel={totalApprovals === 0 ? 'All lanes clear' : 'Awaiting sign-off'}
+              icon={<Layers size={18} color={totalApprovals > 0 ? t.colors.status.warning.text : t.colors.accent} />}
+              onPress={() => navigation.navigate('CreditApproval')}
+            />
+          </View>
+          <View style={{ flex: 1 }}>
+            <MetricCard
+              emphasis="primary"
+              tone="info"
               label="Cargo Intake"
               value={loading ? '—' : cargoCount}
               sublabel="Port arrivals"
-              icon={<Package size={20} color={t.colors.action.sky} />}
-              tone={cargoCount > 0 ? 'warning' : 'neutral'}
-              onPress={() => navigation.navigate('CreditApproval')}
-            />
-            <MetricCard
-              label="Customer Credit"
-              value={loading ? '—' : ordersCount}
-              sublabel="Escalated orders"
-              icon={<CreditCard size={20} color={t.colors.action.violet} />}
-              tone={ordersCount > 0 ? 'warning' : 'neutral'}
+              icon={<Package size={18} color={t.colors.status.info.text} />}
               onPress={() => navigation.navigate('CreditApproval')}
             />
           </View>
-          <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
-            <MetricCard
-              label="Production Req"
-              value={loading ? '—' : productionCount}
-              sublabel="Raw material batch"
-              icon={<Factory size={20} color={t.colors.action.teal} />}
-              tone={productionCount > 0 ? 'warning' : 'neutral'}
-              onPress={() => navigation.navigate('CreditApproval')}
-            />
-            <MetricCard
-              label="General Purchases"
-              value={loading ? '—' : purchasesCount}
-              sublabel="Merchant expenses"
-              icon={<ShoppingCart size={20} color={t.colors.action.amber} />}
-              tone={purchasesCount > 0 ? 'warning' : 'neutral'}
-              onPress={() => navigation.navigate('CreditApproval')}
-            />
+        </View>
+
+        {/* 5 Approval Lanes — 4 across and wrapping, per direct correction */}
+        <View style={{ gap: t.spacing.sm }}>
+          <SectionHeader title="Executive Decision Lanes" subtitle="5 critical operational sign-off queues" />
+          <View style={{ gap: t.spacing.sm }}>
+            <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
+              <View style={{ flex: 1 }}>
+              <MetricCard
+                emphasis="compact"
+                label="Cargo Intake"
+                value={loading ? '—' : cargoCount}
+                sublabel="Port arrivals"
+                icon={<Package size={14} color={t.colors.action.sky} />}
+                tone={cargoCount > 0 ? 'warning' : 'neutral'}
+                onPress={() => navigation.navigate('CreditApproval')}
+              />
+              </View>
+              <View style={{ flex: 1 }}>
+              <MetricCard
+                emphasis="compact"
+                label="Cust. Credit"
+                value={loading ? '—' : ordersCount}
+                sublabel="Escalated"
+                icon={<CreditCard size={14} color={t.colors.action.violet} />}
+                tone={ordersCount > 0 ? 'warning' : 'neutral'}
+                onPress={() => navigation.navigate('CreditApproval')}
+              />
+              </View>
+              <View style={{ flex: 1 }}>
+              <MetricCard
+                emphasis="compact"
+                label="Production"
+                value={loading ? '—' : productionCount}
+                sublabel="Raw material"
+                icon={<Factory size={14} color={t.colors.action.teal} />}
+                tone={productionCount > 0 ? 'warning' : 'neutral'}
+                onPress={() => navigation.navigate('CreditApproval')}
+              />
+              </View>
+            </View>
+            <View style={{ flexDirection: 'row', gap: t.spacing.sm }}>
+              <View style={{ flex: 1 }}>
+              <MetricCard
+                emphasis="compact"
+                label="Purchases"
+                value={loading ? '—' : purchasesCount}
+                sublabel="Expenses"
+                icon={<ShoppingCart size={14} color={t.colors.action.amber} />}
+                tone={purchasesCount > 0 ? 'warning' : 'neutral'}
+                onPress={() => navigation.navigate('CreditApproval')}
+              />
+              </View>
+              <View style={{ flex: 1 }}>
+              <MetricCard
+                emphasis="compact"
+                label="Petty Float"
+                value={loading ? '—' : floatCount}
+                sublabel="Replenishment"
+                icon={<Wallet size={14} color={t.colors.action.rose} />}
+                tone={floatCount > 0 ? 'warning' : 'neutral'}
+                onPress={() => navigation.navigate('CreditApproval')}
+              />
+              </View>
+              <View style={{ flex: 1 }} />
+            </View>
           </View>
-          <MetricCard
-            label="Petty Float Requests"
-            value={loading ? '—' : floatCount}
-            sublabel="Cash replenishment approvals"
-            icon={<Wallet size={20} color={t.colors.action.rose} />}
-            tone={floatCount > 0 ? 'warning' : 'neutral'}
-            onPress={() => navigation.navigate('CreditApproval')}
-          />
         </View>
 
         {totalApprovals > 0 && (
@@ -137,9 +157,6 @@ export default function MgmtOverviewScreen() {
             fullWidth
           />
         )}
-
-        {/* Audit Log Panel */}
-        <ApprovalHistoryPanel department="MANAGEMENT" title="Recent Management Decisions" />
 
         {/* Grouped Action Hub */}
         <ModuleLauncher dept={dept} exclude={['CargoApproval']} onSelect={(id) => navigation.navigate(id)} />

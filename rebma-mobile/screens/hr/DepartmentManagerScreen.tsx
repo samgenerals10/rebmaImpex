@@ -13,7 +13,8 @@
 // self-documentation of a real schema gap — not "fixed" into writing
 // fields that don't exist.
 import { useCallback, useEffect, useState } from 'react';
-import { View, Text, Pressable, Alert } from 'react-native';
+import { View, Text, Pressable } from 'react-native';
+import { Alert } from '../../lib/appAlert';
 import { Plus, Building2, X } from 'lucide-react-native';
 import { supabase } from '../../lib/supabaseClient';
 import { getCeoSetting } from '../../lib/ceoSetting';

@@ -69,6 +69,7 @@ export default function DesignSystemScreen() {
       <SectionHeader title="Data List" />
       <View style={{ marginBottom: t.spacing.xl }}>
         <DataList
+          collapsible
           columns={columns}
           data={ROWS}
           rowKey={(r) => r.id}

@@ -11,7 +11,8 @@
 // (a re-fetch of getPendingUsers() would no longer include them either,
 // since their status has moved off PENDING_APPROVAL).
 import { useCallback, useEffect, useState } from 'react';
-import { View, Text, Alert } from 'react-native';
+import { View, Text } from 'react-native';
+import { Alert } from '../../lib/appAlert';
 import { CheckCircle, XCircle, Trash2 } from 'lucide-react-native';
 import { supabase } from '../../lib/supabaseClient';
 import { callPrivilegedApi, ApiNotConfiguredError } from '../../lib/apiBase';
