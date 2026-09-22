@@ -127,7 +127,14 @@ export default function FloatingHelpButton() {
         const maxY = screen.height - insets.bottom - TAB_BAR_H - SIZE - 8;
         const clampedY = Math.min(Math.max(posRef.current.y, minY), maxY);
         posRef.current = { x: snappedX, y: clampedY };
-        Animated.spring(pan, { toValue: { x: snappedX, y: clampedY }, useNativeDriver: false, friction: 8 }).start();
+        // useNativeDriver: true — this View's `opacity` (via useBlink,
+        // above) is already native-driven, and mixing a JS-driven
+        // animation on `transform` into the same view's animated-props
+        // node throws "Attempting to run JS driven animation on animated
+        // node that has been moved to 'native'". translateX/Y both
+        // support the native driver, so this keeps the whole node
+        // consistently native instead of splitting the view in two.
+        Animated.spring(pan, { toValue: { x: snappedX, y: clampedY }, useNativeDriver: true, friction: 8 }).start();
         AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ side: goLeft ? 'left' : 'right', y: clampedY })).catch(() => {});
       },
     })
